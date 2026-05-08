@@ -51,4 +51,4 @@ Be useful, be kind, be honest about what your skill can and can't do.
 
 ## Questions
 
-Open an issue or email [joe@bizzfixx.com](mailto:joe@bizzfixx.com).
+Open an issue or email [joe@engineforimpact.com](mailto:joe@engineforimpact.com).

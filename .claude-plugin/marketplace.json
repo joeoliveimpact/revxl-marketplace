@@ -3,8 +3,8 @@
   "name": "revxl-marketplace",
   "description": "REVXL's curated catalog of Claude superengines — opinionated, multi-skill plugins built for real coaching businesses. One install, per-plugin picker, auto-updates.",
   "owner": {
-    "name": "Joe Oliver",
-    "email": "joe@bizzfixx.com"
+    "name": "Joe Olive",
+    "email": "joe@engineforimpact.com"
   },
   "metadata": {
     "version": "0.1.0",
@@ -18,8 +18,8 @@
       "category": "productivity",
       "version": "0.1.0",
       "author": {
-        "name": "Joe Oliver",
-        "email": "joe@bizzfixx.com"
+        "name": "Joe Olive",
+        "email": "joe@engineforimpact.com"
       },
       "homepage": "https://github.com/{YOUR-GITHUB-USERNAME}/revxl-marketplace/tree/main/plugins/claude-workspace-superengine",
       "keywords": ["workspace", "session", "scaffolding", "lifecycle", "superengine"]
@@ -31,8 +31,8 @@
       "category": "crm",
       "version": "0.1.0",
       "author": {
-        "name": "Joe Oliver",
-        "email": "joe@bizzfixx.com"
+        "name": "Joe Olive",
+        "email": "joe@engineforimpact.com"
       },
       "homepage": "https://github.com/{YOUR-GITHUB-USERNAME}/revxl-marketplace/tree/main/plugins/ghl-coach-superengine",
       "keywords": ["gohighlevel", "ghl", "crm", "coaching", "health-coach", "mcp", "superengine"]

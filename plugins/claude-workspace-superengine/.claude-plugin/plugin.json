@@ -4,8 +4,8 @@
   "description": "Workspace lifecycle superengine. Scaffolds new workspaces with the canonical eight-file scheme (RULES.md / CLAUDE.md / ARCHITECTURE.md / GOALS.md / PLANNING.md / MEMORY.md / Checkpoint.md / handoff.md), reads them at session start, and writes durable handoffs at session end. Built on top of agent-optimizer's four override constraints.",
   "version": "0.1.0",
   "author": {
-    "name": "Joe Oliver",
-    "email": "joe@bizzfixx.com"
+    "name": "Joe Olive",
+    "email": "joe@engineforimpact.com"
   },
   "homepage": "https://github.com/{YOUR-GITHUB-USERNAME}/revxl-marketplace/tree/main/plugins/claude-workspace-superengine",
   "license": "MIT",

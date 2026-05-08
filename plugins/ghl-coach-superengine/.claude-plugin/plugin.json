@@ -4,8 +4,8 @@
   "description": "GoHighLevel done-with-you superengine for health/wellness/fitness coaches. Walks non-technical clients through installing the GoHighLevel MCP, manages the canonical tag taxonomy, runs Sales DM + Client pipelines, designs GHL-native automations, and ships a multi-step coach-assistant agent for end-to-end lead processing.",
   "version": "0.1.0",
   "author": {
-    "name": "Joe Oliver",
-    "email": "joe@bizzfixx.com"
+    "name": "Joe Olive",
+    "email": "joe@engineforimpact.com"
   },
   "homepage": "https://github.com/{YOUR-GITHUB-USERNAME}/revxl-marketplace/tree/main/plugins/ghl-coach-superengine",
   "license": "MIT",

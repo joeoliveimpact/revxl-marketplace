@@ -1,6 +1,6 @@
 # revxl-marketplace
 
-> A curated catalog of Claude superengines from [REVXL](https://revxl.io). Opinionated, multi-skill plugins built for real coaching businesses.
+> A curated catalog of Claude superengines from [REVXL](https://engineforimpact.com). Opinionated, multi-skill plugins built for real coaching businesses.
 
 ![marketplace banner placeholder](docs/demos/marketplace-banner.png)
 
@@ -144,7 +144,7 @@ MIT — see [LICENSE](LICENSE). Each plugin in this marketplace is also MIT-lice
 
 ## Author
 
-[Joe Oliver](mailto:joe@bizzfixx.com) — [REVXL](https://revxl.io)
+[Joe Olive](mailto:joe@engineforimpact.com) — [REVXL](https://engineforimpact.com)
 
 ## Issues / Requests
 
