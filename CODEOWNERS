@@ -1,0 +1,16 @@
+# CODEOWNERS for revxl-marketplace
+#
+# Format: <path-pattern> <reviewer-username>
+# Anyone listed here is automatically requested for review on PRs touching matching files.
+
+# Default — everything requires Joe's review
+*                                    @{YOUR-GITHUB-USERNAME}
+
+# Marketplace-level config
+/.claude-plugin/                     @{YOUR-GITHUB-USERNAME}
+/.github/                            @{YOUR-GITHUB-USERNAME}
+/docs/                               @{YOUR-GITHUB-USERNAME}
+
+# Per-plugin ownership (add additional owners as the project grows)
+/plugins/claude-workspace-superengine/ @{YOUR-GITHUB-USERNAME}
+/plugins/ghl-coach-superengine/        @{YOUR-GITHUB-USERNAME}

@@ -1,0 +1,151 @@
+name: Validate Plugins
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate-marketplace:
+    runs-on: ubuntu-latest
+    name: Validate marketplace.json schema
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate marketplace.json is valid JSON
+        run: |
+          if ! python3 -c "import json; json.load(open('.claude-plugin/marketplace.json'))"; then
+            echo "::error file=.claude-plugin/marketplace.json::Invalid JSON"
+            exit 1
+          fi
+          echo "✅ marketplace.json is valid JSON"
+
+      - name: Validate marketplace.json has required fields
+        run: |
+          python3 <<'EOF'
+          import json, sys
+          m = json.load(open('.claude-plugin/marketplace.json'))
+          required = ['name', 'description', 'owner', 'plugins']
+          missing = [f for f in required if f not in m]
+          if missing:
+              print(f"::error file=.claude-plugin/marketplace.json::Missing required fields: {missing}")
+              sys.exit(1)
+          print(f"✅ marketplace.json has all required fields")
+          print(f"   Plugins listed: {len(m['plugins'])}")
+          for p in m['plugins']:
+              if 'name' not in p or 'source' not in p:
+                  print(f"::error::Plugin entry missing name or source: {p}")
+                  sys.exit(1)
+          print(f"✅ All plugin entries valid")
+          EOF
+
+  validate-plugins:
+    runs-on: ubuntu-latest
+    name: Validate each plugin's structure
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate every plugin folder
+        run: |
+          python3 <<'EOF'
+          import json, sys, os
+          from pathlib import Path
+
+          errors = []
+          plugin_root = Path('plugins')
+          if not plugin_root.exists():
+              print("::error::No plugins/ directory found")
+              sys.exit(1)
+
+          for plugin_dir in plugin_root.iterdir():
+              if not plugin_dir.is_dir():
+                  continue
+              name = plugin_dir.name
+              print(f"\n--- Validating {name} ---")
+
+              # Required files
+              required_files = [
+                  '.claude-plugin/plugin.json',
+                  'README.md',
+                  'CHANGELOG.md',
+                  'LICENSE',
+              ]
+              for f in required_files:
+                  if not (plugin_dir / f).exists():
+                      errors.append(f"{name}: missing {f}")
+
+              # plugin.json must be valid
+              pj = plugin_dir / '.claude-plugin' / 'plugin.json'
+              if pj.exists():
+                  try:
+                      data = json.load(open(pj))
+                      for field in ['name', 'description', 'version']:
+                          if field not in data:
+                              errors.append(f"{name}: plugin.json missing {field}")
+                  except Exception as e:
+                      errors.append(f"{name}: plugin.json invalid: {e}")
+
+              # Must have at least one skill or agent
+              has_skill = any((plugin_dir / 'skills').rglob('SKILL.md')) if (plugin_dir / 'skills').exists() else False
+              has_agent = any((plugin_dir / 'agents').glob('*.md')) if (plugin_dir / 'agents').exists() else False
+              if not (has_skill or has_agent):
+                  errors.append(f"{name}: no skills or agents found")
+              else:
+                  if has_skill:
+                      print(f"  ✅ Has skills")
+                  if has_agent:
+                      print(f"  ✅ Has agents")
+
+          if errors:
+              print("\n--- ERRORS ---")
+              for e in errors:
+                  print(f"::error::{e}")
+              sys.exit(1)
+
+          print("\n✅ All plugins validated successfully")
+          EOF
+
+  validate-skill-frontmatter:
+    runs-on: ubuntu-latest
+    name: Validate SKILL.md frontmatter
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pyyaml
+        run: pip install pyyaml
+
+      - name: Validate every SKILL.md
+        run: |
+          python3 <<'EOF'
+          import yaml, sys
+          from pathlib import Path
+
+          errors = []
+          for skill_md in Path('plugins').rglob('SKILL.md'):
+              try:
+                  content = skill_md.read_text(encoding='utf-8')
+                  if not content.startswith('---'):
+                      errors.append(f"{skill_md}: no frontmatter")
+                      continue
+                  fm_end = content.find('---', 3)
+                  if fm_end == -1:
+                      errors.append(f"{skill_md}: malformed frontmatter")
+                      continue
+                  fm = yaml.safe_load(content[3:fm_end])
+                  if 'name' not in fm:
+                      errors.append(f"{skill_md}: frontmatter missing name")
+                  if 'description' not in fm:
+                      errors.append(f"{skill_md}: frontmatter missing description")
+                  if fm.get('description') and len(fm['description']) < 30:
+                      errors.append(f"{skill_md}: description too short (<30 chars) — won't trigger reliably")
+              except Exception as e:
+                  errors.append(f"{skill_md}: parse error: {e}")
+
+          if errors:
+              for e in errors:
+                  print(f"::error::{e}")
+              sys.exit(1)
+          print("✅ All SKILL.md frontmatter validated")
+          EOF

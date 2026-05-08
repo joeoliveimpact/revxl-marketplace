@@ -1,0 +1,41 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "revxl-marketplace",
+  "description": "REVXL's curated catalog of Claude superengines — opinionated, multi-skill plugins built for real coaching businesses. One install, per-plugin picker, auto-updates.",
+  "owner": {
+    "name": "Joe Oliver",
+    "email": "joe@bizzfixx.com"
+  },
+  "metadata": {
+    "version": "0.1.0",
+    "pluginRoot": "./plugins"
+  },
+  "plugins": [
+    {
+      "name": "claude-workspace-superengine",
+      "description": "Workspace lifecycle: scaffold new workspaces, pick up cleanly at session start, close out cleanly at session end. Built on agent-optimizer's four override constraints. Works in Claude Desktop and Claude Code.",
+      "source": "claude-workspace-superengine",
+      "category": "productivity",
+      "version": "0.1.0",
+      "author": {
+        "name": "Joe Oliver",
+        "email": "joe@bizzfixx.com"
+      },
+      "homepage": "https://github.com/{YOUR-GITHUB-USERNAME}/revxl-marketplace/tree/main/plugins/claude-workspace-superengine",
+      "keywords": ["workspace", "session", "scaffolding", "lifecycle", "superengine"]
+    },
+    {
+      "name": "ghl-coach-superengine",
+      "description": "GoHighLevel done-with-you toolkit for health/wellness/fitness coaches. Walks non-tech clients through MCP install, manages tags + pipelines + automations, ships a multi-step coach-assistant agent. Requires the GoHighLevel-MCP (mastanley13).",
+      "source": "ghl-coach-superengine",
+      "category": "crm",
+      "version": "0.1.0",
+      "author": {
+        "name": "Joe Oliver",
+        "email": "joe@bizzfixx.com"
+      },
+      "homepage": "https://github.com/{YOUR-GITHUB-USERNAME}/revxl-marketplace/tree/main/plugins/ghl-coach-superengine",
+      "keywords": ["gohighlevel", "ghl", "crm", "coaching", "health-coach", "mcp", "superengine"]
+    }
+  ]
+}
