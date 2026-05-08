@@ -1,5 +1,5 @@
 {
-  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "revxl-webhook-channel",
   "description": "Custom MCP channel for Claude Code that turns any HTTP webhook into a session event. Two-way: Claude reads inbound webhooks, replies via tool calls, and supports remote permission approval. Pre-wired for GoHighLevel, Cal.com, Stripe, and Umnico/Meta DM events. Pairs with revxl-os-superengine.",
   "version": "0.1.0",
@@ -9,9 +9,5 @@
   },
   "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/revxl-webhook-channel",
   "license": "MIT",
-  "keywords": ["channel", "webhook", "mcp", "claude-code", "ghl", "stripe", "calcom", "umnico", "permission-relay", "revxl"],
-  "requires": {
-    "claudeCode": ">=2.1.81",
-    "runtime": "bun"
-  }
+  "keywords": ["channel", "webhook", "mcp", "claude-code", "ghl", "stripe", "calcom", "umnico", "permission-relay", "revxl"]
 }
