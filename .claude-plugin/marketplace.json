@@ -14,7 +14,7 @@
     {
       "name": "claude-workspace-superengine",
       "description": "Workspace lifecycle: scaffold new workspaces, pick up cleanly at session start, close out cleanly at session end. Built on agent-optimizer's four override constraints. Works in Claude Desktop and Claude Code.",
-      "source": "claude-workspace-superengine",
+      "source": "./claude-workspace-superengine",
       "category": "productivity",
       "version": "0.1.0",
       "author": {
@@ -27,7 +27,7 @@
     {
       "name": "ghl-coach-superengine",
       "description": "GoHighLevel done-with-you toolkit for health/wellness/fitness coaches. 8 skills + 2 agents that build and maintain a persistent 13-file per-coach workspace, refresh it from GHL on every session, surface what needs attention, and execute multi-step work via MCP. Requires the GoHighLevel-MCP (mastanley13) and Filesystem MCP.",
-      "source": "ghl-coach-superengine",
+      "source": "./ghl-coach-superengine",
       "category": "crm",
       "version": "0.1.0",
       "author": {
@@ -40,7 +40,7 @@
     {
       "name": "revxl-os-superengine",
       "description": "Autonomous coaching ops superengine for Claude Code. Three agents (morning brief, task surfacing, DM triage) running on schedules and event triggers, delivered through Telegram. Pairs with revxl-webhook-channel for webhook-driven automation. The OpenClaw alternative built on native Claude Code Channels.",
-      "source": "revxl-os-superengine",
+      "source": "./revxl-os-superengine",
       "category": "productivity",
       "version": "0.1.0",
       "author": {
@@ -53,7 +53,7 @@
     {
       "name": "revxl-webhook-channel",
       "description": "Custom MCP channel for Claude Code that turns any HTTP webhook into a session event. Two-way: Claude reads inbound webhooks, replies via tool calls, and supports remote permission approval. Pre-wired for GoHighLevel, Cal.com, Stripe, and Umnico/Meta DM events.",
-      "source": "revxl-webhook-channel",
+      "source": "./revxl-webhook-channel",
       "category": "channels",
       "version": "0.1.0",
       "author": {
