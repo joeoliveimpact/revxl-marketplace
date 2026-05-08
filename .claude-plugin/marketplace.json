@@ -26,7 +26,7 @@
     },
     {
       "name": "ghl-coach-superengine",
-      "description": "GoHighLevel done-with-you toolkit for health/wellness/fitness coaches. Walks non-tech clients through MCP install, manages tags + pipelines + automations, ships a multi-step coach-assistant agent. Requires the GoHighLevel-MCP (mastanley13).",
+      "description": "GoHighLevel done-with-you toolkit for health/wellness/fitness coaches. 8 skills + 2 agents that build and maintain a persistent 13-file per-coach workspace, refresh it from GHL on every session, surface what needs attention, and execute multi-step work via MCP. Requires the GoHighLevel-MCP (mastanley13) and Filesystem MCP.",
       "source": "ghl-coach-superengine",
       "category": "crm",
       "version": "0.1.0",
@@ -35,7 +35,7 @@
         "email": "joe@engineforimpact.com"
       },
       "homepage": "https://github.com/{YOUR-GITHUB-USERNAME}/revxl-marketplace/tree/main/plugins/ghl-coach-superengine",
-      "keywords": ["gohighlevel", "ghl", "crm", "coaching", "health-coach", "mcp", "superengine"]
+      "keywords": ["gohighlevel", "ghl", "crm", "coaching", "health-coach", "mcp", "superengine", "workspace", "notifier"]
     }
   ]
 }
