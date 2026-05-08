@@ -7,7 +7,7 @@
     "name": "Joe Olive",
     "email": "joe@engineforimpact.com"
   },
-  "homepage": "https://github.com/{YOUR-GITHUB-USERNAME}/revxl-marketplace/tree/main/plugins/claude-workspace-superengine",
+  "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/claude-workspace-superengine",
   "license": "MIT",
   "keywords": ["workspace", "session", "scaffolding", "lifecycle", "agent-optimizer", "superengine"]
 }

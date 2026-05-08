@@ -4,13 +4,13 @@
 # Anyone listed here is automatically requested for review on PRs touching matching files.
 
 # Default — everything requires Joe's review
-*                                    @{YOUR-GITHUB-USERNAME}
+*                                    @joeoliveimpact
 
 # Marketplace-level config
-/.claude-plugin/                     @{YOUR-GITHUB-USERNAME}
-/.github/                            @{YOUR-GITHUB-USERNAME}
-/docs/                               @{YOUR-GITHUB-USERNAME}
+/.claude-plugin/                     @joeoliveimpact
+/.github/                            @joeoliveimpact
+/docs/                               @joeoliveimpact
 
 # Per-plugin ownership (add additional owners as the project grows)
-/plugins/claude-workspace-superengine/ @{YOUR-GITHUB-USERNAME}
-/plugins/ghl-coach-superengine/        @{YOUR-GITHUB-USERNAME}
+/plugins/claude-workspace-superengine/ @joeoliveimpact
+/plugins/ghl-coach-superengine/        @joeoliveimpact

@@ -46,7 +46,7 @@ Open `~/.claude/settings.json` and add:
     "revxl-marketplace": {
       "source": {
         "source": "github",
-        "repo": "{YOUR-GITHUB-USERNAME}/revxl-marketplace"
+        "repo": "joeoliveimpact/revxl-marketplace"
       }
     }
   }
@@ -103,7 +103,7 @@ Or remove the entry from `~/.claude/settings.json` `enabledPlugins`.
 
 ## Still stuck?
 
-[Open an issue](https://github.com/{YOUR-GITHUB-USERNAME}/revxl-marketplace/issues) with:
+[Open an issue](https://github.com/joeoliveimpact/revxl-marketplace/issues) with:
 - Which Claude product (Desktop / Code / CLI)
 - OS (Mac / Windows / Linux)
 - Exact error message or behavior

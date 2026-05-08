@@ -4,7 +4,7 @@
 
 ![marketplace banner placeholder](docs/demos/marketplace-banner.png)
 
-[![Validate Plugins](https://github.com/{YOUR-GITHUB-USERNAME}/revxl-marketplace/actions/workflows/validate-plugins.yml/badge.svg)](https://github.com/{YOUR-GITHUB-USERNAME}/revxl-marketplace/actions/workflows/validate-plugins.yml)
+[![Validate Plugins](https://github.com/joeoliveimpact/revxl-marketplace/actions/workflows/validate-plugins.yml/badge.svg)](https://github.com/joeoliveimpact/revxl-marketplace/actions/workflows/validate-plugins.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
@@ -53,7 +53,7 @@ Per-plugin install — pick what you want. Skips what you don't.
 3. Click **Skills** → **+** next to *"Personal plugins"*
 4. Paste this GitHub path:
    ```
-   {YOUR-GITHUB-USERNAME}/revxl-marketplace
+   joeoliveimpact/revxl-marketplace
    ```
 5. Click **Sync** → you'll see each plugin as a separate install card
 6. Click **Install** on the ones you want
@@ -63,7 +63,7 @@ Per-plugin install — pick what you want. Skips what you don't.
 ### Claude Code (developer tool)
 
 ```
-/plugin marketplace add {YOUR-GITHUB-USERNAME}/revxl-marketplace
+/plugin marketplace add joeoliveimpact/revxl-marketplace
 /plugin install claude-workspace-superengine@revxl-marketplace
 /plugin install ghl-coach-superengine@revxl-marketplace
 ```
@@ -148,4 +148,4 @@ MIT — see [LICENSE](LICENSE). Each plugin in this marketplace is also MIT-lice
 
 ## Issues / Requests
 
-[Open a GitHub issue](https://github.com/{YOUR-GITHUB-USERNAME}/revxl-marketplace/issues) — bug reports, feature requests, "this should also do X" all welcome.
+[Open a GitHub issue](https://github.com/joeoliveimpact/revxl-marketplace/issues) — bug reports, feature requests, "this should also do X" all welcome.

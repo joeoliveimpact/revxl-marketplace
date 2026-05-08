@@ -7,7 +7,7 @@
     "name": "Joe Olive",
     "email": "joe@engineforimpact.com"
   },
-  "homepage": "https://github.com/{YOUR-GITHUB-USERNAME}/revxl-marketplace/tree/main/plugins/ghl-coach-superengine",
+  "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/ghl-coach-superengine",
   "license": "MIT",
   "keywords": ["gohighlevel", "ghl", "crm", "coaching", "health-coach", "mcp", "superengine"],
   "requires": {

@@ -120,7 +120,7 @@ Scans the workspace state files, scores items by urgency, returns a top-3 brief 
 ### Claude Desktop (recommended for coaches)
 
 1. Customize → Skills → **+** next to "Personal plugins"
-2. Paste: `{YOUR-GITHUB-USERNAME}/revxl-marketplace`
+2. Paste: `joeoliveimpact/revxl-marketplace`
 3. Click Sync → click **Install** on `ghl-coach-superengine`
 
 Then in your first conversation:
@@ -131,7 +131,7 @@ Then in your first conversation:
 ### Claude Code
 
 ```
-/plugin marketplace add {YOUR-GITHUB-USERNAME}/revxl-marketplace
+/plugin marketplace add joeoliveimpact/revxl-marketplace
 /plugin install ghl-coach-superengine@revxl-marketplace
 ```
 

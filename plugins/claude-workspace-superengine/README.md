@@ -62,12 +62,12 @@ Built-in RULES.md compliance self-check before returning.
 
 ### Claude Desktop
 1. Customize → Skills → **+** next to "Personal plugins"
-2. Paste: `{YOUR-GITHUB-USERNAME}/revxl-marketplace`
+2. Paste: `joeoliveimpact/revxl-marketplace`
 3. Click Sync → click **Install** on `claude-workspace-superengine`
 
 ### Claude Code
 ```
-/plugin marketplace add {YOUR-GITHUB-USERNAME}/revxl-marketplace
+/plugin marketplace add joeoliveimpact/revxl-marketplace
 /plugin install claude-workspace-superengine@revxl-marketplace
 ```
 
