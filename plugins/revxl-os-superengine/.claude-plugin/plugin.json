@@ -1,0 +1,18 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "revxl-os-superengine",
+  "description": "Autonomous coaching ops superengine for Claude Code. Three agents (morning brief, task surfacing, DM triage) running on schedules and event triggers, delivered through Telegram. Pairs with revxl-webhook-channel for webhook-driven automation. Built for coaches who want a real always-on assistant without running OpenClaw or a separate agent platform.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Joe Olive",
+    "email": "joe@engineforimpact.com"
+  },
+  "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/revxl-os-superengine",
+  "license": "MIT",
+  "keywords": ["coaching", "ops", "autonomous", "agents", "telegram", "channels", "scheduled", "superengine", "revxl"],
+  "requires": {
+    "claudeCode": ">=2.1.80",
+    "channels": ["telegram@claude-plugins-official"],
+    "recommended": ["revxl-webhook-channel@revxl-marketplace", "claude-workspace-superengine@revxl-marketplace"]
+  }
+}

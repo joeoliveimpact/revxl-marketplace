@@ -36,6 +36,32 @@
       },
       "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/ghl-coach-superengine",
       "keywords": ["gohighlevel", "ghl", "crm", "coaching", "health-coach", "mcp", "superengine", "workspace", "notifier"]
+    },
+    {
+      "name": "revxl-os-superengine",
+      "description": "Autonomous coaching ops superengine for Claude Code. Three agents (morning brief, task surfacing, DM triage) running on schedules and event triggers, delivered through Telegram. Pairs with revxl-webhook-channel for webhook-driven automation. The OpenClaw alternative built on native Claude Code Channels.",
+      "source": "revxl-os-superengine",
+      "category": "productivity",
+      "version": "0.1.0",
+      "author": {
+        "name": "Joe Olive",
+        "email": "joe@engineforimpact.com"
+      },
+      "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/revxl-os-superengine",
+      "keywords": ["coaching", "ops", "autonomous", "agents", "telegram", "channels", "scheduled", "superengine", "revxl"]
+    },
+    {
+      "name": "revxl-webhook-channel",
+      "description": "Custom MCP channel for Claude Code that turns any HTTP webhook into a session event. Two-way: Claude reads inbound webhooks, replies via tool calls, and supports remote permission approval. Pre-wired for GoHighLevel, Cal.com, Stripe, and Umnico/Meta DM events.",
+      "source": "revxl-webhook-channel",
+      "category": "channels",
+      "version": "0.1.0",
+      "author": {
+        "name": "Joe Olive",
+        "email": "joe@engineforimpact.com"
+      },
+      "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/revxl-webhook-channel",
+      "keywords": ["channel", "webhook", "mcp", "claude-code", "ghl", "stripe", "calcom", "umnico", "permission-relay", "revxl"]
     }
   ]
 }
