@@ -41,6 +41,11 @@ Trigger → action framework taught in plain English. Maps the conversation in p
 
 Pre-flight at the start of every coaching session: pulls memory (offers, pipelines, automations), verifies MCP connection silently, recaps last session, asks the goal-of-session question, routes to the right downstream skill.
 
+### `ghl-docs`
+**Triggers:** "how do I do X in GHL", "where is the X setting", "can GHL do Y", "what does Z mean"
+
+GHL feature reference desk. Two-tier knowledge: in-prompt mental model for the features coaches touch daily (contacts, pipelines, calendars, workflows, conversations, forms, memberships); WebFetch fallback to `help.gohighlevel.com` for everything else (payments, email marketing, social planner, funnels, blogs, surveys, reputation, custom objects, etc.). Always cites sources. Never invents feature behavior.
+
 ---
 
 ## Agents

@@ -11,6 +11,7 @@ All notable changes to this plugin. Format: [Keep a Changelog](https://keepachan
 - Skill: `ghl-pipelines` — Sales DM + Client pipeline management with coordinated tag updates
 - Skill: `ghl-automations` — GHL-native workflow design with priority order and trigger→action framework
 - Skill: `ghl-session-startup` — pre-flight at the start of every coaching session
+- Skill: `ghl-docs` — GHL feature reference desk; in-prompt knowledge for coaching-core features + WebFetch fallback to help.gohighlevel.com for everything else; always cites sources
 - Agent: `ghl-coach-assistant` — multi-step GHL operator for end-to-end lead processing (Claude Code only)
 
 ### Requires (external)
