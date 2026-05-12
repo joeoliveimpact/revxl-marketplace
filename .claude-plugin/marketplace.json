@@ -15,7 +15,7 @@
       "description": "Workspace lifecycle superengine v0.2. Scaffolds workspaces from shipped templates (15 artifacts, no model invention), then powers session-start / session-closeout against them. Built on agent-optimizer's four override constraints. Works in Claude Desktop and Claude Code.",
       "source": "./plugins/workspace-superengine",
       "category": "productivity",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"

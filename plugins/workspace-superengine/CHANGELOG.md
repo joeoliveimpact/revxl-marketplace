@@ -2,6 +2,19 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.3.0] — 2026-05-12
+
+### Added
+- SessionStart hook (`hooks/session-start` + polyglot `hooks/run-hook.cmd`) that runs on `startup|clear|compact` and:
+  - Loads the bundled `agent-optimizer` skill content into session context.
+  - Emits a scaffold-status prompt to run `/super-setup` when `RULES.md` or `CLAUDE.md` are missing from the workspace root.
+  - Broadcasts `verbosity` and `environment` from `.claude/workspace.yml` as a workspace-config reminder.
+- Bundled `skills/agent-optimizer/SKILL.md` — the plugin no longer depends on a global agent-optimizer install. The four override constraints (Intent Clarification, Least Complexity, Surgical Execution, Declarative Focus) ship inside the plugin.
+
+### Compatibility
+- Windows: requires Git for Windows (provides `bash.exe`) — same requirement as the upstream `superpowers` plugin.
+- macOS/Linux: standard bash. No additional dependencies.
+
 ## [0.2.0] — 2026-05-12
 
 ### Changed
