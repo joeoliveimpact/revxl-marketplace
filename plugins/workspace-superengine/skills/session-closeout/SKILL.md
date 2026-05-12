@@ -7,6 +7,21 @@ description: Use at the end of a working session to capture state — updates Ch
 
 Run at end of every session. No skipping the file updates — those are non-negotiable.
 
+## Runtime environment
+
+This skill reads `.claude/workspace.yml#environment` on entry.
+
+- **`environment: code`** — Bash available for snapshots (`systemctl`, `docker ps`, `git log`, etc.).
+- **`environment: cowork`** — all file edits use Read/Edit/Write tools. Phase 4 live-infrastructure snapshots become **advisory** — record what's known from workspace files, skip live probes.
+
+Default to cowork-safe behavior if config missing.
+
+## Beginner-mode preamble
+
+Read `.claude/workspace.yml#verbosity` at skill entry. If the value is `beginner`, emit the following 2-3 sentence preamble to the user before doing any work. If `standard` (or missing), skip this block entirely and proceed silently.
+
+> Time to wrap up. I'll write a short log of what we did today and rewrite the handoff notes so next session's Claude knows what's next. Takes about two minutes.
+
 ## Layer 2: Suggest before invoking
 
 If the user's prompt is borderline — could fit this skill or could just want a quick direct answer — ask before firing:
@@ -29,6 +44,14 @@ If yes to the last → save a memory file (per `~/.claude/CLAUDE.md` auto memory
 ---
 
 ## Phase 1: Append to Checkpoint.md (5 min)
+
+**Both environments:**
+1. Read `Checkpoint.md` with the Read tool to load current contents.
+2. Construct the new entry (template below).
+3. Locate the position after the file's format header (first `---` separator).
+4. Use the Edit tool to insert the new entry there — replace the first `---\n` with `---\n\n<new entry>\n\n---\n`.
+
+Do NOT use Bash redirects (`>>`) — they create encoding issues in Cowork and overwrite risk in Code.
 
 Open `Checkpoint.md`. Add a NEW entry at the top (newest first), below the format header.
 
@@ -64,6 +87,8 @@ Template:
 ---
 
 ## Phase 2: Rewrite handoff.md (3 min)
+
+**Both environments:** use the Write tool to replace handoff.md entirely. If file doesn't exist, Write creates it.
 
 handoff.md is **rewritten**, not appended. It represents the live state for the NEXT session.
 
@@ -103,6 +128,13 @@ If handoff.md doesn't exist, create it. If it exists, fully replace its contents
 
 ## Phase 3: Update Other Scaffold Files (variable)
 
+For each file in the table that needs an update:
+
+- **Targeted change** (a section or table row): use the Edit tool with a sufficiently unique `old_string`.
+- **Full rewrite** (rare; only if a file is being repurposed): use the Write tool.
+
+Never use `sed -i` — fails silently on Windows line endings and is unavailable in Cowork.
+
 Walk through each of the other root files. For each, decide UPDATE or NO CHANGE — never silently skip.
 
 | File | Update if… |
@@ -125,13 +157,18 @@ If the workspace has live infrastructure, snapshot it. Otherwise skip.
 **Run if:** workspace has services, agent runtimes, hosted MCP servers, etc. Reference any
 `.claude/health-checks.md` or workspace-specific runbook for the exact commands to run.
 
-Common snapshots:
-- Service status (systemctl, docker ps)
-- Config state (versions, env values, agent registry)
-- Background tasks (running, completed, failed — record verify command for each)
-- Credential checklist
+**Code environment:**
+- Run service status: `systemctl status <svc>` or `docker ps`
+- Snapshot config: read versions, env values, agent registry
+- Background tasks: list running / completed / failed with verify command for each
+- Credential checklist (status only, no values)
+- Record results in the matching Checkpoint.md entry section.
 
-Record results in the relevant Checkpoint.md entry section.
+**Cowork environment — advisory snapshot:**
+- Read `.claude/workspace.yml`, `.claude/health-checks.md`, and any service-config files via Read tool.
+- Record CONFIGURED state (what the workspace is set up to run), not LIVE state.
+- Add a banner to the Checkpoint.md "Phase 4 snapshot" section: `> Cowork environment — live probes skipped. Configured state only.`
+- For background tasks, list the verify commands the next session should run rather than results.
 
 ---
 
