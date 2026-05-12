@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+# SessionStart hook for workspace-superengine
+# Three jobs:
+#   1. Load bundled agent-optimizer SKILL.md content into session context.
+#   2. Scaffold existence check — if RULES.md or CLAUDE.md missing from
+#      workspace root, prompt the user to run /super-setup.
+#   3. Broadcast .claude/workspace.yml (verbosity + environment) as a
+#      system reminder.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+# Workspace root: Claude Code sets CLAUDE_PROJECT_DIR; fall back to $PWD.
+WORKSPACE_ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
+
+# --- Job 1: load agent-optimizer ---
+agent_optimizer_path="${PLUGIN_ROOT}/skills/agent-optimizer/SKILL.md"
+if [ -f "$agent_optimizer_path" ]; then
+    agent_optimizer_content=$(cat "$agent_optimizer_path")
+else
+    agent_optimizer_content="(agent-optimizer SKILL.md missing from plugin — reinstall workspace-superengine)"
+fi
+
+# --- Job 2: scaffold existence check ---
+scaffold_warning=""
+if [ ! -f "${WORKSPACE_ROOT}/RULES.md" ] || [ ! -f "${WORKSPACE_ROOT}/CLAUDE.md" ]; then
+    scaffold_warning="This workspace isn't scaffolded. Run /super-setup."
+fi
+
+# --- Job 3: broadcast workspace.yml ---
+workspace_yml="${WORKSPACE_ROOT}/.claude/workspace.yml"
+workspace_config=""
+if [ -f "$workspace_yml" ]; then
+    # Pure-bash YAML field extraction — only supports flat key: value pairs.
+    verbosity=""
+    environment=""
+    while IFS= read -r line || [ -n "$line" ]; do
+        case "$line" in
+            verbosity:*)
+                verbosity="${line#verbosity:}"
+                verbosity="${verbosity# }"
+                verbosity="${verbosity%%#*}"
+                verbosity="${verbosity%"${verbosity##*[![:space:]]}"}"
+                ;;
+            environment:*)
+                environment="${line#environment:}"
+                environment="${environment# }"
+                environment="${environment%%#*}"
+                environment="${environment%"${environment##*[![:space:]]}"}"
+                ;;
+        esac
+    done < "$workspace_yml"
+    [ -z "$verbosity" ] && verbosity="standard"
+    [ -z "$environment" ] && environment="code"
+    workspace_config="Workspace verbosity: ${verbosity}. Environment: ${environment}. Plugin skills should adapt accordingly."
+fi
+
+# --- Escape for JSON embedding (bash parameter substitution) ---
+escape_for_json() {
+    local s="$1"
+    s="${s//\\/\\\\}"
+    s="${s//\"/\\\"}"
+    s="${s//$'\n'/\\n}"
+    s="${s//$'\r'/\\r}"
+    s="${s//$'\t'/\\t}"
+    printf '%s' "$s"
+}
+
+# --- Compose session context ---
+session_context="<EXTREMELY_IMPORTANT>\nworkspace-superengine is active.\n\n**Below is the full content of the bundled agent-optimizer skill. These four override constraints govern behavior on ALL tasks and override any other guidance when in conflict.**\n\n$(escape_for_json "$agent_optimizer_content")"
+
+if [ -n "$workspace_config" ]; then
+    session_context="${session_context}\n\n<workspace-config>\n$(escape_for_json "$workspace_config")\n</workspace-config>"
+fi
+
+if [ -n "$scaffold_warning" ]; then
+    session_context="${session_context}\n\n<scaffold-status>\n$(escape_for_json "$scaffold_warning")\n</scaffold-status>"
+fi
+
+session_context="${session_context}\n</EXTREMELY_IMPORTANT>"
+
+# --- Emit hook output in the format the current platform expects ---
+if [ -n "${CURSOR_PLUGIN_ROOT:-}" ]; then
+    printf '{\n  "additional_context": "%s"\n}\n' "$session_context"
+elif [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${COPILOT_CLI:-}" ]; then
+    printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$session_context"
+else
+    printf '{\n  "additionalContext": "%s"\n}\n' "$session_context"
+fi
+
+exit 0
