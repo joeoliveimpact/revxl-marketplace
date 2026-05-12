@@ -1,0 +1,11 @@
+# .claude/workspace.yml — {{WORKSPACE_NAME}}
+# Read by every workspace-superengine skill on each invocation.
+# Flip values with /workspace-set-verbosity (v0.2+).
+
+verbosity: standard       # 'beginner' or 'standard'
+environment: code         # 'code' (Claude Code) or 'cowork' (Claude Desktop / Cowork)
+
+# Metadata (informational; not read by skills)
+scaffolded_on: "{{DATE}}"
+scaffolded_by: workspace-superengine@0.2.0
+workspace_name: "{{WORKSPACE_NAME}}"
