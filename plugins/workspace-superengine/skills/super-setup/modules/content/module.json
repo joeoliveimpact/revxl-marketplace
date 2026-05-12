@@ -1,0 +1,13 @@
+{
+  "$schema": "https://workspace-superengine.dev/schemas/module.v1.json",
+  "name": "content",
+  "version": "1.0.0",
+  "description": "Adds content/drafts and content/published folders plus a content-creation rule covering voice, sourcing, and publish discipline.",
+  "requires": { "scaffold": ">=0.2.0" },
+  "creates": [
+    { "type": "directory", "path": "content/drafts", "gitkeep": true },
+    { "type": "directory", "path": "content/published", "gitkeep": true },
+    { "type": "file", "path": ".claude/rules/content-creation.md", "source": "files/content-creation.md", "overwrite": "ask" }
+  ],
+  "postInstallMessage": "Content module installed. Drafts go in content/drafts/, move to content/published/ once live. content-creation.md governs voice and publish discipline."
+}
