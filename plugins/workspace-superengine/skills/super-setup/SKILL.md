@@ -1,90 +1,127 @@
 ---
 name: super-setup
-description: One-shot workspace scaffolding. Creates RULES.md (referencing /agent-optimizer), CLAUDE.md (referencing RULES.md as non-negotiable), ARCHITECTURE.md, GOALS.md, PLANNING.md, MEMORY.md, Checkpoint.md, handoff.md. Wires session-pickup and session-closeout into the lifecycle. Use when starting a new workspace from scratch or when a workspace is missing core scaffold files.
+description: One-shot workspace scaffolding. Copies 15 shipped templates (RULES.md, CLAUDE.md, ARCHITECTURE.md, GOALS.md, PLANNING.md, MEMORY.md, Checkpoint.md, handoff.md, tasks/STATUS.md, tasks/findings.md, troubleshooting/known-issues.md, .claude/workspace.yml, plus outputs/ and .claude/rules/ .gitkeep files) into the target workspace, substituting {{WORKSPACE_NAME}}, {{PURPOSE}}, and {{DATE}} placeholders. Verifies file existence, CLAUDE.md ≤ 150 lines, and no remaining placeholders. Use when starting a new workspace from scratch or when an existing workspace is missing core scaffold files.
 ---
 
-# Super-Setup — Unified Workspace Scaffolding
+# super-setup — Workspace Scaffolding (v0.2)
 
-One skill, one pass. Replaces ad-hoc scaffolding with a guaranteed file scheme that `/session-pickup` and `/session-closeout` know how to read.
+One skill, one pass. Reads the templates that ship inside this plugin and writes a complete scaffold to the target workspace. No model invention.
+
+The templates live at: `${PLUGIN_DIR}/skills/super-setup/templates/`
+
+The substitutions performed on every copy:
+- `{{WORKSPACE_NAME}}` → user-supplied workspace name
+- `{{PURPOSE}}` → user-supplied primary purpose sentence
+- `{{DATE}}` → today's date in `YYYY-MM-DD` format
 
 ---
 
-## Step 0 — Detect
+## Step 0 — Detect existing scaffold
 
-Run from the target workspace root. List existing root files. If ANY of the eight scaffold files exist, ask the user before overwriting:
+List the target workspace root. If ANY of these files exist, stop and ask the user before overwriting:
 
 ```
-RULES.md, CLAUDE.md, ARCHITECTURE.md, GOALS.md, PLANNING.md, MEMORY.md, Checkpoint.md, handoff.md
+RULES.md  CLAUDE.md  ARCHITECTURE.md  GOALS.md  PLANNING.md  MEMORY.md  Checkpoint.md  handoff.md
 ```
 
-If all eight exist → skill is a no-op; offer to run `/session-pickup` instead.
+If all 8 root files exist AND `tasks/`, `troubleshooting/`, `outputs/`, `.claude/` are present → the workspace is already scaffolded. Offer `/session-start` instead and exit.
 
----
+If some files exist and some don't, ask: "Existing scaffold partially present. Overwrite-and-replace, fill-gaps-only, or abort?"
 
-## Step 1 — Gather workspace context
+## Step 1 — Gather context
 
-Ask the user three short questions (use AskUserQuestion in one batch):
+Ask the user (single AskUserQuestion batch):
+1. **Workspace name** — short, used in document headers.
+2. **Primary purpose** — one sentence; populates `GOALS.md` and `CLAUDE.md`.
 
-1. **Workspace name** — used in document headers (e.g. "MCP Connection Builders")
-2. **Primary purpose** — one sentence; populates GOALS.md and CLAUDE.md
-3. **Optional plugins/connectors** — does the user want to layer cowork plugin setup on top? If yes, also invoke `anthropic-skills:setup-cowork` after file creation.
+Skip questions whose answers are obvious from prior context (directory name, prior messages).
 
-Skip if all three are obvious from existing context (e.g. memory, prior conversation, directory name).
+## Step 2 — Compute substitutions
 
----
+Set:
+- `WORKSPACE_NAME` = user answer to Q1
+- `PURPOSE` = user answer to Q2
+- `DATE` = today (`YYYY-MM-DD`)
 
-## Step 2 — Write the eight files
+## Steps 3–10 — Copy and substitute the 12 template files
 
-All eight files use the templates in `templates/`. Variables: `{{WORKSPACE_NAME}}`, `{{PURPOSE}}`, `{{DATE}}`.
+For each template under `templates/`, read it from the plugin directory, perform string substitution on all three placeholders, and Write the result to the target path:
 
-| File | Template | Notes |
-|------|----------|-------|
-| RULES.md | `templates/RULES.md` | References /agent-optimizer + inlines 4 constraints |
-| CLAUDE.md | `templates/CLAUDE.md` | Banner: RULES.md non-negotiable on every prompt |
-| ARCHITECTURE.md | `templates/ARCHITECTURE.md` | Lists all root files + session lifecycle |
-| GOALS.md | `templates/GOALS.md` | Seeded with `{{PURPOSE}}` |
-| PLANNING.md | `templates/PLANNING.md` | Empty initiatives, scaffolding listed in Recently Completed |
-| MEMORY.md | `templates/MEMORY.md` | Empty index pointing to `.claude/memory/` |
-| Checkpoint.md | `templates/Checkpoint.md` | Format header + first entry (today's scaffolding) |
-| handoff.md | `templates/handoff.md` | P0 = "test this scaffolding", "inventory existing assets" |
+| Source (in plugin) | Destination (in workspace) |
+|---|---|
+| `templates/RULES.md` | `RULES.md` |
+| `templates/CLAUDE.md` | `CLAUDE.md` |
+| `templates/ARCHITECTURE.md` | `ARCHITECTURE.md` |
+| `templates/GOALS.md` | `GOALS.md` |
+| `templates/PLANNING.md` | `PLANNING.md` |
+| `templates/MEMORY.md` | `MEMORY.md` |
+| `templates/Checkpoint.md` | `Checkpoint.md` |
+| `templates/handoff.md` | `handoff.md` |
+| `templates/tasks/STATUS.md` | `tasks/STATUS.md` |
+| `templates/tasks/findings.md` | `tasks/findings.md` |
+| `templates/troubleshooting/known-issues.md` | `troubleshooting/known-issues.md` |
+| `templates/workspace.yml` | `.claude/workspace.yml` |
 
-**Surgical rule:** never overwrite an existing file without explicit confirmation. If the user confirmed in Step 0, write fresh.
+Create the destination directories (`tasks/`, `troubleshooting/`, `.claude/`) as needed before writing.
 
----
+## Step 11 — Create the 3 placeholder folders
 
-## Step 3 — Wire session lifecycle
+Create these as empty (zero-byte) `.gitkeep` files:
+- `outputs/drafts/.gitkeep`
+- `outputs/final/.gitkeep`
+- `.claude/rules/.gitkeep`
 
-Confirm these skills exist at `~/.claude/skills/`:
-- `agent-optimizer/SKILL.md`
-- `session-pickup/SKILL.md`
-- `session-closeout/SKILL.md`
+## Step 12 — Report
 
-If any are missing, flag to the user. The scaffold files reference these by `/name` — they must be installed for the workflow to work.
+Tell the user which files were created. Don't dump contents — list paths only.
 
----
+## Step 13 — Verify (REQUIRED before claiming done)
 
-## Step 4 — Optional: layer cowork setup
+Perform all three checks below. Surface any failure to the user and DO NOT report success.
 
-If the user opted in during Step 1, invoke `anthropic-skills:setup-cowork` now. That skill handles plugins/connectors via Cowork UI widgets — orthogonal to the file scaffolding done above.
+### 13a — File existence
 
----
-
-## Step 5 — Wrap
-
-Report to user:
+Confirm all 15 artifacts exist at the expected paths in the target workspace:
 
 ```
-Workspace scaffolded:
-  ✓ RULES.md — /agent-optimizer constraints (non-negotiable)
-  ✓ CLAUDE.md — references RULES.md on every prompt
-  ✓ ARCHITECTURE.md, GOALS.md, PLANNING.md, MEMORY.md
-  ✓ Checkpoint.md (session log), handoff.md (next-session priorities)
+RULES.md
+CLAUDE.md
+ARCHITECTURE.md
+GOALS.md
+PLANNING.md
+MEMORY.md
+Checkpoint.md
+handoff.md
+tasks/STATUS.md
+tasks/findings.md
+troubleshooting/known-issues.md
+.claude/workspace.yml
+outputs/drafts/.gitkeep
+outputs/final/.gitkeep
+.claude/rules/.gitkeep
+```
 
-Session lifecycle:
-  /session-pickup  — start of every session
-  /session-closeout — end of every session
+Missing files → STOP, report which are missing, do not proceed.
 
-Next: run /session-pickup or start working. handoff.md has the P0 list.
+### 13b — CLAUDE.md line count
+
+Read `CLAUDE.md`. Count lines. Must be **≤ 150**. If over, STOP and report the line count — a template regression has occurred.
+
+### 13c — Placeholder substitution
+
+For each of the 12 non-`.gitkeep` files, search for the literal strings `{{WORKSPACE_NAME}}`, `{{PURPOSE}}`, `{{DATE}}`, and any pattern matching `{{` `}}`. If ANY remains, STOP, report which file and which placeholder, do not claim success.
+
+### 13d — Success report
+
+Only if 13a, 13b, 13c all pass, report:
+
+```
+Workspace scaffolded: {{WORKSPACE_NAME}}
+  ✓ 15 artifacts created
+  ✓ CLAUDE.md within 150-line budget
+  ✓ no template placeholders remaining
+
+Next: open handoff.md for P0, or run /session-start.
 ```
 
 ---
@@ -92,12 +129,6 @@ Next: run /session-pickup or start working. handoff.md has the P0 list.
 ## Ground rules (inherited from RULES.md)
 
 - **Intent Clarification:** if workspace name or purpose is ambiguous, ask once.
-- **Least Complexity:** eight files is the floor. Do not add more "just in case."
-- **Surgical Execution:** never overwrite without confirmation.
-- **Declarative Focus:** DoD is "the eight files exist with sensible content; session skills work against them." If the user asks for a feature beyond that, push it to a separate task.
-
----
-
-## Promotion path
-
-This skill currently lives at `.claude/skills/super-setup/` (workspace-local). Once tested and stable, copy the entire directory to `~/.claude/skills/super-setup/` to make it user-global.
+- **Least Complexity:** 15 artifacts is the floor. Modules add more — they are separate skills.
+- **Surgical Execution:** never overwrite without confirmation in Step 0.
+- **Declarative Focus:** DoD is "15 artifacts exist; CLAUDE.md ≤ 150 lines; no `{{...}}` left." Anything beyond that is a separate task.
