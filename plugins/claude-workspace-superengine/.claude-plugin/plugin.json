@@ -2,7 +2,7 @@
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "claude-workspace-superengine",
   "description": "Workspace lifecycle superengine. Scaffolds new workspaces with the canonical eight-file scheme (RULES.md / CLAUDE.md / ARCHITECTURE.md / GOALS.md / PLANNING.md / MEMORY.md / Checkpoint.md / handoff.md), reads them at session start, and writes durable handoffs at session end. Built on top of agent-optimizer's four override constraints.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": {
     "name": "Joe Olive",
     "email": "joe@engineforimpact.com"

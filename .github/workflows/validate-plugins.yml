@@ -62,7 +62,7 @@ jobs:
           # Only validate plugins listed in marketplace.json (the catalog is source of truth).
           # WIP/unpublished folders under plugins/ are skipped.
           marketplace = json.load(open('.claude-plugin/marketplace.json'))
-          published = {p['source'].lstrip('./').rstrip('/') for p in marketplace['plugins']}
+          published = {Path(p['source']).name for p in marketplace['plugins']}
           print(f"Published plugins per marketplace.json: {sorted(published)}\n")
 
           for plugin_dir in plugin_root.iterdir():
@@ -133,7 +133,7 @@ jobs:
 
           # Only validate SKILL.md inside published plugins (per marketplace.json).
           marketplace = json.load(open('.claude-plugin/marketplace.json'))
-          published = {p['source'].lstrip('./').rstrip('/') for p in marketplace['plugins']}
+          published = {Path(p['source']).name for p in marketplace['plugins']}
 
           errors = []
           for plugin_name in published:
