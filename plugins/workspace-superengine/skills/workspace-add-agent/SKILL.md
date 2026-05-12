@@ -1,11 +1,19 @@
 ---
 name: workspace-add-agent
-description: Build a workspace-local subagent in .claude/agents/<name>.md with the four agent-optimizer override constraints auto-injected into its system prompt. Use when the user says "I want a subagent for X", "create an agent that does Y", "spin up a researcher agent", "make a code-reviewer subagent", "I need an agent that", "add a subagent", "build an agent", "scaffold a new agent", "make a specialist for". Interactive: asks for name, purpose, tool whitelist, and model preference. Writes the agent markdown file with frontmatter. Always injects the four overrides into the agent's system prompt, non-optional.
+description: Use to build a workspace-local subagent in .claude/agents/ — auto-injects the four override constraints (Intent Clarification, Least Complexity, Surgical Execution, Declarative Focus). Trigger phrases include "I want a subagent for X", "create an agent that does Y", "spawn a specialist for Z", "build me a subagent", "/workspace-add-agent".
 ---
 
 # workspace-add-agent
 
 Scaffolds a workspace-local subagent that inherits the four agent-optimizer override constraints by default.
+
+## Layer 2: Suggest before invoking
+
+If the user's prompt is borderline — could fit this skill or could just want a quick direct answer — ask before firing:
+
+> "Sounds like a subagent might fit — want me to run `/workspace-add-agent` and build one? Or do you want me to just handle this in the main session?"
+
+Only run the full process below after the user confirms. If the user explicitly invokes `/workspace-add-agent`, skip the suggestion and proceed.
 
 ## When to use
 

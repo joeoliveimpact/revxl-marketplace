@@ -1,11 +1,19 @@
 ---
 name: session-closeout
-description: End-of-session handoff procedure. Use when wrapping up a work session, when Joe says "checkpoint", "wrap up", "close out", "handoff", or when context is above 50%. Appends a new entry to Checkpoint.md (session log) and rewrites handoff.md (next-session priorities). Optionally captures workspace-specific service/config snapshots if the workspace has live infrastructure.
+description: Use at the end of a working session to capture state — updates Checkpoint.md with a session log entry and rewrites handoff.md with next-session priorities. Trigger phrases include "let's wrap up", "closing out for the day", "session closeout", "save state", "I'm done for now", "/session-closeout", and any signal the user is ending work (e.g. "logging off", "see you tomorrow"). Pairs with /session-start.
 ---
 
 # Session Closeout Procedure
 
 Run at end of every session. No skipping the file updates — those are non-negotiable.
+
+## Layer 2: Suggest before invoking
+
+If the user's prompt is borderline — could fit this skill or could just want a quick direct answer — ask before firing:
+
+> "Sounds like you're wrapping up — want me to run `/session-closeout` to update Checkpoint.md and handoff.md? Or just stop here without logging?"
+
+Only run the full process below after the user confirms. If the user explicitly invokes `/session-closeout`, skip the suggestion and proceed.
 
 ---
 

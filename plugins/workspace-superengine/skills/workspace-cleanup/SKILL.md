@@ -1,11 +1,19 @@
 ---
 name: workspace-cleanup
-description: Aggressive workspace housekeeping. Archives stale specs, sweeps junk files, reorganizes loose outputs, and consolidates strays. Use when the user says "workspace is messy", "clean this up", "too many files", "let's tidy up", "archive old stuff", "the root is cluttered", "what can I delete", "do some housekeeping", "garbage collect", "trim down the workspace". TAKES ACTION (with confirmation per change). For per-session advisory cleanup, use /session-closeout instead — this skill is the action-taking counterpart.
+description: Use to aggressively tidy a workspace — archive completed specs, sweep stale drafts, reorganize folder clutter, prune outdated entries from PLANNING.md / handoff.md. Trigger phrases include "this workspace is messy", "let's tidy up", "too many files", "clean this up", "archive the old stuff", "/workspace-cleanup". Heavier than session-closeout's lightweight per-session audit.
 ---
 
 # workspace-cleanup
 
 Action-taking housekeeping. Reuses the audit logic from `session-closeout` Phase 0.5 but acts on findings instead of merely listing them.
+
+## Layer 2: Suggest before invoking
+
+If the user's prompt is borderline — could fit this skill or could just want a quick direct answer — ask before firing:
+
+> "Looks like the workspace could use a tidy — want me to run `/workspace-cleanup` and walk through archiving / reorganizing? Or just deal with one file you have in mind?"
+
+Only run the full process below after the user confirms. If the user explicitly invokes `/workspace-cleanup`, skip the suggestion and proceed.
 
 ## When to use
 

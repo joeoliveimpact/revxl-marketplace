@@ -1,11 +1,19 @@
 ---
 name: super-setup
-description: One-shot workspace scaffolding. Copies 15 shipped templates (RULES.md, CLAUDE.md, ARCHITECTURE.md, GOALS.md, PLANNING.md, MEMORY.md, Checkpoint.md, handoff.md, tasks/STATUS.md, tasks/findings.md, troubleshooting/known-issues.md, .claude/workspace.yml, plus outputs/ and .claude/rules/ .gitkeep files) into the target workspace, substituting {{WORKSPACE_NAME}}, {{PURPOSE}}, and {{DATE}} placeholders. Verifies file existence, CLAUDE.md ≤ 150 lines, and no remaining placeholders. Use when starting a new workspace from scratch or when an existing workspace is missing core scaffold files.
+description: Use to scaffold a brand-new workspace from scratch — creates RULES.md, CLAUDE.md, ARCHITECTURE.md, GOALS.md, PLANNING.md, MEMORY.md, Checkpoint.md, handoff.md, tasks/, troubleshooting/, outputs/, and .claude/workspace.yml. Trigger phrases include "set up this workspace", "scaffold a new workspace", "I just opened an empty folder", "initialize a project here", "make this folder into a workspace", "/super-setup". Detects Cowork vs Code environment, pre-fills owner identity from global config, and offers a beginner-verbosity mode for first-time clients.
 ---
 
 # super-setup — Workspace Scaffolding (v0.2)
 
 One skill, one pass. Reads the templates that ship inside this plugin and writes a complete scaffold to the target workspace. No model invention.
+
+## Layer 2: Suggest before invoking
+
+If the user's prompt is borderline — could fit this skill or could just want a quick direct answer — ask before firing:
+
+> "Looks like this might be a fresh workspace — want me to run `/super-setup` and scaffold the core files? Or are you set up already and just want to talk?"
+
+Only run the full process below after the user confirms. If the user explicitly invokes `/super-setup`, skip the suggestion and proceed.
 
 The templates live at: `${PLUGIN_DIR}/skills/super-setup/templates/`
 

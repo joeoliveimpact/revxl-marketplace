@@ -1,11 +1,19 @@
 ---
 name: workspace-add-hook
-description: Build a workspace-local hook in .claude/hooks/ and wire it into .claude/settings.json. Use when the user says "I want a hook for X", "make something happen when Y", "automate Z at session start", "add a SessionStart hook", "run X before every prompt", "trigger Y on PostToolUse", "set up a hook that does", "I want Claude to do X automatically", "build a hook", "I want an automation when". Interactive: asks for trigger event, action description, and matcher pattern. Generates the hook script (PowerShell on Windows, bash on POSIX) plus the settings.json entry. Workspace-scoped only — does NOT touch user-global settings.
+description: Use to build a workspace-local hook in .claude/hooks/ that fires on a Claude Code lifecycle event (SessionStart, UserPromptSubmit, Stop, etc.). Trigger phrases include "I want a hook for X", "automate Z at session start", "make something happen when Y", "run this every time I open the workspace", "build a hook", "/workspace-add-hook".
 ---
 
 # workspace-add-hook
 
 Builds a hook that lives entirely inside this workspace (`.claude/hooks/`) and runs only when this workspace is open.
+
+## Layer 2: Suggest before invoking
+
+If the user's prompt is borderline — could fit this skill or could just want a quick direct answer — ask before firing:
+
+> "Sounds like you might want a hook — want me to run `/workspace-add-hook` and scaffold one? Or is this something a skill would handle better?"
+
+Only run the full process below after the user confirms. If the user explicitly invokes `/workspace-add-hook`, skip the suggestion and proceed.
 
 ## When to use
 

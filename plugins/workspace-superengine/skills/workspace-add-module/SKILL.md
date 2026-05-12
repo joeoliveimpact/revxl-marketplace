@@ -1,11 +1,19 @@
 ---
 name: workspace-add-module
-description: Layer an opt-in module into an existing workspace-superengine workspace. Use when the user says "this workspace needs X support", "add a code module", "add the client-work module", "extend this workspace", "let's add content support", "I'm starting to do client work in here", "set up specs tracking", "make this a coding workspace", "add support for clients", "extend the scaffold", "add a module". Reads the requested module's module.json, writes the declared files, and records the install in .claude/workspace.yml. Refuses to overwrite existing files without confirmation per the Surgical Execution rule.
+description: Use to extend an existing workspace with an opt-in module — adds the files, folders, and rules needed for a particular kind of work (code, client-work, content). Trigger phrases include "this workspace needs X", "let's add code support", "add a module", "I want to start doing client work in here", "I need content production folders", "/workspace-add-module". Never overwrites existing files — confirms before any write that would clobber.
 ---
 
 # workspace-add-module
 
 Adds one opt-in module from the plugin's `modules/` library to the current workspace.
+
+## Layer 2: Suggest before invoking
+
+If the user's prompt is borderline — could fit this skill or could just want a quick direct answer — ask before firing:
+
+> "Sounds like you might want a new module here — want me to run `/workspace-add-module` and add the [code/client-work/content] scaffolding? Or were you just describing the work and don't need new files yet?"
+
+Only run the full process below after the user confirms. If the user explicitly invokes `/workspace-add-module`, skip the suggestion and proceed.
 
 ## When to use
 

@@ -1,11 +1,19 @@
 ---
 name: session-pickup
-description: Start-of-session procedure. Use when beginning a new work session, when Joe says "pick up where we left off", "what's the status", or "where are we". Reads RULES.md (non-negotiable), handoff.md (priorities), and recent Checkpoint.md entries. Verifies any infrastructure or background tasks flagged in handoff. Presents a status brief before any work begins.
+description: Use at the start of a working session to load context — reads RULES.md, handoff.md, ARCHITECTURE.md, PLANNING.md, recent Checkpoint.md entries, and surfaces priorities for this session. Trigger phrases include "let's start the session", "pick up where we left off", "what was I working on", "session start", "/session-start", and any opening message that suggests the user is resuming work without saying so explicitly (e.g. "morning", "back at it"). Replaces the legacy /session-pickup command.
 ---
 
 # Session Pickup Procedure
 
 Run at the start of every session. Don't start building until Phase 0 + Phase 4 complete.
+
+## Layer 2: Suggest before invoking
+
+If the user's prompt is borderline — could fit this skill or could just want a quick direct answer — ask before firing:
+
+> "Looks like you're starting fresh — want me to run `/session-start` to pull priorities from handoff.md and recent Checkpoint entries? Or do you already know what you're working on?"
+
+Only run the full process below after the user confirms. If the user explicitly invokes `/session-start`, skip the suggestion and proceed.
 
 ---
 

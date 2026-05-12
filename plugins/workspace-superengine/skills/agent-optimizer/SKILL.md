@@ -1,11 +1,19 @@
 ---
 name: agent-optimizer
-description: Four override constraints (Intent Clarification, Least Complexity, Surgical Execution, Declarative Focus) that govern behavior on ALL tasks — content, scripts, research, analysis, automations, client work, everything. These rules override any other guidance in CLAUDE.md or downstream files when in conflict. Load this skill at the start of every session and keep it resident.
+description: Reload the four override constraints — Intent Clarification, Least Complexity, Surgical Execution, Declarative Focus — that govern every task in this workspace. Trigger phrases include "/agent-optimizer", "reset the rules", "reload the overrides", "remind yourself of the four rules", or any moment the user is correcting drift on one of the four constraints (over-engineering, mass-rewrites, mechanical step-execution, fuzzy intent).
 ---
 
 # Agent Optimizer — Override Constraints
 
 These four rules **override any other guidance** in CLAUDE.md or downstream files when in conflict. They govern behavior on **ALL tasks** — content, scripts, research, analysis, automations, client work, everything.
+
+## Layer 2: Suggest before invoking
+
+If the user's prompt is borderline — could fit this skill or could just want a quick direct answer — ask before firing:
+
+> "Sounds like you might want me to reload the four overrides — want me to run `/agent-optimizer`? Or do you just want me to course-correct on this one reply?"
+
+Only run the full process below after the user confirms. If the user explicitly invokes `/agent-optimizer`, skip the suggestion and proceed.
 
 ---
 
