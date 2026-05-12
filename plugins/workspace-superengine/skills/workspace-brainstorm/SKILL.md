@@ -5,6 +5,12 @@ description: Use when the user has a fuzzy idea, asks "what should I do about X"
 
 # Workspace Brainstorm — Idea to Design
 
+## Beginner-mode preamble
+
+Read `.claude/workspace.yml#verbosity` at skill entry. If the value is `beginner`, emit the following 2-3 sentence preamble to the user before doing any work. If `standard` (or missing), skip this block entirely and proceed silently.
+
+> Let's turn this idea into something concrete. I'll ask a handful of questions to sharpen it, then write up a short design doc you can keep or throw away. No commitment — we're just thinking out loud on paper.
+
 Turn a fuzzy idea into a written, validated design through natural collaborative dialogue. Works for any kind of work in this workspace: content pieces, coaching offers, client deliverables, operational changes, code features, course outlines, sales sequences — anything where someone has the seed of an idea but not yet a plan.
 
 <HARD-GATE>

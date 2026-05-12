@@ -5,6 +5,12 @@ description: Use to build a workspace-local subagent in .claude/agents/ — auto
 
 # workspace-add-agent
 
+## Beginner-mode preamble
+
+Read `.claude/workspace.yml#verbosity` at skill entry. If the value is `beginner`, emit the following 2-3 sentence preamble to the user before doing any work. If `standard` (or missing), skip this block entirely and proceed silently.
+
+> I'm about to build a specialized helper for you. A subagent is a focused version of Claude that handles one job really well, like reviewing code or summarizing transcripts. I'll ask what you want it to do, then wire it up so you can call it later.
+
 Scaffolds a workspace-local subagent that inherits the four agent-optimizer override constraints by default.
 
 ## Layer 2: Suggest before invoking

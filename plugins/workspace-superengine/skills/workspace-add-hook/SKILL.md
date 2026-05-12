@@ -5,6 +5,12 @@ description: Use to build a workspace-local hook in .claude/hooks/ that fires on
 
 # workspace-add-hook
 
+## Beginner-mode preamble
+
+Read `.claude/workspace.yml#verbosity` at skill entry. If the value is `beginner`, emit the following 2-3 sentence preamble to the user before doing any work. If `standard` (or missing), skip this block entirely and proceed silently.
+
+> I'm about to build you an automation. A hook is a small script that runs by itself when something happens — like every time you start a new Claude session. I'll ask what you want it to do, then save it into your workspace.
+
 Builds a hook that lives entirely inside this workspace (`.claude/hooks/`) and runs only when this workspace is open.
 
 ## Layer 2: Suggest before invoking

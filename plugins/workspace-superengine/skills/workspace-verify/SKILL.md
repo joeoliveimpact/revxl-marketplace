@@ -5,6 +5,12 @@ description: Use before claiming any work is complete, done, ready to ship, read
 
 # Workspace Verify — Evidence Before Done
 
+## Beginner-mode preamble
+
+Read `.claude/workspace.yml#verbosity` at skill entry. If the value is `beginner`, emit the following 2-3 sentence preamble to the user before doing any work. If `standard` (or missing), skip this block entirely and proceed silently.
+
+> Before we call this done, let's double-check. I'll walk through a short list — does the thing actually exist, does it meet the goals you set, would the person you're handing it to accept it as-is. Two minutes, saves headaches later.
+
 ## Overview
 
 Claiming work is finished without checking it is dishonesty, not efficiency. This applies whether the work is a blog post, a client deck, a sales email, a coaching curriculum, an ops runbook, or a code change.

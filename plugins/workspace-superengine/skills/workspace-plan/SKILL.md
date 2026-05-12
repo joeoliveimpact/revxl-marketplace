@@ -5,6 +5,12 @@ description: Use when an approved design or clear spec needs to become a stepwis
 
 # Workspace Plan — Design to Stepwise Plan
 
+## Beginner-mode preamble
+
+Read `.claude/workspace.yml#verbosity` at skill entry. If the value is `beginner`, emit the following 2-3 sentence preamble to the user before doing any work. If `standard` (or missing), skip this block entirely and proceed silently.
+
+> I'm about to turn your design into a step-by-step plan. Each step gets a clear "you're done when..." line so there's no guessing. The plan becomes a document you can hand to me (or another Claude) to actually build it.
+
 ## Overview
 
 Take an approved design (typically the output of `workspace-brainstorm`) and turn it into a stepwise plan that someone could execute even if they had no prior context. Document every step they need: which file or asset to touch, what to do in it, what "done" looks like for each step, how to know it worked.

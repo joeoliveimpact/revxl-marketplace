@@ -5,6 +5,12 @@ description: Use to extend an existing workspace with an opt-in module — adds 
 
 # workspace-add-module
 
+## Beginner-mode preamble
+
+Read `.claude/workspace.yml#verbosity` at skill entry. If the value is `beginner`, emit the following 2-3 sentence preamble to the user before doing any work. If `standard` (or missing), skip this block entirely and proceed silently.
+
+> I'm about to add a chunk of structure to your workspace. A module is a bundle of folders and rules for one type of work — code, client projects, or content. I'll only add new files; I won't touch anything you already have.
+
 Adds one opt-in module from the plugin's `modules/` library to the current workspace.
 
 ## Layer 2: Suggest before invoking

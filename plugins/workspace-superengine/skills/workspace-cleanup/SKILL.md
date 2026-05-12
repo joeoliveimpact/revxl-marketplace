@@ -5,6 +5,12 @@ description: Use to aggressively tidy a workspace — archive completed specs, s
 
 # workspace-cleanup
 
+## Beginner-mode preamble
+
+Read `.claude/workspace.yml#verbosity` at skill entry. If the value is `beginner`, emit the following 2-3 sentence preamble to the user before doing any work. If `standard` (or missing), skip this block entirely and proceed silently.
+
+> Time to tidy up. I'll look through your workspace for completed work, stale files, and clutter — then ask before moving or deleting anything. Nothing disappears without your say-so.
+
 Action-taking housekeeping. Reuses the audit logic from `session-closeout` Phase 0.5 but acts on findings instead of merely listing them.
 
 ## Layer 2: Suggest before invoking
