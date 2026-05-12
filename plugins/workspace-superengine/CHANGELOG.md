@@ -2,6 +2,28 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.6.0 — 2026-05-12
+
+### Added
+
+- **Cowork compatibility** across `session-start` and `session-closeout` skills. Both skills now branch on `.claude/workspace.yml#environment` and avoid Bash entirely in Cowork sessions. Live-infrastructure probes become advisory in Cowork (commands surfaced to user, not executed).
+- **Environment detection** in `super-setup` (Step 0.3): attempts a no-op Bash call, falls back to Cowork on failure, confirms with the user, persists to `.claude/workspace.yml#environment`.
+- **Identity detection** in `super-setup` (Step 0.5): scans `~/.claude/CLAUDE.md`, `~/.claude/projects/*/memory/*.md` files with `type: user` frontmatter, and `~/.gitconfig` as fallback. Detected values surface as defaults in setup questions with "press Enter to accept" UX. Strict privacy boundary — no client/feedback/workspace memories pulled.
+- **`workspace-set-verbosity`** skill — single-question flip between `beginner` and `standard` modes. Writes `.claude/workspace.yml#verbosity`.
+- **`docs/beginner-voice.md`** — 7th-grade voice style guide with reading-level target, five rules, and five example preambles.
+- **Beginner-mode preambles** on all 11 plugin skills (`super-setup`, `session-start`, `session-closeout`, `workspace-add-module`, `workspace-add-hook`, `workspace-add-agent`, `workspace-cleanup`, `workspace-set-verbosity`, `workspace-brainstorm`, `workspace-verify`, `workspace-plan`). Each skill checks `verbosity` on entry and emits a 2-3 sentence preamble when set to `beginner`.
+
+### Changed
+
+- `session-start` and `session-closeout` SKILL.md files now contain explicit Runtime environment blocks documenting Code vs Cowork behavior.
+- `super-setup` flow gains two new steps (0.3 environment detection, 0.5 identity detection) before the user-question phase.
+- Renamed the `session-pickup` skill folder to `session-start` to match the `/session-start` command. Internal references updated.
+
+### Notes
+
+- Existing v0.5 Code workspaces upgrade non-breakingly — environment auto-detects as `code` and behavior is unchanged.
+- Cowork users get a working scaffold and session lifecycle for the first time in this release.
+
 ## 0.5.0 — 2026-05-12
 
 ### Added
