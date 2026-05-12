@@ -2,6 +2,17 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.5.0 — 2026-05-12
+
+### Added
+- New skill `workspace-brainstorm` — turns fuzzy ideas into written designs at `docs/specs/`. Universal (content, coaching, ops, code).
+- New skill `workspace-verify` — pre-completion checklist enforcing evidence-before-done. Universal across content drafts, client deliverables, and code.
+- New skill `workspace-plan` — turns approved designs into stepwise plans with explicit Definition of Done.
+- New doc `docs/skill-activation.md` — client-facing explanation of how each skill auto-activates with example trigger prompts.
+
+### Changed
+- Activation polish across all plugin skills (`super-setup`, `session-start`, `session-closeout`, `workspace-add-module`, `workspace-add-hook`, `workspace-add-agent`, `workspace-cleanup`, `workspace-set-verbosity`, `agent-optimizer`). Each skill's `description` frontmatter rewritten with richer trigger phrases. Each skill body now includes a "Layer 2: Suggest before invoking" section so Claude can offer the skill instead of firing aggressively on borderline matches.
+
 ## 0.4.0 — 2026-05-12
 
 ### Added — Module system (P3)
