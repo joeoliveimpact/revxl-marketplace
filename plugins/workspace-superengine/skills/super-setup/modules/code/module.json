@@ -1,0 +1,13 @@
+{
+  "$schema": "https://workspace-superengine.dev/schemas/module.v1.json",
+  "name": "code",
+  "version": "1.0.0",
+  "description": "Adds spec tracking folders (.claude/specs/in-progress, .claude/specs/completed) and a code-quality rule that auto-loads on source files.",
+  "requires": { "scaffold": ">=0.2.0" },
+  "creates": [
+    { "type": "directory", "path": ".claude/specs/in-progress", "gitkeep": true },
+    { "type": "directory", "path": ".claude/specs/completed", "gitkeep": true },
+    { "type": "file", "path": ".claude/rules/code-quality.md", "source": "files/code-quality.md", "overwrite": "ask" }
+  ],
+  "postInstallMessage": "Code module installed. Drop draft specs in .claude/specs/in-progress/ and move them to completed/ when shipped. code-quality.md auto-loads on .py/.js/.ts/.tsx/.go/.rs/.java files."
+}
