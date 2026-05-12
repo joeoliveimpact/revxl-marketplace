@@ -2,6 +2,33 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.4.0 — 2026-05-12
+
+### Added — Module system (P3)
+
+- `module.json` manifest schema (v1). Each module declares files-to-create, directories-to-create, overwrite behavior, and an optional post-install message.
+- Three opt-in modules shipped under `skills/super-setup/modules/`:
+  - **`code`** — adds `.claude/specs/in-progress/` + `.claude/specs/completed/` + a `code-quality.md` rule that auto-loads on common source-file extensions.
+  - **`client-work`** — adds `clients/_template/` (README + intake + sessions + deliverables) and a `client-work.md` rule covering confidentiality and engagement boundaries.
+  - **`content`** — adds `content/drafts/` + `content/published/` + a `content-creation.md` rule covering voice, sourcing, and publish discipline.
+
+### Added — Extension skills
+
+- **`workspace-add-module`** — reads the module library, installs the chosen module's files, respects per-file overwrite confirmation, registers the install in `.claude/workspace.yml`.
+- **`workspace-add-hook`** — interactive hook builder. Generates a script in `.claude/hooks/` and a matching entry in `.claude/settings.json`. Workspace-scoped only; never touches user-global settings.
+- **`workspace-add-agent`** — interactive subagent builder. Auto-injects the four agent-optimizer override constraints into every generated agent. Non-optional.
+- **`workspace-cleanup`** — aggressive housekeeping. Archives stale specs, sweeps junk, reorganizes loose outputs, surfaces duplicates. Per-item confirmation by default. Never touches `clients/`, never modifies the eight scaffold files.
+
+### Changed
+
+- Bumped plugin version to 0.4.0.
+
+### Not yet
+
+- Super-setup module integration (still P1 territory).
+- Discipline skills (brainstorm / verify / plan — P4).
+- Identity, voice, and cowork-mode handling (P5).
+
 ## [0.3.0] — 2026-05-12
 
 ### Added
