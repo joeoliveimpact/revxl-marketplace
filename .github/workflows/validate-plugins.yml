@@ -59,10 +59,19 @@ jobs:
               print("::error::No plugins/ directory found")
               sys.exit(1)
 
+          # Only validate plugins listed in marketplace.json (the catalog is source of truth).
+          # WIP/unpublished folders under plugins/ are skipped.
+          marketplace = json.load(open('.claude-plugin/marketplace.json'))
+          published = {p['source'].lstrip('./').rstrip('/') for p in marketplace['plugins']}
+          print(f"Published plugins per marketplace.json: {sorted(published)}\n")
+
           for plugin_dir in plugin_root.iterdir():
               if not plugin_dir.is_dir():
                   continue
               name = plugin_dir.name
+              if name not in published:
+                  print(f"--- Skipping {name} (not in marketplace.json) ---")
+                  continue
               print(f"\n--- Validating {name} ---")
 
               # Required files
@@ -119,29 +128,34 @@ jobs:
       - name: Validate every SKILL.md
         run: |
           python3 <<'EOF'
-          import yaml, sys
+          import yaml, json, sys
           from pathlib import Path
 
+          # Only validate SKILL.md inside published plugins (per marketplace.json).
+          marketplace = json.load(open('.claude-plugin/marketplace.json'))
+          published = {p['source'].lstrip('./').rstrip('/') for p in marketplace['plugins']}
+
           errors = []
-          for skill_md in Path('plugins').rglob('SKILL.md'):
-              try:
-                  content = skill_md.read_text(encoding='utf-8')
-                  if not content.startswith('---'):
-                      errors.append(f"{skill_md}: no frontmatter")
-                      continue
-                  fm_end = content.find('---', 3)
-                  if fm_end == -1:
-                      errors.append(f"{skill_md}: malformed frontmatter")
-                      continue
-                  fm = yaml.safe_load(content[3:fm_end])
-                  if 'name' not in fm:
-                      errors.append(f"{skill_md}: frontmatter missing name")
-                  if 'description' not in fm:
-                      errors.append(f"{skill_md}: frontmatter missing description")
-                  if fm.get('description') and len(fm['description']) < 30:
-                      errors.append(f"{skill_md}: description too short (<30 chars) — won't trigger reliably")
-              except Exception as e:
-                  errors.append(f"{skill_md}: parse error: {e}")
+          for plugin_name in published:
+              for skill_md in (Path('plugins') / plugin_name).rglob('SKILL.md'):
+                  try:
+                      content = skill_md.read_text(encoding='utf-8')
+                      if not content.startswith('---'):
+                          errors.append(f"{skill_md}: no frontmatter")
+                          continue
+                      fm_end = content.find('---', 3)
+                      if fm_end == -1:
+                          errors.append(f"{skill_md}: malformed frontmatter")
+                          continue
+                      fm = yaml.safe_load(content[3:fm_end])
+                      if 'name' not in fm:
+                          errors.append(f"{skill_md}: frontmatter missing name")
+                      if 'description' not in fm:
+                          errors.append(f"{skill_md}: frontmatter missing description")
+                      if fm.get('description') and len(fm['description']) < 30:
+                          errors.append(f"{skill_md}: description too short (<30 chars) — won't trigger reliably")
+                  except Exception as e:
+                      errors.append(f"{skill_md}: parse error: {e}")
 
           if errors:
               for e in errors:
