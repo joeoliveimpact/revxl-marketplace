@@ -1,0 +1,134 @@
+---
+name: session-start
+description: Use at the start of a working session to load context — reads RULES.md, handoff.md, ARCHITECTURE.md, PLANNING.md, recent Checkpoint.md entries, and surfaces priorities for this session. Trigger phrases include "let's start the session", "pick up where we left off", "what was I working on", "session start", "/session-start", and any opening message that suggests the user is resuming work without saying so explicitly (e.g. "morning", "back at it"). Replaces the legacy /session-pickup command.
+---
+
+# Session Start Procedure
+
+Run at the start of every session. Don't start building until Phase 0 + Phase 4 complete.
+
+## Runtime environment
+
+This skill reads `.claude/workspace.yml#environment` on entry. Two paths:
+
+- **`environment: code`** — use Bash freely for `cat`, `ls`, `test`, `git`, service probes.
+- **`environment: cowork`** — Bash is unavailable or sandboxed. Use the Read / Glob / Grep / Write tools for all file ops. Live service / git / MCP probes become **advisory** — surface the commands to the user; do not attempt them.
+
+If `.claude/workspace.yml` is missing or unreadable, default to **cowork-safe behavior** (no Bash) and flag it: "Workspace config not found — running in safe mode. Run `/super-setup` to scaffold or `/workspace-set-verbosity` to repair config."
+
+## Beginner-mode preamble
+
+Read `.claude/workspace.yml#verbosity` at skill entry. If the value is `beginner`, emit the following 2-3 sentence preamble to the user before doing any work. If `standard` (or missing), skip this block entirely and proceed silently.
+
+> Welcome back. I'll spend the first minute reading the four most important files (your rules, your handoff notes, your project plan, and the latest session log) so I know exactly where we left off. Then I'll tell you what's ready to work on.
+
+## Layer 2: Suggest before invoking
+
+If the user's prompt is borderline — could fit this skill or could just want a quick direct answer — ask before firing:
+
+> "Looks like you're starting fresh — want me to run `/session-start` to pull priorities from handoff.md and recent Checkpoint entries? Or do you already know what you're working on?"
+
+Only run the full process below after the user confirms. If the user explicitly invokes `/session-start`, skip the suggestion and proceed.
+
+---
+
+## Phase 0: RULES.md — Non-Negotiable (30s)
+
+**Always first.** Read `RULES.md` at workspace root. The four override constraints
+(Intent Clarification, Least Complexity, Surgical Execution, Declarative Focus) govern
+every action this session.
+
+If RULES.md is missing → flag immediately. Suggest running `/super-setup` to scaffold
+the workspace, or run `/agent-optimizer` to load the constraints into context directly.
+
+---
+
+## Phase 1: Read Handoff Docs (2 min)
+
+1. Use the Read tool on each file (works in both environments):
+   - `handoff.md`
+   - `ARCHITECTURE.md`
+   - `PLANNING.md`
+   - `Checkpoint.md` (read only the most recent 1–2 entries — use offset/limit params)
+   - `MEMORY.md` (only if today's work touches an indexed topic)
+
+2. Existence check before each read:
+   - Code: optionally `test -f <path>` via Bash if you prefer
+   - Cowork: use Glob with the exact filename pattern, OR attempt Read and treat ENOENT as "missing"
+
+If any file is missing → workspace isn't fully scaffolded. Suggest `/super-setup`.
+
+After reading, state to user:
+- What the last session accomplished (1 sentence from Checkpoint.md top entry)
+- What blockers handoff.md flagged
+- What today's planned work is (from handoff.md P0)
+
+---
+
+## Phase 2: Verify Anything handoff.md Flagged (3 min)
+
+For each verification item in handoff.md:
+
+- **Code environment:** run the verify command via Bash. Record actual result.
+- **Cowork environment:** display the verify command to the user as a quoted block. Ask them to run it and paste the result back. Mark the check as "user-verified" or "unverified" — do not silently skip.
+
+**Stop if any critical item failed** in either environment. In Cowork, "failed" includes "user declined to verify".
+
+If handoff.md has no verification items → skip Phase 2.
+
+---
+
+## Phase 3: Workspace-Specific Health (variable)
+
+**Code environment** — run any checks documented in ARCHITECTURE.md or `.claude/health-checks.md`. Examples: `systemctl status`, `docker ps`, curl probes against MCP server URLs, API key smoke tests.
+
+**Cowork environment** — Phase 3 is **advisory-only**:
+- Read `.claude/health-checks.md` if it exists (use Read tool).
+- Surface the documented checks to the user as a checklist. Do not attempt to run them.
+- For MCP server connectivity, list the servers configured in the workspace and note: "Cowork cannot probe these directly — confirm in Claude Desktop's MCP panel."
+
+Pure-document workspaces skip Phase 3 entirely regardless of environment.
+
+---
+
+## Phase 4: Present Status Brief (1 min)
+
+Format:
+
+```
+SESSION START — {date}
+
+Last session: {1-line summary from Checkpoint.md}
+Handoff status: {clean / X blockers}
+Verification: {all passed / X failed}
+
+Blockers:
+  1. {blocker — action needed}
+
+Ready to work on:
+  1. {handoff.md P0 #1}
+  2. {handoff.md P0 #2}
+
+Where do you want to start?
+```
+
+End your turn. Wait for direction before starting work.
+
+---
+
+## When to skip phases
+
+- **Pure document workspace** (no servers, no MCP) → skip Phase 3 entirely
+- **Continuing a session in the same window** (no break) → skip session-start, just continue
+- **Brand-new empty workspace** → run `/super-setup` instead of session-start
+
+---
+
+## Common failure patterns to check
+
+If today's work touches any of these, verify before building:
+
+- **Stale references:** Use the Grep tool to search RULES.md, handoff.md, Checkpoint.md top entry for path strings; verify each path exists via Glob (Cowork) or `test -f` (Code).
+- **Drift between Checkpoint.md and reality:** "Service X running" claims that don't match actual state
+- **Context bloat:** large directories advertised in system prompts (skills/, memory/ inside agent workspaces)
+- **Credential expiry:** API keys, tokens that may have rotated

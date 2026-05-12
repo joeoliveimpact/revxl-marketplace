@@ -31,7 +31,7 @@ Creates eight canonical scaffold files in any folder so Claude knows where thing
 
 Optionally chains into `anthropic-skills:setup-cowork` for plugin/connector setup.
 
-### `session-pickup`
+### `session-start`
 **Triggers:** "pick up where we left off", "what's the status?", "where are we?", session start
 
 Reads RULES.md → handoff.md → ARCHITECTURE.md → PLANNING.md → recent Checkpoint.md, runs any verifications flagged in handoff.md, and presents a status brief. Conditional infrastructure-health phase for workspaces with live services.
@@ -82,7 +82,7 @@ Just talk to Claude naturally:
 | Say this | What happens |
 |----------|--------------|
 | "set up my workspace" | super-setup scaffolds the 8 files |
-| "what's the status?" | session-pickup reads handoff + briefs you |
+| "what's the status?" | session-start reads handoff + briefs you |
 | "close out the session" | session-closeout writes checkpoint + handoff |
 | "checkpoint mid-session" | session-curator saves progress without ending |
 
