@@ -1,6 +1,6 @@
 ---
 name: os-setup
-description: Use this skill when the user wants to set up, install, configure, or onboard REVXL OS. Triggers include "set up revxl os", "/os-setup", "configure revxl", "install revxl", "onboarding", "set up my agents", "wire up the os", or first-time use after `/plugin install revxl-os-superengine`. Walks the user through a sequential, branching configuration: source providers (transcripts/portals/emails/DMs), task sync target, Telegram bot pairing, agent schedules. Writes the workspace folder structure, the `.mcp.json` config, the Telegram allowlist, and a `~/.claude/revxl-os/config.json` for the agents to read. Designed for non-technical users — narrate every step, confirm before writes, never assume.
+description: 'Use this skill when the user wants to set up, install, configure, or onboard REVXL OS. Triggers include "set up revxl os", "/os-setup", "configure revxl", "install revxl", "onboarding", "set up my agents", "wire up the os", or first-time use after `/plugin install revxl-os-superengine`. Walks the user through a sequential, branching configuration: source providers (transcripts/portals/emails/DMs), task sync target, Telegram bot pairing, agent schedules. Writes the workspace folder structure, the `.mcp.json` config, the Telegram allowlist, and a `~/.claude/revxl-os/config.json` for the agents to read. Designed for non-technical users — narrate every step, confirm before writes, never assume.'
 ---
 
 # os-setup
