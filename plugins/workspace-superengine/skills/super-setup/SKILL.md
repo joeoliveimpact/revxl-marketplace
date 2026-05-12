@@ -7,6 +7,12 @@ description: Use to scaffold a brand-new workspace from scratch — creates RULE
 
 One skill, one pass. Reads the templates that ship inside this plugin and writes a complete scaffold to the target workspace. No model invention.
 
+## Beginner-mode preamble
+
+Read `.claude/workspace.yml#verbosity` at skill entry. If the value is `beginner`, emit the following 2-3 sentence preamble to the user before doing any work. If `standard` (or missing), skip this block entirely and proceed silently.
+
+> I'm about to set up your workspace files. This creates about 15 starter files — things like a rules file (so Claude follows the same ground rules every session), a memory file, and a checkpoint log. Once done, you'll have everything you need to start working.
+
 ## Layer 2: Suggest before invoking
 
 If the user's prompt is borderline — could fit this skill or could just want a quick direct answer — ask before firing:
@@ -35,6 +41,113 @@ RULES.md  CLAUDE.md  ARCHITECTURE.md  GOALS.md  PLANNING.md  MEMORY.md  Checkpoi
 If all 8 root files exist AND `tasks/`, `troubleshooting/`, `outputs/`, `.claude/` are present → the workspace is already scaffolded. Offer `/session-start` instead and exit.
 
 If some files exist and some don't, ask: "Existing scaffold partially present. Overwrite-and-replace, fill-gaps-only, or abort?"
+
+## Step 0.3 — Detect runtime environment
+
+Before asking any setup questions, determine whether this is a Claude Code or Claude Desktop / Cowork session.
+
+**Detection procedure:**
+
+1. Attempt a no-op Bash call: `echo workspace-env-probe`.
+   - If the tool call **succeeds** (returns stdout, exit 0) → tentatively `code`.
+   - If the tool call **errors** (tool unavailable, sandbox denial, no response) → tentatively `cowork`.
+
+2. Confirm with the user, framed simply:
+   > Detected: **Claude Code** (Bash works). Is that right? (Y/n)
+   or
+   > Detected: **Cowork / Claude Desktop** (Bash unavailable). Is that right? (Y/n)
+
+3. If the user overrides, take their answer.
+
+4. Persist to `.claude/workspace.yml`:
+
+   ```yaml
+   environment: code     # or 'cowork'
+   ```
+
+   Use the Write tool to update the file (works in both environments).
+
+**Why this matters:** session-start, session-closeout, and any future skill that touches the shell branches on this field. Wrong value here means broken sessions later. Worth the 10-second confirmation.
+
+## Step 0.5 — Detect global identity
+
+Before asking the user for owner name, email, brand, and GitHub handle — scan their machine for values already on record. Surface findings as DEFAULTS in the questions, not silent fills.
+
+### Sources to scan (in priority order)
+
+1. **`~/.claude/CLAUDE.md`** — the user's global Claude instructions file.
+   - Look for explicit `# userEmail` or `# currentDate` style sections (the user's auto-memory format).
+   - Look for plain-text patterns: lines matching `email[:\s]*<value>`, `name[:\s]*<value>`, or `The user's email address is <value>`.
+   - Use Read tool, then Grep tool with patterns:
+     - `(?i)^The user's email address is\s+(\S+)`
+     - `(?i)^#\s*userEmail\s*$` (then read the line that follows)
+     - `(?i)^(?:Full name|Name)[:\s]+(.+)$`
+
+2. **`~/.claude/projects/*/memory/*.md`** — per-workspace user memory files.
+   - Use Glob: `~/.claude/projects/*/memory/*.md`
+   - For each file, Read the first ~10 lines and check frontmatter for `type: user`.
+   - If `type: user` is present, scan the body with Grep for these fields:
+     - `Full name:\s*(.+)`
+     - `Email:\s*(\S+@\S+)`
+     - `Company\s*/?\s*brand:\s*(.+)` or `Brand:\s*(.+)`
+     - `GitHub(?:\s+username)?:\s*[`']?([\w-]+)`
+   - Track first occurrence wins (highest-priority source = most recent file by mtime).
+
+3. **`~/.gitconfig`** — fallback only if (1) and (2) yielded no name or email.
+   - Read with Read tool.
+   - Grep for `\s*name\s*=\s*(.+)` and `\s*email\s*=\s*(\S+)`.
+
+### Privacy boundary — what NOT to pull
+
+This is a hard rule. From the sources above, EXTRACT ONLY these fields:
+
+| Allowed | Notes |
+|---|---|
+| Full name | personal identifier |
+| Email | primary contact |
+| Brand / company | for attribution and copyright |
+| GitHub username | for repo author fields |
+| Preferred tools | only if explicitly listed as "preferred tools: X, Y" |
+
+**Never extract:**
+- Client lists, customer names, contact details from CRM-style memory
+- Project secrets, API keys, credentials (even partial)
+- Feedback memories (`feedback_*.md`, anything in body marked as a complaint or preference about Claude's behavior in a specific workspace)
+- Brand voice details, marketing positioning, internal strategy
+- Anything from memory files where frontmatter `type:` is anything other than `user`
+- Anything from `~/.claude/CLAUDE.md` that looks like a workspace-specific instruction (path-bound, tool-bound)
+
+If a memory file has no `type` frontmatter at all, **skip it**. Don't infer.
+
+### Surfacing detected values as defaults
+
+In the user-question phase, format each prompt like this:
+
+```
+Workspace owner name: [Joe Olive] — press Enter to accept, or type a new value:
+Workspace owner email: [joe@engineforimpact.com] — press Enter to accept, or type a new value:
+Brand affiliation: [REVXL / Engine For Impact] — press Enter to accept, or type a new value:
+GitHub username: [joeoliveimpact] — press Enter to accept, or type a new value:
+```
+
+If a field was not detected from any source, show the prompt without a default:
+
+```
+Workspace owner name: (no value detected — please enter)
+```
+
+Record which fields came from detection vs. were entered fresh — useful for the Checkpoint.md first entry note ("Identity pre-filled from global config: name, email, brand. GitHub entered manually.").
+
+### Detection-source ranking (when sources conflict)
+
+If `~/.claude/CLAUDE.md` says `joe@bizzfixx.com` but `~/.claude/projects/*/memory/user_identity.md` (type: user) says `joe@engineforimpact.com`, **prefer the memory file** — it's typically more recent and explicit. Surface BOTH to the user as a disambiguation prompt:
+
+```
+Two emails detected:
+  - joe@engineforimpact.com (from user_identity memory, dated 2026-05-07)
+  - joe@bizzfixx.com (from ~/.claude/CLAUDE.md)
+Which is correct? [1/2/type new]:
+```
 
 ## Step 1 — Gather context
 
