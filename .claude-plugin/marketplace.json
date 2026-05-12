@@ -11,16 +11,16 @@
   },
   "plugins": [
     {
-      "name": "claude-workspace-superengine",
-      "description": "Workspace lifecycle: scaffold new workspaces, pick up cleanly at session start, close out cleanly at session end. Built on agent-optimizer's four override constraints. Works in Claude Desktop and Claude Code.",
-      "source": "./plugins/claude-workspace-superengine",
+      "name": "workspace-superengine",
+      "description": "Workspace lifecycle superengine v0.2. Scaffolds workspaces from shipped templates (15 artifacts, no model invention), then powers session-start / session-closeout against them. Built on agent-optimizer's four override constraints. Works in Claude Desktop and Claude Code.",
+      "source": "./plugins/workspace-superengine",
       "category": "productivity",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"
       },
-      "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/claude-workspace-superengine",
+      "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/workspace-superengine",
       "keywords": ["workspace", "session", "scaffolding", "lifecycle", "superengine"]
     },
     {

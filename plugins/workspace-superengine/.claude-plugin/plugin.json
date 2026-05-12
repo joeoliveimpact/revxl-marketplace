@@ -1,13 +1,13 @@
 {
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
-  "name": "claude-workspace-superengine",
-  "description": "Workspace lifecycle superengine. Scaffolds new workspaces with the canonical eight-file scheme (RULES.md / CLAUDE.md / ARCHITECTURE.md / GOALS.md / PLANNING.md / MEMORY.md / Checkpoint.md / handoff.md), reads them at session start, and writes durable handoffs at session end. Built on top of agent-optimizer's four override constraints.",
-  "version": "0.1.1",
+  "name": "workspace-superengine",
+  "description": "Workspace lifecycle superengine v0.2. Scaffolds workspaces from shipped templates (15 artifacts, no model invention), then powers session-start / session-closeout against them. Built on agent-optimizer's four override constraints. Works in Claude Desktop and Claude Code.",
+  "version": "0.2.0",
   "author": {
     "name": "Joe Olive",
     "email": "joe@engineforimpact.com"
   },
-  "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/claude-workspace-superengine",
+  "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/workspace-superengine",
   "license": "MIT",
   "keywords": ["workspace", "session", "scaffolding", "lifecycle", "agent-optimizer", "superengine"]
 }
