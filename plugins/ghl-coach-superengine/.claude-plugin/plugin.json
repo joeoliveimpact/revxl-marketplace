@@ -9,8 +9,5 @@
   },
   "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/ghl-coach-superengine",
   "license": "MIT",
-  "keywords": ["gohighlevel", "ghl", "crm", "coaching", "health-coach", "mcp", "superengine"],
-  "requires": {
-    "mcp": "https://github.com/mastanley13/GoHighLevel-MCP"
-  }
+  "keywords": ["gohighlevel", "ghl", "crm", "coaching", "health-coach", "mcp", "superengine"]
 }
