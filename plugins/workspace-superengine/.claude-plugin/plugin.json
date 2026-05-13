@@ -1,8 +1,8 @@
 {
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "workspace-superengine",
-  "description": "Workspace lifecycle superengine v0.2. Scaffolds workspaces from shipped templates (15 artifacts, no model invention), then powers session-start / session-closeout against them. Built on agent-optimizer's four override constraints. Works in Claude Desktop and Claude Code.",
-  "version": "0.6.0",
+  "description": "Stops Claude from forgetting what you were working on. Sets up your workspace so every session picks up where the last one left off, follows your rules, and explains itself in plain language. Add modules for coding, client work, or content as needed. Works in Claude Desktop and Claude Code.",
+  "version": "0.6.1",
   "author": {
     "name": "Joe Olive",
     "email": "joe@engineforimpact.com"

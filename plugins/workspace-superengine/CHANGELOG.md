@@ -2,6 +2,12 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.6.1 — 2026-05-12
+
+### Changed
+
+- Rewrote the plugin description (`plugin.json` and marketplace entry) in plain language. Old copy was jargon-heavy ("superengine", "shipped templates", "no model invention", "override constraints") and failed the plugin's own beginner-voice standard. New copy leads with the problem ("Stops Claude from forgetting what you were working on"), states concrete outcomes, signals plain-language explanations, and lists modules + runtime coverage.
+
 ## 0.6.0 — 2026-05-12
 
 ### Added
