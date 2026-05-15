@@ -7,7 +7,7 @@
     "email": "joe@engineforimpact.com"
   },
   "metadata": {
-    "version": "0.1.1"
+    "version": "0.1.2"
   },
   "plugins": [
     {
@@ -48,6 +48,19 @@
       },
       "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/revxl-os-superengine",
       "keywords": ["coaching", "ops", "autonomous", "agents", "telegram", "channels", "scheduled", "superengine", "revxl"]
+    },
+    {
+      "name": "offer-architect",
+      "description": "Build market-validated, Hormozi-structured coaching offers — start to finish. 10 skills + 1 audit agent take a coach from intake → deep market research → value stack → pricing matrix → finalized offer → a 3–5 page Offer Blueprint (the coach's source of truth) + a Projected Success Score report (0–100 launch-readiness with plain-English priority fixes). Two-layer scoring: preventive exit-checks at every step + capstone audit. Hard rule on no-inventing-deliverables via provenance tags.",
+      "source": "./plugins/offer-architect",
+      "category": "coaching",
+      "version": "0.2.2",
+      "author": {
+        "name": "Joe Olive",
+        "email": "joe@engineforimpact.com"
+      },
+      "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/offer-architect",
+      "keywords": ["coaching", "offer", "hormozi", "100m-offers", "value-stack", "pricing", "market-research", "launch-readiness", "superengine"]
     }
   ]
 }
