@@ -4,7 +4,7 @@
 
 #### 1. The Offer Comes First 
 
-**Rule**: Every conversation, product, and strategy must begin with a clear offer ΓÇö what you're providing in exchange for money. 
+**Rule**: Every conversation, product, and strategy must begin with a clear offer — what you're providing in exchange for money. 
 
 **Why**: The offer is the starting point of all transactions; everything else (marketing, conversion, retention) depends on it. 
 
@@ -24,7 +24,7 @@
 
 #### 2. Bet Boldly on High-Upside Opportunities 
 
-**Rule**: Take bets with a 10% chance of 100x returns ΓÇö even if you're wrong 9 out of 10 times. 
+**Rule**: Take bets with a 10% chance of 100x returns — even if you're wrong 9 out of 10 times. 
 
 **Why**: In business, outcomes have long-tailed distributions; one big winner pays for many experiments. 
 
@@ -40,11 +40,11 @@
 
 ``` 
 
-**Test**: Review your portfolio ΓÇö are you avoiding bets that could be 100x?  --- 
+**Test**: Review your portfolio — are you avoiding bets that could be 100x?  --- 
 
 #### 3. Build Skill to Shift the Odds 
 
-**Rule**: Treat business as a skill-based game, not a casino ΓÇö your ability to improve directly changes your probability of winning. 
+**Rule**: Treat business as a skill-based game, not a casino — your ability to improve directly changes your probability of winning. 
 
 **Why**: Unlike casino gambling where the house always wins, skilled entrepreneurs can become the house. 
 
@@ -64,7 +64,7 @@
 
 #### 4. The Grand Slam Offer Requires All Components 
 
-**Rule**: A Grand Slam Offer must combine pricing, value, guarantees, and naming ΓÇö missing any one weakens the whole. 
+**Rule**: A Grand Slam Offer must combine pricing, value, guarantees, and naming — missing any one weakens the whole. 
 
 **Why**: Each component addresses a different customer objection; together they create outsized returns. 
 
@@ -86,7 +86,7 @@
 
 #### 1. Accept Failure as Part of the Process 
 
-**Rule**: Expect to be wrong 9 out of 10 times ΓÇö failure is data, not defeat. 
+**Rule**: Expect to be wrong 9 out of 10 times — failure is data, not defeat. 
 
 **Why**: Great marketers have many strikeouts; the key is that big winners pay for the losses. 
 

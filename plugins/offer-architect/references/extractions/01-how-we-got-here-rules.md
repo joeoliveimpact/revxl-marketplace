@@ -24,7 +24,7 @@
 
 #### 2. Go All-In on Your Offer 
 
-**Rule**: When you believe in your offer, commit fullyΓÇöfinancially and emotionally. 
+**Rule**: When you believe in your offer, commit fully—financially and emotionally. 
 
 **Why**: Half-measures signal doubt. Full commitment creates the momentum needed to overcome early resistance and build proof. 
 
@@ -88,7 +88,7 @@
 
 **Rule**: When launching, do multiple launches at once rather than sequentially. 
 
-**Why**: Simultaneous launches create compounding effectsΓÇömore data, more proof, more momentum. Sequential launches waste time and delay learning. 
+**Why**: Simultaneous launches create compounding effects—more data, more proof, more momentum. Sequential launches waste time and delay learning. 
 
 **Do**:
 

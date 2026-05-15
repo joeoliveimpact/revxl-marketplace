@@ -1,12 +1,12 @@
-﻿14
+14
 
 I
 ENHANCING THE OFFER: BONUSES
-â€œItâ€™s all gravy babyâ€
-â€” PLAY ON AN OLD ENGLISH SAYING.
+"It's all gravy baby"
+— PLAY ON AN OLD ENGLISH SAYING.
 have to give special thanks to Jason Fladlien for my renewed appreciation
 for bonuses. They are so powerful that they earned an entire chapter. In this
-chapter, Iâ€™m going to cover: what to offer, how to pick them, how to value them,
+chapter, I'm going to cover: what to offer, how to pick them, how to value them,
 how to present them, how to price them.
 The main point I want you to take away from this is that a single offer is less
 valuable than the same offer broken into its component parts and stacked as
@@ -15,20 +15,20 @@ last section. This section is about how to present those pieces in what order. F
 example, I may in fact do lots of things in my service, but until I enumerate
 
 them, they are unknown. This is why every infomercial of all time continues on
-with â€œbut waitâ€¦.thereâ€™s more!â€
+with "but wait….there's more!"
 They would not use these techniques unless they were effective, as every
-second of air time costs money and must be justified with ROI. Youâ€™ll also
+second of air time costs money and must be justified with ROI. You'll also
 notice that if you watch those old infomercials, they would sell one knife for
 $38.95 then include 37 other knives, sharpeners, pans, and guarantees to beat the
 prospect into submission. They establish the price, then they expand upon it until
-you feel itâ€™s such a good deal it would be stupid to pass it up.
-The reason this works is we are increasing the prospectâ€™s price-to-value
+you feel it's such a good deal it would be stupid to pass it up.
+The reason this works is we are increasing the prospect's price-to-value
 discrepancy by increasing the value delivered instead of cutting the price. We
 anchor the price we tell them to the core offer. Then with each increasingly
 valuable bonus, that discrepancy grows wider and wider until it's too big to bear
 and we snap the rubber band in their mind that is holding their wallet in their
 pocket.
-We are now going to present that â€œstackâ€ of deliverables that we assembled
+We are now going to present that "stack" of deliverables that we assembled
 earlier in a way that makes them irresistible.
 Pro Tip: Add Bonuses Instead of Discounting Whenever Possible on Core Offers
 Whenever trying to close a deal, never discount the main offer. It teaches your customers
@@ -43,15 +43,15 @@ on one, you ask for the sale first, before offering the bonuses. If they say yes
 then after they have signed up, you let them know the additional bonuses they're
 going to get. This creates a wow experience and reinforces their decision to buy.
 On the other hand, if the person does not buy after the first ask, then you
-present a bonus that matches their perceived obstacle, then ask again. Donâ€™t feel
+present a bonus that matches their perceived obstacle, then ask again. Don't feel
 
 weird about asking again. You simply agree with the prospect, add the bonus,
-and ask if this consolation was â€œFair enough.â€ People have a hard time rejecting
+and ask if this consolation was "Fair enough." People have a hard time rejecting
 reciprocity, so adding a bonus to accommodate, then another, then another, and
 people will feel almost obligated to buy from you.
-If you recall from our â€œTrim and Stackâ€ chapter, each of those deliverables is
-now being weaponized and presented at the perfect time. Weâ€™re going to provide
-all these bonuses to them anyways, but it increases the perception of our offerâ€™s
+If you recall from our "Trim and Stack" chapter, each of those deliverables is
+now being weaponized and presented at the perfect time. We're going to provide
+all these bonuses to them anyways, but it increases the perception of our offer's
 value by layering these bonuses one at a time.
 Bonus Bullets
 That being said, there are a few key things to remember when offering
@@ -75,7 +75,7 @@ are lower with the former, so the value is higher. The value equation still reig
 supreme).
 8. They should each address a specific concern/obstacle in the prospects
 
-mind about why they canâ€™t or wonâ€™t be successful (bonus should prove their
+mind about why they can't or won't be successful (bonus should prove their
 belief incorrect)
 9. This can also be what they would logically realize they will need next.
 You want to solve their next problem before they even encounter it.
@@ -96,14 +96,14 @@ Version 2: I have 3 tickets left to my $5,000 virtual event, if you buy this
 program you can get one of the last 3 tickets as a bonus.
 b) Bonuses With Urgency
 Version 1: If you buy today, I will add in XYZ bonus that normally costs
-$1,000, for free. And Iâ€™ll do that because I want to reward action takers.
-c) With hope, you can see the subtle differences. The first two examples arenâ€™t
+$1,000, for free. And I'll do that because I want to reward action takers.
+c) With hope, you can see the subtle differences. The first two examples aren't
 constrained by time. They state that if you buy the program you will get things
 you normally would not be able to. The bonus with urgency is about them
 buying today, and if they do not buy today, they lose those bonuses. Minor
 difference, but worth noting.
 
-Advanced Level Bonuses - Other Peopleâ€™s Products and Services
+Advanced Level Bonuses - Other People's Products and Services
 You can get other businesses to give you their services and products as a part
 of your bonuses in exchange for exposure to your clients for free. This is free
 marketing for them, and high value products for you at no cost. Businesses will
@@ -131,21 +131,21 @@ adjustments in my bundle.
 ...Etc
 Now if my offer was $400, then the value of these free bonuses ALONE is
 worth more than the $400.
-As if that werenâ€™t already awesome enough, if you really want to be a jedi,
+As if that weren't already awesome enough, if you really want to be a jedi,
 negotiate a group discount and a commission to yourself. This is exactly what
 
 we did with our supplement company. Our gym owner clients who use our sister
 supplement company Prestige Labs sponsored athletes get a 30% discount on
 our products, on top of that, the sponsored athlete gets paid 40% of all sales
 netted after the applied discount.
-So itâ€™s a win-win for everyone. Their clients get it for 30% less than our main
+So it's a win-win for everyone. Their clients get it for 30% less than our main
 site. They get paid for giving away exclusive discounts. And we get customers in
 exchange for the commission paid. Everyone wins.
 If you are following along, each of these bonuses can become revenue
 streams for you indirectly by getting clients to say YES more easily, and directly
 because you can negotiate that each of these businesses can pay you for the
 people you send their way.
-So letâ€™s also say we negotiated the following â€œaffiliate commissionsâ€ for
+So let's also say we negotiated the following "affiliate commissions" for
 making the introduction to these businesses.
 ...the chiro gives you $100 per person who comes into their office
 ...the food company gives you free food (yum!)
@@ -153,8 +153,8 @@ making the introduction to these businesses.
 ...health club gives you a free membership OR $50 per person who signs
 up
 ...pharmacy gives you $100 per person
-Now letâ€™s look at how much money we made...our $400 offer now has the
-possibility of making us an extra $350...pure profit! Thatâ€™s the beauty of these
+Now let's look at how much money we made...our $400 offer now has the
+possibility of making us an extra $350...pure profit! That's the beauty of these
 relationships. The other businesses will pay you and you don't have to do
 anything but refer customers to them that you have already spent the money to
 acquire.
@@ -167,15 +167,15 @@ Free Gift #8: BONUS...on...BONUSES
 There are a million and one ways to use bonuses in your offers. You can get people to act
 faster. You can price anchor and product anchor (little known). You can get more people to
 say yes than you otherwise would. If you want to a live deep dive with me on this, go to
-Acquisition.com/training/offers and select â€œBonus Creationâ€ to watch a short video
+Acquisition.com/training/offers and select "Bonus Creation" to watch a short video
 tutorial. I also have a Free Bonus Checklist I use when creating offers. Swipe it for your
 own business on the house!
 Summary
 We want to employ bonuses because they expand the price to value
-discrepancy and get people to purchase who otherwise wouldnâ€™t. They massively
-increase the prospects' perception of the value of our offer. So hereâ€™s what to do:
+discrepancy and get people to purchase who otherwise wouldn't. They massively
+increase the prospects' perception of the value of our offer. So here's what to do:
 1. Create checklists, tools, swipe files, scripts, templates, and anything else
-that would take lots of time and effort to create on oneâ€™s own, but is
+that would take lots of time and effort to create on one's own, but is
 easy to use once created. Anything that you can invest in one time that
 clearly cost time or money to create, but can be given away endless time
 is a perfect fit for a bonus.
@@ -184,7 +184,7 @@ every event, every interview and use them as additional bonuses (as
 needed to crush a perceived obstacle).
 3. Proactively negotiate group discounts and a referral commission with
 adjacent businesses that solve needs your customer will have as a result
-of beginning this process with you. Whatâ€™s the next natural thing they
+of beginning this process with you. What's the next natural thing they
 might want? Go to those businesses, get a deal for them they could
 never get for themselves (because you are negotiating with the
 purchasing power of all your customers at once, very powerful).
@@ -198,8 +198,8 @@ goes for a higher level of service that has a fixed cost like giving someone VIP
 month (which also doubles as a way of upselling them into that level of service to keep them
 on it . . . more on that in Book II.)
 What should be a bonus vs part of the core offer if I am the one fulfilling it?
-Short answer: Wow Factor - in other words - something you wouldnâ€™t want someone to
-miss. Many times you have so much â€œstuffâ€ you will be providing your customers (good
+Short answer: Wow Factor - in other words - something you wouldn't want someone to
+miss. Many times you have so much "stuff" you will be providing your customers (good
 thing) that valuable nuggets can get lost in the mix. You want to take the most distinct ones
 that can almost stand on their own and pull those out to highlight them. This is especially
 true for things that are short in length but high in quality or value. Checklists or infographics

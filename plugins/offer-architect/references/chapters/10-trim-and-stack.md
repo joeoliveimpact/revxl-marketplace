@@ -1,25 +1,25 @@
-﻿10
+10
 
 I
 VALUE OFFER: CREATING YOUR GRAND SLAM OFFER PART
 II: TRIM & STACK
-â€œCut! Cut! Cut!â€
-â€” FRIENDS TO RACHEL GREEN IN FRIENDS
-divided this chapter into two parts because itâ€™s the meatiest section in the
-book. Itâ€™s also the most important. Without a valuable product or service, the
-rest of the book wonâ€™t be as actionable. We just covered all the problems we are
+"Cut! Cut! Cut!"
+— FRIENDS TO RACHEL GREEN IN FRIENDS
+divided this chapter into two parts because it's the meatiest section in the
+book. It's also the most important. Without a valuable product or service, the
+rest of the book won't be as actionable. We just covered all the problems we are
 going to solve. The second half of making your offer is breaking down tactically
-what we are going to do/provide for our client. In theory, weâ€™d all love to fly out
-and live with our customers to fix their problems. In reality, that wouldnâ€™t make
+what we are going to do/provide for our client. In theory, we'd all love to fly out
+and live with our customers to fix their problems. In reality, that wouldn't make
 a very scalable business. We need our offer to be incredibly attractive and
 profitable.
-That being said, if this is your first Grand Slam Offer, itâ€™s important to over-
-deliver like crazy. Maybe flying out isnâ€™t such a bad idea in the beginning. Make
+That being said, if this is your first Grand Slam Offer, it's important to over-
+deliver like crazy. Maybe flying out isn't such a bad idea in the beginning. Make
 some sales, then think about how to make it easier for your clients. You want
-them to think to themselves, â€œI get all this, for only that?â€ In essence, you want
+them to think to themselves, "I get all this, for only that?" In essence, you want
 them to perceive tremendous value.
 Everyone buys bargains. Some people just buy $100,000 things for only
-$10,000. Thatâ€™s where we want to live: high prices, but a steal for the value (like
+$10,000. That's where we want to live: high prices, but a steal for the value (like
 hopefully this book so far).
 Sales to Fulfillment Continuum
 
@@ -29,28 +29,28 @@ Enter the sales to fulfillment continuum.
 Whenever you are building a business, you have a continuum between ease
 of fulfillment and ease of sales. If you lower what you have to do, it increases
 how hard your product or service is to sell. If you do as much as possible, it
-makes your product or service easy to sell but hard to fulfill because thereâ€™s
+makes your product or service easy to sell but hard to fulfill because there's
 more demand on your time investment. The trick, and the ultimate goal, is to
-find a sweet spot where you sell something very well thatâ€™s also easy to fulfill.
-I have always lived by the mantra, â€œCreate flow. Monetize flow. Then add
-friction.â€ This means I generate demand first. Then, with my offer, I get them to
+find a sweet spot where you sell something very well that's also easy to fulfill.
+I have always lived by the mantra, "Create flow. Monetize flow. Then add
+friction." This means I generate demand first. Then, with my offer, I get them to
 say yes. Once I have people saying yes, then, and only then, will I add friction in
 my marketing, or decide to offer less for the same price.
-Practicality drives this practice. If you canâ€™t get demand flowing in, then you
-have no idea whether what you have is good. Iâ€™d rather do more for every
+Practicality drives this practice. If you can't get demand flowing in, then you
+have no idea whether what you have is good. I'd rather do more for every
 customer and have cash flow coming in, then optimize my business but have
 zero cash flow coming in after (and zero idea about what I need to adjust to
 better serve my customers).
-Hereâ€™s a perfect example to drive this home. When I started Gym Launch,
-gym owners reached out asking me to help. They needed so much help, I didnâ€™t
+Here's a perfect example to drive this home. When I started Gym Launch,
+gym owners reached out asking me to help. They needed so much help, I didn't
 know where to start. But I wanted to make sure they got way more than they
-paid me. So hereâ€™s what I ended up doing to fill their gyms: I would fly out to
+paid me. So here's what I ended up doing to fill their gyms: I would fly out to
 
 their gym for 21 days, spend my own money on hotels, car rentals, eating out,
 advertising, generate the leads, work the leads, then sell for them. I would even
 do the first onboarding meeting with clients to get them started. In short, I did
 everything. I took on all the risk.
-They only had to put down $500 to â€œreserveâ€ their date, which I made
+They only had to put down $500 to "reserve" their date, which I made
 refundable at the end of their launch. So they had 0 financial risk, 0 time risk, 0
 effort, and the deal was, I got to keep all the up front cash collected from selling
 their services, and they got clients for free. You can imagine how this was a
@@ -73,41 +73,41 @@ end up creating systems that create the same value for the customer but cost you
 significantly less resources.
 Ultimately this is how businesses beat one another. Understanding this will
 be important as you scale your business.
-Now that weâ€™ve established the importance of the fulcrum and how to
-approach the sales-fulfillment balance at the outset, letâ€™s cover the last two steps
+Now that we've established the importance of the fulcrum and how to
+approach the sales-fulfillment balance at the outset, let's cover the last two steps
 of creating our Grand Slam offer. To recap quickly, remember that we covered
 identifying dream outcomes (step one), listing problems (step two), and
 determining solutions (step three).
 
-Step #4 Create Your Solutions Delivery Vehicles (â€œThe Howâ€)
+Step #4 Create Your Solutions Delivery Vehicles ("The How")
 The next step is thinking about all the things you could do to solve each of
-these problems youâ€™ve identified. This is the most important step in this process.
+these problems you've identified. This is the most important step in this process.
 This is what you are going to deliver. This is what you are going to do or provide
 in exchange for money.
 For the purposes of keeping creativity high (divergent thinking), think about
 anything you could possibly do. Think of all the things that might enhance the
 value of your offer. So much so that they would be stupid to say no.
-What could you do that someone would immediately say, â€œAll that?
-Seriously? Yes, I'm in.â€
+What could you do that someone would immediately say, "All that?
+Seriously? Yes, I'm in."
 Doing this exercise will make your job of selling So. Much. Easier.
-Even if you come up with something youâ€™re not actually willing to do, itâ€™s
+Even if you come up with something you're not actually willing to do, it's
 okay. The goal here is to push your limits and jog your brain into thinking of a
-different version of the solution youâ€™d normally default to. This is where you get
+different version of the solution you'd normally default to. This is where you get
 to flex your entrepreneurial creativity.
 Reminder: You only need to do this once. Literally one time for a product
 that may last years. This is high-value, high-leverage work. You ultimately get
 paid for thinking. You got this. This should be fun. Go ahead and list out all your
-possibilities now. Then Iâ€™ll take you through my example. Iâ€™ll just use the buying
+possibilities now. Then I'll take you through my example. I'll just use the buying
 food problem from earlier as an example. I like to group things by how many
 people I'm going to deliver this thing to at once.
-My list is below. And at the bottom, Iâ€™ve given you my â€œcheat codesâ€ for
+My list is below. And at the bottom, I've given you my "cheat codes" for
 how I think through this to get even more creative.
-Problem: Buying Healthy Food Is Hard, Confusing, and I Wonâ€™t Like It
+Problem: Buying Healthy Food Is Hard, Confusing, and I Won't Like It
 If I wanted to provide a one-on-one solution I might offer . . .
 1. In-person grocery shopping, where I take clients to the store and teach
 them how to shop
 2. Personalized grocery list, where I teach them how to make their list
-3. Full-service shopping, where I buy their food for them. Weâ€™re talking
+3. Full-service shopping, where I buy their food for them. We're talking
 100 percent done for them.
 4. In-person orientation (not at store), where I teach them what to get
 
@@ -147,10 +147,10 @@ Now do this for all of the perceived problems that your clients encounter
 before, after, and during their experience with your service/products. You should
 have a monster list by the end of this.
 Product Delivery Cheat Codes
-Whatâ€™s that? Youâ€™re having trouble being creative? I'm going to give you the
-cheat codes right now, kind of like I did with the brick example: â€œthe brick could
-be gold, or plastic, or have holes in it, or be a lego, etc.â€ Here are my â€œcheat
-codesâ€ for product variation/enhancement and a visual to break down the
+What's that? You're having trouble being creative? I'm going to give you the
+cheat codes right now, kind of like I did with the brick example: "the brick could
+be gold, or plastic, or have holes in it, or be a lego, etc." Here are my "cheat
+codes" for product variation/enhancement and a visual to break down the
 process for you from my consulting deck:
 1. What level of personal attention do I want to provide? one-on-one,
 small group, one to many
@@ -175,12 +175,12 @@ make my product more valuable than it already is, how would I do that?
 How could I still make them successful for 1/10
 th 
 price? Stretch your
-mind in either direction and youâ€™ll come up with widely different
+mind in either direction and you'll come up with widely different
 solutions.
 In other words, how could I actually deliver on these solutions I am claiming
 I will provide. Do this for each problem because solutions from one problem will
-give you ideas for others you wouldnâ€™t normally have considered.
-Remember, itâ€™s important that you solve every problem. I canâ€™t tell you the
+give you ideas for others you wouldn't normally have considered.
+Remember, it's important that you solve every problem. I can't tell you the
 amount of times one single item becomes the reason someone doesn't buy.
 Anecdote: Why We Must Solve Every Perceived Problem
 When I was selling weight loss, I insisted that folks prepare all their food at home. I
@@ -189,30 +189,30 @@ their diets. Rather than solve the problem, I insisted they do it my way, or not
 result, I lost many sales.
 One month I really needed to make some sales to pay rent. My next sale walked in the
 door - it was a business exec looking to lose weight. As we got into the sales presentation,
-she told me the program wouldnâ€™t work for her because she went out to eat for lunch
+she told me the program wouldn't work for her because she went out to eat for lunch
 everyday. Normally, I would have lost this sale. I was a stickler for making people not eat
 out. But I really needed the money. Refusing to lose the sale because of this one thing, I
-conceded â€œIâ€™ll make you an eating out guide for when you go to restaurants so you can eat
-our 100 percent of the time and still hit your goal. How does that sound?â€ She agreed, and I
+conceded "I'll make you an eating out guide for when you go to restaurants so you can eat
+our 100 percent of the time and still hit your goal. How does that sound?" She agreed, and I
 
 closed the sale.
 I took the time to make an eating out guide for her. But from that point going forward,
-whenever someone said â€œbut what about eating out??â€ I had the solution. Over time, I
-continued solving obstacles with templates and trainings until there were no more â€œone
-thingsâ€ to prevent my sales. This lesson has stuck with me to this day. Donâ€™t get romantic
+whenever someone said "but what about eating out??" I had the solution. Over time, I
+continued solving obstacles with templates and trainings until there were no more "one
+things" to prevent my sales. This lesson has stuck with me to this day. Don't get romantic
 about how you want to solve the problem. Find a way to solve every problem a prospect
-presents with. When you do that, you make an offer thatâ€™s so good, people just can't say no.
-And thatâ€™s what weâ€™re building here.
+presents with. When you do that, you make an offer that's so good, people just can't say no.
+And that's what we're building here.
 Note: You must resolve every obstacle a buyer believes they will have to convert the
-highest amount of people. Thatâ€™s not to say that if you don't, you wonâ€™t sell people. Not at
-all. But you won't sell as many people as you otherwise could have. And thatâ€™s the goal, to
+highest amount of people. That's not to say that if you don't, you won't sell people. Not at
+all. But you won't sell as many people as you otherwise could have. And that's the goal, to
 sell the most people, for the highest possible price, with the highest possible margin.
 Step #5: Trim & Stack
 Now that we have enumerated our potential solutions, we will have a
 gigantic list. Next, I look at the cost of providing these solutions to me (the
 business). I remove the ones that are high cost and low value first. Then I
 remove low cost, low value items.
-If you arenâ€™t sure whatâ€™s high value, go through the value equation and ask
+If you aren't sure what's high value, go through the value equation and ask
 yourself which of these things will this person:
 1. Financially value
 2. Cause them to believe they will be likely to succeed
@@ -221,7 +221,7 @@ yourself which of these things will this person:
 less time investment.
 What should remain are offer items that are 1) low cost, high value and 2)
 high cost, high value.
-Example: Letâ€™s say I moved in with someone and did their shopping,
+Example: Let's say I moved in with someone and did their shopping,
 exercising, and cooking for them. They would probably believe they would
 definitely lose weight. But I am not willing to do that for any amount of money
 short of a gazillion dollars.
@@ -230,13 +230,13 @@ The next question becomes, is there a lesser version of this experience that I
 can deliver at scale?
 Just take one step back at a time until you arrive at something that has a time
 commitment or cost you are willing to live with (or, obviously, massively
-increase your price so it becomes worth it for you â€” i.e., the gazillion dollars to
+increase your price so it becomes worth it for you — i.e., the gazillion dollars to
 live with someone).
-If thereâ€™s one type of delivery vehicle to focus on, itâ€™s creating high value,
-â€œone to manyâ€ solutions. These will be the ones that typically have the biggest
+If there's one type of delivery vehicle to focus on, it's creating high value,
+"one to many" solutions. These will be the ones that typically have the biggest
 discrepancy between cost and value. For example, before I started my first gym,
 I had an online training business. I created a small excel sheet application that
-after inputting all of someoneâ€™s goals, automatically generated over 100 meals
+after inputting all of someone's goals, automatically generated over 100 meals
 perfectly suited to their macronutrient and calorie needs. Better yet, depending
 which meals they selected, would tell them what they needed to buy at the
 grocery store in exact amounts, and how to prepare them in bulk for their exact
@@ -246,7 +246,7 @@ prices, but they only took me about 15minutes to make. High value. Low cost.
 These types of solutions require a high, one-time cost of creation, but
 infinitely low additional effort after. (Fyi - This is exactly why software becomes
 so valuable).
-That doesnâ€™t mean you donâ€™t ever want to do something in a small group or
+That doesn't mean you don't ever want to do something in a small group or
 one-on-one model. After all, I do 1-on-1 with all of my portfolio company CEOs
 that we help scale past $30m+. You just want to make sure you save those high
 cost items for big value adds only. If you think you can accomplish the same
@@ -257,8 +257,8 @@ plans for every bodyweight and gender, a grocery list calculator, plateau bustin
 meal plans (for when they got stuck), fast cooking guides partnered with meal
 prep services, and did in-person nutrition orientations with every client one-on-
 one.
-Many of the â€œone to manyâ€ solutions require more up front work. Once
-created, however, they become valuable assets that create value in perpetuity. Itâ€™s
+Many of the "one to many" solutions require more up front work. Once
+created, however, they become valuable assets that create value in perpetuity. It's
 
 worth putting in the time to create these because they will create high margin
 profit for years to come.
@@ -272,53 +272,53 @@ book, for example, is a high-value asset that is low cost overall. Sure, it cost
 a lot up front, but each additional book I sell after my first one costs me very
 little and provides tremendous value.
 The Final High Value Deliverable
-Letâ€™s sum this up before we configure our final high value deliverable.
+Let's sum this up before we configure our final high value deliverable.
 Step #1: We figured out our prospective client's dream outcome.
-Step #2: We listed out all the obstacles theyâ€™re likely to encounter on
+Step #2: We listed out all the obstacles they're likely to encounter on
 their way (our opportunities for value).
 Step #3: We listed all those obstacles as solutions.
 Step #4: We figured out all the different ways we could deliver those
 solutions.
 Step #5a: We trimmed those ways down to only the things that were the
 highest value and lowest cost to us.
-All we have to do now isâ€¦
+All we have to do now is…
 Step #5b: Put all the bundles together into the ultimate high value
 deliverable.
-So letâ€™s go back to the example. We see our prospects struggled with the
+So let's go back to the example. We see our prospects struggled with the
 following:
 Format Note
-Iâ€™m going to display each problem-solution set as:
-Problem â†’ Solution Wordingâ†’ Sexier Name for Bundle .
+I'm going to display each problem-solution set as:
+Problem → Solution Wording→ Sexier Name for Bundle .
 
-Then, underneath, you will see the actual delivery vehicle (what weâ€™re actually gonna do
+Then, underneath, you will see the actual delivery vehicle (what we're actually gonna do
 for them/provide)
-Buying foodâ†’ How anyone can buy food fast, easy, cheaply â†’ Foolproof
-Bargain Grocery System . . . thatâ€™ll save hundreds of dollars per month on your
+Buying food→ How anyone can buy food fast, easy, cheaply → Foolproof
+Bargain Grocery System . . . that'll save hundreds of dollars per month on your
 food and take less time than your current shopping routine ($1,000 value for the
 money it'll save you from this point on in your life)
-1. 1-on-1 Nutrition Orientation where I explain how to useâ€¦
+1. 1-on-1 Nutrition Orientation where I explain how to use…
 2. Recoded grocery tour
 3. DIY Grocery Calculator
-4. Each plan comes with itâ€™s own list for each week
+4. Each plan comes with it's own list for each week
 5. Bargain grocery shopping training
 6. Grocery Buddy System
 7. Pre-made insta-cart grocery carts for delivery
 8. And a check-in via text weekly.
-Cookingâ†’ Ready in 5min Busy Parent Cooking Guide . . . how anyone can
+Cooking→ Ready in 5min Busy Parent Cooking Guide . . . how anyone can
 eat healthy even if they have no time ($600 value from getting 200 hours per
-year back â€” thatâ€™s four weeks of work!)
-1. 1-on-1 Nutrition Orientation where I explain how to useâ€¦
+year back — that's four weeks of work!)
+1. 1-on-1 Nutrition Orientation where I explain how to use…
 2. Meal Prep Instructions
 3. DIY Meal Prep Calculator
-4. Each plan comes with itâ€™s own meal prep instructions for each week
+4. Each plan comes with it's own meal prep instructions for each week
 5. Meal prep buddy system
 6. Healthy snacks in under 5min guide
 7. A weekly post they make to tag me for feedback
-Eatingâ†’ Personalized Lick Your Fingers Good Meal Plan . . . so good itâ€™ll
-be easier to follow than eating what you used to â€œcheatâ€ with and cost less!
+Eating→ Personalized Lick Your Fingers Good Meal Plan . . . so good it'll
+be easier to follow than eating what you used to "cheat" with and cost less!
 ($500 value)
 
-1. 1-on-1 Nutrition Orientation where I explain how to useâ€¦
+1. 1-on-1 Nutrition Orientation where I explain how to use…
 2. Personalized Meal Plan
 3. 5min Morning shake guide
 4. 5min Budget Lunches
@@ -327,19 +327,19 @@ be easier to follow than eating what you used to â€œcheatâ€ with and co
 7. A daily picture of their meals
 8. 1-on-1 feedback meeting to make adjustments to their plan (and upsell
 them)
-Exerciseâ†’ Fat Burning Workouts Proven To Burn More Fat Than Doing It
+Exercise→ Fat Burning Workouts Proven To Burn More Fat Than Doing It
 Alone . . . adjusted to your needs so you never go too fast, plateau, or risk injury
 ($699 value)
-Travelingâ†’ The Ultimate Tone Up While You Travel Eating & Workout
+Traveling→ The Ultimate Tone Up While You Travel Eating & Workout
 Blueprint . . . for getting amazing workouts in with no equipment so you don't
 feel guilty enjoying yourself ($199 value)
-How to actually stick with itâ†’ The â€œNever Fall Offâ€ Accountability System .
-. . the unbeatable system that works without your permission (itâ€™s even gotten
+How to actually stick with it→ The "Never Fall Off" Accountability System .
+. . the unbeatable system that works without your permission (it's even gotten
 people who hate coming to the gym to look forward to showing up) ($1000
 value)
-How To Be Socialâ†’ The â€˜Live It Up While Slimming Downâ€ Eating Out
+How To Be Social→ The ‘Live It Up While Slimming Down" Eating Out
 System that will give you the freedom to eat out and live life without feeling like
-the â€œodd man outâ€ ($349 value)
+the "odd man out" ($349 value)
 Total value: $4,351 (!) All for only $599.
 Author Note
 Most of our facilities now sell this bundle for longer periods of time for $2,400 to
@@ -350,7 +350,7 @@ Can you see how much more valuable this is than a gym membership? The
 
 bundle does three core things:
 1. Solves all the perceived problems (not just some)
-2. Gives you the conviction that what youâ€™re selling is one of a kind (very
+2. Gives you the conviction that what you're selling is one of a kind (very
 important)
 3. Makes it impossible to compare or confuse your business or offering
 with the one down the street
@@ -371,6 +371,6 @@ enhancing it. We will employ a combination of psychological levers: bonuses,
 urgency, scarcity, guarantees, and naming.
 Free Gift #6: BONUS Tutorial: Offer Creation Part II:
 If you want to walk through the profit maximizing trimming & stacking process with me
-live, go to Acquisition.com/training/offers and select â€œCreating Offers Part 2â€. Youâ€™ll also
+live, go to Acquisition.com/training/offers and select "Creating Offers Part 2". You'll also
 find some checklists I made to make this process more streamlined for you so you can reuse
-for each product you make. As always, itâ€™s absolutely free. Enjoy.
+for each product you make. As always, it's absolutely free. Enjoy.

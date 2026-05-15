@@ -1,4 +1,4 @@
-﻿START HERE
+START HERE
 "Outsized returns often come from betting against conventional wisdom, and conventional
 wisdom is usually right. Given a 10 percent chance of a 100 times payoff, you should take
 that bet every time. But you're still going to be wrong nine times out of ten . . . We all know
@@ -8,8 +8,8 @@ a truncated outcome distribution. When you swing, no matter how well you connect
 ball, the most runs you can get is four. In business, every once in a while, when you step up
 to the plate, you can score 1,000 runs. This long-tailed distribution of returns is why it's
 important to be bold. Big winners pay for so many experiments."
-â€” JEFF BEZOS
-As entrepreneurs, we make bets everyday. We are gamblers â€• gambling our
+— JEFF BEZOS
+As entrepreneurs, we make bets everyday. We are gamblers ― gambling our
 hard-earned money on labor, inventory, rent, marketing, etc., all with the hopes
 of a higher pay out. Oftentimes, we lose. But, sometimes, we win and win BIG.
 However, there is a difference between gambling in business and gambling
@@ -21,7 +21,7 @@ After beginning a series of books on acquisition, it became apparent that I
 could not talk about any other topic without first addressing the offer: the
 starting point of any conversation to initiate a transaction with a customer. What
 
-you are literally providing them in exchange for their money. Thatâ€™s where it all
+you are literally providing them in exchange for their money. That's where it all
 begins.
 This book is about how to make profitable offers. Specifically, how to
 reliably turn advertising dollars into (enormous) profits using a combination of
@@ -32,8 +32,8 @@ founder Jeff Bezos and because, like a grand slam in baseball, a Grand Slam
 Offer is both very good and very rare. Additionally, to extend the baseball
 metaphor, it takes no more effort to make a Grand Slam Offer than to strike out.
 The difference is dictated by the skill of the marketer and how well he connects
-his offer with his audienceâ€™s desires. In business you can have so-so offers: the
-â€œsinglesâ€ and â€œdoublesâ€™ that keep the game going, pay the bills, and keep the
+his offer with his audience's desires. In business you can have so-so offers: the
+"singles" and "doubles' that keep the game going, pay the bills, and keep the
 lights on. But, unlike baseball, where a grand slam scores a maximum of four
 runs, a Grand Slam Offer in the business world, can score you a thousand-fold
 pay off and result in a world where you never need to work again. It would be
@@ -43,11 +43,11 @@ It takes years of practice to make something as complicated as hitting a
 major league fastball into the bleachers look effortless. Your stance, vision,
 prediction, ball speed, bat speed, and hip placement all must be perfect. In
 marketing and customer acquisition (the process of getting new clients), there
-are just as many variables that must all align to truly â€œknock it out of the park.â€
+are just as many variables that must all align to truly "knock it out of the park."
 But with enough practice and enough skill, you can turn the wild world of
 acquisition, which will throw curveballs at you everyday, into a homerun derby,
 knocking offer after offer out of the stadium. To everyone else, your success will
-look unbelievable. But to you, it will feel like â€œjust another day at work.â€ The
+look unbelievable. But to you, it will feel like "just another day at work." The
 greatest hitters of all time also have many strike outs, just as there are many
 failed offers in the track record of great marketers. We learn skills through
 failure and practice. We do this knowing that nine out of ten times we will be
@@ -57,25 +57,25 @@ results in our big payoff.
 The good news is that in business, you only need to hit one Grand Slam
 Offer to retire forever. I have done this four or five times in my life. As for my
 track record, I have a 36:1 lifetime return on my advertising dollars over my
-business career. Consider this my lifetime â€œbatting average,â€ if you will. That
+business career. Consider this my lifetime "batting average," if you will. That
 means for every $1 I spend on advertising I get $36 back, a 3600% return. That
 is my average over eight years. And I continue to improve.
 This book is my attempt to share that skill with you, with a specific focus on
 building Grand Slam Offers, so you can experience the same levels of success.
-Itâ€™s also the first in a series of books meant to get entrepreneurs to financial
-freedom, in plain words, â€œfuck youâ€ money. Subsequent books in this series will
+It's also the first in a series of books meant to get entrepreneurs to financial
+freedom, in plain words, "fuck you" money. Subsequent books in this series will
 look more deeply at getting more customers, converting more prospects into
 clients, making those clients worth more, and other lessons I wish I had learned
 earlier scaling my businesses.
 Pro Tip: Faster, Deeper Learning By Reading & Listening At Same Time
-Hereâ€™s a life hack I discovered a long time agoâ€¦.If you listen to the audiobook while
+Here's a life hack I discovered a long time ago….If you listen to the audiobook while
 reading the ebook or physical book you will increase your reading speed and retain more
 information. The contents are being stored in more places in your brain. This is how I read
-most things worth reading. Iâ€™ve priced my products as cheap as the platforms will allow me
-to, so this isnâ€™t a ploy to make an extra .99 cents - promise. If you want to give it a try, go
+most things worth reading. I've priced my products as cheap as the platforms will allow me
+to, so this isn't a ploy to make an extra .99 cents - promise. If you want to give it a try, go
 ahead and grab the audio version and see for yourself. You might find it as valuable as I have
 (as someone who struggles to stay focused). I took two days to talk this book out loud and
-record it. I figured Iâ€™d put this â€œhackâ€ at the beginning of the book so you had a chance to do
+record it. I figured I'd put this "hack" at the beginning of the book so you had a chance to do
 it if you found this first chapter valuable enough to earn your attention.
 
 SECTION I: HOW WE GOT HERE

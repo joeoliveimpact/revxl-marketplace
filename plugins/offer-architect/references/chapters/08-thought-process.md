@@ -1,7 +1,7 @@
-﻿8
+8
 VALUE OFFER: THE THOUGHT PROCESS
-â€œIf at first you don't succeed, try, try, try again.â€
-â€” THOMAS H. PALMER, TEACHERâ€™S MANUAL
+"If at first you don't succeed, try, try, try again."
+— THOMAS H. PALMER, TEACHER'S MANUAL
 want to do an exercise with you right now. I want to show you the difference
 between convergent and divergent problem solving. Why? So that you can
 actually create the Grand Slam Offer that will become the cornerstones of your
@@ -26,24 +26,24 @@ Since you can't hire 4.4 reps, you decide you must have five.
 ANSWER: And since you have 3, you hire two more.
 Math problems are convergent. There are lots of variables and a single
 answer. We are taught all our lives in school to think this way. That is because
-itâ€™s easy to grade.
+it's easy to grade.
 But life will pay you for your ability to solve using a divergent thought
 process. In other words, think of many solutions to a single problem. Not only
 that, convergent answers are binary. They are either right or they are wrong.
 With divergent thinking, you can have multiple right answers, and one answer
 that is way more right than the others. Cool right?
-Hereâ€™s what life presents us for divergent thinking: Multiple Variables,
+Here's what life presents us for divergent thinking: Multiple Variables,
 Known & Unknown, Dynamic Conditions, Multiple Answers.
 As such, I want to do an exercise with you that will engage the part of your
 brain that you will need to use in order to make something magical.
-I call it the â€œbrickâ€ exercise. Donâ€™t worry, itâ€™ll only take 120 seconds.
+I call it the "brick" exercise. Don't worry, it'll only take 120 seconds.
 The Brick Exercise
 Right now, I want you to set a timer on your phone for 120 seconds. What
 
 you need to do: Think of a brick.
 Write down as many different uses of a brick as you can possibly think of.
 How many different ways could a brick be used in life to provide value.
-Ready? Go. Itâ€™s okay to write in the book.
+Ready? Go. It's okay to write in the book.
 ________________________________________
 ________________________________________
 ________________________________________
@@ -71,7 +71,7 @@ ________________________________________
 ________________________________________
 ________________________________________
 
-Alright â€” stop. Now before I show you my list, did you consider the following .
+Alright — stop. Now before I show you my list, did you consider the following .
 . .
 . . . How big is the brick? A tab of gum, 3-5/8" x 2-1/4" x 8" (Standard),
 2 ft x 2 ft x 6ft?
@@ -80,7 +80,7 @@ Alright â€” stop. Now before I show you my list, did you consider the follo
 for interlocking?
 Now as you think about that, can you think of even more uses for the brick
 than you probably wrote down?
-Hereâ€™s my list:
+Here's my list:
 Paper weight
 Door stop
 Building things
@@ -93,7 +93,7 @@ Make a mural (tiny bricks painted)
 A weight for resistance training
 A wedge under uneven platform
 Pen holder (holed brick)
-Childrenâ€™s toy (lego bricks)
+Children's toy (lego bricks)
 Floatation device (plastic brick)
 Payment for goods (gold brick)
 Stabilizer for leaning something against
@@ -104,6 +104,6 @@ A seat (jumbo brick)
 Every offer has building blocks, the pieces that when combined make an
 offer irresistible. Our goal is to use a divergent thought process to think of as
 many easy ways to combine these elements to provide value.
-So if I were selling a brick, I would find out what my customerâ€™s desire was,
-and then devise how many ways I could create value with my â€œbrick.â€
-Now letâ€™s do it for real.
+So if I were selling a brick, I would find out what my customer's desire was,
+and then devise how many ways I could create value with my "brick."
+Now let's do it for real.
