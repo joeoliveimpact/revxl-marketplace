@@ -2,6 +2,12 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.3.2 — 2026-05-17
+
+### Fixed
+
+- **Marketplace CI red:** `skills/course/SKILL.md` frontmatter `description:` contained an unquoted `clean: page text` — the colon-space made the YAML parser read it as a mapping ("mapping values are not allowed here") and fail validation. Single-quoted the description scalar. Verified all 5 course-crawler skill frontmatters now parse. (Pre-existing since 0.3.0; surfaced by CI, missed by the local validator.)
+
 ## 0.3.1 — 2026-05-17
 
 ### Changed
