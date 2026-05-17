@@ -2,6 +2,16 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.3.1 — 2026-05-17
+
+### Changed
+
+- **Lesson-centric output tree.** Replaced the type-first layout (`written/`, `transcripts/`, `links/`, `assets/`, `visual/` each split by module/lesson — everything for one lesson scattered across five top-level folders) with: `<course>/NN-module/NN-lesson/` holding that lesson's `<lesson>.md` (clean text **with a `## Reference links` section appended** — one file, not two), `transcript.md` + `transcript.srt` (only if it has a video), `slides/`, `downloads/`. Machine files stay in `metadata/`.
+- `discover_skool.py` writes `lesson_order` into the manifest so `scrape_course.py` and `process_videos.py` compute the **identical** per-lesson folder (single source of truth).
+- `process_videos.py` now writes into the shared lesson folder and **never deletes it** (it holds the text + downloads); video/caption work happens in a temp `.work/` that is cleaned up. `--slides`/`--transcripts-only` discard only the mp4, not the lesson.
+- Dropped trafilatura YAML frontmatter and the synthetic `<h1>` so the lesson `.md` has a single clean title.
+- Added `--limit` to `scrape_course.py` (parity with `process_videos.py`, for partial/test runs).
+
 ## 0.3.0 — 2026-05-17
 
 First marketplace release. Reworked from the original `info-scraping-superengine` pass into a tested, plain-language plugin.

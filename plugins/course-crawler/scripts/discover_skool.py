@@ -209,10 +209,13 @@ def from_page(course_dir: Path, page_html: str) -> dict:
 
     flat: list[dict] = []
     seen_mods: dict[int, str] = {}
+    lesson_counter: dict[int, int] = {}
     for order, mtitle, course in acc:
         md = course.get("metadata", {}) or {}
         title = md.get("title") or course.get("name") or "untitled"
         seen_mods.setdefault(order, mtitle)
+        lesson_counter[order] = lesson_counter.get(order, 0) + 1
+        lesson_order = lesson_counter[order]
         m_dirname = f"{order:02d}-{slugify(mtitle, 60)}"
         (rendered / m_dirname).mkdir(parents=True, exist_ok=True)
         lesson_slug = slugify(title)
@@ -245,8 +248,10 @@ def from_page(course_dir: Path, page_html: str) -> dict:
             for a in attachments)
         video_html = (f'<iframe src="{_html.escape(embed)}"></iframe>'
                       if embed else "")
+        # No <h1> ... scrape_course adds the canonical "# {title}" from the
+        # manifest, so emitting one here would double the title.
         body = (f"<!DOCTYPE html><html><head><title>{_html.escape(title)}</title>"
-                f"</head><body><article><h1>{_html.escape(title)}</h1>"
+                f"</head><body><article>"
                 f"{video_html}{desc_to_html(md.get('desc',''))}"
                 f"{a_links}{a_files}</article></body></html>")
         rel = (rendered / m_dirname / f"{lesson_slug}.html")
@@ -255,6 +260,7 @@ def from_page(course_dir: Path, page_html: str) -> dict:
         flat.append({
             "module_order": order,
             "module_title": mtitle,
+            "lesson_order": lesson_order,
             "category_id": root.get("course", {}).get("id", ""),
             "post_id": course.get("id") or slugify(title),
             "title": title,
@@ -291,13 +297,14 @@ def persist(course_dir: Path, harvest: dict) -> dict:
         m_title = module.get("module_title", "module")
         m_dirname = f"{m_order:02d}-{slugify(m_title, 60)}"
         (rendered / m_dirname).mkdir(parents=True, exist_ok=True)
-        for lesson in module.get("lessons", []):
+        for li, lesson in enumerate(module.get("lessons", []), start=1):
             title = lesson.get("title") or lesson.get("post_id") or "untitled"
             lesson_slug = slugify(title)
             (rendered / m_dirname / f"{lesson_slug}.html").write_text(
                 lesson.get("body_html") or "", encoding="utf-8")
             flat.append({
                 "module_order": m_order, "module_title": m_title,
+                "lesson_order": li,
                 "category_id": harvest.get("course_id", ""),
                 "post_id": lesson.get("post_id") or slugify(title),
                 "title": title, "url": lesson.get("url", ""),

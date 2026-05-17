@@ -4,9 +4,8 @@ pull_lesson.py ... fetch one page and save it as a clean local archive.
 What this does (plain English):
   You hand it a URL (and optionally a cookies file if the page is behind a
   login). It downloads the page, strips nav/footer/ads/sidebars, and saves:
-    - <slug>.md         clean Markdown (trafilatura)
-    - <slug>.links.md   categorized reference links (only if any found)
-    - <slug>_assets/    downloaded attachments (only if any found)
+    - <slug>.md         clean Markdown + a "## Reference links" section
+    - downloads/        downloaded attachments (only if any found)
     - <slug>.json       small metadata (title/author/date/source)
   Raw HTML is saved ONLY with --keep-html. No LLM in the loop (zero tokens).
 
@@ -32,7 +31,7 @@ import trafilatura
 # Reuse the canonical extraction helpers (sibling module).
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from scrape_course import (  # noqa: E402
-    slugify, extract_reference_links, merge_links, write_links_md,
+    slugify, extract_reference_links, merge_links, links_section,
     find_attachments, download_attachments,
 )
 
@@ -97,7 +96,7 @@ def main() -> int:
         markdown = trafilatura.extract(
             html, output_format="markdown",
             include_links=True, include_images=True, include_tables=True,
-            with_metadata=True,
+            with_metadata=False,
         )
         meta_obj = trafilatura.extract_metadata(html)
         metadata = meta_obj.as_dict() if meta_obj else {}
@@ -109,14 +108,14 @@ def main() -> int:
         slug = page_slug(args.url, title)
         host = urlparse(args.url).hostname or ""
 
-        if markdown:
-            (out_dir / f"{slug}.md").write_text(markdown, encoding="utf-8")
-
         links = merge_links(extract_reference_links(html, args.url, host), [])
-        n_links = write_links_md(links, out_dir / f"{slug}.links.md", title or slug)
+        section, n_links = links_section(links)
+        body = f"# {title or slug}\n\n{markdown or ''}".rstrip() + (
+            "\n" + section if section else "\n")
+        (out_dir / f"{slug}.md").write_text(body, encoding="utf-8")
 
         asset_urls = find_attachments(html, args.url)
-        assets = download_attachments(client, asset_urls, out_dir / f"{slug}_assets")
+        assets = download_attachments(client, asset_urls, out_dir / "downloads")
 
     (out_dir / f"{slug}.json").write_text(
         json.dumps({"source_url": args.url, **metadata}, indent=2, default=str),
@@ -126,12 +125,10 @@ def main() -> int:
 
     n_assets = sum(1 for a in assets if a.get("status") == "ok")
     print("\nDone.")
-    if markdown:
-        print(f"  Markdown: {out_dir / f'{slug}.md'}  ({len(markdown):,} chars)")
-    if n_links:
-        print(f"  Links:    {out_dir / f'{slug}.links.md'}  ({n_links})")
+    print(f"  Page:     {out_dir / f'{slug}.md'}  ({len(markdown or ''):,} chars, "
+          f"{n_links} links)")
     if n_assets:
-        print(f"  Assets:   {out_dir / f'{slug}_assets'}  ({n_assets})")
+        print(f"  Downloads: {out_dir / 'downloads'}  ({n_assets})")
     print(f"  Metadata: {out_dir / f'{slug}.json'}")
     if args.keep_html:
         print(f"  Raw HTML: {out_dir / f'{slug}.html'}")

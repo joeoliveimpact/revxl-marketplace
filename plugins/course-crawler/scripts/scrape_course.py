@@ -234,21 +234,21 @@ def merge_links(extracted: dict, pre: list[str]) -> dict:
     return extracted
 
 
-def write_links_md(links: dict, dest: Path, lesson_title: str) -> int:
+def links_section(links: dict) -> tuple[str, int]:
+    """Return a '## Reference links' Markdown block to append to the lesson
+    body (empty string if none), plus the link count."""
     total = sum(len(v) for v in links.values())
     if not total:
-        return 0
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    lines = [f"# Reference links ... {lesson_title}", ""]
+        return "", 0
+    lines = ["", "## Reference links", ""]
     for cat in sorted(links):
         urls = links[cat]
         if not urls:
             continue
-        lines.append(f"## {cat}")
+        lines.append(f"### {cat}")
         lines += [f"- {u}" for u in urls]
         lines.append("")
-    dest.write_text("\n".join(lines), encoding="utf-8")
-    return total
+    return "\n".join(lines), total
 
 
 def find_attachments(html: str, base_url: str) -> list[str]:
@@ -298,11 +298,27 @@ def refresh_cookies(course_dir: Path, domain_filter: str | None) -> Path:
     return cookie_file
 
 
+def lesson_slug_for(lesson: dict) -> str:
+    """Slug from the MANIFEST title (not trafilatura's) so scrape_course and
+    process_videos always compute the identical folder/file name."""
+    return slugify(lesson.get("title") or lesson.get("post_id") or "untitled", 60)
+
+
+def lesson_dir_for(course_dir: Path, lesson: dict) -> Path:
+    """Canonical lesson-centric path: <course>/NN-<module>/NN-<lesson>/.
+    Shared by scrape_course and process_videos -> one folder per lesson."""
+    mo = lesson.get("module_order", 1)
+    lo = lesson.get("lesson_order", 1)
+    m = f"{mo:02d}-{slugify(lesson.get('module_title', 'lessons'), 60)}"
+    return course_dir / m / f"{lo:02d}-{lesson_slug_for(lesson)}"
+
+
 def pull_one(client: httpx.Client, lesson: dict, course_dir: Path,
              keep_html: bool) -> dict:
-    """Fetch/parse one lesson, write the clean tree, return a report row."""
+    """Fetch/parse one lesson, write everything for it into ONE lesson folder."""
     url = lesson.get("url", "")
-    module_dir_name = f"{lesson['module_order']:02d}-{slugify(lesson['module_title'], 60)}"
+    ldir = lesson_dir_for(course_dir, lesson)
+    lesson_slug = lesson_slug_for(lesson)
 
     # SPA discovery (Skool) gives us pre-rendered HTML on disk; prefer it,
     # because a fresh GET of a SPA URL just returns the empty shell.
@@ -324,50 +340,46 @@ def pull_one(client: httpx.Client, lesson: dict, course_dir: Path,
         html = resp.text
         fetch_status = "fetched"
 
+    # with_metadata=False: we add our own clean "# {title}" H1; trafilatura's
+    # YAML frontmatter would duplicate the title.
     markdown = trafilatura.extract(
         html, output_format="markdown",
         include_links=True, include_images=True, include_tables=True,
-        with_metadata=True,
-    )
-    meta_obj = trafilatura.extract_metadata(html)
-    meta = meta_obj.as_dict() if meta_obj else {}
-    title = meta.get("title") or lesson.get("title") or lesson.get("post_id") or "untitled"
-    lesson_slug = slugify(title, 80)
+        with_metadata=False,
+    ) or ""
+    title = lesson.get("title") or lesson.get("post_id") or "untitled"
     page_host = urlparse(url).hostname or ""
 
-    # written/ ... clean Markdown only.
-    md_dir = course_dir / "written" / module_dir_name
-    md_dir.mkdir(parents=True, exist_ok=True)
-    if markdown:
-        (md_dir / f"{lesson_slug}.md").write_text(markdown, encoding="utf-8")
+    # Reference links: extract from page + merge pre-harvested, append as a
+    # section to the SAME lesson .md (one file: text + links).
+    links = merge_links(extract_reference_links(html, url, page_host),
+                        lesson.get("links", []))
+    section, n_links = links_section(links)
 
-    # links/ ... categorized references (page + pre-harvested).
-    links = extract_reference_links(html, url, page_host)
-    links = merge_links(links, lesson.get("links", []))
-    n_links = write_links_md(
-        links, course_dir / "links" / module_dir_name / f"{lesson_slug}.md", title)
+    ldir.mkdir(parents=True, exist_ok=True)
+    body = f"# {title}\n\n{markdown}".rstrip() + ("\n" + section if section else "\n")
+    (ldir / f"{lesson_slug}.md").write_text(body, encoding="utf-8")
 
-    # assets/ ... downloaded materials (page + pre-harvested).
+    # downloads/ ... downloaded materials (page + pre-harvested), in-folder.
     asset_urls = find_attachments(html, url or "")
     for a in lesson.get("attachments", []):
         if a not in asset_urls:
             asset_urls.append(a)
-    asset_results = download_attachments(
-        client, asset_urls, course_dir / "assets" / module_dir_name / lesson_slug)
+    asset_results = download_attachments(client, asset_urls, ldir / "downloads")
 
     videos = find_video_sources(html)
 
-    # raw HTML only on explicit opt-in, and kept out of written/.
+    # Raw HTML only on explicit opt-in, kept in machine-only metadata/raw/.
     if keep_html:
-        raw_dir = course_dir / "metadata" / "raw" / module_dir_name
-        raw_dir.mkdir(parents=True, exist_ok=True)
-        (raw_dir / f"{lesson_slug}.html").write_text(html, encoding="utf-8")
+        raw = course_dir / "metadata" / "raw" / ldir.relative_to(course_dir)
+        raw.parent.mkdir(parents=True, exist_ok=True)
+        raw.with_suffix(".html").write_text(html, encoding="utf-8")
 
     return {
         "url": url, "status": "ok", "title": title,
-        "module": lesson["module_title"], "slug": lesson_slug,
+        "module": lesson.get("module_title"), "lesson_dir": str(ldir),
         "fetch": fetch_status,
-        "markdown_chars": len(markdown) if markdown else 0,
+        "markdown_chars": len(markdown),
         "links_found": n_links,
         "attachments": asset_results,
         "videos": videos,
@@ -383,6 +395,8 @@ def main() -> int:
                         help="Domain string to filter cookies to (e.g. eastwesthealing.com)")
     parser.add_argument("--delay", type=float, default=1.0,
                         help="Seconds between requests (default: 1.0, be polite)")
+    parser.add_argument("--limit", type=int, default=None,
+                        help="Only process the first N lessons (testing/partial)")
     parser.add_argument("--no-refresh", action="store_true",
                         help="Use existing metadata/cookies.txt; don't touch the browser")
     parser.add_argument("--keep-html", action="store_true",
@@ -399,6 +413,16 @@ def main() -> int:
         return 1
 
     lessons = json.loads(manifest_path.read_text(encoding="utf-8"))
+    # Safety: older manifests may lack lesson_order. Assign it by position
+    # within each module (same order process_videos will see).
+    if any("lesson_order" not in l for l in lessons):
+        ctr: dict = {}
+        for l in lessons:
+            mo = l.get("module_order", 1)
+            ctr[mo] = ctr.get(mo, 0) + 1
+            l.setdefault("lesson_order", ctr[mo])
+    if args.limit:
+        lessons = lessons[:args.limit]
     print(f"Loaded {len(lessons)} lessons from {manifest_path}")
 
     cookie_file = course_dir / "metadata" / "cookies.txt"
@@ -453,11 +477,9 @@ def main() -> int:
     print()
     print("=" * 60)
     print(f"Done in {elapsed:.1f}s ... {ok}/{len(results)} lessons OK")
-    print(f"  Written:  {course_dir / 'written'}")
-    print(f"  Links:    {course_dir / 'links'}")
-    print(f"  Assets:   {course_dir / 'assets'}")
-    print(f"  Videos:   {course_dir / 'metadata' / 'video_sources.json'}  ({len(all_videos)} found)")
-    print(f"  Report:   {course_dir / 'metadata' / 'scrape_report.json'}")
+    print(f"  Course tree: {course_dir}  (NN-module/NN-lesson/<lesson>.md + downloads/)")
+    print(f"  Videos found: {len(all_videos)} (metadata/video_sources.json)")
+    print(f"  Report:       {course_dir / 'metadata' / 'scrape_report.json'}")
     return 0 if ok == len(results) else 2
 
 

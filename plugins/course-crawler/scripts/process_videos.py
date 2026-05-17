@@ -40,6 +40,11 @@ import sys
 import time
 from pathlib import Path
 
+# Shared lesson-path helpers so process_videos writes into the SAME
+# <course>/NN-module/NN-lesson/ folder scrape_course created.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from scrape_course import lesson_dir_for, lesson_slug_for  # noqa: E402,F401
+
 
 # Windows consoles default to cp1252; force UTF-8 so emoji/arrows in lesson
 # titles never crash a print(). No-op where already UTF-8 or not reconfigurable.
@@ -299,65 +304,60 @@ def process_one_lesson(yt_dlp: str, ffmpeg: str, lesson_meta: dict,
                 "title": lesson_meta.get("title"), "status": "no_video"}
 
     title = lesson_meta.get("title") or lesson_meta.get("post_id")
-    lesson_slug = slugify(title, 80)
-    module_dir_name = f"{lesson_meta.get('module_order', 1):02d}-{slugify(lesson_meta.get('module_title', 'lessons'), 60)}"
-    lesson_dir = course_dir / "video" / module_dir_name / lesson_slug
-    visual_lesson_dir = course_dir / "visual" / module_dir_name / lesson_slug
-    transcripts_dir = course_dir / "transcripts" / module_dir_name
-    transcripts_dir.mkdir(parents=True, exist_ok=True)
+    # SAME lesson folder scrape_course used (holds <lesson>.md + downloads/).
+    ldir = lesson_dir_for(course_dir, lesson_meta)
+    work = ldir / ".work"          # temp: video + caption working files
+    md_path = ldir / "transcript.md"
+    srt_dest = ldir / "transcript.srt"
 
-    # One transcript per lesson: use the FIRST non-DRM video (Skool/courses are
-    # one-video-per-lesson; sidebar duplicates were already eliminated upstream).
     primary = next((v for v in videos if not v.get("drm_protected")), None)
     if primary is None:
         return {"post_id": lesson_meta.get("post_id"), "title": title,
                 "status": "drm_locked",
                 "note": videos[0].get("note", "DRM-protected; manual capture only")}
 
-    md_path = transcripts_dir / f"{lesson_slug}.md"
-    srt_dest = transcripts_dir / f"{lesson_slug}.srt"
     if skip_existing and md_path.exists():
         return {"post_id": lesson_meta.get("post_id"), "title": title,
                 "status": "skipped_existing"}
 
+    ldir.mkdir(parents=True, exist_ok=True)
+
+    def _clean_work():
+        shutil.rmtree(work, ignore_errors=True)
+
     # --- transcripts-only: native captions, no download, no Whisper ---------
-    # Skipped when slides_mode is on: slides require the video, so we must
-    # download regardless (and we delete it afterwards).
     if transcripts_only and not slides_mode:
-        srt = try_native_subtitles(yt_dlp, primary["url"], lesson_dir, cookies_file)
+        srt = try_native_subtitles(yt_dlp, primary["url"], work, cookies_file)
         if srt:
             shutil.move(str(srt), str(srt_dest))
             md_path.write_text(f"# {title}\n\n{srt_to_text(srt_dest)}",
                                encoding="utf-8")
-            # remove the throwaway lesson_dir if empty
-            try:
-                next(lesson_dir.iterdir())
-            except (StopIteration, FileNotFoundError):
-                shutil.rmtree(lesson_dir, ignore_errors=True)
+            _clean_work()
             return {"post_id": lesson_meta.get("post_id"), "title": title,
                     "status": "ok", "transcript_source": "native",
                     "transcript_md": str(md_path)}
+        _clean_work()
         if not allow_whisper:
-            shutil.rmtree(lesson_dir, ignore_errors=True)
             return {"post_id": lesson_meta.get("post_id"), "title": title,
                     "status": "no_captions",
                     "note": "No native captions. Re-run without "
                             "--transcripts-only (or add --allow-whisper) to "
                             "transcribe the audio."}
-        # fall through to whisper path below
+        # else fall through to download + whisper
 
-    # --- full path: download -> slides -> transcript -----------------------
-    video_path = download_video(yt_dlp, primary["url"], lesson_dir, cookies_file)
+    # --- download -> slides -> transcript (into the lesson folder) ----------
+    video_path = download_video(yt_dlp, primary["url"], work, cookies_file)
     if not video_path:
+        _clean_work()
         return {"post_id": lesson_meta.get("post_id"), "title": title,
                 "status": "download_failed", "video_url": primary["url"]}
 
     n_slides = 0
     if (not transcripts_only) or slides_mode:
-        n_slides = extract_slides(ffmpeg, video_path, visual_lesson_dir,
+        n_slides = extract_slides(ffmpeg, video_path, ldir / "slides",
                                   scene_threshold)
 
-    srt = try_native_subtitles(yt_dlp, primary["url"], lesson_dir, cookies_file)
+    srt = try_native_subtitles(yt_dlp, primary["url"], work, cookies_file)
     if srt:
         shutil.move(str(srt), str(srt_dest))
         md_path.write_text(f"# {title}\n\n{srt_to_text(srt_dest)}",
@@ -376,15 +376,15 @@ def process_one_lesson(yt_dlp: str, ffmpeg: str, lesson_meta: dict,
         for backend in order:
             try:
                 if backend == "local" and local_whisper_available():
-                    s_srt, s_txt = transcribe_local(video_path, lesson_dir, whisper_model)
+                    s_srt, s_txt = transcribe_local(video_path, work, whisper_model)
                     source = "whisper_local"
                 elif backend == "groq" and groq_key:
                     print("      transcribing via Groq Whisper-large-v3-turbo...")
-                    s_srt, s_txt = transcribe_groq(ffmpeg, video_path, lesson_dir, groq_key)
+                    s_srt, s_txt = transcribe_groq(ffmpeg, video_path, work, groq_key)
                     source = "groq"
                 elif backend == "openai" and openai_key:
                     print("      transcribing via OpenAI whisper-1...")
-                    s_srt, s_txt = transcribe_openai(ffmpeg, video_path, lesson_dir, openai_key)
+                    s_srt, s_txt = transcribe_openai(ffmpeg, video_path, work, openai_key)
                     source = "openai"
                 else:
                     continue
@@ -398,26 +398,26 @@ def process_one_lesson(yt_dlp: str, ffmpeg: str, lesson_meta: dict,
                 print(f"      {backend} failed: {e}")
                 source = None
         if source is None:
-            if transcripts_only or slides_mode:
-                shutil.rmtree(lesson_dir, ignore_errors=True)
+            _clean_work()
             return {"post_id": lesson_meta.get("post_id"), "title": title,
                     "status": "no_transcription",
                     "note": "No native captions and no working Whisper backend. "
                             "Install faster-whisper in the venv, or set a "
                             "Groq/OpenAI key in ~/.iss/.env."}
 
-    # Keep the mp4 only in pure default mode. transcripts-only (whisper
-    # fallback) and --slides both discard it (slides live in visual/,
-    # transcript in transcripts/ ... no multi-GB bloat).
-    if transcripts_only or slides_mode:
-        shutil.rmtree(lesson_dir, ignore_errors=True)
+    # Keep video.mp4 in the lesson folder only in pure default mode.
+    # --slides / --transcripts-only discard it (no multi-GB bloat). The lesson
+    # folder itself is NEVER deleted (it holds <lesson>.md + downloads/).
+    video_bytes = video_path.stat().st_size if video_path.exists() else 0
+    if not (transcripts_only or slides_mode):
+        shutil.move(str(video_path), str(ldir / "video.mp4"))
+    _clean_work()
 
     return {"post_id": lesson_meta.get("post_id"), "title": title,
             "status": "ok", "transcript_source": source,
             "transcript_md": str(md_path),
             "slides": n_slides,
-            "video_bytes": (video_path.stat().st_size
-                            if not transcripts_only and video_path.exists() else 0)}
+            "video_bytes": 0 if (transcripts_only or slides_mode) else video_bytes}
 
 
 def collect_lessons(course_dir: Path) -> list[dict]:
@@ -430,10 +430,18 @@ def collect_lessons(course_dir: Path) -> list[dict]:
     if vsf.exists():
         for v in json.loads(vsf.read_text(encoding="utf-8")):
             by_pid.setdefault(v.get("post_id"), []).append(v)
+    # Ensure lesson_order (older manifests lack it) using manifest position
+    # within each module ... identical logic to scrape_course, so both compute
+    # the same NN-lesson folder.
+    ctr: dict = {}
     lessons = []
     for l in manifest:
+        mo = l.get("module_order", 1)
+        ctr[mo] = ctr.get(mo, 0) + 1
+        l.setdefault("lesson_order", ctr[mo])
         lessons.append({**l, "videos": by_pid.get(l.get("post_id"), [])})
-    lessons.sort(key=lambda l: (l.get("module_order", 99), l.get("post_id", "")))
+    lessons.sort(key=lambda l: (l.get("module_order", 99),
+                                l.get("lesson_order", 99)))
     return lessons
 
 
@@ -539,9 +547,9 @@ def main() -> int:
     print("=" * 60)
     print(f"Done in {elapsed:.1f}s ... {ok} new, {skipped} already done, "
           f"{novideo} no-video, {hard_fail} failed (of {len(report)})")
-    print(f"  Transcripts: {course_dir / 'transcripts'}")
-    if args.slides or not args.transcripts_only:
-        print(f"  Slides:      {course_dir / 'visual'}")
+    print(f"  Course tree: {course_dir}  (per lesson: transcript.md"
+          f"{', slides/' if (args.slides or not args.transcripts_only) else ''}"
+          f"{', video.mp4' if not (args.slides or args.transcripts_only) else ''})")
     print(f"  Report:      {course_dir / 'metadata' / 'video_report.json'}")
     # Success unless something actually broke. "Nothing to do" is success.
     return 2 if hard_fail else 0
