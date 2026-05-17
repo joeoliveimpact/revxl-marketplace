@@ -1,7 +1,6 @@
 ---
 name: notebooklm-transcripts
 description: Use to build a NotebookLM notebook from call/meeting transcripts — "make a notebook from this call", "build a notebook from my Fathom transcript", "summarize these meeting notes", "I have Fireflies transcripts to analyze", "turn my client calls into a notebook", "/notebooklm-transcripts". Cross-platform; requires notebooklm-setup done first. v1 = local files / pasted text / Downloads scan (no Fathom/Fireflies API).
-
 ---
 
 # notebooklm-transcripts — Notebooks From Call Transcripts (v0.1)

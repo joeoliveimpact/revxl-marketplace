@@ -1,7 +1,6 @@
 ---
 name: notebooklm-build
 description: Use to create a NotebookLM notebook and add sources to it — "build a notebook about X", "make a notebook from these links", "create a notebook", "add these files/URLs to a notebook", "start a research notebook on X", "add this to my X notebook", "/notebooklm-build". Cross-platform; requires notebooklm-setup done first.
-
 ---
 
 # notebooklm-build — Create Notebooks & Add Sources (v0.1)

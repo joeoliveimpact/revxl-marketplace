@@ -1,7 +1,6 @@
 ---
 name: notebooklm-ask
 description: Use to ask questions of a NotebookLM notebook — "ask my X notebook …", "what does my research say about …", "query the X notebook", "according to my notebook …", "switch to my X notebook", "what notebooks do I have", "/notebooklm-ask". Cross-platform; requires notebooklm-setup done first.
-
 ---
 
 # notebooklm-ask — Query Notebooks (v0.1)

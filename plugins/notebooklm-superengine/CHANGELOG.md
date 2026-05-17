@@ -2,7 +2,7 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## 0.4.0 — 2026-05-16
+## 0.4.0 — 2026-05-17
 
 ### Added
 
@@ -12,7 +12,7 @@ All notable changes to this plugin. Format: [Keep a Changelog](https://keepachan
 
 - Completes the planned skill set: setup, doctor, build, ask, transcripts, youtube, studio, suggest (8 skills) + the dual-duty `notebook-suggest` hook.
 
-## 0.3.0 — 2026-05-16
+## 0.3.0 — 2026-05-17
 
 ### Added
 
@@ -25,7 +25,7 @@ All notable changes to this plugin. Format: [Keep a Changelog](https://keepachan
 
 - All three reuse the verified mechanics from M1/M2: setup/auth gating (working-but-unmarked tolerated), the `id<TAB>title` UTF-8/LF titles cache (refreshed after any list), and `docs/command-surface.md` autonomy rules (`generate`/`download` are ask-before).
 
-## 0.2.1 — 2026-05-16
+## 0.2.1 — 2026-05-17
 
 ### Fixed
 
@@ -37,7 +37,7 @@ All notable changes to this plugin. Format: [Keep a Changelog](https://keepachan
 
 - `notebooklm-doctor` checks 2–7 correct against the live install; `list --json` schema (`notebooks[].{id,title,index,created_at,is_owner}`) matches the cache convention; cache→hook pipeline works end-to-end with 70 real notebooks; hook query/build/silent branches correct including the CRLF case.
 
-## 0.2.0 — 2026-05-16
+## 0.2.0 — 2026-05-17
 
 ### Added
 
@@ -52,7 +52,7 @@ All notable changes to this plugin. Format: [Keep a Changelog](https://keepachan
 
 - `notebooklm-setup` Phase 7 now seeds the titles cache so the suggestion hook works from first use.
 
-## 0.1.0 — 2026-05-16
+## 0.1.0 — 2026-05-17
 
 ### Added
 

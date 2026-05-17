@@ -1,7 +1,6 @@
 ---
 name: notebooklm-suggest
 description: Use to audit the user's material and recommend which NotebookLM notebooks are worth building — "what notebooks should I build", "suggest notebooks from my files", "audit my drive for notebook ideas", "what knowledge bases am I missing", "look at my material and recommend notebooks", "/notebooklm-suggest". Cross-platform; recommends only — never builds or uploads. Privacy-bounded.
-
 ---
 
 # notebooklm-suggest — Recommend What to Build (v0.1)

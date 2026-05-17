@@ -1,7 +1,6 @@
 ---
 name: notebooklm-studio
 description: Use to generate NotebookLM Studio outputs from a notebook — "make a podcast from my X notebook", "turn this into a study guide", "generate a mind map", "create a slide deck from my research", "make a video overview", "quiz me on this notebook", "/notebooklm-studio". Cross-platform; requires notebooklm-setup done first. Generations are long and rate-limited — this skill runs them async.
-
 ---
 
 # notebooklm-studio — Generate & Download Outputs (v0.1)

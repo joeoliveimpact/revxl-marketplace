@@ -1,7 +1,6 @@
 ---
 name: notebooklm-youtube
 description: Use to build/enrich a NotebookLM notebook from YouTube plus parallel deep web research — "make a notebook from this YouTube video", "research this topic and pull in this video", "analyze this YouTube playlist", "deep-dive this video and the web on X", "/notebooklm-youtube". Cross-platform; requires notebooklm-setup done first. Pulls yt-dlp/ffmpeg on demand only if transcript-enrichment is used.
-
 ---
 
 # notebooklm-youtube — YouTube + Parallel Deep Research (v0.1)
