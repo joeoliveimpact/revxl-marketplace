@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# SessionStart hook for notebooklm-superengine
+# One job: if NotebookLM isn't set up on this machine (no state marker),
+# nudge the user to run /notebooklm-setup. Silent when healthy.
+# Pure marker-file check only — no network, no CLI invocation (keep it fast).
+
+set -euo pipefail
+
+# Resolve home dir cross-platform (Git Bash on Windows sets $HOME or $USERPROFILE)
+HOME_DIR="${HOME:-${USERPROFILE:-}}"
+marker="${HOME_DIR}/.notebooklm/.superengine"
+
+[ -f "$marker" ] && exit 0   # set up — say nothing
+
+nudge="NotebookLM isn't set up on this computer yet. When the user wants to use NotebookLM (build a notebook, ask a notebook, make a podcast/study guide), run the /notebooklm-setup skill first — it installs and signs in. Don't attempt notebooklm commands before setup completes."
+
+escape_for_json() {
+    local s="$1"
+    s="${s//\\/\\\\}"
+    s="${s//\"/\\\"}"
+    s="${s//$'\n'/\\n}"
+    s="${s//$'\r'/\\r}"
+    s="${s//$'\t'/\\t}"
+    printf '%s' "$s"
+}
+
+ctx="<notebooklm-status>\n$(escape_for_json "$nudge")\n</notebooklm-status>"
+
+if [ -n "${CURSOR_PLUGIN_ROOT:-}" ]; then
+    printf '{\n  "additional_context": "%s"\n}\n' "$ctx"
+elif [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${COPILOT_CLI:-}" ]; then
+    printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$ctx"
+else
+    printf '{\n  "additionalContext": "%s"\n}\n' "$ctx"
+fi
+
+exit 0
