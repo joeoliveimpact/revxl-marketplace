@@ -1,6 +1,6 @@
 ---
 name: notebooklm-doctor
-description: Use to diagnose a broken or flaky NotebookLM install — "notebooklm stopped working", "notebooklm command not found", "is notebooklm still signed in", "check my notebooklm", "notebooklm error", "diagnose notebooklm", "/notebooklm-doctor". Read-only: it inspects and reports the exact fix, it never changes anything. Cross-platform.
+description: 'Use to diagnose a broken or flaky NotebookLM install — "notebooklm stopped working", "notebooklm command not found", "is notebooklm still signed in", "check my notebooklm", "notebooklm error", "diagnose notebooklm", "/notebooklm-doctor". Read-only: it inspects and reports the exact fix, it never changes anything. Cross-platform.'
 ---
 
 # notebooklm-doctor — Read-Only Diagnostics (v0.1)
