@@ -2,6 +2,16 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.4.0 — 2026-05-16
+
+### Added
+
+- **Milestone 4 (final skill): `notebooklm-suggest`** — the deep, privacy-bounded build-audit. Niche auto-discovery from Claude context (super-setup 0.5 privacy boundary) + scan inference, one-line confirm, interview only as last resort. Two-pass read: metadata (free/private) → snippet (consent-gated). Recommend-only — never builds or uploads. Dedup vs the titles cache ("add to existing" vs "build new"). Ranked top 5–7. Per-pick soft handoff to `/notebooklm-build` / `-transcripts` / `-youtube`. Has pre-setup value (dedup skipped + warned when NotebookLM not installed).
+
+### Notes
+
+- Completes the planned skill set: setup, doctor, build, ask, transcripts, youtube, studio, suggest (8 skills) + the dual-duty `notebook-suggest` hook.
+
 ## 0.3.0 — 2026-05-16
 
 ### Added

@@ -56,8 +56,12 @@ Adds a YouTube video natively **and** runs parallel NotebookLM deep web research
 
 Generates podcasts, videos, mind maps, slide decks, reports, quizzes, flashcards — runs the long ones in the background and downloads when ready.
 
-### Roadmap *(separate release, its own spec)*
-- `notebooklm-suggest` — audit your material and recommend notebooks worth building
+### `notebooklm-suggest` *(v0.4.0)*
+**Triggers:** "what notebooks should I build", "audit my files for notebook ideas", "what knowledge bases am I missing"
+
+Audits the folders/Drive you point it at and recommends the notebooks worth building — niche-aware, deduped against what you already have, ranked. Recommends only; offers to build the ones you pick. Never reads file contents without asking.
+
+*Complete skill set — no roadmap items remaining.*
 
 ---
 
