@@ -2,6 +2,18 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.2.1 — 2026-05-16
+
+### Fixed
+
+- **Test-pass findings against a live install (non-destructive validation on Windows).**
+- **Marker false-negative:** a working install done before the plugin (or by hand) had no state marker, so `notebooklm-setup`, `notebooklm-doctor`, and the SessionStart hook all falsely reported "not set up". `notebooklm-setup` Phase 1 now detects a working-but-unmarked install (CLI present + live auth valid) and *just stamps the marker + seeds the cache* — no reinstall, no re-auth. `notebooklm-doctor` reframes check 1: marker absence is informational, not a broken-install verdict; if the real checks pass it reports "works, unregistered — run setup once to stamp (instant)".
+- **CRLF cache bug:** caches written in Windows text mode are CRLF; the `notebook-suggest` hook leaked a trailing `\r` into the emitted notebook title. Hook now strips CR defensively. Cache-write instructions in `notebooklm-setup` / `-build` / `-ask` tightened to be deterministic: `list --json`, keys `id`/`title`, UTF-8, LF newlines, skip empty rows.
+
+### Verified
+
+- `notebooklm-doctor` checks 2–7 correct against the live install; `list --json` schema (`notebooks[].{id,title,index,created_at,is_owner}`) matches the cache convention; cache→hook pipeline works end-to-end with 70 real notebooks; hook query/build/silent branches correct including the CRLF case.
+
 ## 0.2.0 — 2026-05-16
 
 ### Added

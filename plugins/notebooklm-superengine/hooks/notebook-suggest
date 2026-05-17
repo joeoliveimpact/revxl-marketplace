@@ -35,6 +35,7 @@ if [ -f "$cache" ] && [ -s "$cache" ]; then
     n=0
     while IFS=$'\t' read -r _id title || [ -n "$title" ]; do
         n=$((n+1)); [ "$n" -gt 50 ] && break
+        title="${title%$'\r'}"; _id="${_id%$'\r'}"   # tolerate CRLF caches (Windows text-mode writers)
         [ -z "$title" ] && continue
         tlc="$(printf '%s' "$title" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9 ' ' ')"
         [ -z "$tlc" ] && continue

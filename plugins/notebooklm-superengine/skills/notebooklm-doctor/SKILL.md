@@ -37,7 +37,7 @@ Read `.claude/workspace.yml#environment`. **`cowork`** → Bash unavailable; say
 
 | # | Check | How | Remedy on fail |
 |---|---|---|---|
-| 1 | Install marker | `MARKER` exists | Not set up → run `/notebooklm-setup` |
+| 1 | Install marker | `MARKER` exists | **Informational, not a failure on its own.** If 3 & 5 also fail → not set up → `/notebooklm-setup`. If marker missing but 3 & 5 **pass** → install works, just unregistered → `/notebooklm-setup` (it only stamps a marker, instant, no reinstall). Report this as "working, unregistered" — never as a broken install. |
 | 2 | venv + Python | `PYBIN` exists; `PYBIN --version` ≥ 3.10 | Broken env → `/notebooklm-setup` |
 | 3 | CLI present | `NB` exists | Broken install → `/notebooklm-setup` |
 | 4 | PATH wrapper | `WRAP` exists | Missing wrapper → `/notebooklm-setup` (PATH phase). Note: open a new terminal for it to take effect |
@@ -51,8 +51,9 @@ Run checks 5 and 6 with a 60s timeout each. Treat a timeout as fail with remedy 
 
 Print a compact table: check, ✓/✗, and for any ✗ the one-line remedy. Then a single bottom-line:
 
+- 3 & 5 pass, only marker (1) missing → "NotebookLM works ✓ — it's just not registered with the plugin. Run `/notebooklm-setup` once; it only writes a marker (instant), nothing is reinstalled." NOT a broken-install message.
 - All pass → "NotebookLM is healthy ✓ — nothing to fix."
-- Any fail → lead with the **single most actionable** remedy (precedence: 1 → 2 → 3 → 5 → 7 → 4 → 6). Don't list ten things; give the one next step, beginner tone, reassure ("this is normal and quick to fix").
+- Any real fail → lead with the **single most actionable** remedy (precedence: 2 → 3 → 5 → 7 → 4 → 6; 1 only when 3 & 5 also fail). One next step, beginner tone, reassure ("this is normal and quick to fix").
 
 Cross-reference `docs/known-issues-windows-mac.md` for the failure's detail if the user wants the why.
 

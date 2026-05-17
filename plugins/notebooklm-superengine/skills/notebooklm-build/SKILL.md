@@ -54,7 +54,7 @@ Poll `NB source list` (or `NB source wait <id>` where available) until all sourc
 
 ## Phase 5 — Refresh titles cache (enables the suggestion hook)
 
-After any successful create/add, run `NB list` and rewrite `~/.notebooklm/notebooks.cache` — one line per notebook as `id<TAB>title` (UTF-8, overwrite whole file). This is the cheap data the `notebook-suggest` hook reads; keep it current. If the write fails, continue (cache is best-effort, not critical-path).
+After any successful create/add, run `NB list --json`, parse `notebooks[].id` / `notebooks[].title`, and rewrite `~/.notebooklm/notebooks.cache` — one line per notebook `id<TAB>title`, **UTF-8, LF newlines (never CRLF)**, skip empty id/title, overwrite whole file. This is the cheap data the `notebook-suggest` hook reads; keep it current. Best-effort: continue on write failure (not critical-path).
 
 ## Phase 6 — Report
 

@@ -46,7 +46,7 @@ Return the notebook's answer plainly. Attribute it ("From your '<title>' noteboo
 
 ## Phase 4 — Refresh titles cache
 
-Whenever you run `NB list` in this skill, rewrite `~/.notebooklm/notebooks.cache` (one line per notebook `id<TAB>title`, UTF-8, overwrite). Best-effort; continue on write failure. Keeps the `notebook-suggest` hook accurate.
+Whenever you list in this skill, use `NB list --json`, parse `notebooks[].id` / `notebooks[].title`, and rewrite `~/.notebooklm/notebooks.cache` — one line per notebook `id<TAB>title`, **UTF-8, LF newlines (never CRLF)**, skip empty id/title, overwrite. Best-effort; continue on write failure. Keeps the `notebook-suggest` hook accurate.
 
 ## Ground rules (inherited from RULES.md)
 

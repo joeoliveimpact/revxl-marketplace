@@ -46,7 +46,10 @@ If `install` mode detects an already-working install (Phase 1), offer reauth/upd
 ## Phase 1 — Detect
 
 1. **OS:** run `python -c "import sys; print(sys.platform)"` (Windows) or `python3 -c "import sys; print(sys.platform)"` (Mac/Linux). `win32` → **Windows branch**. `darwin` → **Mac branch**. Linux → Mac branch (same POSIX paths).
-2. **Existing install:** check for the state marker `~/.notebooklm/.superengine`. If present, run `notebooklm auth check --test` (via the PATH wrapper). If it prints `Authentication is valid.` → tell the user it's already set up and working, list sub-modes, and stop unless they asked for a sub-mode.
+2. **Existing install (check the install, not just the marker):** set `NB` (step 4) first, then:
+   - If `~/.notebooklm/.superengine` exists → run `<NB> auth check --test`. `Authentication is valid.` → already set up and working; list sub-modes; stop unless a sub-mode was asked.
+   - **Working-but-unmarked** (the common pre-plugin / hand-installed case): marker **absent** but `<NB>` exists and `<NB> auth check --test` is valid → the install is fine; this is NOT a reinstall. **Just stamp it:** run Phase 8 (write the marker) + Phase 7 step 3 (seed the titles cache), tell the user "NotebookLM was already installed and signed in — I just registered it with the plugin (instant, nothing reinstalled)", and stop. Never re-run install or re-auth on a working install.
+   - Marker absent AND (`<NB>` missing OR auth invalid) → genuine install; continue to Phase 2.
 3. Set `PYBIN` for the rest of the run:
    - Windows: `%USERPROFILE%\.notebooklm-venv\Scripts\python.exe`
    - Mac: `~/.notebooklm-venv/bin/python`
@@ -186,7 +189,7 @@ Both must pass:
 
 1. `<NB> auth check --test` → must contain `Authentication is valid.`
 2. `<NB> list` → must return notebooks (or an empty-but-valid list, not an auth error).
-3. From that `list` output, write `~/.notebooklm/notebooks.cache` — one line per notebook as `id<TAB>title` (UTF-8, overwrite). Seeds the `notebook-suggest` hook so it works from first use. Best-effort: if the write fails, continue (not part of the DoD).
+3. Seed the titles cache: run `<NB> list --json`, parse `notebooks[].id` and `notebooks[].title`, write `~/.notebooklm/notebooks.cache` — one line per notebook `id<TAB>title`, **UTF-8, LF newlines (`\n`, never CRLF)**, skip rows with empty id or title, overwrite the whole file. Seeds the `notebook-suggest` hook. Best-effort: continue on failure (not part of the DoD).
 
 If either of (1)/(2) fails → STOP, do not claim success. Route to the matching remedy in `docs/known-issues-windows-mac.md` and tell the user the specific next step (usually `/notebooklm-setup reauth`).
 
