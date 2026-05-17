@@ -186,8 +186,9 @@ Both must pass:
 
 1. `<NB> auth check --test` → must contain `Authentication is valid.`
 2. `<NB> list` → must return notebooks (or an empty-but-valid list, not an auth error).
+3. From that `list` output, write `~/.notebooklm/notebooks.cache` — one line per notebook as `id<TAB>title` (UTF-8, overwrite). Seeds the `notebook-suggest` hook so it works from first use. Best-effort: if the write fails, continue (not part of the DoD).
 
-If either fails → STOP, do not claim success. Route to the matching remedy in `docs/known-issues-windows-mac.md` and tell the user the specific next step (usually `/notebooklm-setup reauth`).
+If either of (1)/(2) fails → STOP, do not claim success. Route to the matching remedy in `docs/known-issues-windows-mac.md` and tell the user the specific next step (usually `/notebooklm-setup reauth`).
 
 ## Phase 8 — Mark + finish
 

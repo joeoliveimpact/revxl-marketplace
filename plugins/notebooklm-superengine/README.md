@@ -18,19 +18,34 @@ One guided skill (`notebooklm-setup`) detects your operating system, installs th
 
 ## Skills
 
-### `notebooklm-setup` *(shipping in v0.1.0)*
+### `notebooklm-setup` *(v0.1.0)*
 **Triggers:** "set up notebooklm", "install notebooklm", "notebooklm isn't working", "sign in to notebooklm", "my notebooklm login expired", "update notebooklm", "uninstall notebooklm"
 
-The front door. Cross-platform install + Google sign-in + verify, with every known Windows/Mac failure mode pre-empted. Sub-modes: `reauth` (refresh an expired sign-in), `update` (upgrade the tool), `uninstall` (clean removal). Every other skill below depends on this one.
+The front door. Cross-platform install + Google sign-in + verify, with every known Windows/Mac failure mode pre-empted. Sub-modes: `reauth`, `update`, `uninstall`. Every other skill depends on this one.
+
+### `notebooklm-doctor` *(v0.2.0)*
+**Triggers:** "notebooklm stopped working", "check my notebooklm", "diagnose notebooklm", "is notebooklm still signed in"
+
+Read-only health check — 7 checks, one pass/fail table, the single exact next step. Changes nothing.
+
+### `notebooklm-build` *(v0.2.0)*
+**Triggers:** "build a notebook about X", "make a notebook from these links", "add these files to my X notebook"
+
+Creates a notebook (or adds to one), loads URL/YouTube/file/folder/pasted sources with bulk-safety, waits until they're ready.
+
+### `notebooklm-ask` *(v0.2.0)*
+**Triggers:** "ask my X notebook…", "what does my research say about…", "what notebooks do I have"
+
+Asks the right notebook (confirms which when ambiguous), optional citations, honest attribution. Never writes notes without asking.
+
+### In-session hint *(hook, v0.2.0)*
+A background nudge: if your prompt matches a notebook you already have, Claude offers to consult it; if you show research intent and have none yet, it offers to build one. Cheap, no extra cost, offers — never auto-runs.
 
 ### Roadmap *(separate releases, each its own spec)*
-- `notebooklm-doctor` — diagnose a broken install, name the exact fix
-- `notebooklm-build` — create notebooks, add sources (URLs, files, folders)
-- `notebooklm-ask` — query notebooks; in-session "you have a notebook for this" hints (hook)
 - `notebooklm-transcripts` — build notebooks from Fathom/Fireflies call transcripts
 - `notebooklm-youtube` — yt-dlp + NotebookLM deep research in parallel
 - `notebooklm-studio` — mind maps, videos, slide decks, reports
-- `notebooklm-suggest` — recommend which notebooks to build from your material
+- `notebooklm-suggest` — audit your material and recommend notebooks worth building
 
 ---
 

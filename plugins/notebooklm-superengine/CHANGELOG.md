@@ -2,6 +2,21 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.2.0 — 2026-05-16
+
+### Added
+
+- **Milestone 2: core loop + diagnostics + dual-duty hook.**
+- Skill: `notebooklm-doctor` — read-only health check. 7 checks (marker, venv/Python, CLI, PATH wrapper, live auth, notebooks reachable, profiles path), one pass/fail table, single headline remedy by precedence. Never mutates.
+- Skill: `notebooklm-build` — create a notebook / add to existing; add URL/YouTube/file/folder/pasted sources with bulk-safety confirmation; wait for READY; refresh the titles cache.
+- Skill: `notebooklm-ask` — resolve target notebook (named/active/disambiguate), ask with optional `--json` citations, honest attribution, never `--save-as-note` without explicit confirm; refresh the titles cache.
+- Hook: `notebook-suggest` (`UserPromptSubmit`) — **dual duty, cheap, no API/model calls.** (1) Query nudge: prompt matches a cached notebook title → offer `/notebooklm-ask`. (2) Light build nudge: no notebooks cached + research-intent prompt → offer `/notebooklm-build` (or `/notebooklm-suggest` when present). Reads only `~/.notebooklm/notebooks.cache`.
+- Titles cache convention (`~/.notebooklm/notebooks.cache`, `id<TAB>title`) seeded by `notebooklm-setup` Phase 7 and refreshed by `-build` / `-ask`.
+
+### Changed
+
+- `notebooklm-setup` Phase 7 now seeds the titles cache so the suggestion hook works from first use.
+
 ## 0.1.0 — 2026-05-16
 
 ### Added

@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# UserPromptSubmit hook for notebooklm-superengine — DUAL DUTY, cheap, no API/model calls.
+#   1. Query nudge: prompt strongly matches an existing notebook title -> hint to /notebooklm-ask.
+#   2. Light build nudge: no notebooks cached yet AND prompt shows research intent -> hint /notebooklm-build.
+# Reads only the local titles cache (~/.notebooklm/notebooks.cache, lines "id<TAB>title")
+# written by notebooklm-setup / -build / -ask. Always exits 0; emits nothing unless confident.
+
+HOME_DIR="${HOME:-${USERPROFILE:-}}"
+cache="${HOME_DIR}/.notebooklm/notebooks.cache"
+
+# --- read the submitted prompt from stdin (JSON: {"prompt":"...", ...}) ---
+raw="$(cat 2>/dev/null || true)"
+prompt="$(printf '%s' "$raw" | sed -n 's/.*"prompt"[[:space:]]*:[[:space:]]*"\(.*\)".*/\1/p' 2>/dev/null | head -c 2000)"
+[ -z "$prompt" ] && prompt="$raw"
+plc="$(printf '%s' "$prompt" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9 ' ' ')"
+[ -z "$plc" ] && exit 0
+
+emit() {
+    msg="$1"
+    s="$msg"
+    s="${s//\\/\\\\}"; s="${s//\"/\\\"}"; s="${s//$'\n'/\\n}"; s="${s//$'\r'/\\r}"; s="${s//$'\t'/\\t}"
+    if [ -n "${CURSOR_PLUGIN_ROOT:-}" ]; then
+        printf '{\n  "additional_context": "%s"\n}\n' "$s"
+    elif [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${COPILOT_CLI:-}" ]; then
+        printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "UserPromptSubmit",\n    "additionalContext": "%s"\n  }\n}\n' "$s"
+    else
+        printf '{\n  "additionalContext": "%s"\n}\n' "$s"
+    fi
+    exit 0
+}
+
+# --- Duty 1: query nudge (only if we have a cache with titles) ---
+if [ -f "$cache" ] && [ -s "$cache" ]; then
+    best_title=""
+    n=0
+    while IFS=$'\t' read -r _id title || [ -n "$title" ]; do
+        n=$((n+1)); [ "$n" -gt 50 ] && break
+        [ -z "$title" ] && continue
+        tlc="$(printf '%s' "$title" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9 ' ' ')"
+        [ -z "$tlc" ] && continue
+        # full title phrase present -> immediate strong match
+        case " $plc " in *" $tlc "*) best_title="$title"; break;; esac
+        # else count distinct title words (>3 chars) appearing in the prompt
+        hits=0
+        for w in $tlc; do
+            [ ${#w} -le 3 ] && continue
+            case " $plc " in *" $w "*) hits=$((hits+1));; esac
+        done
+        if [ "$hits" -ge 2 ]; then best_title="$title"; fi
+    done < "$cache"
+
+    if [ -n "$best_title" ]; then
+        emit "The user has a NotebookLM notebook titled \"${best_title}\" that looks relevant to this prompt. Before answering from general knowledge, offer to consult it via the /notebooklm-ask skill (don't auto-run it — offer)."
+    fi
+fi
+
+# --- Duty 2: light build nudge (only when no notebooks cached yet) ---
+if [ ! -s "$cache" ]; then
+    case " $plc " in
+        *" research "*|*" deep dive "*|*" summarize these "*|*" study guide "*|*" learn about "*|*" go deep on "*|*" knowledge base "*)
+            emit "The user shows research intent and has no NotebookLM notebooks yet. Consider offering to build one via /notebooklm-build (a focused notebook), or /notebooklm-suggest if that skill is installed (a full audit). Offer, don't auto-run."
+            ;;
+    esac
+fi
+
+exit 0
