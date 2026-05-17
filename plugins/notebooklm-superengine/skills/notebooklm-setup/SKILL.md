@@ -192,11 +192,17 @@ If either fails → STOP, do not claim success. Route to the matching remedy in 
 ## Phase 8 — Mark + finish
 
 1. Write `~/.notebooklm/.superengine` containing `version=0.1.0` and the date (so the SessionStart hook and future `notebooklm-doctor` can detect a healthy install).
-2. Success report (beginner tone, ≤3 items):
+2. Success report + **forward-looking next-moves offer** (beginner tone, ≤3 items). This is the activation moment — end with concrete doors, not just "done":
    > NotebookLM is set up and signed in ✓
    > - Tool installed and on your PATH (open a new terminal to use `notebooklm` directly)
    > - Signed in to Google — verified live
-   > Try it: ask me to "list my NotebookLM notebooks".
+   >
+   > What next? You can:
+   > 1. **See what you've got** — "list my NotebookLM notebooks"
+   > 2. **Build your first one** — "build a notebook about &lt;topic&gt;" (uses `notebooklm-build`)
+   > 3. **Let me suggest what to build** — "look at my material and suggest notebooks worth building" (uses `notebooklm-suggest`)
+
+   **Graceful degradation by version:** offer only the doors whose skills exist. v0.1.0 ships setup alone — offer #1 (the `notebooklm list` nudge) only. As `notebooklm-build` / `notebooklm-suggest` ship, light up #2 / #3. Never offer a door that routes to a skill that isn't installed. The offer *points at* those skills via natural language (soft coordination) — it never embeds their work in setup.
 
 ## Uninstall mode
 
