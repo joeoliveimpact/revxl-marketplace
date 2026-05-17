@@ -80,7 +80,7 @@
       "description": "Gets Google NotebookLM working on your computer and keeps it working. One guided setup handles the install and Google sign-in — the part that usually breaks — on Mac or Windows. Then build research notebooks, ask them questions, and turn them into podcasts and study guides just by talking to Claude. Local-only: no servers, tunnels, or extra accounts.",
       "source": "./plugins/notebooklm-superengine",
       "category": "productivity",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"
