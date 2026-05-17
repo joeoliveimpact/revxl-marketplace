@@ -2,6 +2,19 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.3.0 — 2026-05-16
+
+### Added
+
+- **Milestone 3: source breadth + outputs.**
+- Skill: `notebooklm-transcripts` — build/extend a notebook from call transcripts. v1 sources: explicit paths, pasted text, `~/Downloads` scan with filename heuristics (Fathom/Fireflies/Otter/etc.). Bulk-safety confirmation; temp-file cleanup; cache refresh. Vendor APIs explicitly deferred.
+- Skill: `notebooklm-youtube` — native YouTube URL ingest **+** parallel `source add-research --mode deep --no-wait` so the notebook covers the video and researched web base. Optional transcript enrichment pulls yt-dlp/ffmpeg **on demand only** (winget/brew + venv pip), with graceful fallback to native ingest if declined.
+- Skill: `notebooklm-studio` — generate podcast/video/mind-map/slide-deck/report/quiz/flashcards and download. Async by design: ask-before-generate, kick off → track (`artifact wait`/`list`) → notify → ask-before-download to the workspace `output/`. Mind-map special-cased as sync. Honors the rate-limit/long-run reality.
+
+### Notes
+
+- All three reuse the verified mechanics from M1/M2: setup/auth gating (working-but-unmarked tolerated), the `id<TAB>title` UTF-8/LF titles cache (refreshed after any list), and `docs/command-surface.md` autonomy rules (`generate`/`download` are ask-before).
+
 ## 0.2.1 — 2026-05-16
 
 ### Fixed

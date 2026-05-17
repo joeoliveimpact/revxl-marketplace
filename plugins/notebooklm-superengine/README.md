@@ -41,10 +41,22 @@ Asks the right notebook (confirms which when ambiguous), optional citations, hon
 ### In-session hint *(hook, v0.2.0)*
 A background nudge: if your prompt matches a notebook you already have, Claude offers to consult it; if you show research intent and have none yet, it offers to build one. Cheap, no extra cost, offers — never auto-runs.
 
-### Roadmap *(separate releases, each its own spec)*
-- `notebooklm-transcripts` — build notebooks from Fathom/Fireflies call transcripts
-- `notebooklm-youtube` — yt-dlp + NotebookLM deep research in parallel
-- `notebooklm-studio` — mind maps, videos, slide decks, reports
+### `notebooklm-transcripts` *(v0.3.0)*
+**Triggers:** "make a notebook from this call", "build a notebook from my Fathom transcript", "turn my client calls into a notebook"
+
+Builds/extends a notebook from call transcripts — explicit files, pasted text, or a Downloads scan (Fathom/Fireflies/Otter). Bulk-safe.
+
+### `notebooklm-youtube` *(v0.3.0)*
+**Triggers:** "make a notebook from this YouTube video", "research this topic and pull in this video"
+
+Adds a YouTube video natively **and** runs parallel NotebookLM deep web research, so the notebook covers both. Optional verbatim-transcript enrichment.
+
+### `notebooklm-studio` *(v0.3.0)*
+**Triggers:** "make a podcast from my X notebook", "turn this into a study guide", "generate a mind map / slide deck / video"
+
+Generates podcasts, videos, mind maps, slide decks, reports, quizzes, flashcards — runs the long ones in the background and downloads when ready.
+
+### Roadmap *(separate release, its own spec)*
 - `notebooklm-suggest` — audit your material and recommend notebooks worth building
 
 ---
