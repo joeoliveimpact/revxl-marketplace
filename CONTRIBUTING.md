@@ -28,10 +28,14 @@ Thanks for your interest. This is a curated marketplace — contributions go thr
    /plugin marketplace add <your-fork>/revxl-marketplace
    /plugin install <plugin-name>@revxl-marketplace
    ```
-6. **Validate** before pushing:
+6. **Validate** before pushing — run the **exact same checks CI runs**
+   (this is the source of truth; `claude plugin validate` does NOT catch
+   everything CI does, e.g. unquoted-colon YAML in SKILL.md frontmatter):
    ```bash
-   claude plugin validate plugins/<plugin-name>
+   pip install pyyaml        # one-time
+   python scripts/validate.py
    ```
+   A green local run == green CI. Fix anything it reports before pushing.
 7. **Commit** with a descriptive message.
 8. **Push** and open a PR.
 

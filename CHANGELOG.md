@@ -4,6 +4,11 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.6] — 2026-05-17
+
+### Changed
+- **CI/local validator drift fixed.** Extracted CI's three inline check groups into one committed `scripts/validate.py`; the workflow now calls that script (`python scripts/validate.py --section ...`) instead of inline heredocs. Contributors run the identical command locally before pushing, so a green local run == green CI. Closes the gap where the SKILL.md YAML-frontmatter check only ran in CI (the bug that slipped `course-crawler` 0.3.0 → CI red). `CONTRIBUTING.md` updated to point at the script.
+
 ## [0.1.5] — 2026-05-17
 
 ### Fixed
