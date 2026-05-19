@@ -7,7 +7,7 @@
     "email": "joe@engineforimpact.com"
   },
   "metadata": {
-    "version": "0.1.6"
+    "version": "0.1.7"
   },
   "plugins": [
     {
@@ -48,19 +48,6 @@
       },
       "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/ghl-coach-superengine",
       "keywords": ["gohighlevel", "ghl", "crm", "coaching", "health-coach", "mcp", "superengine", "workspace", "notifier"]
-    },
-    {
-      "name": "revxl-os-superengine",
-      "description": "Autonomous coaching ops superengine for Claude Code. Three agents (morning brief, task surfacing, DM triage) running on schedules and event triggers, delivered through Telegram. Pairs with revxl-webhook-channel for webhook-driven automation. The OpenClaw alternative built on native Claude Code Channels.",
-      "source": "./plugins/revxl-os-superengine",
-      "category": "productivity",
-      "version": "0.1.1",
-      "author": {
-        "name": "Joe Olive",
-        "email": "joe@engineforimpact.com"
-      },
-      "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/revxl-os-superengine",
-      "keywords": ["coaching", "ops", "autonomous", "agents", "telegram", "channels", "scheduled", "superengine", "revxl"]
     },
     {
       "name": "offer-architect",
