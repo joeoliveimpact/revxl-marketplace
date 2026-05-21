@@ -2,6 +2,18 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.4.0 — 2026-05-20
+
+### Added
+
+- **OCR-gated slide extraction.** Replaced raw ffmpeg `select=gt(scene,0.3)` (junk/blurry/dupe-prone) with: sample 1fps → dHash dedupe consecutive → sharpest frame per run → Laplacian blur floor → Tesseract OCR text-density gate (drops talking-head frames) → global dedupe → `slide-NNN.jpg` + `slides.json` (timestamp + OCR text). Falls back to scene-detect when Tesseract is absent. Six tunable flags: `--slide-fps`, `--slide-phash-dist`, `--slide-blur-min`, `--slide-min-words`, `--slide-min-chars`, `--slide-tesseract-cmd`.
+
+### Fixed
+
+- **Promo-video transcript pollution on Skilljar (and any course with shared page chrome).** `scrape_course.py::drop_page_chrome_videos()` filters any video source appearing on ≥ceil(0.6·N) lessons — generic across courses, no hardcoded IDs. Stops `process_videos` from picking a promo-carousel YouTube embed as the lesson video.
+- **GPU Whisper batch-killer crash on Windows.** `process_videos.py::transcribe_local` runs faster-whisper in a disposable subprocess (`_whisper_worker`) that writes the transcript then `os._exit(0)`, so ctranslate2's CUDA destructor abort (0xC0000409) at Python finalization can't kill the batch. GPU speed retained; a crash is contained to one lesson.
+- **Windows MAX_PATH (260-char) write failures on long lesson titles.** Both `scrape_course.py` and `process_videos.py` now wrap `course_dir` with the `\\?\` extended-length prefix on `sys.platform=="win32"` so derived child paths inherit it. Resolves `FileNotFoundError` writing `<lesson>.md`/`transcript.md`/`slide-NNN.jpg` for paths over 260 chars.
+
 ## 0.3.2 — 2026-05-17
 
 ### Fixed

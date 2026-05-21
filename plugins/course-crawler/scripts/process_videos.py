@@ -37,6 +37,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -106,8 +107,86 @@ def try_native_subtitles(yt_dlp: str, video_url: str, dest_dir: Path,
     return srt_files[0] if srt_files else None
 
 
-def extract_slides(ffmpeg: str, video_path: Path, slides_dir: Path,
-                  threshold: float) -> int:
+# --- slide-extraction helpers (OCR-gated; see plan go-majestic-reddy) -------
+
+def _hamming(a: int, b: int) -> int:
+    """Bit-difference count between two perceptual hashes."""
+    return bin(a ^ b).count("1")
+
+
+def _dhash(path, hash_size: int = 8) -> int:
+    """64-bit difference hash: grayscale, resize to (n+1)x n, compare
+    horizontally adjacent pixels. Near-identical frames hash within a few bits."""
+    from PIL import Image
+    img = Image.open(path).convert("L").resize(
+        (hash_size + 1, hash_size), Image.LANCZOS)
+    px = list(img.getdata())
+    w = hash_size + 1
+    bits = 0
+    for row in range(hash_size):
+        for col in range(hash_size):
+            bits = (bits << 1) | (1 if px[row * w + col] > px[row * w + col + 1] else 0)
+    return bits
+
+
+def _sharpness(path) -> float:
+    """Variance of the discrete Laplacian (numpy slicing, no scipy). Higher =
+    sharper; motion-blurred / fade frames score low."""
+    import numpy as np
+    from PIL import Image
+    a = np.asarray(Image.open(path).convert("L"), dtype=np.float64)
+    lap = (-4.0 * a[1:-1, 1:-1]
+           + a[:-2, 1:-1] + a[2:, 1:-1]
+           + a[1:-1, :-2] + a[1:-1, 2:])
+    return float(lap.var())
+
+
+def _resolve_tesseract(cfg: dict):
+    """Locate the Tesseract binary. Order: cfg flag -> PATH -> known install
+    locations. The UB-Mannheim Windows installer does NOT add itself to PATH,
+    so the explicit Program Files path is essential. Returns path or None."""
+    candidates = []
+    if cfg.get("tesseract_cmd"):
+        candidates.append(cfg["tesseract_cmd"])
+    which = shutil.which("tesseract")
+    if which:
+        candidates.append(which)
+    candidates += [
+        r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+        r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+        "/opt/homebrew/bin/tesseract", "/usr/local/bin/tesseract",
+        "/usr/bin/tesseract",
+    ]
+    for c in candidates:
+        if c and os.path.exists(c):
+            return c
+    return None
+
+
+def _ocr_score(path, tesseract_cmd) -> tuple[int, int, str]:
+    """OCR a frame; return (word_count, char_count, text[:240]) counting only
+    tokens at confidence >= 40. Slides/UI are text-dense; talking-head isn't."""
+    import pytesseract
+    if tesseract_cmd:
+        pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
+    data = pytesseract.image_to_data(str(path), config="--psm 6",
+                                     output_type=pytesseract.Output.DICT)
+    words = []
+    for txt, conf in zip(data.get("text", []), data.get("conf", [])):
+        t = (txt or "").strip()
+        try:
+            c = float(conf)
+        except (TypeError, ValueError):
+            c = -1.0
+        if t and c >= 40:
+            words.append(t)
+    joined = " ".join(words)
+    return len(words), len(joined), joined[:240]
+
+
+def _extract_slides_scenedetect(ffmpeg: str, video_path: Path,
+                                slides_dir: Path, threshold: float) -> int:
+    """Legacy ffmpeg scene-detect path. Fallback when OCR is unavailable."""
     slides_dir.mkdir(parents=True, exist_ok=True)
     for f in slides_dir.glob("slide-*.jpg"):
         f.unlink()
@@ -118,6 +197,99 @@ def extract_slides(ffmpeg: str, video_path: Path, slides_dir: Path,
            str(slides_dir / "slide-%03d.jpg")]
     subprocess.run(cmd, check=False)
     return len(list(slides_dir.glob("slide-*.jpg")))
+
+
+def extract_slides(ffmpeg: str, video_path: Path, slides_dir: Path,
+                  threshold: float, cfg: dict | None = None) -> int:
+    """OCR-gated slide extraction. Steady-sample -> perceptual-hash dedupe ->
+    sharpest-frame pick -> blur floor -> OCR text-density gate -> global
+    dedupe. Emits slide-NNN.jpg + slides.json (timestamp + OCR text index).
+    Falls back to legacy scene-detect if Tesseract is unavailable."""
+    cfg = cfg or {}
+    slides_dir.mkdir(parents=True, exist_ok=True)
+    for f in slides_dir.glob("slide-*.jpg"):
+        f.unlink()
+    (slides_dir / "slides.json").unlink(missing_ok=True)
+
+    tcmd = _resolve_tesseract(cfg)
+    try:
+        import pytesseract  # noqa: F401
+        ocr_ok = tcmd is not None
+    except Exception:
+        ocr_ok = False
+    if not ocr_ok:
+        print("      [slides] OCR unavailable -> scene-detect fallback")
+        return _extract_slides_scenedetect(ffmpeg, video_path,
+                                           slides_dir, threshold)
+
+    fps = float(cfg.get("fps", 1.0))
+    phash_dist = int(cfg.get("phash_dist", 6))
+    blur_min = float(cfg.get("blur_min", 60.0))
+    min_words = int(cfg.get("min_words", 4))
+    min_chars = int(cfg.get("min_chars", 24))
+
+    work = Path(tempfile.mkdtemp(prefix="slides_"))
+    try:
+        subprocess.run(
+            [ffmpeg, "-y", "-hide_banner", "-loglevel", "error",
+             "-i", str(video_path),
+             "-vf", f"fps={fps},scale=trunc(iw/2)*2:trunc(ih/2)*2",
+             "-qscale:v", "3", str(work / "f-%05d.jpg")],
+            check=False)
+        frames = sorted(work.glob("f-*.jpg"))
+        if not frames:
+            return 0
+
+        # 1. group consecutive near-identical frames (a slide held on screen)
+        runs, cur = [], [frames[0]]
+        prev_h = _dhash(frames[0])
+        for fr in frames[1:]:
+            h = _dhash(fr)
+            if _hamming(h, prev_h) <= phash_dist:
+                cur.append(fr)
+            else:
+                runs.append(cur)
+                cur = [fr]
+            prev_h = h
+        runs.append(cur)
+
+        # 2. per run: sharpest frame; drop runs that never get sharp
+        reps = []
+        for run in runs:
+            best = max(run, key=_sharpness)
+            if _sharpness(best) >= blur_min:
+                reps.append((best, frames.index(best)))
+
+        # 3. OCR content gate (excludes talking-head / no-content)
+        kept = []
+        for fr, idx0 in reps:
+            w, ch, txt = _ocr_score(fr, tcmd)
+            if w >= min_words and ch >= min_chars:
+                kept.append((fr, idx0, txt))
+
+        # 4. global dedupe (recaps / repeated slides later in the video)
+        out, seen = [], []
+        for fr, idx0, txt in kept:
+            h = _dhash(fr)
+            if any(_hamming(h, s) <= phash_dist for s in seen):
+                continue
+            seen.append(h)
+            out.append((fr, idx0, txt))
+
+        # 5. write ordered jpgs + timestamped/text-indexed sidecar
+        manifest = []
+        for n, (fr, idx0, txt) in enumerate(out, start=1):
+            dest = slides_dir / f"slide-{n:03d}.jpg"
+            shutil.copyfile(fr, dest)
+            manifest.append({"file": dest.name,
+                             "t": round(idx0 / fps, 1),
+                             "text": txt})
+        (slides_dir / "slides.json").write_text(
+            json.dumps(manifest, indent=2, ensure_ascii=False),
+            encoding="utf-8")
+        return len(out)
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
 
 
 def ts(seconds: float) -> str:
@@ -236,19 +408,57 @@ def _whisper_device() -> tuple[str, str]:
     return "cpu", "int8"
 
 
-def transcribe_local(video_path: Path, dest_dir: Path, model_name: str) -> tuple[Path, Path]:
+def _whisper_worker(video_path: str, dest_dir: str, model_name: str,
+                    device: str, compute_type: str) -> None:
+    """Disposable subprocess entrypoint for local faster-whisper.
+
+    Root cause this exists for: on Windows/Python 3.13, ctranslate2's CUDA
+    model destructor calls abort() (0xC0000409 STATUS_STACK_BUFFER_OVERRUN) at
+    interpreter finalization (and on GC). In a long batch that native abort is
+    uncatchable and kills EVERY remaining lesson. We do the transcription, write
+    transcript.txt/.srt, fsync, then os._exit(0) so Python finalization (and the
+    buggy CUDA destructor) never runs. Bonus: a native crash in here cannot take
+    down the parent batch -- the caller just sees missing output and moves on."""
     from faster_whisper import WhisperModel
-    txt_path = dest_dir / "transcript.txt"
-    srt_path = dest_dir / "transcript.srt"
-    device, compute_type = _whisper_device()
-    print(f"      local faster-whisper ({model_name}) on {device}"
-          f"{' (GPU)' if device == 'cuda' else ''}...")
+    dest = Path(dest_dir)
+    dest.mkdir(parents=True, exist_ok=True)
+    txt_path = dest / "transcript.txt"
+    srt_path = dest / "transcript.srt"
     model = WhisperModel(model_name, device=device, compute_type=compute_type)
-    segments, _info = model.transcribe(str(video_path), beam_size=5)
+    segments, _info = model.transcribe(video_path, beam_size=5)
     with txt_path.open("w", encoding="utf-8") as t, srt_path.open("w", encoding="utf-8") as s:
         for i, seg in enumerate(segments, start=1):
             t.write(seg.text.strip() + "\n")
             s.write(f"{i}\n{ts(seg.start)} --> {ts(seg.end)}\n{seg.text.strip()}\n\n")
+        t.flush(); s.flush()
+        os.fsync(t.fileno()); os.fsync(s.fileno())
+    sys.stdout.flush(); sys.stderr.flush()
+    os._exit(0)
+
+
+def transcribe_local(video_path: Path, dest_dir: Path, model_name: str) -> tuple[Path, Path]:
+    """Transcribe via local faster-whisper in a DISPOSABLE child process.
+
+    See _whisper_worker for why: ctranslate2's CUDA teardown abort()s and would
+    kill the whole batch. Isolating each transcription in a short-lived process
+    that os._exit(0)s after writing output avoids the destructor entirely and
+    contains any native crash to a single lesson."""
+    txt_path = dest_dir / "transcript.txt"
+    srt_path = dest_dir / "transcript.srt"
+    device, compute_type = _whisper_device()
+    print(f"      local faster-whisper ({model_name}) on {device}"
+          f"{' (GPU, isolated subprocess)' if device == 'cuda' else ''}...")
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    for p in (txt_path, srt_path):
+        p.unlink(missing_ok=True)
+    proc = subprocess.run(
+        [sys.executable, str(Path(__file__).resolve()), "--__whisper_worker",
+         str(video_path), str(dest_dir), model_name, device, compute_type],
+        capture_output=True, text=True)
+    if not (srt_path.exists() and txt_path.exists()):
+        raise RuntimeError(
+            f"local whisper subprocess failed (exit {proc.returncode}); "
+            f"stderr tail: {(proc.stderr or '')[-400:]}")
     return srt_path, txt_path
 
 
@@ -297,7 +507,8 @@ def process_one_lesson(yt_dlp: str, ffmpeg: str, lesson_meta: dict,
                        skip_existing: bool, groq_key: str | None,
                        openai_key: str | None, whisper_sel: str,
                        transcripts_only: bool, allow_whisper: bool,
-                       slides_mode: bool) -> dict:
+                       slides_mode: bool,
+                       slide_cfg: dict | None = None) -> dict:
     videos = lesson_meta.get("videos", [])
     if not videos:
         return {"post_id": lesson_meta.get("post_id"),
@@ -355,7 +566,7 @@ def process_one_lesson(yt_dlp: str, ffmpeg: str, lesson_meta: dict,
     n_slides = 0
     if (not transcripts_only) or slides_mode:
         n_slides = extract_slides(ffmpeg, video_path, ldir / "slides",
-                                  scene_threshold)
+                                  scene_threshold, slide_cfg)
 
     srt = try_native_subtitles(yt_dlp, primary["url"], work, cookies_file)
     if srt:
@@ -459,6 +670,20 @@ def main() -> int:
                         help="In --transcripts-only, fall back to Whisper when "
                              "a lesson has no native captions")
     parser.add_argument("--scene-threshold", type=float, default=0.3)
+    # OCR-gated slide extraction tuning (see extract_slides)
+    parser.add_argument("--slide-fps", type=float, default=1.0,
+                        help="Frames/sec sampled for slide detection")
+    parser.add_argument("--slide-phash-dist", type=int, default=6,
+                        help="Max dHash Hamming distance treated as same slide")
+    parser.add_argument("--slide-blur-min", type=float, default=60.0,
+                        help="Min Laplacian-variance sharpness to keep a frame")
+    parser.add_argument("--slide-min-words", type=int, default=4,
+                        help="Min OCR words for a frame to count as a slide")
+    parser.add_argument("--slide-min-chars", type=int, default=24,
+                        help="Min OCR characters for a frame to count as a slide")
+    parser.add_argument("--slide-tesseract-cmd", default=None,
+                        help="Explicit path to the tesseract binary "
+                             "(else PATH / known install locations)")
     parser.add_argument("--whisper-model", default="small",
                         choices=["tiny", "base", "small", "medium", "large-v3"])
     parser.add_argument("--skip-existing", action="store_true",
@@ -474,6 +699,10 @@ def main() -> int:
     args = parser.parse_args()
 
     course_dir = Path(args.course_dir).expanduser().resolve()
+    # Windows MAX_PATH (260) fix: extended-length prefix so deep
+    # transcript/slide/video paths (long lesson titles) can be written.
+    if sys.platform == "win32" and not str(course_dir).startswith("\\\\?\\"):
+        course_dir = Path("\\\\?\\" + str(course_dir))
     if not (course_dir / "metadata" / "lesson_urls.json").exists():
         print(f"Error: {course_dir}/metadata/lesson_urls.json not found. "
               f"Run discovery + scrape_course.py first.", file=sys.stderr)
@@ -512,6 +741,15 @@ def main() -> int:
     print(f"{len(lessons)} lessons ({n_with_video} with video) | mode: {mode}")
     print(f"  yt-dlp: {yt_dlp}\n")
 
+    slide_cfg = {
+        "fps": args.slide_fps,
+        "phash_dist": args.slide_phash_dist,
+        "blur_min": args.slide_blur_min,
+        "min_words": args.slide_min_words,
+        "min_chars": args.slide_min_chars,
+        "tesseract_cmd": args.slide_tesseract_cmd,
+    }
+
     report = []
     start = time.time()
     for i, lesson in enumerate(lessons, start=1):
@@ -521,7 +759,7 @@ def main() -> int:
             yt_dlp, ffmpeg, lesson, course_dir, args.scene_threshold,
             args.whisper_model, cookies_file, args.skip_existing, groq_key,
             openai_key, args.whisper, args.transcripts_only,
-            args.allow_whisper, args.slides)
+            args.allow_whisper, args.slides, slide_cfg)
         report.append(r)
         st = r.get("status")
         if st == "ok":
@@ -556,4 +794,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    if len(sys.argv) >= 7 and sys.argv[1] == "--__whisper_worker":
+        # Disposable GPU-whisper child (see _whisper_worker). Never returns.
+        _whisper_worker(sys.argv[2], sys.argv[3], sys.argv[4],
+                        sys.argv[5], sys.argv[6])
     sys.exit(main())

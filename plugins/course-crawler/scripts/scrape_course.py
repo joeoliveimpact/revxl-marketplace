@@ -171,6 +171,33 @@ def find_video_sources(html: str) -> list[dict]:
     return sources
 
 
+def drop_page_chrome_videos(all_videos: list[dict], total_lessons: int) -> list[dict]:
+    """Remove site-wide page-chrome videos from the aggregated list.
+
+    Many LMS templates (Skilljar, etc.) render a promo / "what's new"
+    video carousel on EVERY lesson page. find_video_sources can't tell that
+    apart from the lesson's own video on a single page, so those promo embeds
+    leak into video_sources.json and process_videos.py then picks one
+    (videos[0]) instead of the real lesson video.
+
+    Cross-lesson signal: a genuine lesson video is unique to its lesson; page
+    chrome repeats across many lessons. Drop any source that appears on a large
+    fraction of distinct lessons. Identity = (type, url). Conservative: only
+    filters when there are enough lessons to tell chrome from content, and only
+    drops sources on >=ceil(0.6*N) lessons (and >=3), so a real video that
+    legitimately appears on one (or a couple of) lessons is always kept."""
+    if total_lessons < 4:
+        return all_videos
+    from collections import defaultdict
+    lessons_per: dict = defaultdict(set)
+    for v in all_videos:
+        lessons_per[(v.get("type"), v.get("url"))].add(v.get("post_id"))
+    threshold = max(3, (total_lessons * 3 + 4) // 5)  # ceil(0.6*N), floor 3
+    chrome = {k for k, pids in lessons_per.items() if len(pids) >= threshold}
+    return [v for v in all_videos
+            if (v.get("type"), v.get("url")) not in chrome]
+
+
 # Reference-link categories. Order matters (first match wins).
 _LINK_RULES = [
     ("github", re.compile(r"https?://(?:www\.)?github\.com/", re.I)),
@@ -406,6 +433,12 @@ def main() -> int:
     args = parser.parse_args()
 
     course_dir = Path(args.course_dir).expanduser().resolve()
+    # Windows MAX_PATH (260) fix: prefix the absolute root with the
+    # extended-length marker so deep lesson paths (long titles) can be
+    # written. Children via `/` inherit the prefix. resolve() already
+    # gave a clean backslash absolute path (required by \\?\).
+    if sys.platform == "win32" and not str(course_dir).startswith("\\\\?\\"):
+        course_dir = Path("\\\\?\\" + str(course_dir))
     manifest_path = course_dir / "metadata" / "lesson_urls.json"
     if not manifest_path.exists():
         print(f"Error: {manifest_path} not found. Run discovery first "
@@ -471,14 +504,17 @@ def main() -> int:
                     "keep_html": args.keep_html, "results": results},
                    indent=2, default=str),
         encoding="utf-8")
+    lesson_videos = drop_page_chrome_videos(all_videos, len(results))
     (course_dir / "metadata" / "video_sources.json").write_text(
-        json.dumps(all_videos, indent=2, default=str), encoding="utf-8")
+        json.dumps(lesson_videos, indent=2, default=str), encoding="utf-8")
 
     print()
     print("=" * 60)
     print(f"Done in {elapsed:.1f}s ... {ok}/{len(results)} lessons OK")
     print(f"  Course tree: {course_dir}  (NN-module/NN-lesson/<lesson>.md + downloads/)")
-    print(f"  Videos found: {len(all_videos)} (metadata/video_sources.json)")
+    print(f"  Videos found: {len(lesson_videos)} lesson videos "
+          f"({len(all_videos) - len(lesson_videos)} page-chrome dropped) "
+          f"(metadata/video_sources.json)")
     print(f"  Report:       {course_dir / 'metadata' / 'scrape_report.json'}")
     return 0 if ok == len(results) else 2
 
