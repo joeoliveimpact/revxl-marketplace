@@ -72,14 +72,31 @@ def slugify(text: str, max_len: int = 80) -> str:
     return s[:max_len] or "untitled"
 
 
+def referer_for(video: dict) -> str | None:
+    """Referer header a host needs for signed playback. Signed Mux playback
+    (e.g. Skool's `stream.video.skool.com`) enforces a playback restriction and
+    403s without a matching Referer. An explicit `referer` on the entry wins;
+    otherwise default Mux/Skool-hosted videos to the Skool origin."""
+    if video.get("referer"):
+        return video["referer"]
+    host = video.get("host") or ""
+    url = video.get("url") or ""
+    if host == "mux" or "mux.com" in url or "video.skool.com" in url:
+        return "https://www.skool.com"
+    return None
+
+
 def download_video(yt_dlp: str, video_url: str, dest_dir: Path,
-                   cookies_file: Path | None) -> Path | None:
+                   cookies_file: Path | None,
+                   referer: str | None = None) -> Path | None:
     dest_dir.mkdir(parents=True, exist_ok=True)
     out_path = dest_dir / "video.mp4"
     if out_path.exists():
         return out_path
     cmd = [yt_dlp, "--no-playlist", "--quiet", "--no-warnings", "--progress",
            "-o", str(out_path), "--merge-output-format", "mp4"]
+    if referer:
+        cmd += ["--referer", referer]
     if cookies_file and cookies_file.exists():
         cmd += ["--cookies", str(cookies_file)]
     cmd.append(video_url)
@@ -91,7 +108,8 @@ def download_video(yt_dlp: str, video_url: str, dest_dir: Path,
 
 
 def try_native_subtitles(yt_dlp: str, video_url: str, dest_dir: Path,
-                        cookies_file: Path | None) -> Path | None:
+                        cookies_file: Path | None,
+                        referer: str | None = None) -> Path | None:
     """Download native/auto subtitles as .srt. Returns the .srt path or None."""
     dest_dir.mkdir(parents=True, exist_ok=True)
     out_template = str(dest_dir / "captions.%(ext)s")
@@ -99,6 +117,8 @@ def try_native_subtitles(yt_dlp: str, video_url: str, dest_dir: Path,
            "--sub-langs", "en.*,en", "--sub-format", "srt/vtt/best",
            "--convert-subs", "srt", "--quiet", "--no-warnings",
            "-o", out_template]
+    if referer:
+        cmd += ["--referer", referer]
     if cookies_file and cookies_file.exists():
         cmd += ["--cookies", str(cookies_file)]
     cmd.append(video_url)
@@ -532,13 +552,15 @@ def process_one_lesson(yt_dlp: str, ffmpeg: str, lesson_meta: dict,
                 "status": "skipped_existing"}
 
     ldir.mkdir(parents=True, exist_ok=True)
+    referer = referer_for(primary)
 
     def _clean_work():
         shutil.rmtree(work, ignore_errors=True)
 
     # --- transcripts-only: native captions, no download, no Whisper ---------
     if transcripts_only and not slides_mode:
-        srt = try_native_subtitles(yt_dlp, primary["url"], work, cookies_file)
+        srt = try_native_subtitles(yt_dlp, primary["url"], work, cookies_file,
+                                   referer)
         if srt:
             shutil.move(str(srt), str(srt_dest))
             md_path.write_text(f"# {title}\n\n{srt_to_text(srt_dest)}",
@@ -557,7 +579,8 @@ def process_one_lesson(yt_dlp: str, ffmpeg: str, lesson_meta: dict,
         # else fall through to download + whisper
 
     # --- download -> slides -> transcript (into the lesson folder) ----------
-    video_path = download_video(yt_dlp, primary["url"], work, cookies_file)
+    video_path = download_video(yt_dlp, primary["url"], work, cookies_file,
+                                referer)
     if not video_path:
         _clean_work()
         return {"post_id": lesson_meta.get("post_id"), "title": title,
@@ -568,7 +591,8 @@ def process_one_lesson(yt_dlp: str, ffmpeg: str, lesson_meta: dict,
         n_slides = extract_slides(ffmpeg, video_path, ldir / "slides",
                                   scene_threshold, slide_cfg)
 
-    srt = try_native_subtitles(yt_dlp, primary["url"], work, cookies_file)
+    srt = try_native_subtitles(yt_dlp, primary["url"], work, cookies_file,
+                               referer)
     if srt:
         shutil.move(str(srt), str(srt_dest))
         md_path.write_text(f"# {title}\n\n{srt_to_text(srt_dest)}",

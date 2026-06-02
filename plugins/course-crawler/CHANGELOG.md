@@ -2,6 +2,19 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.5.0 — 2026-06-02
+
+### Added
+
+- **Skool-native (signed Mux) video support.** Some Skool classrooms host video on Mux with *signed playback* (`stream.video.skool.com`) instead of an external `videoLink`. Those lessons carry `metadata.videoId` + a per-lesson `playbackToken` (JWT, aud="v"). `discover_skool.py` now:
+  - detects them (`--from-page` reports `skool_native_post_ids`) and resolves the open lesson's signed source automatically;
+  - exposes `--mux-page <course_dir> <lesson_page.html> <post_id>` to extract and upsert a signed `video_sources.json` entry from any captured lesson page (the token is per-lesson, so each must be visited — the `course` skill drives this).
+  - New helpers: `skool_mux_source()`, `append_video_source()`.
+
+### Fixed
+
+- **Signed-playback downloads 403'd (no Referer).** `process_videos.py` (`download_video`, `try_native_subtitles`) now sends `--referer` when required. New `referer_for()` honors a per-entry `referer` field and defaults Mux/Skool-hosted videos to `https://www.skool.com`, which the Mux `playback_restriction_id` requires.
+
 ## 0.4.0 — 2026-05-20
 
 ### Added

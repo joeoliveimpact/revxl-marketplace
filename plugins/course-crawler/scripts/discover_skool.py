@@ -54,6 +54,15 @@ Skool embeds the whole course in <script id="__NEXT_DATA__">. So:
 That single page contains EVERY module + lesson with title, writeup (desc),
 videoLink, and resources. No need to click each lesson.
 
+SKOOL-NATIVE (signed Mux) VIDEO: some classrooms host video on Mux instead of
+an external videoLink. Those lessons have `metadata.videoId` and a per-lesson
+signed `playbackToken`. --from-page reports them (`skool_native_post_ids`) and
+resolves only the OPEN lesson. For the rest, drive the browser to each such
+lesson (e.g. classroom URL with ?md=<post_id>), let it render, then run:
+  discover_skool.py --mux-page <course_dir> <captured_lesson.html> <post_id>
+That upserts a signed entry into video_sources.json. process_videos.py sends
+the required Referer automatically (it 403s without it).
+
 Fallback (no __NEXT_DATA__ / non-Skool SPA): assemble the harvest JSON by hand
 (shape in persist()'s docstring) and pass it positionally.
 """
@@ -168,6 +177,65 @@ def slugify(text: str, max_len: int = 80) -> str:
     return s[:max_len] or "untitled"
 
 
+# --- Skool-native (Mux) video --------------------------------------------
+#
+# Some Skool classrooms host video on Mux with SIGNED playback rather than an
+# external `videoLink` (YouTube/Loom). Those lessons carry `metadata.videoId`
+# plus, on the lesson's own rendered page, a `video` object with a `playbackId`
+# and a `playbackToken` (a JWT with claim aud="v"). The signed HLS manifest is:
+#     https://stream.video.skool.com/<playbackId>.m3u8?token=<aud-v-jwt>
+# and 403s without `Referer: https://www.skool.com` (Mux playback restriction).
+# process_videos.py honours the `referer` field this writes.
+#
+# IMPORTANT: the signed token is per-lesson and only present on THAT lesson's
+# page, so --from-page (one classroom page) can only resolve the OPEN lesson.
+# For full coverage the `course` skill must visit each Skool-native lesson and
+# call --mux-page per captured page.
+
+def _jwt_payload(tok: str) -> dict | None:
+    import base64
+    try:
+        p = tok.split(".")[1]
+        p += "=" * (-len(p) % 4)
+        return json.loads(base64.urlsafe_b64decode(p))
+    except Exception:
+        return None
+
+
+def skool_mux_source(page_html: str) -> dict | None:
+    """From a captured Skool lesson page, return a signed Mux video_sources
+    entry ({url, host, playback_id, referer}) or None if the page has no
+    aud="v" playback token (i.e. not a Skool-native Mux lesson)."""
+    for tok in re.findall(r"eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+",
+                          page_html):
+        payload = _jwt_payload(tok)
+        if payload and payload.get("aud") == "v" and payload.get("sub"):
+            pb = payload["sub"]
+            return {
+                "url": f"https://stream.video.skool.com/{pb}.m3u8?token={tok}",
+                "host": "mux",
+                "playback_id": pb,
+                "referer": "https://www.skool.com",
+            }
+    return None
+
+
+def append_video_source(course_dir: Path, entry: dict) -> None:
+    """Upsert one entry into metadata/video_sources.json, keyed by post_id."""
+    vsf = course_dir / "metadata" / "video_sources.json"
+    data = []
+    if vsf.exists():
+        try:
+            data = json.loads(vsf.read_text(encoding="utf-8"))
+        except ValueError:
+            data = []
+    data = [d for d in data if d.get("post_id") != entry.get("post_id")]
+    data.append(entry)
+    vsf.parent.mkdir(parents=True, exist_ok=True)
+    vsf.write_text(json.dumps(data, indent=2, ensure_ascii=False),
+                   encoding="utf-8")
+
+
 # --- __NEXT_DATA__ -> canonical layout ------------------------------------
 
 def _walk_course(node, mod_order, mod_title, acc):
@@ -210,6 +278,7 @@ def from_page(course_dir: Path, page_html: str) -> dict:
     flat: list[dict] = []
     seen_mods: dict[int, str] = {}
     lesson_counter: dict[int, int] = {}
+    vid_to_post: dict[str, str] = {}   # Skool-native videoId -> post_id
     for order, mtitle, course in acc:
         md = course.get("metadata", {}) or {}
         title = md.get("title") or course.get("name") or "untitled"
@@ -257,12 +326,18 @@ def from_page(course_dir: Path, page_html: str) -> dict:
         rel = (rendered / m_dirname / f"{lesson_slug}.html")
         rel.write_text(body, encoding="utf-8")
 
+        post_id = course.get("id") or slugify(title)
+        # Skool-native (Mux) lesson: has videoId but no external videoLink.
+        # Record so we can resolve its signed source from a per-lesson page.
+        if md.get("videoId") and not md.get("videoLink"):
+            vid_to_post[md["videoId"]] = post_id
+
         flat.append({
             "module_order": order,
             "module_title": mtitle,
             "lesson_order": lesson_order,
             "category_id": root.get("course", {}).get("id", ""),
-            "post_id": course.get("id") or slugify(title),
+            "post_id": post_id,
             "title": title,
             "url": "",  # body is self-contained; nothing to re-fetch
             "rendered_html": str(rel.relative_to(course_dir)),
@@ -277,9 +352,39 @@ def from_page(course_dir: Path, page_html: str) -> dict:
         encoding="utf-8")
     (meta / "lesson_urls.json").write_text(
         json.dumps(flat, indent=2, ensure_ascii=False), encoding="utf-8")
-    return {"course_title": course_title, "lessons": len(flat),
-            "modules": len(seen_mods),
-            "lesson_urls": str(meta / "lesson_urls.json")}
+
+    result = {"course_title": course_title, "lessons": len(flat),
+              "modules": len(seen_mods),
+              "lesson_urls": str(meta / "lesson_urls.json")}
+
+    # Skool-native (signed Mux) lessons: best-effort resolve the OPEN lesson
+    # from this page's token. The rest need per-lesson capture (--mux-page).
+    if vid_to_post:
+        src = skool_mux_source(page_html)
+        if src:
+            # token.sub is the playbackId; map playbackId -> videoId via the
+            # page's video objects, then videoId -> post_id.
+            pb_to_vid = {}
+            for vo in re.finditer(
+                    r'"video":\{"id":"([^"]+)","playbackId":"([^"]+)"', page_html):
+                pb_to_vid[vo.group(2)] = vo.group(1)
+            vid = pb_to_vid.get(src["playback_id"])
+            post_id = vid_to_post.get(vid)
+            if post_id:
+                lm = next((f for f in flat if f["post_id"] == post_id), None)
+                append_video_source(course_dir, {
+                    "post_id": post_id,
+                    "title": lm["title"] if lm else "",
+                    **src,
+                })
+        result["skool_native_video_lessons"] = len(vid_to_post)
+        result["skool_native_post_ids"] = list(vid_to_post.values())
+        result["note"] = (
+            f"{len(vid_to_post)} lesson(s) use Skool-native signed-Mux video. "
+            "Only the open lesson is resolvable from this page; have the "
+            "`course` skill visit each and run: discover_skool.py --mux-page "
+            "<course_dir> <lesson_page.html> <post_id>")
+    return result
 
 
 # --- fallback: hand-assembled harvest -------------------------------------
@@ -327,6 +432,11 @@ def main() -> int:
         description="Skool classroom -> canonical course layout.")
     parser.add_argument("--from-page", nargs=2, metavar=("PAGE_HTML", "COURSE_DIR"),
                         help="Parse __NEXT_DATA__ from a captured classroom page")
+    parser.add_argument("--mux-page", nargs=3,
+                        metavar=("COURSE_DIR", "PAGE_HTML", "POST_ID"),
+                        help="Extract a Skool-native signed-Mux video from one "
+                             "captured lesson page and upsert it into "
+                             "video_sources.json (keyed by POST_ID)")
     parser.add_argument("course_dir", nargs="?", help="(fallback) course folder")
     parser.add_argument("harvest_json", nargs="?", help="(fallback) harvest JSON")
     parser.add_argument("--recipe", action="store_true", help="Print the recipe")
@@ -334,6 +444,21 @@ def main() -> int:
 
     if args.recipe:
         print(SKOOL_RECIPE)
+        return 0
+
+    if args.mux_page:
+        course_dir, page_html_path, post_id = args.mux_page
+        course_dir = Path(course_dir).expanduser().resolve()
+        page_html = Path(page_html_path).expanduser().read_text(
+            encoding="utf-8", errors="replace")
+        src = skool_mux_source(page_html)
+        if not src:
+            print(json.dumps({"post_id": post_id, "status": "no_mux_token",
+                              "note": "No aud='v' playback token on this page."}))
+            return 1
+        append_video_source(course_dir, {"post_id": post_id, **src})
+        print(json.dumps({"post_id": post_id, "status": "ok",
+                          "playback_id": src["playback_id"]}))
         return 0
 
     if args.from_page:
