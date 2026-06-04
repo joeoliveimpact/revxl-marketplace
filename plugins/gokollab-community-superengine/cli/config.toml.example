@@ -1,0 +1,24 @@
+# clientclub CLI config.
+# Copy to ~/.config/clientclub-pp-cli/config.toml (the same dir the CLI reads
+# refresh-token.txt from). The binary's internal app name is "clientclub-pp-cli"
+# even if the binary file is renamed.
+#
+# The [headers] block is MANDATORY. Without it the LeadConnector backend returns
+# 403 "undefined channel is restricted" even with a valid token — the server
+# uses `channel` to route the auth realm.
+#
+# Fill YOUR-COMMUNITY + YOUR_LOCATION_ID with THIS community's values. The
+# gokollab-setup skill captures them automatically from your login + discovery.
+# None of these are secret: a public backend URL, your community subdomain,
+# your location id, and a date-string API contract version (NOT an app version).
+
+base_url = "https://services.leadconnectorhq.com"
+
+[headers]
+channel            = "APP"
+source             = "PORTAL_USER"
+version            = "2023-02-21"
+origin             = "https://YOUR-COMMUNITY.app.clientclub.net"
+x-location-id      = "YOUR_LOCATION_ID"
+x-app-version      = "web"
+x-platform-details = "web"

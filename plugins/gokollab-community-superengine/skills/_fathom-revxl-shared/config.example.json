@@ -1,0 +1,20 @@
+{
+  "_comment": "Per-host config for the community automation suite. Copy to config.json and fill the YOUR_* values (the gokollab-setup skill fills these from your login + discovery). Binaries and token helpers are BUNDLED in the plugin — the ${CLAUDE_PLUGIN_ROOT} paths below resolve to them automatically. The skills detect OS/arch and pick the matching clientclubBinary + tokenHelper.",
+  "locationId": "YOUR_LOCATION_ID",
+  "groupId": "YOUR_GROUP_ID",
+  "groupCallsChannelId": "YOUR_GROUP_CALLS_CHANNEL_ID",
+  "clientclubBinary": {
+    "windows": "${CLAUDE_PLUGIN_ROOT}/cli/bin/clientclub-windows-amd64.exe",
+    "linux": "${CLAUDE_PLUGIN_ROOT}/cli/bin/clientclub-linux-amd64",
+    "darwin-arm64": "${CLAUDE_PLUGIN_ROOT}/cli/bin/clientclub-darwin-arm64",
+    "darwin-amd64": "${CLAUDE_PLUGIN_ROOT}/cli/bin/clientclub-darwin-amd64"
+  },
+  "tokenHelper": {
+    "windows": "${CLAUDE_PLUGIN_ROOT}/cli/token-helpers/Get-ClientClubToken.ps1",
+    "posix": "${CLAUDE_PLUGIN_ROOT}/cli/token-helpers/get-clientclub-token.sh"
+  },
+  "refreshTokenPath": "~/.config/clientclub-pp-cli/refresh-token.txt",
+  "fathomStorageState": "~/.config/gokollab-superengine/fathom-storage-state.json",
+  "channelMap": "~/.config/gokollab-superengine/channel-map.json",
+  "driveTranscriptRootFolderId": "YOUR_DRIVE_FOLDER_ID_OPTIONAL"
+}

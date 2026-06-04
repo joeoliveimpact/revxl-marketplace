@@ -4,6 +4,11 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.10] — 2026-06-04
+
+### Added
+- **New plugin: [gokollab-community-superengine](plugins/gokollab-community-superengine/CHANGELOG.md) v0.1.0** — install-and-run community automation for clientclub / GoHighLevel (GoKollab) coaches: tiered member onboarding, group-call recap posts, and 1:1 call-history upkeep. Self-installs dependencies, captures the operator's own login (browser-MCP localStorage token capture, no terminal), discovers + confirms the community channel map, and runs an "ask the coach" setup interview. Bundles the clientclub CLI for Windows/macOS/Linux. Catalog now ships 6 plugins.
+
 ## [0.1.9] — 2026-06-02
 
 ### Changed

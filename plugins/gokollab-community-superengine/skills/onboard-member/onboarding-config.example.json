@@ -1,0 +1,68 @@
+{
+  "_comment": "GoKollab Community Superengine — onboarding config. TWO LAYERS: (1) community = auto-discovered + coach-confirmed at setup; (2) tierMap/tierRecipes/welcomeCopy = built by the setup interview ('ask the coach'). See CONFIG-SCHEMA.md. All values below are EXAMPLE placeholders; gokollab-setup overwrites them with this community's real discovered values.",
+
+  "community": {
+    "_comment": "LAYER 1 — discovered via `groups channels list <loc> <grp>` then confirmed by the coach. ids shown as placeholders.",
+    "locationId": "YOUR_LOCATION_ID",
+    "groupId": "YOUR_GROUP_ID",
+    "discoveredAt": "SET_AT_SETUP",
+    "publicChannels": [
+      { "id": "EXAMPLE_CHANNEL_ID_1", "name": "Announcements",  "visibility": "PUBLIC" },
+      { "id": "EXAMPLE_CHANNEL_ID_2", "name": "Group Calls",    "visibility": "PUBLIC" },
+      { "id": "EXAMPLE_CHANNEL_ID_3", "name": "Community Chat", "visibility": "PUBLIC" },
+      { "id": "EXAMPLE_CHANNEL_ID_4", "name": "Wins",           "visibility": "PUBLIC" }
+    ],
+    "privateChannelNamePattern": "{firstName} {lastName} - 1:1",
+    "_privateChannelsNote": "Per-member PRIVATE channels (the '{Name} - 1:1' set) are dynamic — discovered fresh each run for idempotency, not stored here.",
+
+    "purposes": {
+      "_comment": "Bind a channel id to each role. Set by the setup interview from the discovered publicChannels.",
+      "intro_welcome": "EXAMPLE_CHANNEL_ID_3",
+      "group_call_featured": "EXAMPLE_CHANNEL_ID_2"
+    }
+  },
+
+  "tierMap": {
+    "_comment": "LAYER 2 — GHL tag -> tier key. Coach states which tag identifies each tier. Example placeholders below.",
+    "EXAMPLE_TAG_premium": "tier_premium",
+    "EXAMPLE_TAG_standard": "tier_standard"
+  },
+
+  "tierRecipes": {
+    "_comment": "LAYER 2 — what each tier gets. Coach defines via interview. Two example tiers shown.",
+    "tier_premium": {
+      "label": "Premium (gets a private 1:1 channel)",
+      "createPrivateChannel": true,
+      "privateChannelIcon": "🌟",
+      "gatedPrivateChannels": [],
+      "seedCallRecordingPost": true,
+      "welcomePrivate": true,
+      "welcomeCommunity": true
+    },
+    "tier_standard": {
+      "label": "Standard (community only, no 1:1 channel)",
+      "createPrivateChannel": false,
+      "gatedPrivateChannels": [],
+      "seedCallRecordingPost": false,
+      "welcomePrivate": false,
+      "welcomeCommunity": true
+    }
+  },
+
+  "welcomeCopy": {
+    "_comment": "LAYER 2 — set by interview. mode = 'rotating_scripts' OR 'framework'.",
+    "mode": "MODE_SET_BY_INTERVIEW",
+    "rotating_scripts": {
+      "pool": [
+        "SCRIPT_1_SET_BY_INTERVIEW",
+        "SCRIPT_2_SET_BY_INTERVIEW"
+      ],
+      "rotationIndex": 0
+    },
+    "framework": {
+      "tone": "TONE_SET_BY_INTERVIEW",
+      "mustInclude": [ "GUIDELINE_SET_BY_INTERVIEW" ],
+      "mustAvoid": [ "GUIDELINE_SET_BY_INTERVIEW" ]
+    }
+  }
+}
