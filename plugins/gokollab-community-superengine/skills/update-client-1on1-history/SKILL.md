@@ -61,6 +61,10 @@ Append to `tasks/1on1-review-queue.md`:
   - Suggested: {route to X / skip / extend alias map}
 ```
 
+## Enriching / backfilling existing histories
+
+To upgrade a client's older **bare** entries (date-only links) to the enriched format — or rebuild a whole history — note that each existing entry already carries its Fathom **share token**. Resolve token → recording_id (`../_fathom-revxl-shared/pipeline.md` §4c: `/share/{token}` 302 → `/calls/{slug}` → `get_recording_by_call_id` → recording_id), fetch the summary, and re-render. **Match the client's existing format variant** (`1on1-format.md`) unless explicitly told to normalize all clients to enriched. Preserve each entry's original share token, date text, and any "- Part 2" / "- Onboarding" label. Back up the post before overwriting (read via `--deliver file:` — pipeline.md §7 trap 6); graceful-missing Drive → omit the 📜 link. Bulk overwrite → round-trip ONE first (pipeline.md §8).
+
 ## Common mistakes
 - **Doing the append/post inline.** This skill only classifies + dispatches. Rendering + posting belong to the primitives (single source of format truth).
 - **Non-idempotent re-runs.** Always diff against existing posts/entries first; the daily audit must create nothing when already up to date.

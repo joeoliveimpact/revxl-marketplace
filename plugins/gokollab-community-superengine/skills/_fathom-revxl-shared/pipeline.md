@@ -57,6 +57,7 @@ Constants: `locationId`, `groupId`, channel IDs from `config.json` / `channel-ma
 **Body JSON shapes:**
 - create-post: `{"title":"…","content":"<html>"}`
 - update-post: `{"action":"UPDATE_POST","post":{"id":"<postId>","title":"…(optional)","content":"<html>"}}`
+- pin a post: `{"action":"PIN_TO_CHANNEL"}` (via `update-post`, postId positional, no other fields) — pins to the channel's Featured strip. Used for weekly-index posts.
 
 **`--agent` strips the `content` field on reads** — for reading post content use `--json` WITHOUT `--agent` (or `groups posts get … --json`). `--agent` is fine for writes.
 
@@ -99,6 +100,16 @@ curl -s -o <tmp> -w "%{http_code}" --max-redirs 0 -H "x-inertia: true" -H "Cooki
 
 **Cookie expiry (≈7-day TTL):** 30x redirect or 401 → session expired. Skip the call, queue for re-auth, don't abort. Re-auth: `npx playwright open --save-storage="<fathomStorageState>" https://fathom.video` (log in, close).
 
+### 4c. Share token → recording_id (backfill / enrichment)
+
+Old 1:1 history entries store only the Fathom **share token** (`/share/{token}`), not the recording_id — so enriching/re-rendering them needs a token→recording_id resolve first (recording_id is required for `get_meeting_summary` and Drive lookup).
+
+1. A logged-in `GET https://fathom.video/share/{token}` (cookie header, `--max-redirs 0`) **302-redirects to `/calls/{slug}`**. Extract the slug from the redirect body/Location with `/calls/(\d+)`.
+2. **`{slug}` is the call_id, NOT the recording_id** — they are different numbers. Resolve via the Fathom MCP `get_recording_by_call_id(call_id={slug})` → `recording_id`.
+3. Then `get_meeting_summary(recording_id)` (§4a) + Drive-by-recording_id (§5) as usual.
+
+A 302 to a login URL (instead of `/calls/…`) means the cookie expired — re-auth first (see §4b).
+
 ---
 
 ## 5. Drive transcript resolution
@@ -137,6 +148,9 @@ Full reference: memory `feedback_powershell_5_1_api_traps.md`. The five that bit
 3. **Reading UTF-8 files:** `[IO.File]::ReadAllText($p,[Text.UTF8Encoding]::new($false))`, NOT `Get-Content -Raw` (defaults to Windows-1252 → corrupts ⚡/📜 emojis on round-trip).
 4. **Emojis:** `[Char]::ConvertFromUtf32(0x1F4DD)` for supra-BMP (📝/📜/📞), NOT `[char]`. For multi-codepoint sequences (▶️ = U+25B6+U+FE0F) force the string overload on `.Replace([string]$a,[string]$b)`.
 5. **stdin to the Go CLI:** write UTF-8 no-BOM via `[IO.File]::WriteAllText`, pipe via `cmd /c "exe … < file"` with an **absolute** exe path (cmd /c doesn't inherit cwd).
+6. **Reading an existing post's content for an edit:** `groups posts get <loc> <grp> <postId> --json --deliver file:<path>` writes the response to disk in correct UTF-8; read it back with `[IO.File]::ReadAllText`. Avoids the PS-stdout emoji corruption when you're about to UPDATE that post (prepend/enrich).
+7. **Do NOT `ConvertFrom-Json` a post object to read `.content`** — the post's `user`/`author` sub-objects collide and PS 5.1 returns an EMPTY `.content` (trap #2 in object form). Regex-extract the value instead: `'"content"\s*:\s*"((?:\\.|[^"\\])*)"'`, then `[System.Text.RegularExpressions.Regex]::Unescape(...)` to decode.
+8. **Single-element nested-array collapse:** `@(@('a','b'))` (one inner array) flattens to a 2-string array, so `foreach` iterates the strings (not the pair) and dedup/lookups silently break. Use `,@('a','b')` or handle a single item directly.
 
 **POSIX equivalents:** native `curl`; `jq` or `python3 -c` for JSON; UTF-8 is the default encoding; native `< file` stdin redirect; emojis are literal in source. None of traps 1–5 apply on Linux/macOS, but the *patterns* (regex-extract the response `_id`, write a temp payload file) stay the same for consistency.
 

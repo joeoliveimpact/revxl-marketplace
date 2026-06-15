@@ -7,7 +7,7 @@
     "email": "joe@engineforimpact.com"
   },
   "metadata": {
-    "version": "0.1.10"
+    "version": "0.1.11"
   },
   "plugins": [
     {
@@ -80,7 +80,7 @@
       "description": "One-install community automation for clientclub / GoHighLevel (GoKollab) coaches. Onboard new members by tier (approve → add to the right channels → build their private 1:1 channel → welcome posts), turn group-call recordings into featured recap posts, and keep each client's 1:1 call history current — all by talking to Claude. Self-installs its dependencies and captures your own community login at setup. No terminal.",
       "source": "./plugins/gokollab-community-superengine",
       "category": "crm",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"

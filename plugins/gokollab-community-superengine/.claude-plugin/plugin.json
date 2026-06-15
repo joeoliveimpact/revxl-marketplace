@@ -2,7 +2,7 @@
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "gokollab-community-superengine",
   "description": "Install-and-run community automation for clientclub / GoHighLevel (GoKollab) coaches — tiered member onboarding, group-call recap posts, and 1:1 call-history upkeep, driven by natural language. Self-installs dependencies, captures the operator's own login (no terminal), and learns their community at setup.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": {
     "name": "Joe Olive",
     "email": "joe@engineforimpact.com"
