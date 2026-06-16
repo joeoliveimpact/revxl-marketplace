@@ -4,7 +4,7 @@ description: First-run configuration wizard for the sales-call blueprint superen
 ---
 
 <purpose>
-First-run setup: populate references/business-config.md by AUTO-DISCOVERING the user's brand/closer/program data from places it already lives (rather than a blank form), confirm it, set the transcript source and output destination, and run a dependency check scoped to those choices. Re-runnable any time to reconfigure.
+First-run setup: populate ${CLAUDE_PLUGIN_ROOT}/references/business-config.md by AUTO-DISCOVERING the user's brand/closer/program data from places it already lives (rather than a blank form), confirm it, set the transcript source and output destination, and run a dependency check scoped to those choices. Re-runnable any time to reconfigure.
 </purpose>
 
 <user-story>
@@ -60,7 +60,7 @@ Report a READY / MISSING table. Missing items are warnings, not blockers — not
 </step>
 
 <step name="write_config">
-Write the confirmed values into references/business-config.md (preserve the file's structure and notes; only replace the values). Report: "Setup complete — config saved. {N} ready, {M} missing (with workarounds)." Then: "Run /sales-call-blueprint-superengine triage|strategy to build a blueprint."
+Write the confirmed values into ${CLAUDE_PLUGIN_ROOT}/references/business-config.md (preserve the file's structure and notes; only replace the values). Report: "Setup complete — config saved. {N} ready, {M} missing (with workarounds)." Then: "Run /sales-call-blueprint-superengine triage|strategy to build a blueprint."
 
 Ask: "Look right?"
 **Wait for approval.**
@@ -69,7 +69,7 @@ Ask: "Look right?"
 </steps>
 
 <output>
-A populated references/business-config.md plus a dependency-check report (ready/missing with workarounds), scoped to the user's actual transcript source and output destination.
+A populated ${CLAUDE_PLUGIN_ROOT}/references/business-config.md plus a dependency-check report (ready/missing with workarounds), scoped to the user's actual transcript source and output destination.
 </output>
 
 <acceptance-criteria>

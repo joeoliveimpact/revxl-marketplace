@@ -2,6 +2,11 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.1] — 2026-06-15
+
+### Fixed
+- **Bundled doc resolution on installed clients.** All skill references to bundled files now use `${CLAUDE_PLUGIN_ROOT}/references/…` and `${CLAUDE_PLUGIN_ROOT}/templates/…` instead of bare relative paths. Bare paths could resolve against the user's working directory instead of the installed plugin folder, so the frameworks, templates, and quality checklist could fail to load on a client machine. `${CLAUDE_PLUGIN_ROOT}` is substituted inline to the plugin's install path, so the docs load reliably in Claude Code and Claude Desktop.
+
 ## [0.1.0] — 2026-06-15
 
 ### Added

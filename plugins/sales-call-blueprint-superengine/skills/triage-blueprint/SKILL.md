@@ -24,15 +24,15 @@ Confirm the three gate answers; do NOT proceed until answered:
 2. **Who is taking the call?** (the gatekeeper)
 3. **Output mode** — Pre-Call Prep (deep), Call-Time Blueprint (live), or both?
 
-Then collect the complete DM conversation and any intake-form data. Confirm references/business-config.md is current (the in/out criteria reference {{CORE_PROBLEM_SOLVED}} and {{DISQUALIFIER_FLOOR}}).
+Then collect the complete DM conversation and any intake-form data. Confirm ${CLAUDE_PLUGIN_ROOT}/references/business-config.md is current (the in/out criteria reference {{CORE_PROBLEM_SOLVED}} and {{DISQUALIFIER_FLOOR}}).
 
-If DMs are thin, proceed under the thin-DM rule (references/psych-profile.md) — flag gaps, don't fabricate. (Triage is usually first contact, so there's rarely a prior call — but if any prior recorded touchpoint exists, pull it via references/transcript-pull.md the same way.)
+If DMs are thin, proceed under the thin-DM rule (${CLAUDE_PLUGIN_ROOT}/references/psych-profile.md) — flag gaps, don't fabricate. (Triage is usually first contact, so there's rarely a prior call — but if any prior recorded touchpoint exists, pull it via ${CLAUDE_PLUGIN_ROOT}/references/transcript-pull.md the same way.)
 
 **Wait for response before proceeding.**
 </step>
 
 <step name="extract_profile">
-Apply references/psych-profile.md. Focus the profile on qualification signals: real urgency vs. general dissatisfaction, investment capacity tells, decision authority (partner?), coachability, and any logistical flags (currency, timezone). Mark gaps `[CONFIRM LIVE]`.
+Apply ${CLAUDE_PLUGIN_ROOT}/references/psych-profile.md. Focus the profile on qualification signals: real urgency vs. general dissatisfaction, investment capacity tells, decision authority (partner?), coachability, and any logistical flags (currency, timezone). Mark gaps `[CONFIRM LIVE]`.
 </step>
 
 <step name="build_qualification_plan">
@@ -46,11 +46,11 @@ Include the **pricing deflection script** (never quote specific pricing on triag
 </step>
 
 <step name="render_output">
-Render the requested mode(s) using templates/precall-prep.md (deep, with the Call Structure swapped to the 15-min qualification flow) and/or templates/calltime-blueprint.md (live). Always include templates/post-call-notes.md as the post-call capture sheet so confirmed intel feeds a future strategy blueprint. Resolve {{config}} variables. Name output `[Prospect Name] - TRIAGE - [MM.DD.YY].md`.
+Render the requested mode(s) using ${CLAUDE_PLUGIN_ROOT}/templates/precall-prep.md (deep, with the Call Structure swapped to the 15-min qualification flow) and/or ${CLAUDE_PLUGIN_ROOT}/templates/calltime-blueprint.md (live). Always include ${CLAUDE_PLUGIN_ROOT}/templates/post-call-notes.md as the post-call capture sheet so confirmed intel feeds a future strategy blueprint. Resolve {{config}} variables. Name output `[Prospect Name] - TRIAGE - [MM.DD.YY].md`.
 </step>
 
 <step name="review">
-Run references/blueprint-quality.md (including the triage-specific items: no pricing, clear in/out, qualify-not-pitch). Fix any fails.
+Run ${CLAUDE_PLUGIN_ROOT}/references/blueprint-quality.md (including the triage-specific items: no pricing, clear in/out, qualify-not-pitch). Fix any fails.
 
 Present to the user. Ask: "Does this look right? Any adjustments?"
 
@@ -58,7 +58,7 @@ Present to the user. Ask: "Does this look right? Any adjustments?"
 </step>
 
 <step name="deliver">
-ONLY AFTER approval: deliver the blueprint(s) to {{OUTPUT_DESTINATION}} using references/deliver-blueprint.md (may be a list). The post-call-notes sheet goes to the SAME destination so a later strategy run can find it. If destination unset, ask. Confirm the location back; fall back to local on failure.
+ONLY AFTER approval: deliver the blueprint(s) to {{OUTPUT_DESTINATION}} using ${CLAUDE_PLUGIN_ROOT}/references/deliver-blueprint.md (may be a list). The post-call-notes sheet goes to the SAME destination so a later strategy run can find it. If destination unset, ask. Confirm the location back; fall back to local on failure.
 </step>
 
 </steps>

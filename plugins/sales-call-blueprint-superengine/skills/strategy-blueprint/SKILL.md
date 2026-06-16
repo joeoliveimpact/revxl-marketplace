@@ -28,40 +28,40 @@ Confirm the three gate answers and collect the material. Do NOT proceed until al
 Then collect:
 - The complete DM conversation that led to the booking (paste-in).
 - Any prior triage notes (treat as confirmed discovery data, not assumptions).
-- Confirm references/business-config.md values are current (especially {{PROGRAM_LENGTH}}). Pricing is supplied live, not stored.
+- Confirm ${CLAUDE_PLUGIN_ROOT}/references/business-config.md values are current (especially {{PROGRAM_LENGTH}}). Pricing is supplied live, not stored.
 
-If the DM thread is thin or missing, say so and proceed under the thin-DM rule (references/psych-profile.md) — flag gaps, don't fabricate.
+If the DM thread is thin or missing, say so and proceed under the thin-DM rule (${CLAUDE_PLUGIN_ROOT}/references/psych-profile.md) — flag gaps, don't fabricate.
 
 **Wait for response before proceeding.**
 </step>
 
 <step name="pull_prior_transcript">
-If a prior call exists (usually the triage call) and no triage notes were pasted, pull its transcript using references/transcript-pull.md and the {{TRANSCRIPT_SOURCE}} set in references/business-config.md. Discover the source's exact tools via ToolSearch, fetch by prospect name / date / pasted URL, and extract confirmed intel (revenue, bottleneck, goal, urgency, partner, coachability, phrases to mirror). If retrieval fails or {{TRANSCRIPT_SOURCE}} = manual, ask for a paste; if none exists, proceed from the DMs alone and flag the gap. Treat anything retrieved as confirmed intel to deepen — not re-ask — in discovery.
+If a prior call exists (usually the triage call) and no triage notes were pasted, pull its transcript using ${CLAUDE_PLUGIN_ROOT}/references/transcript-pull.md and the {{TRANSCRIPT_SOURCE}} set in ${CLAUDE_PLUGIN_ROOT}/references/business-config.md. Discover the source's exact tools via ToolSearch, fetch by prospect name / date / pasted URL, and extract confirmed intel (revenue, bottleneck, goal, urgency, partner, coachability, phrases to mirror). If retrieval fails or {{TRANSCRIPT_SOURCE}} = manual, ask for a paste; if none exists, proceed from the DMs alone and flag the gap. Treat anything retrieved as confirmed intel to deepen — not re-ask — in discovery.
 </step>
 
 <step name="extract_profile">
-Apply references/psych-profile.md to the DM thread. Document the five dimensions (pain & urgency, commitment signals, objection previews, language/style, relationship context), the decision-making pattern, and a trust calibration. Mark every gap `[CONFIRM LIVE]` / `[NOT IN DMs]`. If triage notes exist, fold confirmed data in here.
+Apply ${CLAUDE_PLUGIN_ROOT}/references/psych-profile.md to the DM thread. Document the five dimensions (pain & urgency, commitment signals, objection previews, language/style, relationship context), the decision-making pattern, and a trust calibration. Mark every gap `[CONFIRM LIVE]` / `[NOT IN DMs]`. If triage notes exist, fold confirmed data in here.
 </step>
 
 <step name="build_call_plan">
-Construct the RFPDP call plan using references/rfpdp-method.md and references/high-impact-questions.md:
+Construct the RFPDP call plan using ${CLAUDE_PLUGIN_ROOT}/references/rfpdp-method.md and ${CLAUDE_PLUGIN_ROOT}/references/high-impact-questions.md:
 - Customize Rapport, Frame, and the opening Pain question to this prospect's exact words and energy.
 - **Rank the 10 discovery topics** for THIS prospect (Pain first, Trust last by default, but order by their situation). For each: customized questions, what to listen for, the landmine. Note triage-confirmed topics to deepen rather than re-ask.
 - Build the Pitch: temperature check → 2–4 custom pillars (pain → solution → why-not-alone) → brief delivery → price drop (you handle all pricing — state your investment and stop talking; the skill prescribes no prices, discounts, or terms).
-- Build the Objection Playbook with references/objection-handling.md: pre-identified objections from the DMs + anticipated ones, each with isolate→reframe.
+- Build the Objection Playbook with ${CLAUDE_PLUGIN_ROOT}/references/objection-handling.md: pre-identified objections from the DMs + anticipated ones, each with isolate→reframe.
 - Write Closing Strategy + Critical Success Factors ("remember only 3 things").
 </step>
 
 <step name="render_output">
 Render the requested mode(s):
-- **Pre-Call Prep** → templates/precall-prep.md (lead with the narrative risk-brief to the caller).
-- **Call-Time Blueprint** → templates/calltime-blueprint.md (compress FROM the deep doc so they stay consistent).
+- **Pre-Call Prep** → ${CLAUDE_PLUGIN_ROOT}/templates/precall-prep.md (lead with the narrative risk-brief to the caller).
+- **Call-Time Blueprint** → ${CLAUDE_PLUGIN_ROOT}/templates/calltime-blueprint.md (compress FROM the deep doc so they stay consistent).
 - **Both** → generate the deep doc first, then derive the live card from it.
 Resolve all {{config}} variables. Name the output `[Prospect Name] - STRATEGY - [MM.DD.YY].md`.
 </step>
 
 <step name="review">
-Run references/blueprint-quality.md against the output. Fix any fails.
+Run ${CLAUDE_PLUGIN_ROOT}/references/blueprint-quality.md against the output. Fix any fails.
 
 Present the blueprint(s) to the user.
 Ask: "Does this look right? Any adjustments — discovery order, objections, the pitch pillars?"
@@ -70,7 +70,7 @@ Ask: "Does this look right? Any adjustments — discovery order, objections, the
 </step>
 
 <step name="deliver">
-ONLY AFTER approval: deliver the blueprint(s) to {{OUTPUT_DESTINATION}} using references/deliver-blueprint.md (google-drive / local / ghl-note / chat / custom — may be a list). If unset, ask where it should go. Confirm the exact location/link back. On a destination failure, fall back to local and say so.
+ONLY AFTER approval: deliver the blueprint(s) to {{OUTPUT_DESTINATION}} using ${CLAUDE_PLUGIN_ROOT}/references/deliver-blueprint.md (google-drive / local / ghl-note / chat / custom — may be a list). If unset, ask where it should go. Confirm the exact location/link back. On a destination failure, fall back to local and say so.
 </step>
 
 </steps>

@@ -12,7 +12,7 @@ As someone using this skill for the first time, I want a quick plain-English wal
 </user-story>
 
 <when-to-use>
-- First run — auto-offer this when references/business-config.md still has placeholder/example values, OR the user says "first time", "how do I use this", "walk me through", "help", "I'm new".
+- First run — auto-offer this when ${CLAUDE_PLUGIN_ROOT}/references/business-config.md still has placeholder/example values, OR the user says "first time", "how do I use this", "walk me through", "help", "I'm new".
 - Entry point routes here via /sales-call-blueprint-superengine guide.
 - Skip for returning users who know what they want (go straight to triage/strategy).
 </when-to-use>
@@ -57,7 +57,7 @@ Offer to build their first one together, with extra hand-holding: "Paste the DM 
 </step>
 
 <step name="set_mode">
-At the end, ask: "Want me to keep explaining each step as we go (good while you're learning), or switch to quick mode now that you've seen it?" Set {{EXPLAINER_MODE}} in references/business-config.md accordingly. Remind them they can say "explainer on/off" anytime.
+At the end, ask: "Want me to keep explaining each step as we go (good while you're learning), or switch to quick mode now that you've seen it?" Set {{EXPLAINER_MODE}} in ${CLAUDE_PLUGIN_ROOT}/references/business-config.md accordingly. Remind them they can say "explainer on/off" anytime.
 </step>
 
 </steps>

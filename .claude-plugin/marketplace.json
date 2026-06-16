@@ -7,7 +7,7 @@
     "email": "joe@engineforimpact.com"
   },
   "metadata": {
-    "version": "0.1.12"
+    "version": "0.1.13"
   },
   "plugins": [
     {
@@ -93,7 +93,7 @@
       "description": "Paste the DM thread behind a booked call, get back a psychology-driven blueprint for it. Triage (15-min qualifier) or strategy (RFPDP closing) calls, as a deep prep doc or a live call-time card. Pulls prior-call transcripts (Fathom/Fireflies/Granola/GHL/manual), delivers to Google Drive / local / GHL note, and batches many prospects at once via its agent. Your pricing stays yours — supplied live, never stored. For coaches and the people who take their sales calls.",
       "source": "./plugins/sales-call-blueprint-superengine",
       "category": "sales",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"
