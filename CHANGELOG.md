@@ -4,6 +4,11 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.14] — 2026-06-15
+
+### Changed
+- Plugin: [sales-call-blueprint-superengine](plugins/sales-call-blueprint-superengine/CHANGELOG.md) v0.1.2 — adds a gold-standard exemplar (`references/exemplar-strategy-blueprint.md`) and makes `strategy-blueprint` study + match it, enforcing full depth (all 10 discovery topics expanded, 3 scripted pillars, ~7-objection playbook, "do not compress" + ~25–35K target). Fixes thin output that didn't match the example blueprints.
+
 ## [0.1.13] — 2026-06-15
 
 ### Fixed
