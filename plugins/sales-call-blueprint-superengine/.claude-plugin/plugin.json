@@ -1,0 +1,13 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "sales-call-blueprint-superengine",
+  "description": "Turns a pre-call DM thread into a customized, psychology-driven sales-call blueprint for coaches and closers. First-run setup + guided tour, then triage (15-min qualification) or strategy (RFPDP closing) blueprints — as a deep Pre-Call Prep doc, a live Call-Time card, or both. Source-agnostic transcript pull (Fathom/Fireflies/Granola/GHL/manual) and pluggable delivery (Google Drive / local / GHL note). Pricing is never stored — you supply it live. Ships a batch agent for prepping many prospects at once.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Joe Olive",
+    "email": "joe@engineforimpact.com"
+  },
+  "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/sales-call-blueprint-superengine",
+  "license": "MIT",
+  "keywords": ["sales", "sales-call", "blueprint", "triage", "strategy-call", "closing", "dm", "psychology", "rfpdp", "objection-handling", "coaching", "superengine"]
+}
