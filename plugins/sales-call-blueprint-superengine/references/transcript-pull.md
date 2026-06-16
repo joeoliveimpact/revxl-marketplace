@@ -1,7 +1,7 @@
 # Framework: Pulling Prior-Call Transcripts (Source-Agnostic)
 
 <purpose>
-Teaches how to retrieve a prior call's transcript (most often the triage call) from whatever recorder a business uses, so its confirmed intel can be folded into a strategy blueprint as "Prior Triage Intel." Source is set by {{TRANSCRIPT_SOURCE}} in references/business-config.md. The universal fallback is always manual paste — the skill never blocks on a missing integration.
+Teaches how to retrieve a prior call's transcript (most often the triage call) from whatever recorder a business uses, so its confirmed intel can be folded into a strategy blueprint as "Prior Triage Intel." Source is set by {{TRANSCRIPT_SOURCE}} in ${CLAUDE_PLUGIN_ROOT}/references/business-config.md. The universal fallback is always manual paste — the skill never blocks on a missing integration.
 
 **Paste-first default:** if the user already pasted the transcript/notes, USE THAT — don't go fetch. Only auto-pull when {{TRANSCRIPT_SOURCE}} is a connected service AND nothing was pasted. Pasting is the normal, usually-faster path; auto-pull is a convenience for users already wired up. Never make someone wait on integration hunting when a paste would do.
 </purpose>
@@ -9,7 +9,7 @@ Teaches how to retrieve a prior call's transcript (most often the triage call) f
 ## Core Concepts
 
 ### Why pull a transcript
-A strategy call is far stronger when the triage call's confirmed data is folded in (revenue, bottleneck, partner status, urgency). A recorded transcript is the highest-fidelity source — better than memory or sparse notes. Treat anything in the transcript as **confirmed intel**: deepen those topics in discovery, don't re-ask them (see references/rfpdp-method.md → Integrating Triage Notes).
+A strategy call is far stronger when the triage call's confirmed data is folded in (revenue, bottleneck, partner status, urgency). A recorded transcript is the highest-fidelity source — better than memory or sparse notes. Treat anything in the transcript as **confirmed intel**: deepen those topics in discovery, don't re-ask them (see ${CLAUDE_PLUGIN_ROOT}/references/rfpdp-method.md → Integrating Triage Notes).
 
 ### The retrieval pattern (same for every source)
 1. **Identify the prior call** — by prospect name, date, or a pasted recording URL/ID.

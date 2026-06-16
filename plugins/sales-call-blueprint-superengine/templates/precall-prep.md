@@ -2,7 +2,7 @@
 
 The full, read-it-beforehand prep doc. This is the long-form blueprint the closer studies before the call. Output file naming: `[Prospect Full Name] - [TRIAGE|STRATEGY] - [MM.DD.YY].md` (thread/title = the prospect's name).
 
-> Use this for **strategy calls**. For triage, the same structure applies but the Call Structure section swaps to the 15-minute qualification flow (see the triage-blueprint skill). `{{curly}}` = pulled from references/business-config.md. `[square]` = filled live from the DM thread — never pre-fill.
+> Use this for **strategy calls**. For triage, the same structure applies but the Call Structure section swaps to the 15-minute qualification flow (see the triage-blueprint skill). `{{curly}}` = pulled from ${CLAUDE_PLUGIN_ROOT}/references/business-config.md. `[square]` = filled live from the DM thread — never pre-fill.
 
 ```template
 [Narrative risk-brief to {{CLOSER_NAME}} — 3-6 sentences, conversational, BEFORE the structured doc. Flag the 2-4 things that actually matter: the biggest wildcard, an underused asset, the one thing to confirm with the setter before the call. End with a plain-language Closing Probability call and why.]
@@ -98,7 +98,7 @@ The full, read-it-beforehand prep doc. This is the long-form blueprint the close
 | Narrative risk-brief | Synthesis of profile + flags | The signature opener — conversational, to the closer by name |
 | `[Their EXACT words]` | DM thread, verbatim | Drives mirroring throughout |
 | Closing Probability | Commitment + trust + risk analysis | Always include reasoning |
-| `{{CLOSER_NAME}}` etc. | references/business-config.md | Substituted at render |
+| `{{CLOSER_NAME}}` etc. | ${CLAUDE_PLUGIN_ROOT}/references/business-config.md | Substituted at render |
 | Prior Triage Intel | Attached triage notes | "No prior triage call" if none |
 | `[CONFIRM LIVE]` markers | psych-profile thin-DM rule | Flag gaps, never fabricate |
 

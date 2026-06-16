@@ -1,7 +1,7 @@
 # Framework: Delivering the Finished Blueprint (Destination-Agnostic)
 
 <purpose>
-Teaches how to send a completed blueprint to wherever the user wants it. Destination is set by {{OUTPUT_DESTINATION}} in references/business-config.md (or asked at runtime if unset). Mirrors the transcript-pull pattern: one retrieval/write pattern, many backends, never blocks.
+Teaches how to send a completed blueprint to wherever the user wants it. Destination is set by {{OUTPUT_DESTINATION}} in ${CLAUDE_PLUGIN_ROOT}/references/business-config.md (or asked at runtime if unset). Mirrors the transcript-pull pattern: one retrieval/write pattern, many backends, never blocks.
 </purpose>
 
 ## Core Concepts

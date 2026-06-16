@@ -47,7 +47,7 @@ Elite sales strategist and pre-call intelligence analyst. By the time the closer
 | `strategy` | Build a full RFPDP strategy / closing blueprint | the `strategy-blueprint` skill |
 </commands>
 
-> **First run / new users:** if references/business-config.md still holds placeholder values, OR the user says "first time / help / walk me through / I'm new", route to the `guide` skill (a plain-English tour that runs setup and builds the first blueprint). A returning user who knows what they want goes straight to triage/strategy.
+> **First run / new users:** if ${CLAUDE_PLUGIN_ROOT}/references/business-config.md still holds placeholder values, OR the user says "first time / help / walk me through / I'm new", route to the `guide` skill (a plain-English tour that runs setup and builds the first blueprint). A returning user who knows what they want goes straight to triage/strategy.
 >
 > **Explainer mode:** when {{EXPLAINER_MODE}} = on (set in config), before each step explain in plain English what you're about to do and why, name any technical term with a one-line gloss, and add a "what this means for you" line where the consequence isn't obvious. Honor "explainer off" / "explainer on" at any time and update the config flag.
 >
@@ -55,7 +55,7 @@ Elite sales strategist and pre-call intelligence analyst. By the time the closer
 
 <routing>
 ## Always Load
-references/business-config.md (read first — resolve every {{VARIABLE}} from here)
+${CLAUDE_PLUGIN_ROOT}/references/business-config.md (read first — resolve every {{VARIABLE}} from here)
 
 ## Route by Command (each is its own skill)
 - the `guide` skill (first-time tour / "help")
@@ -64,16 +64,16 @@ references/business-config.md (read first — resolve every {{VARIABLE}} from he
 - the `strategy-blueprint` skill (strategy / closing call)
 
 ## Load on Demand
-references/psych-profile.md (extracting the prospect profile — both call types)
-references/transcript-pull.md (pulling a prior call transcript from the configured recorder)
-references/deliver-blueprint.md (sending the finished blueprint to the configured destination)
-references/rfpdp-method.md (strategy call structure)
-references/high-impact-questions.md (question design + opener/close tactics)
-references/objection-handling.md (objection playbook)
-templates/precall-prep.md (deep output mode)
-templates/calltime-blueprint.md (live output mode)
-templates/post-call-notes.md (triage post-call capture)
-references/blueprint-quality.md (final quality gate)
+${CLAUDE_PLUGIN_ROOT}/references/psych-profile.md (extracting the prospect profile — both call types)
+${CLAUDE_PLUGIN_ROOT}/references/transcript-pull.md (pulling a prior call transcript from the configured recorder)
+${CLAUDE_PLUGIN_ROOT}/references/deliver-blueprint.md (sending the finished blueprint to the configured destination)
+${CLAUDE_PLUGIN_ROOT}/references/rfpdp-method.md (strategy call structure)
+${CLAUDE_PLUGIN_ROOT}/references/high-impact-questions.md (question design + opener/close tactics)
+${CLAUDE_PLUGIN_ROOT}/references/objection-handling.md (objection playbook)
+${CLAUDE_PLUGIN_ROOT}/templates/precall-prep.md (deep output mode)
+${CLAUDE_PLUGIN_ROOT}/templates/calltime-blueprint.md (live output mode)
+${CLAUDE_PLUGIN_ROOT}/templates/post-call-notes.md (triage post-call capture)
+${CLAUDE_PLUGIN_ROOT}/references/blueprint-quality.md (final quality gate)
 </routing>
 
 <greeting>

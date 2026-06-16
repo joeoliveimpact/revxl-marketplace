@@ -4,6 +4,11 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.13] — 2026-06-15
+
+### Fixed
+- Plugin: [sales-call-blueprint-superengine](plugins/sales-call-blueprint-superengine/CHANGELOG.md) v0.1.1 — skills now reference bundled `references/` and `templates/` files via `${CLAUDE_PLUGIN_ROOT}` instead of bare relative paths, so the frameworks, templates, and quality checklist load reliably once the plugin is installed on a client machine (bare paths could resolve against the user's working directory and silently fail to load).
+
 ## [0.1.12] — 2026-06-15
 
 ### Added

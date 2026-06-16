@@ -17,18 +17,18 @@
 - **{{PROGRAM_LENGTH}}** = [e.g. 6 months] `(used in goal-horizon questions and pricing framing)`
 
 ## Pricing
-> Intentionally NOT stored. You know your own pricing — supply the real figure live when the blueprint reaches the price drop. The skill structures HOW to drop the number (see references/rfpdp-method.md), never WHAT the number is.
+> Intentionally NOT stored. You know your own pricing — supply the real figure live when the blueprint reaches the price drop. The skill structures HOW to drop the number (see ${CLAUDE_PLUGIN_ROOT}/references/rfpdp-method.md), never WHAT the number is.
 
 ## Free Resource (for disqualify/redirect + follow-up)
 - **{{FREE_RESOURCE}}** = [Your free resource — link/handle you point not-yet-ready prospects to]
 
 ## Call Recording / Transcript Source
 - **{{TRANSCRIPT_SOURCE}}** = [fathom | fireflies | granola | ghl | otter | manual | local-audio]
-  - Used to auto-pull a prior call's transcript (e.g. the triage call) and fold confirmed intel into a strategy blueprint. See references/transcript-pull.md.
+  - Used to auto-pull a prior call's transcript (e.g. the triage call) and fold confirmed intel into a strategy blueprint. See ${CLAUDE_PLUGIN_ROOT}/references/transcript-pull.md.
   - `manual` = paste the transcript. `local-audio` = transcribe an audio file yourself (needs ffmpeg + local whisper). A service (fathom/etc.) means NO local whisper needed.
 
 ## Output Destination
-- **{{OUTPUT_DESTINATION}}** = [google-drive | local | ghl-note | chat | custom] `(where finished blueprints go — one or more)`. See references/deliver-blueprint.md.
+- **{{OUTPUT_DESTINATION}}** = [google-drive | local | ghl-note | chat | custom] `(where finished blueprints go — one or more)`. See ${CLAUDE_PLUGIN_ROOT}/references/deliver-blueprint.md.
 - **{{DRIVE_PARENT_FOLDER}}** = Pre-Call Blueprints `(used if destination includes google-drive; auto-creates {year}/{month}/{MM.DD.YY}/[Prospect] underneath)`
 - **{{CUSTOM_DESTINATION}}** = [Not set] `(used if destination=custom; describe the connector/location, e.g. a Notion DB or Front)`
 

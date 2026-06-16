@@ -45,7 +45,7 @@ The DM thread is sometimes short, missing, or just a booking confirmation. When 
 - **Flag the gap explicitly** in the profile: write `[NOT IN DMs — confirm live]` rather than inventing a pain point, number, or emotion.
 - Downgrade Closing Probability reasoning to reflect the uncertainty.
 - Convert each missing dimension into a **priority discovery question** for the call — the gap becomes the agenda.
-- If triage notes exist, treat them as *confirmed* intel and lean on them to fill gaps (see references/rfpdp-method.md on integrating triage notes).
+- If triage notes exist, treat them as *confirmed* intel and lean on them to fill gaps (see ${CLAUDE_PLUGIN_ROOT}/references/rfpdp-method.md on integrating triage notes).
 - Never present a guess as a fact. A blueprint built on fabricated psychology is worse than one that honestly says "we don't know yet — find out in discovery."
 
 ## Examples

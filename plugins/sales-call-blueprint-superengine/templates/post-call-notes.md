@@ -27,7 +27,7 @@ Filled immediately after a triage call to hand confirmed intel to {{CLOSER_NAME}
 | Decision | The in/out qualification call | Drives whether a strategy call is booked at all |
 | Monthly Revenue | Operational snapshot | Confirmed absolute number, not a range |
 | Key Language to Mirror | Prospect's verbatim phrases | Feeds the strategy blueprint's mirroring |
-| `{{CLOSER_NAME}}` | references/business-config.md | Substituted at render |
+| `{{CLOSER_NAME}}` | ${CLAUDE_PLUGIN_ROOT}/references/business-config.md | Substituted at render |
 
 ## Section Specifications
 - **Fill immediately:** Memory decays fast — capture before the next call.
