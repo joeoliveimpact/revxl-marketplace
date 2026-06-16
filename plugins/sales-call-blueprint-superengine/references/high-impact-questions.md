@@ -1,7 +1,7 @@
 # Framework: High-Impact Questions & Tactics
 
 <purpose>
-The question design, power-opener, active-listening, and closing tactics that enrich the RFPDP structure. Distilled from Engine For Impact's High Impact Sales Call Blueprint. Use these to sharpen the specific questions and scripts inside any strategy blueprint.
+The question design, power-opener, active-listening, and closing tactics that enrich the RFPDP structure. Use these to sharpen the specific questions and scripts inside any strategy blueprint.
 </purpose>
 
 ## Core Concepts

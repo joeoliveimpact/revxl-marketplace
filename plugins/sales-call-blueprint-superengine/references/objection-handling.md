@@ -1,7 +1,7 @@
 # Framework: Objection Handling
 
 <purpose>
-The full objection-handling method — not a list of canned replies. Distilled from Engine For Impact's Objections doc. Use this to build the customized Objection Playbook in a strategy blueprint, and to pre-empt objections during discovery.
+The full objection-handling method — not a list of canned replies. Use this to build the customized Objection Playbook in a strategy blueprint, and to pre-empt objections during discovery.
 </purpose>
 
 ## Core Concepts

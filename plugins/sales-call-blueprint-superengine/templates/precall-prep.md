@@ -104,7 +104,7 @@ The full, read-it-beforehand prep doc. This is the long-form blueprint the close
 
 ## Section Specifications
 - **Risk-brief first:** Always lead with the narrative flag to the closer — it's what makes this doc feel like intelligence, not a template.
-- **Snapshot:** Table format (newest EFI standard). Every row sourced from DMs or marked `[CONFIRM LIVE]`.
+- **Snapshot:** Table format. Every row sourced from DMs or marked `[CONFIRM LIVE]`.
 - **Discovery ranking:** This is the highest-value section — order by THIS prospect, with Why/Questions/Listening-for/Landmine per topic.
 - **Length:** Deep mode is thorough by design. Do not compress here — that's the Call-Time Blueprint's job.
 

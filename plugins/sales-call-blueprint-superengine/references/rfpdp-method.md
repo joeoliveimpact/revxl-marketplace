@@ -1,7 +1,7 @@
 # Framework: The RFPDP Method
 
 <purpose>
-The call structure for a full strategy / closing call: **Rapport → Frame → Pain → Discovery → Pitch.** This is the backbone of every strategy blueprint. Distilled from Engine For Impact's RFPDP Method doc.
+The call structure for a full strategy / closing call: **Rapport → Frame → Pain → Discovery → Pitch.** This is the backbone of every strategy blueprint.
 </purpose>
 
 ## Core Concepts
