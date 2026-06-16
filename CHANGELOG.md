@@ -4,6 +4,11 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.12] — 2026-06-15
+
+### Added
+- **New plugin: [sales-call-blueprint-superengine](plugins/sales-call-blueprint-superengine/CHANGELOG.md) v0.1.0** — turns a pre-call DM thread into a customized, psychology-driven sales-call blueprint for coaches and closers. 5 skills (`start`, `setup`, `guide`, `triage-blueprint`, `strategy-blueprint`) + a `sales-blueprint-builder` batch agent. Two output modes (deep Pre-Call Prep doc / live Call-Time card), source-agnostic transcript pull (Fathom/Fireflies/Granola/GHL/manual/local-audio), pluggable delivery (Google Drive/local/GHL note/chat/custom), and a config-driven setup that ships with placeholders so each installer runs `setup` fresh. Pricing is never stored — supplied live. Catalog now ships 7 plugins.
+
 ## [0.1.10] — 2026-06-04
 
 ### Added
