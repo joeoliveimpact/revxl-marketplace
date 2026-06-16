@@ -36,6 +36,8 @@ Apply ${CLAUDE_PLUGIN_ROOT}/references/psych-profile.md. Focus the profile on qu
 </step>
 
 <step name="build_qualification_plan">
+**Specificity standard:** triage is tighter than a strategy call, but each section must still be hyper-customized to THIS prospect — see `${CLAUDE_PLUGIN_ROOT}/references/exemplar-strategy-blueprint.md` for the level of per-section detail (customized questions, what-to-listen-for + the red flag, landmines). Match that *style* of specificity, scaled to the 15-minute flow — never generic bullets.
+
 Build the 15-minute structure:
 1. **Set the Frame (60s)** — qualification, not a pitch. "If it's a fit we'll set up a strategy session with {{CLOSER_NAME}}; if not I'll point you somewhere better." Willingness to say no builds credibility.
 2. **Diagnostic Why (2–3 min)** — the timing question + the authority question (why {{BRAND_NAME}} specifically).

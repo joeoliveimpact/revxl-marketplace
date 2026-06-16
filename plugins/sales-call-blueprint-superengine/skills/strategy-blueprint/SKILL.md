@@ -44,16 +44,18 @@ Apply ${CLAUDE_PLUGIN_ROOT}/references/psych-profile.md to the DM thread. Docume
 </step>
 
 <step name="build_call_plan">
+**Depth standard — study this first:** read `${CLAUDE_PLUGIN_ROOT}/references/exemplar-strategy-blueprint.md`. It is the required depth and format for a full strategy blueprint. Your output must match its density. **Do not compress — a thin or generic blueprint is a failure; hyper-specific, fully-expanded depth IS the product.** A full strategy blueprint typically runs ~25–35K characters; if yours is dramatically shorter, you compressed — go back and expand.
+
 Construct the RFPDP call plan using ${CLAUDE_PLUGIN_ROOT}/references/rfpdp-method.md and ${CLAUDE_PLUGIN_ROOT}/references/high-impact-questions.md:
-- Customize Rapport, Frame, and the opening Pain question to this prospect's exact words and energy.
-- **Rank the 10 discovery topics** for THIS prospect (Pain first, Trust last by default, but order by their situation). For each: customized questions, what to listen for, the landmine. Note triage-confirmed topics to deepen rather than re-ask.
-- Build the Pitch: temperature check → 2–4 custom pillars (pain → solution → why-not-alone) → brief delivery → price drop (you handle all pricing — state your investment and stop talking; the skill prescribes no prices, discounts, or terms).
-- Build the Objection Playbook with ${CLAUDE_PLUGIN_ROOT}/references/objection-handling.md: pre-identified objections from the DMs + anticipated ones, each with isolate→reframe.
-- Write Closing Strategy + Critical Success Factors ("remember only 3 things").
+- Customize Rapport, Frame, and the opening Pain question to this prospect's exact words and energy — write the actual scripted lines, not descriptions of them.
+- **Expand ALL 10 discovery topics**, ranked for THIS prospect (order by their situation). Give every topic its own subsection with: why-this-rank · 2–4 customized questions · what to listen for + the red flag · the landmine · sub-scenarios where useful (exactly as in the exemplar). **Never collapse the 10 into a summary on a full strategy call.** Note triage-confirmed topics to deepen rather than re-ask.
+- Build the Pitch: temperature check → 3 (2–4) fully-scripted custom pillars, each written as pain → solution → why-they-can't-do-it-alone → brief delivery → price drop (you handle all pricing — state your investment and stop talking; the skill prescribes no prices, discounts, or terms).
+- Build the Objection Playbook with ${CLAUDE_PLUGIN_ROOT}/references/objection-handling.md: aim for ~7 objections (pre-identified from the DMs + anticipated), each with the real issue behind it + a scripted isolate→reframe.
+- Write Closing Strategy (primary close + backup close + if-they-don't-close-today) + Critical Success Factors ("remember only 3 things").
 </step>
 
 <step name="render_output">
-Render the requested mode(s):
+Render the requested mode(s) — **matching the depth and section structure of `${CLAUDE_PLUGIN_ROOT}/references/exemplar-strategy-blueprint.md`** (expand every section; never summarize the discovery):
 - **Pre-Call Prep** → ${CLAUDE_PLUGIN_ROOT}/templates/precall-prep.md (lead with the narrative risk-brief to the caller).
 - **Call-Time Blueprint** → ${CLAUDE_PLUGIN_ROOT}/templates/calltime-blueprint.md (compress FROM the deep doc so they stay consistent).
 - **Both** → generate the deep doc first, then derive the live card from it.
@@ -83,8 +85,8 @@ A strategy-call blueprint in the requested mode(s): a deep Pre-Call Prep doc, a 
 - [ ] Three gate questions answered (call type, caller, output mode)
 - [ ] Prior-call transcript pulled from {{TRANSCRIPT_SOURCE}} (or paste / none-with-gap-flagged)
 - [ ] Psychological profile extracted with gaps flagged, not fabricated
-- [ ] Discovery topics ranked for this specific prospect
-- [ ] Objection playbook built from DM-evidenced + anticipated objections
+- [ ] ALL 10 discovery topics fully expanded (why-rank · questions · listening-for + red flag · landmine), ranked for this prospect — depth matches the exemplar, NOT compressed
+- [ ] 3 fully-scripted pitch pillars + ~7-objection playbook (each with real issue + scripted reframe)
 - [ ] Output mode(s) rendered with config variables resolved
 - [ ] Passed blueprint-quality.md
 - [ ] User approved final output

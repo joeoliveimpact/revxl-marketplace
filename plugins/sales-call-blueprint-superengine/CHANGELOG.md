@@ -2,6 +2,16 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.2] — 2026-06-15
+
+### Added
+- **Gold-standard exemplar** `references/exemplar-strategy-blueprint.md` — a fully-worked, genericized strategy blueprint (fictional prospect) that sets the depth + format standard: all 10 discovery topics expanded, 3 scripted pitch pillars, a 7-objection playbook, two closes.
+
+### Changed
+- **`strategy-blueprint` now enforces gold-standard depth.** The skill studies the exemplar before rendering and must match its density — expand ALL 10 discovery topics (why-rank · questions · listening-for + red flag · landmine · sub-scenarios), 3 fully-scripted pillars, ~7-objection playbook. Explicit "do not compress" rule + a ~25–35K-char depth target. Fixes thin/generic output that didn't match the build's example blueprints.
+- **`triage-blueprint`** points to the exemplar for per-section specificity (questions, listening-for, landmines), scaled to the 15-minute flow.
+- `precall-prep` template length note now references the exemplar depth target.
+
 ## [0.1.1] — 2026-06-15
 
 ### Fixed
