@@ -46,6 +46,11 @@ Run `/session-start` to automate the read. Run `/session-closeout` at session en
 - `.claude/workspace.yml` — verbosity + environment (`beginner|standard`, `code|cowork`)
 - `.claude/rules/` — workspace-local rule files added by modules
 
+## Linear Tracking
+
+Status: not configured.
+At session-start and session-closeout: if Linear is connected, offer to assign a team + project to track this workspace (run `linear-kickoff` tracking mode). If not connected, say so and skip. Once configured, replace this section with the post-setup version and record it in `.claude/workspace.yml` under `linear:`.
+
 ---
 
 _Scaffolded {{DATE}} by `workspace-superengine` v0.2._

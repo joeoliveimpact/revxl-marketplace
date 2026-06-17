@@ -245,6 +245,21 @@ Workspace scaffolded: {{WORKSPACE_NAME}}
 Next: open handoff.md for P0, or run /session-start.
 ```
 
+## Step 14 — Linear tracking (conditional)
+
+Now that the workspace purpose is known, optionally wire up Linear tracking. This step is a **no-op unless both conditions hold** — so workspaces (and clients) without Linear are unaffected:
+
+1. The Linear MCP is connected (a `list_teams` probe succeeds), **and**
+2. The `linear-kickoff` skill is available in this session.
+
+If both hold, offer it:
+
+> "Want me to set up Linear tracking for this workspace? I'll attach a team + project so work stays tracked. (Run `linear-kickoff` in tracking mode.)"
+
+If the user says yes, invoke `linear-kickoff` in **tracking-only mode** — it assigns/creates the project under an existing team (it cannot create teams via MCP; it hands that off), records the result in `.claude/workspace.yml` under `linear:`, and flips the `## Linear Tracking` section in this workspace's `CLAUDE.md` to its post-setup form. It only touches GitHub if the workspace is coding-related and the user confirms.
+
+If either condition fails (no Linear, or no `linear-kickoff` skill), **skip silently** — leave the pre-setup `## Linear Tracking` section as-is so a future session can offer it once Linear is connected.
+
 ---
 
 ## Ground rules (inherited from RULES.md)

@@ -5,6 +5,12 @@
 verbosity: standard       # 'beginner' or 'standard'
 environment: code         # 'code' (Claude Code) or 'cowork' (Claude Desktop / Cowork)
 
+# Linear tracking state (managed by linear-kickoff tracking mode)
+linear:
+  status: unset           # 'unset' | 'configured' | 'declined'
+  team: ""
+  project: ""
+
 # Metadata (informational; not read by skills)
 scaffolded_on: "{{DATE}}"
 scaffolded_by: workspace-superengine@0.2.0

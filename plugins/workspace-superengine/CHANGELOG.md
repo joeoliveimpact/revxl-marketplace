@@ -2,6 +2,17 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.7.0 — 2026-06-17
+
+### Added
+
+- **Optional Linear tracking** for workspaces. `super-setup` gains **Step 14** — a conditional, no-op-by-default step that offers to wire up Linear tracking only when (a) the Linear MCP is connected and (b) the personal `linear-kickoff` skill is available. Clients without either are unaffected.
+- **`## Linear Tracking` section** added to the `CLAUDE.md` template (pre-setup wording) and a `linear:` state block (`status`/`team`/`project`) added to the `workspace.yml` template. The unmodified `session-start`/`session-closeout` skills read `CLAUDE.md`, so the directive is honored at both session boundaries without further skill edits.
+
+### Notes
+
+- The actual Linear assignment is driven by `linear-kickoff` (tracking-only mode), which lives in the user's personal skills, not in this plugin. This plugin only contains the conditional offer, keeping all client installs a guaranteed no-op when Linear isn't present.
+
 ## 0.6.1 — 2026-05-12
 
 ### Changed
