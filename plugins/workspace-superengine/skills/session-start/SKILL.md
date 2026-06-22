@@ -91,6 +91,21 @@ Pure-document workspaces skip Phase 3 entirely regardless of environment.
 
 ---
 
+## Phase 3.5: Linear Review (conditional)
+
+Runs **only if** `.claude/workspace.yml` has a `linear:` block with `status: configured`. If `status` is `unset`/`declined`, or there is no `linear:` block → **skip silently**.
+
+The trigger is the **configured flag**, NOT a bare MCP connection. The Linear MCP is shared across every workspace, so "is Linear connected?" is true everywhere and can't scope anything — the per-workspace `linear:` binding (team + project) is what decides which project to read.
+
+1. Read the `linear:` block — note `team`, `project` (and their ids).
+2. **Connection health-check:** probe the Linear MCP (e.g. `list_issues` for the project). If the workspace is configured but the MCP is **not** connected → surface a one-line warning (`Linear configured for {project} but MCP not connected — issues not pulled`) and continue. **Never fail session-start over Linear.**
+3. Pull open issues for the configured project (`list_issues`, project-scoped, non-completed states). Summarize: total count + the top few by priority/status.
+4. Pass the summary to Phase 4 — it appears in the status brief next to the handoff P0s.
+
+**Cowork:** the Linear MCP works in Claude Desktop too when connected; if not connected, treat as advisory (note it, don't probe-fail).
+
+---
+
 ## Phase 4: Present Status Brief (1 min)
 
 Format:
@@ -105,12 +120,16 @@ Verification: {all passed / X failed}
 Blockers:
   1. {blocker — action needed}
 
+Linear: {N open issues in {project} — top: ID title (priority); or "not configured" / "MCP not connected"}
+
 Ready to work on:
   1. {handoff.md P0 #1}
   2. {handoff.md P0 #2}
 
 Where do you want to start?
 ```
+
+(Omit the Linear line entirely if the workspace has no `linear:` block — don't print "not configured" noise in workspaces that never opted in. Show it only when a `linear:` block exists.)
 
 End your turn. Wait for direction before starting work.
 

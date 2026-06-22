@@ -126,6 +126,25 @@ If handoff.md doesn't exist, create it. If it exists, fully replace its contents
 
 ---
 
+## Phase 2.5: Sync to Linear (conditional)
+
+Runs **only if** `.claude/workspace.yml` has a `linear:` block with `status: configured`. Otherwise **skip silently**.
+
+Trigger is the **configured flag**, not bare MCP connection (the MCP is shared across all workspaces; the per-workspace `linear:` binding scopes which project to write).
+
+1. Read the `linear:` block — `team`, `project` (+ ids).
+2. **Connection health-check:** if configured but the Linear MCP isn't connected → warn one line, skip the sync, and record `Linear sync skipped — MCP not connected` in the Checkpoint entry. **Never fail closeout over Linear.**
+3. Sync this session's work to the configured project, sourced from the Checkpoint entry you just wrote:
+   - Work **started** this session → create issues (or move existing) to **In Progress** under the project.
+   - Work **completed** → move matching issues to **Done** (create + close if none existed).
+   - **Search the project first** — never duplicate an issue that already exists.
+4. Keep it coarse: one issue per meaningful unit of work, NOT per file touched.
+5. Record the issue IDs touched in the Checkpoint entry (so the sync is auditable).
+
+**Cowork:** same rule — sync if the MCP is connected; otherwise advisory (note the intended sync, don't probe-fail).
+
+---
+
 ## Phase 3: Update Other Scaffold Files (variable)
 
 For each file in the table that needs an update:
@@ -139,7 +158,7 @@ Walk through each of the other root files. For each, decide UPDATE or NO CHANGE 
 
 | File | Update if… |
 |------|------------|
-| ARCHITECTURE.md | New folder, new root file, or major structural change this session |
+| ARCHITECTURE.md | New folder, new root file, major structural change, or a new integration wired up (e.g. Linear tracking) |
 | GOALS.md | Goals shifted, new success metric, or new active integration |
 | PLANNING.md | Initiative completed, new initiative started, or pending item resolved |
 | MEMORY.md | New memory file added — append to index |

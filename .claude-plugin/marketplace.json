@@ -28,7 +28,7 @@
       "description": "Stops Claude from forgetting what you were working on. Sets up your workspace so every session picks up where the last one left off, follows your rules, and explains itself in plain language. Add modules for coding, client work, or content as needed. Works in Claude Desktop and Claude Code.",
       "source": "./plugins/workspace-superengine",
       "category": "productivity",
-      "version": "0.7.0",
+      "version": "0.8.0",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"

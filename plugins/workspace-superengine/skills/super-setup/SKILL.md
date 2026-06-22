@@ -256,7 +256,9 @@ If both hold, offer it:
 
 > "Want me to set up Linear tracking for this workspace? I'll attach a team + project so work stays tracked. (Run `linear-kickoff` in tracking mode.)"
 
-If the user says yes, invoke `linear-kickoff` in **tracking-only mode** — it assigns/creates the project under an existing team (it cannot create teams via MCP; it hands that off), records the result in `.claude/workspace.yml` under `linear:`, and flips the `## Linear Tracking` section in this workspace's `CLAUDE.md` to its post-setup form. It only touches GitHub if the workspace is coding-related and the user confirms.
+If the user says yes, invoke `linear-kickoff` in **tracking-only mode** — it assigns/creates the project under an existing team (it cannot create teams via MCP; it hands that off), records the result in `.claude/workspace.yml` under `linear:`, flips the `## Linear Tracking` section in this workspace's `CLAUDE.md` to its post-setup form, and adds a **Linear integration line to `ARCHITECTURE.md`** (which team/project this workspace binds to) so the binding is discoverable from the workspace map. It only touches GitHub if the workspace is coding-related and the user confirms.
+
+Once configured, the `session-start` and `session-closeout` skills act on the `linear:` block automatically — session-start reviews open issues for the project, session-closeout syncs started/completed work. Configuration is the trigger; no further wiring needed.
 
 If either condition fails (no Linear, or no `linear-kickoff` skill), **skip silently** — leave the pre-setup `## Linear Tracking` section as-is so a future session can offer it once Linear is connected.
 

@@ -2,6 +2,21 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.8.0 — 2026-06-21
+
+### Added
+
+- **Linear tracking is now automatic in the session skills.** `session-start` gains **Phase 3.5 (Linear Review)** and `session-closeout` gains **Phase 2.5 (Sync to Linear)**. Both run only when `.claude/workspace.yml` has a `linear:` block with `status: configured`, and skip silently otherwise. Session-start pulls open issues for the configured project into the status brief; session-closeout syncs started/completed work to that project.
+- **`linear-kickoff` tracking mode now seeds an `ARCHITECTURE.md` Linear line** (super-setup Step 14 documents this) so the team/project binding is discoverable from the workspace map.
+
+### Changed
+
+- **Trigger corrected to the per-workspace `configured` flag, not bare MCP connection.** The Linear MCP is shared across every workspace, so "is Linear connected?" is true everywhere and cannot scope anything — the `linear:` binding is what selects the project. A connection check is now a **health-check** (warn if configured-but-disconnected), never the trigger, and never fails a session boundary.
+
+### Fixed
+
+- **The 0.7.0 directive-only design didn't fire.** It relied on the agent noticing the `## Linear Tracking` directive in each workspace's `CLAUDE.md` *and* the workspace being configured — so backfilled-but-unconfigured workspaces stayed dormant and tracking silently never happened. The behavior now lives in the skills themselves, gated on the explicit `configured` flag.
+
 ## 0.7.0 — 2026-06-17
 
 ### Added
