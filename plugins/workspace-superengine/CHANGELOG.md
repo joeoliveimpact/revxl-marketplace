@@ -2,6 +2,12 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.8.1 — 2026-06-21
+
+### Added
+
+- **Team-scoped Linear tracking** (`linear.scope: team`) for hub workspaces that span multiple projects under one team (e.g. a Client Work workspace with one project per client). session-start reviews open issues across the whole team grouped by project; session-closeout picks the specific project worked on (creating it under the team if absent). Single-project workspaces are unaffected — `scope` is optional and defaults to project-scoped.
+
 ## 0.8.0 — 2026-06-21
 
 ### Added

@@ -97,9 +97,12 @@ Runs **only if** `.claude/workspace.yml` has a `linear:` block with `status: con
 
 The trigger is the **configured flag**, NOT a bare MCP connection. The Linear MCP is shared across every workspace, so "is Linear connected?" is true everywhere and can't scope anything — the per-workspace `linear:` binding (team + project) is what decides which project to read.
 
-1. Read the `linear:` block — note `team`, `project` (and their ids).
-2. **Connection health-check:** probe the Linear MCP (e.g. `list_issues` for the project). If the workspace is configured but the MCP is **not** connected → surface a one-line warning (`Linear configured for {project} but MCP not connected — issues not pulled`) and continue. **Never fail session-start over Linear.**
-3. Pull open issues for the configured project (`list_issues`, project-scoped, non-completed states). Summarize: total count + the top few by priority/status.
+1. Read the `linear:` block — note `team`, `project` (and their ids), and `scope` if present.
+2. **Connection health-check:** probe the Linear MCP (e.g. `list_issues`). If the workspace is configured but the MCP is **not** connected → surface a one-line warning (`Linear configured but MCP not connected — issues not pulled`) and continue. **Never fail session-start over Linear.**
+3. Pull open issues (non-completed states), scoped by the `linear:` block:
+   - **Default (project-scoped):** `list_issues` filtered to the configured `project`.
+   - **`scope: team`** (workspace spans multiple projects — e.g. a Client Work hub with one project per client): `list_issues` filtered to the `team`, grouped by project. Use this when the block has a `team` but no `project`.
+   Summarize: total count + the top few by priority/status (and by project, if team-scoped).
 4. Pass the summary to Phase 4 — it appears in the status brief next to the handoff P0s.
 
 **Cowork:** the Linear MCP works in Claude Desktop too when connected; if not connected, treat as advisory (note it, don't probe-fail).

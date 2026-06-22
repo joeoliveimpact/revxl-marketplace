@@ -134,10 +134,12 @@ Trigger is the **configured flag**, not bare MCP connection (the MCP is shared a
 
 1. Read the `linear:` block — `team`, `project` (+ ids).
 2. **Connection health-check:** if configured but the Linear MCP isn't connected → warn one line, skip the sync, and record `Linear sync skipped — MCP not connected` in the Checkpoint entry. **Never fail closeout over Linear.**
-3. Sync this session's work to the configured project, sourced from the Checkpoint entry you just wrote:
-   - Work **started** this session → create issues (or move existing) to **In Progress** under the project.
+3. Sync this session's work, sourced from the Checkpoint entry you just wrote. Scope by the `linear:` block:
+   - **Default (project-scoped):** sync to the configured `project`.
+   - **`scope: team`** (no single `project` — workspace spans multiple): pick the right project under the `team` based on what was worked on (e.g. a Client Work hub → the specific `Clients/<name>` project). If no matching project exists yet, create it under the team, then sync.
+   - Work **started** this session → create issues (or move existing) to **In Progress**.
    - Work **completed** → move matching issues to **Done** (create + close if none existed).
-   - **Search the project first** — never duplicate an issue that already exists.
+   - **Search first** — never duplicate an issue that already exists.
 4. Keep it coarse: one issue per meaningful unit of work, NOT per file touched.
 5. Record the issue IDs touched in the Checkpoint entry (so the sync is auditable).
 
