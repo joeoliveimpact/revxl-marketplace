@@ -7,7 +7,7 @@
     "email": "joe@engineforimpact.com"
   },
   "metadata": {
-    "version": "0.1.14"
+    "version": "0.1.15"
   },
   "plugins": [
     {
@@ -100,6 +100,19 @@
       },
       "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/sales-call-blueprint-superengine",
       "keywords": ["sales", "sales-call", "blueprint", "triage", "strategy-call", "closing", "dm", "psychology", "rfpdp", "objection-handling", "coaching", "superengine"]
+    },
+    {
+      "name": "email-sequence-superengine",
+      "description": "Run one setup, then generate voice-matched broadcast email sequences for your high-ticket coaching program: pre-call show-up, launch, warm nurture, no-show recovery, post-call follow-up, win-back, onboarding, and a pre-sell VSL script. Built once, fires to everyone (personalization is merge tokens, never invented facts), with a storytelling engine, pitch-floor controls, a voice-edge dial, and ESP-agnostic output plus optional GoHighLevel push. Drafts only, it never sends. For coaches who want their list nurtured in their own voice.",
+      "source": "./plugins/email-sequence-superengine",
+      "category": "marketing",
+      "version": "0.1.0",
+      "author": {
+        "name": "Joe Olive",
+        "email": "joe@engineforimpact.com"
+      },
+      "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/email-sequence-superengine",
+      "keywords": ["email", "email-sequences", "nurture", "broadcast", "marketing", "automation", "campaigns", "copywriting", "coaching", "launch", "winback", "superengine"]
     }
   ]
 }
