@@ -2,7 +2,7 @@
 
 Distilled from `output/research/Email Nurture Architecture - Research - 06.17.26.md` (Gemini Type 1)
 + `output/research/Email Nurture - Vault + Notebook Synthesis - 06.17.26.md` (Orchestrating Trust upgrades).
-This is the STRUCTURE the `precall-nurture` generator fills in the coach's voice. Not swipe copy.
+This is the STRUCTURE the `email-show-up-sequence` generator fills in the coach's voice. Not swipe copy.
 
 **Goal:** strategy-call show-up >80%, establish authority, pre-handle objections.
 **Trigger:** prospect books a strategy / triage / discovery call.
@@ -26,7 +26,7 @@ This is the STRUCTURE the `precall-nurture` generator fills in the coach's voice
 1. **Diagnostic Bridge** — replace the static workbook in E3 with a 10-15 question interactive scorecard pre-work. Why: 97.2% show vs 36.2% (Hawthorne effect — the prospect invests, so they show).
 2. **Transfer-of-Trust video** — in E2 (or E1), reference a short founder/coach video intro that edifies the closer before the call. Why: borrows the coach's authority onto the call-taker; warms the relationship.
 3. **Pre-emptive objection strike** — in E2 or E3, name and dissolve the biggest objection before the call ("Why 'Not Now' is the most expensive decision"). Why: removes the objection from the live call where it costs the close.
-4. **Blameless missed-visit rebook** — if E4's call is missed, the follow-up rebooks within 24h with zero shame framing. Why: reclaims >30% of no-shows. (Lives in `no-show-recovery` later; flag the hook in E4.)
+4. **Blameless missed-visit rebook** — if E4's call is missed, the follow-up rebooks within 24h with zero shame framing. Why: reclaims >30% of no-shows. (Lives in `email-no-show-sequence` later; flag the hook in E4.)
 
 ## Guardrails (baked into the generator)
 

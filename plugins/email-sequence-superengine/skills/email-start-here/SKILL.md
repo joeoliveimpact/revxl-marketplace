@@ -1,16 +1,16 @@
 ---
-name: email-sequence-superengine:start
+name: email-sequence-superengine:email-start-here
 description: Orchestrator for the email sequence engine. Use when a coach wants voice-matched broadcast email sequences for their high-ticket program. Routes to the right campaign generator, runs first-time setup, or the guided tour. Trigger phrases include "/email-sequence-superengine", "build an email sequence", "write my nurture emails", "launch sequence", "precall show-up emails", "winback campaign", "onboarding emails", "set up my email engine".
 ---
 
 <activation>
 ## What
-Turn a coach's brand/voice config plus the research corpus into ready-to-load, voice-matched email sequences (copy + subject/preview + send timing + triggers), with an optional proven path to push the copy into GoHighLevel as templates. Ships 8 generators covering booking → retention: `precall-nurture`, `precall-video-script`, `launch`, `warm-nurture`, `no-show-recovery`, `post-call-followup`, `winback`, `onboarding`.
+Turn a coach's brand/voice config plus the research corpus into ready-to-load, voice-matched email sequences (copy + subject/preview + send timing + triggers), with an optional proven path to push the copy into GoHighLevel as templates. Ships 8 generators covering booking → retention: `email-show-up-sequence`, `email-presell-video`, `email-launch-promo-sequence`, `email-warm-nurture-sequence`, `email-no-show-sequence`, `email-follow-up-sequence`, `email-winback-sequence`, `email-onboarding-sequence`.
 
 ## When to Use
 - You want ONE evergreen 4-email show-up sequence that fires to every prospect who books a call (built once, in your voice)
 - You want the copy staged into GHL as named templates (workflow timing you wire manually)
-- First time setting up: run `setup` (or `guide` for the hand-held tour)
+- First time setting up: run `email-setup` (or `email-guide` for the hand-held tour)
 
 ## Not For
 - Sending to live contacts/leads (this generates drafts only; never sends)
@@ -40,20 +40,20 @@ Direct-response email strategist for high-ticket coaches. Every email reads like
 <commands>
 | Command | Description | Routes To |
 |---------|-------------|-----------|
-| `setup` | First-run wizard — captures brand voice, program, avatar pains + objections, sender domains, reply routing, ESP, pitch floor, explanation level → business-config | the `setup` skill |
-| `guide` | Plain-English first-run tour — orients new users, runs setup, builds the first sequence with hand-holding | the `guide` skill |
-| `story-intake` | Quick Q&A capturing the coach's REAL stories into the story-bank (feeds all story-driven emails) | the `story-intake` skill |
-| `precall-nurture` | 4-email strategy-call show-up sequence | the `precall-nurture` skill |
-| `precall-video-script` | 5-7 min pre-sell VSL script | the `precall-video-script` skill |
-| `launch` | 7-day open-cart launch sequence | the `launch` skill |
-| `warm-nurture` | weekly value→invite pattern (1-7/wk, default 3) | the `warm-nurture` skill |
-| `no-show-recovery` | 4-touch reschedule sequence | the `no-show-recovery` skill |
-| `post-call-followup` | 4-touch no-close follow-up | the `post-call-followup` skill |
-| `winback` | 3-touch win-back / sunset sequence | the `winback` skill |
-| `onboarding` | 5-email 30-day new-client sequence | the `onboarding` skill |
+| `email-setup` | First-run wizard — captures brand voice, program, avatar pains + objections, sender domains, reply routing, ESP, pitch floor, explanation level → business-config | the `email-setup` skill |
+| `email-guide` | Plain-English first-run tour — orients new users, runs setup, builds the first sequence with hand-holding | the `email-guide` skill |
+| `email-add-stories` | Quick Q&A capturing the coach's REAL stories into the story-bank (feeds all story-driven emails) | the `email-add-stories` skill |
+| `email-show-up-sequence` | 4-email strategy-call show-up sequence | the `email-show-up-sequence` skill |
+| `email-presell-video` | 5-7 min pre-sell VSL script | the `email-presell-video` skill |
+| `email-launch-promo-sequence` | 7-day open-cart launch sequence | the `email-launch-promo-sequence` skill |
+| `email-warm-nurture-sequence` | weekly value→invite pattern (1-7/wk, default 3) | the `email-warm-nurture-sequence` skill |
+| `email-no-show-sequence` | 4-touch reschedule sequence | the `email-no-show-sequence` skill |
+| `email-follow-up-sequence` | 4-touch no-close follow-up | the `email-follow-up-sequence` skill |
+| `email-winback-sequence` | 3-touch win-back / sunset sequence | the `email-winback-sequence` skill |
+| `email-onboarding-sequence` | 5-email 30-day new-client sequence | the `email-onboarding-sequence` skill |
 </commands>
 
-> **First run / new users:** if ${CLAUDE_PLUGIN_ROOT}/references/business-config.md still holds placeholder values, OR the user says "first time / help / walk me through / I'm new", route to the `guide` skill. A returning user who knows what they want goes straight to the campaign they name.
+> **First run / new users:** if ${CLAUDE_PLUGIN_ROOT}/references/business-config.md still holds placeholder values, OR the user says "first time / help / walk me through / I'm new", route to the `email-guide` skill. A returning user who knows what they want goes straight to the campaign they name.
 >
 > **Explanation level:** read `{{EXPLANATION_LEVEL}}` from config (beginner / intermediate / advanced, default beginner). Honor "set level to X" at any time and update the config value.
 > - **beginner** — plain-English first, name each technical term with a one-line gloss, add a "what this means for you" line where the consequence isn't obvious.
@@ -67,17 +67,17 @@ Direct-response email strategist for high-ticket coaches. Every email reads like
 ${CLAUDE_PLUGIN_ROOT}/references/business-config.md
 
 ## Route by Command (each is its own skill)
-- the `setup` skill (first-run / reconfigure)
-- the `guide` skill (first-time tour / "help")
-- the `story-intake` skill (Q&A → story-bank; auto-runs when a story-driven generator finds the bank thin)
-- the `precall-nurture` · `precall-video-script` · `launch` · `warm-nurture` · `no-show-recovery` · `post-call-followup` · `winback` · `onboarding` skills (the 8 generators)
+- the `email-setup` skill (first-run / reconfigure)
+- the `email-guide` skill (first-time tour / "help")
+- the `email-add-stories` skill (Q&A → story-bank; auto-runs when a story-driven generator finds the bank thin)
+- the `email-show-up-sequence` · `email-presell-video` · `email-launch-promo-sequence` · `email-warm-nurture-sequence` · `email-no-show-sequence` · `email-follow-up-sequence` · `email-winback-sequence` · `email-onboarding-sequence` skills (the 8 generators)
 
 ## Load on Demand
 ${CLAUDE_PLUGIN_ROOT}/references/generator-flow.md (the shared broadcast generation flow — every generator follows it)
 ${CLAUDE_PLUGIN_ROOT}/references/precall-framework.md · ${CLAUDE_PLUGIN_ROOT}/references/precall-video-framework.md · ${CLAUDE_PLUGIN_ROOT}/references/launch-framework.md · ${CLAUDE_PLUGIN_ROOT}/references/warm-nurture-framework.md · ${CLAUDE_PLUGIN_ROOT}/references/no-show-recovery-framework.md · ${CLAUDE_PLUGIN_ROOT}/references/post-call-followup-framework.md · ${CLAUDE_PLUGIN_ROOT}/references/winback-framework.md · ${CLAUDE_PLUGIN_ROOT}/references/onboarding-framework.md (per-campaign structure + levers + benchmarks)
 ${CLAUDE_PLUGIN_ROOT}/references/cta-patterns.md (CTA pattern library + pitch levels + per-bucket map)
-${CLAUDE_PLUGIN_ROOT}/references/story-engines.md (storytelling toolkit — required for warm-nurture; used by launch case/origin + precall E2)
-${CLAUDE_PLUGIN_ROOT}/references/story-bank.md (the coach's REAL stories from story-intake — story-driven generators pull from here, never invent)
+${CLAUDE_PLUGIN_ROOT}/references/story-engines.md (storytelling toolkit — required for the warm-nurture sequence; used by launch case/origin + the precall E2)
+${CLAUDE_PLUGIN_ROOT}/references/story-bank.md (the coach's REAL stories captured via email-add-stories — story-driven generators pull from here, never invent)
 ${CLAUDE_PLUGIN_ROOT}/references/copy-format-rules.md (copy + format-mode + deliverability + reply-routing + pitch-floor rules)
 ${CLAUDE_PLUGIN_ROOT}/references/psych-reuse.md (reactance / soft-sell levers, per-email lever map)
 ${CLAUDE_PLUGIN_ROOT}/references/teach-mode.md (when TEACH_MODE on — teach the WHY in plain 8th-grade language)
@@ -92,12 +92,12 @@ Email Sequence Superengine loaded.
 
 I build voice-matched email sequences that cover the whole journey, booking to retention. Each one is a SET of emails, built once, that fires to everyone who hits the trigger (no per-prospect work).
 
-8 generators: precall-nurture · precall-video-script · launch · warm-nurture · no-show-recovery · post-call-followup · winback · onboarding.
+8 generators: `email-show-up-sequence` · `email-presell-video` · `email-launch-promo-sequence` · `email-warm-nurture-sequence` · `email-no-show-sequence` · `email-follow-up-sequence` · `email-winback-sequence` · `email-onboarding-sequence`.
 
 They run off your setup config (your voice + your ideal client's shared pains), so the emails feel personal to everyone automatically.
 
-- **First time here?** Say "guide" and I'll walk you through setup plus your first sequence.
-- **Already set up?** Name the campaign (e.g. "launch" or "precall-nurture") and I'll build it. Then tell me where it goes... draft here, or staged into GHL as templates.
+- **First time here?** Say "walk me through it" and I'll run the guided tour (`email-guide`) ... setup plus your first sequence.
+- **Already set up?** Name the campaign (e.g. "launch promo sequence" or "show-up sequence") and I'll build it. Then tell me where it goes... draft here, or staged into GHL as templates.
 
 What do you want to build?
 </greeting>

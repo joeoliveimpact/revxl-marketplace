@@ -1,6 +1,6 @@
 # Story Bank — Framework (source, bank, match, and safely use REAL stories)
 
-> This is the METHOD, not a fill-in template and not anyone's stored stories. Each coach's actual stories are captured at runtime by `story-intake` and persisted to `${CLAUDE_PLUGIN_DATA}` (one private bank per workspace/brand). They never live in this file and never ship. Story-driven generators read the coach's bank; this framework governs how that bank gets built and used.
+> This is the METHOD, not a fill-in template and not anyone's stored stories. Each coach's actual stories are captured at runtime by `email-add-stories` and persisted to `${CLAUDE_PLUGIN_DATA}` (one private bank per workspace/brand). They never live in this file and never ship. Story-driven generators read the coach's bank; this framework governs how that bank gets built and used.
 
 ## Why a bank, not invention
 Real beats invented, every time. Audiences are allergic to polished marketing speak and respond to raw, authentic human connection. AI cannot fabricate that, so the generators pull from the coach's REAL material instead of making things up. If there is nothing real to pull, the honest move is to say the output will be generic and ask for one real moment, never to invent one.
@@ -32,7 +32,7 @@ Any real story connects to the offer in three moves:
 2. Match a `fresh` entry to the email's engine/storyline.
 3. Write the proven framework AROUND the real story. Keep the coach's real details, in their voice.
 4. Mark the entry `used` (and where) so it is not reused stale.
-5. Empty, thin, or stale bank: run `story-intake` (or a quick top-up) FIRST. If the coach gives nothing and no transcripts exist, tell them the emails will be generic without real input and ask for at least one real moment. Do NOT fabricate.
+5. Empty, thin, or stale bank: run `email-add-stories` (or a quick top-up) FIRST. If the coach gives nothing and no transcripts exist, tell them the emails will be generic without real input and ask for at least one real moment. Do NOT fabricate.
 
 ## Safety and privacy (non-negotiable)
 - Real names (family, clients) and private specifics (legal, financial, health, relationship, custody) are PRIVATE. Archetype them in any broadcast output ("my family," "my kid," "a coach I work with") unless the coach explicitly approves naming, in their own framing.

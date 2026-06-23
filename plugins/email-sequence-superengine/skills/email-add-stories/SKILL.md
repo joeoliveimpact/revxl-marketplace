@@ -1,5 +1,5 @@
 ---
-name: email-sequence-superengine:story-intake
+name: email-sequence-superengine:email-add-stories
 description: Quick Q&A that captures the coach's REAL stories into the story-bank, the well every story-driven email pulls from (never invents). Trigger phrases include "add my stories", "story intake", "capture my stories", "my emails need more stories".
 ---
 

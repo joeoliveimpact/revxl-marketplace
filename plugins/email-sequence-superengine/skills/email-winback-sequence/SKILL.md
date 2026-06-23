@@ -1,5 +1,5 @@
 ---
-name: email-sequence-superengine:winback
+name: email-sequence-superengine:email-winback-sequence
 description: Build a 3-touch win-back / sunset sequence that reactivates cold or churned contacts, or cleanly sunsets them. Trigger phrases include "winback sequence", "reactivate cold leads", "win back churned clients", "sunset emails".
 ---
 

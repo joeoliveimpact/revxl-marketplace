@@ -1,5 +1,5 @@
 ---
-name: email-sequence-superengine:precall-nurture
+name: email-sequence-superengine:email-show-up-sequence
 description: Build a 4-email strategy-call show-up sequence (broadcast, fires to every prospect who books) that maximizes call show rate and pre-handles the #1 objection. Trigger phrases include "precall sequence", "show-up emails", "get prospects to show for the call", "pre-call nurture".
 ---
 
