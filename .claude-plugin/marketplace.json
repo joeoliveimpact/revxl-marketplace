@@ -7,7 +7,7 @@
     "email": "joe@engineforimpact.com"
   },
   "metadata": {
-    "version": "0.1.15"
+    "version": "0.1.16"
   },
   "plugins": [
     {
@@ -106,7 +106,7 @@
       "description": "Run one setup, then generate voice-matched broadcast email sequences for your high-ticket coaching program: pre-call show-up, launch, warm nurture, no-show recovery, post-call follow-up, win-back, onboarding, and a pre-sell VSL script. Built once, fires to everyone (personalization is merge tokens, never invented facts), with a storytelling engine, pitch-floor controls, a voice-edge dial, and ESP-agnostic output plus optional GoHighLevel push. Drafts only, it never sends. For coaches who want their list nurtured in their own voice.",
       "source": "./plugins/email-sequence-superengine",
       "category": "marketing",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"
