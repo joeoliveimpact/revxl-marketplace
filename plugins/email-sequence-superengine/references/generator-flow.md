@@ -17,7 +17,7 @@ NO per-prospect input at send time. "Feels personal" comes from THREE things, ne
 Never write a fact that only fits one prospect.
 
 ## Flow
-1. **Read business-config** — voice anchor, program, OFFER, AVATAR (pains + objections), output destination, GHL push flag, explanation level. If voice/avatar are placeholders → route to `setup` first.
+1. **Read business-config** — voice anchor, program, OFFER, AVATAR (pains + objections), output destination, GHL push flag, explanation level. If voice/avatar are placeholders → route to `email-setup` first.
 2. **Load the campaign framework + voice anchor** — the email table, cadence, levers, mistakes-to-avoid, benchmarks for THIS campaign; plus the coach's voice.
 3. **Generate the emails** into ${CLAUDE_PLUGIN_ROOT}/templates/sequence-package.md — per email: subject (hook-type) + preview + body (PAS/HSO/two-line) + send timing + GHL trigger spec + benchmark-to-watch + **CTA (pattern # from cta-patterns.md) at the email's framework pitch level**. Speak to the avatar's shared situation in the coach's voice. Merge tokens, not individual facts. Apply each email's lever + format-mode + copy rules. Honor `{{PITCH_FLOOR}}` (soft-floor → no pure-`none` marketing emails; precall/onboarding excepted). Primary CTA at the body close, not the P.S. Avoid the campaign's listed mistakes.
 4. **Run ${CLAUDE_PLUGIN_ROOT}/references/sequence-quality.md.** Any FLAG → fix and re-check.

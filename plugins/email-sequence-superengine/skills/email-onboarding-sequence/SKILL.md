@@ -1,5 +1,5 @@
 ---
-name: email-sequence-superengine:onboarding
+name: email-sequence-superengine:email-onboarding-sequence
 description: Build a 5-email 30-day new-client onboarding sequence that drives momentum and saves the day 10-14 dropoff. Trigger phrases include "onboarding emails", "new client sequence", "welcome sequence", "onboard new clients".
 ---
 

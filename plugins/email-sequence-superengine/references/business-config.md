@@ -1,7 +1,7 @@
 # Business Config — email-sequence-superengine
 
 > Persisted via `${CLAUDE_PLUGIN_DATA}` so it survives plugin updates. Do NOT hardcode a path and do NOT store under `${CLAUDE_PLUGIN_ROOT}`. Setup writes these values; every skill reads them.
-> Placeholder values below mean "not configured yet" → skills route first-run users to `guide`.
+> Placeholder values below mean "not configured yet" → skills route first-run users to `email-guide`.
 
 ### Brand / program
 | Key | Value | Notes |

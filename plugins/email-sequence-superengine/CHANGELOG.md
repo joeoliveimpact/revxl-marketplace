@@ -2,6 +2,23 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.1] — 2026-06-23
+
+### Changed
+- **Renamed all 12 commands to an `email-` prefix** so the plugin's commands group under `/email-` and never collide with another plugin's bare `start`/`setup`/`guide`. Behavior, frameworks, and bundled files are unchanged. Mapping:
+  - `start` → `email-start-here`
+  - `setup` → `email-setup`
+  - `guide` → `email-guide`
+  - `story-intake` → `email-add-stories`
+  - `precall-nurture` → `email-show-up-sequence`
+  - `precall-video-script` → `email-presell-video`
+  - `launch` → `email-launch-promo-sequence`
+  - `warm-nurture` → `email-warm-nurture-sequence`
+  - `no-show-recovery` → `email-no-show-sequence`
+  - `post-call-followup` → `email-follow-up-sequence`
+  - `winback` → `email-winback-sequence`
+  - `onboarding` → `email-onboarding-sequence`
+
 ## [0.1.0] — 2026-06-22
 
 ### Added

@@ -1,5 +1,5 @@
 ---
-name: email-sequence-superengine:setup
+name: email-sequence-superengine:email-setup
 description: First-run wizard for the email sequence engine. Captures brand voice, program, avatar pains and objections, offer, sender domains, reply routing, ESP, pitch floor, and voice edge into the business config every generator reads. Trigger phrases include "set up email sequences", "configure the email engine", "email setup", "reconfigure my email config".
 ---
 

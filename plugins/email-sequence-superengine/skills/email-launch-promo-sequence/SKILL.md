@@ -1,5 +1,5 @@
 ---
-name: email-sequence-superengine:launch
+name: email-sequence-superengine:email-launch-promo-sequence
 description: Build a 7-day open-cart launch email sequence (broadcast) for a program promotion or enrollment window. Trigger phrases include "launch sequence", "open cart emails", "promo sequence", "enrollment launch emails".
 ---
 

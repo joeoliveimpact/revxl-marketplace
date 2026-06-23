@@ -1,5 +1,5 @@
 ---
-name: email-sequence-superengine:no-show-recovery
+name: email-sequence-superengine:email-no-show-sequence
 description: Build a 4-touch reschedule sequence that blamelessly rebooks prospects who no-showed a call. Trigger phrases include "no-show emails", "rebook no-shows", "reschedule sequence", "they didn't show".
 ---
 

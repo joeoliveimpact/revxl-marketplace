@@ -1,5 +1,5 @@
 ---
-name: email-sequence-superengine:precall-video-script
+name: email-sequence-superengine:email-presell-video
 description: Write a 5-7 minute pre-sell VSL script (spoken) that warms a prospect before a booked call. Trigger phrases include "precall video script", "VSL script", "pre-sell video", "video before the call".
 ---
 

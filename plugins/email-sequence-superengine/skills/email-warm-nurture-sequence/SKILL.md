@@ -1,5 +1,5 @@
 ---
-name: email-sequence-superengine:warm-nurture
+name: email-sequence-superengine:email-warm-nurture-sequence
 description: Build an ongoing weekly value-to-invite nurture pattern (1-7 emails per week, default 3) that entertains, gives value, and softly invites to keep a list warm. Trigger phrases include "warm nurture", "weekly nurture emails", "keep my list warm", "value emails", "reactivation sequence".
 ---
 
@@ -13,7 +13,7 @@ ${CLAUDE_PLUGIN_ROOT}/references/story-engines.md (REQUIRED — warm runs on sto
 ${CLAUDE_PLUGIN_ROOT}/references/story-bank.md (REQUIRED — pull REAL stories; never invent)
 
 ## Before writing: get real material — from BOTH wells
-Fill the story-bank from BOTH sources every run (not either/or): (1) run the `story-intake` skill for fresh
+Fill the story-bank from BOTH sources every run (not either/or): (1) run the `email-add-stories` skill for fresh
 personal stories AND (2) pull coach-turn stories/analogies from recent transcripts (via the voice/VoC skill,
 or ask the coach to point at recent calls). Combine, then build each email around a REAL banked story matched
 to its engine. If the coach gives nothing and no transcripts exist → tell them the emails will be generic

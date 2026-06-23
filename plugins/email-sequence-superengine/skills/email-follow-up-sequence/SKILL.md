@@ -1,5 +1,5 @@
 ---
-name: email-sequence-superengine:post-call-followup
+name: email-sequence-superengine:email-follow-up-sequence
 description: Build a 4-touch no-close follow-up sequence that keeps a prospect who didn't buy on the call moving toward yes. Trigger phrases include "post-call follow-up", "follow up after the call", "they didn't close", "after-call emails".
 ---
 
