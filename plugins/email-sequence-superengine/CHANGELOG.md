@@ -2,6 +2,11 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.2] — 2026-06-24
+
+### Changed
+- Maintenance re-publish (version bump only) to refresh the hosted marketplace listing so the in-app installer resolves the plugin; some clients saw a 404 installing v0.1.1 from the in-app directory. No functional, command, or content changes.
+
 ## [0.1.1] — 2026-06-23
 
 ### Changed
