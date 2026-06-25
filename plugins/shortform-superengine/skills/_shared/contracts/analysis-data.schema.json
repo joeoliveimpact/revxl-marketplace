@@ -1,0 +1,134 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Content Superengine - analysis-data.json (core->format interface)",
+  "description": "Machine-readable twin of analysis-data.md, emitted by competitor-cross-reference/analyze.py as the LAST write (md stays authoritative). Format engines (reel-scripter, future Carousel/Thread/...) consume ONLY this file. The boundary rule: core writes this schema, format reads it, no cross-skill code imports.",
+  "type": "object",
+  "required": ["client", "creators", "rollups", "hook_taxonomy", "theme_performance", "gaps", "outliers", "meta"],
+  "properties": {
+    "client": { "$ref": "#/$defs/creator" },
+    "creators": { "type": "array", "items": { "$ref": "#/$defs/creator" }, "description": "all creators incl. client, sorted by reach efficiency desc" },
+    "rollups": {
+      "type": "object",
+      "required": ["tiers"],
+      "properties": {
+        "tiers": { "type": "array", "items": { "$ref": "#/$defs/rollup" } },
+        "lanes": { "type": "array", "items": { "$ref": "#/$defs/rollup" }, "description": "omitted entirely when the project has no lanes" }
+      }
+    },
+    "hook_taxonomy": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["hook", "field_n", "field_med_views", "client_n", "client_med_views"],
+        "properties": {
+          "hook": { "type": "string" },
+          "field_n": { "type": "integer" },
+          "field_med_views": { "type": "number" },
+          "client_n": { "type": "integer" },
+          "client_med_views": { "type": "number" }
+        }
+      }
+    },
+    "theme_performance": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["theme", "field_reels", "field_med_views", "client_reels", "client_med_views"],
+        "properties": {
+          "theme": { "type": "string" },
+          "field_reels": { "type": "integer" },
+          "field_med_views": { "type": "number" },
+          "client_reels": { "type": "integer" },
+          "client_med_views": { "type": "number" },
+          "by_lane": {
+            "type": "object",
+            "description": "lane -> {med_views, n}; present only when the project has lanes",
+            "additionalProperties": { "type": "object", "required": ["med_views", "n"] }
+          }
+        }
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "description": "themes the client under-serves vs the field — the primary scripting input. reason=absent (client_n==0) or underweight (client share << field).",
+      "items": {
+        "type": "object",
+        "required": ["theme", "reason", "field_med_views", "field_reels", "client_reels"],
+        "properties": {
+          "theme": { "type": "string" },
+          "reason": { "type": "string", "enum": ["absent", "underweight"] },
+          "field_med_views": { "type": "number" },
+          "field_reels": { "type": "integer" },
+          "client_reels": { "type": "integer" }
+        }
+      }
+    },
+    "outliers": {
+      "type": "array",
+      "description": "reels >= 2.5x their creator's own median, ranked desc (top 30)",
+      "items": {
+        "type": "object",
+        "required": ["mult", "handle", "tier", "views", "hook", "themes", "hook_line", "url"],
+        "properties": {
+          "mult": { "type": "number" },
+          "handle": { "type": "string" },
+          "tier": { "type": "string" },
+          "lane": { "type": ["string", "null"] },
+          "views": { "type": "integer" },
+          "hook": { "type": "string" },
+          "themes": { "type": "array", "items": { "type": "string" } },
+          "hook_line": { "type": "string" },
+          "url": { "type": "string" }
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "required": ["client_handle", "total_reels", "n_competitors", "lane_on", "schema_version"],
+      "properties": {
+        "client_handle": { "type": "string" },
+        "total_reels": { "type": "integer" },
+        "n_competitors": { "type": "integer" },
+        "lane_on": { "type": "boolean" },
+        "themes": { "type": "array", "items": { "type": "string" } },
+        "source": { "type": "string" },
+        "schema_version": { "type": "string" }
+      }
+    }
+  },
+  "$defs": {
+    "creator": {
+      "type": "object",
+      "required": ["handle", "tier", "followers", "stats"],
+      "properties": {
+        "handle": { "type": "string" },
+        "tier": { "type": "string" },
+        "lane": { "type": ["string", "null"] },
+        "followers": { "type": "integer" },
+        "cadence": { "type": ["number", "null"] },
+        "stats": {
+          "type": "object",
+          "required": ["n", "med_views", "reach_eff", "med_er", "med_cmt"],
+          "properties": {
+            "n": { "type": "integer" },
+            "med_views": { "type": "number" },
+            "reach_eff": { "type": "number" },
+            "med_er": { "type": "number" },
+            "med_cmt": { "type": "number" }
+          }
+        }
+      }
+    },
+    "rollup": {
+      "type": "object",
+      "required": ["group", "creators", "med_reach_eff", "med_er", "med_views"],
+      "properties": {
+        "group": { "type": "string" },
+        "creators": { "type": "integer" },
+        "med_reach_eff": { "type": "number" },
+        "med_er": { "type": "number" },
+        "med_views": { "type": "number" }
+      }
+    }
+  }
+}
