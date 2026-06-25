@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Content Superengine - analysis config (superset of legacy tiers.json)",
+  "description": "Per-project config for competitor-cross-reference/analyze.py. Every key beyond the tiers.json base (client, client_followers, LARGE/MED/SMALL) is OPTIONAL and defaults to the engine's built-in value, so a bare tiers.json stays on the identical code path -> the EWH regression gate cannot drift by construction. Loaded by reel_io.load_config (analysis-config.json first, else tiers.json).",
+  "type": "object",
+  "required": ["client", "client_followers"],
+  "additionalProperties": true,
+  "properties": {
+    "client": { "type": "string", "description": "client IG handle, no @" },
+    "client_followers": { "type": "integer", "minimum": 0 },
+    "LARGE": { "type": "array", "items": { "type": "string" }, "description": "tier handle lists" },
+    "MED": { "type": "array", "items": { "type": "string" } },
+    "SMALL": { "type": "array", "items": { "type": "string" } },
+    "title": {
+      "type": "string",
+      "description": "H1 for analysis-data.md. Default when absent: '# @<client> - Cross-Reference Analysis Data (evidence appendix)'."
+    },
+    "themes": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "name -> regex pattern (JSON-escaped). When absent, the engine uses its built-in EWH theme dict verbatim."
+    },
+    "lanes": {
+      "type": "object",
+      "additionalProperties": { "type": "array", "items": { "type": "string" } },
+      "description": "lane name -> [handles]. PRESENCE enables lane_on: lane column, lane rollups, theme-by-lane section, outlier lane column, theme client-median column, and the 'Client reels (all)' label. Insertion order = display order."
+    },
+    "client_lane": {
+      "type": ["string", "null"],
+      "description": "lane tag for the client row (e.g. BLEND). Only rendered when lanes present."
+    },
+    "hook_lexicon": {
+      "type": "object",
+      "additionalProperties": { "type": "array", "items": { "type": "string" } },
+      "description": "hook-type -> extra regex alternatives appended to the base hook detector for that type (myth-bust/negation, contrarian/curiosity, pain-callout, ...). Empty/absent -> base detector unchanged."
+    }
+  }
+}
