@@ -8,8 +8,10 @@
 
 ## Click-path (≈2 minutes)
 
-1. Go to **socialcrawl.dev** → click **Start for free**. Every account starts with
-   **100 free credits**, no credit card.
+1. Go to **[socialcrawl.dev](https://www.socialcrawl.dev/?ref=AQNU384G)** → click
+   **Start for free**. Every account starts with **100 free credits**, no credit card.
+   *(That link is the RevXL referral link — signing up through it gets you bonus
+   credits and supports the engine. Use it rather than a bare socialcrawl.dev.)*
 2. **Sign in** — Google, GitHub, Kakao, or email + password.
 3. In the dashboard, open the left sidebar → **API Keys**.
 4. Click **+ Create** → give the key a name (e.g. your business name).
@@ -21,7 +23,8 @@
 
 ## Where the key is stored / resolved
 
-The engine resolves the key in this order (handled by the `socialcrawl` skill):
+The engine resolves the key in this order (handled by the bundled `socialcrawl`
+skill — it ships inside this plugin, so it's always available):
 1. Env var `SOCIALCRAWL_API_KEY` (if set and starts with `sc_`)
 2. File `~/.config/socialcrawl/api_key`
 3. Ask the user (then auto-save to the file above)

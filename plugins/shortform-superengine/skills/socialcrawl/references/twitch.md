@@ -1,0 +1,24 @@
+# Twitch (2 endpoints)
+
+## Endpoints
+
+| Resource | Params | Tier | Description |
+|----------|--------|------|-------------|
+| profile | `handle` | standard | Get streamer profile |
+| clip | `url` | standard | Get clip details |
+
+## Parameter Details
+
+- `handle`: Twitch username (e.g., `ninja`)
+- `url`: Full Twitch clip URL (e.g., `https://www.twitch.tv/ninja/clip/ExampleClipSlug`)
+
+## Field Maps
+
+The `profile` endpoint returns an `Author` response normalized by the `twitch-author` field map, and `clip` returns a `Post` normalized by `twitch-post`. Twitch clip responses are nested under `clip.*` upstream; the field map flattens them. Both include computed fields under `data.computed`.
+
+## Example
+
+```bash
+curl -s -H "x-api-key: $SOCIALCRAWL_API_KEY" \
+  "https://www.socialcrawl.dev/v1/twitch/profile?handle=ninja"
+```

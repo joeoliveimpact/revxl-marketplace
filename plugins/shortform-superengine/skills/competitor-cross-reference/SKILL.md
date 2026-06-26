@@ -44,8 +44,13 @@ Collect from the user:
 | Client IG handle (e.g. `@your.handle`) | Yes | — |
 | Website URL | No | — |
 | Niche hint (e.g. "functional medicine") | No | inferred from IG |
-| Target competitor count | No | 25 (8 large / 9 med / 8 small) |
+| Known competitors / creators (seeds) | No | — (used to seed discovery, not the final set) |
+| Target competitor count | No | **~25 (8 large / 9 med / 8 small) — this is a floor, not a cap** |
 | Transcript opt-in | No | off |
+
+> **A handful of names is a seed, not the set.** If the user names only 2–3 creators,
+> treat those as *seeds* and expand to ~25 in Step 2 — a 2–3-account comparison is too
+> thin to find real gaps. Only proceed with a smaller set if the user explicitly insists.
 
 Create the output directory:
 
@@ -112,6 +117,12 @@ Present to the user:
 
 Follow `./references/niche-seeds.md` to construct broad + niche-specific seed phrases for the confirmed niche. Seeds cover: broad category terms, audience-descriptor terms, methodology/modality terms, and outcome/transformation terms.
 
+**If the user named a few known competitors/creators (Step 0 seeds):** keep them as
+confirmed members of the candidate pool, then *expand around them* — pull each seed
+creator's `GET /profile?handle=<handle>` to read their niche/bio, mine their top
+captions for recurring terms, and feed those terms back as additional search seeds.
+The goal is to reach the ~25 floor, not to stop at the 2–3 they happened to name.
+
 **2b. SocialCrawl reel search**
 
 For each seed, `GET /search/reels?q=<seed>` via the `socialcrawl` skill. Collect the unique creator handles from results → candidate pool. Note: search returns a first-page sample (~10 results per seed) and does not support pagination — breadth comes from running many diverse seeds, not from paginating the search endpoint.
@@ -133,7 +144,11 @@ Present the tiered candidate list to the user. Apply relevance filters:
 - Drop: hospitals, celebrity accounts, institutions, off-niche accounts, private accounts, accounts with < 10 reels.
 - Flag for human judgment: accounts that look borderline (niche-adjacent but not direct competitors).
 
-Show the filtered set with tier labels. Default target: ~25 accounts (8 large / 9 med / 8 small). User may swap, add, or remove handles.
+Show the filtered set with tier labels. Target: ~25 accounts (8 large / 9 med / 8 small).
+User may swap, add, or remove handles. **If the set is still under ~25** (e.g. only the
+2–3 the user seeded survived filtering), go back to Step 2 and run more seeds before this
+checkpoint — don't present a thin set as final. Proceed under ~25 only if the user
+explicitly chooses to.
 
 **Pause. Do not gather reels until the user approves the final set.**
 
@@ -149,10 +164,16 @@ For each approved competitor handle, paginate `GET /profile/reels?handle=<handle
 
 ### ✋ Checkpoint 3 — Confirm Reel Depth + Credit Cost
 
-Report to the user:
+First fetch the **live balance** (free, 0 credits) via the `socialcrawl` skill:
+`GET /v1/credits/balance` → `data.balance`. Then report to the user:
 - Number of approved competitors
 - Reels per competitor (default 36)
 - Estimated credit cost: `N × 3` credits
+- **Balance: you have `M` credits left** → after this pull, ≈ `M − (N×3)`
+
+Phrase it plainly: *"This pull is ≈`N×3` credits. You have `M` left, so you'd be at
+≈`M−(N×3)` after. Good to go?"* If the estimate exceeds the balance, say so and offer
+to shrink the set or top up — don't start a pull that will run dry mid-way.
 
 **Pause. Only begin the big pull after explicit confirmation.**
 
@@ -245,6 +266,9 @@ Always paginate via `&max_id=<next_cursor>`. Do NOT use `cursor`, `pagination_to
 - Git-bash `/tmp` is NOT the same as Python's `/tmp` on Windows. Use relative temp paths or pipe via stdin. Never rely on a shared `/tmp`.
 - All `open()` calls must use `encoding='utf-8'`.
 - Never `print()` non-ASCII strings to the cp1252 Windows console — it will raise `UnicodeEncodeError`. Write to file instead.
+
+**Credit safety — balance + cost + confirm**
+Before any credit-spending batch (the reel pull, advanced/premium endpoints, a universal search), show the user **live balance + estimated cost + the after-balance**, and get explicit confirmation. Pull the balance with the free `GET /v1/credits/balance` call. Never start a multi-credit operation silently or one that would run the balance dry mid-way. Report `credits_remaining` after big steps so the user always knows where they stand.
 
 **SocialCrawl field constraints**
 SocialCrawl drops IG saves and shares. Engagement = views, likes, comments — only those three fields. **Never fabricate, estimate, or display saves or shares.** If a metric is missing from the API response, omit it from all outputs.

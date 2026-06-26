@@ -53,6 +53,12 @@ If they explicitly invoke `/onboarding` or clearly ask to set up, skip the ask.
    - **update** — re-run a specific step,
    - **show** — print current setup from the marker.
    Pick one with the user; only run what they choose.
+   - **stale plugin?** If the user reports the plugin won't pick up the latest
+     version (common on **Mac desktop** — marketplace updates silently don't sync),
+     point them to [`./references/updating.md`](references/updating.md) for the
+     uninstall/reinstall workaround. Not your bug to fix here — just unblock them.
+   - **install / connection trouble?** A tool won't install, a connector won't
+     attach, or antivirus is blocking the setup → [`./references/troubleshooting.md`](references/troubleshooting.md).
 
 ---
 
@@ -65,9 +71,16 @@ Windows or Mac).
 |------|-------|-----------|
 | Python 3.10+ | `python --version` (or `python3`) | runs the analysis engine |
 | `ftfy` | `python -c "import ftfy"` | cleans up garbled text in captions |
+| Node.js 18+ | `node --version` | some helper tools + MCP connectors won't run/attach without it |
 
-If Python is missing → stop and point them to python.org (everything downstream
-needs it). If `ftfy` is missing → offer `pip install ftfy`.
+- **Python missing** → stop and point them to python.org (everything downstream needs it).
+- **`ftfy` missing** → offer `pip install ftfy`.
+- **Node.js missing** → offer to install it (Windows: `winget install OpenJS.NodeJS.LTS`,
+  or nodejs.org → LTS installer; Mac: `brew install node`). Don't skip this — a missing
+  Node is a common cause of connectors silently failing to attach later.
+
+> Install or connection hiccup (a tool won't install, a connector won't attach, antivirus
+> blocking it)? See [`./references/troubleshooting.md`](references/troubleshooting.md).
 
 ---
 
@@ -123,14 +136,17 @@ The social-data source. **Each client uses their own key + credits** — never
 yours, never the public's (this is why the key is exposed to the paying client:
 it's the only way they don't draw down someone else's credits).
 
-Don't reinvent the key flow — **delegate to the `socialcrawl` skill's resolution**:
-env `SOCIALCRAWL_API_KEY` (starts `sc_`) → file `~/.config/socialcrawl/api_key`
-→ ask the client + auto-save.
+Don't reinvent the key flow — **delegate to the bundled `socialcrawl` skill's
+resolution** (it ships inside this plugin at `skills/socialcrawl/`, so it's always
+present — no separate install): env `SOCIALCRAWL_API_KEY` (starts `sc_`) → file
+`~/.config/socialcrawl/api_key` → ask the client + auto-save.
 
 If no key is found, walk them through getting one. Point them at
 [`./references/socialcrawl-setup.md`](references/socialcrawl-setup.md) — the
-click-path (sign up at socialcrawl.dev, 100 free credits → **API Keys** →
-**Create** → copy the `sc_…` key → paste), a Loom slot, and the verify calls.
+click-path (sign up via the **referral link** `https://www.socialcrawl.dev/?ref=AQNU384G`,
+100 free credits → **API Keys** → **Create** → copy the `sc_…` key → paste), a Loom
+slot, and the verify calls. (Always hand clients the referral sign-up link, not a bare
+socialcrawl.dev.)
 Save the key to `~/.config/socialcrawl/api_key`. Confirm with the balance/auth
 test (also Step 7). **Can't run analysis without it.**
 
@@ -144,20 +160,101 @@ test (also Step 7). **Can't run analysis without it.**
 
 A client with only SocialCrawl can run the full core flow.
 
+### Token hygiene — trim connectors you don't need here
+
+Every MCP connector loaded in a workspace spends tokens on **every** message, just
+by being available — whether or not you use it. This plugin ships **no** MCP servers
+of its own, so it adds nothing here; the cost comes from other connectors the client
+has switched on globally (Drive, Telegram, calendars, CRMs, etc.).
+
+In **this** shortform workspace, the core flow only needs: SocialCrawl (data), the
+transcription chain, and the recordings source from Step 4. Offer, in plain words:
+*"You've got a bunch of connectors switched on. For reel work you only need a few —
+want to switch the rest off in this workspace so Claude stays fast and doesn't burn
+tokens carrying tools it won't use? You can flip them back on anytime."* Let the user
+decide which to keep; never disable anything without confirming. This is advisory —
+**purely the user's call**, and reversible.
+
 ---
 
-## Step 4 — Voice (voc handshake)
+## Step 4 — Voice + brand brain (source ladder)
 
 The reel scripts come out in the **client's brand voice**, which lives at
-`~/.claude/revxl/<brand>/voc/` (three files: voice-guide, voc-profile,
-business-config). Onboarding only **orchestrates** — it does not mine voice itself.
+`~/.claude/revxl/<brand>/voc/`. The voice isn't a one-time form — it's a **living
+brand brain** built from the client's **own words, wherever they live**: their tone,
+*who they help* and *the pains they help with*, the **topics** they're on right now,
+and the **jokes that actually land**. Onboarding only **wires the sources and the
+cadence** — the dedicated voice skill does the mining.
 
-1. If `~/.claude/revxl/<brand>/voc/` exists → reuse it. Tell the user their voice
-   profile is already on file; no re-work.
-2. If absent → the dedicated voice skill builds it. **If that skill isn't installed
-   yet** (v1 lean path), say so plainly: *"Your brand-voice profile isn't built yet.
-   That's fine — reel-scripter will use a sensible interim voice until you build it.
-   It's a fast-follow, not a blocker."* Then continue.
+Two different needs, different best-sources:
+- **Voice** (how they sound) → best from *spoken* or *written-by-them*.
+- **Offer + avatar** (what they sell, who they help, the pains) → can come from
+  anywhere, even a form.
+
+### 4a — Find a voice source (walk the ladder, top → down)
+
+Walk down until something exists. Tag each found source with a **voice-confidence**
+(A/B/C); stamp the brain with the overall confidence so consumers (reel-scripter)
+know how hard to lean on the voice.
+
+| Tier | Sources | Detect / pull | Voice-confidence |
+|------|---------|---------------|------------------|
+| **A — spoken** | Fathom / Fireflies recordings, podcast, YouTube, webinar/VSL, Loom, voice memos | Fathom or Fireflies MCP available? ask for a podcast/YT handle | **A (high)** — real cadence + objections + jokes |
+| **B — written-by-them** | their own social captions/reels, sent newsletters, DMs, community posts (Skool/GHL/Telegram), their tweets/threads | **own posts via SocialCrawl (already wired)**; ask for a newsletter export | **B (med)** — their writing voice + current topics |
+| **C — written-FOR-them** | website, sales/landing pages, course copy | firecrawl the site | **C (low for voice)** — usually copywriter-written; use for **offer/avatar only** |
+| **D — none yet** | guided interview | see the floor below | floor — works for everyone |
+
+Rules:
+- **Prefer the highest tier present; blend downward.** A spoken source *sets* the
+  voice; B/C add offer + topics. **Never let a Tier-C site set the voice** — that's
+  the noise-factor trap; keep them sounding like *them*.
+- **Their own social is the no-recordings primary.** SocialCrawl is already wired, so
+  with no recordings, pulling their own captions is the lowest-friction *real* voice
+  source. Almost everyone has it.
+- **Offer/avatar pulls wider than voice** — also testimonials/reviews (the *avatar's*
+  own pain language — gold), intake forms, an existing brand guide. Tag these as
+  offer/avatar inputs, **not** voice.
+
+**The floor (Tier D) — brand-new owner / nothing to pull.** If A–C come up empty (new
+business, no audience, no site), don't dead-end:
+1. **Guided interview now** — the voice skill interviews them (same move as the email
+   engine's story intake): voice from their raw answers + offer + avatar from
+   structured Q&A. In Cowork/voice it even captures *spoken* voice.
+2. **Record going forward** — turn on call recording (Fathom) from call #1, save voice
+   memos. The brain compounds: day-1 thin-but-real → week-4 rich. Ties into the
+   freshness heartbeat (4c).
+Stamp `voice_confidence: "interview"` so reel-scripter leans conservative until real
+sources accumulate.
+
+Record the found sources + overall confidence in the marker (`voice_sources`,
+`voice_confidence`). **Never hard-fail** — worst case is interview-floor, never a dead end.
+
+### 4b — Existing brain?
+
+1. If `~/.claude/revxl/<brand>/voc/` exists → reuse it. Tell the user their brand
+   brain is already on file; note its age (see 4c).
+2. If absent → the dedicated voice skill builds it from the recordings source. **If
+   that skill isn't installed yet** (v1 lean path), say so plainly: *"Your brand
+   brain isn't built yet. That's fine — reel-scripter will use a sensible interim
+   voice until you build it. It's a fast-follow, not a blocker."* Then continue.
+
+### 4c — Auto-refresh offer (keep it fresh, hands-off)
+
+A brand brain goes stale: tone drifts, and — more importantly — the **topics** your
+clients raise change week to week. A reel built off a 3-day-old hot objection lands;
+one built off month-old topics doesn't. So offer to keep it fresh automatically:
+
+- **Cowork client** → offer a **scheduled task** that re-mines recent recordings on a
+  cadence. Ask their slot: *"Friday night, Monday morning, or a time you pick?"*
+- **Code client** → offer a **routine / cron** (Windows Scheduled Task or `/schedule`)
+  on the same cadence.
+- Target: **never more than 6–7 days stale.**
+
+Capture the choice in the marker (`brand_brain.refresh`). **Lean-v1 note:** if the
+voice skill isn't installed yet, record the source + cadence preference now and tell
+the user the auto-refresh **activates when the brand-brain build lands** (the
+fast-follow). Don't create a schedule that points at a command that doesn't exist
+yet — capture intent, wire on arrival.
 
 Do not hard-fail on missing voice. v1 ships with interim-voice degrade.
 
@@ -182,11 +279,26 @@ includes a `tier` field set to `unknown`) so the v2 Metricool step drops in clea
   "onboarded_at": "<ISO date>",
   "transcription_chain": ["captions", "groq|local|both"],
   "connections": { "socialcrawl": true, "groq": false, "firecrawl": false },
+  "voice_sources": ["fathom|fireflies|own-social|newsletter|podcast|website|interview"],
+  "voice_confidence": "A|B|C|interview|none",
   "brand": "<brand-slug or null>",
   "voc_present": false,
+  "brand_brain": {
+    "present": false,
+    "updated_at": null,
+    "refresh": { "scheduled": false, "cadence": null, "runtime": "cowork|code|null" }
+  },
   "tier": "unknown"
 }
 ```
+
+`voice_sources` = which source-ladder tiers were found (Step 4a); `voice_confidence`
+= the overall tier the brain rests on (`A` spoken → `C` written-for-them → `interview`
+floor → `none`). Consumers lean bolder on A, conservative on interview. `brand_brain`
+= the living voice/ICP/topics/humor artifact: `present` once the voice skill has built
+it, `updated_at` its last-build stamp (the freshness clock reads this), and `refresh`
+the auto-refresh choice from Step 4c (`scheduled` stays false in lean v1 until the
+brand-brain build ships, but `cadence`/`runtime` capture the user's intent now).
 
 3. **teach_mode default.** Ensure `~/.claude/revxl/` exists. If
    `~/.claude/revxl/teach-mode` does **not** exist, create it with the single word
@@ -207,6 +319,10 @@ Run real checks, report a pass/fail table — never claim done without proof:
   → confirms the key works. If it 401s, send them back to Step 3.
 - **Transcription chain:** the recorded chain satisfies the gate rule (yt-dlp + ≥1
   transcriber). If not, back to Step 2.
+- **Brand brain (non-blocking):** marker has `voice_sources` + a `voice_confidence`
+  tier (even `interview`/`none` is a pass — the floor always applies) and a
+  `brand_brain.refresh` choice. Confirm it reflects what they picked in Step 4; never
+  fail onboarding over voice.
 - **teach_mode:** `~/.claude/revxl/teach-mode` exists and reads `beginner` or `off`.
 
 ---
