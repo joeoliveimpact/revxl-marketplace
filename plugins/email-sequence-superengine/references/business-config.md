@@ -2,6 +2,8 @@
 
 > Persisted via `${CLAUDE_PLUGIN_DATA}` so it survives plugin updates. Do NOT hardcode a path and do NOT store under `${CLAUDE_PLUGIN_ROOT}`. Setup writes these values; every skill reads them.
 > Placeholder values below mean "not configured yet" → skills route first-run users to `email-guide`.
+>
+> **Shared brand-level values (VoC contract):** if `~/.claude/revxl/<brand>/voc/business-config.md` exists, brand-level tokens (avatar, offer, positioning) are READ from there first and any setup updates to those tokens are WRITTEN back there too — so every REVXL engine shares one avatar/offer config. Engine-specific keys (ESP, pitch floor, teach mode, etc.) stay in `${CLAUDE_PLUGIN_DATA}`.
 
 ### Brand / program
 | Key | Value | Notes |

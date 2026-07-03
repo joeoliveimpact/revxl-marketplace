@@ -2,6 +2,15 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.0] — 2026-06-30
+
+### Added
+- **`brand-brain` skill (bundled shared producer).** Mines a client's real sources — Fathom/Fireflies call recordings, own social/newsletters, Meta DM export, or a guided-interview floor — into a living brand brain at the cross-engine shared location `~/.claude/revxl/<brand>/voc/`: `voice-guide.md` (register-tagged, confidence-stamped), `voc-profile.md` (frequency-ranked verbatim prospect language + evergreen content seeds), `business-config.md` (shared brand-level avatar/offer), `signature-bits.md` (evidence-scored, human-canonized humor), `weekly-content-bank.md` (7-day topical shelf). Idempotent detect-and-reuse with a 7-day freshness heartbeat and delta-only refreshes. Validated against a real-call acceptance fixture (6/6).
+
+### Changed
+- **`voice-anchor` detect-path now checks the shared brand brain first** (`~/.claude/revxl/<brand>/voc/voice-guide.md`) before any workspace guide or interim extraction — completes the VoC-contract follow-up so one captured voice serves every REVXL engine.
+- **`business-config` brand-level tokens (avatar/offer/positioning) read/write the shared location when present**; engine-specific keys stay in `${CLAUDE_PLUGIN_DATA}`. `email-setup` detects the shared brain + config before asking, and offers `brand-brain` when no voice guide exists.
+
 ## [0.1.2] — 2026-06-24
 
 ### Changed
