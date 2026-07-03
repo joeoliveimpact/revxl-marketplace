@@ -233,10 +233,10 @@ Record the found sources + overall confidence in the marker (`voice_sources`,
 
 1. If `~/.claude/revxl/<brand>/voc/` exists → reuse it. Tell the user their brand
    brain is already on file; note its age (see 4c).
-2. If absent → the dedicated voice skill builds it from the recordings source. **If
-   that skill isn't installed yet** (v1 lean path), say so plainly: *"Your brand
-   brain isn't built yet. That's fine — reel-scripter will use a sensible interim
-   voice until you build it. It's a fast-follow, not a blocker."* Then continue.
+2. If absent → offer to build it NOW with the bundled `brand-brain` skill (mines the
+   recordings source / own content into the shared brain; ~a few minutes). Decline →
+   say plainly: *"That's fine — reel-scripter will use a sensible interim voice until
+   you build it. Run brand-brain anytime."* Then continue.
 
 ### 4c — Auto-refresh offer (keep it fresh, hands-off)
 

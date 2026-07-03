@@ -7,7 +7,7 @@
     "email": "joe@engineforimpact.com"
   },
   "metadata": {
-    "version": "0.1.21"
+    "version": "0.1.22"
   },
   "plugins": [
     {
@@ -199,7 +199,7 @@
       "description": "Turn competitor research into Instagram reel scripts in your own voice. One guided setup, then by talking to Claude: cross-reference your reels against tiered competitors for a 10-section strategy roadmap, harvest a trusted creator's whole library into a framework corpus, and script reels off what already wins in your niche (Hook to CTA, with craft scoring). Bring-your-own SocialCrawl key (your data, your credits); captions-first transcription with Groq or local Whisper fallback; plain-English teach mode by default. For coaches who want data-driven short-form that still sounds like them.",
       "source": "./plugins/shortform-superengine",
       "category": "marketing",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"
