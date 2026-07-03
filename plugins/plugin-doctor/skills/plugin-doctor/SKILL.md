@@ -24,12 +24,31 @@ Plugin settings, story banks, and brand config live OUTSIDE the plugin's install
 
 ## Stall A — stuck on an old version (force-refresh)
 
-**Claude Code (CLI available):**
+**Fastest fix — run the updater script (works from Claude Desktop chat or Claude Code):**
+A staged, fully reversible cache-clear script lives at
+https://github.com/joeoliveimpact/Claude-marketplace-updater. Before running it, tell the
+user what to expect: **Claude Desktop will quit and reopen mid-fix** — their chat survives;
+they reopen it afterward and everything is right where they left it. Then download and
+launch it **detached** (own process, so it survives the restart):
+
+- macOS:
+  `curl -fsSL https://raw.githubusercontent.com/joeoliveimpact/Claude-marketplace-updater/main/fix-marketplace-sync-macos.command -o /tmp/cmu.command`
+  then `(nohup bash /tmp/cmu.command --stage1 >/tmp/cmu-updater.log 2>&1 &)`
+- Windows (PowerShell):
+  `curl.exe -fsSL https://raw.githubusercontent.com/joeoliveimpact/Claude-marketplace-updater/main/fix-marketplace-sync-windows.bat -o "$env:TEMP\cmu.bat"`
+  then `Start-Process "$env:TEMP\cmu.bat" -ArgumentList '--stage1'`
+
+After Claude reopens: verify the plugin version (Settings → Plugins; macOS log at
+`/tmp/cmu-updater.log`). Still on the old version? Re-run the same way with `--stage2`
+(full local reset — bigger clear, still reversible, user re-logs-in). If the script can't
+be fetched (offline, blocked), use the manual fallbacks below.
+
+**Manual fallback — Claude Code (CLI available):**
 1. Refresh the marketplace listing: `claude plugin marketplace update revxl-marketplace` (if that errors, `claude plugin marketplace remove revxl-marketplace` then re-add it).
 2. Force-reinstall the plugin: `claude plugin uninstall <plugin-name>` then `claude plugin install <plugin-name>@revxl-marketplace`.
 3. Verify: `claude plugin list` shows the new version; a new session shows the new commands.
 
-**Claude Desktop (no CLI):** walk the user through the same thing in the UI, one step at a time:
+**Manual fallback — Claude Desktop (no CLI):** walk the user through the same thing in the UI, one step at a time:
 1. Open the plugins/extensions panel → find the plugin → uninstall it.
 2. Fully quit and reopen Claude Desktop (clears the stale listing — this is the step people skip; a known Desktop sync bug makes updates stick until restart).
 3. Reinstall the plugin from the directory.

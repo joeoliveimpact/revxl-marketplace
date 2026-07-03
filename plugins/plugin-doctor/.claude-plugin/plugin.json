@@ -1,8 +1,8 @@
 {
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "plugin-doctor",
-  "description": "Fixes stalled Claude plugin updates. Diagnoses whether a plugin is stuck on an old version or hitting the in-app directory 404, then walks the fix: marketplace refresh + force-reinstall (CLI or Desktop UI steps), with config-safety guarantees — your plugin data and brand config are never touched. One command: /plugin-doctor.",
-  "version": "0.1.0",
+  "description": "Fixes stalled Claude plugin updates. Diagnoses whether a plugin is stuck on an old version or hitting the in-app directory 404, then fixes it: runs the staged, reversible marketplace-updater script for you (or walks the manual fix), with config-safety guarantees — your plugin data and brand config are never touched. One command: /plugin-doctor.",
+  "version": "0.1.1",
   "author": {
     "name": "Joe Olive",
     "email": "joe@engineforimpact.com"
