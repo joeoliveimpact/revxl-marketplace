@@ -20,7 +20,7 @@ engine — proven required ingredients (Hormozi + Settle), not nice-to-haves.
 1b. **Teach mode** — on (default) / off. Plain: "Teach mode means as I build, I'll explain WHY each move works in simple terms, so you learn to do this yourself, not just get the emails. Teaching you to fish. Want it on?" Toggle anytime. (See ${CLAUDE_PLUGIN_ROOT}/references/teach-mode.md.)
 2. **Program + positioning + audience** — who they serve, one-line positioning.
 3. **Coach POV / hot takes** — strongest contrarian opinions vs mainstream advice in their niche (feeds POV emails + story-bank).
-4. **Brand voice / anchor** — path to a voice guide if one exists, else note interim anchor sources. Detect-if-exists first.
+4. **Brand voice / anchor** — detect-if-exists first, in order: (a) the shared brand brain `~/.claude/revxl/<brand>/voc/voice-guide.md` — if present, use it and skip interim capture; (b) any other voice-guide path the user has. Neither → note interim anchor sources AND offer to run the bundled `brand-brain` skill (mines their real calls/content into a durable, cross-engine brain).
 
 **B. Avatar deep (the conversion engine)**
 5. **Dream outcome in STATUS terms** — not just "what they want," but how they want peers/spouse/industry to SEE them (status > money).
@@ -53,6 +53,6 @@ engine — proven required ingredients (Hormozi + Settle), not nice-to-haves.
 > This is long. For beginners, OFFER to do it in 2 passes (essentials now: 1-2,5,7,10,13,21-26; the deeper avatar/offer fields next session). Don't force all 26 in one sitting — but flag that the deep fields are what make the copy convert.
 
 ## Finish
-- Write all values into business-config.
+- Write all values into business-config. Brand-level tokens (avatar, offer, positioning) also read/write the shared `~/.claude/revxl/<brand>/voc/business-config.md` when present, per the note in business-config.md — engine-specific keys stay in `${CLAUDE_PLUGIN_DATA}`.
 - Confirm back to the coach in plain English (per explanation level).
 - Offer to build the first sequence (route to precall-nurture) or the guided tour (guide).

@@ -3,7 +3,11 @@
 > The METHOD for capturing a coach's real voice and writing in it, not anyone's stored voice profile. Each coach's voice is captured at setup (and, when a standalone voice skill exists, written to a reusable per-workspace voice guide). This framework governs how. No voice profile ships filled in.
 
 ## Detect, then prefer
-Before extracting, check for an existing workspace voice guide (a path in `{{BRAND_VOICE}}`, or something like `output/data/branding/voice-guide*.md`). If one exists, PREFER it over the interim process below.
+Before extracting, check in this order — first hit wins, PREFER it over the interim process below:
+1. **The shared brand brain:** `~/.claude/revxl/<brand>/voc/voice-guide.md` (written by the bundled `brand-brain` skill; cross-engine, per the VoC contract). If present but >7 days stale, the brand-brain skill may offer a quick refresh first.
+2. A path in `{{BRAND_VOICE}}`, or a workspace voice guide like `output/data/branding/voice-guide*.md`.
+
+No hit on either → run the interim extraction below, and suggest `brand-brain` for the durable, cross-engine version.
 
 ## Extract: the Digital Twin profile (captured ONCE at setup, not per email)
 Audit whatever the coach already has. No transcript is required.
