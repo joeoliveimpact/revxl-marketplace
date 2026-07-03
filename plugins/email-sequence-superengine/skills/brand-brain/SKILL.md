@@ -1,6 +1,6 @@
 ---
 name: email-sequence-superengine:brand-brain
-description: Derive a living BRAND BRAIN — voice, ICP/pains, content seeds, signature humor, weekly topics — from a client's real sources (call recordings, own content, DMs) and keep it fresh on a 7-day heartbeat. Use when a user wants to capture their brand voice, build a voice guide, mine calls or content for voice-of-customer language, set up their brand for any REVXL superengine, or refresh a stale brain. Triggers: "capture my voice", "build my brand brain", "mine my calls", "set up my voice", "refresh my voice guide", "update my topics".
+description: Derive a living BRAND BRAIN — voice, ICP/pains, content seeds, signature humor, weekly topics — from a client's real sources (call recordings, own content, DMs) and keep it fresh on a 7-day heartbeat. Use when a user wants to capture their brand voice, build a voice guide, mine calls or content for voice-of-customer language, set up their brand for any REVXL superengine, or refresh a stale brain. Trigger phrases include "capture my voice", "build my brand brain", "mine my calls", "set up my voice", "refresh my voice guide", "update my topics".
 ---
 
 # Brand Brain — producer
