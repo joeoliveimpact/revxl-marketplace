@@ -7,7 +7,7 @@
     "email": "joe@engineforimpact.com"
   },
   "metadata": {
-    "version": "0.1.20"
+    "version": "0.1.21"
   },
   "plugins": [
     {
@@ -217,6 +217,29 @@
         "socialcrawl",
         "revxl",
         "superengine"
+      ]
+    },
+    {
+      "name": "plugin-doctor",
+      "description": "Fixes stalled Claude plugin updates. Diagnoses whether a plugin is stuck on an old version or hitting the in-app directory 404, then walks the fix: marketplace refresh + force-reinstall (CLI commands on Claude Code, click-by-click steps on Claude Desktop), with config-safety guarantees - your plugin data and brand config are never touched. One command: /plugin-doctor.",
+      "source": "./plugins/plugin-doctor",
+      "category": "productivity",
+      "version": "0.1.0",
+      "author": {
+        "name": "Joe Olive",
+        "email": "joe@engineforimpact.com"
+      },
+      "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/plugin-doctor",
+      "license": "MIT",
+      "keywords": [
+        "plugin",
+        "update",
+        "fix",
+        "doctor",
+        "troubleshooting",
+        "install",
+        "marketplace",
+        "utility"
       ]
     }
   ]
