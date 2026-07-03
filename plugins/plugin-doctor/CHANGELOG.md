@@ -2,6 +2,16 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.1] — 2026-07-03
+
+### Changed
+- **Stall A now fixes itself.** The doctor downloads the staged, fully reversible updater
+  script from [Claude-marketplace-updater](https://github.com/joeoliveimpact/Claude-marketplace-updater)
+  and launches it detached (`--stage1`, then `--stage2` if needed) — Claude Desktop quits,
+  the cache clears, Desktop reopens, plugins re-sync. Works from a Claude Desktop chat or
+  Claude Code; the user's session survives the restart. The previous CLI/UI walkthroughs
+  remain as manual fallbacks when the script can't be fetched.
+
 ## [0.1.0] — 2026-06-30
 
 ### Added
