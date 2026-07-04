@@ -13,14 +13,22 @@ Don't ask an AI "is this funny." Score lines on OBSERVABLE signals from the sour
 | Repetition only | candidate (they lean on it — audience reaction unproven) |
 | Neither | not a bit; leave it in the transcript |
 
+## Deployability gates (candidacy — check BEFORE filing)
+A line only becomes a candidate if it survives both gates. These are mechanical, not taste:
+- **Portability:** the line + its setup must not reference call participants, the operator, or session context ("you can't helicopter for Joe" names the other party — not a candidate; it stays in the transcript).
+- **Self-contained setup:** the stored setup must be reproducible in content. You-had-to-be-there context = not a candidate.
+
+## Canon floor
+Canon requires the repetition signal across **≥2 independent sources**. A single-source brain therefore holds zero canon — that honesty is the feature, not a shortfall to paper over.
+
 ## Store per bit
 - The line (verbatim) + the setup/context it needs
-- Reaction evidence (quoted) + frequency count (which calls/posts)
+- Reaction evidence (quoted) + **evidence strength (`explicit` | `riff-along`)** + frequency count (which calls/posts)
 - Tag: `personal-signature` | `topical-to-niche` | `evergreen`
 - Status: `candidate` | `canon`
 
-## Human-in-loop canonization (hard rule)
-The system PROPOSES candidates with their evidence. The human thumbs-up to canonize. No approval, no canon, no deployment. Consumers deploy the client's ACTUAL jokes — never invent new ones, never punch up old ones.
+## Canonization: parked (and human-in-loop when it returns)
+No consumer engine currently reads canon bits, so do NOT run a canonization review — file candidates silently and note "parked for a future bits engine" in the run report. When a consumer exists and canonization resumes, the hard rule stands: the system PROPOSES candidates with their evidence, the human thumbs-up to canonize. No approval, no canon, no deployment. Consumers deploy the client's ACTUAL jokes — never invent new ones, never punch up old ones.
 
 ## Attribution guard
 A bit belongs to the person who SAID it (per speaker-separation). Cross-contamination is the one unforgivable failure: the operator's recurring analogy showing up in a client's brain means the brain is lying about who the client is.

@@ -13,10 +13,10 @@ One skill, one job: **sources in → brain out** at the shared location. Every R
       voice-guide.md          # coach voice, register-tagged, voice_confidence stamped
       voc-profile.md          # freq-ranked verbatim prospect bank + evergreen content seeds
       business-config.md      # brand-level avatar + offer (shared)
-      signature-bits.md       # the client's REAL humor, evidence-scored, human-canonized
+      signature-bits.md       # the client's REAL humor, evidence-scored (canonization parked until a consumer reads bits)
       weekly-content-bank.md  # fast shelf: this week's themes/objections/jokes/seeds, 7-day TTL
 
-`<brand>` resolves from config; one user can hold multiple brands. Raw transcripts + the mining index stay WORKSPACE-level (`voc/transcripts/<bucket>/`, `voc/index.md`) — bulky, private source data.
+`<brand>` resolves from config and is a NORMALIZED slug — lowercase, alphanumeric only, no separators ("Maria G Fit" → `mariagfit`) — so every engine resolves the same brand to the same folder. Before minting a new brand folder, check `~/.claude/revxl/` for a similar existing one and confirm with the user (two half-brains for one coach is the failure to avoid). One user can hold multiple brands. Raw transcripts + the mining index stay WORKSPACE-level (`voc/transcripts/<bucket>/`, `voc/index.md`) — bulky, private source data.
 
 ## Router — run this decision every invocation
 
@@ -46,4 +46,4 @@ Offer refreshes at most ONCE per session — never nag on back-to-back builds.
 
 ## Shortform tie-in
 
-reel-scripter reads `voice-guide.md` (registers `written-content` / `spoken-video`) and `weekly-content-bank.md` (this week's topical layer). After a mine or refresh, offer to script a reel off the freshest topical seed.
+reel-scripter reads `voice-guide.md` (registers `written-content` / `spoken-video`) plus `voc-profile.md` and `business-config.md`. `weekly-content-bank.md` has no wired consumer yet — after a mine or refresh, offer to script a reel off the freshest topical seed by handing the seed text to reel-scripter inline (as the angle input), not by pointing at the file.

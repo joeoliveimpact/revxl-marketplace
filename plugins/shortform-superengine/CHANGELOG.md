@@ -2,6 +2,20 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.1] — 2026-07-04
+
+Premortem-driven hardening of the bundled `brand-brain` producer + reel-scripter's voice wiring (same premortem as email-sequence-superengine 0.2.1).
+
+### Fixed
+- **reel-scripter now checks the shared brand brain FIRST** — `~/.claude/revxl/<brand>/voc/` was missing from its voice-resolution ladder, so a brain built from another engine (e.g. email) was invisible to reel scripting. The cross-engine promise now actually resolves.
+- Brand-brain tie-in doc no longer claims reel-scripter reads `weekly-content-bank.md` (it doesn't; topical seeds are handed inline after a mine/refresh).
+
+### Changed
+- **Signature-bit canonization is PARKED** (bundled brand-brain): candidates still mined + filed (schema unchanged), no canonization review until a consumer engine reads canon bits. Candidacy gained mechanical deployability gates (portability, self-contained setup); canon requires recurrence across ≥2 independent sources.
+- **Machine-readable overfit flag:** brain stamp blocks gain additive `source_count` + `provisional` keys; reel-scripter treats `provisional: true` brains as hypotheses, surfaces brain age on read, offers a refresh once, never gates scripting.
+- **Mirror-language guard:** reel-scripter never quotes `voc-profile.md` "Mirror Language (hypothesis)" entries as audience VoC.
+- Bit reaction evidence carries strength (`explicit`|`riff-along`); ranking tiebreak formalized; brand slug normalized with a similar-folder check.
+
 ## [0.2.0] — 2026-06-30
 
 ### Added

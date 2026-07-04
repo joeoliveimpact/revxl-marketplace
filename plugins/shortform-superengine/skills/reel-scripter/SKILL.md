@@ -69,7 +69,14 @@ It auto-detects **FULL** mode (spoken transcripts present) vs **CAPTION-ONLY** d
 **0c. Resolve the voice.** In priority order:
 1. Shared `voc/` artifacts — `voice-guide.md` (rules/tone), `voc-profile.md` (verbatim
    audience pains, vocabulary, phrases to use/avoid), `business-config` (offer, ICP, CTAs).
-   Look in the project, then the workspace-level `voc/` if one is wired.
+   Check the shared brand brain FIRST — `~/.claude/revxl/<brand>/voc/` (brand slug from the
+   onboarding marker/config; a brain built from ANY engine lives here) — then the project,
+   then the workspace-level `voc/` if one is wired. On read: compute `days_since_update`
+   from the stamp; >7 days → surface the age + offer a brand-brain refresh ONCE, never gate
+   scripting on it. If the stamp says `provisional: true` (fewer than 3 sources mined),
+   treat rankings and voice reads as hypotheses — confirm with the user instead of leaning
+   bold. Never quote `voc-profile.md` "Mirror Language (hypothesis)" entries as audience
+   VoC — that's the coach's own phrasing about herself, not her market's.
 2. **Interim capture (degrade)** — if no `voc/`, capture a lightweight voice anchor now:
    either 3–5 of the client's own top captions/transcripts (already in the project) **or** a
    4-question voice Q&A (Who are you talking to? What do you say that they don't expect? What

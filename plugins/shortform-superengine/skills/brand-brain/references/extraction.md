@@ -14,7 +14,7 @@ Catalog per the consumer-standard shape (email engine's voice-anchor parses thes
 
 ## VoC (prospect turns + DM prospect side + testimonials)
 - Extract pains, desired outcomes, objections, and VERBATIM phrases — their exact words, not paraphrase. Verbatim means exact words; mark transcription gaps/elisions with `[—]`, never bridge them silently.
-- Dedup, then **rank by frequency** (a pain heard in 9 of 12 calls outranks one heard once). Frequency = evidence. **Minimum-evidence rule:** with fewer than 3 independent sources, mark all ranks `provisional (n=<count>)` — within-one-call frequency is not a pattern.
+- Dedup, then **rank by frequency** (a pain heard in 9 of 12 calls outranks one heard once). Frequency = evidence. **Minimum-evidence rule:** with fewer than 3 independent sources, mark all ranks `provisional (n=<count>)` — within-one-call frequency is not a pattern. **Tiebreak within a provisional set** (formalized so two operators rank the same inputs the same way): multi-client attestation on-call > in-call repetition > single mention.
 - Tag each entry: bucket (sales/client/group/other) + source. Keep the bank ENGINE-AGNOSTIC — it powers IG hooks exactly like email subject lines; no email-only assumptions in its shape.
 - **Client-of-operator calls** (the operator coaching the brand owner): the brand owner's OWN pains about her business are NOT her avatar's VoC. Store avatar VoC only where she explicitly describes her audience. Her own experience MAY be kept in a clearly labeled **Mirror Language (hypothesis)** subsection — low-confidence, useful where coach and avatar overlap — never merged into the ranked bank.
 

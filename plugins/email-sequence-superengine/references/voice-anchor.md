@@ -4,10 +4,12 @@
 
 ## Detect, then prefer
 Before extracting, check in this order — first hit wins, PREFER it over the interim process below:
-1. **The shared brand brain:** `~/.claude/revxl/<brand>/voc/voice-guide.md` (written by the bundled `brand-brain` skill; cross-engine, per the VoC contract). If present but >7 days stale, the brand-brain skill may offer a quick refresh first.
+1. **The shared brand brain:** `~/.claude/revxl/<brand>/voc/voice-guide.md` (written by the bundled `brand-brain` skill; cross-engine, per the VoC contract). On read, compute `days_since_update` from the stamp; if >7 days, surface the age and offer a quick brand-brain refresh ONCE — never gate generation on it.
 2. A path in `{{BRAND_VOICE}}`, or a workspace voice guide like `output/data/branding/voice-guide*.md`.
 
 No hit on either → run the interim extraction below, and suggest `brand-brain` for the durable, cross-engine version.
+
+**Reading a provisional brain:** if the stamp says `provisional: true` (fewer than 3 independent sources mined), the voice read and any rankings are hypotheses from thin evidence — confirm voice moves with the coach rather than leaning bold, regardless of `voice_confidence`. And never quote `voc-profile.md` "Mirror Language (hypothesis)" entries as avatar VoC: that section is the coach's own client-experience phrasing, not her audience's words.
 
 ## Extract: the Digital Twin profile (captured ONCE at setup, not per email)
 Audit whatever the coach already has. No transcript is required.

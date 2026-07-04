@@ -3,7 +3,7 @@
 Runs when no brain exists at the shared location. Sources in → all five artifacts out.
 
 ## 1. Resolve the brand
-Ask (or read from an engine's config if invoked from one): brand name → `<brand>` slug for `~/.claude/revxl/<brand>/voc/`. Create the folder if absent.
+Ask (or read from an engine's config if invoked from one): brand name → `<brand>` slug for `~/.claude/revxl/<brand>/voc/`. **Normalize the slug** (lowercase, alphanumeric only, no separators: "Maria G Fit" → `mariagfit`) so every engine resolves the same brand to the same folder. Before creating, list `~/.claude/revxl/` and check for a similar existing folder — if one exists, confirm with the user rather than minting a second half-brain. Create the folder only if genuinely absent.
 
 ## 2. Walk the source ladder (${CLAUDE_PLUGIN_ROOT}/references/brand-brain/source-ladder.md)
 Detect what exists, top tier down. Confirm each source with the user before pulling (approval gate).
@@ -26,8 +26,8 @@ Per ${CLAUDE_PLUGIN_ROOT}/references/brand-brain/speaker-separation.md then ${CL
 ## 4. Write artifacts
 Per ${CLAUDE_PLUGIN_ROOT}/references/brand-brain/artifacts.md — all five files, each stamped `updated_at` (ISO date + time) and voice-guide stamped `voice_confidence` (highest tier actually used for voice). Dedup + frequency-rank the VoC bank; tag by bucket and register.
 
-## 5. Canonize bits (human-in-loop)
-Present signature-bit candidates with their evidence (reaction quotes, frequency). User thumbs-up → mark canon. No approval, no canon.
+## 5. File bits (parked — no canonization ceremony)
+Write scored candidates (with evidence strength + deployability gates applied, per ${CLAUDE_PLUGIN_ROOT}/references/brand-brain/signature-bits.md) into `signature-bits.md`, all `status: candidate`. Do NOT present them for canonization review — no consumer engine reads canon bits yet; the report simply notes "N bit candidates filed, parked for a future bits engine."
 
 ## 6. Index + heartbeat
 Write `voc/index.md` (per bucket: last-pull timestamp, source, #items mined, decline count 0). Then offer the auto-refresh schedule per ${CLAUDE_PLUGIN_ROOT}/references/brand-brain/freshness.md (Cowork scheduled task / Code routine; their pick of day). Never more than ~7 days stale.
