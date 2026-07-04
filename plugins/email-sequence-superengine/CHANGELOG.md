@@ -2,6 +2,20 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.1] — 2026-07-04
+
+Premortem-driven hardening of the bundled `brand-brain` producer + its consumers. A premortem found the signature-bits pipeline weak at both ends: bit candidates from a single private call carried no quality bar, and no consumer reads `signature-bits.md` yet — so v0.2.0's "human-canonized humor" described a ceremony whose output nothing consumed. This release makes the honest state explicit and hardens the brain's labeling.
+
+### Changed
+- **Signature-bit canonization is PARKED.** Candidates are still mined, scored, and filed (schema unchanged, all `status: candidate`), but no canonization review runs until a consumer engine actually reads canon bits. Retires the 0.2.0 "human-canonized" claim.
+- **Bit candidacy gained mechanical deployability gates:** portability (a line/setup that names call participants, the operator, or session context is not a candidate) + self-contained setup. **Canon floor:** canon requires recurrence across ≥2 independent sources — single-source brains hold zero canon, honestly.
+- **Machine-readable overfit flag:** every brain artifact's stamp block gains additive `source_count` + `provisional` keys (`provisional: true` under 3 independent sources). `voice_confidence` enum unchanged. Consumers (voice-anchor, generator flow) treat provisional brains as hypotheses — surface age on read, offer a refresh once, never gate.
+- **Mirror-language tier blessed into the schema with a consumer guard:** a coach's own client-experience phrasing lives in a labeled "Mirror Language (hypothesis)" subsection of `voc-profile.md` and is never quoted as avatar VoC.
+- Signature-bit reaction evidence now carries strength (`explicit` vs `riff-along`); provisional-set ranking tiebreak formalized (multi-client attestation > in-call repetition > single mention); brand slug normalized (lowercase, no separators) with a similar-folder check so two engines can't mint two half-brains for one coach.
+
+### Fixed
+- Older brains written before these stamps upgrade lazily on next refresh touch (no silent stale labeling).
+
 ## [0.2.0] — 2026-06-30
 
 ### Added
