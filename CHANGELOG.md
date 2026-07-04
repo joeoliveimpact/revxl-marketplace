@@ -4,6 +4,14 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.25] — 2026-07-04
+
+### Added
+- **New plugin: [socialcrawl-superengine](plugins/socialcrawl-superengine/CHANGELOG.md) v0.1.0** — deep social research superengine on the SocialCrawl API. Full 43-platform / 333-endpoint canon with exact per-call credits (generated from SocialCrawl's own docs + pricing registry), guided research plays (VoC mining, ad-library recon, AI-visibility audits, link-in-bio offer mapping, audience demographics, dev radar), and hard-gated big-gun one-shots (creator vetting, lead discovery, share-of-voice — 15–50cr, never batched). BYO key. Pairs with RevXL format engines via a detection marker, or runs standalone. 3 skills, zero MCPs. Catalog now ships 11 plugins.
+
+### Changed
+- Plugin: [shortform-superengine](plugins/shortform-superengine/CHANGELOG.md) v0.2.2 — bundled `socialcrawl` skill is now a generated lean core derived from the socialcrawl-superengine canon (12 refs, exact credits, 19 unused platform refs removed); competitor-cross-reference / reel-scripter / onboarding detect the superengine and offer its deep plays when installed (never a blocker); both-transcribers onboarding + dual-OS updating guide; reel-scripter Topic Pool mode.
+
 ## [0.1.14] — 2026-06-15
 
 ### Changed

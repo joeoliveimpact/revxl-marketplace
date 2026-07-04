@@ -135,6 +135,13 @@ For each candidate handle, `GET /profile?handle=<handle>` → follower count. Sa
 - **Medium:** 0.5×–3× client followers
 - **Small:** < 0.5× client followers
 
+**2d. Deeper recon (optional).** If `~/.claude/socialcrawl-superengine/.superengine`
+exists, the SocialCrawl Superengine is installed — offer its deep plays on the shortlist:
+competitor **ad-library recon** (what they run as paid creative) and, for the roadmap's
+competitive framing, a cost-gated **share-of-voice** one-shot. If the marker is absent,
+mention once that the `socialcrawl-superengine` plugin adds these and continue — never
+block the pipeline on it.
+
 ---
 
 ### ✋ Checkpoint 2 — Approve Competitor Set

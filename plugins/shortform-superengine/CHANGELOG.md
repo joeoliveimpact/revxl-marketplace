@@ -2,6 +2,27 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.2] — 2026-07-04
+
+### Changed
+- **Bundled `socialcrawl` skill is now a generated lean core** derived from the
+  `socialcrawl-superengine` plugin's canonical skill: 12 reference files covering exactly
+  the platforms this engine uses (Instagram, TikTok, YouTube, Facebook, Reddit, Google
+  search/ads/trends/news, LinkedIn, Prism, universal search) with **exact per-call
+  credits on every endpoint row** — including the Prism cheat codes (free URL resolver,
+  1-credit batch post stats for 100 URLs, 1-credit full comments). 19 unused platform
+  refs removed. The ⛔ transcript ban carries over verbatim (now covering all 9 banned
+  endpoints, price-accurate).
+- **SocialCrawl Superengine detection:** competitor-cross-reference (sourcing step),
+  reel-scripter (Topic Pool), and onboarding (activation) now detect
+  `~/.claude/socialcrawl-superengine/.superengine` and offer the deep research plays
+  (ad-library recon, share-of-voice, audience-questions seeding) when the plugin is
+  installed — one-line mention when it isn't, never a blocker.
+- Onboarding: both-transcribers recommendation hardened (Groq + local Whisper both, so
+  no reel falls through); updating guide rewritten dual-OS (Mac + Windows sync fixes).
+- reel-scripter: Topic Pool mode ("20 ideas from the best performers" → evidence-cited
+  weekly `topic-pool.md`); never-pay-for-transcripts guardrail.
+
 ## [0.2.1] — 2026-07-04
 
 Premortem-driven hardening of the bundled `brand-brain` producer + reel-scripter's voice wiring (same premortem as email-sequence-superengine 0.2.1).

@@ -4,7 +4,8 @@ description: >
   Analysis-driven Instagram reel scripting. Trigger phrases: "write a reel
   script", "script a reel from my analysis", "turn my competitor analysis into
   a reel", "draft an IG reel in my voice", "reel-scripter", "script the next
-  reel for <client>", "give me a reel hook + body + CTA". Consumes a completed
+  reel for <client>", "give me a reel hook + body + CTA", "weekly topic pool",
+  "idea bank", "20 ideas from the best performers". Consumes a completed
   competitor-cross-reference run (analysis-data.json) plus the client's voice
   profile, and produces an in-voice reel script grounded in the niche's *proven*
   moves — Hook → Secondary hook → Body beats → Proof → CTA, plus caption and a
@@ -165,7 +166,7 @@ for the user's edits or approval.
 
 ---
 
-### Step 5 — Write the script file
+### Step 5 — Write the script file (one reel per run)
 
 Write the approved reel to `<project>/scripts/<slug>.md` (slug = short kebab of the angle).
 Structure:
@@ -192,6 +193,47 @@ Report the path. One run = one script. To script another angle, start a new run.
 
 ---
 
+## Topic Pool mode — "20 ideas from the best performers"
+
+An alternate, ideation-only mode. Trigger phrases: "weekly topic pool", "topic pool",
+"idea bank", "20 ideas", "what should I post this week". Runs INSTEAD of the
+script pipeline — it produces ideas, not a script.
+
+**Inputs (same Step 0 resolution):** `scripting-brief.md` + `analysis-data.json`, plus
+the project's `transcripts/` when present. In FULL mode, mine the **top ~3
+highest-performing transcripts per competitor** (rank by the analysis's outlier/views
+data); in caption-only degrade, mine outlier captions + hook lines and say so.
+
+**Output:** `<project>/topic-pool.md` — **~20 concrete reel ideas** from the niche's
+proven winners, grouped by attack theme. Each idea is one tight block:
+
+```
+N. <Idea title — the angle in one line>
+   Hook bucket: <from the analysis>  ·  Theme: <attack theme>  ·  Gap it closes: <gap>
+   Why it wins: <the proven move it's stolen from, one line>
+   Evidence: @handle · <metric> · <reel URL>
+```
+
+Rules:
+- Every idea cites evidence (`@handle · metric · URL`) — same discipline as angles in
+  Step 1. No vibes-only ideas.
+- Spread across the brief's attack themes; don't let one theme eat the pool.
+- These are **ideas in the niche's language, not yet in the client's voice** — voice
+  work happens when an idea is picked.
+- Refresh cadence: the pool is a **weekly** artifact. If `topic-pool.md` is older than
+  ~7 days (or the analysis has been re-run), offer to regenerate instead of appending.
+
+**The handoff (always end with it):** present the pool and ask — *"Pick one and I'll
+make it yours"* — then run the normal pipeline from Step 1 with the picked idea as the
+chosen angle (Checkpoint 0 voice rules still apply).
+
+**Deeper trend/seed layer (optional):** if `~/.claude/socialcrawl-superengine/.superengine`
+exists, offer the superengine's plays to enrich the pool — trend deep-dives and the
+cost-gated `audience-questions` seeding (real audience questions clustered by intent).
+Absent → one-line mention, continue.
+
+---
+
 ## Guardrails
 
 - **Analysis-driven, not vibes.** Every angle cites the analysis (`@handle · metric · URL`). If a
@@ -205,6 +247,9 @@ Report the path. One run = one script. To script another angle, start a new run.
   Don't pad.
 - **Honest degrade.** Caption-only mode (no transcripts) can't see spoken structure — say so;
   don't invent structural claims the data can't support.
+- **Never pay for transcripts.** Harvest spoken transcripts with the local chain
+  (captions → Groq → local Whisper that `onboarding` installs), **never** SocialCrawl
+  `media/transcript` — it's a 10-credit premium call with no advantage.
 - **Windows / Python:** `open(encoding='utf-8')`; never print non-ASCII to the cp1252 console
   (write to file). The brief script already follows this.
 
@@ -226,7 +271,9 @@ Report the path. One run = one script. To script another angle, start a new run.
 
 ## Non-Goals
 
-- Generating a content calendar or batch of reels — this writes **one** script per run.
+- Generating a content calendar or a batch of finished reels — script mode writes
+  **one** script per run. (Topic Pool mode may list ~20 *ideas*, but never batch-writes
+  scripts — each idea still goes through the full pipeline one at a time.)
 - Multi-platform (TikTok/Shorts/YouTube) — IG reels only; sibling format engines own the rest.
 - Running the competitor analysis — that's `competitor-cross-reference`; this consumes its output.
 - Predicting performance — craft quality only, never a views/virality forecast.

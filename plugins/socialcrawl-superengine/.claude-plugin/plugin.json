@@ -1,0 +1,27 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "socialcrawl-superengine",
+  "description": "Deep social research superengine on the SocialCrawl API: the full 43-platform / 333-endpoint canon with exact per-call credits, plus guided research plays — voice-of-customer mining, competitor ad-library recon, AI-visibility (GEO) audits, link-in-bio offer mapping, audience demographics, dev/tool radar — and hard-gated big-gun one-shots (creator vetting, lead discovery, share-of-voice). Bring-your-own key; every paid call is cost-gated up front. Pairs with the RevXL format engines (they detect it and unlock deep plays) or runs standalone.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Joe Olive",
+    "email": "joe@engineforimpact.com"
+  },
+  "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/socialcrawl-superengine",
+  "license": "MIT",
+  "keywords": [
+    "socialcrawl",
+    "social-research",
+    "voice-of-customer",
+    "ad-library",
+    "competitor-analysis",
+    "ai-visibility",
+    "creator-vetting",
+    "lead-discovery",
+    "instagram",
+    "tiktok",
+    "youtube",
+    "revxl",
+    "superengine"
+  ]
+}

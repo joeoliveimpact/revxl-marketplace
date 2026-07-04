@@ -107,10 +107,14 @@ to best. The plugin uses whatever the user has, in this order:
 ### The gate rule (what counts as "set up enough")
 
 > **Require `yt-dlp` (the captions floor), AND require at least one real transcriber
-> — Groq OR local Whisper. Offer to add the other.**
+> — Groq OR local Whisper. Then actively recommend adding the other: the target
+> setup is BOTH, so no reel ever falls through the cracks.**
 
 Why: captions alone can't handle a reel that *has no captions*, so one true
-transcriber is the real floor.
+transcriber is the real floor — and two transcribers mean a Groq outage or an
+offline session still can't stall a run. This chain is also the **only** way this
+plugin ever transcribes: SocialCrawl's `*/transcript` endpoints are banned
+(10 credits/reel, no advantage — see the `socialcrawl` skill's transcription policy).
 
 Resolve with the user:
 - **yt-dlp missing** → offer `pip install yt-dlp` (required — can't continue without it).
@@ -118,10 +122,12 @@ Resolve with the user:
   - Groq: send them to `console.groq.com/keys` (free), then set `GROQ_API_KEY`.
   - Local: offer `pip install faster-whisper` + install `ffmpeg` (Windows: `winget
     install Gyan.FFmpeg` or point to ffmpeg.org; Mac: `brew install ffmpeg`).
-- **Has one, not the other** → mention the other as optional and move on. Example,
-  in beginner voice: *"You've got captions + offline Whisper, so you're covered. You
-  don't have a Groq key — that's optional; it makes no-caption reels transcribe faster
-  in the cloud. Add one anytime, or skip it."*
+- **Has one, not the other** → recommend adding the second now (don't just mention
+  it). Example, in beginner voice: *"You've got captions + offline Whisper, so you're
+  covered — but I'd add Groq too. It's a free API key (console.groq.com/keys), super
+  fast, and it means you have multiple ways to transcribe, so nothing gets through
+  the cracks. Want to grab it now? Takes about a minute."* Accept a "skip" gracefully
+  and move on — recommend, never block.
 
 Record the resolved chain (which tiers are live) — it goes in the marker so
 `competitor-cross-reference` knows what it can use.
@@ -337,6 +343,12 @@ Tell the user, in plain language, what they can do now:
 > - **Reel-scripter** — after an analysis, 'write a reel script from my analysis'
 >   → a reel in your brand voice off what already works in your niche.
 > Start with the competitor cross-reference — reel-scripter reads its output."
+
+Then check `~/.claude/socialcrawl-superengine/.superengine`: if present, add — *"You also
+have the SocialCrawl Superengine installed: deep research plays (audience voice mining,
+competitor ad recon, AI-visibility audits) are available on top."* If absent, add one
+line — *"Optional: the `socialcrawl-superengine` plugin from the same marketplace adds
+deep research plays (VoC mining, ad recon, audits)."* — and move on.
 
 ---
 
