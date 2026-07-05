@@ -23,6 +23,8 @@ DESTS = {
               "${CLAUDE_PLUGIN_ROOT}/references/brand-brain/"),
     "shortform": (REPO / "plugins/shortform-superengine/skills/brand-brain/references",
                   "${CLAUDE_PLUGIN_ROOT}/skills/brand-brain/references/"),
+    "carousel": (REPO / "plugins/carousel-superengine/references/brand-brain",
+                 "${CLAUDE_PLUGIN_ROOT}/references/brand-brain/"),
 }
 FILES = [("tasks", n) for n in ("mine.md", "refresh.md", "interview.md")] + \
         [("references", n) for n in ("artifacts.md", "extraction.md", "freshness.md",
