@@ -4,6 +4,14 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.26] — 2026-07-05
+
+### Added
+- Plugin: [socialcrawl-superengine](plugins/socialcrawl-superengine/CHANGELOG.md) v0.1.1 — **enforced credit-guard hook**. A `PreToolUse` (Bash) hook cost-gates every paid SocialCrawl call before it spends and hard-blocks the 9 banned `*/transcript` endpoints; fail-open (any error → allow) and scoped to socialcrawl.dev commands only, so it never interferes with other work. Ships a 333-endpoint `costs.json` cost table + `credit-guard.mjs`. Adds `_shared/references/{credit-guard,untrusted-data}.md` — the credit-gate ritual and an injection-defense guide for treating scraped social content as untrusted data.
+
+### Changed
+- Plugin: [shortform-superengine](plugins/shortform-superengine/CHANGELOG.md) v0.2.3 — bundled `socialcrawl` lean core picks up the same `_shared/references/{credit-guard,untrusted-data}.md` safety guidance and a regenerated lean SKILL, keeping it in sync with the socialcrawl-superengine canon.
+
 ## [0.1.25] — 2026-07-04
 
 ### Added
