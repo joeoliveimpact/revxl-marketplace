@@ -4,6 +4,11 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.28] — 2026-07-06
+
+### Fixed
+- Plugin: [gokollab-community-superengine](plugins/gokollab-community-superengine/CHANGELOG.md) v0.1.2 — bundled `clientclub` CLI binaries rebuilt with the `add-users-to` array-body fix: `groups channels add-users-to --stdin` now accepts the JSON **array** body the API requires (previously failed locally with `cannot unmarshal array into map`, breaking the `onboard-member` add-to-channel step). All four platform binaries updated.
+
 ## [0.1.26] — 2026-07-05
 
 ### Added

@@ -2,6 +2,11 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.2] — 2026-07-06
+
+### Fixed
+- Bundled `clientclub` CLI binaries (all 4 platforms) rebuilt with the `add-users-to` array-body fix. `groups channels add-users-to --stdin` previously unmarshalled stdin into a Go object (`map[string]any`) while the API's `AddUsersToChannelBody` is a JSON **array** — the correct payload `[{"contactId","role","notify"}]` failed locally with `cannot unmarshal array into map`, breaking the `onboard-member` add-to-channel step (workaround was a direct `curl` call). The command now passes the stdin body through verbatim (`json.RawMessage`), so the documented array form works. Patch is cataloged in the source CLI's `.printing-press-patches.json` and guarded by a regression test.
+
 ## [0.1.0] — 2026-06-04
 
 ### Added
