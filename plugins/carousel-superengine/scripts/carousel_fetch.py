@@ -134,8 +134,12 @@ def fetch(url: str, work_dir: Path, session_file: Path | None = None) -> dict:
     except Exception as exc:
         text = str(exc).lower()
         if any(k in text for k in ("403", "forbidden", "401", "login")):
-            # instaloader sometimes surfaces auth walls as generic errors after retries
             return _fail("login_required", "Instagram is blocking anonymous access. Wait a few minutes or add --session.")
+        if isinstance(exc, ig_exc.InstaloaderException):
+            # after retries + endpoint fallbacks instaloader wraps auth walls in varied
+            # exception texts; any instaloader-domain failure here is a blocked fetch,
+            # not a script bug
+            return _fail("login_required", "Instagram blocked the request (throttle/auth wall). Wait a few minutes or add --session.")
         return _fail("unknown", "Unexpected error fetching this post.")
 
 
