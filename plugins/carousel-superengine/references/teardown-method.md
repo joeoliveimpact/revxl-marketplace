@@ -42,9 +42,12 @@ slides:[{index, kind, file}], message}`. Slide files land in `<work-dir>` in nat
 image in sequence for the true slide-by-slide teardown.
 
 **Throttle + conduct rules (non-negotiable):**
-- Anonymous access: ~1 post per 30s. A `login_required` / `rate_limited` result means WAIT (minutes,
-  not seconds) or add an instaloader session file from a THROWAWAY account (`instaloader --login`,
-  see the script's `--session` flag). Never retry-loop.
+- Anonymous access is now unreliable: Instagram frequently hard-blocks it with `403 / login_required`
+  regardless of request spacing (verified 2026-07 — the public web + mobile-API paths both return
+  403 without a logged-in session). Treat a session file from a THROWAWAY account (`instaloader
+  --login`, then the script's `--session` flag) as **effectively required** for this path. Anonymous
+  may work for the occasional post but cannot be relied on; a `login_required` result is expected,
+  not a bug. Never retry-loop.
 - Public posts only. Private = hard stop, no workarounds.
 - One post per run. Batch = explicit user yes + 30s+ spacing.
 - Downloaded media is analysis input for the user's own research. It is never reposted, repackaged,
