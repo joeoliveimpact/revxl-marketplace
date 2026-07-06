@@ -124,14 +124,22 @@ def fetch(url: str, work_dir: Path, session_file: Path | None = None) -> dict:
         return _fail("not_found", "Post not found — deleted or bad link.")
     except ig_exc.ConnectionException as exc:
         text = str(exc).lower()
-        if any(k in text for k in ("login_required", "401", "please wait")):
+        if any(k in text for k in ("login_required", "401", "403", "forbidden", "please wait")):
             return _fail("login_required", "Instagram is blocking anonymous access. Wait a few minutes or add --session.")
         if any(k in text for k in ("429", "too many", "rate")):
             return _fail("rate_limited", "Rate limited. Wait a few minutes before the next pull.")
         if "not found" in text or "404" in text:
             return _fail("not_found", "Post not found — deleted or bad link.")
         return _fail("network", "Couldn't reach Instagram. Check the connection and retry.")
-    except Exception:
+    except Exception as exc:
+        text = str(exc).lower()
+        if any(k in text for k in ("403", "forbidden", "401", "login")):
+            return _fail("login_required", "Instagram is blocking anonymous access. Wait a few minutes or add --session.")
+        if isinstance(exc, ig_exc.InstaloaderException):
+            # after retries + endpoint fallbacks instaloader wraps auth walls in varied
+            # exception texts; any instaloader-domain failure here is a blocked fetch,
+            # not a script bug
+            return _fail("login_required", "Instagram blocked the request (throttle/auth wall). Wait a few minutes or add --session.")
         return _fail("unknown", "Unexpected error fetching this post.")
 
 
