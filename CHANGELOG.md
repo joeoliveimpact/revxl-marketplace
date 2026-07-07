@@ -4,6 +4,11 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.29] — 2026-07-07
+
+### Removed
+- Plugin: **plugin-doctor** moved out to its own standalone repo — [joeoliveimpact/plugin-doctor](https://github.com/joeoliveimpact/plugin-doctor). A repair tool for stalled/404'd plugin installs shouldn't ship inside the marketplace it repairs (chicken-and-egg), and it's a general-purpose utility. Existing installs are unaffected; re-add it from the new home with `claude plugin marketplace add joeoliveimpact/plugin-doctor` then `claude plugin install plugin-doctor@plugin-doctor`. Catalog now ships 12 plugins.
+
 ## [0.1.28] — 2026-07-06
 
 ### Fixed
