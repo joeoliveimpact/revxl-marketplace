@@ -22,9 +22,12 @@ the same once content is in hand).
   cover image + engagement + creator context. State the credit cost before spending. Cover-only:
   say plainly that slides 2+ aren't visible on this path and the teardown reads hook + caption +
   metrics (that's still where most of the signal lives).
-- **Path B — full slides (Claude Code only, `{{FULL_SLIDE_FETCH}}: available`):** bundled fetch script
-  pulls every slide file → true slide-by-slide teardown. Public posts only; respect the throttle
-  rules in the method doc.
+- **Path B — full slides (Claude Code + Python, `{{FULL_SLIDE_FETCH}}: available`):** uses the client's
+  own Instagram cookies (exported once with the Cookie-Editor extension during setup, saved to
+  `${CLAUDE_PLUGIN_DATA}/ig_session.json`). If that file is missing, or a fetch returns `login_required`,
+  walk the client through a fresh Cookie-Editor export (@ig-cookie-setup.md) and save it — then
+  `carousel_fetch.py … --session <file>` pulls every slide via the authenticated mobile API → true
+  slide-by-slide teardown. Their own cookies only, never shared. Exact calls + conduct in teardown-method.md.
 - Neither available → manual route (paste the slide text in order).
 
 **3. Analyze** per the shape in teardown-method.md: format archetype, slide-flow map, hook mechanics,

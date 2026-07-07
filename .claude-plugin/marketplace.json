@@ -7,7 +7,7 @@
     "email": "joe@engineforimpact.com"
   },
   "metadata": {
-    "version": "0.1.28"
+    "version": "0.1.29"
   },
   "plugins": [
     {
@@ -275,7 +275,7 @@
       "description": "Voice-matched Instagram and LinkedIn carousel engine for coaches. Run setup once, then generate complete carousel packages: hook slide, value slides, CTA slide, per-slide design directions, caption, and hashtags, all in your voice. Includes a paste-a-link teardown that analyzes any public carousel through your own SocialCrawl key (with an optional full-slide local fetch on Claude Code), then rebuilds the winning structure as your own. Drafts only. Your config and voice persist across plugin updates.",
       "source": "./plugins/carousel-superengine",
       "category": "marketing",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"

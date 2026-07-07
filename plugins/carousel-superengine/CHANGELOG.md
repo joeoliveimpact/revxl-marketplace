@@ -1,5 +1,20 @@
 # Changelog — carousel-superengine
 
+## 0.1.1 — 2026-07-06
+
+Full-slide teardown fetch rebuilt for the post-2026 Instagram reality.
+
+- **Fetch swapped to Instagram's authenticated mobile API** (`scripts/carousel_fetch.py`) — the only
+  path that still returns every slide. Anonymous fetch and instaloader's web path are both dead
+  (`403 login_required`, mid-2026); the old `Post.from_shortcode` mechanism no longer works.
+- **Capture is a cookie paste** — the client exports their Instagram cookies once with the free
+  Cookie-Editor browser extension (setup walks them through it, see `references/ig-cookie-setup.md`) and
+  the engine saves them to `${CLAUDE_PLUGIN_DATA}`. No browser automation, no login script, no terminal.
+- **Fetch is stdlib-only** — no pip install at all (dropped both the old instaloader dependency and the
+  interim patchright approach). Per-client own cookies, never a shared account. Refresh only when a
+  fetch reports `login_required` (no scheduled expiry). stdout JSON contract unchanged.
+- Proven live: 8-slide carousel pulled end-to-end from a cookie export.
+
 ## 0.1.0 — 2026-07-05
 
 Initial release.

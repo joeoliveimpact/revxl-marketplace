@@ -51,4 +51,6 @@ is ever copied.
 - None for generation.
 - Teardown link pulls: a free [SocialCrawl](https://www.socialcrawl.dev/?ref=AQNU384G) API key
   (bring-your-own-key; the engine walks you through it).
-- Full-slide teardown (optional): Claude Code + Python 3.10+ (`pip install instaloader`).
+- Full-slide teardown (optional): Claude Code + Python 3.10+ and your own Instagram cookies, exported
+  once with the free Cookie-Editor browser extension (setup walks you through it)... no install, no
+  password stored, just your session cookies, on your machine.

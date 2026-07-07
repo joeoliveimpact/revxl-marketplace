@@ -34,7 +34,7 @@ Ask conversationally, per `{{EXPLANATION_LEVEL}}`. Push for CONCRETE phrasing in
 
 **D. Teardown (optional, can skip and add later)**
 14. **SocialCrawl key** — needed only for `carousel-teardown` link pulls. Resolution order: env `SOCIALCRAWL_API_KEY` → `~/.config/socialcrawl/api_key` → offer the 2-minute click-path in ${CLAUDE_PLUGIN_ROOT}/references/socialcrawl-key-setup.md. Skipping is fine; create works without it.
-15. **Full-slide fetch check** (Claude Code only) — if Bash + Python 3.10+ are available, note `{{FULL_SLIDE_FETCH}}: available`; teardowns can then pull EVERY slide of a public post via the bundled script instead of cover-only. On Cowork/Desktop mark `unavailable` (SocialCrawl cover path still works).
+15. **Full-slide fetch setup** (Claude Code only) — full-slide teardown needs Python 3.10+ and the client's own Instagram cookies. No install, no browser script — the fetch is stdlib-only. Check `python --version` ≥ 3.10. If present, OFFER to capture cookies now: walk the client through the 2-minute Cookie-Editor export in ${CLAUDE_PLUGIN_ROOT}/references/ig-cookie-setup.md, save the pasted JSON to `${CLAUDE_PLUGIN_DATA}/ig_session.json`, and mark `{{FULL_SLIDE_FETCH}}: available`. Skipping is fine — teardown falls back to the SocialCrawl cover path, and cookies can be pasted later at first teardown. Refresh only when a fetch reports `login_required` (no scheduled expiry). On Cowork/Desktop (no local Python) mark `unavailable`.
 
 **E. Output**
 16. **Output destination** — chat draft (default) / workspace file / both.

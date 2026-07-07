@@ -30,29 +30,40 @@ teardown therefore reads: hook slide (vision) + caption (full) + metrics. Say th
 output; never present slide-flow guesses as observed slides. When the caption narrates the slide
 sequence ("swipe for the 5 steps…"), inferences from it get tagged `(inferred from caption)`.
 
-## Path B — full-slide fetch (backup; Claude Code + Python only)
+## Path B — full-slide fetch (Claude Code + Python; the client's own Instagram cookies)
 
-When `{{FULL_SLIDE_FETCH}}: available`, the bundled script pulls EVERY slide of a public post:
+When `{{FULL_SLIDE_FETCH}}: available`, the bundled script pulls EVERY slide via Instagram's
+authenticated mobile API — the only path that still returns all slides (2026-07). No browser
+automation, no install: it runs on cookies the client exported once with the **Cookie-Editor** browser
+extension (captured during setup — see @ig-cookie-setup.md). Stdlib-only Python.
 
-    pip install instaloader                      # one-time (venv fine)
-    python ${CLAUDE_PLUGIN_ROOT}/scripts/carousel_fetch.py "<post-url>" "<work-dir>"
+**The pull** (uses the saved cookie export, default `${CLAUDE_PLUGIN_DATA}/ig_session.json`):
+
+    python ${CLAUDE_PLUGIN_ROOT}/scripts/carousel_fetch.py "<post-url>" "<work-dir>" --session "<cookie-file>"
 
 stdout = one JSON object: `{ok, shortcode, username, caption, taken_at, likes, comments, is_carousel,
-slides:[{index, kind, file}], message}`. Slide files land in `<work-dir>` in natural order — Read each
-image in sequence for the true slide-by-slide teardown.
+slides:[{index, kind, file}], message}`. Slide files land in `<work-dir>` as `slide_00`, `slide_01`… —
+Read each image in sequence for the true slide-by-slide teardown.
 
-**Throttle + conduct rules (non-negotiable):**
-- Anonymous access is now unreliable: Instagram frequently hard-blocks it with `403 / login_required`
-  regardless of request spacing (verified 2026-07 — the public web + mobile-API paths both return
-  403 without a logged-in session). Treat a session file from a THROWAWAY account (`instaloader
-  --login`, then the script's `--session` flag) as **effectively required** for this path. Anonymous
-  may work for the occasional post but cannot be relied on; a `login_required` result is expected,
-  not a bug. Never retry-loop.
-- Public posts only. Private = hard stop, no workarounds.
-- One post per run. Batch = explicit user yes + 30s+ spacing.
-- Downloaded media is analysis input for the user's own research. It is never reposted, repackaged,
-  or shipped anywhere. (Scraping may violate Instagram's ToS — the user owns that call; keep usage
+**Cookies expired?** A `login_required` result means the session is stale. There is NO fixed timer —
+Instagram sessions last months for an active account, but a log-out / password change kills them. Have
+the client re-export via Cookie-Editor and paste again (@ig-cookie-setup.md). The skill detects
+`login_required` and asks; never set an arbitrary refresh clock, and never retry-loop.
+
+**Why authenticated:** anonymous fetch is `403 login_required`-dead (Instagram clamped down mid-2026)
+and instaloader's web path is dead even logged-in. Cookies + the mobile API is the working, client-side
+replica of what iqsaved does server-side. See memory `ig-carousel-fetch-reality`.
+
+**Conduct rules (non-negotiable):**
+- The client's OWN cookies only. NEVER a shared account — concentrated volume on one account is the
+  fingerprint that gets banned; per-account volume stays tiny by design.
+- Public + accessible posts only. Private = hard stop, no workarounds.
+- One post per run. Batch = explicit user yes + spacing.
+- Downloaded media is analysis input for the user's own research. It is never reposted, repackaged, or
+  shipped anywhere. (Scraping may violate Instagram's ToS — the user owns that call; keep usage
   personal-research-scoped.)
+- The cookie file is a secret (full account access). It stays in `${CLAUDE_PLUGIN_DATA}` on the client's
+  machine; never commit or share it. Logging the account out revokes it.
 
 ## Analysis shape (both paths — degrade gracefully on partial data)
 
