@@ -12,30 +12,36 @@ shape, hard honesty rules.
 
 **The pull** (state cost first; a post pull is a low-single-digit credit call):
 
-    curl -s -H "x-api-key: <key>" "https://www.socialcrawl.dev/v1/instagram/post?url=<URL-ENCODED-LINK>"
+    curl -s -H "x-api-key: <key>" "https://www.socialcrawl.dev/v1/instagram/post?url=<URL-ENCODED-LINK>&download_media=true"
 
-Envelope: `{ success, data, … }` — the post lands under `data` (`content` holds caption + media
-fields; creator + engagement fields alongside). Extract:
+Envelope: `{ success, data, … }` — the post lands under `data.post` (`content` holds caption + cover +
+engagement fields; `ext.download_media_urls[]` holds ALL slides when `&download_media=true` is set).
+Extract:
 - **caption** (full text — hook line, structure, CTA, hashtags)
-- **cover image URL** (`content.media_urls` / `thumbnail_url` — this is the HOOK SLIDE)
+- **all slides** (`ext.download_media_urls[]` — with `&download_media=true`, one entry per slide in
+  order. Each entry is an OBJECT `{post_id, cdn_url, type, cached}`: the durable Supabase link is at
+  `.cdn_url` (these don't expire), and `type` is `image` or `video`. NOT a bare URL — read `.cdn_url`.)
+- **cover image URL** (`content.media_urls` / `thumbnail_url` — the HOOK SLIDE = slide 1; note this is
+  the raw IG CDN link (expires ~24h). Its durable copy is `download_media_urls[0].cdn_url`.)
 - **engagement** — likes, comments (+ views where present)
 - **creator context** — handle, follower count (baselines the engagement read)
 
-Download the cover (`curl -s -o cover.jpg "<url>"` — CDN links expire in ~24h, pull it now) and Read
-it for vision analysis of the hook slide.
+Download each slide's `.cdn_url` in order (`curl -s -o slide_00 "<cdn_url>"`, `slide_01`, …; extension
+per `type` — `.jpg`/`.mp4`) and Read them in sequence for the true slide-by-slide teardown.
 
-**⚠️ Cover-only honesty rule:** SocialCrawl returns ONE image for a carousel — the cover. Slides 2+
-are not visible on this path. Verified against the payload spec + live integration (2026-06). The
-teardown therefore reads: hook slide (vision) + caption (full) + metrics. Say this plainly in the
-output; never present slide-flow guesses as observed slides. When the caption narrates the slide
-sequence ("swipe for the 5 steps…"), inferences from it get tagged `(inferred from caption)`.
+**⚠️ Fallback honesty rule:** `&download_media=true` returns ALL slides — verified live 2026-07-07 on
+3/4/8-slide image carousels + a video slide + a single-image post, 1 credit each. Only if the flag is
+missing OR `ext.download_media_urls[]` is absent/empty do you fall back to cover-only: then the
+teardown reads hook slide (vision) + caption (full) + metrics, and any slide-sequence guesses get
+tagged `(inferred from caption)` — never presented as observed slides.
 
 ## Path B — full-slide fetch (Claude Code + Python; the client's own Instagram cookies)
 
 When `{{FULL_SLIDE_FETCH}}: available`, the bundled script pulls EVERY slide via Instagram's
-authenticated mobile API — the only path that still returns all slides (2026-07). No browser
-automation, no install: it runs on cookies the client exported once with the **Cookie-Editor** browser
-extension (captured during setup — see @ig-cookie-setup.md). Stdlib-only Python.
+authenticated mobile API — a second full-slide path (IG's own API, client-side), useful as a fallback
+when SocialCrawl's upstream can't fetch a given account. No browser automation, no install: it runs on
+cookies the client exported once with the **Cookie-Editor** browser extension (captured during setup —
+see @ig-cookie-setup.md). Stdlib-only Python.
 
 **The pull** (uses the saved cookie export, default `${CLAUDE_PLUGIN_DATA}/ig_session.json`):
 
