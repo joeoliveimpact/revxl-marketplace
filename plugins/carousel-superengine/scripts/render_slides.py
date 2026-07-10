@@ -64,15 +64,24 @@ def main() -> int:
 
     if args.pdf:
         try:
-            from PIL import Image
+            # JpegImagePlugin import is load-bearing: Pillow's PDF writer needs the JPEG
+            # encoder registered, and a bare `from PIL import Image` may not register it.
+            from PIL import Image, JpegImagePlugin  # noqa: F401
         except ImportError:
             result["pdf"] = None
             result["pdf_error"] = "Pillow not installed (pip install pillow); PNGs exported fine"
             print(json.dumps(result))
             return 0
-        images = [Image.open(f).convert("RGB") for f in pngs]
-        pdf_path = Path(args.pdf)
-        images[0].save(pdf_path, save_all=True, append_images=images[1:])
+        try:
+            images = [Image.open(f).convert("RGB") for f in pngs]
+            pdf_path = Path(args.pdf)
+            pdf_path.parent.mkdir(parents=True, exist_ok=True)
+            images[0].save(pdf_path, save_all=True, append_images=images[1:])
+        except Exception as e:
+            result["pdf"] = None
+            result["pdf_error"] = f"PDF assembly failed ({e}); PNGs exported fine"
+            print(json.dumps(result))
+            return 0
         size_mb = pdf_path.stat().st_size / 1_048_576
         result["pdf"] = str(pdf_path)
         result["pdf_pages"] = len(images)

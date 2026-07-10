@@ -40,6 +40,10 @@ Write like a creative director briefing a human artist: full sentences, specific
 lighting, the "for whom" context ("for a fitness coach's Instagram educating busy dads"). Tag soup
 ("gym, coach, 8k, trending") produces generic slop.
 
+**Route override:** if the coach asks for an image-gen brief on a slide the render handoff tagged
+template-text, honor the request — brief it normally — but say in one line that Path C / workspace
+was the recommended route for that slide.
+
 **Text on slides:** current image models render text excellently — put the EXACT copy in quotes and
 demand it verbatim. Verify every generated slide's text character-by-character anyway; one typo =
 one rework instruction. Long body text (40+ words) is the one case that still favors Path C or
