@@ -32,16 +32,30 @@ Ask conversationally, per `{{EXPLANATION_LEVEL}}`. Push for CONCRETE phrasing in
 12. **Content pillars** — 3-5 recurring themes the coach wants to own.
 13. **CTA destination** — where carousels drive: DM keyword (default for coaches), lead magnet link, profile follow, community. One primary; the CTA slide always points somewhere real.
 
-**D. Teardown (optional, can skip and add later)**
-14. **SocialCrawl key** — needed only for `carousel-teardown` link pulls. Resolution order: env `SOCIALCRAWL_API_KEY` → `~/.config/socialcrawl/api_key` → offer the 2-minute click-path in ${CLAUDE_PLUGIN_ROOT}/references/socialcrawl-key-setup.md. Skipping is fine; create works without it.
+**D. Data sources (optional, can skip and add later)**
+14. **SocialCrawl key** — needed only for `carousel-teardown` / `carousel-inspire` pulls. Resolution order: env `SOCIALCRAWL_API_KEY` → `~/.config/socialcrawl/api_key` → offer the 2-minute click-path in ${CLAUDE_PLUGIN_ROOT}/references/socialcrawl-key-setup.md. Skipping is fine; create works without it.
 15. **Full-slide fetch setup** (Claude Code only) — full-slide teardown needs Python 3.10+ and the client's own Instagram cookies. No install, no browser script — the fetch is stdlib-only. Check `python --version` ≥ 3.10. If present, OFFER to capture cookies now: walk the client through the 2-minute Cookie-Editor export in ${CLAUDE_PLUGIN_ROOT}/references/ig-cookie-setup.md, save the pasted JSON to `${CLAUDE_PLUGIN_DATA}/ig_session.json`, and mark `{{FULL_SLIDE_FETCH}}: available`. Skipping is fine — teardown falls back to the SocialCrawl cover path, and cookies can be pasted later at first teardown. Refresh only when a fetch reports `login_required` (no scheduled expiry). On Cowork/Desktop (no local Python) mark `unavailable`.
+16. **Call transcripts** — `{{TRANSCRIPT_SOURCE}}`: does the coach record calls (Fathom, Fireflies, Granola…)? Connected service → name it; otherwise `manual` (paste when needed — default). Plain: "If your calls get recorded, I can turn this week's client questions straight into carousels."
 
-**E. Output**
-16. **Output destination** — chat draft (default) / workspace file / both.
+**E. Output + rendering**
+17. **Output destination** — chat draft (default) / workspace file / both.
+18. **Render preference** — `{{RENDER_PREF}}`: when a build finishes, images via image-gen (A) / Claude Design prompt (C) / ask each time (default). Plain-English the two: "A = I generate the finished slides, optionally with YOUR face on them. C = I hand you one prompt; Claude's Design tool builds the cards on your existing plan."
+19. **Environment detect (silent):** Bash + Python available → `{{WORKSPACE_RENDER}}: available` (unlocks local PNG/PDF rendering — see the `carousel-render` skill); Cowork/Desktop → `unavailable`. Higgsfield plugin skills reachable (probe via ToolSearch for `higgsfield-generate`) → `{{HIGGSFIELD_STATUS}}: detected`, else `absent`. Never make the coach answer what the machine can tell us.
+20. **Existing design system?** — brand templates / Canva kit / a past carousel look they love → offer to capture it now via `carousel-templates` (import variant): "Save your look once and every build after this skips the design questions."
+21. **Soul (optional, only when `{{HIGGSFIELD_STATUS}}: detected`)** — plain-English offer, never a gate:
+    "One optional extra: I can train the AI on your face — a few photos, one time, about 5 minutes. After that, every image we generate is actually YOU... your real face, in any style we build. Without it we can still match your look from reference photos; it's just less consistent slide to slide. You can skip now and add it any time. Heads up: needs a paid Higgsfield plan." Yes → route to the `higgsfield-soul-id` skill. No/skip → note it, move on, re-offer exactly once at the first Path A render.
 
-> For beginners, OFFER 2 passes: essentials now (1-6, 11, 13, 16), the deeper avatar fields (7-10) next session. Flag that the deep fields are what make carousels convert, not just look right.
+**F. Scheduled builds (seed only — never ask at setup)**
+Write section F into the config as `{{SCHEDULE_STATUS}}: unset` (plus empty cadence/source/template/render/handle fields per business-config.md). The autopilot OFFER happens later at natural exits (after a render, after a template save) — setup just plants the fields.
+
+> For beginners, OFFER 2 passes: essentials now (1-6, 11, 13, 17), the deeper avatar fields (7-10) next session. Flag that the deep fields are what make carousels convert, not just look right.
 
 ## Finish
-- Write all values into business-config. Brand-level tokens (avatar, positioning, proof) also read/write the shared `~/.claude/revxl/<brand>/voc/business-config.md` when present — engine-specific keys (platform, pillars, CTA destination, teardown) stay in `${CLAUDE_PLUGIN_DATA}`.
+- Write all values into business-config. Brand-level tokens (avatar, positioning, proof) also read/write the shared `~/.claude/revxl/<brand>/voc/business-config.md` when present — engine-specific keys (platform, pillars, CTA destination, data sources, rendering, schedule) stay in `${CLAUDE_PLUGIN_DATA}`.
 - Confirm back in plain English (per explanation level).
-- Offer to build the first carousel (route to `carousel-create`) or the guided tour (`carousel-guide`).
+
+## Ends with (offer, never block)
+- **First build** → `carousel-create` — "carousel about ___"
+- Hand-held tour instead → `carousel-guide` — "walk me through it"
+- (When they named an existing design system in Q20 and skipped capture) "Import your look now?" → `carousel-templates` — "save my design system"
+- (When voice came out thin/interim) "Capture your real voice from your calls + content?" → `brand-brain` — "build my brand brain"

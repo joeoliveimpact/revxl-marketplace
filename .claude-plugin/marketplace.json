@@ -272,10 +272,10 @@
     },
     {
       "name": "carousel-superengine",
-      "description": "Voice-matched Instagram and LinkedIn carousel engine for coaches. Run setup once, then generate complete carousel packages: hook slide, value slides, CTA slide, per-slide design directions, caption, and hashtags, all in your voice. Includes a paste-a-link teardown that analyzes any public carousel through your own SocialCrawl key (with an optional full-slide local fetch on Claude Code), then rebuilds the winning structure as your own. Drafts only. Your config and voice persist across plugin updates.",
+      "description": "Voice-matched Instagram and LinkedIn carousel engine for coaches — from topic to finished slide images. Run setup once, then generate complete carousels: per-slide copy, design, caption, hashtags, and the actual images (AI-generated in your look, optionally with your trained face; a paste-ready Claude Design prompt; or local PNG/LinkedIn-PDF rendering on Claude Code). Save any finished look as a reusable template and every next build takes minutes. Includes a paste-a-link teardown, a niche-wide competitor synthesis, carousel-from-your-calls, and optional scheduled draft builds (suggest-only; you approve everything). Drafts only — you post. Your config, voice, and templates persist across plugin updates.",
       "source": "./plugins/carousel-superengine",
       "category": "marketing",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"

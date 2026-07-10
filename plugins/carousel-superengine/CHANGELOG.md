@@ -1,5 +1,41 @@
 # Changelog — carousel-superengine
 
+## 0.2.0 — 2026-07-10
+
+The engine now finishes the job: from topic to posted-ready slide IMAGES, with a compounding
+template loop, niche-wide competitor intelligence, carousel-from-your-calls, and optional
+scheduled draft builds. 6 skills → 9. Every skill now ends by offering the next step — no dead
+ends anywhere in the engine.
+
+- **NEW `carousel-render`** — package → finished images, routed per slide: **Path A** image-gen in
+  the coach's look (ANCHOR → ONE-AT-A-TIME briefing per `references/render/render-briefing.md`;
+  optional trained face via the Higgsfield Soul — always optional, never a gate) · **Path C** ONE
+  paste-ready Claude Design prompt with the guardrails baked in · **workspace render** (Claude Code
+  only): local HTML→PNG at exact 1080×1350 via `scripts/render_slides.py`, LinkedIn as a single
+  5-10 page PDF. Degradation ladder — a render path always exists, down to the Canva-executable
+  design directions.
+- **NEW `carousel-templates`** — "save this look" captures a finished build as a per-brand design
+  system (`~/.claude/revxl/<brand>/carousel/templates/`); "use my template" drops new copy into it
+  and skips every design question. 90-day staleness nudge honors the run-the-system rule.
+- **NEW `carousel-inspire`** — niche-wide synthesis across accounts + hashtag discovery: winning
+  hooks/structures/topics/visual systems, every claim cited `@handle · metric · URL`, ranked build
+  candidates in the coach's positioning. Hard credit gates with live balance at every rung.
+- **Carousel from your calls** — "carousel from my last call": paste-first transcript intake
+  (`references/transcript-intake.md`), auto-pull via the coach's connected recorder
+  (`{{TRANSCRIPT_SOURCE}}`), graceful fallback to memory-with-flag. Client language always
+  anonymized to avatar language on slides.
+- **Scheduled draft builds (suggest-only)** — weekly/daily autopilot DRAFTS from the coach's
+  topics/calls/templates (`references/scheduled-builds.md`). The engine never schedules without an
+  explicit yes, scheduled runs spend zero credits by default, and posting is never automated.
+  Config section F + `schedule-log.md` track it; "stop the weekly carousel" kills it.
+- **Own-post review mode** in teardown — the coach's own posts get keep/change/try-next framing
+  against their baseline, then "build the next iteration."
+- **Teardown → render handoff** — downloaded slides now travel with the rebuild as the Path A
+  visual reference set (style borrowed, content never).
+- Wiring: setup captures data sources + render prefs + optional Soul (plain-English, skippable) +
+  environment detect; create emits a per-slide render-handoff block; start-here routes all new
+  intents; config gains `{{TRANSCRIPT_SOURCE}}`, rendering tokens, and section F.
+
 ## 0.1.1 — 2026-07-06
 
 Full-slide teardown fetch rebuilt for the post-2026 Instagram reality.

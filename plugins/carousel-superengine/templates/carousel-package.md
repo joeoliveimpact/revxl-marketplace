@@ -49,5 +49,12 @@ THIS build (config, VoC, the coach's real material). See @exemplar-carousel.md f
 [the 3-4 rules from design-rules.md this specific build most depends on... e.g. panorama seam
 slides, the one video-loop slide, sRGB export]
 
+## Render handoff *(feeds `carousel-render` — say "make the images")*
+| n | Route | Why |
+|---|---|---|
+| … | template-text / custom-visual | [one clause: "clean layout system" / "needs the coach's face composited" / "photoreal scene"] |
+
+[+ one line: reference set attached? (teardown slides / template anchor / none) · suggested path: A / C / workspace]
+
 ---
 *Draft for approval. Nothing posts until you say so.*
