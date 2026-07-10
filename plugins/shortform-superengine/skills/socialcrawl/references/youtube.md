@@ -146,9 +146,11 @@ The `channel` endpoint returns an `Author` response normalized by the `youtube-a
 ## Caption files vs transcription (cost note)
 
 `video/subtitles` (1cr) returns the **caption file** — it is NOT a compute-transcript
-endpoint and is NOT banned. Legit use: the paid fallback rung in the captions-first
-transcription chain when `yt-dlp` is blocked on a machine (e.g. antivirus):
-yt-dlp captions (free) → `video/subtitles` (1cr) → Groq → local Whisper.
+endpoint and is NOT banned. YouTube subtitle files are **real spoken-word transcripts**
+(unlike IG post captions, which are never a transcript substitute). Legit use: the paid
+fallback rung in the YouTube subtitle chain when `yt-dlp` is blocked on a machine
+(e.g. antivirus):
+yt-dlp subtitles (free) → `video/subtitles` (1cr) → Groq → local Whisper.
 `video/transcript` (3cr) stays banned — the chain above always wins.
 
 ## Example

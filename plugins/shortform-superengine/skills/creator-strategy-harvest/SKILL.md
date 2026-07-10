@@ -5,7 +5,7 @@ description: Harvest a creator's full content-strategy library (YouTube channel 
 
 # creator-strategy-harvest
 
-Turn a creator's scattered output into a clean, dated, **recency-ruled** corpus + framework extraction, ready to ingest into a knowledge vault. Built captions-first (seconds, not Whisper). Proven on Kane Kallaway (88 videos + 92 shorts + 64 newsletter issues) + heyDominik.
+Turn a creator's scattered output into a clean, dated, **recency-ruled** corpus + framework extraction, ready to ingest into a knowledge vault. Built on YouTube subtitle tracks — **real spoken-word transcripts** of the videos, fetched in seconds (no Whisper run needed; this is NOT the IG post-caption shortcut). Proven on Kane Kallaway (88 videos + 92 shorts + 64 newsletter issues) + heyDominik.
 
 ## Teach mode
 
@@ -53,6 +53,12 @@ Fold the extraction partials into: a **canonical master** (concept buckets; newe
 
 ### 7. Hand off to the vault (don't hand-build the knowledge store)
 Produce a **manifest** (per-file: path, author, content_type, source_platform, date, url) + a **HANDOFF brief**: corpus location, the recency rule (the vault applies it via date facets + sot_policy), the **advice-platform** note (every file is YouTube but the *advice* spans IG/TikTok/YT — the platform that matters is the advice's; if the vault lacks an `advice_platform` facet, that's a schema gap to fill, not a hand-tag job), what's INPUT (raw transcripts) vs SUMMARY (your synthesis docs — not source of truth). Then the vault graphifies and the downstream rubric is derived by querying it.
+
+**Next moves (the corpus is built — don't leave it parked)**
+1. Ingest it: if the vault/graphify flow is reachable on this machine, point it at the HANDOFF brief. If not: "send Joe the HANDOFF brief + corpus path — his vault ingests it."
+2. Load it into NotebookLM for instant Q&A over the creator's teachings (if the notebooklm-superengine is installed; otherwise a one-line mention). Say: "build a notebook from this harvest"
+3. Harvest another creator while the method's warm. Say: "harvest <creator>'s library"
+4. Re-run later for new uploads — the gap analysis makes refreshes cheap. Say: "refresh the harvest on <creator>"
 
 ## Encoded guardrails
 - **YouTube → captions (yt-dlp), not Whisper.** Whisper only for no-caption sources.

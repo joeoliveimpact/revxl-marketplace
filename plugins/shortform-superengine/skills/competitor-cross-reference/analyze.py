@@ -146,7 +146,7 @@ else:
     w('|---|---|--:|--:|--:|--:|--:|--:|--:|')
     for h,c in sorted(creators.items(), key=lambda kv:-kv[1]['stats']['reach_eff']):
         s=c['stats']
-        w(f"| {c['tier']} | @{h} | {c['followers']:,} | {s['n']} | {s['med_views']:,.0f} | {s['reach_eff']*100:.1f}% | {s['med_er']*100:.1f}% | {s['med_cmt']:,.0f} | {c['cadence']:.1f}" if c['cadence'] else
+        w(f"| {c['tier']} | @{h} | {c['followers']:,} | {s['n']} | {s['med_views']:,.0f} | {s['reach_eff']*100:.1f}% | {s['med_er']*100:.1f}% | {s['med_cmt']:,.0f} | {c['cadence']:.1f} |" if c['cadence'] else
           f"| {c['tier']} | @{h} | {c['followers']:,} | {s['n']} | {s['med_views']:,.0f} | {s['reach_eff']*100:.1f}% | {s['med_er']*100:.1f}% | {s['med_cmt']:,.0f} | - |")
 
 # tier rollups
@@ -280,7 +280,8 @@ try:
                 'cadence': (round(c['cadence'], 4) if c['cadence'] else c['cadence']),
                 'stats': {'n': s['n'], 'med_views': s['med_views'],
                           'reach_eff': round(s['reach_eff'], 6), 'med_er': round(s['med_er'], 6),
-                          'med_cmt': s['med_cmt']}}
+                          'med_cmt': s['med_cmt']},
+                'hook_mix': dict(Counter(hook_type(r['cap']) for r in c['reels']))}
     def _rollup_obj(name, hs):
         cs = [creators[h] for h in hs if h in creators]
         if not cs: return None
@@ -327,12 +328,14 @@ try:
         if cr == 0:
             _gaps.append({'theme': th, 'reason': 'absent', 'field_med_views': fmv,
                           'field_reels': fr, 'client_reels': cr,
+                          'client_med_views': med(theme_client.get(th, [])),
                           'headline': f'Zero reels on {th} — the field runs {fr} at {fmv:,.0f} median views.',
                           'why': f'Pure whitespace: the field proves demand on {th} and the client has posted nothing.',
                           'oppo': oppo})
         elif cshare < 0.5 * fshare:
             _gaps.append({'theme': th, 'reason': 'underweight', 'field_med_views': fmv,
                           'field_reels': fr, 'client_reels': cr,
+                          'client_med_views': med(theme_client.get(th, [])),
                           'headline': f'Thin on {th} — {cr} client reels vs the field’s {fr} at {fmv:,.0f} median views.',
                           'why': f'The field leans into {th} far harder than the client; reach is being left on the table.',
                           'oppo': oppo})
@@ -354,7 +357,7 @@ try:
                       'total_reels': sum(len(c['reels']) for c in creators.values()),
                       'n_competitors': len(creators) - 1, 'lane_on': lane_on,
                       'themes': list(THEMES.keys()), 'source': 'competitor-cross-reference/analyze.py',
-                      'schema_version': '1.0'}}
+                      'schema_version': '1.1'}}
     open(os.path.join(ROOT, 'analysis-data.json'), 'w', encoding='utf-8').write(
         json.dumps(_data, indent=2, ensure_ascii=False))
 except Exception as _e:
