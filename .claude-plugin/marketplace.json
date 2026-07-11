@@ -248,29 +248,6 @@
       ]
     },
     {
-      "name": "plugin-doctor",
-      "description": "Fixes stalled Claude plugin updates. Diagnoses whether a plugin is stuck on an old version or hitting the in-app directory 404, then fixes it: runs the staged, reversible marketplace-updater script for you (or walks the manual fix), with config-safety guarantees - your plugin data and brand config are never touched. One command: /plugin-doctor.",
-      "source": "./plugins/plugin-doctor",
-      "category": "productivity",
-      "version": "0.1.1",
-      "author": {
-        "name": "Joe Olive",
-        "email": "joe@engineforimpact.com"
-      },
-      "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/plugin-doctor",
-      "license": "MIT",
-      "keywords": [
-        "plugin",
-        "update",
-        "fix",
-        "doctor",
-        "troubleshooting",
-        "install",
-        "marketplace",
-        "utility"
-      ]
-    },
-    {
       "name": "carousel-superengine",
       "description": "Voice-matched Instagram and LinkedIn carousel engine for coaches — from topic to finished slide images. Run setup once, then generate complete carousels: per-slide copy, design, caption, hashtags, and the actual images (AI-generated in your look, optionally with your trained face; a paste-ready Claude Design prompt; or local PNG/LinkedIn-PDF rendering on Claude Code). Save any finished look as a reusable template and every next build takes minutes. Includes a paste-a-link teardown, a niche-wide competitor synthesis, carousel-from-your-calls, and optional scheduled draft builds (suggest-only; you approve everything). Drafts only — you post. Your config, voice, and templates persist across plugin updates.",
       "source": "./plugins/carousel-superengine",

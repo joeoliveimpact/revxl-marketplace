@@ -19,6 +19,8 @@ Each superengine is opinionated about audience, tone, and workflow — so it wor
 
 ## Plugins in this marketplace
 
+> **Moved:** `plugin-doctor` now lives in its own repo — [joeoliveimpact/plugin-doctor](https://github.com/joeoliveimpact/plugin-doctor). Install: `claude plugin marketplace add joeoliveimpact/plugin-doctor` then `claude plugin install plugin-doctor@plugin-doctor`.
+
 ### 🛠️ [claude-workspace-superengine](plugins/claude-workspace-superengine/)
 Workspace lifecycle for Claude. Scaffolds new workspaces with the canonical 8-file scheme, picks up cleanly at session start, closes out cleanly at session end. Built on the four `agent-optimizer` override constraints.
 
