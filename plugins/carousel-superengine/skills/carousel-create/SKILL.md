@@ -36,9 +36,21 @@ config/VoC... if the bank is thin, elicit now (3 quick questions) or pivot to A/
 **3. Map before copy.** Build the slide map (n / role / job-in-≤12-words) per the blueprint +
 5-pillar arc. Triple Hook on slides 1-3. Show the map... beginner levels get one plain-English line
 on why this order. Adjust on feedback, then write.
+   **Brain pull #1 (Trigger 1 of 2):** resolve the Brain key per
+   `${CLAUDE_PLUGIN_ROOT}/references/vault-api.md` (ladder: env → `~/.config/revxl/vault_api_key`
+   → ask once). **Check `brain-pulls/` in the working folder first** — a cached pull for this
+   topic means no call. Key + no cache: ONE `/v1/search` — `query` = the carousel's topic/pain,
+   `variants` = niche + format terms (e.g. `["<niche> carousel", "<pain> framework"]`). Save the
+   cited hits to `brain-pulls/<topic-slug>.md` and weave them into the slide map as extra
+   evidence, cited `[brain] <path>`. No key / 4xx / 5xx / timeout → follow the reference's
+   degrade table and move on — the Brain never blocks a carousel.
 
 **4. Write the package** per the template: 3 hook alternates (different archetypes) with a
-recommended pick + reason · per-slide copy (20% rule, 25-50 words, bold skim path) · per-slide
+recommended pick + reason — **Brain pull #2 (Trigger 2 of 2, optional):** if the key resolves
+and the hook bank feels stale or thin, ONE `/v1/search` (`hook <archetype/topic>`) + up to 3
+`/v1/note` reads on the top hits; current hook patterns beat frozen ones. Cache to
+`brain-pulls/`, cite `[brain] <path>`, same degrade rules; **total Brain budget for the whole
+carousel: ≤2 searches + ≤3 note reads, never inside loops** · per-slide copy (20% rule, 25-50 words, bold skim path) · per-slide
 design direction (executable by a non-designer) + retention device · soft CTA on the summary slide,
 hard CTA per the chosen pattern wired to `{{CTA_DESTINATION}}` · caption (4-part, 150-300 words,
 keyword front-loaded) · 3-5 narrow hashtags · per-slide alt text · platform delta block when `both`.

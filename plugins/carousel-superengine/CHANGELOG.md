@@ -1,5 +1,14 @@
 # Changelog — carousel-superengine
 
+## [Unreleased]
+
+- **Brain wiring (content-strategy vault):** `references/vault-api.md` added (same client
+  contract as shortform-superengine — key ladder, power params, budget + cache discipline,
+  degrade table). `carousel-create` gains 2 named Brain triggers: pull #1 (topic frameworks,
+  step 3 slide map) + pull #2 (hook patterns, step 4, optional). ≤2 searches + ≤3 note reads
+  per carousel, cached to `brain-pulls/`, never blocking — no key = bundled refs, unchanged
+  behavior.
+
 ## 0.1.0 — 2026-07-05
 
 Initial release.
