@@ -99,8 +99,10 @@ brief's menu as extra evidence, cited `[brain] <path>`. No key / 4xx / 5xx / tim
 follow the reference's degrade table and move on — the Brain never blocks a script.
 
 ### ✋ Checkpoint 0 — Confirm the voice anchor + brief read
-Show: the mode (FULL/caption-only), the top 2–3 attack themes from the brief, and the voice
-source (full `voc/` vs interim). **Pause** until the user confirms the voice sounds right and
+Show: the mode (FULL/caption-only), the top 2–3 attack themes from the brief, the voice
+source (full `voc/` vs interim), and **one Brain status line** — `Brain: [brain] <path> woven`
+or `Brain: skipped (no key / cached / degraded / budget)`. The pull must leave a visible trace
+either way. **Pause** until the user confirms the voice sounds right and
 picks a direction — do not script in a voice you haven't confirmed.
 
 ---

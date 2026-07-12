@@ -34,7 +34,9 @@ slide-architecture) · the ONE avatar pain this hits. Blueprint C requires a REA
 config/VoC... if the bank is thin, elicit now (3 quick questions) or pivot to A/B. Never invent.
 
 **3. Map before copy.** Build the slide map (n / role / job-in-≤12-words) per the blueprint +
-5-pillar arc. Triple Hook on slides 1-3. Show the map... beginner levels get one plain-English line
+5-pillar arc. Triple Hook on slides 1-3. Show the map with **one Brain status line** —
+`Brain: [brain] <path> woven` or `Brain: skipped (no key / cached / degraded / budget)`; the
+pull must leave a visible trace either way. Beginner levels get one plain-English line
 on why this order. Adjust on feedback, then write.
    **Brain pull #1 (Trigger 1 of 2):** resolve the Brain key per
    `${CLAUDE_PLUGIN_ROOT}/references/vault-api.md` (ladder: env → `~/.config/revxl/vault_api_key`
