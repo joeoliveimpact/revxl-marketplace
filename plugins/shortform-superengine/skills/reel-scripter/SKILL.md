@@ -89,7 +89,11 @@ Resolve the Brain key per [`../_shared/references/vault-api.md`](../_shared/refe
 (ladder: env → `~/.config/revxl/vault_api_key` → ask once). **Check
 `<project>/brain-pulls/` first** — a cached pull for this topic means no call.
 If a key resolves and no cache: ONE `/v1/search` — `query` = the reel's topic/theme,
-`variants` = niche + format terms (e.g. `["<niche> reels", "<format> hook"]`). Save
+`variants` = niche + format terms (e.g. `["<niche> reels", "<format> hook"]`). The format
+isn't locked yet at this step, so read it off the INPUT when it shows one: list-shaped
+source → `"listicle reel"`; client story/transformation → `"story reel"`; belief-flip →
+`"myth bust reel"`; no clear shape → default `["<niche> reels", "<topic>"]` and let hybrid
+search do the aiming — **never skip the pull because the content doesn't fit a mold.** Save
 the cited hits to `<project>/brain-pulls/<topic-slug>.md` and weave them into the
 brief's menu as extra evidence, cited `[brain] <path>`. No key / 4xx / 5xx / timeout →
 follow the reference's degrade table and move on — the Brain never blocks a script.
@@ -134,8 +138,10 @@ Write each beat, in order, **in the client's voice**:
   bucket templates in `./references/opener-patterns.md`; for a fast first draft, pull a proven
   shape from `./references/hook-formulas.md` (each maps to the hook bucket the analysis ranked).
   **Brain pull #2 (Trigger 2 of 2, optional):** if the Brain key resolves and the hook bucket
-  feels stale or thin, ONE `/v1/search` (`hook <bucket/topic>`) + up to 3 `/v1/note` reads on
-  the top hits — current hook patterns beat frozen ones. Cache to `<project>/brain-pulls/`,
+  feels stale or thin, ONE `/v1/search` — `query` = `hook <bucket> <topic>` with the bucket
+  Step 2 locked (question / myth-bust / listicle / story / pain-callout / contrarian /
+  statement — one always exists by now; hybrid angle → one variant per bucket in play) + up
+  to 3 `/v1/note` reads on the top hits — current hook patterns beat frozen ones. Cache to `<project>/brain-pulls/`,
   cite `[brain] <path>`. Same degrade rules; **total Brain budget for the whole reel: ≤2
   searches + ≤3 note reads, never inside loops.**
   Use the client's vocabulary; pull verbatim audience pains from `voc-profile.md` where they fit

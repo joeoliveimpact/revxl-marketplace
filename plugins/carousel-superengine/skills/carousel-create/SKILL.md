@@ -40,15 +40,26 @@ on why this order. Adjust on feedback, then write.
    `${CLAUDE_PLUGIN_ROOT}/references/vault-api.md` (ladder: env → `~/.config/revxl/vault_api_key`
    → ask once). **Check `brain-pulls/` in the working folder first** — a cached pull for this
    topic means no call. Key + no cache: ONE `/v1/search` — `query` = the carousel's topic/pain,
-   `variants` = niche + format terms (e.g. `["<niche> carousel", "<pain> framework"]`). Save the
-   cited hits to `brain-pulls/<topic-slug>.md` and weave them into the slide map as extra
-   evidence, cited `[brain] <path>`. No key / 4xx / 5xx / timeout → follow the reference's
-   degrade table and move on — the Brain never blocks a carousel.
+   `variants` shaped by the blueprint locked in step 2 (**query recipes** — the row always
+   exists because step 2 forces the pick):
+   | Blueprint | variants |
+   |---|---|
+   | A educational | `["educational carousel structure", "<topic> framework"]` |
+   | B story-led | `["story-led carousel", "story arc retention"]` |
+   | C case-study | `["case study carousel", "proof content structure"]` |
+   Always append the raw topic/pain as its own variant. Input leaning across two blueprints →
+   take one variant from each row. Recipes shape `variants` only — `query` stays the topic/pain,
+   and hybrid search mode forgives imperfect fits; **never skip the pull because the content
+   doesn't fit a mold.** Save the cited hits to `brain-pulls/<topic-slug>.md` and weave them
+   into the slide map as extra evidence, cited `[brain] <path>`. No key / 4xx / 5xx / timeout →
+   follow the reference's degrade table and move on — the Brain never blocks a carousel.
 
 **4. Write the package** per the template: 3 hook alternates (different archetypes) with a
 recommended pick + reason — **Brain pull #2 (Trigger 2 of 2, optional):** if the key resolves
-and the hook bank feels stale or thin, ONE `/v1/search` (`hook <archetype/topic>`) + up to 3
-`/v1/note` reads on the top hits; current hook patterns beat frozen ones. Cache to
+and the hook bank feels stale or thin, ONE `/v1/search` — `query` = `hook <archetype> <topic>`
+using the archetype you're drafting (one variant per archetype when drafting across several;
+no clean archetype → plain `hook <topic>`) + up to 3 `/v1/note` reads on the top hits; current
+hook patterns beat frozen ones. Cache to
 `brain-pulls/`, cite `[brain] <path>`, same degrade rules; **total Brain budget for the whole
 carousel: ≤2 searches + ≤3 note reads, never inside loops** · per-slide copy (20% rule, 25-50 words, bold skim path) · per-slide
 design direction (executable by a non-designer) + retention device · soft CTA on the summary slide,
