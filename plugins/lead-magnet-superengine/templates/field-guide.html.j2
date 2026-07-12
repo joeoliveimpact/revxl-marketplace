@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ title }}</title>
+<style>
+  :root{
+    --brand:{{ brand_color | default('#3D2623') }};
+    --ink:{{ brand_color | default('#3D2623') }};
+    --ink-soft:#5A3F39;
+    --clay:#8A6F66;
+    --clay-lt:#C7B3AC;
+    --cream:#ECE7E2;
+    --paper:#F6F2EE;
+    --line:#DCD2CA;
+    --text:#2C2421;
+    --muted:#6E635E;
+    --chip:#EDE4DD;
+    --accent:#119E7B;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  @page{ size:Letter; margin:0; }
+  html,body{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body{
+    font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+    color:var(--text); background:var(--cream);
+    font-size:11pt; line-height:1.5;
+  }
+  .page{
+    width:8.5in; height:11in; position:relative; overflow:hidden;
+    background:var(--cream); page-break-after:always;
+    padding:0.7in 0.8in;
+  }
+  .page.dark{ background:var(--ink); color:var(--cream); }
+  .page.paper{ background:var(--paper); }
+  .page:last-child{ page-break-after:auto; }
+
+  /* running header */
+  .rh{ display:flex; justify-content:space-between; align-items:center;
+       font-size:7.5pt; letter-spacing:.22em; text-transform:uppercase;
+       color:var(--clay); font-weight:700; margin-bottom:.42in; }
+  .rh .n{ color:var(--clay-lt); letter-spacing:.1em; }
+  .page.dark .rh{ color:var(--clay-lt); }
+
+  /* type */
+  .eyebrow{ font-size:8pt; letter-spacing:.26em; text-transform:uppercase;
+            color:var(--clay); font-weight:700; margin-bottom:.14in; }
+  h1.display{ font-size:46pt; line-height:.98; font-weight:800; letter-spacing:-.01em;
+              text-transform:uppercase; color:var(--ink); }
+  .page.dark h1.display{ color:#fff; }
+  h2.sec{ font-size:26pt; line-height:1.04; font-weight:800; letter-spacing:-.01em;
+          color:var(--ink); margin-bottom:.16in; }
+  h3{ font-size:15pt; font-weight:800; color:var(--ink); letter-spacing:-.01em; }
+  p{ margin-bottom:.13in; }
+  p.lead{ font-size:13pt; line-height:1.45; color:var(--ink-soft); }
+  strong{ color:var(--ink); }
+  .small{ font-size:9pt; color:var(--muted); }
+  em{ color:var(--clay); font-style:italic; }
+
+  /* cover */
+  .cover-photo{ position:absolute; inset:0; width:100%; height:100%;
+                object-fit:cover; }
+  .cover-scrim{ position:absolute; inset:0;
+     background:linear-gradient(180deg, rgba(61,38,35,.92) 0%, rgba(61,38,35,.55) 42%, rgba(61,38,35,.30) 70%, rgba(61,38,35,.85) 100%); }
+  .cover-inner{ position:relative; height:100%; display:flex; flex-direction:column;
+                justify-content:space-between; color:#fff; }
+  .brandline{ font-size:9pt; letter-spacing:.34em; text-transform:uppercase;
+              font-weight:700; color:var(--clay-lt); }
+  .cover-foot{ font-size:8.5pt; letter-spacing:.12em; text-transform:uppercase;
+               color:rgba(255,255,255,.85); border-top:1px solid rgba(255,255,255,.28);
+               padding-top:.16in; }
+
+  /* divider rule */
+  .rule{ height:3px; width:.55in; background:var(--clay); margin:.12in 0 .22in; border:0; }
+
+  /* pull quote */
+  .pull{ background:var(--ink); color:var(--cream); border-radius:14px;
+         padding:.26in .3in; font-size:12.5pt; line-height:1.4; font-style:italic;
+         font-weight:600; margin:.2in 0; }
+  .pull .who{ display:block; margin-top:.12in; font-size:9pt; font-style:normal;
+              letter-spacing:.04em; color:var(--clay-lt); font-weight:700; }
+
+  .disc{ font-size:7.6pt; line-height:1.4; color:var(--muted);
+         border-top:1px solid var(--line); padding-top:.14in; margin-top:.2in; }
+
+  /* content card */
+  .card{ background:#fff; border:1px solid var(--line); border-radius:14px;
+         padding:.2in .24in; margin-bottom:.16in; }
+  .card h3{ font-size:15pt; }
+  .card h3 small{ display:block; font-size:9.5pt; font-weight:600; color:var(--clay);
+                  font-style:italic; margin-top:2px; }
+  .card .row{ font-size:9.8pt; margin-bottom:.07in; }
+  .card .row .k{ font-weight:800; color:var(--ink); }
+
+  /* section band */
+  .secband{ background:var(--ink); color:#fff; border-radius:14px; padding:.24in .3in;
+            display:flex; align-items:center; gap:.24in; margin-bottom:.22in; }
+  .secband .num{ font-size:34pt; font-weight:800; color:var(--clay-lt); line-height:1; }
+  .secband .t .k{ font-size:8pt; letter-spacing:.24em; text-transform:uppercase;
+                  color:var(--clay-lt); font-weight:700; }
+  .secband .t h2{ font-size:21pt; font-weight:800; color:#fff; line-height:1.05; }
+  .secband .t .sub{ font-size:9.5pt; color:rgba(255,255,255,.8); font-style:italic; margin-top:3px; }
+
+  /* faq */
+  .faq{ columns:2; column-gap:.34in; margin-top:.12in; }
+  .qa{ break-inside:avoid; margin-bottom:.16in; }
+  .qa .q{ font-weight:800; color:var(--ink); font-size:10pt; margin-bottom:3px; }
+  .qa .a{ font-size:9.3pt; color:var(--text); line-height:1.4; }
+
+  /* CTA */
+  .ctabtn{ display:block; text-decoration:none; background:var(--accent); color:#fff;
+           border-radius:12px; text-align:center; padding:.24in; margin-top:.16in;
+           box-shadow:0 6px 18px rgba(17,158,123,.35); }
+  .ctabtn .b{ font-size:18pt; font-weight:800; letter-spacing:.02em; color:#fff; }
+  .ctabtn .s{ font-size:11pt; color:rgba(255,255,255,.92); margin-top:4px; }
+
+  /* closing */
+  .closing{ height:100%; display:flex; flex-direction:column; justify-content:center;
+            align-items:center; text-align:center; }
+  .closing h1{ font-size:60pt; font-weight:800; color:#fff; text-transform:uppercase;
+               letter-spacing:-.01em; }
+  .closing .sub{ font-size:13pt; font-style:italic; color:var(--clay-lt); margin-top:.2in;
+                 max-width:5in; }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<section class="page dark" style="padding:0;">
+  {% if hero_image %}
+  <img class="cover-photo" src="{{ hero_image }}" alt="">
+  <div class="cover-scrim"></div>
+  {% endif %}
+  <div class="cover-inner" style="padding:0.7in 0.8in;">
+    <div class="brandline">{{ title }}</div>
+    <div>
+      <h1 class="display">{{ title }}</h1>
+    </div>
+  </div>
+</section>
+
+<!-- CONTENT SECTIONS -->
+{% for section in sections %}
+<section class="page{% if section.dark %} dark{% endif %}{% if section.paper %} paper{% endif %}">
+  <div class="rh"><span>{{ title }}</span><span class="n">{{ '%02d' % loop.index }}</span></div>
+  {% if section.eyebrow %}<div class="eyebrow">{{ section.eyebrow }}</div>{% endif %}
+  {% if section.heading %}<h2 class="sec">{{ section.heading }}</h2>{% endif %}
+  <hr class="rule">
+  {% if section.lead %}<p class="lead">{{ section.lead }}</p>{% endif %}
+  {% for block in section.blocks | default([]) %}
+    {% if block.type == 'paragraph' %}
+      <p>{{ block.content }}</p>
+    {% elif block.type == 'card' %}
+      <div class="card">
+        {% if block.heading %}<h3>{{ block.heading }}</h3>{% endif %}
+        {% for row in block.rows | default([]) %}
+          <div class="row"><span class="k">{{ row.label }}:</span> {{ row.value }}</div>
+        {% endfor %}
+      </div>
+    {% elif block.type == 'pull' %}
+      <div class="pull">{{ block.content }}{% if block.attribution %}<span class="who">{{ block.attribution }}</span>{% endif %}</div>
+    {% elif block.type == 'faq' %}
+      <div class="faq">
+        {% for qa in block['items'] %}
+          <div class="qa"><div class="q">{{ qa.q }}</div><div class="a">{{ qa.a }}</div></div>
+        {% endfor %}
+      </div>
+    {% elif block.type == 'cta' %}
+      <a class="ctabtn" href="{{ block.url | default('#') }}">
+        <div class="b">{{ block.label }}</div>
+        {% if block.sublabel %}<div class="s">{{ block.sublabel }}</div>{% endif %}
+      </a>
+    {% endif %}
+  {% endfor %}
+  {% if section.disclaimer %}<p class="disc">{{ section.disclaimer }}</p>{% endif %}
+</section>
+{% endfor %}
+
+<!-- CLOSING -->
+<section class="page dark">
+  <div class="closing">
+    <h1 class="display">{{ title }}</h1>
+  </div>
+</section>
+
+</body>
+</html>

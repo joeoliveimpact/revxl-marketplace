@@ -7,7 +7,7 @@
     "email": "joe@engineforimpact.com"
   },
   "metadata": {
-    "version": "0.1.32"
+    "version": "0.1.33"
   },
   "plugins": [
     {
@@ -316,6 +316,31 @@
         "audience-research",
         "copywriting",
         "teach-mode",
+        "superengine"
+      ]
+    },
+    {
+      "name": "lead-magnet-superengine",
+      "description": "v0.1.0 · Turn any starting point into a high-converting lead magnet. Three doors: build from scratch (guided Q&A on your offer, customer, and promise), revamp your existing magnet (audited against a 15-point rubric), or reverse-engineer a competitor's without copying. Voice-matched via the shared brand-brain, grounded in bundled conversion frameworks and benchmarks, delivered as a finished PDF with a what/why doc and nurture handoff. Works day one with zero setup; optional live-research upgrades are honest about what's actually connected. For coaches shipping lead magnets fast.",
+      "source": "./plugins/lead-magnet-superengine",
+      "category": "marketing",
+      "version": "0.1.0",
+      "author": {
+        "name": "Joe Olive",
+        "email": "joe@engineforimpact.com"
+      },
+      "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/lead-magnet-superengine",
+      "license": "MIT",
+      "keywords": [
+        "lead-magnet",
+        "lead-generation",
+        "marketing",
+        "pdf",
+        "copywriting",
+        "conversion",
+        "email-capture",
+        "coaching",
+        "brand-brain",
         "superengine"
       ]
     }
