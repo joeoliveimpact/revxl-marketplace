@@ -8,7 +8,7 @@ description: Core generator. Turn a topic, avatar pain, story, reel script, tran
 Input in → complete carousel package out. Never a thin draft.
 
 ## Load
-${CLAUDE_PLUGIN_ROOT}/references/business-config.md (stop → route to `carousel-setup` if placeholders)
+${CLAUDE_PLUGIN_DATA}/business-config.md if present (the persisted filled config — read FIRST) → else ${CLAUDE_PLUGIN_ROOT}/references/business-config.md (shipped template only; placeholders → stop, route to `carousel-setup`)
 ${CLAUDE_PLUGIN_ROOT}/references/exemplar-carousel.md — **study FIRST, match its density**
 ${CLAUDE_PLUGIN_ROOT}/references/slide-architecture.md · hook-patterns.md · swipe-retention.md · cta-slide-patterns.md · design-rules.md · caption-strategy.md
 ${CLAUDE_PLUGIN_ROOT}/references/platform-nuance.md (when platform is linkedin/both)

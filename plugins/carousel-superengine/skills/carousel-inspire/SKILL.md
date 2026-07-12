@@ -10,7 +10,7 @@ for one specific post, that's `carousel-teardown`. Analysis-driven, never vibes:
 `@handle · metric · post URL`.
 
 ## Load
-${CLAUDE_PLUGIN_ROOT}/references/business-config.md (stop → route to `carousel-setup` if placeholders)
+${CLAUDE_PLUGIN_DATA}/business-config.md if present (the persisted filled config — read FIRST) → else ${CLAUDE_PLUGIN_ROOT}/references/business-config.md (shipped template only; placeholders → stop, route to `carousel-setup`)
 ${CLAUDE_PLUGIN_ROOT}/references/teardown-method.md (SocialCrawl calls, slide-order rule, honesty rules)
 
 Requires the coach's own SocialCrawl key (`{{SOCIALCRAWL_KEY_STATUS}}: saved`) — missing → offer the

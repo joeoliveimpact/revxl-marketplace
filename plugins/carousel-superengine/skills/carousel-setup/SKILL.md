@@ -5,10 +5,12 @@ description: First-run wizard for the carousel engine. Captures brand voice, ava
 
 # Task: setup
 
-First-run wizard. Capture config, write to business-config (persisted via `${CLAUDE_PLUGIN_DATA}`).
+First-run wizard. Capture config, write it to `${CLAUDE_PLUGIN_DATA}/business-config.md` (persists
+across plugin updates — this is the copy every other skill reads first).
 
 ## Load
-${CLAUDE_PLUGIN_ROOT}/references/business-config.md
+${CLAUDE_PLUGIN_DATA}/business-config.md when present (existing persisted config — reconfigure runs start from it)
+${CLAUDE_PLUGIN_ROOT}/references/business-config.md (the shipped template/schema this wizard fills)
 
 ## Ask + write each key
 Ask conversationally, per `{{EXPLANATION_LEVEL}}`. Push for CONCRETE phrasing in the coach's words, not categories ("my clients say they've tried everything and their body just doesn't respond anymore," not "weight loss struggles"). Specific avatar language is what makes a broadcast carousel feel personal.
@@ -51,7 +53,7 @@ Write section F into the config as `{{SCHEDULE_STATUS}}: unset` (plus empty cade
 > For beginners, OFFER 2 passes: essentials now (1-6, 11, 13, 17), the deeper avatar fields (7-10) next session. Flag that the deep fields are what make carousels convert, not just look right.
 
 ## Finish
-- Write all values into business-config. Brand-level tokens (avatar, positioning, proof) also read/write the shared `~/.claude/revxl/<brand>/voc/business-config.md` when present — engine-specific keys (platform, pillars, CTA destination, data sources, rendering, schedule) stay in `${CLAUDE_PLUGIN_DATA}`.
+- Write all values into `${CLAUDE_PLUGIN_DATA}/business-config.md` (the exact write target — never into the plugin's references copy, which is the template). Brand-level tokens (avatar, positioning, proof) also read/write the shared `~/.claude/revxl/<brand>/voc/business-config.md` when present — engine-specific keys (platform, pillars, CTA destination, data sources, rendering, schedule) stay in `${CLAUDE_PLUGIN_DATA}/business-config.md`.
 - Confirm back in plain English (per explanation level).
 
 ## Ends with (offer, never block)

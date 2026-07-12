@@ -1,5 +1,30 @@
 # Changelog — carousel-superengine
 
+## 0.2.1 — 2026-07-12
+
+Knowledge refresh (2026 algo signals) + config read-path fix. From the vetted 07.08.26 notebook +
+skill audit (SKLLPLG-65); contested signals are flagged with dated notes, never hard-coded.
+
+- **2026 algorithm signals** — shares/sends named the strongest distribution signal; saves flagged
+  as contested/evolving (some 2026 reporting says downweighted) in slide-architecture +
+  platform-nuance; LinkedIn's 2026 dwell-time "Depth Score" + ~60% external-link reach penalty;
+  carousel+audio → Reels-tab eligibility; re-serve ranking mechanics behind the Triple Hook.
+- **Triple Hook sharpening** — hook-swap play (frontload the proven slide via per-slide like
+  insights), 60-90 day upcycle cadence (Mosseri-sanctioned), raw-over-polished named as a 2026
+  shift.
+- **Per-slide caption guidance** — Instagram's per-slide captions (live June 18, 2026, up to 20):
+  when to use single vs multiple, SEO implications, CTA-slide caption lever; caption-length
+  sweet-spot claim marked contested (words vs characters) with a test-variable note.
+- **Comment-CTA caveat** — conflicting 2026 evidence on comment-CTAs and reach; DM keyword framed
+  as a conversion play, vendor benchmarks marked directional-only.
+- **Design + QA freshening** — IG UI safe zone (bottom 150-250px / top ~120px), ~1.5s glance-time
+  word target, LinkedIn 6-10 pages (7-10 sweet spot, <5 reach-cap risk), LinkedIn PDF 4:5 now
+  preferred over 1:1, swipe-retention loop-back close + progress indicators + Q1 2026 benchmarks.
+- **Config read-path fix** — every skill now reads the persisted config at
+  `${CLAUDE_PLUGIN_DATA}/business-config.md` FIRST when present; the copy in
+  `references/business-config.md` is the shipped template only. `carousel-setup` now names its
+  exact write target instead of leaving the filename implicit.
+
 ## 0.2.0 — 2026-07-10
 
 The engine now finishes the job: from topic to posted-ready slide IMAGES, with a compounding
@@ -66,5 +91,5 @@ Initial release.
   public posts, rate-respecting).
 - Knowledge base distilled from a 56-source curated 2026 research notebook.
 - Quality gate + genericized full-depth exemplar as the density bar.
-- Config persists via `${CLAUDE_PLUGIN_DATA}`; brand-brain files synced from the canonical source
-  via `scripts/sync-brand-brain.py`.
+- Config persists via `${CLAUDE_PLUGIN_DATA}`; brand-brain files read from the canonical shared
+  source at `~/.claude/revxl/<brand>/voc/`.

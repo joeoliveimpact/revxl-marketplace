@@ -73,7 +73,7 @@ Carousel content strategist for B2C coaches (fitness, health, wellness). Every c
 
 <routing>
 ## Always Load
-${CLAUDE_PLUGIN_ROOT}/references/business-config.md
+${CLAUDE_PLUGIN_DATA}/business-config.md if present (the persisted filled config — read FIRST) → else ${CLAUDE_PLUGIN_ROOT}/references/business-config.md (shipped template only)
 
 ## Route by Command (each is its own skill)
 - the `carousel-setup` skill (first-run / reconfigure)
