@@ -21,6 +21,13 @@ specific pain]? Comment '[KEYWORD]' and I'll send you [specific named resource].
 upgrade: the coach follows the automated delivery with a personal voice note within 24h... trust
 accelerant no funnel matches. Visual: mockup button in accent color, keyword in quotes.
 
+*2026 caveat (evolving — don't hard-code):* sources conflict on whether comment-CTAs help reach.
+Comments rank low in the 2026 signal stack and a neutral source reports keyword-comment bait can
+hurt distribution, while a vendor source claims it boosts reach. Use the DM keyword for
+CONVERSION, not as a reach play... let shares/saves carry reach. Vendor-reported funnel benchmarks
+(12-18% comment-to-DM conversion vs 1-3% link-in-bio; 40-65% DM-link CTR) are directional only,
+not verified.
+
 **2. Soft double-CTA (save stack).** Soft save-ask on the summary slide (8-9) at the value peak +
 the hard ask on the final slide. Save copy is REUSE-specific: "Save this for your next [grocery run
 / training block / Sunday prep]"... a concrete future moment, not "save for later."
@@ -43,6 +50,9 @@ document pages → "link in comments/bio/profile"). Visual: the deliverable mock
   this slide gets screenshotted and shared; it's the business card.
 - One massive headline (the payoff restated), the single action line in accent color, text under
   20% of canvas.
+- **Per-slide caption option (IG, live since June 18, 2026):** the CTA slide can carry its own
+  caption... restate the keyword or save prompt exactly where the reader lands, instead of relying
+  only on the blended main caption (see @caption-strategy.md).
 - LinkedIn: permanent footer with name/credentials/site on the CTA page (PDFs travel offline);
   authority tone, ROI language.
 - Health/wellness compliance: keep claims within what the coach can substantiate; a subtle

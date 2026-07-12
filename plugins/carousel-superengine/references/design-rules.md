@@ -7,9 +7,14 @@ executable in Canva by a coach with zero design background. Carousels out-engage
 ## Text + readability (hard rules)
 
 - **20% rule:** text ≤ ~20% of canvas area, every slide.
-- **One idea per slide**, 25-50 words body max.
+- **One idea per slide**, 25-50 words body max (2026 target: under 40... the average per-slide
+  glance is ~1.5 seconds).
 - **Sizes (IG 1080×1350):** headlines ≥ 36px bold (readable at grid-thumbnail size), body ≥ 22-24px.
 - Line height 1.4-1.6×; 35-45 characters per line; bold the skim path.
+- **UI safe zone (IG 1080×1350, 2026):** Instagram's caption text, like/save icons, and swipe
+  indicator obscure roughly the bottom 150-250px, and the top ~120px can be truncated on some
+  devices. Keep headlines, body text, and the focal cutout inside the center-upper ~75% of the
+  canvas; nothing critical in the bottom band.
 
 ## Color + contrast
 

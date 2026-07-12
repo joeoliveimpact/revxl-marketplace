@@ -1,8 +1,11 @@
 # Slide Architecture — structure frameworks every build follows
 
-Carousels win on narrative architecture, not aesthetics. They are the deep-engagement format: saves
-+ DM shares (the two highest-weighted distribution signals) come from multi-slide dwell time and
-reference-worthy value. Reels discover; carousels convert attention into authority and leads.
+Carousels win on narrative architecture, not aesthetics. They are the deep-engagement format:
+multi-slide dwell time and reference-worthy value drive the signals that matter. As of 2026, DM
+shares (sends) are the strongest distribution signal; saves still mark reference-worthy value, but
+their ranking weight is contested in 2026 (some Instagram-sourced reporting says downweighted)...
+treat shares as the reach lever, saves as the audience-value metric, and expect this weighting to
+keep moving. Reels discover; carousels convert attention into authority and leads.
 
 ## Slide counts (platform benchmarks)
 

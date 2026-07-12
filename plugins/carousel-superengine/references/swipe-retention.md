@@ -4,6 +4,9 @@ Completion rate is the carousel's private conversion funnel: early exits tell th
 cover over-promised. Every slide has one retention job: make NOT swiping feel like leaving a
 question unanswered.
 
+The stakes, anchored to Q1 2026 data: 5-7 slide carousels pull ~3.4x more saves and ~2.1x more
+shares than static images, and high-dwell posts earn 40-60% more distribution than low-dwell ones.
+
 ## 1. Open loops + cliffhangers (copy devices)
 
 - **The "but here's the catch" transition** — micro-teaser anchored bottom-right of a value slide:
@@ -13,6 +16,9 @@ question unanswered.
   most people get wrong." The brain swipes to close that specific loop.
 - **The mid-carousel pattern break** — one slide late in the value meat that flips tone ("Wait...
   here's the mistake that ruins all of this") re-spikes attention right before proof + CTA.
+- **The loop-back close (2026 dwell play)** — the final slide contextually answers or echoes
+  slide 1, prompting a second swipe-through pass. Distinct from the CTA: the echo is in the payoff
+  framing, not an extra ask.
 
 ## 2. The seamless panorama (visual device)
 
@@ -37,6 +43,8 @@ Slides are flashcards, not blog posts. Walls of text are the #1 swipe-exit trigg
 - Consistent background system + margins (~60px) + watermark position on every slide; change only
   the focal element per slide. Rhythm = recognition; chaos = authority leak.
 - Micro-cue arrows (small, bottom-right) on early slides pace the swipe.
+- A small progress indicator ("3/8", same top corner every slide) reduces mid-carousel abandonment
+  by telling the reader the investment is finite (2026 tactic, sits alongside the micro-arrows).
 - On IG, one 5-second silent looping video mid-carousel (form demo, b-roll moment) measurably lifts
   dwell time + engagement (~29% over static-only). One, not three.
 
