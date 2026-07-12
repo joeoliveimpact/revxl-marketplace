@@ -1,9 +1,6 @@
 ---
 name: lm-setup
-triggers:
-  - "set up lead magnet upgrades"
-  - "connect research sources"
-  - "/lm-setup"
+description: Guided installer for the lead-magnet engine's optional capability upgrades (search, transcription, social, PDF extras). Explains each upgrade in plain English, detects what's actually live on the system, health-checks connections, and writes results to the user's profile. Trigger when the user says "set up lead magnet upgrades", "connect research sources", or runs /lm-setup.
 ---
 
 # `/lm-setup` — Guided Installer for Lead-Magnet Upgrades
