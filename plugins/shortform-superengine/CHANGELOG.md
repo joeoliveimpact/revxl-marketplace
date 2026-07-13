@@ -5,6 +5,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased] — 2026-07-10 (proposed ship: 0.3.0)
 
 ### Added
+- **Pattern Matrix — two-layer beat/pattern measurement (Step 4c).** Three new
+  scripts in competitor-cross-reference, all config-driven (niche knowledge stays
+  in the run's `analysis-config.json`, never in the plugin): `transcribe_reels.py`
+  (batch transcription **straight off the pulled CDN URLs — no downloading, no
+  yt-dlp**; parallel ffmpeg prefetch → faster-whisper; resume-safe; saves
+  per-segment timestamps), `extract_patterns.py` (Layer 1: ~30 deterministic
+  dims/reel — timing, rhetoric, CTA mechanics, caption↔spoken relationship,
+  engagement joins — with auto winner-vs-loser lift tables, tool league, CTA
+  payoff cross-tabs), `select_beatmap_set.py` (Layer 2: stratified N winners +
+  N losers per cluster for Claude's semantic hand-map → Reel Beat Blueprint).
+  New references: `pattern-matrix.md` (method + dims), `theme-derivation.md`
+  (how to build a lane's `themes` override — method, not preset). Field-proven
+  on a 1,000-reel corpus 07.12.26.
+- **GURU competitor tier (4th, optional).** ≥500k-follower / household-authority
+  accounts split out of LARGE so mega-accounts stop skewing the size-comparable
+  benchmark (essential for small clients). analyze.py reads an optional `GURU`
+  key in tiers.json/analysis-config.json — absent key = byte-identical legacy
+  3-tier path. Documented in Step 2c + 4a.
 - **Visual deliverables layer.** New deterministic renderer
   `competitor-cross-reference/render_visuals.py`: `analysis-data.json` →
   self-contained offline HTML at `<project>/visuals/` — **overview.html**
@@ -100,6 +118,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Premortem-driven hardening of the bundled `brand-brain` producer + reel-scripter's voice wiring (same premortem as email-sequence-superengine 0.2.1).
 
 ### Fixed
+- **analyze.py read 0 reels from real pulled data (silent all-zero analysis).**
+  `reels_of()` only accepted the mock `{items:[…]}` wrapper; the live puller writes
+  `{handle,count,reels:[…]}`. Now accepts `reels` → `items` → `data.items`.
+  Found on the first real-corpus run 07.12.26 — the engine had only ever been
+  validated against synthetic harness data.
+- **Cadence was always 0.0/wk on real data.** `cadence()` required epoch timestamps;
+  the live API returns ISO-8601 `published_at`. New `_epoch()` helper accepts both.
+- **Transcription step no longer instructs downloading.** The old text said to
+  resolve videos via `yt-dlp`/instaloader — wrong and risky. The pulled reel JSON
+  already carries the direct IG CDN `.mp4` (`post.content.media_urls`); ffmpeg
+  streams it directly. Rewrote the step with the CDN-expiry rule (transcribe
+  same-day or re-pull, ~3cr) and the segment-timestamps requirement.
 - **reel-scripter now checks the shared brand brain FIRST** — `~/.claude/revxl/<brand>/voc/` was missing from its voice-resolution ladder, so a brain built from another engine (e.g. email) was invisible to reel scripting. The cross-engine promise now actually resolves.
 - Brand-brain tie-in doc no longer claims reel-scripter reads `weekly-content-bank.md` (it doesn't; topical seeds are handed inline after a mine/refresh).
 

@@ -137,7 +137,8 @@ For each seed, `GET /search/reels?q=<seed>` via the `socialcrawl` skill. Collect
 
 For each candidate handle, `GET /profile?handle=<handle>` → follower count. Save the raw profile JSON to `source/competitors/profiles/<handle>.json`. Categorize relative to client:
 
-- **Large:** > 3× client followers
+- **Guru:** ≥ 500k followers (floor adjustable per run) — household-authority accounts kept for aspirational pattern reference but **not size-comparable**. Splitting them out keeps the LARGE benchmark honest; essential when the client is small (a 1.9k-follower client vs a 4.8M account is not a "large competitor," it's a different universe — field-proven 07.12.26).
+- **Large:** > 3× client followers (below the Guru floor)
 - **Medium:** 0.5×–3× client followers
 - **Small:** < 0.5× client followers
 
@@ -213,13 +214,14 @@ In the project directory, write `tiers.json` mapping each handle to its tier:
 {
   "client": "handle",
   "client_followers": 110162,
+  "GURU": ["handle0"],
   "LARGE": ["handle1", "handle2"],
   "MED": ["handle3"],
   "SMALL": ["handle4"]
 }
 ```
 
-Keys are **UPPERCASE** (`LARGE`/`MED`/`SMALL`). `client_followers` is a required integer. All handles are **bare** (no `@` prefix) so they match the profile JSON filenames under `source/competitors/profiles/`.
+Keys are **UPPERCASE** (`GURU`/`LARGE`/`MED`/`SMALL`). `GURU` is optional — omit the key entirely and the engine runs the identical legacy 3-tier path. `client_followers` is a required integer. All handles are **bare** (no `@` prefix) so they match the profile JSON filenames under `source/competitors/profiles/`.
 
 **4b. Run `analyze.py`**
 
@@ -237,6 +239,24 @@ The script reads `source/reels-full.json` (client reels), `source/competitors/re
 - Posting cadence (reels per week)
 
 Engagement is views + likes + comments **only**. saves and shares are never computed, displayed, or estimated — they are not available from SocialCrawl.
+
+**4c. Pattern Matrix (recommended when transcripts exist)**
+
+Once the Transcription step has produced timestamped transcripts, run the two-layer
+pattern matrix — full method + dimension list in `./references/pattern-matrix.md`:
+
+```bash
+python ${CLAUDE_PLUGIN_ROOT}/skills/competitor-cross-reference/transcribe_reels.py <project_dir>      # if not already done — same day as the pull (CDN expiry)
+python ${CLAUDE_PLUGIN_ROOT}/skills/competitor-cross-reference/extract_patterns.py <project_dir>      # Layer 1: ~30 deterministic dims, winner-vs-loser lift
+python ${CLAUDE_PLUGIN_ROOT}/skills/competitor-cross-reference/select_beatmap_set.py <project_dir>    # Layer 2 picks: N winners + N losers per cluster
+```
+
+Layer 1 gives corpus-scale statistics (`_pattern_matrix.json` + `_pattern_stats.md`);
+Layer 2 picks a stratified subset (`_beatmap_set.json`) that Claude hand-maps (hook type,
+4 Hook Killers, re-hook devices, payoff, open-loop integrity, why-won/why-lost) into a
+**Reel Beat Blueprint** feeding Step 5 and reel-scripter. Clusters/themes/tools come from
+`analysis-config.json` — niche knowledge lives in the run config, never in these scripts
+(theme construction method: `./references/theme-derivation.md`).
 
 ---
 
@@ -323,8 +343,10 @@ runtime, so warn about time, not credits).
 
 **How:**
 
-1. Resolve the reel video from its link to a downloadable URL (e.g. `yt-dlp`, or an `ig_fetch`/instaloader fallback).
-2. Extract audio with ffmpeg: `ffmpeg -i <video> -vn -ar 16000 -ac 1 <audio.wav>`.
+1. **Do NOT download, scrape, or "resolve" anything — the direct video URL is already in the pulled data.** Every reel's JSON carries a signed Instagram CDN `.mp4` at `post.content.media_urls`. **Never use `yt-dlp`, `instaloader`, or any IG scraper here** — there is nothing to resolve, and scraping adds bot-detection risk for zero gain.
+2. Extract audio straight off the CDN URL — ffmpeg streams it directly (~3s/reel):
+   `ffmpeg -i "<media_urls>" -vn -ar 16000 -ac 1 <audio.wav>`
+   ⚠️ **CDN URLs are signed and EXPIRE (hours-to-days). Transcribe the same day as the pull; if the pull is older, re-pull that creator's reels first (~3 credits) — never fight a dead link.** A batch of empty-wav failures on an old pull means expired URLs, not a broken pipeline (field-proven 07.12.26: 4-day-old pull failed 20/20, same-day pull 100%).
 3. Transcribe — **launch both engines in parallel; first healthy transcript wins** (use whichever returns first, cancel the other; if only one is installed, run it alone):
 
    | Engine | Method | Notes |
@@ -332,8 +354,9 @@ runtime, so warn about time, not credits).
    | Groq cloud | `whisper-large-v3-turbo` via Groq API | Fast; needs `GROQ_API_KEY` in env. |
    | Local Whisper | `faster-whisper` (local CPU/GPU) | Offline; slower but never fails. |
 
-4. **Fallback floor (only when both engines fail for a reel):** try the platform
-   subtitle track (`yt-dlp` subtitle track); as the very last resort use the post
+   **Save per-segment timestamps** (`[{start, end, text}]`), never just the joined text — beat/pattern timing analysis is impossible without them. Batch scale reference: local GPU (faster-whisper `small`, cuda) ≈ 1.5s/reel transcribe + 3s ffmpeg; ~1,000 reels ≈ 40–50 min with ~6 parallel ffmpeg prefetch workers feeding one GPU.
+
+4. **Fallback floor (only when both engines fail for a reel):** use the post
    caption — and **flag that reel `caption-only` in every output that cites it**.
    Caption-only is a degrade to be surfaced, never a silent substitute.
 
@@ -367,7 +390,12 @@ Generated on top of this as the project lives: `visuals/` (the HTML pack),
 ## References
 
 - `./analyze.py` — deterministic metrics engine; run after `tiers.json` is written
+- `./transcribe_reels.py` — batch transcription off the pulled CDN URLs (no downloading); segments included
+- `./extract_patterns.py` — Layer-1 pattern matrix (~30 dims/reel, winner-vs-loser stats)
+- `./select_beatmap_set.py` — stratified Layer-2 pick (N winners + N losers per cluster)
 - `./references/roadmap-template.md` — 10-section roadmap structure
+- `./references/pattern-matrix.md` — two-layer pattern-matrix method + dimension list
+- `./references/theme-derivation.md` — how to build the per-lane `themes` override (method, not preset)
 - `./references/niche-seeds.md` — seed derivation + relevance-filter heuristics
 - `../_shared/references/hook-diagnostics.md` — 4 Hook Killers diagnostic lens (shared across the core + format engines)
 
