@@ -7,7 +7,7 @@
     "email": "joe@engineforimpact.com"
   },
   "metadata": {
-    "version": "0.1.33"
+    "version": "0.1.34"
   },
   "plugins": [
     {
@@ -298,10 +298,10 @@
     },
     {
       "name": "focus-group-superengine",
-      "description": "v0.1.0 · Test any marketing artifact against a synthetic focus group before you ship it. Builds a reusable audience of fake-but-realistic buyers, runs them as an isolated panel, and returns a dual-axis verdict (attention vs convert), a behavioral funnel, clustered objections, and verbatim quotes — with a plain-English Teach Mode that explains the why as it goes. For coaches and creators testing names, bios, hooks, thumbnails, emails, offers, and ads.",
+      "description": "v0.1.1 · Test any marketing artifact against a synthetic focus group before you ship it. Builds a reusable audience of fake-but-realistic buyers, runs them as an isolated panel, and returns a dual-axis verdict (attention vs convert), a behavioral funnel, clustered objections, and verbatim quotes — with a plain-English Teach Mode that explains the why as it goes. For coaches and creators testing names, bios, hooks, thumbnails, emails, offers, and ads.",
       "source": "./plugins/focus-group-superengine",
       "category": "marketing",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"

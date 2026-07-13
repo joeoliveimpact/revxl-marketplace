@@ -39,19 +39,22 @@ If type is ambiguous → ask. If `custom` → write a one-line profile and confi
 ## Step 2 — Depth × temperature
 Two independent axes. **Auto-suggest temperature from the profile's default; user overrides.**
 
-**DEPTH** (rigor/cost — model + nominal panel size; actual = min(nominal, N_available)):
-| depth | swarm | council | when |
-|---|---|---|---|
-| `fast` | Haiku, ~50 | Sonnet | default; directional A/B, quick read |
-| `deep` | Sonnet, ~100 | Sonnet | finalists, richer reasoning — **confirm gate** |
-| `hyperreal` | mixed (~120 Haiku / 60 Sonnet / few Opus) | Opus | rebrands, launches, flagship offers only — **confirm gate** |
+**DEPTH** sets two things: the **reasoning tier** (which model judges — always applies) and a **target panel size** (how many panelists — but the ACTUAL panel is capped by your pack: `panel = min(target, personas_in_pack)`).
+
+| depth | reasoning tier (model) | council | target panel | when |
+|---|---|---|---|---|
+| `fast` | Haiku | Sonnet | up to 50 | default; directional A/B, quick read |
+| `deep` | Sonnet | Sonnet | up to 100 | finalists, richer reasoning — **confirm gate** |
+| `hyperreal` | mixed (Haiku / Sonnet / few Opus) | Opus | up to 180 | rebrands, launches, flagship offers only — **confirm gate** |
+
+> **Panel-size reality (v0.1):** the bundled example pack has **16 personas**, so every tier currently runs **16 panelists** — the tier only changes the *reasoning depth* (which model), not the crowd size. To actually run 50/100/180, you need a pack that large — `/focus-group-setup` builds bigger packs. Be upfront with the user: "You picked `deep`, so I'll use Sonnet (deeper reasoning), but your pack is 16 so the panel is 16 — build a larger pack to widen the crowd." Never imply a 100-body panel when the pack is 16.
 
 **TEMPERATURE** (who's judging — relationship to the creator; injected as context per persona, NOT separate packs):
 - `cold` = strangers scrolling, never heard of you → acquisition assets (name, hook, thumbnail, bio, ad).
 - `warm` = already follow/trust you → retention assets (content, offers, email).
 - `hybrid` = realistic blend (a Reel hits followers + cold reach at once). New acct ≈ 90/10 cold; established ≈ 70/30.
 
-State the picked combo back: e.g. "Running **fast × cold** (Haiku, 16 panelists, strangers)."
+State the picked combo back with the HONEST panel size: e.g. "Running **fast × cold** — Haiku reasoning, **16 panelists** (your pack's full size), strangers." If they picked deep/hyperreal on a 16-pack, name it: "deeper model, but still 16 bodies until you scale the pack."
 
 ## Step 3 — Token estimate + confirm gate
 Estimate before running: `panel × options × per-persona` — **monadic**, so each persona reacts to every option separately (2 options = 2× the calls, 4 options = 4×). Per-persona ≈ Haiku 3–8K · Sonnet 12–25K. Translate to a plain scale:
