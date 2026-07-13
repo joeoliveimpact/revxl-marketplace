@@ -1,0 +1,11 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "focus-group-superengine",
+  "version": "0.1.1",
+  "description": "Test any marketing artifact against a synthetic focus group before you ship it. Builds a reusable audience of fake-but-realistic buyers, runs them as an isolated panel, and returns a dual-axis verdict (attention vs convert), a behavioral funnel, clustered objections, and verbatim quotes — with a plain-English Teach Mode that explains the why as it goes. For coaches and creators testing names, bios, hooks, thumbnails, emails, offers, and ads.",
+  "author": { "name": "Joe Olive", "email": "joe@engineforimpact.com" },
+  "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/focus-group-superengine",
+  "repository": "https://github.com/joeoliveimpact/revxl-marketplace",
+  "license": "MIT",
+  "keywords": ["focus-group", "synthetic-personas", "marketing", "ab-testing", "audience-research", "copywriting", "teach-mode", "superengine"]
+}

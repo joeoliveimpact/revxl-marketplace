@@ -1,0 +1,11 @@
+{
+  "name": "client",
+  "mode": "blank",
+  "upgrades": {
+    "search":    { "enabled": false, "endpoint": "", "notes": "broad discovery — SearXNG or Tavily" },
+    "scrape":    { "enabled": false, "key_env": "FIRECRAWL_API_KEY", "notes": "clean page extraction" },
+    "ranked":    { "enabled": false, "key_env": "TAVILY_API_KEY", "notes": "ranked fallback search" },
+    "transcribe":{ "enabled": false, "endpoint": "", "notes": "Whisper server endpoint (local or remote)" },
+    "social":    { "enabled": false, "notes": "Metricool / SocialCrawl competitor intel" }
+  }
+}

@@ -148,6 +148,8 @@ Bump version in BOTH:
 
 Otherwise auto-update on clients won't trigger.
 
+On every version bump, also update the `vX.Y.Z · ` prefix in the plugin's `marketplace.json` description to match its `version` field (the picker doesn't display the version field, so the semver is embedded in the description text — it lives in 2 places and must stay in sync).
+
 ## Documentation requirements
 
 Every plugin's README must include:

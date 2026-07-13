@@ -11,8 +11,15 @@ stage, not after.
 | Canvas | **1080×1350 (4:5 portrait)** — 20% more mobile screen than square (1080×1440 3:4 also current-valid) | **1080×1080 (1:1 square)** — stays sharp on desktop + mobile render |
 | Count | 2-20 slides; **8-12 sweet spot** | **5-10 pages** (file under 10MB or LinkedIn renders slowly) |
 | Tone | Emotional, personal, how-I narrative; edge and humor welcome (per `{{VOICE_EDGE}}`) | Professional, data-driven, framework-first; authority (E-E-A-T) over intimacy |
-| Ranking signals | **Saves + DM shares** top-weighted; dwell time next | **Dwell time + completion rate**; long shelf life (quality PDFs resurface for weeks) |
-| Mechanics | **Re-serve mechanic:** skipped carousels return opening on slide 2/3 → Triple Hook mandatory | No live links on pages → CTA routes to comments/profile/DM; PDFs are downloadable → watermark every page |
+| Ranking signals | **DM shares (sends per reach)** strongest; dwell time next; saves valuable but 2026-contested weight (see note) | **Dwell time + completion rate** (the 2026 "Depth Score"); long shelf life (quality PDFs resurface for weeks) |
+| Mechanics | **Re-serve mechanic:** skipped carousels return opening on slide 2/3 → Triple Hook mandatory. Audio added before posting → Reels-tab eligibility (extra distribution surface, 2026) | No live links on pages → CTA routes to comments/profile/DM; PDFs are downloadable → watermark every page |
+
+> **2026 signal notes (evolving — re-verify before hard-coding):** some 2026 Instagram-sourced
+> reporting says saves are downweighted while other current sources still rank them high...
+> emphasize shares/sends for reach and treat saves as contested, not dead. LinkedIn's 2026
+> dwell-time shift ("Depth Score") also penalizes external links and engagement bait (~60% reach
+> cost) — route CTAs per the table. Instagram now supports per-slide captions (live June 2026, up
+> to 20 — see @caption-strategy.md).
 
 ## Adapting one carousel across both (the 3-rule workflow)
 

@@ -10,7 +10,7 @@ Hand-held first run. Assume zero context and `{{EXPLANATION_LEVEL}}: beginner` u
 ## Flow
 
 **1. Orient (60 seconds, no jargon).**
-Say what this does in plain words: "You tell me a topic or paste a carousel link you liked. I build the whole post: what each slide says, how each slide should look, the caption, the hashtags. You (or Canva) make the pictures. Nothing posts automatically... you always see drafts first."
+Say what this does in plain words: "You tell me a topic or paste a carousel link you liked. I build the whole post: what each slide says, how each slide should look, the caption, the hashtags... and then I can make the actual slide images too. Nothing posts automatically... you always see drafts first."
 
 Name the two ways in:
 - **Create** — "give me a topic, I build the carousel."
@@ -23,7 +23,14 @@ Route through the `carousel-setup` skill, essentials pass only (level, teach mod
 Ask for one thing their ideal client complains about constantly, in the client's words. Then run the `carousel-create` skill on it with TEACH MODE ON regardless of config... narrate why the hook was chosen, why the slides sit in this order, why the CTA slide asks for exactly one action.
 
 **4. Close the loop.**
-Show where the config lives, how to change voice edge / teach mode / platform anytime, and the fastest next actions: "carousel about ___" or paste a link.
+Show where the config lives (`${CLAUDE_PLUGIN_DATA}/business-config.md` — the persisted copy every
+build reads; the file in the plugin's references folder is only the blank template), how to change
+voice edge / teach mode / platform anytime, and the
+fastest next actions. Then offer the natural nexts (never block):
+- **"Want the actual images for this one?"** → the `carousel-render` skill — "make the images"
+  (plain: "I turn the draft into finished slides you can post")
+- Next topic → the `carousel-create` skill — "carousel about ___"
+- **"See a carousel you loved lately?"** → the `carousel-teardown` skill — paste the link
 
 ## Rules
 - Never dump the full command table on a beginner; introduce commands as they're needed.

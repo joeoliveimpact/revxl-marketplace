@@ -12,47 +12,75 @@ shape, hard honesty rules.
 
 **The pull** (state cost first; a post pull is a low-single-digit credit call):
 
-    curl -s -H "x-api-key: <key>" "https://www.socialcrawl.dev/v1/instagram/post?url=<URL-ENCODED-LINK>"
+    curl -s -H "x-api-key: <key>" "https://www.socialcrawl.dev/v1/instagram/post?url=<URL-ENCODED-LINK>&download_media=true"
 
-Envelope: `{ success, data, … }` — the post lands under `data` (`content` holds caption + media
-fields; creator + engagement fields alongside). Extract:
+Envelope: `{ success, data, … }` — the post lands under `data.post` (`content` holds caption + cover +
+engagement fields; `ext.download_media_urls[]` holds ALL slides when `&download_media=true` is set).
+Extract:
 - **caption** (full text — hook line, structure, CTA, hashtags)
-- **cover image URL** (`content.media_urls` / `thumbnail_url` — this is the HOOK SLIDE)
+- **all slides** (`ext.download_media_urls[]` — with `&download_media=true`, one entry per slide, but
+  the array order is NOT the display order (see the slide-order rule below). Each entry is an OBJECT
+  `{post_id, cdn_url, type, cached}`: the durable Supabase link is at `.cdn_url` (these don't expire),
+  and `type` is `image` or `video`. NOT a bare URL — read `.cdn_url`.)
+- **cover image URL** (`content.media_urls` / `thumbnail_url` — the HOOK SLIDE; this is the raw IG CDN
+  link, expires ~24h. Its durable copy is somewhere in `download_media_urls[]` but NOT necessarily
+  index 0 — the array is unordered; identify the cover by content, not by position.)
 - **engagement** — likes, comments (+ views where present)
 - **creator context** — handle, follower count (baselines the engagement read)
 
-Download the cover (`curl -s -o cover.jpg "<url>"` — CDN links expire in ~24h, pull it now) and Read
-it for vision analysis of the hook slide.
+Download EVERY `.cdn_url` (`curl -s -o slide_00 "<cdn_url>"`, `slide_01`, …; extension per `type` —
+`.jpg`/`.mp4`), then Read them all.
 
-**⚠️ Cover-only honesty rule:** SocialCrawl returns ONE image for a carousel — the cover. Slides 2+
-are not visible on this path. Verified against the payload spec + live integration (2026-06). The
-teardown therefore reads: hook slide (vision) + caption (full) + metrics. Say this plainly in the
-output; never present slide-flow guesses as observed slides. When the caption narrates the slide
-sequence ("swipe for the 5 steps…"), inferences from it get tagged `(inferred from caption)`.
+**⚠️ Slide-order rule — the array is NOT display order.** `ext.download_media_urls[]` comes back
+scrambled: a live 9-slide post returned array order `4,1,5,8,6,9,7,3,2` (verified 2026-07-08). Do NOT
+treat `slide_00, slide_01…` as slides 1, 2… To recover the true sequence:
+1. Read every slide and look for the on-slide page label (a corner `X/9`, `1/8`, etc.).
+2. **Labels present** → order the slide map by that label, ignoring array index.
+3. **No labels** → say so. Present the slide map as best-effort / order-unverified, identify the cover
+   by its hook content, and never assert a slide flow you couldn't confirm. When the caption narrates
+   the sequence ("swipe for the 5 steps…"), tag those inferences `(inferred from caption)`.
 
-## Path B — full-slide fetch (backup; Claude Code + Python only)
+**⚠️ Fallback honesty rule:** `&download_media=true` returns ALL slides — verified live 2026-07-07 on
+3/4/8-slide image carousels + a video slide + a single-image post, 1 credit each. Only if the flag is
+missing OR `ext.download_media_urls[]` is absent/empty do you fall back to cover-only: then the
+teardown reads hook slide (vision) + caption (full) + metrics, and any slide-sequence guesses get
+tagged `(inferred from caption)` — never presented as observed slides.
 
-When `{{FULL_SLIDE_FETCH}}: available`, the bundled script pulls EVERY slide of a public post:
+## Path B — full-slide fetch (Claude Code + Python; the client's own Instagram cookies)
 
-    pip install instaloader                      # one-time (venv fine)
-    python ${CLAUDE_PLUGIN_ROOT}/scripts/carousel_fetch.py "<post-url>" "<work-dir>"
+When `{{FULL_SLIDE_FETCH}}: available`, the bundled script pulls EVERY slide via Instagram's
+authenticated mobile API — a second full-slide path (IG's own API, client-side), useful as a fallback
+when SocialCrawl's upstream can't fetch a given account. No browser automation, no install: it runs on
+cookies the client exported once with the **Cookie-Editor** browser extension (captured during setup —
+see @ig-cookie-setup.md). Stdlib-only Python.
+
+**The pull** (uses the saved cookie export, default `${CLAUDE_PLUGIN_DATA}/ig_session.json`):
+
+    python ${CLAUDE_PLUGIN_ROOT}/scripts/carousel_fetch.py "<post-url>" "<work-dir>" --session "<cookie-file>"
 
 stdout = one JSON object: `{ok, shortcode, username, caption, taken_at, likes, comments, is_carousel,
-slides:[{index, kind, file}], message}`. Slide files land in `<work-dir>` in natural order — Read each
-image in sequence for the true slide-by-slide teardown.
+slides:[{index, kind, file}], message}`. Slide files land in `<work-dir>` as `slide_00`, `slide_01`… —
+Read each image in sequence for the true slide-by-slide teardown.
 
-**Throttle + conduct rules (non-negotiable):**
-- Anonymous access is now unreliable: Instagram frequently hard-blocks it with `403 / login_required`
-  regardless of request spacing (verified 2026-07 — the public web + mobile-API paths both return
-  403 without a logged-in session). Treat a session file from a THROWAWAY account (`instaloader
-  --login`, then the script's `--session` flag) as **effectively required** for this path. Anonymous
-  may work for the occasional post but cannot be relied on; a `login_required` result is expected,
-  not a bug. Never retry-loop.
-- Public posts only. Private = hard stop, no workarounds.
-- One post per run. Batch = explicit user yes + 30s+ spacing.
-- Downloaded media is analysis input for the user's own research. It is never reposted, repackaged,
-  or shipped anywhere. (Scraping may violate Instagram's ToS — the user owns that call; keep usage
+**Cookies expired?** A `login_required` result means the session is stale. There is NO fixed timer —
+Instagram sessions last months for an active account, but a log-out / password change kills them. Have
+the client re-export via Cookie-Editor and paste again (@ig-cookie-setup.md). The skill detects
+`login_required` and asks; never set an arbitrary refresh clock, and never retry-loop.
+
+**Why authenticated:** anonymous fetch is `403 login_required`-dead (Instagram clamped down mid-2026)
+and instaloader's web path is dead even logged-in. Cookies + the mobile API is the working, client-side
+replica of what iqsaved does server-side. See memory `ig-carousel-fetch-reality`.
+
+**Conduct rules (non-negotiable):**
+- The client's OWN cookies only. NEVER a shared account — concentrated volume on one account is the
+  fingerprint that gets banned; per-account volume stays tiny by design.
+- Public + accessible posts only. Private = hard stop, no workarounds.
+- One post per run. Batch = explicit user yes + spacing.
+- Downloaded media is analysis input for the user's own research. It is never reposted, repackaged, or
+  shipped anywhere. (Scraping may violate Instagram's ToS — the user owns that call; keep usage
   personal-research-scoped.)
+- The cookie file is a secret (full account access). It stays in `${CLAUDE_PLUGIN_DATA}` on the client's
+  machine; never commit or share it. Logging the account out revokes it.
 
 ## Analysis shape (both paths — degrade gracefully on partial data)
 

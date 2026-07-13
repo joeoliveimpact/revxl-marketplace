@@ -54,8 +54,11 @@ Offer refreshes at most ONCE per session — never nag on back-to-back builds.
 
 `carousel-create` and `carousel-setup` consume the brain read-only: voice-guide sets register +
 edge, voc-profile supplies avatar pains in the avatar's words (hooks + captions), business-config
-supplies positioning + proof. If a build starts with no brain, setup offers THIS skill before any
-interim voice capture.
+supplies positioning + proof. The carousel engine's own filled config persists at
+`${CLAUDE_PLUGIN_DATA}/business-config.md` (read first by every carousel skill; the plugin's
+references copy is just the template) — brand-level tokens sync with the shared
+`~/.claude/revxl/<brand>/voc/business-config.md`. If a build starts with no brain, setup offers
+THIS skill before any interim voice capture.
 
 ## Frameworks
 
