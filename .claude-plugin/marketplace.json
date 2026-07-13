@@ -7,12 +7,12 @@
     "email": "joe@engineforimpact.com"
   },
   "metadata": {
-    "version": "0.1.30"
+    "version": "0.1.33"
   },
   "plugins": [
     {
       "name": "course-crawler",
-      "description": "Capture any online content as a clean local archive for knowledge bases. Single pages, full multi-lesson courses (Kajabi/Teachable/Thinkific/Skool classrooms/custom), and YouTube playlists. Detects the agentic browser you have, handles login (assisted or manual cookie paste), and outputs clean Markdown + categorized reference links + downloaded assets + slide frames + transcripts. Local GPU Whisper by default (Groq/OpenAI fallback). Works on Mac and Windows.",
+      "description": "v0.5.0 · Capture any online content as a clean local archive for knowledge bases. Single pages, full multi-lesson courses (Kajabi/Teachable/Thinkific/Skool classrooms/custom), and YouTube playlists. Detects the agentic browser you have, handles login (assisted or manual cookie paste), and outputs clean Markdown + categorized reference links + downloaded assets + slide frames + transcripts. Local GPU Whisper by default (Groq/OpenAI fallback). Works on Mac and Windows.",
       "source": "./plugins/course-crawler",
       "category": "productivity",
       "version": "0.5.0",
@@ -38,7 +38,7 @@
     },
     {
       "name": "workspace-superengine",
-      "description": "Stops Claude from forgetting what you were working on. Sets up your workspace so every session picks up where the last one left off, follows your rules, and explains itself in plain language. Add modules for coding, client work, or content as needed. Works in Claude Desktop and Claude Code.",
+      "description": "v0.8.1 · Stops Claude from forgetting what you were working on. Sets up your workspace so every session picks up where the last one left off, follows your rules, and explains itself in plain language. Add modules for coding, client work, or content as needed. Works in Claude Desktop and Claude Code.",
       "source": "./plugins/workspace-superengine",
       "category": "productivity",
       "version": "0.8.1",
@@ -57,7 +57,7 @@
     },
     {
       "name": "ghl-coach-superengine",
-      "description": "GoHighLevel done-with-you toolkit for health/wellness/fitness coaches. 8 skills + 2 agents that build and maintain a persistent 13-file per-coach workspace, refresh it from GHL on every session, surface what needs attention, and execute multi-step work via MCP. Requires the GoHighLevel-MCP (mastanley13) and Filesystem MCP.",
+      "description": "v0.1.1 · GoHighLevel done-with-you toolkit for health/wellness/fitness coaches. 8 skills + 2 agents that build and maintain a persistent 13-file per-coach workspace, refresh it from GHL on every session, surface what needs attention, and execute multi-step work via MCP. Requires the GoHighLevel-MCP (mastanley13) and Filesystem MCP.",
       "source": "./plugins/ghl-coach-superengine",
       "category": "crm",
       "version": "0.1.1",
@@ -80,7 +80,7 @@
     },
     {
       "name": "offer-architect",
-      "description": "Build market-validated, Hormozi-structured coaching offers — start to finish. 10 skills + 1 audit agent take a coach from intake → deep market research → value stack → pricing matrix → finalized offer → a 3–5 page Offer Blueprint (the coach's source of truth) + a Projected Success Score report (0–100 launch-readiness with plain-English priority fixes). Two-layer scoring: preventive exit-checks at every step + capstone audit. Hard rule on no-inventing-deliverables via provenance tags.",
+      "description": "v0.2.2 · Build market-validated, Hormozi-structured coaching offers — start to finish. 10 skills + 1 audit agent take a coach from intake → deep market research → value stack → pricing matrix → finalized offer → a 3–5 page Offer Blueprint (the coach's source of truth) + a Projected Success Score report (0–100 launch-readiness with plain-English priority fixes). Two-layer scoring: preventive exit-checks at every step + capstone audit. Hard rule on no-inventing-deliverables via provenance tags.",
       "source": "./plugins/offer-architect",
       "category": "coaching",
       "version": "0.2.2",
@@ -103,7 +103,7 @@
     },
     {
       "name": "notebooklm-superengine",
-      "description": "Gets Google NotebookLM working on your computer and keeps it working. One guided setup handles the install and Google sign-in — the part that usually breaks — on Mac or Windows. Then build research notebooks, ask them questions, and turn them into podcasts and study guides just by talking to Claude. Local-only: no servers, tunnels, or extra accounts.",
+      "description": "v0.4.0 · Gets Google NotebookLM working on your computer and keeps it working. One guided setup handles the install and Google sign-in — the part that usually breaks — on Mac or Windows. Then build research notebooks, ask them questions, and turn them into podcasts and study guides just by talking to Claude. Local-only: no servers, tunnels, or extra accounts.",
       "source": "./plugins/notebooklm-superengine",
       "category": "productivity",
       "version": "0.4.0",
@@ -122,7 +122,7 @@
     },
     {
       "name": "gokollab-community-superengine",
-      "description": "One-install community automation for clientclub / GoHighLevel (GoKollab) coaches. Onboard new members by tier (approve → add to the right channels → build their private 1:1 channel → welcome posts), turn group-call recordings into featured recap posts, and keep each client's 1:1 call history current — all by talking to Claude. Self-installs its dependencies and captures your own community login at setup. No terminal.",
+      "description": "v0.1.2 · One-install community automation for clientclub / GoHighLevel (GoKollab) coaches. Onboard new members by tier (approve → add to the right channels → build their private 1:1 channel → welcome posts), turn group-call recordings into featured recap posts, and keep each client's 1:1 call history current — all by talking to Claude. Self-installs its dependencies and captures your own community login at setup. No terminal.",
       "source": "./plugins/gokollab-community-superengine",
       "category": "crm",
       "version": "0.1.2",
@@ -144,7 +144,7 @@
     },
     {
       "name": "sales-call-blueprint-superengine",
-      "description": "Paste the DM thread behind a booked call, get back a psychology-driven blueprint for it. Triage (15-min qualifier) or strategy (RFPDP closing) calls, as a deep prep doc or a live call-time card. Pulls prior-call transcripts (Fathom/Fireflies/Granola/GHL/manual), delivers to Google Drive / local / GHL note, and batches many prospects at once via its agent. Your pricing stays yours — supplied live, never stored. For coaches and the people who take their sales calls.",
+      "description": "v0.1.2 · Paste the DM thread behind a booked call, get back a psychology-driven blueprint for it. Triage (15-min qualifier) or strategy (RFPDP closing) calls, as a deep prep doc or a live call-time card. Pulls prior-call transcripts (Fathom/Fireflies/Granola/GHL/manual), delivers to Google Drive / local / GHL note, and batches many prospects at once via its agent. Your pricing stays yours — supplied live, never stored. For coaches and the people who take their sales calls.",
       "source": "./plugins/sales-call-blueprint-superengine",
       "category": "sales",
       "version": "0.1.2",
@@ -170,7 +170,7 @@
     },
     {
       "name": "email-sequence-superengine",
-      "description": "Run one setup, then generate voice-matched broadcast email sequences for your high-ticket coaching program: pre-call show-up, launch, warm nurture, no-show recovery, post-call follow-up, win-back, onboarding, and a pre-sell VSL script. Built once, fires to everyone (personalization is merge tokens, never invented facts), with a storytelling engine, pitch-floor controls, a voice-edge dial, and ESP-agnostic output plus optional GoHighLevel push. Drafts only, it never sends. For coaches who want their list nurtured in their own voice.",
+      "description": "v0.2.1 · Run one setup, then generate voice-matched broadcast email sequences for your high-ticket coaching program: pre-call show-up, launch, warm nurture, no-show recovery, post-call follow-up, win-back, onboarding, and a pre-sell VSL script. Built once, fires to everyone (personalization is merge tokens, never invented facts), with a storytelling engine, pitch-floor controls, a voice-edge dial, and ESP-agnostic output plus optional GoHighLevel push. Drafts only, it never sends. For coaches who want their list nurtured in their own voice.",
       "source": "./plugins/email-sequence-superengine",
       "category": "marketing",
       "version": "0.2.1",
@@ -196,7 +196,7 @@
     },
     {
       "name": "shortform-superengine",
-      "description": "Turn competitor research into Instagram reel scripts in your own voice. One guided setup, then by talking to Claude: cross-reference your reels against tiered competitors for a 10-section strategy roadmap, harvest a trusted creator's whole library into a framework corpus, and script reels off what already wins in your niche (Hook to CTA, with craft scoring). Bring-your-own SocialCrawl key (your data, your credits); captions-first transcription with Groq or local Whisper fallback; plain-English teach mode by default. For coaches who want data-driven short-form that still sounds like them.",
+      "description": "v0.2.3 · Turn competitor research into Instagram reel scripts in your own voice. One guided setup, then by talking to Claude: cross-reference your reels against tiered competitors for a 10-section strategy roadmap, harvest a trusted creator's whole library into a framework corpus, and script reels off what already wins in your niche (Hook to CTA, with craft scoring). Bring-your-own SocialCrawl key (your data, your credits); captions-first transcription with Groq or local Whisper fallback; plain-English teach mode by default. For coaches who want data-driven short-form that still sounds like them.",
       "source": "./plugins/shortform-superengine",
       "category": "marketing",
       "version": "0.2.3",
@@ -221,7 +221,7 @@
     },
     {
       "name": "socialcrawl-superengine",
-      "description": "Deep social research superengine on the SocialCrawl API: the full 43-platform / 333-endpoint canon with exact per-call credits, plus guided research plays — voice-of-customer mining, competitor ad-library recon, AI-visibility (GEO) audits, link-in-bio offer mapping, audience demographics, dev/tool radar — and hard-gated big-gun one-shots (creator vetting, lead discovery, share-of-voice). Bring-your-own key; every paid call is cost-gated up front. Pairs with the RevXL format engines (they detect it and unlock deep plays) or runs standalone.",
+      "description": "v0.1.1 · Deep social research superengine on the SocialCrawl API: the full 43-platform / 333-endpoint canon with exact per-call credits, plus guided research plays — voice-of-customer mining, competitor ad-library recon, AI-visibility (GEO) audits, link-in-bio offer mapping, audience demographics, dev/tool radar — and hard-gated big-gun one-shots (creator vetting, lead discovery, share-of-voice). Bring-your-own key; every paid call is cost-gated up front. Pairs with the RevXL format engines (they detect it and unlock deep plays) or runs standalone.",
       "source": "./plugins/socialcrawl-superengine",
       "category": "marketing",
       "version": "0.1.1",
@@ -249,10 +249,10 @@
     },
     {
       "name": "carousel-superengine",
-      "description": "Voice-matched Instagram and LinkedIn carousel engine for coaches — from topic to finished slide images. Run setup once, then generate complete carousels: per-slide copy, design, caption, hashtags, and the actual images (AI-generated in your look, optionally with your trained face; a paste-ready Claude Design prompt; or local PNG/LinkedIn-PDF rendering on Claude Code). Save any finished look as a reusable template and every next build takes minutes. Includes a paste-a-link teardown, a niche-wide competitor synthesis, carousel-from-your-calls, and optional scheduled draft builds (suggest-only; you approve everything). Drafts only — you post. Your config, voice, and templates persist across plugin updates.",
+      "description": "v0.2.1 · Voice-matched Instagram and LinkedIn carousel engine for coaches — from topic to finished slide images. Run setup once, then generate complete carousels: per-slide copy, design, caption, hashtags, and the actual images (AI-generated in your look, optionally with your trained face; a paste-ready Claude Design prompt; or local PNG/LinkedIn-PDF rendering on Claude Code). Save any finished look as a reusable template and every next build takes minutes. Includes a paste-a-link teardown, a niche-wide competitor synthesis, carousel-from-your-calls, and optional scheduled draft builds (suggest-only; you approve everything). Drafts only — you post. Your config, voice, and templates persist across plugin updates.",
       "source": "./plugins/carousel-superengine",
       "category": "marketing",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"
@@ -274,7 +274,7 @@
     },
     {
       "name": "promptception",
-      "description": "Turns a messy, spoken-style brain-dump into a clear, complete prompt, then runs it. Talk or dictate what you want (half-sentences fine) and Promptception builds the prompt you would have written if you were a prompt expert, shows it to you, asks only the questions that close real gaps, and executes on your go. Beginner-first: it teaches prompting by showing, not lecturing, and offers to build a full plan when the ask is bigger than one prompt. One command: /promptception.",
+      "description": "v0.1.0 · Turns a messy, spoken-style brain-dump into a clear, complete prompt, then runs it. Talk or dictate what you want (half-sentences fine) and Promptception builds the prompt you would have written if you were a prompt expert, shows it to you, asks only the questions that close real gaps, and executes on your go. Beginner-first: it teaches prompting by showing, not lecturing, and offers to build a full plan when the ask is bigger than one prompt. One command: /promptception.",
       "source": "./plugins/promptception",
       "category": "productivity",
       "version": "0.1.0",
@@ -294,6 +294,54 @@
         "teaching",
         "productivity",
         "utility"
+      ]
+    },
+    {
+      "name": "focus-group-superengine",
+      "description": "v0.1.0 · Test any marketing artifact against a synthetic focus group before you ship it. Builds a reusable audience of fake-but-realistic buyers, runs them as an isolated panel, and returns a dual-axis verdict (attention vs convert), a behavioral funnel, clustered objections, and verbatim quotes — with a plain-English Teach Mode that explains the why as it goes. For coaches and creators testing names, bios, hooks, thumbnails, emails, offers, and ads.",
+      "source": "./plugins/focus-group-superengine",
+      "category": "marketing",
+      "version": "0.1.0",
+      "author": {
+        "name": "Joe Olive",
+        "email": "joe@engineforimpact.com"
+      },
+      "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/focus-group-superengine",
+      "license": "MIT",
+      "keywords": [
+        "focus-group",
+        "synthetic-personas",
+        "marketing",
+        "ab-testing",
+        "audience-research",
+        "copywriting",
+        "teach-mode",
+        "superengine"
+      ]
+    },
+    {
+      "name": "lead-magnet-superengine",
+      "description": "v0.1.0 · Turn any starting point into a high-converting lead magnet. Three doors: build from scratch (guided Q&A on your offer, customer, and promise), revamp your existing magnet (audited against a 15-point rubric), or reverse-engineer a competitor's without copying. Voice-matched via the shared brand-brain, grounded in bundled conversion frameworks and benchmarks, delivered as a finished PDF with a what/why doc and nurture handoff. Works day one with zero setup; optional live-research upgrades are honest about what's actually connected. For coaches shipping lead magnets fast.",
+      "source": "./plugins/lead-magnet-superengine",
+      "category": "marketing",
+      "version": "0.1.0",
+      "author": {
+        "name": "Joe Olive",
+        "email": "joe@engineforimpact.com"
+      },
+      "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/lead-magnet-superengine",
+      "license": "MIT",
+      "keywords": [
+        "lead-magnet",
+        "lead-generation",
+        "marketing",
+        "pdf",
+        "copywriting",
+        "conversion",
+        "email-capture",
+        "coaching",
+        "brand-brain",
+        "superengine"
       ]
     }
   ]

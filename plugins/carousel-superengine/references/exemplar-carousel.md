@@ -140,6 +140,10 @@ posts the same week as another myth-bust (rotate archetypes).
 >
 > #afternoonenergycrash #bloodsugarbalance #morningroutineforenergy #coachesover35 #deskjobfitness
 
+> Note: this exemplar models the single-caption default. Per-slide captions (IG, live since June
+> 2026) are an optional variant for step-by-step builds — see @caption-strategy.md for when to use
+> which.
+
 ### Alt text (per slide)
 1 "Coach beside headline: your healthy breakfast is causing your 2pm crash" · 2 "Blood sugar spike
 and crash curve from 7am to 2pm" · 3 "Numbered list of three morning habits, items hidden" ·

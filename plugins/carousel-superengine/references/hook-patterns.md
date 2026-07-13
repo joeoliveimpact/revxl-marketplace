@@ -16,12 +16,23 @@ of slide 1 (the "second chance" / double-exposure mechanic). Therefore:
 - Slide 2 is not a continuation; it's an independent entry point (credibility or contrarian angle).
 - Slide 3 doubles as the context bridge but still stands alone (pain empathy or roadmap).
 
+**Why it works (2026 mechanics, evolving):** dwell time, swipe-through rate, and completion rate
+are the primary carousel ranking signals; strong early signals trigger the 24-48hr re-serve pass.
+Two plays this unlocks:
+- **Hook-swap:** per-slide like insights (in IG Insights) show which slide actually stops people...
+  if a later slide outperforms the cover, reorder to frontload the proven slide.
+- **Upcycle cadence:** re-uploading evergreen posts is explicitly allowed (Mosseri-confirmed, no
+  penalty; trial reels are the one exception). Re-up proven evergreen carousels every 60-90 days,
+  ideally with a fresh or swapped hook slide.
+
 ## The 4 hook archetypes
 
 **1. The "How I" relational hook (story arc).** How-to lectures are dead for this demographic;
 how-I journeys convert. Formula: `How I [specific result] in [timeframe] + [unique angle/constraint]`.
 Example shape: "How I fixed my afternoon energy crashes in 7 days (without quitting my morning
 espresso)." Visual: warm, real, candid photo of the coach in a real setting... not a posed cutout.
+Raw-over-polished is a named 2026 shift, not just taste: polished, scripted-looking openers
+underperform candid ones.
 
 **2. The specific transformation split-screen (pattern interrupt).** Before/after with a
 metric-driven outcome creates a curiosity gap the brain wants closed... the cover feels incomplete

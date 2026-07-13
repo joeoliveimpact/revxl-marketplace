@@ -1,0 +1,31 @@
+{
+  "meta": {
+    "pack": "example-coach-smb-v0",
+    "built": "06.17.26",
+    "audience": "EXAMPLE PACK — coaches & online business owners who want more clients + time back using AI, non-technical (no code, no dev, no tool overwhelm).",
+    "built_from": "Niche research + competitor audit of the online-coaching market. Hand-built generic example — run /focus-group-setup to build a pack grounded in YOUR brand's real assets and audience.",
+    "provenance": "Example personas are INFERRED from market research, not validated against any live audience. Calibrate vs a real signal (Story poll, real comments) before trusting absolutes.",
+    "role_distribution": { "enthusiast": 5, "fence_sitter": 7, "skeptic": 3, "hater": 1 },
+    "teach_mode": true,
+    "role_rebalance_note": "Softened from a 38% skeptic+hater mix to 25% after calibration — the harsher mix compressed absolute scores below a real cold audience. Roles are dispositional LENSES; anti-sycophancy preserved (weak artifacts still score low).",
+    "segment_weights_note": "Rough mix for the coach/SMB niche; refine from real follower data."
+  },
+  "personas": [
+    { "id": "P01", "name": "Dana", "age": 34, "segment": "fitness coach", "stage": "scaling", "ai": "curious", "skepticism": "low", "pain": "no time, content treadmill", "platform": "IG-heavy", "voice": "casual, hype, emojis", "role": "enthusiast" },
+    { "id": "P02", "name": "Marcus", "age": 47, "segment": "business coach", "stage": "established", "ai": "skeptic", "skepticism": "high", "pain": "lead quality, seen 100 gurus", "platform": "YouTube", "voice": "blunt, no-BS", "role": "skeptic" },
+    { "id": "P03", "name": "Priya", "age": 29, "segment": "course creator", "stage": "starting", "ai": "user", "skepticism": "med", "pain": "tool overwhelm", "platform": "IG/TikTok", "voice": "earnest, curious", "role": "fence_sitter" },
+    { "id": "P04", "name": "Tom", "age": 52, "segment": "management consultant", "stage": "established", "ai": "skeptic", "skepticism": "high", "pain": "time, credibility", "platform": "LinkedIn/YouTube", "voice": "formal, reserved", "role": "skeptic" },
+    { "id": "P05", "name": "Bre", "age": 26, "segment": "mindset coach", "stage": "starting", "ai": "enthusiast", "skepticism": "low", "pain": "no clients yet", "platform": "IG-heavy", "voice": "bubbly, warm", "role": "enthusiast" },
+    { "id": "P06", "name": "Carlos", "age": 39, "segment": "agency owner", "stage": "scaling", "ai": "power-user", "skepticism": "med", "pain": "scaling ops", "platform": "YouTube/X", "voice": "technical, direct", "role": "fence_sitter" },
+    { "id": "P07", "name": "Linda", "age": 58, "segment": "life coach", "stage": "established", "ai": "skeptic", "skepticism": "high", "pain": "tech fear, overwhelm", "platform": "Facebook/IG", "voice": "warm, cautious", "role": "fence_sitter" },
+    { "id": "P08", "name": "Jay", "age": 31, "segment": "fitness coach", "stage": "scaling", "ai": "curious", "skepticism": "low", "pain": "content treadmill", "platform": "IG/YouTube", "voice": "gym-bro casual", "role": "enthusiast" },
+    { "id": "P09", "name": "Sam", "age": 44, "segment": "real estate coach", "stage": "established", "ai": "curious", "skepticism": "med", "pain": "lead follow-up", "platform": "YouTube", "voice": "direct, practical", "role": "fence_sitter" },
+    { "id": "P10", "name": "Aisha", "age": 35, "segment": "business consultant", "stage": "scaling", "ai": "user", "skepticism": "med", "pain": "systemize delivery", "platform": "LinkedIn", "voice": "polished, sharp", "role": "fence_sitter" },
+    { "id": "P11", "name": "Derek", "age": 49, "segment": "sales coach", "stage": "established", "ai": "skeptic", "skepticism": "high", "pain": "ROI doubt, hype fatigue", "platform": "YouTube", "voice": "gruff, cynical", "role": "hater" },
+    { "id": "P12", "name": "Nina", "age": 28, "segment": "social media coach", "stage": "starting", "ai": "enthusiast", "skepticism": "low", "pain": "standing out", "platform": "IG/TikTok", "voice": "trendy, fast", "role": "enthusiast" },
+    { "id": "P13", "name": "Greg", "age": 41, "segment": "ops consultant", "stage": "scaling", "ai": "power-user", "skepticism": "high", "pain": "wants depth not fluff", "platform": "X/YouTube", "voice": "nerdy, precise", "role": "skeptic" },
+    { "id": "P14", "name": "Mara", "age": 37, "segment": "health coach", "stage": "scaling", "ai": "curious", "skepticism": "med", "pain": "burnout", "platform": "IG", "voice": "empathetic", "role": "fence_sitter" },
+    { "id": "P15", "name": "Victor", "age": 55, "segment": "executive coach", "stage": "established", "ai": "skeptic", "skepticism": "high", "pain": "staying relevant", "platform": "LinkedIn", "voice": "authoritative", "role": "fence_sitter" },
+    { "id": "P16", "name": "Tash", "age": 30, "segment": "digital course coach", "stage": "scaling", "ai": "user", "skepticism": "low", "pain": "launch fatigue", "platform": "IG/email", "voice": "candid, real", "role": "enthusiast" }
+  ]
+}

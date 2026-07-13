@@ -23,7 +23,9 @@ Route through the `carousel-setup` skill, essentials pass only (level, teach mod
 Ask for one thing their ideal client complains about constantly, in the client's words. Then run the `carousel-create` skill on it with TEACH MODE ON regardless of config... narrate why the hook was chosen, why the slides sit in this order, why the CTA slide asks for exactly one action.
 
 **4. Close the loop.**
-Show where the config lives, how to change voice edge / teach mode / platform anytime, and the
+Show where the config lives (`${CLAUDE_PLUGIN_DATA}/business-config.md` — the persisted copy every
+build reads; the file in the plugin's references folder is only the blank template), how to change
+voice edge / teach mode / platform anytime, and the
 fastest next actions. Then offer the natural nexts (never block):
 - **"Want the actual images for this one?"** → the `carousel-render` skill — "make the images"
   (plain: "I turn the draft into finished slides you can post")

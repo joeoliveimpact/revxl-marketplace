@@ -13,7 +13,7 @@ abstract craft bar: what to keep, what to change, what to try next. No craft-sco
 own work; the score is for studying others. Exit offer becomes "build the next iteration."
 
 ## Load
-${CLAUDE_PLUGIN_ROOT}/references/business-config.md
+${CLAUDE_PLUGIN_DATA}/business-config.md if present (the persisted filled config — read FIRST) → else ${CLAUDE_PLUGIN_ROOT}/references/business-config.md (shipped template only)
 ${CLAUDE_PLUGIN_ROOT}/references/teardown-method.md (the full method — data paths, analysis shape, honesty rules)
 
 ## Flow

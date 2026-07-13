@@ -9,7 +9,7 @@ The compounding loop: create → render → **save the look** → next time, **d
 A coach's third carousel takes minutes because their first became a template.
 
 ## Load
-${CLAUDE_PLUGIN_ROOT}/references/business-config.md (brand name for the template path)
+${CLAUDE_PLUGIN_DATA}/business-config.md if present (the persisted filled config — read FIRST) → else ${CLAUDE_PLUGIN_ROOT}/references/business-config.md (shipped template only) — brand name for the template path
 ${CLAUDE_PLUGIN_ROOT}/references/design-rules.md (capture fields + the 90-day system rule)
 
 **Template home:** `~/.claude/revxl/<brand>/carousel/templates/<template-name>/` — shared brand

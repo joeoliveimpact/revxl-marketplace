@@ -8,7 +8,7 @@ description: Turn a finished carousel package into actual slide images. Routes e
 Package in → posted-ready slide images out. Never a dead end: some render path always works.
 
 ## Load
-${CLAUDE_PLUGIN_ROOT}/references/business-config.md (stop → route to `carousel-setup` if placeholders)
+${CLAUDE_PLUGIN_DATA}/business-config.md if present (the persisted filled config — read FIRST) → else ${CLAUDE_PLUGIN_ROOT}/references/business-config.md (shipped template only; placeholders → stop, route to `carousel-setup`)
 ${CLAUDE_PLUGIN_ROOT}/references/design-rules.md (hard guardrails — every path obeys these)
 ${CLAUDE_PLUGIN_ROOT}/references/render/render-briefing.md (Path A: image-gen briefing method)
 ${CLAUDE_PLUGIN_ROOT}/references/render/claude-design-prompt.md (Path C: paste-ready prompt assembly)
