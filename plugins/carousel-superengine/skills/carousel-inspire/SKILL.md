@@ -50,6 +50,8 @@ slide-order label rule). Read every slide of every approved carousel.
 - visual systems: layout/color/type patterns among top performers (feeds Path A steal-style)
 - cadence signal where visible (posting rhythm of the winners)
 Every line evidence-stamped `@handle · metric · URL`. Inferences from partial data tagged as such.
+Save the full report to `${CLAUDE_PLUGIN_DATA}/analysis/inspire-<niche-slug>-<MM.DD.YY>.md` (create
+the folder if missing) — `carousel-create` consults it at its winning check on every future build.
 ✋ **Checkpoint 3:** deliver the report; confirm which direction to build before generating anything.
 
 **5. Rank the build candidates.** 3-5 concrete carousel concepts adapted to the COACH — their

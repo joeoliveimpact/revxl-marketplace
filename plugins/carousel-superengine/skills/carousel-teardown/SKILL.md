@@ -37,7 +37,9 @@ the same once content is in hand).
 
 **3. Analyze** per the shape in teardown-method.md: format archetype, slide-flow map, hook mechanics,
 caption mechanics, CTA read, what works / what doesn't / why, craft score. Flag every inference made
-from partial data as an inference.
+from partial data as an inference. Save the finished analysis to
+`${CLAUDE_PLUGIN_DATA}/analysis/teardown-<slug>-<MM.DD.YY>.md` (slug = handle or shortcode; create
+the folder if missing) — `carousel-create` consults it at its winning check on future builds.
 
 **4. Offer the rebuild.** "Want your version?" → route to the `carousel-create` skill with the
 teardown as input. The rebuild borrows STRUCTURE (archetype, slide roles, retention devices) and

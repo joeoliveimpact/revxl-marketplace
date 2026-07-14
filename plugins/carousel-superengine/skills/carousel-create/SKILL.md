@@ -13,6 +13,7 @@ ${CLAUDE_PLUGIN_ROOT}/references/exemplar-carousel.md — **study FIRST, match i
 ${CLAUDE_PLUGIN_ROOT}/references/slide-architecture.md · hook-patterns.md · swipe-retention.md · cta-slide-patterns.md · design-rules.md · caption-strategy.md
 ${CLAUDE_PLUGIN_ROOT}/references/platform-nuance.md (when platform is linkedin/both)
 ${CLAUDE_PLUGIN_ROOT}/references/transcript-intake.md (when the input is a call/meeting — paste-first)
+${CLAUDE_PLUGIN_DATA}/analysis/ when present (persisted inspire/teardown reports — read-only, consulted at step 1.5)
 ${CLAUDE_PLUGIN_ROOT}/templates/carousel-package.md (output shape)
 ${CLAUDE_PLUGIN_ROOT}/references/carousel-quality.md (gate, before delivery)
 
@@ -31,6 +32,19 @@ the transcript per transcript-intake.md: pasted text wins, else fetch from `{{TR
 else build from the coach's memory with the gap flagged) · teardown output (borrow STRUCTURE only;
 every atom of content becomes the coach's) · **template preset** (arriving via `carousel-templates`
 use-template — the look is already decided; skip design questions, copy + strategy only).
+
+**1.5. Consult the data + winning check.** Locate the freshest inspire synthesis and any relevant
+teardown for this niche/topic — `${CLAUDE_PLUGIN_DATA}/analysis/` plus anything produced this
+session. Always say the report's age; >30 days is stale niche intel — offer ONE `carousel-inspire`
+refresh (credit-gated as inspire always is) and proceed either way. Nothing there → judge from the
+avatar pain map + the bundled pattern refs alone. Then judge the resolved concept against what's
+winning: hook archetypes, structures, topic clusters, the pains that pull. Every input mode gets
+this — for repurpose/call builds the enrichment is step 1's job; the check judges the RESULT.
+**Strong** → one line on why, straight to the frame lock. **Needs repackaging** → propose 1-3
+pivots/lane shifts that stay close to the original concept, each naming its evidence ("hook
+archetype X + pain #2 outperforming, per the inspire run of MM.DD"). Suggest-then-approve: the
+coach picks, and the original always stays an option. A weak verdict shapes the pitch — it never
+blocks the build.
 
 **2. Lock the frame (confirm with the coach in one message):** platform · objective (save / share /
 DM / follow — sets the CTA pattern) · blueprint (A educational / B story-led / C case-study — see
