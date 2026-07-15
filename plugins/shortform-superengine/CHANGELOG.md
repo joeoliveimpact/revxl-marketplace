@@ -4,6 +4,30 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased] — 2026-07-10 (proposed ship: 0.3.0)
 
+### Added — 2026-07-15 batch (C-gate fixes + cheap enhancements)
+- **C7 — dual-track analysis (schema 1.2, additive).** analyze.py now keys hook/
+  theme/hook-line diagnosis on the SPOKEN transcript when one exists (per-reel
+  caption fallback, marked `src`); the caption-keyed read ships as a separate
+  "Caption patterns" md section + JSON `captions` bucket (packaging/SEO surface —
+  never merged into the spoken diagnosis). `meta.transcript_coverage` reports
+  degraded runs. Caption-only datasets stay byte-identical (regression gate).
+- **C10 — scripting_brief.py reads live pipeline shapes.** `{reels}` top key
+  native (legacy `{items}` fallback), JSON transcript ingest
+  (client-transcripts.json + competitors/transcripts/*.json) when no txt
+  transcripts exist — kills the caption-only "0 reels" failure.
+- **C13 — text-overlay storyboard.** Step 3 gains a scored storyboard section
+  (2 options, beat→overlay table 1:1 on the frozen skeleton, frame-1 = hook
+  verbatim, ≤6 words/line, silent-scroll test); Step 5 template gains
+  `## Text overlays`.
+- **C12 substance layer explicit.** Client-topic reels REQUIRE a per-beat
+  interview before generation; unanswered beats flagged, never invented.
+- **C2** three-tier outlier cross-tab in `_pattern_stats.md`; **C4** 4-Killers
+  validation note (120-reel corpus: 9/12 losers, 0/12 winners); **C5** blueprint
+  synthesis-format template in pattern-matrix.md.
+- **Wording:** Brain rebranded "Joe's Content Strategy Cloud Brain API"
+  (constantly updated — the plugin double-checks current strategies);
+  coach→client/brand-owner genericization (users may not be coaches).
+
 ### Added
 - **Pattern Matrix — two-layer beat/pattern measurement (Step 4c).** Three new
   scripts in competitor-cross-reference, all config-driven (niche knowledge stays
