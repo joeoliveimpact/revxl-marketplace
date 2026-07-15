@@ -1,6 +1,11 @@
 # Changelog — carousel-superengine
 
-## [Unreleased]
+## 0.2.2 — 2026-07-13
+
+The generator now consults the engine's full intelligence before and during every build: a winning
+check against prior inspire/teardown analysis (weak concepts get evidence-cited pivot proposals —
+suggest-then-approve, never a gate, SKLLPLG-77), plus the Brain wiring that pulls the
+content-strategy vault into the slide map and hook drafting.
 
 - **Brain wiring (content-strategy vault):** `references/vault-api.md` added (same client
   contract as shortform-superengine — key ladder, power params, budget + cache discipline,
@@ -8,6 +13,22 @@
   step 3 slide map) + pull #2 (hook patterns, step 4, optional). ≤2 searches + ≤3 note reads
   per carousel, cached to `brain-pulls/`, never blocking — no key = bundled refs, unchanged
   behavior.
+
+- **NEW step 1.5 in `carousel-create` — consult the data + winning check.** Before the frame lock,
+  the resolved concept (topic, repurposed content, or call build — every input mode) is judged
+  against what's winning in the niche: the freshest persisted inspire synthesis + relevant
+  teardowns, the avatar pain map, and the bundled pattern refs. Strong → one line on why, proceed.
+  Needs repackaging → 1-3 pivots/lane shifts that stay close to the original concept, each naming
+  its evidence; the coach picks and the original always stays an option. Soft-consume: topic-only
+  builds keep working, and a weak verdict never blocks a build.
+- **Analysis persistence — plugin data dir only.** `carousel-inspire` now saves its pattern report
+  to `${CLAUDE_PLUGIN_DATA}/analysis/inspire-<niche-slug>-<MM.DD.YY>.md` and `carousel-teardown`
+  saves its analysis to `${CLAUDE_PLUGIN_DATA}/analysis/teardown-<slug>-<MM.DD.YY>.md`, so Monday's
+  research feeds Thursday's build. Reports live in the plugin's own local data dir alongside
+  business-config; nothing writes to the shared brand brain or any external knowledge store.
+- **Freshness-aware.** The winning check states the report's age every time; >30 days is stale
+  niche intel, which earns an offer of ONE credit-gated inspire refresh — then the build proceeds
+  either way.
 
 ## 0.2.1 — 2026-07-12
 
