@@ -132,6 +132,24 @@ length (strongest at the 12–15s window), and the beat-to-beat question chain. 
 list for THIS reel: `Hook → Secondary hook → Body beat 1..n → Proof → CTA`. Keep it to the length
 target the brief gives (most winning reels are short — respect it).
 
+**Optimize the skeleton BEFORE showing it (mandatory).** A raw beat list is a draft, not the
+skeleton — screen it against the brief's proven structure the same way Step 3 screens options,
+then present the TIGHTENED version with a one-line why per change. Never hand the user an
+un-optimized skeleton and wait to be asked. The four screens:
+- **One idea, not a list (brief §5).** Winners develop a single mechanism, not five. If the body
+  carries 3+ separate develop/proof beats, collapse them — a demo that IS the proof is one beat,
+  not two; two half-payoffs read weaker than one full one.
+- **Length budget (brief §6).** Beat count must fit the seconds target (~one beat per 8–12s of
+  talk). Over budget → merge or cut, never pad to fill.
+- **One loop, paid late (`retention-psychology.md`).** The hook opens the curiosity loop; no beat
+  may resolve it early. The secondary hook DEEPENS the loop, never answers it; the full payoff
+  lands in the last third.
+- **Single lever (no second idea).** Kill any beat that introduces a second topic ("…and also
+  what it costs") — that's a different reel. One reel, one lever.
+State what you trimmed and why ("6 → 5: merged demo+receipt — one payoff, not two"). The user
+still owns Checkpoint 2 and can override any trim (their call beats the data) — but they approve
+an already-optimized skeleton, not a raw dump.
+
 ### ✋ Checkpoint 2 — Approve the skeleton (then it FREEZES)
 Show the empty beat list (labels only, no copy yet). **Pause** for the user to add/cut/reorder
 beats before any line is written. On approval the skeleton **locks**: everything downstream
