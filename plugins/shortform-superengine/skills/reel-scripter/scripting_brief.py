@@ -70,7 +70,6 @@ HANDLE = meta.get('client_handle') or client['handle']
 
 TDIR = os.path.join(ROOT, 'transcripts')
 tfiles = sorted(glob.glob(os.path.join(TDIR, '*', '*.txt')))  # sorted = deterministic walk
-FULL = len(tfiles) > 0
 CLIENT_DIR = 'reels-full'  # the client's own transcripts live here
 
 def parse_reel(path):
@@ -86,7 +85,39 @@ def parse_reel(path):
     return dict(creator=creator, group=grp, views=h.get('views') or 0, novo=novo,
                 text=spoken, caption_hook=h.get('caption_hook') or '', url=h.get('url') or '')
 
+def rows_from_json():
+    """JSON transcript fallback -- the live pipeline writes source/client-transcripts.json
+    + source/competitors/transcripts/<handle>.json (shape: {handle, n, ok, fail, reels:[
+    {rank, url, views, text, segments, duration}]}) instead of txt files. Same row shape
+    as parse_reel. rank top->best, bottom->worst, all->split at that creator's median.
+    text null (failed transcription) -> treated as NO-VOICEOVER. Client file rows are
+    tagged creator=CLIENT_DIR so the field/client split below works unchanged."""
+    paths = []
+    cp = os.path.join(ROOT, 'source', 'client-transcripts.json')
+    if os.path.exists(cp):
+        paths.append((cp, CLIENT_DIR))
+    for p in sorted(glob.glob(os.path.join(ROOT, 'source', 'competitors', 'transcripts', '*.json'))):
+        paths.append((p, None))
+    got = []
+    for path, forced in paths:
+        d = reel_io.J(path)
+        creator = forced or d.get('handle') or os.path.splitext(os.path.basename(path))[0]
+        reels = d.get('reels') or []
+        med = st.median([r.get('views') or 0 for r in reels]) if reels else 0
+        for r in reels:
+            rk = (r.get('rank') or '').lower()
+            grp = ('best' if rk == 'top' else 'worst' if rk == 'bottom'
+                   else ('best' if (r.get('views') or 0) >= med else 'worst'))
+            novo = r.get('text') is None
+            got.append(dict(creator=creator, group=grp, views=r.get('views') or 0, novo=novo,
+                            text='' if novo else reel_io.fix(r.get('text') or ''),
+                            caption_hook='', url=r.get('url') or ''))
+    return got
+
 rows = [parse_reel(f) for f in tfiles]
+if not rows:                 # no txt transcripts -> try the live pipeline's JSON shape
+    rows = rows_from_json()
+FULL = len(rows) > 0
 field_rows = [r for r in rows if r['creator'] != CLIENT_DIR]
 client_rows = [r for r in rows if r['creator'] == CLIENT_DIR]
 
@@ -98,7 +129,8 @@ def load_source_reels():
     if not os.path.exists(p):
         return []
     d = reel_io.J(p)
-    items = d.get('items') or d.get('data', {}).get('items', []) or []
+    # live pipeline writes {reels}; older pulls used {items} / {data:{items}} -- read all
+    items = d.get('reels') or d.get('items') or d.get('data', {}).get('items', []) or []
     out = []
     for it in items:
         post = it.get('post', {}); eng = post.get('engagement', {}); con = post.get('content', {})
