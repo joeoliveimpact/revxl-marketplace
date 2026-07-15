@@ -243,6 +243,36 @@ for lo,hi in BANDS:
 o("\nW-vs-L durations (transcribed sample): winners med "
   f"{m(W,'duration')}s vs losers {m(L,'duration')}s.")
 
+# ---- three-tier cross-tab (C2): OUTLIER (>=2.5x own median) vs ordinary winner vs loser ----
+OUT = [r for r in W if (r["outlier_mult"] or 0) >= 2.5]
+ORD = [r for r in W if (r["outlier_mult"] or 0) < 2.5]
+o("\n## Three-tier cross-tab — OUTLIER (>=2.5x) vs ordinary winner vs loser (field)")
+o(f"\nOutliers {len(OUT)} / ordinary winners {len(ORD)} / losers {len(L)}. Numeric cells are medians — what separates a breakout from a merely-good reel.")
+o("\n| Dim | Outlier | Ordinary W | Loser |")
+o("|---|--:|--:|--:|")
+for k in ["specificity_per100","contrast_per100","curiosity_hits","duration","wps","questions","hedges"]:
+    a, b, c = m(OUT, k), m(ORD, k), m(L, k)
+    o(f"| {k} | {a if a is not None else '-'} | {b if b is not None else '-'} | {c if c is not None else '-'} |")
+o("\n| Flag | Outlier % | Ordinary W % | Loser % |")
+o("|---|--:|--:|--:|")
+for name, pred in [
+    ("comment-bait CTA", lambda r: "comment-bait" in r["cta_types"]),
+    ("enumeration", lambda r: r["enumeration"]),
+    ("negation_open", lambda r: r["negation_open"]),
+    ("ending=loop-back", lambda r: r["ending"] == "loop-back"),
+]:
+    o(f"| {name} | {share(OUT,pred)} | {share(ORD,pred)} | {share(L,pred)} |")
+def topshare(rs, key):
+    cnt = defaultdict(int)
+    for r in rs:
+        for t in r[key]: cnt[t] += 1
+    top = sorted(cnt.items(), key=lambda kv: (-kv[1], kv[0]))[:3]
+    return ", ".join(f"{t} {n/len(rs)*100:.0f}%" for t, n in top) if rs and top else "-"
+o("\n| Tier | Top tools (share of reels) | Top themes (share) |")
+o("|---|---|---|")
+for name, rs in [("Outlier", OUT), ("Ordinary W", ORD), ("Loser", L)]:
+    o(f"| {name} | {topshare(rs,'tools')} | {topshare(rs,'themes')} |")
+
 o("\n## Cluster medians (winners only)")
 o("\n| Cluster | n | Med views | Dur | WPS | Contrast/100 | Spec/100 |")
 o("|---|--:|--:|--:|--:|--:|--:|")

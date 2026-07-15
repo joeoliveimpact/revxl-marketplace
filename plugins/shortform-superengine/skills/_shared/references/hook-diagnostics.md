@@ -67,4 +67,14 @@ For this skill, the primary format is Reels — the ~2s cliff is the default. No
 
 ---
 
+## Validation note (07.13.26)
+
+The 4 Killers were validated against a **120-reel hand-mapped corpus** as close to a
+**pass/fail separator**: killers fired on **9/12 measured losers and 0/12 winners**, and
+**23/24 breakout reels ran clean** (no killer present). Treat a firing killer as a strong
+disqualifier, not a style note — a hook that trips one is a rewrite, not a tweak. (Corpus
+figures are the measured aggregate; per-niche numbers stay in each client's own analysis.)
+
+---
+
 *Source: artemnovitckii/content-skills viral-hooks skill (MIT). Distilled 2026-06-22 for diagnostic use in competitor-cross-reference skill only.*

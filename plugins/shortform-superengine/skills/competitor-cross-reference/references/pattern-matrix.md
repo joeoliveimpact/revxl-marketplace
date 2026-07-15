@@ -58,6 +58,21 @@ may stray for format reasons; the blueprint should say when that's fine.
 **Out of scope (future pass):** visual dims — on-camera %, visual-change rate — need
 video frames (ffmpeg scene-detect on the CDN mp4s), not audio. Flag, don't fake.
 
+### Synthesis format (use this shape so blueprints compare across runs)
+
+1. **Laws table** — each law tagged with its replication strength (how many independent
+   creators/clusters it held across), never a one-lane observation promoted to a rule.
+2. **Anchoring verdicts** — per beat: is its placement **absolute** (fixed seconds) or
+   **proportional** (% of runtime)? State which, with the evidence.
+3. **Free-variation list** — dimensions the data shows DON'T matter; stops false rules.
+4. **Breakout drivers** — what separates the ≥2.5× outliers from ordinary winners
+   (feed from the three-tier cross-tab in `_pattern_stats.md`).
+5. **CONFIRMED / CORRECTED table** — verdict on every prior assumption.
+6. **Scope caveats** — sample size, lanes covered, what the corpus can't see.
+7. **Recipe** — the buildable summary: beat list with anchors + the do/don't lines.
+
+The template ships; each run fills it with that niche's own numbers.
+
 ## Run order
 
 ```bash
