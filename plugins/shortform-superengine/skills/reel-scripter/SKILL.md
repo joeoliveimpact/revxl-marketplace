@@ -125,13 +125,24 @@ python ${CLAUDE_PLUGIN_ROOT}/skills/reel-scripter/field_vet.py <project_dir> <ke
 ```
 
 It reports, per keyword, the field's median views vs the field median (spoken track PRIMARY,
-captions a separate read — the C7 weighting) + a WINNER/NEUTRAL/LOSER verdict. Pass the obvious
-frame word AND its adjacent candidates (e.g. `carousel design template canva`) so a losing frame
-surfaces its winning neighbor. **If the user's framing word is a LOSER, say so with the number and
-reframe toward the strongest adjacent WINNER — keep their idea, change the frame** (their idea
-never gets vetoed; only the packaging shifts to what the field pays on). Thin n (<5) = weak signal,
-flag don't rule. This is the topic-level twin of §8's hook-level firewall: §8 screens hook *type*,
-this screens topic *frame*.
+captions a separate read — the C7 weighting) + a verdict. Pass the obvious frame word AND its
+adjacent candidates (e.g. `carousel design template canva`) so a losing frame surfaces its winning
+neighbor. This is the topic-level twin of §8's hook-level firewall: §8 screens hook *type*, this
+screens topic *frame*. **The idea is never vetoed — only the framing adapts.** Branch on the verdict:
+
+- **WINNER / NEUTRAL** → field-backed. Proceed; frame on the strongest winning word.
+- **LOSER (has data, underperforms)** → the field has *tried* this and it flops. **Pivot, don't
+  ditch:** keep the creator's core idea, present **2–3 data-backed adjustments** (reframe the
+  headline to the strongest adjacent WINNER, and/or swap to a proven hook type, and/or narrow to
+  the sub-angle that wins) with the numbers. The user picks; you never silently override.
+- **UNTESTED / THIN / NONE (little or no field data)** → **do NOT treat as a loser.** No data ≠ bad
+  idea — it may be genuinely new or timely (fresh news, a just-shipped tool, first-to-market), which
+  is a first-mover *edge*, not a red flag. Two moves: (1) say plainly it's untested — upside and
+  risk both live in the unknown; (2) **de-risk without killing it** — ride the novel topic on a
+  *proven hook type* + the *nearest proven frame word* so the novelty gambles on content, not also
+  on structure. Offer that as the safer build; let the user choose bold-novel vs de-risked-novel.
+
+Thin n (<5) counts as UNTESTED, not LOSER — a handful of reels is a hint, never a rule.
 
 ### ✋ Checkpoint 1 — Pick one angle
 **Pause.** The user picks one angle (or redirects). Everything downstream serves that one move.
