@@ -144,10 +144,15 @@ fills it — only the user can change it after this point, voice never can.
 The skeleton is frozen. Voice work happens **inside** it: voice may reword a beat, never add /
 cut / reorder / re-purpose one, and never soften a beat's move (a myth-bust stays a myth-bust).
 Substance comes from the analysis + the client's own input; `voc/` artifacts set **tone and
-vocabulary only** — never sentences to inject verbatim.
+vocabulary only** — never sentences to inject verbatim. **Mandatory when the angle is the
+client's own topic:** BEFORE generating body/proof options, interview them per locked teaching
+beat — one question per beat their brain-dump hasn't already covered (their story, their step,
+their number). Options are generated only from what they actually said; if a beat has no answer,
+flag it and ask — never paper over with invented teaching.
 
 Work the skeleton **section by section, in order** — Hook → Secondary hook(s) → Body beats →
-Proof → CTA → Caption hook. Per section, run **generate → screen → score → gate → pick**:
+Proof → CTA → Text-overlay storyboard → Caption hook. Per section, run
+**generate → screen → score → gate → pick**:
 
 1. **Generate** options in the client's voice, each built on the brief's proven moves:
    - **Hook (5–8 options)** — obey `./references/hook-mastery.md` law (single subject, single
@@ -171,6 +176,12 @@ Proof → CTA → Caption hook. Per section, run **generate → screen → score
      the loop mechanics (`retention-psychology.md`: connective question-chain, partial payoffs).
    - **CTA (2–3 options)** — matching scaffold from `./references/cta-scaffolds.md`, mapped to
      the client's actual goal/offer (from `business-config`). ONE ask only.
+   - **Text-overlay storyboard (2 whole-storyboard options)** — the on-screen text plan for the
+     entire reel: a beat → overlay-line table over the frozen skeleton, one row per beat, **1:1**
+     (no beat skipped, none added). Frame-1 overlay = the picked hook **verbatim** (the
+     three-hook alignment check depends on it); every other line **≤6 words**, reinforcing the
+     beat's move — never transcribing the spoken line. Must pass the **silent-scroll glance
+     test**: the overlays alone, read in order with the sound off, still tell the story arc.
    - **Caption hook (2–3 options)** — a second angle on the idea, not a copy of the spoken hook.
 2. **Screen** every option — the brief's **§8 Avoid list first** (this niche's losers), then the
    universal tables (`opener-patterns.md` losing openers, `say-this-not-that.md` incl. approach
@@ -178,7 +189,8 @@ Proof → CTA → Caption hook. Per section, run **generate → screen → score
 3. **Score each surviving option 1–10:** hooks on single-subject clarity / single question
    planted / scroll-stop power; secondary hooks on information-gap / narrative fit / value
    balance; body + proof on the Story Locks rubric (`./references/story-locks.md`); CTA on
-   clarity / alignment / friction; caption hook on cut-off curiosity / keyword / complementary
+   clarity / alignment / friction; storyboards on silent-scroll story / beat reinforcement /
+   ≤6-word discipline; caption hook on cut-off curiosity / keyword / complementary
    angle.
 4. **Gate:** present only options scoring **≥7**, with scores and a withheld count ("8 generated,
    3 cleared"). Fewer than 2 clear → regenerate once, then show the best available flagged
@@ -205,7 +217,7 @@ this pass tightens lines; it never restructures. Then write the **caption** (pic
 `../_shared/references/hook-diagnostics.md`: does it lose on **DELAY** (payoff too late),
 **CONFUSION** (ambiguous/jargon), **IRRELEVANCE** ("I"-framing, no viewer benefit), or
 **DISINTEREST** (topic the audience doesn't care about)? Fix any that fire before scoring.
-Re-scan the full assembled wording (hook, body, CTA, caption) against the brief's §8 Avoid list
+Re-scan the full assembled wording (hook, body, CTA, caption, overlays) against the brief's §8 Avoid list
 and the universal losing tables — line edits and voice phrasing are not exempt.
 
 **4b. Flow-check + skeleton integrity.** Read the script top to bottom as a viewer: does each
@@ -243,6 +255,8 @@ Structure:
   Body:
   Proof:
   CTA:
+## Text overlays
+  <beat → on-screen line table; frame-1 = the hook verbatim>
 ## Caption
 ## Craft score
   Hook __/100 · Body __/100 · CTA __/100 · Overall __/100 — top fix: ...
@@ -317,6 +331,8 @@ Absent → one-line mention, continue.
   claim about "what wins" isn't traceable to `analysis-data.json` / `scripting-brief.md`, cut it.
 - **Voice before copy.** Never write final lines until the voice anchor is confirmed (Checkpoint 0).
   When degraded to interim voice, say so on the script.
+- **Their substance, never invented.** On a client-supplied topic, teaching-beat content comes
+  from the beat-by-beat interview (Step 3) — a beat with no client answer gets flagged, not filled.
 - **Craft, not promises.** The score is craft quality. Never predict views, reach, or virality —
   the engine measures what already happened, it does not forecast (consistent with the no-score
   discipline elsewhere in the product).
