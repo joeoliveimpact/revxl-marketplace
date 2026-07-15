@@ -49,6 +49,16 @@ Fewer words, simpler words, active voice, one idea per sentence.
 | "[Topic] is multifactorial and depends on several variables." | "[outcome] really comes down to one thing: [mechanism]." |
 | "As I mentioned in my last post about [topic]…" | "Here's the part of [topic] that actually matters." |
 | "Leveraging [mechanism] to mitigate [pain] is suboptimal." | "[mechanism] won't fix [pain] — here's what does." |
+| "Here are the [number] ways I grew the most last year." (grew *what*? — fragmented subject) | "The [number] fastest ways for [audience] to [specific outcome]." (one subject, one question) |
+
+## Approach losers — patterns, not lines
+These lose at the *approach* level; no single-line rewrite fixes them — restructure the move.
+
+| ❌ Not that | ✅ Do this | Killer |
+|---|---|---|
+| Stacked asks: "Comment [X], DM me [Y], save this, AND follow." | **ONE CTA** per reel — same ask in script and caption. Pick the action that matches the value delivered. | CONFUSION |
+| Back-to-back teases: "It gets crazier… but wait, there's more…" with no payoff between | Deliver a real piece of value between every tease — each new loop sits on something the viewer just learned. | DISINTEREST |
+| Assuming context: "like I said in part 2…" / hooks that need your last post | Every reel stands alone — the viewer has ZERO embedded context before the hook. | CONFUSION |
 
 ---
 

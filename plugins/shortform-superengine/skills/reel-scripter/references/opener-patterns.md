@@ -23,15 +23,16 @@ the single most common amateur retention-killer:
 |---|---|---|---|
 | **1. HOOK** | first phrase | One open loop, stated to "you." | **Name never first.** No greeting, no "today we're talking about." Open ON the first interesting word. |
 | **2. PROMISE** | right after | "Here's exactly what you'll walk away able to do — even if [obstacle]." | One concrete payoff. Disarm the viewer's biggest objection here. |
-| **3. MICRO-INTRO** | only after 1+2 | "By the way, if you don't know me, I'm [name] — [one proof claim]." | **≤6 seconds, one sentence**, fused to credibility (not a bare name). Signpost it ("by the way…") so it reads as a quick aside, not a bio. |
+| **3. MICRO-INTRO** *(YouTube only)* | only after 1+2 | "By the way, if you don't know me, I'm [name] — [one proof claim]." | **≤6 seconds, one sentence**, fused to credibility (not a bare name). Signpost it ("by the way…") so it reads as a quick aside, not a bio. **Skip it on IG reels** — measured NEGATIVE marker on IG (winners don't do it; the ~2s cliff can't afford the aside). |
 | **4. CONTENT** | then | "Alright, let's get into it." | Straight into the body. |
 
 - **Why name-never-first:** every counted top performer puts the hook + promise *before* the name;
   zero opened with their name. Leading with "hi, I'm…" buries the hook and loses the scroll.
 - **The micro-intro is a credibility stamp, not a greeting** — it's only worth the airtime if the name
   is glued to a proof claim the audience cares about. A bare "my name is [name]" earns nothing.
-- **It's optional but high-value for a launching account** — a new viewer has no reason to trust you yet,
-  so the proof line is where you earn it. Skip it only if your audience already knows you.
+- **It's optional but high-value for a launching account on YouTube** — a new viewer has no reason to
+  trust you yet, so the proof line is where you earn it. Skip it if your audience already knows you —
+  and **always skip it on IG reels** (the IG corpus reads it as a negative marker; YT-only move).
 
 > **IG / Reels note:** on Instagram there is **no title and no thumbnail** — the hook IS the
 > **frame-1 on-screen text**. The first spoken (or written) words must double as **burned-in caption**,
@@ -104,5 +105,7 @@ the single most common amateur retention-killer:
 | "Today I want to share my experience with [topic]." | IRRELEVANCE | Creator-POV; viewer hasn't been told why it's theirs. | Reframe to "you" + the pain. |
 | "[Topic] is really important and something I care about." | DISINTEREST | True but tensionless — no open loop. | Add an A-vs-B contrast. |
 | "Let me give you a little background first." | DELAY | Explicitly defers the payoff. | Skip background; deliver, backfill later. |
+| "You won't BELIEVE what happened next…" (tease, no subject) | DISINTEREST / CONFUSION | Pure tease with nothing concrete to be curious about — parses as clickbait; the loop it opens has no subject to hold. | Name the subject, then open a real gap on it. |
+| "Comment 'X' and follow before I even start…" (ask before value) | DELAY | Asks before any value exists; the CTA hasn't been earned and burns the attention window. | Hook first; one CTA after the payoff. |
 
 **One-line test:** if the first 5 spoken/on-screen words don't name the subject AND a tension or a "you," the opener is leaking one of the four Killers — rewrite before scripting the body.

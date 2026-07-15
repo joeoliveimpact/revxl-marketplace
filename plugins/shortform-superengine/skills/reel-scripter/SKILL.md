@@ -63,7 +63,9 @@ spending the next move. One run = one finished reel script written to `<project>
 python ${CLAUDE_PLUGIN_ROOT}/skills/reel-scripter/scripting_brief.py <project_dir>
 ```
 
-This writes `<project_dir>/scripting-brief.md`. Read it — it is your menu of proven moves.
+This writes `<project_dir>/scripting-brief.md`. Read it — it is your menu of proven moves, and
+its **§8 Avoid list is this niche's own losers** (hooks/themes/opening vocabulary the field
+punishes) — every option you generate later is screened against it.
 It auto-detects **FULL** mode (spoken transcripts present) vs **CAPTION-ONLY** degrade
 (no transcripts — structures inferred from captions, flagged in a banner).
 
@@ -123,46 +125,77 @@ myth-bust hooks median Nx the client's; closes the [gap] gap."*
 
 For the chosen hook type, pull the matching body skeleton from
 `./references/body-structures.md` (organized by hook bucket: question / myth-bust / listicle /
-story / pain-callout / contrarian / statement). Lay out the beat list for THIS reel:
-`Hook → Secondary hook → Body beat 1..n → Proof → CTA`. Keep it to the length target the brief
-gives (most winning reels are short — respect it).
+story / pain-callout / contrarian / statement). Consult `./references/retention-psychology.md`
+to pick the post-hook structure by intent (Transformation Arc / Myth-Buster / Authority Solution)
+and plan the loops: where the primary loop pays off, secondary-hook count + placement for the
+length (strongest at the 12–15s window), and the beat-to-beat question chain. Lay out the beat
+list for THIS reel: `Hook → Secondary hook → Body beat 1..n → Proof → CTA`. Keep it to the length
+target the brief gives (most winning reels are short — respect it).
 
-### ✋ Checkpoint 2 — Approve the skeleton
+### ✋ Checkpoint 2 — Approve the skeleton (then it FREEZES)
 Show the empty beat list (labels only, no copy yet). **Pause** for the user to add/cut/reorder
-beats before any line is written.
+beats before any line is written. On approval the skeleton **locks**: everything downstream
+fills it — only the user can change it after this point, voice never can.
 
 ---
 
-### Step 3 — Fill in voice
+### Step 3 — Fill in voice: scored options, the user assembles
 
-Write each beat, in order, **in the client's voice**:
-- **Hook** — front-load value using the **HOOK → PROMISE → MICRO-INTRO** opener structure +
-  bucket templates in `./references/opener-patterns.md`; for a fast first draft, pull a proven
-  shape from `./references/hook-formulas.md` (each maps to the hook bucket the analysis ranked).
-  **Brain pull #2 (Trigger 2 of 2, optional):** if the Brain key resolves and the hook bucket
-  feels stale or thin, ONE `/v1/search` — `query` = `hook <bucket> <topic>` with the bucket
-  Step 2 locked (question / myth-bust / listicle / story / pain-callout / contrarian /
-  statement — one always exists by now; hybrid angle → one variant per bucket in play) + up
-  to 3 `/v1/note` reads on the top hits — current hook patterns beat frozen ones. Cache to `<project>/brain-pulls/`,
-  cite `[brain] <path>`. Same degrade rules; **total Brain budget for the whole reel: ≤2
-  searches + ≤3 note reads, never inside loops.**
-  Use the client's vocabulary; pull verbatim audience pains from `voc-profile.md` where they fit
-  (the client's words beat yours). On IG the hook is the **frame-1 on-screen text** — write it to
-  double as burned-in caption.
-- **Secondary hook** — the 1–2 second re-hook that keeps the viewer past the open.
-- **Body beats** — fill the skeleton; one idea per beat; cut anything that delays the payoff.
-- **Proof** — the specific/credible line (number, mechanism, story) the structure calls for.
-- **CTA** — pull the matching scaffold from `./references/cta-scaffolds.md`, mapped to the
-  client's actual goal/offer (from `business-config`).
+The skeleton is frozen. Voice work happens **inside** it: voice may reword a beat, never add /
+cut / reorder / re-purpose one, and never soften a beat's move (a myth-bust stays a myth-bust).
+Substance comes from the analysis + the client's own input; `voc/` artifacts set **tone and
+vocabulary only** — never sentences to inject verbatim.
 
-Dial the **edge** to the voice guide (how blunt/contrarian the client is). Then run the whole draft
-through the **7 Swaps** line-edit pass in `./references/story-locks.md` (name it · kill hedges · go
-negative · add contrast · loop-openers every ~20–30s · narrate the doubt), and fix weak lines with
-`./references/say-this-not-that.md` (creator-POV → viewer-benefit, vague → specific, buried →
-front-loaded, jargon → plain).
+Work the skeleton **section by section, in order** — Hook → Secondary hook(s) → Body beats →
+Proof → CTA → Caption hook. Per section, run **generate → screen → score → gate → pick**:
 
-Then write the **caption** (hook line + context + the same CTA) and suggest on-screen text for
-the hook.
+1. **Generate** options in the client's voice, each built on the brief's proven moves:
+   - **Hook (5–8 options)** — obey `./references/hook-mastery.md` law (single subject, single
+     question; trust anchor on line 2–3), the **HOOK → PROMISE** opener structure + bucket
+     templates in `./references/opener-patterns.md` (micro-intro is YT-only — skip on IG), and
+     proven shapes from `./references/hook-formulas.md`. On IG the hook is the **frame-1
+     on-screen text** — write it to double as burned-in caption.
+     **Brain pull #2 (Trigger 2 of 2, optional):** if the Brain key resolves and the hook bucket
+     feels stale or thin, ONE `/v1/search` — `query` = `hook <bucket> <topic>` with the bucket
+     Step 2 locked; add retention/loop + "patterns to avoid" terms to the `variants` so the same
+     pull refreshes the psychology + loser layers. When note-reads compete, hook hits win over
+     psychology hits. Up to 3 `/v1/note` reads. Cache to `<project>/brain-pulls/`, cite
+     `[brain] <path>`. Same degrade rules; **total Brain budget for the whole reel: ≤2 searches
+     + ≤3 note reads, never inside loops.**
+     Use the client's vocabulary; pull verbatim audience pains from `voc-profile.md` where they
+     fit (the client's words beat yours).
+   - **Secondary hooks (3 options per placement)** — place + dose per
+     `./references/retention-psychology.md` §4 (strongest at 12–15s; scripted content moments,
+     not edit effects; every tease sits on value already delivered).
+   - **Body beats + Proof (2–3 options per beat)** — fill the skeleton one idea per beat; run
+     the loop mechanics (`retention-psychology.md`: connective question-chain, partial payoffs).
+   - **CTA (2–3 options)** — matching scaffold from `./references/cta-scaffolds.md`, mapped to
+     the client's actual goal/offer (from `business-config`). ONE ask only.
+   - **Caption hook (2–3 options)** — a second angle on the idea, not a copy of the spoken hook.
+2. **Screen** every option — the brief's **§8 Avoid list first** (this niche's losers), then the
+   universal tables (`opener-patterns.md` losing openers, `say-this-not-that.md` incl. approach
+   losers). A hit disqualifies the option outright; **brand-voice phrasing is not exempt.**
+3. **Score each surviving option 1–10:** hooks on single-subject clarity / single question
+   planted / scroll-stop power; secondary hooks on information-gap / narrative fit / value
+   balance; body + proof on the Story Locks rubric (`./references/story-locks.md`); CTA on
+   clarity / alignment / friction; caption hook on cut-off curiosity / keyword / complementary
+   angle.
+4. **Gate:** present only options scoring **≥7**, with scores and a withheld count ("8 generated,
+   3 cleared"). Fewer than 2 clear → regenerate once, then show the best available flagged
+   "below bar". The bar defaults to 7; the user can move it for the run.
+5. **The user picks** — by score plus *"which sounds most like something you'd actually say."*
+   No auto-alternatives: rewrites happen on request, per option. The pick locks; the next
+   section's options are generated **in continuity with everything picked so far**.
+
+On the picked hook, run the **three-hook alignment check** (`hook-mastery.md`): visual, spoken,
+and text hook must mean the same thing — fix before moving on.
+
+When every section is picked, dial the **edge** to the voice guide (how blunt/contrarian the
+client is), then run the assembled draft through the **7 Swaps** line-edit pass in
+`./references/story-locks.md` (name it · kill hedges · go negative · add contrast · loop-openers
+every ~20–30s · narrate the doubt) and fix weak lines with `./references/say-this-not-that.md` —
+this pass tightens lines; it never restructures. Then write the **caption** (picked caption hook
++ context + the same single CTA).
 
 ---
 
@@ -172,9 +205,14 @@ the hook.
 `../_shared/references/hook-diagnostics.md`: does it lose on **DELAY** (payoff too late),
 **CONFUSION** (ambiguous/jargon), **IRRELEVANCE** ("I"-framing, no viewer benefit), or
 **DISINTEREST** (topic the audience doesn't care about)? Fix any that fire before scoring.
+Re-scan the full assembled wording (hook, body, CTA, caption) against the brief's §8 Avoid list
+and the universal losing tables — line edits and voice phrasing are not exempt.
 
-**4b. Flow-check.** Read the script top to bottom as a viewer: does each beat earn the next?
-Any dead beat, any place the attention drops — flag and tighten.
+**4b. Flow-check + skeleton integrity.** Read the script top to bottom as a viewer: does each
+beat earn the next? Any dead beat, any place the attention drops — flag and tighten. Then
+confirm the draft matches the Checkpoint-2 skeleton **beat-for-beat** (no beat added / cut /
+reordered, no move softened) — any drift gets flagged at Checkpoint 4. A change the **user**
+asks for at Checkpoint 4 is always allowed — the lock binds voice, not the user.
 
 **4c. Craft score.** Score **Hook / Body / CTA / overall (0–100)** against the **Story Locks rubric**
 (`./references/story-locks.md`) — how many of the 6 Story Locks + 7 Swaps the script lands (contrast,
@@ -246,6 +284,8 @@ N. <Idea title — the angle in one line>
 Rules:
 - Every idea cites evidence (`@handle · metric · URL`) — same discipline as angles in
   Step 1. No vibes-only ideas.
+- Cross-check each idea's hook bucket + theme against the brief's §8 Avoid list — an idea riding
+  a niche-loser bucket/theme gets tagged `[avoid-list]` so nobody scripts it blind.
 - Spread across the brief's attack themes; don't let one theme eat the pool.
 - These are **ideas in the niche's language, not yet in the client's voice** — voice
   work happens when an idea is picked.
@@ -271,6 +311,8 @@ Absent → one-line mention, continue.
 
 ## Guardrails
 
+- **Structure locks, voice is skin.** Proven data + the reference doctrine decide the beats,
+  moves, and loops; voice only decides how a locked beat *sounds*. Voice never restructures.
 - **Analysis-driven, not vibes.** Every angle cites the analysis (`@handle · metric · URL`). If a
   claim about "what wins" isn't traceable to `analysis-data.json` / `scripting-brief.md`, cut it.
 - **Voice before copy.** Never write final lines until the voice anchor is confirmed (Checkpoint 0).
@@ -293,9 +335,11 @@ Absent → one-line mention, continue.
 
 ## References
 
-- `./scripting_brief.py` — deterministic brief generator; run first (Step 0b)
+- `./scripting_brief.py` — deterministic brief generator (incl. §8 niche Avoid list); run first (Step 0b)
+- `./references/hook-mastery.md` — the hook doctrine: single subject / single question, three-hook alignment, 7-step process (Step 3)
+- `./references/retention-psychology.md` — the content inside the beats: loops, partial payoffs, secondary-hook placement, post-hook structures (Steps 2–3)
 - `./references/story-locks.md` — the 6 Story Locks + 7 Swaps craft-scoring rubric + line-edit pass (Step 4c)
-- `./references/opener-patterns.md` — HOOK→PROMISE→MICRO-INTRO + first-3-seconds opener templates by hook bucket
+- `./references/opener-patterns.md` — HOOK→PROMISE(→MICRO-INTRO, YT-only) + first-3-seconds opener templates by hook bucket, incl. the losing-openers table
 - `./references/hook-formulas.md` — view-validated hook formulas mapped to the analysis's hook buckets
 - `./references/body-structures.md` — body skeletons by hook bucket (Step 2)
 - `./references/cta-scaffolds.md` — CTA patterns by goal (Step 3)

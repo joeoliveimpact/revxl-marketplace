@@ -83,7 +83,7 @@ def row_of(handle, r, caption, likes, comments, med_views):
     hook_wps = round(hw / (first["e"] - first["s"]), 2) if first["e"] > first["s"] else None
     gaps = [round(segs[i+1]["s"] - segs[i]["e"], 2) for i in range(len(segs)-1)]
     you = len(re.findall(r"\byou(r|'re|'ll|'ve)?\b", low)); i_ = len(re.findall(r"\bi('m|'ve|'ll)?\b|\bmy\b|\bme\b", low))
-    cta_types = []; cta_pos = None; cta_word = None
+    cta_types = []; cta_pos = None; cta_pos_s = None; cta_word = None
     for name, pat in CTA.items():
         m = re.search(pat, low)
         if m:
@@ -94,7 +94,7 @@ def row_of(handle, r, caption, likes, comments, med_views):
                 for s in segs:
                     acc2 += len(s["text"]) + 1
                     if acc2 >= ch:
-                        cta_pos = round(s["s"] / dur * 100, 1); break
+                        cta_pos = round(s["s"] / dur * 100, 1); cta_pos_s = round(s["s"], 2); break
     tail = " ".join(s["text"] for s in segs if s["s"] >= dur * 0.85).lower()
     if any(re.search(p, tail) for p in CTA.values()): ending = "cta-outro"
     elif segs and jac(segs[-1]["text"], first["text"]) > 0.5: ending = "loop-back"
@@ -112,7 +112,8 @@ def row_of(handle, r, caption, likes, comments, med_views):
         "er": round((likes + comments) / views, 4) if views else None,
         "comment_rate": round(comments / views, 5) if views else None,
         "duration": dur, "n_words": nw, "wps": wps,
-        "hook_end_seg": first["e"], "t15w": t15, "hook_wps": hook_wps,
+        "hook_end_seg": first["e"], "hook_end_pct": round(first["e"] / dur * 100, 1),
+        "t15w": t15, "t15w_pct": (round(t15 / dur * 100, 1) if t15 else None), "hook_wps": hook_wps,
         "silence_s": round(sum(g for g in gaps if g > 0.3), 2), "max_gap": max(gaps) if gaps else 0,
         "contrast_per100": per100(len(re.findall(CONTRAST, low)), nw),
         "hedges": len(re.findall(HEDGES, low)),
@@ -125,7 +126,7 @@ def row_of(handle, r, caption, likes, comments, med_views):
         "negation_open": bool(re.match(r"^(stop|don't|never|nobody|no one|you're (doing|using).*wrong|most people)", low.strip())),
         "tools": [t for t, p in TOOLS.items() if re.search(p, low)],
         "themes": [t for t, p in THEMES.items() if re.search(p, low)],
-        "cta_types": cta_types, "cta_word": cta_word, "cta_pos_pct": cta_pos, "ending": ending,
+        "cta_types": cta_types, "cta_word": cta_word, "cta_pos_pct": cta_pos, "cta_pos_s": cta_pos_s, "ending": ending,
         "caption_rel": cap_rel, "caption_len": len(cap),
     }
 
@@ -164,9 +165,10 @@ L = [r for r in rows if r["rank"] == "bottom" and r["cluster"] != "CLIENT"]
 def m(rs, k):
     xs = [r[k] for r in rs if isinstance(r.get(k), (int, float))]
     return st.median(xs) if xs else None
-NUM_DIMS = ["duration","wps","hook_end_seg","t15w","hook_wps","silence_s","contrast_per100",
-            "hedges","curiosity_hits","you_i_ratio","specificity_per100","questions",
-            "imperative_segs","er","comment_rate","cta_pos_pct","caption_len"]
+NUM_DIMS = ["duration","wps","hook_end_seg","hook_end_pct","t15w","t15w_pct","hook_wps",
+            "silence_s","contrast_per100","hedges","curiosity_hits","you_i_ratio",
+            "specificity_per100","questions","imperative_segs","er","comment_rate",
+            "cta_pos_pct","cta_pos_s","caption_len"]
 out = []; o = out.append
 o("# Pattern Matrix - Layer 1 stats (deterministic, all transcribed reels)")
 o(f"\nRows: {len(rows)} reels ({len(W)} winners / {len(L)} losers / client {sum(1 for r in rows if r['cluster']=='CLIENT')}).")
@@ -209,6 +211,38 @@ o("|---|--:|--:|--:|")
 for c in sorted(cv, key=lambda k: -st.median([x[0] for x in cv[k]])):
     vs = [x[0] for x in cv[c]]; cr = [x[1] for x in cv[c]]
     o(f"| {c} | {len(vs)} | {st.median(vs):,.0f} | {st.median(cr)*100:.2f}% |")
+# ---- duration sweet spot: FULL pulled population (no transcript needed) ----
+BANDS = [(0,10),(10,20),(20,30),(30,45),(45,60),(60,90),(90,10**9)]
+def band_name(d):
+    for lo,hi in BANDS:
+        if lo <= d < hi: return f"{lo}-{hi}s" if hi < 10**9 else f"{lo}s+"
+    return "?"
+full = []  # (duration, views, mult_vs_creator_median)
+for rf in glob.glob(os.path.join(RDIR, "*.json")):
+    try: dd = json.load(open(rf, encoding="utf-8"))
+    except Exception: continue
+    pts = []
+    for it in dd.get("reels", dd.get("items", [])):
+        p = it.get("post", {})
+        dur = p.get("content", {}).get("duration_seconds")
+        v = p.get("engagement", {}).get("views") or 0
+        if dur and v: pts.append((dur, v))
+    if len(pts) < 5: continue
+    cmed = st.median([v for _, v in pts]) or 1
+    for dur, v in pts: full.append((dur, v, v / cmed))
+o("\n## Duration sweet spot (FULL pulled population, per-creator normalized)")
+o(f"\nAll pulled reels with duration+views: {len(full)}. 'Med mult' = views vs that creator's own median (1.0 = typical; >1 = overperforms) — the per-creator normalization is what makes bands comparable across account sizes.")
+o("\n| Band | Reels | Med views | Med mult | % over 2x own median |")
+o("|---|--:|--:|--:|--:|")
+for lo,hi in BANDS:
+    seg = [x for x in full if lo <= x[0] < hi]
+    if len(seg) < 10: continue
+    nm = f"{lo}-{hi}s" if hi < 10**9 else f"{lo}s+"
+    over = sum(1 for x in seg if x[2] >= 2) / len(seg) * 100
+    o(f"| {nm} | {len(seg)} | {st.median([x[1] for x in seg]):,.0f} | {st.median([x[2] for x in seg]):.2f} | {over:.0f}% |")
+o("\nW-vs-L durations (transcribed sample): winners med "
+  f"{m(W,'duration')}s vs losers {m(L,'duration')}s.")
+
 o("\n## Cluster medians (winners only)")
 o("\n| Cluster | n | Med views | Dur | WPS | Contrast/100 | Spec/100 |")
 o("|---|--:|--:|--:|--:|--:|--:|")

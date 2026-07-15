@@ -70,7 +70,10 @@ Single-note GET `/v1/note?path=…` also works.
 - **≤2 searches + ≤3 note reads per reel.** Server enforces daily budgets
   (200 searches / 50 reads per key) — a loop that queries per-reel-per-competitor
   will exhaust the client's whole day. Brain calls fire at **named steps only**,
-  never inside loops.
+  never inside loops. A pull may serve multiple layers via `variants` (e.g.
+  reel-scripter's hook pull also carries retention/loser variant terms) — broaden
+  the variants, never add calls; when note-reads compete, the step's primary
+  intent wins.
 - **Check the project cache first:** pulls are saved to
   `<project_dir>/brain-pulls/<slug>.md` (query, date, cited hits, note excerpts).
   Same-project scripts reuse the cache instead of re-calling. The cache doubles
