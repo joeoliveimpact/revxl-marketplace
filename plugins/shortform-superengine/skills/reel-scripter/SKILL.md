@@ -116,6 +116,23 @@ winning hook type × the gap it closes}, with the evidence cited (`@handle · me
 from the analysis). Example shape: *"Myth-bust on [under-served high-value theme] — the field's
 myth-bust hooks median Nx the client's; closes the [gap] gap."*
 
+**Custom-idea field vet (mandatory when the user brings their OWN topic).** A brief-derived
+angle is already field-backed; a user-supplied idea is NOT — vet it before committing beats.
+Run its topic word(s) through the field:
+
+```bash
+python ${CLAUDE_PLUGIN_ROOT}/skills/reel-scripter/field_vet.py <project_dir> <keyword> [keyword2 ...]
+```
+
+It reports, per keyword, the field's median views vs the field median (spoken track PRIMARY,
+captions a separate read — the C7 weighting) + a WINNER/NEUTRAL/LOSER verdict. Pass the obvious
+frame word AND its adjacent candidates (e.g. `carousel design template canva`) so a losing frame
+surfaces its winning neighbor. **If the user's framing word is a LOSER, say so with the number and
+reframe toward the strongest adjacent WINNER — keep their idea, change the frame** (their idea
+never gets vetoed; only the packaging shifts to what the field pays on). Thin n (<5) = weak signal,
+flag don't rule. This is the topic-level twin of §8's hook-level firewall: §8 screens hook *type*,
+this screens topic *frame*.
+
 ### ✋ Checkpoint 1 — Pick one angle
 **Pause.** The user picks one angle (or redirects). Everything downstream serves that one move.
 
