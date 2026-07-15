@@ -229,6 +229,8 @@ Keys are **UPPERCASE** (`GURU`/`LARGE`/`MED`/`SMALL`). `GURU` is optional — om
 python ${CLAUDE_PLUGIN_ROOT}/skills/competitor-cross-reference/analyze.py <project_dir>
 ```
 
+**Transcribe first.** Run the Transcription step BEFORE analyze.py — when transcripts exist (`source/client-transcripts.json` + `source/competitors/transcripts/`), hook/theme diagnosis keys on the **spoken track** (what actually retains, ~80% of the signal), and the caption-keyed read is emitted as a separate **Caption patterns** section (packaging/SEO surface, ≤20% — never mixed into the spoken diagnosis). If analyze.py already ran caption-only, re-run it after transcription — the md/json upgrade in place. `meta.transcript_coverage` in the JSON reports how much of the field was transcript-covered.
+
 The script reads `source/reels-full.json` (client reels), `source/competitors/reels/<handle>.json` (competitor reels), `source/competitors/profiles/<handle>.json` (follower counts), and `tiers.json`, then writes `analysis-data.md` containing:
 
 - Reach efficiency per creator: `median views ÷ followers`

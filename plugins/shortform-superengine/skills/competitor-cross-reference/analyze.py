@@ -86,6 +86,48 @@ def themes_of(cap):
     t = fix(cap).lower()
     return [name for name,pat in THEMES.items() if re.search(pat, t)]
 
+# ---- transcript index (C7): spoken text keyed by reel url ----
+# The live pipeline (transcribe_reels.py) writes source/client-transcripts.json +
+# source/competitors/transcripts/<handle>.json. When transcripts exist, hook/theme
+# diagnosis keys on the SPOKEN track (what actually retains, ~80% of the signal);
+# captions stay as a separate packaging-surface read (<=20%). With no transcripts,
+# every reel falls back to caption and output is byte-identical to the caption-only
+# code path (the regression gate can't drift).
+def _tx_index():
+    idx = {}
+    paths = [os.path.join(ROOT, 'source', 'client-transcripts.json')] + \
+            sorted(glob.glob(os.path.join(ROOT, 'source', 'competitors', 'transcripts', '*.json')))
+    for p in paths:
+        if not os.path.exists(p): continue
+        try: d = J(p)
+        except Exception: continue
+        for r in d.get('reels') or []:
+            if r.get('url') and r.get('text'):
+                idx[r['url']] = fix(r['text'])
+    return idx
+TX = _tx_index()
+
+def _tx_first(t):
+    t = t.strip()
+    return re.split(r'(?<=[.!?])\s+', t)[0][:140] if t else ''
+
+# primary-diagnosis wrappers: spoken first sentence when a transcript exists,
+# caption line 1 otherwise. hook_type/themes_of bodies stay untouched -- both
+# tracks reuse them on different inputs.
+def r_hook(r):
+    return hook_type(_tx_first(r['tx'])) if r.get('tx') else hook_type(r['cap'])
+
+def r_hookline(r):
+    return _tx_first(r['tx'])[:80] if r.get('tx') else r['cap'].split('\n')[0][:80]
+
+def r_themes(r):
+    # transcript + caption concatenated: spoken text dominates by length, caption
+    # hashtags/keywords still register (the ~80/20 weighting)
+    return themes_of((r['tx'] + '\n' + r['cap']) if r.get('tx') else r['cap'])
+
+def r_src(r):
+    return 'transcript' if r.get('tx') else 'caption'
+
 def _epoch(pub):
     # accept epoch (int/float) or ISO-8601 string; return epoch seconds or None
     if isinstance(pub, (int, float)): return pub
@@ -107,6 +149,7 @@ def reels_of(path):
             url=p.get('url'), views=e.get('views') or 0, likes=e.get('likes') or 0,
             comments=e.get('comments') or 0, cap=fix(p.get('content',{}).get('text','')),
             dur=p.get('content',{}).get('duration_seconds'), pub=_epoch(p.get('published_at')),
+            tx=TX.get(p.get('url')),
         ))
     return out
 
@@ -176,13 +219,21 @@ rollup('CLIENT',[CLIENT_HANDLE]); rollup('GURU',TIERS['GURU']); rollup('LARGE',T
 if lane_on:
     for lane in LANES: rollup('-- ' + lane + ' lane', LANES[lane])
 
-# hook taxonomy
+# transcript coverage (C7): drives the dual-track emit below
+_n_reels_total = sum(len(c['reels']) for c in creators.values())
+_n_reels_tx = sum(1 for c in creators.values() for r in c['reels'] if r.get('tx'))
+TX_COVERAGE = (_n_reels_tx / _n_reels_total) if _n_reels_total else 0
+
+# hook taxonomy — PRIMARY (spoken-first via r_hook; == caption when no transcripts)
 w('\n## Hook taxonomy — field vs client (median views by hook type)')
 field_hook=defaultdict(list); client_hook=defaultdict(list)
+cap_field_hook=defaultdict(list); cap_client_hook=defaultdict(list)
 for h,c in creators.items():
     for r in c['reels']:
-        ht=hook_type(r['cap'])
+        ht=r_hook(r)
         (client_hook if h==CLIENT_HANDLE else field_hook)[ht].append(r['views'])
+        cht=hook_type(r['cap'])   # caption bucket: separate accumulators, never merged
+        (cap_client_hook if h==CLIENT_HANDLE else cap_field_hook)[cht].append(r['views'])
 w('\n| Hook type | Field n | Field med views | Client n | Client med views |')
 w('|---|--:|--:|--:|--:|')
 for ht in sorted(field_hook, key=lambda k:-med(field_hook[k])):
@@ -191,10 +242,13 @@ for ht in sorted(field_hook, key=lambda k:-med(field_hook[k])):
 # theme prevalence + performance (field)
 w('\n## Theme performance (field-wide, by median views of reels touching theme)')
 theme_v=defaultdict(list); theme_client=defaultdict(list)
+cap_theme_v=defaultdict(list); cap_theme_client=defaultdict(list)
 for h,c in creators.items():
     for r in c['reels']:
-        for th in themes_of(r['cap']):
+        for th in r_themes(r):
             (theme_client if h==CLIENT_HANDLE else theme_v)[th].append(r['views'])
+        for th in themes_of(r['cap']):   # caption bucket
+            (cap_theme_client if h==CLIENT_HANDLE else cap_theme_v)[th].append(r['views'])
 if lane_on:
     w('\n| Theme | Field reels | Field med views | Client reels | Client med views |')
     w('|---|--:|--:|--:|--:|')
@@ -215,7 +269,7 @@ if lane_on:
             c=creators.get(h)
             if not c: continue
             for r in c['reels']:
-                for th in themes_of(r['cap']): lane_theme[th].append(r['views'])
+                for th in r_themes(r): lane_theme[th].append(r['views'])
         w(f'\n**{lane} lane:** ' + ', '.join(f'{th} {med(v):,.0f}({len(v)})' for th,v in sorted(lane_theme.items(), key=lambda kv:-med(kv[1]))))
 
 # top field outliers (each creator's reels >=2.5x their own median), ranked by multiple
@@ -226,21 +280,21 @@ for h,c in creators.items():
     for r in c['reels']:
         if r['views']>=2.5*mv:
             if lane_on:
-                outliers.append((r['views']/mv, h, c['tier'], c.get('lane','?'), r['views'], hook_type(r['cap']), themes_of(r['cap']), r['cap'].split('\n')[0][:80], r['url']))
+                outliers.append((r['views']/mv, h, c['tier'], c.get('lane','?'), r['views'], r_hook(r), r_themes(r), r_hookline(r), r['url'], r_src(r)))
             else:
-                outliers.append((r['views']/mv, h, c['tier'], r['views'], hook_type(r['cap']), themes_of(r['cap']), r['cap'].split('\n')[0][:80], r['url']))
+                outliers.append((r['views']/mv, h, c['tier'], r['views'], r_hook(r), r_themes(r), r_hookline(r), r['url'], r_src(r)))
 outliers.sort(reverse=True)
 if lane_on:
     w('\n\n## Top outliers (reels >=2.5x their creator’s own median) — what overperforms')
     w('\n| Mult | Handle | Tier | Lane | Views | Hook | Themes | Hook line | URL |')
     w('|--:|---|---|---|--:|---|---|---|---|')
-    for m,h,t,ln,v,ht,th,line,url in outliers[:30]:
+    for m,h,t,ln,v,ht,th,line,url,src in outliers[:30]:
         w(f"| {m:.1f}x | @{h} | {t} | {ln} | {v:,} | {ht} | {','.join(th)[:24]} | {line.replace('|','/')} | {url} |")
 else:
     w('\n## Top outliers (reels >=2.5x their creator\'s own median) — what overperforms')
     w('\n| Mult | Handle | Tier | Views | Hook | Themes | Hook line | URL |')
     w('|--:|---|---|--:|---|---|---|---|')
-    for m,h,t,v,ht,th,line,url in outliers[:30]:
+    for m,h,t,v,ht,th,line,url,src in outliers[:30]:
         w(f"| {m:.1f}x | @{h} | {t} | {v:,} | {ht} | {','.join(th)[:24]} | {line.replace('|','/')} | {url} |")
 
 # client reels detail
@@ -249,7 +303,27 @@ w('\n| Views | ER | Hook | Themes | Hook line |')
 w('|--:|--:|---|---|---|')
 for r in sorted(client['reels'], key=lambda r:-r['views']):
     er=(r['likes']+r['comments'])/r['views']*100 if r['views'] else 0
-    w(f"| {r['views']:,} | {er:.1f}% | {hook_type(r['cap'])} | {','.join(themes_of(r['cap']))[:24]} | {r['cap'].split(chr(10))[0][:70].replace('|','/')} |")
+    w(f"| {r['views']:,} | {er:.1f}% | {r_hook(r)} | {','.join(r_themes(r))[:24]} | {r_hookline(r)[:70].replace('|','/')} |")
+
+# ---- caption patterns bucket (C7): emitted ONLY when transcripts exist. ----
+# Deliberately separate from the primary (spoken) tables above: captions are the
+# packaging/SEO surface — what the reel LOOKS like it's about — never the
+# retention diagnosis. With no transcripts this whole section is absent and the
+# md stays byte-identical to the caption-only code path.
+if TX_COVERAGE > 0:
+    w('\n## Caption patterns (packaging surface — separate read, never mix into the spoken diagnosis)')
+    w(f'\nCaption-keyed tables ({_n_reels_tx}/{_n_reels_total} reels transcript-covered; the primary tables above key on the spoken track). '
+      'Use these for packaging/SEO choices only — a caption pattern that wins here says nothing about what retains.')
+    w('\n**Caption hook taxonomy — field vs client (median views by hook type)**')
+    w('\n| Hook type | Field n | Field med views | Client n | Client med views |')
+    w('|---|--:|--:|--:|--:|')
+    for ht in sorted(cap_field_hook, key=lambda k:-med(cap_field_hook[k])):
+        w(f"| {ht} | {len(cap_field_hook[ht])} | {med(cap_field_hook[ht]):,.0f} | {len(cap_client_hook.get(ht,[]))} | {med(cap_client_hook.get(ht,[])):,.0f} |")
+    w('\n**Caption theme performance (field-wide)**')
+    w('\n| Theme | Field reels | Field med views | Client reels | Client med views |')
+    w('|---|--:|--:|--:|--:|')
+    for th in sorted(cap_theme_v, key=lambda k:-med(cap_theme_v[k])):
+        w(f"| {th} | {len(cap_theme_v[th])} | {med(cap_theme_v[th]):,.0f} | {len(cap_theme_client.get(th,[]))} | {med(cap_theme_client.get(th,[])):,.0f} |")
 
 open(os.path.join(ROOT, 'analysis-data.md'),'w',encoding='utf-8').write('\n'.join(out))
 
@@ -267,19 +341,21 @@ print(f'\nCLIENT rank by reach-eff among all {len(creators)}:',
 print('\nHOOK TYPES by field median views (desc):')
 for ht in sorted(field_hook, key=lambda k:-med(field_hook[k])):
     print(f"  {ht:22} field_med {med(field_hook[ht]):>9,.0f} (n={len(field_hook[ht]):3})  | client n={len(client_hook.get(ht,[]))} med={med(client_hook.get(ht,[])):,.0f}")
-print('\nCLIENT hook mix:', asc(dict(Counter(hook_type(r['cap']) for r in client['reels']))))
+print('\nCLIENT hook mix:', asc(dict(Counter(r_hook(r) for r in client['reels']))))
 print('\nTHEME field median views (desc):')
 for th in sorted(theme_v, key=lambda k:-med(theme_v[k])):
     print(f"  {th:22} field_med {med(theme_v[th]):>9,.0f} (n={len(theme_v[th]):3}) | client_n={len(theme_client.get(th,[]))}")
 print('\nTOP 12 OUTLIERS:')
 if lane_on:
-    for m,h,t,ln,v,ht,th,line,url in outliers[:12]:
+    for m,h,t,ln,v,ht,th,line,url,src in outliers[:12]:
         print(f"  {m:4.1f}x @{h:22} [{ln}] {v:>8,} [{ht}] {asc(line)[:48]}")
 else:
-    for m,h,t,v,ht,th,line,url in outliers[:12]:
+    for m,h,t,v,ht,th,line,url,src in outliers[:12]:
         print(f"  {m:4.1f}x @{h:24} {v:>8,} [{ht}] {asc(line)[:54]}")
 print('\nCADENCE: client {:.1f}/wk | field median {:.1f}/wk'.format(
     client['cadence'] or 0, med([c['cadence'] for h,c in creators.items() if c['cadence'] and h!=CLIENT_HANDLE])))
+if TX_COVERAGE > 0:
+    print(f'\nTRANSCRIPT COVERAGE: {_n_reels_tx}/{_n_reels_total} reels ({TX_COVERAGE*100:.0f}%) -- hooks/themes keyed on the SPOKEN track; caption patterns kept as a separate packaging-surface read')
 print('\nwrote analysis-data.md')
 
 # ================= analysis-data.json (core->format interface; additive LAST write) =================
@@ -295,7 +371,7 @@ try:
                 'stats': {'n': s['n'], 'med_views': s['med_views'],
                           'reach_eff': round(s['reach_eff'], 6), 'med_er': round(s['med_er'], 6),
                           'med_cmt': s['med_cmt']},
-                'hook_mix': dict(Counter(hook_type(r['cap']) for r in c['reels']))}
+                'hook_mix': dict(Counter(r_hook(r) for r in c['reels']))}
     def _rollup_obj(name, hs):
         cs = [creators[h] for h in hs if h in creators]
         if not cs: return None
@@ -325,7 +401,7 @@ try:
                     c = creators.get(h)
                     if not c: continue
                     for r in c['reels']:
-                        if th in themes_of(r['cap']): vs.append(r['views'])
+                        if th in r_themes(r): vs.append(r['views'])
                 if vs: bl[l] = {'med_views': med(vs), 'n': len(vs)}
             e['by_lane'] = bl
         _themeperf.append(e)
@@ -356,14 +432,15 @@ try:
                           'oppo': oppo})
     _oj = []
     for i, tup in enumerate(outliers[:30]):
-        if lane_on: m, h, t, ln, v, ht, th, line, url = tup
-        else: m, h, t, v, ht, th, line, url = tup; ln = None
+        if lane_on: m, h, t, ln, v, ht, th, line, url, src = tup
+        else: m, h, t, v, ht, th, line, url, src = tup; ln = None
         _sc = re.search(r'/reel/([^/]+)/', url or '')
         _rid = _sc.group(1) if _sc else f'{h}-{i}'
         # dashboard reel-card aliases (id/outlier/creator/title) alongside the native keys
         _oj.append({'id': _rid, 'mult': round(m, 3), 'outlier': round(m, 3),
                     'handle': h, 'creator': '@' + h, 'tier': t, 'lane': ln, 'views': v,
-                    'hook': ht, 'themes': th, 'hook_line': line, 'title': line, 'url': url})
+                    'hook': ht, 'themes': th, 'hook_line': line, 'title': line, 'url': url,
+                    'src': src})
     _data = {'client': _creator_obj(client),
              'creators': [_creator_obj(c) for h, c in sorted(creators.items(), key=lambda kv: -kv[1]['stats']['reach_eff'])],
              'rollups': _rollups, 'hook_taxonomy': _hooktax, 'theme_performance': _themeperf,
@@ -372,7 +449,24 @@ try:
                       'total_reels': sum(len(c['reels']) for c in creators.values()),
                       'n_competitors': len(creators) - 1, 'lane_on': lane_on,
                       'themes': list(THEMES.keys()), 'source': 'competitor-cross-reference/analyze.py',
-                      'schema_version': '1.1'}}
+                      'transcript_coverage': round(TX_COVERAGE, 4),
+                      'schema_version': '1.2'}}
+    # captions bucket (C7, additive): the caption-keyed read, separate from the
+    # primary spoken-keyed hook_taxonomy/theme_performance above. Present only
+    # when transcripts exist (without them primary IS caption-keyed already).
+    if TX_COVERAGE > 0:
+        _data['captions'] = {
+            'note': 'caption-keyed patterns (packaging surface) -- never mix into the spoken diagnosis',
+            'hook_taxonomy': [{'hook': ht, 'field_n': len(cap_field_hook[ht]),
+                               'field_med_views': med(cap_field_hook[ht]),
+                               'client_n': len(cap_client_hook.get(ht, [])),
+                               'client_med_views': med(cap_client_hook.get(ht, []))}
+                              for ht in sorted(cap_field_hook, key=lambda k: -med(cap_field_hook[k]))],
+            'theme_performance': [{'theme': th, 'field_reels': len(cap_theme_v[th]),
+                                   'field_med_views': med(cap_theme_v[th]),
+                                   'client_reels': len(cap_theme_client.get(th, [])),
+                                   'client_med_views': med(cap_theme_client.get(th, []))}
+                                  for th in sorted(cap_theme_v, key=lambda k: -med(cap_theme_v[k]))]}
     open(os.path.join(ROOT, 'analysis-data.json'), 'w', encoding='utf-8').write(
         json.dumps(_data, indent=2, ensure_ascii=False))
 except Exception as _e:

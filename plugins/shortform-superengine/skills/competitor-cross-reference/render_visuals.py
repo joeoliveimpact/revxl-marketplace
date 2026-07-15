@@ -62,8 +62,8 @@ def check_version(data):
     if major != '1':
         print('ERROR: analysis-data.json schema major version %s is unsupported (need 1.x). Re-run analyze.py.' % v)
         sys.exit(1)
-    if v not in ('1.0', '1.1'):
-        print('WARN: schema %s is newer than this renderer knows (1.1) - unknown keys ignored.' % v)
+    if v not in ('1.0', '1.1', '1.2'):
+        print('WARN: schema %s is newer than this renderer knows (1.2) - unknown keys ignored.' % v)
     return v
 
 
