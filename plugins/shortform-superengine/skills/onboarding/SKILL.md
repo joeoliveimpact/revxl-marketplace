@@ -25,7 +25,7 @@ Read `~/.claude/revxl/teach-mode` (one word) if it exists, else treat it as
 - **off**: standard voice, no glosses.
 
 During onboarding you have not written the file yet, so you'll be in **beginner**
-by default — which is right for a coach's first touch. (You write the default in
+by default — which is right for a client's first touch. (You write the default in
 Step 6.)
 
 ## Layer 2: suggest before invoking
@@ -64,7 +64,7 @@ If they explicitly invoke `/onboarding` or clearly ask to set up, skip the ask.
 
 ## Step 1 — Detect the runtime
 
-Probe and report a plain READY/MISSING table. Cross-platform (the coach may be on
+Probe and report a plain READY/MISSING table. Cross-platform (the client may be on
 Windows or Mac).
 
 | Tool | Probe | Needed for |

@@ -11,8 +11,8 @@ The brain needs two different things from different best-sources: **voice** (how
 
 ## Rules
 - **Tier C never sets voice.** Website copy is usually written FOR the client — mining it for voice bakes in someone else's voice (the noise-factor trap). Offer, avatar, testimonials only.
-- **Own social = the no-recordings primary.** Nearly every coach has it; SocialCrawl is already plumbed in the content engine.
+- **Own social = the no-recordings primary.** Nearly every creator has it; SocialCrawl is already plumbed in the content engine.
 - **Offer/avatar pulls wider than voice:** testimonials + reviews (the avatar's own pain language), intake forms, an existing brand guide all count.
-- **DM export (Meta DYI):** Instagram/Messenger history via Accounts Center → Download your information → Messages only, JSON, low media. Prospect side = the richest PRE-sale VoC (feeds the `sales` bucket). Coach side = tier-B written voice. Parser note: repair Meta's Latin-1/UTF-8 mojibake on read; build the parser against a real `message_1.json` (schema varies by export version).
+- **DM export (Meta DYI):** Instagram/Messenger history via Accounts Center → Download your information → Messages only, JSON, low media. Prospect side = the richest PRE-sale VoC (feeds the `sales` bucket). Brand-owner side = tier-B written voice. Parser note: repair Meta's Latin-1/UTF-8 mojibake on read; build the parser against a real `message_1.json` (schema varies by export version).
 - **Confidence stamp:** `voice_confidence: A|B|C|interview` = the highest tier that actually CONTRIBUTED VOICE (C can't). Consumers lean bold on A, conservative on interview.
 - **Recordings connector:** detect Fathom or Fireflies at setup; confirm with the user; propose a how-far-back window before pulling. Every pull is approval-gated.

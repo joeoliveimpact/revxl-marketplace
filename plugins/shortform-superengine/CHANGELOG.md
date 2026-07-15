@@ -59,7 +59,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   (minor = additive-only, consumers ignore unknown keys; major = hard stop).
   md + stdout verified byte-identical (regression gate).
 - **RevXL Brain wiring (living knowledge API).** reel-scripter now pulls current
-  content-strategy intelligence from Joe's Brain API (`brain.engineforimpact.com`)
+  content-strategy intelligence from Joe's Content Strategy Cloud Brain API
+  (`brain.engineforimpact.com` — constantly updated, so scripts are always
+  double-checked against current strategies)
   at exactly two named triggers — brief build (0d) and hook step — with a hard
   per-reel budget (≤2 searches + ≤3 note reads), a project-local cache
   (`<project>/brain-pulls/`), and full degrade to the bundled reference files when

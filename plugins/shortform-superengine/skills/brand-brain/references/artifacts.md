@@ -25,7 +25,7 @@ Engine-agnostic. Sections:
 - **Pains** / **Desired outcomes** / **Objections** — each entry: verbatim phrase(s) · frequency count · bucket tag · source. Ranked by frequency, highest first.
 - **Verbatim language bank** — raw prospect phrasing worth reusing anywhere (subject lines, hooks, captions).
 - **Evergreen Content Seeds** — always-valid content angles, each pointing at its evidence (the pain/belief/analogy it derives from).
-- **Mirror Language (hypothesis)** — optional, clearly-labeled subsection: the brand owner's OWN client-experience phrasing that plausibly mirrors her market (see extraction). Low-confidence by definition. **Consumer guard: never quote Mirror Language entries as avatar VoC** — they are the coach's words about herself, not the audience's words. Never merged into the ranked sections above.
+- **Mirror Language (hypothesis)** — optional, clearly-labeled subsection: the brand owner's OWN client-experience phrasing that plausibly mirrors her market (see extraction). Low-confidence by definition. **Consumer guard: never quote Mirror Language entries as avatar VoC** — they are the brand owner's words about themselves, not the audience's words. Never merged into the ranked sections above.
 
 ## business-config.md
 Brand-level, shared across engines: avatar definition (who, in their words), offer(s) + promise + price point (if the user supplies it — never store pricing uninvited), enemy/positioning, proof assets. Tokens other engines map in: avatar pains, avatar enemy, offer framing.

@@ -23,4 +23,4 @@ Refresh pulls only what's NEW since the last stamp (calls, posts, threads). Appe
 - SLA either way: never more than ~7 days stale.
 
 ## Teach-and-do
-Every freshness prompt carries a one-line WHY (matched to the user's explanation level) while doing the work. The coach learns the VoC principle by using it.
+Every freshness prompt carries a one-line WHY (matched to the user's explanation level) while doing the work. The client learns the VoC principle by using it.

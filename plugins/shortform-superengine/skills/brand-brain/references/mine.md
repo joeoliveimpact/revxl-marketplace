@@ -18,7 +18,7 @@ Detect what exists, top tier down. Confirm each source with the user before pull
 ## 3. Extract (one pass, two shelves)
 Per ${CLAUDE_PLUGIN_ROOT}/skills/brand-brain/references/speaker-separation.md then ${CLAUDE_PLUGIN_ROOT}/skills/brand-brain/references/extraction.md:
 - Prospect/client turns → VoC (pains, desires, objections, verbatim bank) — always useful.
-- Coach turns → voice guide (only if the coach ran the call) + story/humor seeds.
+- Brand-owner turns → voice guide (only if the brand owner ran the call) + story/humor seeds.
 - Staff/setter turns → VoC side only; DISCARD for voice; flag it to the user.
 - Score humor candidates per ${CLAUDE_PLUGIN_ROOT}/skills/brand-brain/references/signature-bits.md.
 - Split everything by shelf life: evergreen → brain files; this-week topical → weekly-content-bank.

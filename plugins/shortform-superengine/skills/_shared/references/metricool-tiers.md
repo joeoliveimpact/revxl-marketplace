@@ -1,13 +1,13 @@
 # Metricool tiers — capability + limits reference
 
-> The system reads this when wiring a coach's Metricool connection: detect what their tier allows, and **warn them about limits before they hit a wall**. Pricing/limits current as of **June 2026** — re-verify periodically (Metricool changes plans).
+> The system reads this when wiring a client's Metricool connection: detect what their tier allows, and **warn them about limits before they hit a wall**. Pricing/limits current as of **June 2026** — re-verify periodically (Metricool changes plans).
 
 ## The one rule that gates everything
 
 **API + MCP + Zapier access = Advanced plan or higher.** Free and Starter have **no API**.
 
-- **Automated** scheduling / publishing / competitor-add / analytics pull *via the plugin* → requires the coach on **Advanced** (~€43/mo annual · ~$53/mo · up to 15 brands).
-- **Free / Starter** coaches → the plugin can still **READ analytics via the proven web-session method** (read-only), and the coach can schedule + add competitors **manually** in Metricool — but the plugin cannot drive Metricool's API for them.
+- **Automated** scheduling / publishing / competitor-add / analytics pull *via the plugin* → requires the client on **Advanced** (~€43/mo annual · ~$53/mo · up to 15 brands).
+- **Free / Starter** clients → the plugin can still **READ analytics via the proven web-session method** (read-only), and the client can schedule + add competitors **manually** in Metricool — but the plugin cannot drive Metricool's API for them.
 
 ## Tier table
 
@@ -29,7 +29,7 @@
 
 ## How the plugin adapts per tier (decision logic)
 
-1. **Detect/ask the coach's tier** at onboarding.
+1. **Detect/ask the client's tier** at onboarding.
 2. **Advanced+** → offer full: auto-schedule, auto-measure, auto-promote competitors (API/MCP). Cap competitor-promote suggestions at **25/brand** (10 for YouTube).
 3. **Starter** → measure (web-session read) + plan-only calendar; competitor tracking manual (5/brand); warn: *"auto-schedule + competitor-add need Advanced (API)."*
 4. **Free** → measure (web-session read, 30-day history) + plan-only calendar; warn: *"20 posts/mo, no LinkedIn/X scheduling, 5 competitors (FB/IG/Bluesky/Twitch), no API — upgrade to Advanced for automation."*

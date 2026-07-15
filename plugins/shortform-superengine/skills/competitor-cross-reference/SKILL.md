@@ -292,7 +292,7 @@ Diagnose *why* a hook type under-reaches (e.g. client question-hooks lose on IRR
 
 Before finalizing `strategy-roadmap.md`, surface to the user:
 - Roadmap audience (client-facing vs. internal?)
-- Tone (direct / coach-to-coach / accessible)
+- Tone (direct / peer-to-peer / accessible)
 - Any sections to expand, trim, or rename
 
 **Pause. Finalize only after confirmation.**

@@ -10,13 +10,13 @@ One skill, one job: **sources in → brain out** at the shared location. Every R
 ## Shared location (THE contract — never deviate)
 
     ~/.claude/revxl/<brand>/voc/
-      voice-guide.md          # coach voice, register-tagged, voice_confidence stamped
+      voice-guide.md          # brand-owner voice, register-tagged, voice_confidence stamped
       voc-profile.md          # freq-ranked verbatim prospect bank + evergreen content seeds
       business-config.md      # brand-level avatar + offer (shared)
       signature-bits.md       # the client's REAL humor, evidence-scored (canonization parked until a consumer reads bits)
       weekly-content-bank.md  # fast shelf: this week's themes/objections/jokes/seeds, 7-day TTL
 
-`<brand>` resolves from config and is a NORMALIZED slug — lowercase, alphanumeric only, no separators ("Maria G Fit" → `mariagfit`) — so every engine resolves the same brand to the same folder. Before minting a new brand folder, check `~/.claude/revxl/` for a similar existing one and confirm with the user (two half-brains for one coach is the failure to avoid). One user can hold multiple brands. Raw transcripts + the mining index stay WORKSPACE-level (`voc/transcripts/<bucket>/`, `voc/index.md`) — bulky, private source data.
+`<brand>` resolves from config and is a NORMALIZED slug — lowercase, alphanumeric only, no separators ("Maria G Fit" → `mariagfit`) — so every engine resolves the same brand to the same folder. Before minting a new brand folder, check `~/.claude/revxl/` for a similar existing one and confirm with the user (two half-brains for one brand owner is the failure to avoid). One user can hold multiple brands. Raw transcripts + the mining index stay WORKSPACE-level (`voc/transcripts/<bucket>/`, `voc/index.md`) — bulky, private source data.
 
 ## Router — run this decision every invocation
 
@@ -36,7 +36,7 @@ Offer refreshes at most ONCE per session — never nag on back-to-back builds.
 ## Rules that never bend
 
 - **Elicit, never invent.** Voice, stories, jokes come from the client's real material. If a signal isn't there, it isn't in the brain.
-- **Attribution guard.** Every extracted line belongs to the speaker who said it. A coach's bit never lands in a client's brain; a setter's phrasing never sets the coach's voice.
+- **Attribution guard.** Every extracted line belongs to the speaker who said it. A brand owner's bit never lands in a client's brain; a setter's phrasing never sets the brand owner's voice.
 - **Approval-gated data.** Recordings, DMs, socials = personal data. Never pull without an explicit OK. Never send or export any of it externally.
 - **Privacy.** One brain per brand; a filled brain is private and never ships inside any plugin.
 

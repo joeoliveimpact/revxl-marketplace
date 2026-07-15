@@ -1,7 +1,7 @@
 # teach-mode — shared end-user voice convention
 
 > Canonical cross-superengine convention. CNTNTSE-133. Every RevXL superengine
-> reads this at skill entry so the **end user (coach/client)** gets a consistent
+> reads this at skill entry so the **end user (the client)** gets a consistent
 > voice. Copy the read snippet below verbatim into each skill — do not re-design it.
 
 ## The setting

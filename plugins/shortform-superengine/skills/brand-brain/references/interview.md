@@ -18,7 +18,7 @@ Who exactly do you help (their words, not marketing-speak)? What have they tried
 ## 3. Write the brain
 Same artifacts per ${CLAUDE_PLUGIN_ROOT}/skills/brand-brain/references/artifacts.md, with:
 - `voice_confidence: interview` — consumers stay conservative; the brain must not over-claim a voice it hasn't earned.
-- VoC bank entries tagged `source: interview` (the coach's recollection of prospect language, not verbatim capture).
+- VoC bank entries tagged `source: interview` (the brand owner's recollection of prospect language, not verbatim capture).
 - Signature bits ONLY if the user volunteers real ones (their analogy, their joke). Never invent.
 
 ## 4. Compound from call #1

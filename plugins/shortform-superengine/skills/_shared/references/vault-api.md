@@ -1,9 +1,11 @@
 # RevXL Brain API — client wiring reference
 
-The Brain is Joe's living content-strategy knowledge base (curated, continuously
-updated, hybrid-searchable). Skills query it at **named trigger points only** so
-guidance never goes stale. Access requires an active per-client key — it is part
-of the RevXL subscription.
+The Brain is **Joe's Content Strategy Cloud Brain API** — a living knowledge base
+(curated, hybrid-searchable) that Joe updates constantly, so every pull checks the
+work against *current* strategies, not a frozen snapshot. That is why these pulls
+matter: the plugin is always double-checking itself against what's working now.
+Skills query it at **named trigger points only** so guidance never goes stale.
+Access requires an active per-client key — it is part of the RevXL subscription.
 
 Base URL: `https://brain.engineforimpact.com`
 
