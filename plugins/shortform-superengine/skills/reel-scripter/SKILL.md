@@ -266,13 +266,27 @@ this pass tightens lines; it never restructures. Then write the **caption** (pic
 Re-scan the full assembled wording (hook, body, CTA, caption, overlays) against the brief's §8 Avoid list
 and the universal losing tables — line edits and voice phrasing are not exempt.
 
-**4b. Flow-check + skeleton integrity.** Read the script top to bottom as a viewer: does each
+**4b. Loop integrity — open/close looping (mandatory, run before the flow read).** The #1 retention
+mechanic is keeping a curiosity loop open at ALL times — a loop may only resolve once the next is
+already open and pulling. Walk the beat **seams** (the gap between every pair of adjacent beats) and
+label, at each seam, which loop is still OPEN. Fail conditions to fix before Checkpoint 4:
+- **Dead seam** — a seam where every loop opened so far is already resolved and no new one is open.
+  The attention drops there. Fix: hold a reveal longer, or plant a connective re-hook at that seam
+  ("but that's not even the part that…", "here's what I didn't expect", "and that's when it got
+  weird") so a loop is live across it.
+- **Early close** — the reel's spanning loop pays off before the last third. Hold the payoff later.
+- **Flat run** — 2+ consecutive beats that are pure declaration with no forward pull. Convert one
+  into a question-chain link that opens the next beat.
+Rule: from the hook to the CTA there is never a moment with zero open loops. The spanning loop
+(opened at hook or secondary) resolves in the final beat, not before. Flag every seam you fixed.
+
+**4c. Flow-check + skeleton integrity.** Read the script top to bottom as a viewer: does each
 beat earn the next? Any dead beat, any place the attention drops — flag and tighten. Then
 confirm the draft matches the Checkpoint-2 skeleton **beat-for-beat** (no beat added / cut /
 reordered, no move softened) — any drift gets flagged at Checkpoint 4. A change the **user**
 asks for at Checkpoint 4 is always allowed — the lock binds voice, not the user.
 
-**4c. Craft score.** Score **Hook / Body / CTA / overall (0–100)** against the **Story Locks rubric**
+**4d. Craft score.** Score **Hook / Body / CTA / overall (0–100)** against the **Story Locks rubric**
 (`./references/story-locks.md`) — how many of the 6 Story Locks + 7 Swaps the script lands (contrast,
 zero hedges, named framework, negative-frame, loop-openers at cadence, viewer-framing). This is an
 honest **craft** read, **not** a performance prediction: it never claims views. State the one
