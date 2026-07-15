@@ -4,7 +4,7 @@
 > **their own** key + credits (so they never draw down anyone else's). The key
 > is exposed to the paying client by necessity — never to the public.
 
-**📹 Video walkthrough:** `<LOOM_URL — paste the Loom here once recorded>`
+**📹 Video walkthrough:** _(coming soon — follow the written click-path below)_
 
 ## Click-path (≈2 minutes)
 

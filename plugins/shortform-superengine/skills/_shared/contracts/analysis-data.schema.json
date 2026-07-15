@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Content Superengine - analysis-data.json (core->format interface)",
-  "description": "Machine-readable twin of analysis-data.md, emitted by competitor-cross-reference/analyze.py as the LAST write (md stays authoritative). Format engines (reel-scripter, future Carousel/Thread/...) consume ONLY this file. The boundary rule: core writes this schema, format reads it, no cross-skill code imports.",
+  "description": "Machine-readable twin of analysis-data.md, emitted by competitor-cross-reference/analyze.py as the LAST write (md stays authoritative). Format engines (reel-scripter, render_visuals, future Carousel/Thread/...) consume ONLY this file. The boundary rule: core writes this schema, format reads it, no cross-skill code imports. VERSIONING: minor bumps (1.0 -> 1.1) are ADDITIVE-ONLY — new optional keys; consumers ignore unknown keys and must not require minor-version keys. Major bumps are breaking; consumers hard-stop on a major mismatch. Current: 1.1 (adds creator.hook_mix).",
   "type": "object",
   "required": ["client", "creators", "rollups", "hook_taxonomy", "theme_performance", "gaps", "outliers", "meta"],
   "properties": {
@@ -59,7 +59,11 @@
           "reason": { "type": "string", "enum": ["absent", "underweight"] },
           "field_med_views": { "type": "number" },
           "field_reels": { "type": "integer" },
-          "client_reels": { "type": "integer" }
+          "client_reels": { "type": "integer" },
+          "client_med_views": { "type": "number", "description": "optional (emitted since 07.06 fixes)" },
+          "headline": { "type": "string", "description": "optional ready-to-quote gap headline" },
+          "why": { "type": "string", "description": "optional one-line rationale" },
+          "oppo": { "type": "integer", "description": "optional 0-100 opportunity score (field value vs top theme)" }
         }
       }
     },
@@ -78,7 +82,11 @@
           "hook": { "type": "string" },
           "themes": { "type": "array", "items": { "type": "string" } },
           "hook_line": { "type": "string" },
-          "url": { "type": "string" }
+          "url": { "type": "string" },
+          "id": { "type": "string", "description": "optional dashboard alias: reel shortcode" },
+          "outlier": { "type": "number", "description": "optional dashboard alias of mult" },
+          "creator": { "type": "string", "description": "optional dashboard alias: @handle" },
+          "title": { "type": "string", "description": "optional dashboard alias of hook_line" }
         }
       }
     },
@@ -116,6 +124,11 @@
             "med_er": { "type": "number" },
             "med_cmt": { "type": "number" }
           }
+        },
+        "hook_mix": {
+          "type": "object",
+          "description": "OPTIONAL (schema 1.1+): {hook_type: reel_count} for this creator's analyzed reels. Consumers must tolerate absence (1.0 files).",
+          "additionalProperties": { "type": "integer" }
         }
       }
     },

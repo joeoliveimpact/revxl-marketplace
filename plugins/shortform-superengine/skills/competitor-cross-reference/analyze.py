@@ -32,6 +32,7 @@ cfg = _load_cfg(ROOT)
 CLIENT_HANDLE = cfg['client']
 CLIENT_FOLLOWERS = cfg['client_followers']
 TIERS = {
+    'GURU':  cfg.get('GURU', []),
     'LARGE': cfg.get('LARGE', []),
     'MED':   cfg.get('MED', []),
     'SMALL': cfg.get('SMALL', []),
@@ -85,14 +86,27 @@ def themes_of(cap):
     t = fix(cap).lower()
     return [name for name,pat in THEMES.items() if re.search(pat, t)]
 
+def _epoch(pub):
+    # accept epoch (int/float) or ISO-8601 string; return epoch seconds or None
+    if isinstance(pub, (int, float)): return pub
+    if isinstance(pub, str) and pub:
+        try:
+            from datetime import datetime
+            return datetime.fromisoformat(pub.replace('Z', '+00:00')).timestamp()
+        except Exception:
+            return None
+    return None
+
 def reels_of(path):
     d = J(path); out=[]
-    for it in d.get('items', d.get('data',{}).get('items',[])):
+    # puller wraps as {reels:[...]}; regression/mock data uses {items:[...]}; API list is {data:{items}}
+    items = d.get('reels', d.get('items', d.get('data',{}).get('items',[])))
+    for it in items:
         p = it.get('post',{}); e = p.get('engagement',{})
         out.append(dict(
             url=p.get('url'), views=e.get('views') or 0, likes=e.get('likes') or 0,
             comments=e.get('comments') or 0, cap=fix(p.get('content',{}).get('text','')),
-            dur=p.get('content',{}).get('duration_seconds'), pub=p.get('published_at'),
+            dur=p.get('content',{}).get('duration_seconds'), pub=_epoch(p.get('published_at')),
         ))
     return out
 
@@ -146,7 +160,7 @@ else:
     w('|---|---|--:|--:|--:|--:|--:|--:|--:|')
     for h,c in sorted(creators.items(), key=lambda kv:-kv[1]['stats']['reach_eff']):
         s=c['stats']
-        w(f"| {c['tier']} | @{h} | {c['followers']:,} | {s['n']} | {s['med_views']:,.0f} | {s['reach_eff']*100:.1f}% | {s['med_er']*100:.1f}% | {s['med_cmt']:,.0f} | {c['cadence']:.1f}" if c['cadence'] else
+        w(f"| {c['tier']} | @{h} | {c['followers']:,} | {s['n']} | {s['med_views']:,.0f} | {s['reach_eff']*100:.1f}% | {s['med_er']*100:.1f}% | {s['med_cmt']:,.0f} | {c['cadence']:.1f} |" if c['cadence'] else
           f"| {c['tier']} | @{h} | {c['followers']:,} | {s['n']} | {s['med_views']:,.0f} | {s['reach_eff']*100:.1f}% | {s['med_er']*100:.1f}% | {s['med_cmt']:,.0f} | - |")
 
 # tier rollups
@@ -158,7 +172,7 @@ def rollup(name, hs):
     if not cs: return
     re_=med([c['stats']['reach_eff'] for c in cs]); er_=med([c['stats']['med_er'] for c in cs]); mv_=med([c['stats']['med_views'] for c in cs])
     w(f"| {name} | {len(cs)} | {re_*100:.1f}% | {er_*100:.1f}% | {mv_:,.0f} |")
-rollup('CLIENT',[CLIENT_HANDLE]); rollup('LARGE',TIERS['LARGE']); rollup('MED',TIERS['MED']); rollup('SMALL',TIERS['SMALL'])
+rollup('CLIENT',[CLIENT_HANDLE]); rollup('GURU',TIERS['GURU']); rollup('LARGE',TIERS['LARGE']); rollup('MED',TIERS['MED']); rollup('SMALL',TIERS['SMALL'])
 if lane_on:
     for lane in LANES: rollup('-- ' + lane + ' lane', LANES[lane])
 
@@ -280,7 +294,8 @@ try:
                 'cadence': (round(c['cadence'], 4) if c['cadence'] else c['cadence']),
                 'stats': {'n': s['n'], 'med_views': s['med_views'],
                           'reach_eff': round(s['reach_eff'], 6), 'med_er': round(s['med_er'], 6),
-                          'med_cmt': s['med_cmt']}}
+                          'med_cmt': s['med_cmt']},
+                'hook_mix': dict(Counter(hook_type(r['cap']) for r in c['reels']))}
     def _rollup_obj(name, hs):
         cs = [creators[h] for h in hs if h in creators]
         if not cs: return None
@@ -289,6 +304,7 @@ try:
                 'med_er': round(med([c['stats']['med_er'] for c in cs]), 6),
                 'med_views': med([c['stats']['med_views'] for c in cs])}
     _rollups = {'tiers': [r for r in [_rollup_obj('CLIENT', [CLIENT_HANDLE]),
+                                      _rollup_obj('GURU', TIERS['GURU']),
                                       _rollup_obj('LARGE', TIERS['LARGE']),
                                       _rollup_obj('MED', TIERS['MED']),
                                       _rollup_obj('SMALL', TIERS['SMALL'])] if r]}
@@ -327,12 +343,14 @@ try:
         if cr == 0:
             _gaps.append({'theme': th, 'reason': 'absent', 'field_med_views': fmv,
                           'field_reels': fr, 'client_reels': cr,
+                          'client_med_views': med(theme_client.get(th, [])),
                           'headline': f'Zero reels on {th} — the field runs {fr} at {fmv:,.0f} median views.',
                           'why': f'Pure whitespace: the field proves demand on {th} and the client has posted nothing.',
                           'oppo': oppo})
         elif cshare < 0.5 * fshare:
             _gaps.append({'theme': th, 'reason': 'underweight', 'field_med_views': fmv,
                           'field_reels': fr, 'client_reels': cr,
+                          'client_med_views': med(theme_client.get(th, [])),
                           'headline': f'Thin on {th} — {cr} client reels vs the field’s {fr} at {fmv:,.0f} median views.',
                           'why': f'The field leans into {th} far harder than the client; reach is being left on the table.',
                           'oppo': oppo})
@@ -354,7 +372,7 @@ try:
                       'total_reels': sum(len(c['reels']) for c in creators.values()),
                       'n_competitors': len(creators) - 1, 'lane_on': lane_on,
                       'themes': list(THEMES.keys()), 'source': 'competitor-cross-reference/analyze.py',
-                      'schema_version': '1.0'}}
+                      'schema_version': '1.1'}}
     open(os.path.join(ROOT, 'analysis-data.json'), 'w', encoding='utf-8').write(
         json.dumps(_data, indent=2, ensure_ascii=False))
 except Exception as _e:

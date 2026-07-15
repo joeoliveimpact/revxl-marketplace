@@ -60,7 +60,7 @@ spending the next move. One run = one finished reel script written to `<project>
 **0b. Run the brief.**
 
 ```bash
-python plugins/shortform-superengine/skills/reel-scripter/scripting_brief.py <project_dir>
+python ${CLAUDE_PLUGIN_ROOT}/skills/reel-scripter/scripting_brief.py <project_dir>
 ```
 
 This writes `<project_dir>/scripting-brief.md`. Read it — it is your menu of proven moves.
@@ -84,9 +84,25 @@ It auto-detects **FULL** mode (spoken transcripts present) vs **CAPTION-ONLY** d
    words do you never use? What's your one CTA?). Note in the final script that voice was
    interim, not the full profile.
 
+**0d. Brain pull #1 — current frameworks for this topic (Trigger 1 of 2).**
+Resolve the Brain key per [`../_shared/references/vault-api.md`](../_shared/references/vault-api.md)
+(ladder: env → `~/.config/revxl/vault_api_key` → ask once). **Check
+`<project>/brain-pulls/` first** — a cached pull for this topic means no call.
+If a key resolves and no cache: ONE `/v1/search` — `query` = the reel's topic/theme,
+`variants` = niche + format terms (e.g. `["<niche> reels", "<format> hook"]`). The format
+isn't locked yet at this step, so read it off the INPUT when it shows one: list-shaped
+source → `"listicle reel"`; client story/transformation → `"story reel"`; belief-flip →
+`"myth bust reel"`; no clear shape → default `["<niche> reels", "<topic>"]` and let hybrid
+search do the aiming — **never skip the pull because the content doesn't fit a mold.** Save
+the cited hits to `<project>/brain-pulls/<topic-slug>.md` and weave them into the
+brief's menu as extra evidence, cited `[brain] <path>`. No key / 4xx / 5xx / timeout →
+follow the reference's degrade table and move on — the Brain never blocks a script.
+
 ### ✋ Checkpoint 0 — Confirm the voice anchor + brief read
-Show: the mode (FULL/caption-only), the top 2–3 attack themes from the brief, and the voice
-source (full `voc/` vs interim). **Pause** until the user confirms the voice sounds right and
+Show: the mode (FULL/caption-only), the top 2–3 attack themes from the brief, the voice
+source (full `voc/` vs interim), and **one Brain status line** — `Brain: [brain] <path> woven`
+or `Brain: skipped (no key / cached / degraded / budget)`. The pull must leave a visible trace
+either way. **Pause** until the user confirms the voice sounds right and
 picks a direction — do not script in a voice you haven't confirmed.
 
 ---
@@ -123,6 +139,13 @@ Write each beat, in order, **in the client's voice**:
 - **Hook** — front-load value using the **HOOK → PROMISE → MICRO-INTRO** opener structure +
   bucket templates in `./references/opener-patterns.md`; for a fast first draft, pull a proven
   shape from `./references/hook-formulas.md` (each maps to the hook bucket the analysis ranked).
+  **Brain pull #2 (Trigger 2 of 2, optional):** if the Brain key resolves and the hook bucket
+  feels stale or thin, ONE `/v1/search` — `query` = `hook <bucket> <topic>` with the bucket
+  Step 2 locked (question / myth-bust / listicle / story / pain-callout / contrarian /
+  statement — one always exists by now; hybrid angle → one variant per bucket in play) + up
+  to 3 `/v1/note` reads on the top hits — current hook patterns beat frozen ones. Cache to `<project>/brain-pulls/`,
+  cite `[brain] <path>`. Same degrade rules; **total Brain budget for the whole reel: ≤2
+  searches + ≤3 note reads, never inside loops.**
   Use the client's vocabulary; pull verbatim audience pains from `voc-profile.md` where they fit
   (the client's words beat yours). On IG the hook is the **frame-1 on-screen text** — write it to
   double as burned-in caption.
@@ -189,7 +212,13 @@ Structure:
   <@handle · metric · reel URL> citations from the analysis the angle stands on
 ```
 
-Report the path. One run = one script. To script another angle, start a new run.
+Report the path. One run = one script.
+
+**Next moves**
+1. Script the next angle — the unpicked angles from Step 1 are still on the table; I'll re-show them. Say: "script the next angle"
+2. Build the weekly idea bank instead of going reel-by-reel. Say: "weekly topic pool"
+3. Refresh the visual pack so the client sees the field this script attacks. Say: "regenerate my visuals"
+4. *If no pulse is scheduled yet:* want next week's winners to land here automatically? The weekly competitor pulse feeds this skill fresh outliers. Say: "run the weekly pulse"
 
 ---
 
@@ -227,6 +256,12 @@ Rules:
 make it yours"* — then run the normal pipeline from Step 1 with the picked idea as the
 chosen angle (Checkpoint 0 voice rules still apply).
 
+**If they don't pick (never a dead end)** — **Next moves**
+1. The pool is saved at `<project>/topic-pool.md` — later, say: "script idea N from my topic pool"
+2. Keep it fresh without lifting a finger — the weekly competitor pulse regenerates the pool off new data. Want it weekly? Say: "run the weekly pulse"
+3. Re-spread the pool toward a theme you care about. Say: "rebuild the pool, lean <theme>"
+4. Or I just script the single best idea now. Say: "script the top idea"
+
 **Deeper trend/seed layer (optional):** if `~/.claude/socialcrawl-superengine/.superengine`
 exists, offer the superengine's plays to enrich the pool — trend deep-dives and the
 cost-gated `audience-questions` seeding (real audience questions clustered by intent).
@@ -248,8 +283,9 @@ Absent → one-line mention, continue.
 - **Honest degrade.** Caption-only mode (no transcripts) can't see spoken structure — say so;
   don't invent structural claims the data can't support.
 - **Never pay for transcripts.** Harvest spoken transcripts with the local chain
-  (captions → Groq → local Whisper that `onboarding` installs), **never** SocialCrawl
-  `media/transcript` — it's a 10-credit premium call with no advantage.
+  (Groq + local Whisper in parallel, subtitle track as fallback — the chain `onboarding`
+  installs), **never** SocialCrawl `media/transcript` — it's a 10-credit premium call
+  with no advantage.
 - **Windows / Python:** `open(encoding='utf-8')`; never print non-ASCII to the cp1252 console
   (write to file). The brief script already follows this.
 

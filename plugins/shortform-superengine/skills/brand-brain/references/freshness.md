@@ -11,7 +11,7 @@ Every consumer (and this skill's router) computes `days_since_update` on read an
 
 ## The gate
 - **≤7 days:** reuse silently.
-- **>7 days:** offer once per session: *"Your voice + topics are N days old — want a quick update? (~1-3 min, only pulls what's new)"* Decline → proceed with the existing brain, increment the decline count. Never nag on back-to-back builds.
+- **>7 days:** offer once per session: *"Your voice + topics are N days old — want a quick update? (~1-3 min, only pulls what's new)"* Decline → proceed with the existing brain, increment the decline count, and offer (once) a **remind-only** alternative: a scheduled nudge at the next 7-day mark that ASKS again — it never mines by itself. On yes, record `refresh.mode: "remind-only"` in the marker (vs `"auto-refresh"` from onboarding Step 4c). Never nag on back-to-back builds.
 - **Repeated declines / big backlog:** escalate the WORDING only (explain the why: stale VoC = copy drifts from current prospect language = lower conversion; give an honest time estimate from the new-item count; offer "top-patterns quick pass" vs "full re-rank"). Still declinable. Never forced.
 
 ## Delta mining

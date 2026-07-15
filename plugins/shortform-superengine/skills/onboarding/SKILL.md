@@ -86,29 +86,34 @@ Windows or Mac).
 
 ## Step 2 — Transcription options (detect → pick the chain)
 
-This is the heart of setup. Reels get turned into text three possible ways, cheapest
-to best. The plugin uses whatever the user has, in this order:
+This is the heart of setup. **Real spoken-word transcription is not optional garnish —
+it is the primary text every analysis reads.** Without it the engine falls back to post
+captions, which are *not* what the creator says on camera, and the analysis is degraded.
 
-1. **Captions-first** — pulls the reel's own captions with `yt-dlp`. Free, instant,
-   no transcribing. **Required floor.**
-2. **Groq** — fast cloud transcription when a reel has no captions. Near-free, needs
+1. **`yt-dlp`** — fetches the reel's video/audio (and any subtitle track) so the
+   transcribers have something to eat. **Required floor** — it feeds everything below.
+2. **Groq** — fast cloud transcription (`whisper-large-v3-turbo`). Near-free, needs
    a free API key.
 3. **Local Whisper** — `faster-whisper` transcribes on the user's own computer.
    Offline, $0, slower. Needs `ffmpeg` + the `faster-whisper` Python package.
+
+Groq and local Whisper run **in parallel — first healthy transcript wins**. Install
+BOTH so transcription never stalls on one engine having a bad day.
 
 ### Detect
 
 | Tier | Probe | Plain meaning |
 |------|-------|--------------|
-| Captions | `yt-dlp --version` | can read a reel's built-in captions |
+| Fetch (yt-dlp) | `yt-dlp --version` | can download a reel's video/audio + subtitle track |
 | Groq | env `GROQ_API_KEY` set? | has a cloud-transcribe key |
 | Local Whisper | `python -c "import faster_whisper"` **and** `ffmpeg -version` | can transcribe offline |
 
 ### The gate rule (what counts as "set up enough")
 
-> **Require `yt-dlp` (the captions floor), AND require at least one real transcriber
-> — Groq OR local Whisper. Then actively recommend adding the other: the target
-> setup is BOTH, so no reel ever falls through the cracks.**
+> **Require `yt-dlp` (the fetch floor), AND require at least one real transcriber
+> — Groq OR local Whisper. Then actively recommend adding the other: the two run
+> in parallel (first wins), so the target setup is BOTH — no reel ever falls
+> through the cracks.**
 
 Why: captions alone can't handle a reel that *has no captions*, so one true
 transcriber is the real floor — and two transcribers mean a Groq outage or an
@@ -155,6 +160,25 @@ slot, and the verify calls. (Always hand clients the referral sign-up link, not 
 socialcrawl.dev.)
 Save the key to `~/.config/socialcrawl/api_key`. Confirm with the balance/auth
 test (also Step 7). **Can't run analysis without it.**
+
+### RevXL Brain — optional (key issued by Joe)
+
+The living knowledge base behind the engine: current, curated content-strategy
+intelligence that updates continuously — unlike the bundled reference files, it
+never goes stale. Access is part of the client's active RevXL subscription; the
+key comes from Joe, not a signup page.
+
+Resolution ladder (mirrors SocialCrawl): env `VAULT_API_KEY` (starts `vk_`) →
+file `~/.config/revxl/vault_api_key` → ask the client to paste the key Joe gave
+them + auto-save to that file. If they don't have one: *"Ask Joe for your Brain
+key — until then the engine runs on its built-in reference library, which works
+fine but doesn't get the newest patterns."* **Never block on it.**
+
+Verify (when a key is present): `GET https://brain.engineforimpact.com/health`
+returns `{"ok":true}`, then one test search (see
+[`../_shared/references/vault-api.md`](../_shared/references/vault-api.md)).
+Cold start note: the very first search after idle can take up to ~60s — that's
+normal, don't declare it broken; retry once before flagging.
 
 ### Optional services (detect-and-note, never block)
 
@@ -256,11 +280,10 @@ one built off month-old topics doesn't. So offer to keep it fresh automatically:
   on the same cadence.
 - Target: **never more than 6–7 days stale.**
 
-Capture the choice in the marker (`brand_brain.refresh`). **Lean-v1 note:** if the
-voice skill isn't installed yet, record the source + cadence preference now and tell
-the user the auto-refresh **activates when the brand-brain build lands** (the
-fast-follow). Don't create a schedule that points at a command that doesn't exist
-yet — capture intent, wire on arrival.
+Capture the choice in the marker (`brand_brain.refresh`). **`brand-brain` is bundled
+in this plugin**, so wire the auto-refresh schedule now — it points at the bundled
+`brand-brain` refresh (no missing command). Record the source + cadence + runtime,
+and set `brand_brain.refresh.scheduled: true` once the user picks a cadence.
 
 Do not hard-fail on missing voice. v1 ships with interim-voice degrade.
 
@@ -281,7 +304,7 @@ includes a `tier` field set to `unknown`) so the v2 Metricool step drops in clea
 
 ```json
 {
-  "version": "0.1.0",
+  "version": "0.2.3",
   "onboarded_at": "<ISO date>",
   "transcription_chain": ["captions", "groq|local|both"],
   "connections": { "socialcrawl": true, "groq": false, "firecrawl": false },
@@ -292,8 +315,9 @@ includes a `tier` field set to `unknown`) so the v2 Metricool step drops in clea
   "brand_brain": {
     "present": false,
     "updated_at": null,
-    "refresh": { "scheduled": false, "cadence": null, "runtime": "cowork|code|null" }
+    "refresh": { "scheduled": false, "cadence": null, "runtime": "cowork|code|null", "mode": "auto-refresh|remind-only|null" }
   },
+  "competitor_pulse": { "scheduled": false, "cadence": null, "runtime": null, "project": null, "last_run": null },
   "tier": "unknown"
 }
 ```
@@ -301,10 +325,10 @@ includes a `tier` field set to `unknown`) so the v2 Metricool step drops in clea
 `voice_sources` = which source-ladder tiers were found (Step 4a); `voice_confidence`
 = the overall tier the brain rests on (`A` spoken → `C` written-for-them → `interview`
 floor → `none`). Consumers lean bolder on A, conservative on interview. `brand_brain`
-= the living voice/ICP/topics/humor artifact: `present` once the voice skill has built
-it, `updated_at` its last-build stamp (the freshness clock reads this), and `refresh`
-the auto-refresh choice from Step 4c (`scheduled` stays false in lean v1 until the
-brand-brain build ships, but `cadence`/`runtime` capture the user's intent now).
+= the living voice/ICP/topics/humor artifact: `present` once the bundled `brand-brain`
+skill has built it, `updated_at` its last-build stamp (the freshness clock reads this),
+and `refresh` the auto-refresh choice from Step 4c (`scheduled: true` once the user
+picks a cadence — brand-brain is bundled, so the schedule can point at it now).
 
 3. **teach_mode default.** Ensure `~/.claude/revxl/` exists. If
    `~/.claude/revxl/teach-mode` does **not** exist, create it with the single word
@@ -335,14 +359,24 @@ Run real checks, report a pass/fail table — never claim done without proof:
 
 ## Step 8 — Activation
 
-Tell the user, in plain language, what they can do now:
+End with the standard **Next moves** block (state-gated — only offer what the
+machine can actually run):
 
-> "You're set up. Two things you can run:
-> - **Competitor cross-reference** — 'analyze my Instagram against my competitors'
->   → a strategy roadmap grounded in real reel data.
-> - **Reel-scripter** — after an analysis, 'write a reel script from my analysis'
->   → a reel in your brand voice off what already works in your niche.
-> Start with the competitor cross-reference — reel-scripter reads its output."
+> "You're set up. **Next moves**
+> 1. Analyze your Instagram against your competitors — a strategy roadmap +
+>    visual dashboards grounded in real reel data. Say: 'analyze my Instagram
+>    against my competitors'  ← start here; everything else reads its output.
+> 2. After the analysis: a reel script in YOUR voice off what already wins.
+>    Say: 'write a reel script from my analysis'
+> 3. *(If the brand brain was skipped at Step 4b)* Build your brand brain now —
+>    scripts get sharper with your real voice. Say: 'build my brand brain'
+> 4. Capture a thought-leader's whole library into a searchable corpus.
+>    Say: 'harvest <creator>'s library'"
+
+If a prior project with `analysis-data.json` already exists on this machine,
+add: *"You also have an existing analysis — the weekly competitor pulse keeps it
+alive (new winners, refreshed charts). Want it weekly? Say: 'run the weekly
+pulse'."* (Suggested schedule — Step 4c pattern; never set it silently.)
 
 Then check `~/.claude/socialcrawl-superengine/.superengine`: if present, add — *"You also
 have the SocialCrawl Superengine installed: deep research plays (audience voice mining,
@@ -350,11 +384,15 @@ competitor ad recon, AI-visibility audits) are available on top."* If absent, ad
 line — *"Optional: the `socialcrawl-superengine` plugin from the same marketplace adds
 deep research plays (VoC mining, ad recon, audits)."* — and move on.
 
+Sub-mode exits (refresh / reauth / update / show) end the same way: a short
+**Next moves** — 1) back to work (cross-reference or reel-scripter) · 2) run a
+pulse if an analysis exists · 3) "show my setup" anytime.
+
 ---
 
 ## Notes
 
 - Idempotent: safe to re-run; Step 0 routes to sub-modes if already set up.
 - No private infrastructure anywhere — the transcription chain is fully portable
-  (captions-first → Groq → local Whisper).
+  (Groq + local Whisper in parallel; `yt-dlp` fetch floor).
 - House pattern: detect → offer-install → wire → write marker → verify → activate.

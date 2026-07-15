@@ -2,9 +2,17 @@
 
 ## 0.2.2 — 2026-07-13
 
-The generator now consults the engine's own intelligence before building: every concept gets a
-winning check against prior inspire/teardown analysis, and weak concepts get evidence-cited pivot
-proposals — suggest-then-approve, never a gate (SKLLPLG-77).
+The generator now consults the engine's full intelligence before and during every build: a winning
+check against prior inspire/teardown analysis (weak concepts get evidence-cited pivot proposals —
+suggest-then-approve, never a gate, SKLLPLG-77), plus the Brain wiring that pulls the
+content-strategy vault into the slide map and hook drafting.
+
+- **Brain wiring (content-strategy vault):** `references/vault-api.md` added (same client
+  contract as shortform-superengine — key ladder, power params, budget + cache discipline,
+  degrade table). `carousel-create` gains 2 named Brain triggers: pull #1 (topic frameworks,
+  step 3 slide map) + pull #2 (hook patterns, step 4, optional). ≤2 searches + ≤3 note reads
+  per carousel, cached to `brain-pulls/`, never blocking — no key = bundled refs, unchanged
+  behavior.
 
 - **NEW step 1.5 in `carousel-create` — consult the data + winning check.** Before the frame lock,
   the resolved concept (topic, repurposed content, or call build — every input mode) is judged

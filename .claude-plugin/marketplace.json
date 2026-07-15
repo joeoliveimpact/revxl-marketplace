@@ -7,7 +7,7 @@
     "email": "joe@engineforimpact.com"
   },
   "metadata": {
-    "version": "0.1.35"
+    "version": "0.1.37"
   },
   "plugins": [
     {
@@ -339,6 +339,31 @@
         "copywriting",
         "conversion",
         "email-capture",
+        "coaching",
+        "brand-brain",
+        "superengine"
+      ]
+    },
+    {
+      "name": "profile-optimization-superengine",
+      "description": "v0.1.0 · Audit and optimize a coach's Facebook and Instagram personal profile for organic lead gen. Name the platform (or do both) and the engine scores every profile element, then hands back specific, copy-paste-ready fixes: Facebook bio (101), profile pic + cover, Featured, About, pinned post, CTAs; Instagram Name field (64), bio (150), single link, Story Highlights, pinned trio, grid, account type, SEO, content pillars. Enforces the 2026 single-direct-link standard (aggregators only as an anti-pattern) and amplified CTA language. Persistent setup wizard, bundled brand-brain voice layer, teach-mode, plus an optional credit-gated SocialCrawl competitor benchmark scan. B2C fitness, health, and wellness. Recommendations only... never posts or messages.",
+      "source": "./plugins/profile-optimization-superengine",
+      "category": "marketing",
+      "version": "0.1.0",
+      "author": {
+        "name": "Joe Olive",
+        "email": "joe@engineforimpact.com"
+      },
+      "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/profile-optimization-superengine",
+      "license": "MIT",
+      "keywords": [
+        "facebook",
+        "instagram",
+        "profile-optimization",
+        "bio",
+        "audit",
+        "lead-gen",
+        "social-media",
         "coaching",
         "brand-brain",
         "superengine"

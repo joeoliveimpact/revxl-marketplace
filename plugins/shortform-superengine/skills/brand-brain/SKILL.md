@@ -22,11 +22,16 @@ One skill, one job: **sources in → brain out** at the shared location. Every R
 
 1. **Detect first (idempotent).** Check `~/.claude/revxl/<brand>/voc/` for existing artifacts.
 2. **Present + fresh (≤7 days old)** → REUSE. Say so in one line. Done.
-3. **Present + stale (>7 days)** → offer a quick update: *"Your voice + topics are N days old — want a quick update? (~1-3 min, only pulls what's new)"* → yes: run ${CLAUDE_PLUGIN_ROOT}/skills/brand-brain/references/refresh.md · no: reuse as-is, log the decline in `voc/index.md`.
+3. **Present + stale (>7 days)** → offer a quick update: *"Your voice + topics are N days old — want a quick update? (~1-3 min, only pulls what's new)"* → yes: run ${CLAUDE_PLUGIN_ROOT}/skills/brand-brain/references/refresh.md · no: reuse as-is, log the decline in `voc/index.md`, then never dead-end — **Next moves**: 1) proceed with what you were doing on the current brain · 2) *"want a reminder at the next 7-day mark instead? I'll set a remind-only nudge — it never mines by itself"* (suggested schedule, Step-4c pattern, `refresh.mode: "remind-only"`) · 3) the lighter option: a top-patterns quick pass (~1 min) instead of the full refresh.
 4. **Absent** → full pass: run ${CLAUDE_PLUGIN_ROOT}/skills/brand-brain/references/mine.md.
-5. **No usable sources at all** (ladder empty through tier C) → ${CLAUDE_PLUGIN_ROOT}/skills/brand-brain/references/interview.md, and offer to turn on recording from call #1 so the brain compounds.
+5. **No usable sources at all** (ladder empty through tier C) → ${CLAUDE_PLUGIN_ROOT}/skills/brand-brain/references/interview.md, and offer to turn on recording from call #1 so the brain compounds. End the interview floor with **Next moves**: 1) wire the recording source now (Fathom/Fireflies) so the brain builds itself from your next call · 2) *"first real refresh in ~a week? I'll suggest it, you confirm"* (suggested schedule) · 3) script now on the interim voice — honest floor, upgrades automatically once real sources land.
 
 Offer refreshes at most ONCE per session — never nag on back-to-back builds.
+
+**After any completed mine or refresh — Next moves**
+1. Script a reel off the freshest topical seed — I hand the seed straight to reel-scripter as the angle. Say: "script the top seed"
+2. *If no auto-refresh is set:* keep the brain fresh on a schedule (Friday night / Monday morning / your pick — always asked, never silent). Say: "schedule my brain refresh"
+3. Back to what you were doing — the consuming engine picks the fresh brain up automatically.
 
 ## Rules that never bend
 
