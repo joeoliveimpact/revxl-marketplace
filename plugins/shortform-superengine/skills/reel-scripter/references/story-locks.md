@@ -1,6 +1,6 @@
 # Story Locks — the word-level craft-scoring rubric
 
-The **6 Story Locks + 7 Swaps**: a line-level toolkit for tightening any reel script
+The **6 Story Locks + 8 Swaps**: a line-level toolkit for tightening any reel script
 *without changing the topic*. Each lock is a small, mechanical edit that closes an "exit
 door" — a place the viewer's attention can leak out. Niche-agnostic. Placeholders:
 `[pain]`, `[outcome]`, `[mechanism]`, `[topic]`, `[belief]`, `[audience]`, `[number]`.
@@ -84,7 +84,7 @@ highest-leverage word in short-form is **but**; close behind: *actually, instead
 
 ---
 
-## The 7 Swaps (the quick-edit pass)
+## The 8 Swaps (the quick-edit pass)
 Run this as a final sweep over any drafted script. Each maps to a lock above.
 
 | # | Swap | Do this | Lock |
@@ -96,6 +96,9 @@ Run this as a final sweep over any drafted script. Each maps to a lock above.
 | 5 | Hooks throughout | Drop a re-hook every 20–30s ("here's what everyone misses") | Loop-Openers |
 | 6 | More contrast | Add `but / instead / turns out` to introduce conflict | Contrast-Words |
 | 7 | Narrate the doubt | Voice their objection, then answer it | Thought-Narration |
+| 8 | **Second-person default** | Ask every line: **"can this be `you`, not `I/we`?"** Swap teaching / benefit / stakes lines to `you/your`. **Keep first person ONLY for the creator's own proof/testimony** (`I canceled`, `I tested`) — that's what makes it credible. | Viewer-as-Subject |
+
+**Swap 8 — why (vault-backed).** The content-strategy vault: *"you want the viewer to see themselves as the protagonist… make the hero subject [the viewer]"* + *"give the viewer something to root for."* Second person is how you operationalize viewer-as-protagonist — the reel is about **their** outcome, not your résumé. The one exception is proof: a personal result *has* to stay first-person or it stops being testimony. So the test is not "delete all I" — it's *"is this line teaching them (→ you) or is it my evidence (→ I)?"*
 
 ---
 

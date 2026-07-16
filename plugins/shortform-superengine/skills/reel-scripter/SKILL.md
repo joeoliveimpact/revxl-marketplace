@@ -249,9 +249,11 @@ On the picked hook, run the **three-hook alignment check** (`hook-mastery.md`): 
 and text hook must mean the same thing — fix before moving on.
 
 When every section is picked, dial the **edge** to the voice guide (how blunt/contrarian the
-client is), then run the assembled draft through the **7 Swaps** line-edit pass in
+client is), then run the assembled draft through the **8 Swaps** line-edit pass in
 `./references/story-locks.md` (name it · kill hedges · go negative · add contrast · loop-openers
-every ~20–30s · narrate the doubt) and fix weak lines with `./references/say-this-not-that.md` —
+every ~20–30s · narrate the doubt · **second-person default** — "can this be `you`, not `I`?",
+keeping first person only for the creator's own proof) and fix weak lines with
+`./references/say-this-not-that.md` —
 this pass tightens lines; it never restructures. Then write the **caption** (picked caption hook
 + context + the same single CTA).
 
@@ -287,7 +289,7 @@ reordered, no move softened) — any drift gets flagged at Checkpoint 4. A chang
 asks for at Checkpoint 4 is always allowed — the lock binds voice, not the user.
 
 **4d. Craft score.** Score **Hook / Body / CTA / overall (0–100)** against the **Story Locks rubric**
-(`./references/story-locks.md`) — how many of the 6 Story Locks + 7 Swaps the script lands (contrast,
+(`./references/story-locks.md`) — how many of the 6 Story Locks + 8 Swaps the script lands (contrast,
 zero hedges, named framework, negative-frame, loop-openers at cadence, viewer-framing). This is an
 honest **craft** read, **not** a performance prediction: it never claims views. State the one
 highest-leverage fix. *(This is the **single** craft score for the script — the dashboard's Scripting
@@ -414,7 +416,7 @@ Absent → one-line mention, continue.
 - `./scripting_brief.py` — deterministic brief generator (incl. §8 niche Avoid list); run first (Step 0b)
 - `./references/hook-mastery.md` — the hook doctrine: single subject / single question, three-hook alignment, 7-step process (Step 3)
 - `./references/retention-psychology.md` — the content inside the beats: loops, partial payoffs, secondary-hook placement, post-hook structures (Steps 2–3)
-- `./references/story-locks.md` — the 6 Story Locks + 7 Swaps craft-scoring rubric + line-edit pass (Step 4c)
+- `./references/story-locks.md` — the 6 Story Locks + 8 Swaps craft-scoring rubric + line-edit pass (Step 4c)
 - `./references/opener-patterns.md` — HOOK→PROMISE(→MICRO-INTRO, YT-only) + first-3-seconds opener templates by hook bucket, incl. the losing-openers table
 - `./references/hook-formulas.md` — view-validated hook formulas mapped to the analysis's hook buckets
 - `./references/body-structures.md` — body skeletons by hook bucket (Step 2)
