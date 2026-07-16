@@ -2,6 +2,18 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+- **C19 — secondary-hook dosage is a mandatory computation (Step 3).** The
+  secondary-hook section now computes the placement COUNT from the length
+  target via retention-psychology §4's dosage table (30s→1 · 45s→1–2 ·
+  60s→2–3 · 90s→3–4) BEFORE generating, with 3 scored options per slot —
+  never a single placement on a 60s+ reel. Dogfood catch (07.16.26, JOI-001):
+  a 63s listicle shipped one secondary; the user hand-added the missing two
+  exactly where the table places them. Sixth instance of the
+  documented-but-optional-craft pattern (C15–C18).
+
 ## [0.3.0] — 2026-07-16
 
 ### Added — 2026-07-15 pm dogfood batch (C15–C18: implied craft → enforced screens)

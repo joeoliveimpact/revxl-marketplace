@@ -215,9 +215,13 @@ Proof → CTA → Text-overlay storyboard → Caption hook. Per section, run
      + ≤3 note reads, never inside loops.**
      Use the client's vocabulary; pull verbatim audience pains from `voc-profile.md` where they
      fit (the client's words beat yours).
-   - **Secondary hooks (3 options per placement)** — place + dose per
-     `./references/retention-psychology.md` §4 (strongest at 12–15s; scripted content moments,
-     not edit effects; every tease sits on value already delivered).
+   - **Secondary hooks — compute placements FIRST (mandatory), then 3 options per placement.**
+     Read the reel's length target and take the placement COUNT from
+     `./references/retention-psychology.md` §4's dosage table (30s→1 · 45s→1–2 · 60s→2–3 ·
+     90s→3–4) — never a single placement for a 60s+ reel. Lay the slots at the drop-off
+     points: 12–15s is always the strongest slot, then roughly every 15–20s through the back
+     half. Generate 3 scored options PER SLOT. Scripted content moments, not edit effects;
+     every tease sits on value already delivered.
    - **Body beats + Proof (2–3 options per beat)** — fill the skeleton one idea per beat; run
      the loop mechanics (`retention-psychology.md`: connective question-chain, partial payoffs).
    - **CTA (2–3 options)** — matching scaffold from `./references/cta-scaffolds.md`, mapped to
