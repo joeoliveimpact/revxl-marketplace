@@ -2,7 +2,29 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased] — 2026-07-10 (proposed ship: 0.3.0)
+## [0.3.0] — 2026-07-16
+
+### Added — 2026-07-15 pm dogfood batch (C15–C18: implied craft → enforced screens)
+- **C15 — mandatory skeleton-optimization pass (Step 2).** The beat skeleton is
+  screened BEFORE Checkpoint 2 against four checks (one idea not a list · length
+  budget · one loop paid late · single lever), presented pre-tightened with a
+  one-line why per trim. Users approve an optimized skeleton, never a raw dump.
+- **C16 — custom-idea field vet (`field_vet.py`, Step 1).** A user-supplied topic
+  is vetted against the field before beats are committed: per-keyword spoken-track
+  median vs field median (captions reported separately, never merged — the C7
+  weighting), WINNER/NEUTRAL/LOSER/UNTESTED verdicts. Topic-level twin of the §8
+  hook-type firewall. The idea is never vetoed — only the framing adapts.
+- **C16b — LOSER vs UNTESTED branching.** LOSER (has data, underperforms) →
+  pivot with 2–3 data-backed adjustments, user picks. UNTESTED / THIN (n<5) →
+  NOT a loser: possible first-mover edge; de-risk by riding the novel topic on a
+  proven hook type + nearest proven frame word. No data ≠ bad idea.
+- **C17 — mandatory loop-integrity check (Step 4b).** Walks every beat seam and
+  fails on dead-seam / early-close / flat-run before Checkpoint 4. Rule: from
+  hook to CTA there is never a moment with zero open loops; the spanning loop
+  resolves in the final beat.
+- **C18 — Swap #8: second-person default (story-locks).** Every teaching /
+  benefit / stakes line asks "can this be `you`, not `I`?" — first person kept
+  ONLY for the creator's own proof/testimony. Vault-backed (viewer-as-protagonist).
 
 ### Added — 2026-07-15 batch (C-gate fixes + cheap enhancements)
 - **C7 — dual-track analysis (schema 1.2, additive).** analyze.py now keys hook/

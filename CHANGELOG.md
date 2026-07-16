@@ -4,6 +4,11 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.30] — 2026-07-16
+
+### Changed
+- Plugin: [shortform-superengine](plugins/shortform-superengine/CHANGELOG.md) **v0.3.0** — the C-gate + dogfood release. Dual-track analysis (spoken transcripts primary, captions a separate packaging read — schema 1.2 additive), live pipeline-shape ingest in the scripting brief, Pattern Matrix beat/pattern measurement layer (field-proven on a 1,000-reel corpus), GURU competitor tier, visual deliverables renderer, Brain API triggers, and five enforced craft screens surfaced by own-brand dogfooding: mandatory skeleton optimization, custom-idea field vetting (LOSER→pivot / UNTESTED→first-mover de-risk), loop-integrity seam check, second-person-default line pass, text-overlay storyboard. Verified end-to-end on two live reels before ship.
+
 ## [0.1.29] — 2026-07-07
 
 ### Removed
