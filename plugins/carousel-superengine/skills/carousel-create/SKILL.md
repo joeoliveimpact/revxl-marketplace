@@ -44,7 +44,12 @@ skeleton choice that wants niche data): name the value that can't be honored wit
 the inspire offer EXPLICIT — "your config says CTA per-build (decided from competitor data), but
 no niche data exists yet; one inspire pull seeds it for ~30 days of builds — exact credits are
 quoted at inspire's own checkpoint before anything spends" — then proceed on the coach's call.
-Nothing there → judge from the avatar pain map + the bundled pattern refs alone. Then judge the
+Nothing there → judge from the avatar pain map + the bundled pattern refs alone — and when there's
+also no SocialCrawl key, name inspire's MANUAL route once ("paste 3-5 carousels you admire and
+I'll run them as teardowns — no key, no credits — that becomes your niche data"). **Re-offer
+damping:** the explicit inspire offer fires ONCE per session; after a decline, later builds this
+session get one quiet line at most ("niche data still unseeded"), never the full pitch again.
+Then judge the
 resolved concept against what's winning: hook archetypes, structures, topic clusters, the pains
 that pull. When the beat data holds framework skeletons, offer instantiating a proven
 role-sequence, not just a vibe. Every input mode gets this — for repurpose/call builds the
@@ -117,7 +122,9 @@ per voice edge. Numbers/results only from `{{PROOF_ASSETS}}`.
 
 **5. Gate + deliver.** Run carousel-quality.md end to end. On GENERATED copy: fix fails silently.
 On coach-PROVIDED copy: the scorecard's rule wins — surface each fail as a graded flag with the
-fix proposed, rewrite their words only on approval. Deliver per
+fix proposed, rewrite their words only on approval. **Tiebreaker:** the coach explicitly declining
+a flagged fix ends the argument — ship their version with the flag NOTED in the delivery line
+("shipping with 61-word slide 6, your call") so the decision is on record, never re-litigated. Deliver per
 `{{OUTPUT_DESTINATION}}` as a DRAFT for approval. With `{{TEACH_MODE}}` on, close with 2-3 plain
 "why this works" lines (the craft, not a lecture).
 

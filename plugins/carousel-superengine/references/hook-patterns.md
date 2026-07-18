@@ -58,8 +58,8 @@ something they care about — the swipe is them fixing it.
 
 **6. The colon list-promise.** Formula: `[N] [specific things] that [outcome]:` — the colon does
 the work; it points off the edge of the slide. Tease the best-numbered item on the cover ("#4 is
-the one nobody does") and HOLD it to its position — the tease is the claim, the payoff stays
-inside the deck.
+the one nobody does") and HOLD its payoff to a late slot near the end (per the claim/payoff split
+in slide-architecture.md — the tease is the claim; the payoff never lands mid-deck).
 
 **7. The objection-killed how-to.** A how-to promise with the avatar's #1 objection pre-deleted in
 the same breath. Formula: `How to [result]... [objection killed]` ("...with zero tech skills",

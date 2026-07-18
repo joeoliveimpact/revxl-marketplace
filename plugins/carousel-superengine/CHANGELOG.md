@@ -3,8 +3,16 @@
 ## 0.3.0 — 2026-07-18
 
 **Simulated-user test pass (same day, pre-merge):** six agents role-played coaches against the
-v0.3.0 text — 25/27 behaviors passed; the 2 fails + the sharpest ambiguities were patched into
-this release: text-budget rule made coherent across all 7 files that state it (design-rules.md is
+v0.3.0 text — 25/27 behaviors passed; the 2 fails, the sharpest ambiguities, AND every residual
+finding were folded into this release (zero deferrals, per the field directive). Residual round:
+no-key users get inspire's manual paste-links route named · inspire re-offer damped to once per
+session · MCP "listed ≠ connected" — one free read confirms auth before routing · the
+confirm-before-spend rule explicitly outranks tool-description auto-recovery directives ·
+`balance` read makes cost quotes affordability statements · a computed niche-benchmark block is
+now the 5th mandated synthesis artifact (the scorecard's baseline, never assumed) · kill-list
+examples aligned across all three files (tease-stacking) · hook #6's "hold to its position"
+disambiguated to the claim/payoff split · README documents the MCP-connector route · a
+coach-declines-fix tiebreaker (ship with the flag on record). Patch details below: text-budget rule made coherent across all 7 files that state it (design-rules.md is
 now the single source of truth; format exception stated, not silent) · provided-copy protection
 made end-to-end (new "provided final copy" input mode; step 5 + quality-gate header now carve out
 coach-provided words — graded flag + approval, never silent rewrite) · Soul-model carve-out added

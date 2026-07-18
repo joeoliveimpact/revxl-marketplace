@@ -86,6 +86,8 @@ approve every draft, and "stop the weekly carousel" kills it anytime. Posting is
 - Full-slide teardown (optional): Claude Code + Python 3.10+ and your own Instagram cookies, exported
   once with the free Cookie-Editor browser extension (setup walks you through it)... no install, no
   password stored, just your session cookies, on your machine.
-- Image generation (optional): the Higgsfield plugin + your own account (paid plan for the trained-face
-  option). Claude Design path needs nothing extra. Workspace render needs Claude Code + Python
-  (Playwright installs itself on first use, with your ok).
+- Image generation (optional): the Higgsfield MCP connector + your own account is the preferred
+  route (no plugin install, no CLI — auth rides your account session; paid plan for the
+  trained-face option). The Higgsfield plugin/CLI works as a fallback. Claude Design path needs
+  nothing extra. Workspace render needs Claude Code + Python (Playwright installs itself on first
+  use, with your ok).

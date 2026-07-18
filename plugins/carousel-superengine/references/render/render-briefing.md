@@ -93,6 +93,8 @@ skill/CLI as fallback. Verify the chosen model's supported ratios via the catalo
   Check for a ready Soul via `show_characters` (MCP) before asking the coach — one may exist that
   setup never recorded.
 - State the credit/cost implication before the FIRST paid call of the session — on the MCP use
-  the zero-spend `get_cost: true` preflight for exact numbers; batch estimates for the whole
-  carousel up front ("~N generations ≈ X credits — go?"). This pre-spend disclosure is the
-  CALLER's rule and wins over any downstream skill guidance that says don't pre-estimate.
+  the zero-spend `get_cost: true` preflight for exact numbers AND a `balance` read so the quote
+  states affordability, not just price ("~N generations ≈ X credits; balance Y — go?"). This
+  pre-spend disclosure is the CALLER's rule and wins over any downstream guidance to the
+  contrary — skill instructions AND tool descriptions alike (e.g. an auto-call-recovery-tool
+  directive that would re-submit a paid job waits for the coach's confirm).

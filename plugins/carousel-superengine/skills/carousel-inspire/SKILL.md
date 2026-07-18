@@ -59,7 +59,9 @@ sets. Persist as `${CLAUDE_PLUGIN_DATA}/analysis/beats-<niche-slug>-<MM.DD.YY>.j
   instantiate ("hook → context → value×4 → proof → payoff → cta")
 - **positional beat-map** — what each slide position does in winners vs losers
 - **kill-list** — losing beat-patterns to gate against (buried reader stake, unresolved close,
-  context overload)
+  context overload, tease-stacking)
+- **niche benchmark block** — computed from the records (proof beats/deck in winners, words/slide
+  norm, context-beat count) — the create scorecard's grading baseline
 - plus the prose report: structure patterns, topic clusters + gaps, visual systems (feeds Path A
   steal-style), cadence signal where visible
 Every line evidence-stamped `@handle · metric · URL`. Inferences from partial data tagged as such;

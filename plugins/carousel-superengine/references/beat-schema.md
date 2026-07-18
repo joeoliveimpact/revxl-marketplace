@@ -55,3 +55,7 @@ report — the report interprets, the dataset is queryable.
 3. **Positional beat-map** — what each slide position does in winners vs losers.
 4. **Kill-list** — losing beat-patterns to gate against (buried reader stake, unresolved close,
    context overload, tease-stacking).
+5. **Niche benchmark block** — computed FROM the records, never assumed: proof beats/deck in
+   winners (count `role: proof` per post) · words/slide norm (word-count `copy_verbatim`) ·
+   context-beat count. This is what the create scorecard grades against — without it the
+   scorecard silently falls back to shipped defaults while believing it used the coach's data.

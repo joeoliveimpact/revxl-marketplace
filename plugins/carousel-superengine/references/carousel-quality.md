@@ -39,7 +39,7 @@ header). The six flop patterns this gate exists to catch: text walls, context-de
 - [ ] **Proof-beat count meets the niche benchmark** (winners typically carry ≥2 real-receipt
       beats per deck); zero proof beats = flag with specific real-proof options, never invent
 - [ ] **Kill-list clean:** no losing beat-patterns from the coach's inspire data (buried reader
-      stake, unresolved close, context overload)
+      stake, unresolved close, context overload, tease-stacking)
 
 ## Truth
 - [ ] Every number, result, client story is REAL — from `{{PROOF_ASSETS}}` / story elicitation;

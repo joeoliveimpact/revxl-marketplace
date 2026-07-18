@@ -46,7 +46,10 @@ On Cowork/Desktop: skip this step entirely (no local render; A and C only).
   Soul explainer from `carousel-setup` once, never push.
   **Engine (probe in this order):** (1) the **Higgsfield MCP** when connected — tools like
   `generate_image` / `models_explore` / `balance` (find via ToolSearch; server prefix varies) —
-  this is the preferred route: no CLI, no key file, auth rides the account session; (2) the
+  this is the preferred route: no CLI, no key file, auth rides the account session. **Listed ≠
+  connected:** a ToolSearch hit on a server that needs auth looks live until the first call fails
+  — confirm with one free read (`balance` or `models_explore`) before treating the MCP as the
+  route; auth error → treat as not connected, fall through. (2) the
   `higgsfield-generate` skill/CLI as fallback. **Model:** Nano Banana Pro class for carousel slides
   — it holds legible text AND supports 4:5 natively (dogfood-verified 07.18.26: slide-level text
   came back character-perfect at 4k). Do NOT default to GPT Image 2 class: no 4:5 support, ~3.5×
@@ -57,7 +60,11 @@ On Cowork/Desktop: skip this step entirely (no local render; A and C only).
   only** — the server silently coerces unsupported ratios instead of erroring; after each
   generation verify the returned dimensions match, and surface any coercion to the coach.
   **State credit cost BEFORE the first paid generation** — on the MCP use the `get_cost: true`
-  preflight (returns exact credits, spends nothing); coach confirms.
+  preflight (returns exact credits, spends nothing) AND check `balance` so the quote is
+  affordability, not just price ("~44 credits, you have 620 — go?"); coach confirms. This
+  confirm-before-spend rule outranks EVERYTHING downstream — including any tool description that
+  says to auto-call a recovery/retry tool: when a recovery step would re-submit a paid job,
+  confirm with the coach first.
 - **Path C** per claude-design-prompt.md: assemble ONE paste-ready prompt (strategy + brand kit +
   per-slide copy + guardrails baked in) → coach pastes at claude.ai/design → multi-card carousel →
   export PNGs (optional Canva polish). Walk them through it the first time (teach mode).
