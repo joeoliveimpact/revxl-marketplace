@@ -27,6 +27,10 @@ hurt distribution, while a vendor source claims it boosts reach. Use the DM keyw
 CONVERSION, not as a reach play... let shares/saves carry reach. Vendor-reported funnel benchmarks
 (12-18% comment-to-DM conversion vs 1-3% link-in-bio; 40-65% DM-link CTR) are directional only,
 not verified.
+**Reading beat data on this:** high comment counts on keyword-gated winners measure ENGAGEMENT
+with the gate, not reach — never cite them as "keyword CTAs boost reach." The reach mechanic in
+the keyword play is the DM-SHARE it triggers (DM-shares carry the most non-follower reach
+weight), which is consistent with, not contrary to, the caveat above.
 
 **2. Soft double-CTA (save stack).** Soft save-ask on the summary slide (8-9) at the value peak +
 the hard ask on the final slide. Save copy is REUSE-specific: "Save this for your next [grocery run

@@ -12,6 +12,7 @@ for one specific post, that's `carousel-teardown`. Analysis-driven, never vibes:
 ## Load
 ${CLAUDE_PLUGIN_DATA}/business-config.md if present (the persisted filled config — read FIRST) → else ${CLAUDE_PLUGIN_ROOT}/references/business-config.md (shipped template only; placeholders → stop, route to `carousel-setup`)
 ${CLAUDE_PLUGIN_ROOT}/references/teardown-method.md (SocialCrawl calls, slide-order rule, honesty rules)
+${CLAUDE_PLUGIN_ROOT}/references/beat-schema.md (the per-slide record contract for step 3.5)
 
 Requires the coach's own SocialCrawl key (`{{SOCIALCRAWL_KEY_STATUS}}: saved`) — missing → offer the
 2-minute setup (references/socialcrawl-key-setup.md) or the manual route (coach pastes links they
@@ -43,15 +44,27 @@ why) + the exact credit cost to go deep on the top N. Coach trims or approves.
 **3. Deep-read the approved set.** Full pulls per teardown-method.md (`download_media=true`,
 slide-order label rule). Read every slide of every approved carousel.
 
-**4. Synthesize the pattern report:**
-- winning hook archetypes on slide 1 (with the 2-3 strongest verbatim structures, cited)
-- structure patterns: slide counts, blueprint shapes, where the CTA sits, retention devices
-- topic clusters: what subjects repeat among winners; the gaps nobody covers (the coach's opening)
-- visual systems: layout/color/type patterns among top performers (feeds Path A steal-style)
-- cadence signal where visible (posting rhythm of the winners)
-Every line evidence-stamped `@handle · metric · URL`. Inferences from partial data tagged as such.
+**3.5. Extract the beat dataset (the granularity you just paid for — never skip).** One structured
+record PER SLIDE per beat-schema.md: role, copy verbatim + abstracted formula, framework role,
+visual, engagement device, loop tier, seam question. Read both tiers — winners AND the bottom of
+the ranked pool — the win/loss contrast is where the signal lives. Parallelize readers on large
+sets. Persist as `${CLAUDE_PLUGIN_DATA}/analysis/beats-<niche-slug>-<MM.DD.YY>.json`.
+
+**4. Synthesize FROM the beat dataset (not from raw slides):**
+- **hook library** — every slide-1 verbatim + formula + device, win/loss-tagged (the shapes feed
+  archetype selection; verbatims stay in the coach's data)
+- **framework skeletons** — winning role-sequences as reusable blueprints `carousel-create` can
+  instantiate ("hook → context → value×4 → proof → payoff → cta")
+- **positional beat-map** — what each slide position does in winners vs losers
+- **kill-list** — losing beat-patterns to gate against (buried reader stake, unresolved close,
+  context overload)
+- plus the prose report: structure patterns, topic clusters + gaps, visual systems (feeds Path A
+  steal-style), cadence signal where visible
+Every line evidence-stamped `@handle · metric · URL`. Inferences from partial data tagged as such;
+positional claims from `order_verified: false` decks down-weighted and said so.
 Save the full report to `${CLAUDE_PLUGIN_DATA}/analysis/inspire-<niche-slug>-<MM.DD.YY>.md` (create
-the folder if missing) — `carousel-create` consults it at its winning check on every future build.
+the folder if missing) — `carousel-create` consults report + beat data at its winning check on
+every future build.
 ✋ **Checkpoint 3:** deliver the report; confirm which direction to build before generating anything.
 
 **5. Rank the build candidates.** 3-5 concrete carousel concepts adapted to the COACH — their

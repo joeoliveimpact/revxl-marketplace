@@ -18,14 +18,24 @@ executable in Canva by a coach with zero design background. Carousels out-engage
 
 ## Color + contrast
 
-- High contrast text-on-background, always. Proven family: cream/off-white base + one deep anchor
-  color (forest green / charcoal) + ONE accent (coral / burnt orange) reserved for data points and
-  CTA elements.
+<!-- T1 (universal craft): -->
+- High contrast text-on-background, always. Structure rule: **one base + one deep anchor + ONE
+  accent reserved for data points and CTA elements.** The structure is universal; the actual hues
+  are NOT (see palette note below).
 - **2-3 colors per slide max**, even if the brand kit holds five.
 - **Export sRGB only.** CMYK uploads render washed-out/neon on IG + LinkedIn. (Canva default is
   fine; flag it only if the coach works in Photoshop/print tools.)
-- Palette leans warm + human for this demographic (earthy greens, lattes, eucalyptus)... sterile
-  clinical minimalism and cheap clip art read as 2021 and break trust.
+- Sterile clinical minimalism and cheap clip art read as 2021 and break trust — texture and warmth
+  in SOME form, whatever the palette.
+
+<!-- T3 (pulled from the coach, never shipped as "the" answer): -->
+- **The specific palette comes from the coach's brand** — brand kit / brand brain first, else pick
+  a starter direction at setup: **wellness-warm** (cream base, forest green, coral) ·
+  **dark-tech/spec-sheet** (warm near-black, cream ink, gold or single hot accent) ·
+  **editorial** (off-white, ink, one saturated accent) · **bold-color** (saturated field, white
+  display). No single family is "proven" for every coach — a wellness palette on an AI-coach brand
+  (or vice versa) mis-serves the brand. Hex values welcome; a brand system defined in hex ships
+  in hex.
 
 ## Typography + brand system
 

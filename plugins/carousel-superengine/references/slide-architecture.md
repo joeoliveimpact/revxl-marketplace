@@ -63,7 +63,10 @@ earns shares). Rotate categories; never let a feed become one note.
 - One idea per slide. If a slide needs two sentences of body copy to land, it's two slides.
 - The promise made on slide 1 must be FULLY paid by the second-to-last slide. CTA never interrupts
   unpaid value.
-- Slide order within value meat: strongest point FIRST (post-hook attention is highest), tease the
-  best-numbered item on the cover ("#4 is the one nobody does").
+- Slide order within value meat — **the claim/payoff split (resolves the old "strongest first vs
+  last" conflict):** the strongest CLAIM is teased on the cover ("#4 is the one nobody does"), the
+  strongest PAYOFF is held to its position near the end — they are different beats. Early value
+  slides open strong (post-hook attention is high), but the item the cover teased NEVER pays out
+  early; revealing the primary payoff mid-deck is the #1 retention killer (see retention-loops.md).
 - Every carousel maps slide-by-slide before any copy is written: n, role, job-in-≤12-words. Show the
   map, then write.

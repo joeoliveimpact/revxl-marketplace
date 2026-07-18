@@ -104,4 +104,10 @@ Output as markdown, these sections in order:
 9. **Steal-this** — the 2-3 structural moves worth carrying into the coach's version (structure, not
    wording).
 
+**Structured beat-record option (default whenever slides were actually read):** alongside the prose,
+emit one record per slide per @beat-schema.md (role, verbatim + formula, visual, engagement device,
+loop tier, seam question). A single teardown's records append into the same
+`${CLAUDE_PLUGIN_DATA}/analysis/beats-*.json` dataset inspire builds — every teardown grows the
+queryable corpus instead of evaporating into prose.
+
 Then offer the rebuild → `carousel-create` with this teardown as input.
