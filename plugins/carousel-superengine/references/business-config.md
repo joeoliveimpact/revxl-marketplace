@@ -32,7 +32,7 @@ live only here.
 |---|---|---|
 | `{{PRIMARY_PLATFORM}}` | instagram | instagram / linkedin / both |
 | `{{CONTENT_PILLARS}}` | (placeholder — run setup) | 3-5 recurring themes |
-| `{{CTA_DESTINATION}}` | (placeholder — run setup) | DM keyword / lead magnet / follow / community |
+| `{{CTA_DESTINATION}}` | (placeholder — run setup) | DM keyword / lead magnet / follow / community / per-build (from competitor data; unresolved → asked at each frame lock) |
 
 ## D. Data sources
 | Token | Value | Notes |

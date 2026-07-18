@@ -35,7 +35,8 @@ background; the [element] sits on the seam."
 ## 3. Text density (the flashcard principle)
 
 Slides are flashcards, not blog posts. Walls of text are the #1 swipe-exit trigger.
-- **20% rule:** text never covers more than ~20% of the canvas.
+- **Text budget:** default ~20% of the canvas (format exceptions — spec-sheet/educational up to
+  25-40% — per design-rules.md, the single source of truth).
 - **25-50 words max** body copy per slide; headline carries the idea.
 - **Bold the skim path:** bold the exact phrase that carries the value... a skimmer reading only
   bold words gets 100% of the point.

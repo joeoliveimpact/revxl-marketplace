@@ -6,7 +6,9 @@ executable in Canva by a coach with zero design background. Carousels out-engage
 
 ## Text + readability (hard rules)
 
-- **20% rule:** text ≤ ~20% of canvas area, every slide.
+- **Text budget (single source of truth — other refs defer here):** default text ≤ ~20% of canvas
+  area. Spec-sheet/educational formats legitimately run 25-40% — the deck's FORMAT sets the budget;
+  declare it once and hold it every slide. Past ~40% it's a blog post, not a slide.
 - **One idea per slide**, 25-50 words body max (2026 target: under 40... the average per-slide
   glance is ~1.5 seconds).
 - **Sizes (IG 1080×1350):** headlines ≥ 36px bold (readable at grid-thumbnail size), body ≥ 22-24px.

@@ -2,6 +2,19 @@
 
 ## 0.3.0 — 2026-07-18
 
+**Simulated-user test pass (same day, pre-merge):** six agents role-played coaches against the
+v0.3.0 text — 25/27 behaviors passed; the 2 fails + the sharpest ambiguities were patched into
+this release: text-budget rule made coherent across all 7 files that state it (design-rules.md is
+now the single source of truth; format exception stated, not silent) · provided-copy protection
+made end-to-end (new "provided final copy" input mode; step 5 + quality-gate header now carve out
+coach-provided words — graded flag + approval, never silent rewrite) · Soul-model carve-out added
+to render's model rule (a trained Soul runs only on soul_2; tradeoff surfaced if it can't hold
+4:5) · `per-build` made a legal CTA config value with a defined fallback (resolved at the frame
+lock when no data) · inspire's Checkpoint 2 now prices bottom-pool contrast pulls (win/loss needs
+losers) · loop_tier definitions inlined into beat-schema · teardown slide-map vocabulary aligned
+to the beat-record enum · evergreen defined · the "~N credits" placeholder replaced with
+inspire's real quote point.
+
 All 13 fixes from Dogfood Run 1 (07.16–17, FIX-01..09) + the render dogfood (07.18, FIX-10..18),
 shipped as one update per the field spec. Umbrella: SKLLPLG-83. Governing architecture: knowledge
 tiering (FIX-04) — T1 timeless craft ships, T2 perishable platform mechanics ship date-stamped,

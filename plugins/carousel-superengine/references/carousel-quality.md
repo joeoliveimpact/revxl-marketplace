@@ -1,8 +1,10 @@
 # Carousel Quality Gate — run before EVERY delivery
 
-Walk every check. One fail = fix before the coach sees it. The six flop patterns this gate exists
-to catch: text walls, context-dependent slides 2-3, preachy how-to voice, templated covers,
-single-CTA leak, brand drift.
+Walk every check. One fail = fix before the coach sees it — **on GENERATED copy.** On
+coach-PROVIDED copy a fail becomes a graded flag + proposed fix and the coach approves the change;
+never silently rewrite their words (the scorecard's flag-don't-rewrite rule wins over this
+header). The six flop patterns this gate exists to catch: text walls, context-dependent slides
+2-3, preachy how-to voice, templated covers, single-CTA leak, brand drift.
 
 ## Structure
 - [ ] Slide map exists (n / role / job-in-≤12-words) and the build matches it
@@ -48,7 +50,8 @@ single-CTA leak, brand drift.
 
 ## Design directions
 - [ ] Every slide has an executable visual direction (a non-designer can act on it alone)
-- [ ] 20% text rule flagged in directions; sizes named (36px+/22px+ IG)
+- [ ] Text budget flagged in directions (default 20%; a format exception per design-rules.md is
+      STATED when used, not silent); sizes named (36px+/22px+ IG)
 - [ ] 2-3 colors, two fonts, watermark position, consistent margins specified
 - [ ] Platform canvas correct (4:5 IG; LinkedIn PDF 4:5 portrait preferred as of 2026 for mobile
       dwell — 1:1 still renders safely); sRGB export noted

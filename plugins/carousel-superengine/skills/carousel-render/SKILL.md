@@ -50,7 +50,10 @@ On Cowork/Desktop: skip this step entirely (no local render; A and C only).
   `higgsfield-generate` skill/CLI as fallback. **Model:** Nano Banana Pro class for carousel slides
   — it holds legible text AND supports 4:5 natively (dogfood-verified 07.18.26: slide-level text
   came back character-perfect at 4k). Do NOT default to GPT Image 2 class: no 4:5 support, ~3.5×
-  the credits. **Always pass `aspect_ratio` (4:5) and `resolution` as real API params, never prose
+  the credits. **Soul-bound slides are the exception:** a trained Soul runs ONLY on its own model
+  (Soul V2 → `soul_2` + soul_id) — the Nano Banana default covers non-Soul slides; if the Soul's
+  model can't hold 4:5 or the slide's text, name the tradeoff plainly and let the coach pick
+  (face-first vs layout-first). **Always pass `aspect_ratio` (4:5) and `resolution` as real API params, never prose
   only** — the server silently coerces unsupported ratios instead of erroring; after each
   generation verify the returned dimensions match, and surface any coercion to the coach.
   **State credit cost BEFORE the first paid generation** — on the MCP use the `get_cost: true`

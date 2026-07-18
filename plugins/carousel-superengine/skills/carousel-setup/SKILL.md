@@ -32,7 +32,7 @@ Ask conversationally, per `{{EXPLANATION_LEVEL}}`. Push for CONCRETE phrasing in
 **C. Platform + content**
 11. **Primary platform** — instagram (default) / linkedin / both. Sets format defaults per ${CLAUDE_PLUGIN_ROOT}/references/platform-nuance.md.
 12. **Content pillars** — 3-5 recurring themes the coach wants to own.
-13. **CTA destination** — where carousels drive: DM keyword (default for coaches), lead magnet link, profile follow, community. One primary; the CTA slide always points somewhere real.
+13. **CTA destination** — where carousels drive: DM keyword (default for coaches), lead magnet link, profile follow, community, or per-build (decide per carousel from competitor data — needs an inspire run; until one exists, create resolves the destination at each build's frame lock). One primary; the CTA slide always points somewhere real.
 
 **D. Data sources (optional, can skip and add later)**
 14. **SocialCrawl key** — needed only for `carousel-teardown` / `carousel-inspire` pulls. Resolution order: env `SOCIALCRAWL_API_KEY` → `~/.config/socialcrawl/api_key` → offer the 2-minute click-path in ${CLAUDE_PLUGIN_ROOT}/references/socialcrawl-key-setup.md. Skipping is fine; create works without it.

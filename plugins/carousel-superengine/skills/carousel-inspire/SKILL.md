@@ -39,7 +39,9 @@ discovery lanes, run both when budget allows:
 **2. Source the pool.** Run the lanes → candidate carousels ranked by real engagement (views /
 likes / comments — ONLY metrics the API returns; never fabricate saves/shares, they aren't public).
 ✋ **Checkpoint 2:** show the ranked candidate set (handle · followers · post engagement · one-line
-why) + the exact credit cost to go deep on the top N. Coach trims or approves.
+why) + the exact credit cost to go deep. Price it as **top N + M bottom-pool contrast pulls**
+(recommend M ≈ N/2) — the beat study's win/loss contrast needs losers; a winners-only deep-read
+starves it. Coach trims or approves.
 
 **3. Deep-read the approved set.** Full pulls per teardown-method.md (`download_media=true`,
 slide-order label rule). Read every slide of every approved carousel.

@@ -38,6 +38,10 @@ report — the report interprets, the dataset is queryable.
   graduate into shipped refs per the tiering rule.
 - **order_verified**: false when slide order came from filename/position heuristics rather than
   confirmed display order — synthesis must down-weight positional claims from unverified decks.
+- **loop_tier** definitions (from @retention-loops.md, restated here so extraction never needs
+  the hop): `primary` = the cover's claim/tease, resolves only at the payoff slide · `secondary`
+  = a per-value-beat loop (answers the last slide's question, plants the next) · `micro` = the
+  in-slide bold skim path.
 - **seam_question + loop_tier** feed the seam audit and loop-chain checks in
   @retention-loops.md / @carousel-quality.md.
 - **per1k** = likes per 1k followers at pull time — the tier split (top/bottom) is per-niche

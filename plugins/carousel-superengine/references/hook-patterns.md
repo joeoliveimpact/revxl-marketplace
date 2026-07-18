@@ -85,7 +85,8 @@ heavier CTA arc.
 - ❌ Solid background + pointing-selfie cutout + generic headline ("3 Tips to Lose Weight") —
   reads templated-coach, instant scroll.
 - ❌ 2021 Canva-infographic aesthetic: clip art, sterile minimalism, stock photos. Trust killer.
-- ❌ Text over ~20% of the canvas. It's a flashcard, not a blog post.
+- ❌ Text over the deck's format budget (default ~20% of canvas; see design-rules.md). It's a
+  flashcard, not a blog post.
 - ❌ Vague promises with no number, timeframe, or constraint.
 - ❌ A hook the coach can't cash — slide 2+ must deliver exactly what slide 1 promised; a bait gap
   destroys saves and follows.

@@ -27,7 +27,9 @@ generic voice. Write at `{{VOICE_EDGE}}`.
 **1. Resolve the input.** One of: topic/pain ("carousel about X") · idea request (generate 3-5
 options from the 6 topic frameworks × `{{CONTENT_PILLARS}}` × `{{AVATAR_PAINS}}`, coach picks) ·
 repurpose (reel script / transcript / post — extract the core idea + strongest lines, credit the
-source medium's beats) · **call build** ("carousel from my last call / my call with <name>" — resolve
+source medium's beats) · **provided final copy** ("here's my carousel, polish and package it" /
+a staged draft — package it AS-IS: the step-1.5 scorecard grades it, and any change to their
+words lands only with the coach's approval) · **call build** ("carousel from my last call / my call with <name>" — resolve
 the transcript per transcript-intake.md: pasted text wins, else fetch from `{{TRANSCRIPT_SOURCE}}`,
 else build from the coach's memory with the gap flagged) · teardown output (borrow STRUCTURE only;
 every atom of content becomes the coach's) · **template preset** (arriving via `carousel-templates`
@@ -39,8 +41,9 @@ plus anything produced this session. Always say the report's age; >30 days is st
 offer ONE `carousel-inspire` refresh (credit-gated as inspire always is) and proceed either way.
 **Empty `analysis/` + any data-dependent config value** (`{{CTA_DESTINATION}}: per-build`, or a
 skeleton choice that wants niche data): name the value that can't be honored without data and make
-the inspire offer EXPLICIT — "your config says per-competitor-data, but no niche data exists yet;
-one inspire pull (~N credits) seeds it for ~30 days of builds" — then proceed on the coach's call.
+the inspire offer EXPLICIT — "your config says CTA per-build (decided from competitor data), but
+no niche data exists yet; one inspire pull seeds it for ~30 days of builds — exact credits are
+quoted at inspire's own checkpoint before anything spends" — then proceed on the coach's call.
 Nothing there → judge from the avatar pain map + the bundled pattern refs alone. Then judge the
 resolved concept against what's winning: hook archetypes, structures, topic clusters, the pains
 that pull. When the beat data holds framework skeletons, offer instantiating a proven
@@ -59,7 +62,9 @@ blocks the build.
 
 **2. Lock the frame (confirm with the coach in one message):** platform · objective (save / share /
 DM / follow — sets the CTA pattern) · blueprint (A educational / B story-led / C case-study — see
-slide-architecture) · the ONE avatar pain this hits. Blueprint C requires a REAL client story from
+slide-architecture) · the ONE avatar pain this hits. Config `{{CTA_DESTINATION}}: per-build` and
+no niche data (or the coach declined the pull) → resolve it HERE: ask which destination THIS
+build uses — never carry `per-build` unresolved into step 4 (the gate rejects placeholder CTAs). Blueprint C requires a REAL client story from
 config/VoC... if the bank is thin, elicit now (3 quick questions) or pivot to A/B. Never invent.
 
 **3. Map before copy.** Build the slide map (n / role / job-in-≤12-words) per the blueprint +
@@ -100,7 +105,8 @@ design direction (executable by a non-designer) + retention device · soft CTA o
 hard CTA per the chosen pattern wired to `{{CTA_DESTINATION}}` — **keyword-CTA asset check
 (hard rule):** when the CTA is keyword→asset ("Comment X → get Y"), verify Y actually exists
 (ask the coach or check the named path) BEFORE writing the CTA; missing → offer (a) build the
-asset first or (b) fall back to the content-appropriate soft CTA (evergreen reference → save);
+asset first or (b) fall back to the content-appropriate soft CTA (evergreen reference — content
+built for repeat use: frameworks, checklists, how-tos → save);
 on evergreen decks default to the soft-save + hard-keyword STACK rather than replacing the save ·
 caption (4-part, keyword front-loaded; length default 150-300 words but CONTESTED —
 per-account test variable, see caption-strategy.md's 2026 note) · 3-5 narrow hashtags · per-slide alt text · platform delta block when `both` ·
@@ -109,7 +115,9 @@ custom-visual (designer-tier craft) — this is what `carousel-render` routes on
 Entertainment-first doctrine: the carousel earns attention before it teaches; dose the personality
 per voice edge. Numbers/results only from `{{PROOF_ASSETS}}`.
 
-**5. Gate + deliver.** Run carousel-quality.md end to end; fix fails silently. Deliver per
+**5. Gate + deliver.** Run carousel-quality.md end to end. On GENERATED copy: fix fails silently.
+On coach-PROVIDED copy: the scorecard's rule wins — surface each fail as a graded flag with the
+fix proposed, rewrite their words only on approval. Deliver per
 `{{OUTPUT_DESTINATION}}` as a DRAFT for approval. With `{{TEACH_MODE}}` on, close with 2-3 plain
 "why this works" lines (the craft, not a lecture).
 
