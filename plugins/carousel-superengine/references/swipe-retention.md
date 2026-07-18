@@ -4,6 +4,10 @@ Completion rate is the carousel's private conversion funnel: early exits tell th
 cover over-promised. Every slide has one retention job: make NOT swiping feel like leaving a
 question unanswered.
 
+**These are the DEVICES. The SYSTEM they serve — primary/secondary/micro loop tiers + the
+per-swipe seam test — lives in @retention-loops.md; tag each device to the loop tier it serves
+when building the slide map.**
+
 The stakes, anchored to Q1 2026 data: 5-7 slide carousels pull ~3.4x more saves and ~2.1x more
 shares than static images, and high-dwell posts earn 40-60% more distribution than low-dwell ones.
 
@@ -31,7 +35,8 @@ background; the [element] sits on the seam."
 ## 3. Text density (the flashcard principle)
 
 Slides are flashcards, not blog posts. Walls of text are the #1 swipe-exit trigger.
-- **20% rule:** text never covers more than ~20% of the canvas.
+- **Text budget:** default ~20% of the canvas (format exceptions — spec-sheet/educational up to
+  25-40% — per design-rules.md, the single source of truth).
 - **25-50 words max** body copy per slide; headline carries the idea.
 - **Bold the skim path:** bold the exact phrase that carries the value... a skimmer reading only
   bold words gets 100% of the point.

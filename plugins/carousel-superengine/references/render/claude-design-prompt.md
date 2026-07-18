@@ -16,7 +16,8 @@ returns a multi-card carousel they export as PNGs (optional Canva pass for final
    copy in quotes (headline + body, bold-marked skim path), and the one-line visual direction from
    the package.
 4. **The guardrails, stated as instructions** (Claude Design follows them when told):
-   - Text ≤20% of each card's area; body 25-50 words max; one idea per card.
+   - Text budget per the deck's format (default ≤20% of each card's area; spec-sheet/educational
+     decks may run 25-40% — state which applies); body 25-50 words max; one idea per card.
    - Headlines ≥36px-equivalent bold; body ≥22px-equivalent; 35-45 characters per line.
    - Max 2-3 colors per card; high contrast text-on-background, always.
    - Same two fonts on every card. Watermark (@handle) same corner, every card.

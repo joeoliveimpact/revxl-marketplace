@@ -18,8 +18,9 @@ Not available on Cowork/Desktop — never offer it there.
      Georgia class). Never link external font CDNs — headless export races the network and ships
      fallback fonts silently.
    - All CSS inline or in a `<style>` block; zero external requests.
-   - Obey design-rules.md: text ≤20% of canvas, headline ≥36px bold, body ≥22px, 35-45 chars/line,
-     line-height 1.4-1.6, 2-3 colors, watermark same corner every slide, bold skim path.
+   - Obey design-rules.md: text budget per the deck's format (default 20%; spec-sheet/educational
+     up to 25-40% — design-rules.md is authoritative), headline ≥36px bold, body ≥22px, 35-45
+     chars/line, line-height 1.4-1.6, 2-3 colors, watermark same corner every slide, bold skim path.
    - Craft, not template-default: opinionated type scale, real negative space, one deliberate
      accent. If it would pass for a slide deck default theme, push further.
 3. **Export** with the bundled script:

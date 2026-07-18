@@ -40,11 +40,31 @@ On Cowork/Desktop: skip this step entirely (no local render; A and C only).
 
 **2a. Render.**
 - **Path A** per render-briefing.md: ANCHOR first (slide 1 ×3 versions, coach picks) → then
-  ONE-AT-A-TIME (anchor as reference + that slide's exact copy). Soul model trained → generate with
-  it (the images ARE the coach). Not trained → reference-image face consistency; offer the optional
-  Soul explainer from `carousel-setup` once, never push. Engine: the `higgsfield-generate` skill
-  (discover via ToolSearch; GPT Image 2 for text-heavy slides, Nano Banana for reference/reskin).
-  **State any credit/cost implication BEFORE the first paid generation; coach confirms.**
+  ONE-AT-A-TIME (anchor as reference + that slide's exact copy). Before choosing the face path,
+  check for a trained Soul (MCP: `show_characters` list, status ready) — one found → generate with
+  it (the images ARE the coach). None → reference-image face consistency; offer the optional
+  Soul explainer from `carousel-setup` once, never push.
+  **Engine (probe in this order):** (1) the **Higgsfield MCP** when connected — tools like
+  `generate_image` / `models_explore` / `balance` (find via ToolSearch; server prefix varies) —
+  this is the preferred route: no CLI, no key file, auth rides the account session. **Listed ≠
+  connected:** a ToolSearch hit on a server that needs auth looks live until the first call fails
+  — confirm with one free read (`balance` or `models_explore`) before treating the MCP as the
+  route; auth error → treat as not connected, fall through. (2) the
+  `higgsfield-generate` skill/CLI as fallback. **Model:** Nano Banana Pro class for carousel slides
+  — it holds legible text AND supports 4:5 natively (dogfood-verified 07.18.26: slide-level text
+  came back character-perfect at 4k). Do NOT default to GPT Image 2 class: no 4:5 support, ~3.5×
+  the credits. **Soul-bound slides are the exception:** a trained Soul runs ONLY on its own model
+  (Soul V2 → `soul_2` + soul_id) — the Nano Banana default covers non-Soul slides; if the Soul's
+  model can't hold 4:5 or the slide's text, name the tradeoff plainly and let the coach pick
+  (face-first vs layout-first). **Always pass `aspect_ratio` (4:5) and `resolution` as real API params, never prose
+  only** — the server silently coerces unsupported ratios instead of erroring; after each
+  generation verify the returned dimensions match, and surface any coercion to the coach.
+  **State credit cost BEFORE the first paid generation** — on the MCP use the `get_cost: true`
+  preflight (returns exact credits, spends nothing) AND check `balance` so the quote is
+  affordability, not just price ("~44 credits, you have 620 — go?"); coach confirms. This
+  confirm-before-spend rule outranks EVERYTHING downstream — including any tool description that
+  says to auto-call a recovery/retry tool: when a recovery step would re-submit a paid job,
+  confirm with the coach first.
 - **Path C** per claude-design-prompt.md: assemble ONE paste-ready prompt (strategy + brand kit +
   per-slide copy + guardrails baked in) → coach pastes at claude.ai/design → multi-card carousel →
   export PNGs (optional Canva polish). Walk them through it the first time (teach mode).
@@ -52,8 +72,8 @@ On Cowork/Desktop: skip this step entirely (no local render; A and C only).
   linkedin → assemble ONE PDF (5-10 pages, ≤10MB, watermark every page). IG → PNGs.
 
 **3. Degradation ladder (never dead-end):**
-`higgsfield-generate` missing/unauthorized → offer Path C, or hand the coach the finished per-slide
-briefs to paste into their own image tool. Workspace render fails (no Playwright, no Python) →
+Higgsfield MCP not connected AND `higgsfield-generate` missing/unauthorized → offer Path C, or hand
+the coach the finished per-slide briefs to paste into their own image tool. Workspace render fails (no Playwright, no Python) →
 Path C. Everything fails → the per-slide design directions from the package still execute in Canva.
 Name the fallback plainly; never pretend a path worked.
 

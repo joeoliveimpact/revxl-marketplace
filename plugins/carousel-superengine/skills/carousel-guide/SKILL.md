@@ -19,6 +19,14 @@ Name the two ways in:
 **2. Run setup.**
 Route through the `carousel-setup` skill, essentials pass only (level, teach mode, brand, voice, pains, platform, CTA destination, output). Tell them the deeper questions come later and why they matter.
 
+**2.5. Offer the niche seed (default offer, explicit yes to spend).**
+When setup saved a SocialCrawl key, offer the inspire pull BEFORE build #1: "Want me to study your
+niche first? One pull (~cost named up front) shows what's already winning for coaches like you and
+feeds every build after this for about a month. Skip it and we build from your pain map alone —
+totally fine, you can run it later." Yes → route through `carousel-inspire` (its own credit gates
+apply). No/no key → proceed; the first build runs on the pain map + bundled patterns, said plainly.
+This is the ENGINE's step one, not every build's — one pull serves ~30 days.
+
 **3. Build the first carousel together.**
 Ask for one thing their ideal client complains about constantly, in the client's words. Then run the `carousel-create` skill on it with TEACH MODE ON regardless of config... narrate why the hook was chosen, why the slides sit in this order, why the CTA slide asks for exactly one action.
 

@@ -88,8 +88,9 @@ Output as markdown, these sections in order:
 
 1. **Format archetype** — Listicle / Story-arc / Before-after / Hook-payoff / Educational-steps /
    Myth-bust / Case-study (+ one-line slide-flow summary).
-2. **Slide map** — per slide: n, role (Hook / Tip / Proof / Transition / CTA), what it does in ≤12
-   words. Path A: only rows actually observed or `(inferred from caption)`.
+2. **Slide map** — per slide: n, role (use the beat-schema.md vocabulary: hook / value / proof /
+   context / reassurance / summary / payoff / cta — same enum the beat records use), what it does
+   in ≤12 words. Path A: only rows actually observed or `(inferred from caption)`.
 3. **Hook mechanics** — what the cover does in the first 0.5s: pattern, promise, curiosity gap,
    visual device. Reference @hook-patterns.md archetypes by name.
 4. **Caption mechanics** — first-line hook, structure, CTA, hashtag strategy, how caption and slides
@@ -103,5 +104,11 @@ Output as markdown, these sections in order:
    performance prediction; engagement numbers contextualize but don't set it.
 9. **Steal-this** — the 2-3 structural moves worth carrying into the coach's version (structure, not
    wording).
+
+**Structured beat-record option (default whenever slides were actually read):** alongside the prose,
+emit one record per slide per @beat-schema.md (role, verbatim + formula, visual, engagement device,
+loop tier, seam question). A single teardown's records append into the same
+`${CLAUDE_PLUGIN_DATA}/analysis/beats-*.json` dataset inspire builds — every teardown grows the
+queryable corpus instead of evaporating into prose.
 
 Then offer the rebuild → `carousel-create` with this teardown as input.

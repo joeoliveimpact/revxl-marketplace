@@ -1,5 +1,106 @@
 # Changelog — carousel-superengine
 
+## 0.3.0 — 2026-07-18
+
+**Simulated-user test pass (same day, pre-merge):** six agents role-played coaches against the
+v0.3.0 text — 25/27 behaviors passed; the 2 fails, the sharpest ambiguities, AND every residual
+finding were folded into this release (zero deferrals, per the field directive). Residual round:
+no-key users get inspire's manual paste-links route named · inspire re-offer damped to once per
+session · MCP "listed ≠ connected" — one free read confirms auth before routing · the
+confirm-before-spend rule explicitly outranks tool-description auto-recovery directives ·
+`balance` read makes cost quotes affordability statements · a computed niche-benchmark block is
+now the 5th mandated synthesis artifact (the scorecard's baseline, never assumed) · kill-list
+examples aligned across all three files (tease-stacking) · hook #6's "hold to its position"
+disambiguated to the claim/payoff split · README documents the MCP-connector route · a
+coach-declines-fix tiebreaker (ship with the flag on record). Patch details below: text-budget rule made coherent across all 7 files that state it (design-rules.md is
+now the single source of truth; format exception stated, not silent) · provided-copy protection
+made end-to-end (new "provided final copy" input mode; step 5 + quality-gate header now carve out
+coach-provided words — graded flag + approval, never silent rewrite) · Soul-model carve-out added
+to render's model rule (a trained Soul runs only on soul_2; tradeoff surfaced if it can't hold
+4:5) · `per-build` made a legal CTA config value with a defined fallback (resolved at the frame
+lock when no data) · inspire's Checkpoint 2 now prices bottom-pool contrast pulls (win/loss needs
+losers) · loop_tier definitions inlined into beat-schema · teardown slide-map vocabulary aligned
+to the beat-record enum · evergreen defined · the "~N credits" placeholder replaced with
+inspire's real quote point.
+
+All 13 fixes from Dogfood Run 1 (07.16–17, FIX-01..09) + the render dogfood (07.18, FIX-10..18),
+shipped as one update per the field spec. Umbrella: SKLLPLG-83. Governing architecture: knowledge
+tiering (FIX-04) — T1 timeless craft ships, T2 perishable platform mechanics ship date-stamped,
+T3 coach-specific evidence is always pulled, never shipped. Version-aligned with
+shortform-superengine 0.3.0.
+
+**New references**
+- `references/beat-schema.md` — the per-slide beat record contract (a slide IS a beat; shape
+  proven live on a 430-slide run before it was written). Cross-engine role vocabulary, loop-tier
+  + seam-question fields, and the 4 artifacts synthesis must emit (hook library, framework
+  skeletons, positional beat-map, kill-list). (FIX-02, FIX-03)
+- `references/retention-loops.md` — the organizing loop system above swipe-retention's devices:
+  primary/secondary/micro tiers, the per-swipe seam test, Triple Hook × loop interaction
+  (slides 1-3 standalone / 4+ connected), partial-payoff honesty, repeaters, creator-reported
+  benchmarks flagged as priors. (FIX-03)
+
+**carousel-inspire** — new step 3.5 extracts the beat dataset (one record per slide, both tiers,
+persisted as `beats-*.json`); step 4 synthesizes FROM the dataset and now emits the hook library,
+framework skeletons, positional beat-map, and kill-list alongside the prose report.
+`order_verified: false` decks get their positional claims down-weighted, said so. (FIX-02)
+
+**carousel-create**
+- Step 1.5 names the config value that can't be honored when `analysis/` is empty and makes the
+  inspire offer explicit — first builds stop running silently data-blind. (FIX-01)
+- Step 1.5 copy scorecard: whenever FINAL copy exists (provided, repurposed, staged), the copy
+  itself is graded line-by-line against the beat data — proof-beat count, kill-list, words/slide,
+  numbered-tease, archetype — surfaced as a graded flag with real-fix options, never a silent
+  rewrite. (FIX-09)
+- Step 3 slide map shows the loop chain: what each slide opens/closes, seam question per
+  transition, primary loop held to the payoff. (FIX-03)
+- Step 4 keyword-CTA asset check: "Comment X → get Y" verifies Y exists before writing the CTA;
+  missing → build-it-first or soft-CTA fallback; evergreen decks default to the save+keyword
+  stack. (FIX-08)
+- Caption length no longer hard-coded: 150-300 words stated as the contested default it is. (FIX-06)
+
+**carousel-guide / carousel-setup** — the inspire pull is now offered at the engine's first run
+(guide step 2.5, default-offered, explicitly credit-gated) and at setup's finish. One pull seeds
+~30 days of builds; skipping is fine and said plainly. (FIX-01)
+
+**carousel-setup** — Higgsfield detection probes the MCP first (generate_image / models_explore /
+balance), CLI second; records which route. When the MCP is up it also checks for an existing
+trained Soul and persists its soul_id — a ready Soul no config knew about was found in the field.
+Q20 adds starter-palette directions (wellness-warm / dark-tech / editorial / bold-color) + hex
+capture. (FIX-07, FIX-12, FIX-17)
+
+**carousel-render + render-briefing** (field-tested live 07.18.26: 3 generations, text
+character-perfect at 4k)
+- Engine: Higgsfield MCP preferred over CLI; ready-Soul check before the face-path question;
+  `get_cost: true` preflight is the pre-spend disclosure mechanism (caller's disclosure rule
+  explicitly wins over downstream don't-pre-estimate guidance). (FIX-12, FIX-15, FIX-17)
+- Model: Nano Banana Pro class is the carousel default — native 4:5, holds legible slide text,
+  ~⅓ the credits; GPT Image 2 class demoted (no 4:5 support). (FIX-10)
+- Aspect ratio must be passed as a real API param, never prose-only — the server silently coerces
+  unsupported ratios; post-generation dimension check + surface any adjustment. (FIX-11)
+- Brief template: hex codes welcomed when the brand is hex-defined (names-only rule dropped);
+  wellness-palette example replaced with brand-agnostic alternatives; watermark/safe-zone/contrast
+  guardrails injected into the brief itself (Path A no longer the weakest enforcement); text
+  budget acknowledges spec-sheet/educational decks legitimately run 25-40%. (FIX-13, FIX-14,
+  FIX-16, FIX-18)
+
+**References — corrections and reconciliations** (FIX-05, FIX-06, FIX-07)
+- `hook-patterns.md`: 3 new beat-data archetypes — expectation-subversion couplet (the study's #1
+  by ~10x), colon list-promise, objection-killed how-to. 4 → 7 archetypes, awareness-level picker
+  updated.
+- `slide-architecture.md`: the "strongest first vs last" self-contradiction resolved via the
+  claim/payoff split (tease the strongest claim on the cover, hold the strongest payoff to the
+  end — different beats).
+- `cta-slide-patterns.md`: beat-data misread guard — keyword-gate comment counts measure
+  engagement, not reach; the reach mechanic is the DM-share.
+- `design-rules.md`: palette de-tiered — structure rule (base + anchor + ONE accent) stays T1;
+  the specific wellness hues move to T3 (brand kit / brand brain / starter direction at setup);
+  hex-defined brands ship in hex.
+- `carousel-quality.md`: new gates — seam audit, primary-loop-closes-at-end, no tease-stacking,
+  claim/payoff check, copy-scorecard section (proof beats + kill-list vs beat data), keyword-CTA
+  asset verification.
+- `swipe-retention.md` + `teardown-method.md`: wired to retention-loops.md and beat-schema.md
+  respectively (teardowns now append beat records to the same corpus inspire builds).
+
 ## 0.2.2 — 2026-07-13
 
 The generator now consults the engine's full intelligence before and during every build: a winning

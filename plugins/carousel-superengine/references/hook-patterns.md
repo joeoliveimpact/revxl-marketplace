@@ -25,7 +25,7 @@ Two plays this unlocks:
   penalty; trial reels are the one exception). Re-up proven evergreen carousels every 60-90 days,
   ideally with a fresh or swapped hook slide.
 
-## The 4 hook archetypes
+## The 7 hook archetypes
 
 **1. The "How I" relational hook (story arc).** How-to lectures are dead for this demographic;
 how-I journeys convert. Formula: `How I [specific result] in [timeframe] + [unique angle/constraint]`.
@@ -48,9 +48,28 @@ highest-comment-volume archetype (people argue).
 authority for the precision-wellness consumer. Formula: `raw data visual + high-stakes diagnostic
 line`. Only with REAL data from the coach's proof assets; never fabricate a screenshot.
 
-Pick the archetype by the avatar's `{{AWARENESS_LEVEL}}`: problem-aware → archetype 2 or 3
-(name the pain / break the myth); solution-aware → 1 or 4 (show the path / the proof);
-product-aware → 4 (receipts) with a heavier CTA arc.
+**5. The expectation-subversion couplet.** <!-- T1 shape; surfaced as the #1 hook by ~10x in a
+430-beat niche study (07.17.26) — the evidence stays in the coach's own inspire data (T3). -->
+Two short declaratives: state the assumed number/fact, then snap it. Formula:
+`The average [status/outcome] is [expected value]. Not [assumed value].` The gap between what the
+reader assumed and what's true IS the hook — no question, no preamble, just the correction.
+Strongest as huge type on a bare ground. Works because it makes the reader instantly wrong about
+something they care about — the swipe is them fixing it.
+
+**6. The colon list-promise.** Formula: `[N] [specific things] that [outcome]:` — the colon does
+the work; it points off the edge of the slide. Tease the best-numbered item on the cover ("#4 is
+the one nobody does") and HOLD its payoff to a late slot near the end (per the claim/payoff split
+in slide-architecture.md — the tease is the claim; the payoff never lands mid-deck).
+
+**7. The objection-killed how-to.** A how-to promise with the avatar's #1 objection pre-deleted in
+the same breath. Formula: `How to [result]... [objection killed]` ("...with zero tech skills",
+"...without posting daily"). Picks up the reader who already talked themselves out of the plain
+version of the promise.
+
+Pick the archetype by the avatar's `{{AWARENESS_LEVEL}}`: problem-aware → archetype 2, 3, or 5
+(name the pain / break the myth / break the assumption); solution-aware → 1, 4, 6, or 7 (show the
+path / the proof / the list / the objection-free path); product-aware → 4 (receipts) with a
+heavier CTA arc.
 
 ## Hook copy rules
 
@@ -66,7 +85,8 @@ product-aware → 4 (receipts) with a heavier CTA arc.
 - ❌ Solid background + pointing-selfie cutout + generic headline ("3 Tips to Lose Weight") —
   reads templated-coach, instant scroll.
 - ❌ 2021 Canva-infographic aesthetic: clip art, sterile minimalism, stock photos. Trust killer.
-- ❌ Text over ~20% of the canvas. It's a flashcard, not a blog post.
+- ❌ Text over the deck's format budget (default ~20% of canvas; see design-rules.md). It's a
+  flashcard, not a blog post.
 - ❌ Vague promises with no number, timeframe, or constraint.
 - ❌ A hook the coach can't cash — slide 2+ must deliver exactly what slide 1 promised; a bait gap
   destroys saves and follows.
