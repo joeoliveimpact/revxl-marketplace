@@ -28,8 +28,13 @@ Not available on Cowork/Desktop — never offer it there.
    - LinkedIn PDF: add `--pdf <dir>/carousel.pdf` (assembles pages in filename order).
    - The script screenshots the `#slide` ELEMENT (`element.screenshot()`, never viewport clip) —
      exact pixels, no scrollbar/DPR surprises.
-4. **Verify before delivering:** open/Read 2-3 exported PNGs — text renders, fonts applied, nothing
-   clipped. PDF: page count 5-10, file ≤10MB, watermark on every page. Fix in HTML, re-export.
+4. **Verify before delivering:** Read **every** exported PNG at full size — text renders, fonts
+   applied, nothing clipped, nothing critical below y=1120. Spot-checking 2-3 does not hold: on a
+   live run it passed a deck carrying a headline bleeding off the right edge, a ghost word
+   colliding with the type, and an illegible proof image. PDF: page count 5-10, file ≤10MB,
+   watermark on every page. Fix in the generator, re-export.
+   Then hand the deck to the coach with `carousel-review` — browser markup catches what neither
+   the gate nor your own read does.
 5. **Deliver** file paths per `{{OUTPUT_DESTINATION}}`. Drafts; the coach posts.
 
 ## Dependencies (handle conversationally, once)

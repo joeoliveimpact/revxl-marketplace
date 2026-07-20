@@ -81,6 +81,9 @@ Name the fallback plainly; never pretend a path worked.
 Quality check against design-rules.md before handing over (text ≤20%, contrast, sRGB, watermark).
 
 ## Ends with (offer, never block)
+- **"Want to look at them before you post?"** → `carousel-review` — "show me the slides" (browser
+  markup on the full set; offer this FIRST, before save-the-look — a template saved from an
+  unreviewed deck locks in its defects)
 - **"Save this look?"** → `carousel-templates` — "save this look" (next build starts here, skips
   every design question)
 - Platform variant render when config is `both` → "render the LinkedIn PDF"
