@@ -55,9 +55,11 @@ Slides are flashcards, not blog posts. Walls of text are the #1 swipe-exit trigg
 
 ## 5. Weighted CTA sequencing (retention's endgame)
 
-Drop-off accumulates every swipe... a single slide-10 CTA catches only survivors.
-- **Soft CTA on the summary slide (8-9):** the save trigger, placed at the dopamine peak right after
-  value delivery: "Save this checklist for [specific reuse moment]." Drives ~31% more saves than a
-  final-slide-only ask.
-- **Hard CTA on the final slide:** the one conversion action (see @cta-slide-patterns.md).
+Drop-off accumulates every swipe... a single slide-10 CTA catches only survivors — so the mid-deck's
+job is to REDUCE the drop, not to plant a second ask that competes with the final one.
+- **Value-peak slide (8-9):** at the dopamine peak right after value delivery, TEASE the swipe — do
+  not ask for an action. A claim-then-correction line ("You'd think it's a few bucks. It's not.")
+  pulls the reader toward the one CTA. NEVER a mid-deck "save this": that is a second, different
+  action (see @cta-slide-patterns.md → "the split ask").
+- **The one CTA — final slide only:** the single conversion action (see @cta-slide-patterns.md).
 - Never more than these two asks per carousel.

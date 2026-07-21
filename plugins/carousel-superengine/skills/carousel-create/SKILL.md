@@ -106,13 +106,14 @@ no clean archetype → plain `hook <topic>`) + up to 3 `/v1/note` reads on the t
 hook patterns beat frozen ones. Cache to
 `brain-pulls/`, cite `[brain] <path>`, same degrade rules; **total Brain budget for the whole
 carousel: ≤2 searches + ≤3 note reads, never inside loops** · per-slide copy (20% rule, 25-50 words, bold skim path) · per-slide
-design direction (executable by a non-designer) + retention device · soft CTA on the summary slide,
-hard CTA per the chosen pattern wired to `{{CTA_DESTINATION}}` — **keyword-CTA asset check
-(hard rule):** when the CTA is keyword→asset ("Comment X → get Y"), verify Y actually exists
-(ask the coach or check the named path) BEFORE writing the CTA; missing → offer (a) build the
-asset first or (b) fall back to the content-appropriate soft CTA (evergreen reference — content
-built for repeat use: frameworks, checklists, how-tos → save);
-on evergreen decks default to the soft-save + hard-keyword STACK rather than replacing the save ·
+design direction (executable by a non-designer) + retention device · **ONE CTA, on the final slide
+only**, per the chosen pattern wired to `{{CTA_DESTINATION}}` — never a mid-deck soft-save or any
+second ask; one action per carousel (a mid-deck ask that differs from the final one splits intent
+and the reader does neither — mid-deck slides tease the swipe, never request an action) —
+**keyword-CTA asset check (hard rule):** when the CTA is keyword→asset ("Comment X → get Y"), verify
+Y actually exists (ask the coach or check the named path) BEFORE writing the CTA; missing → offer
+(a) build the asset first or (b) fall back to a single content-appropriate CTA (evergreen
+reference — frameworks, checklists, how-tos → the ONE ask becomes save, not an added save) ·
 caption (4-part, keyword front-loaded; length default 150-300 words but CONTESTED —
 per-account test variable, see caption-strategy.md's 2026 note) · 3-5 narrow hashtags · per-slide alt text · platform delta block when `both` ·
 **render handoff:** one line per slide tagging it template-text (clean layout system) or

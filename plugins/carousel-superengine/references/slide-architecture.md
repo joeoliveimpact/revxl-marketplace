@@ -25,8 +25,8 @@ keep moving. Reels discover; carousels convert attention into authority and lead
    every slide earns the next swipe (see @swipe-retention.md).
 4. **Proof anchor (before the CTA)** — ground the advice in something real: client result with
    numbers, testimonial screenshot, data chart. From `{{PROOF_ASSETS}}` only; never invented.
-5. **CTA (final slide)** — ONE action (see @cta-slide-patterns.md), plus a soft save-trigger slide
-   just before it.
+5. **CTA (final slide)** — ONE action (see @cta-slide-patterns.md). No mid-deck soft-save or second
+   ask: one carousel, one ask, on the last slide.
 
 ## The 3 build blueprints (pick by goal)
 

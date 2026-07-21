@@ -18,6 +18,33 @@ executable in Canva by a coach with zero design background. Carousels out-engage
   devices. Keep headlines, body text, and the focal cutout inside the center-upper ~75% of the
   canvas; nothing critical in the bottom band.
 
+## Composition (line logic + layout) — T1, every rule from a live defect
+
+**Line breaks are authored, never auto-wrapped.** The break lands where the THOUGHT breaks:
+- **Phrase = line.** A sentence or complete phrase owns its line. Never let a wrap split a
+  parenthetical, a couplet's correction, or a claim mid-phrase ("(Swipe and you / won't have to.)"
+  is a defect; sentence on line 1, parenthetical on line 2 is the fix).
+- **No orphans.** A lone word ("calls.") on its own line fails the slide. Rebreak by phrase.
+- **Balance the block.** Adjacent authored lines should read as a deliberate shape (equal-ish, or
+  clearly stepped) — never almost-equal-but-off.
+- **Size change → re-verify the widest line.** Authored `nowrap` lines bleed past the margin when
+  the size bumps. Any type-size change re-checks every authored line against the margin frame.
+
+**Layout:**
+- **Boxed text spans the content column.** Character caps (35-45/line) size BARE text; once copy
+  sits in a framing device (box, card), the device spans the column — a narrow box in a wide
+  column reads jumbled and wastes the canvas.
+- **One frame per idea.** Never two framing devices on one thought (a boxed payoff inside a body
+  box, a bordered quote under a rule). Merge or drop one.
+- **Size = narrative weight.** The recurring motif (progress rail, tease, mark) is scaled to its
+  role in the deck, not left at default. If it's the through-line, it reads like one.
+- **Value marks ≠ cost marks.** A filled bar always reads "more = better" — never use it for
+  cost/price. Cost gets $ symbols (or equivalent) so more visibly = worse.
+- **Artifacts are composed at slide scale.** Never blow up a cropped strip and ship it; rebuild
+  the artifact in the design system so it is legible at phone size.
+- **Reposition → collision re-check.** Moving or resizing any element re-checks its neighbors
+  (ghost words, mascots, badges) for overlap and edge bleed. Neighbors do not stay safe by default.
+
 ## Color + contrast
 
 <!-- T1 (universal craft): -->

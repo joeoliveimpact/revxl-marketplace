@@ -8,7 +8,7 @@ optimizes ONE metric, chosen before any copy is written, wired to the coach's `{
 | Goal | When | Pattern |
 |---|---|---|
 | DM lead | default for coaches selling 1:1/high-ticket | 1. DM keyword |
-| Saves | authority/nurture content, evergreen reference | 2. Soft double-CTA |
+| Saves | authority/nurture content, evergreen reference | 2. Save ask |
 | Shares | relatable/identity content | 3. Relationship mirror |
 | Follows | series/show positioning | 4. Serialized series |
 | Link click | lead magnet with real pull; LinkedIn | 5. Gateway teaser |
@@ -32,9 +32,12 @@ with the gate, not reach — never cite them as "keyword CTAs boost reach." The 
 the keyword play is the DM-SHARE it triggers (DM-shares carry the most non-follower reach
 weight), which is consistent with, not contrary to, the caveat above.
 
-**2. Soft double-CTA (save stack).** Soft save-ask on the summary slide (8-9) at the value peak +
-the hard ask on the final slide. Save copy is REUSE-specific: "Save this for your next [grocery run
-/ training block / Sunday prep]"... a concrete future moment, not "save for later."
+**2. Save ask (only when saves ARE the primary metric).** ONE ask, on the final slide. Save copy is
+REUSE-specific: "Save this for your next [grocery run / training block / Sunday prep]"... a concrete
+future moment, not "save for later." Do NOT add a soft save-ask earlier in the deck — not as a
+"stack," not at the value peak, never. If the final CTA is a comment keyword or a link, a mid-deck
+"save this" is a SECOND, DIFFERENT action: the reader splits intent and does neither. One carousel,
+one ask, on the last slide.
 
 **3. Relationship mirror (share bait, the honest kind).** "Send this to the friend who [specific
 behavior the content just addressed]." Names a real person in the reader's head. Works when the
@@ -66,6 +69,10 @@ document pages → "link in comments/bio/profile"). Visual: the deliverable mock
 
 - ❌ **The friction waterfall:** like + comment + share + save + link on one slide = decision
   fatigue = nothing. ONE primary action per carousel.
+- ❌ **The split ask:** a soft-save (or any second action) placed mid-deck when the final CTA is
+  something different. Two asks across two slides = divided intent = the reader does neither.
+  Mid-deck slides may TEASE the swipe forward, never REQUEST an action. The only CTA lives on the
+  final slide.
 - ❌ "Thanks for reading" — wastes the highest-intent real estate in the post.
 - ❌ A CTA disconnected from the carousel's content (a sleep post CTA'ing a meal plan).
 - ❌ Asking for the DM before the value is fully paid.

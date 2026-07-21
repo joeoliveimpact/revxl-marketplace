@@ -61,6 +61,10 @@ Push back — once, with the reason — when a note would break something the de
 - **Read every changed PNG at full size.** Thumbnails hide edge bleed, overlap, and small type.
 - Re-check the design-rules floor on changed slides: margin frame, text budget, contrast, nothing
   critical below y=1120 (Instagram covers the bottom band).
+- **Run the Composition checklist** (design-rules.md → "Composition") on every changed slide:
+  authored breaks at phrase boundaries, no orphans, no mid-phrase wraps, boxed text spans the
+  column, one frame per idea, size-change → widest-line re-check, reposition → collision re-check.
+  Copy edits silently re-wrap lines — a text change IS a layout change.
 
 ## 6. What to say when handing back
 

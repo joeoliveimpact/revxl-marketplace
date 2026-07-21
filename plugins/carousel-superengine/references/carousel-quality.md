@@ -63,10 +63,11 @@ header). The six flop patterns this gate exists to catch: text walls, context-de
 - [ ] 3-5 narrow hashtags, end of caption; per-slide alt text lines included
 - [ ] Per-slide captions (IG, live since June 2026): if used, slide-matched and non-redundant with
       the main caption; single-caption remains a valid default
-- [ ] ONE primary CTA action; soft save-CTA on summary slide; hard CTA final slide
+- [ ] ONE CTA, on the final slide only — NO mid-deck soft-save or any second ask (a mid-deck ask
+      different from the final one splits intent; fail the deck if a second action appears)
 - [ ] **Keyword-CTA asset VERIFIED to exist** — when the CTA is keyword→asset, the flow asked/
       checked that the named asset is real BEFORE writing the CTA; missing asset → offered
-      build-it-first or fell back to the soft save-CTA (evergreen default: save + keyword STACK)
+      build-it-first or fell back to a single save CTA (evergreen: the ONE ask becomes save)
 - [ ] CTA wired to the coach's real `{{CTA_DESTINATION}}` (live keyword/asset, not a placeholder;
       LinkedIn: external links cost ~60% reach under the 2026 dwell-time "Depth Score" — route to
       comments/profile/DM per @cta-slide-patterns.md)
