@@ -4,6 +4,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-07-21
+
 ### Added
 - **C19 — secondary-hook dosage is a mandatory computation (Step 3).** The
   secondary-hook section now computes the placement COUNT from the length

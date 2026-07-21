@@ -4,6 +4,11 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.31] — 2026-07-21
+
+### Changed
+- Plugin: [shortform-superengine](plugins/shortform-superengine/CHANGELOG.md) **v0.3.1** — ships C19, the sixth enforced craft screen. Secondary-hook placement is no longer a single judgement call: Step 3 computes the placement COUNT from the length target via the retention-psychology dosage table (30s→1 · 45s→1–2 · 60s→2–3 · 90s→3–4) before generating, then offers three scored options per slot. Dogfood catch — a 63s listicle shipped with one secondary hook and the user hand-added the two the table calls for. The fix landed after v0.3.0 was tagged, so this bump is what puts it in clients' hands.
+
 ## [0.1.30] — 2026-07-16
 
 ### Changed

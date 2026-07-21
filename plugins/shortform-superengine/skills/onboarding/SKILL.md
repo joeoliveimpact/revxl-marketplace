@@ -304,7 +304,7 @@ includes a `tier` field set to `unknown`) so the v2 Metricool step drops in clea
 
 ```json
 {
-  "version": "0.3.0",
+  "version": "0.3.1",
   "onboarded_at": "<ISO date>",
   "transcription_chain": ["captions", "groq|local|both"],
   "connections": { "socialcrawl": true, "groq": false, "firecrawl": false },
