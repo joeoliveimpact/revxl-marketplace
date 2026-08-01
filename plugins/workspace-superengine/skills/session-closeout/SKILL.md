@@ -193,6 +193,28 @@ If the workspace has live infrastructure, snapshot it. Otherwise skip.
 
 ---
 
+## Phase 4.5: Commit the Workspace Repo (conditional)
+
+Runs **only if** the workspace root is a git repo. Skip silently otherwise.
+
+Closeout is the commit point. The user should never have to ask for a commit — every scaffold
+write from Phases 1–3 is already on disk by now, so one commit here captures the whole session.
+
+**Code environment:**
+1. `git -C <workspace> status --short` — if clean, report "nothing to commit" and move on.
+2. Review the list before staging. Anything that is **not** session work — stray downloads, large
+   caches, files a `.gitignore` should be catching — gets flagged to the user, not committed.
+3. `git add -A`, then commit with a message built from the Checkpoint.md entry just written:
+   subject = `Session MM.DD.YY: {short title}`, body = the entry's Completed bullets, condensed.
+   Write the message to a file and use `git commit -F <file>` — heredocs die on apostrophes on
+   Windows, and PowerShell here-string syntax (`@'…'@`) leaks a literal `@` when run under Bash.
+4. **Do not push.** A push is outward-facing and needs explicit approval. If the repo has a remote
+   and unpushed commits, say so in the Phase 5 report and let the user decide.
+
+**Cowork environment:** advisory — report the `git add -A && git commit` command for the user to run.
+
+---
+
 ## Phase 5: Final Verification — Explicit Handoff Table
 
 Report this table to the user. Every applicable file gets a row with action + reason if NO CHANGE.
@@ -213,6 +235,7 @@ Also confirm:
 2. handoff.md P0 list is actionable (not vague)?
 3. Any background tasks have verify commands documented?
 4. Any durable user/feedback/project learnings saved to memory?
+5. Workspace repo committed (or explicitly clean / not a repo)? Unpushed commits reported?
 
 If any row shows `?` — fix it before reporting complete.
 

@@ -2,6 +2,12 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.8.2 — 2026-08-01
+
+### Added
+
+- **session-closeout Phase 4.5 — commit the workspace repo.** Closeout is now the commit point: if the workspace root is a git repo, the session's work is committed automatically after the scaffold writes, with a message built from the Checkpoint.md entry just written. Skips silently when the workspace is not a repo or the tree is clean, flags non-session files (stray downloads, caches that a `.gitignore` should catch) rather than sweeping them in, and **never pushes** — a push is outward-facing and stays gated on explicit user approval, with unpushed commits reported in Phase 5. Phase 5's verification list gains a matching row.
+
 ## 0.8.1 — 2026-06-21
 
 ### Added
