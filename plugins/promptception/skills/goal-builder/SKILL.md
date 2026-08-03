@@ -55,7 +55,7 @@ Claude cannot type `/goal` for them — it's a command they run. Hand them the f
 /goal [the crafted goal text]
 ```
 
-If `/goal` doesn't exist in their app (availability varies by surface — have them try it, or check with `/help`), fall back honestly: *"Your app doesn't have /goal — pin this at the top of our chat instead and I'll steer by it all session."* Then treat it as the session goal yourself.
+If `/goal` doesn't exist in their app or the pasted line errors (availability and syntax vary by surface and version — have them try it, or check with `/help`), fall back honestly: *"Your app doesn't have /goal — pin this at the top of our chat instead and I'll steer by it all session."* Then treat it as the session goal yourself.
 
 ## Step 5 — Orchestrator check
 

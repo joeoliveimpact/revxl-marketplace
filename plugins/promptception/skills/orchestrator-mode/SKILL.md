@@ -21,7 +21,7 @@ Detect what model YOU are running as before anything else.
 | Opus at Medium/Low effort | NOT ideal — alert the user, recommend raising effort, proceed only on their confirm. |
 | Sonnet or below | **HARD STOP.** Notify: "Orchestrator mode needs an Opus-class or Fable lead; this session is on [model]." Do not orchestrate. |
 
-Never orchestrate silently from an underqualified seat.
+Never orchestrate silently from an underqualified seat. If you can determine your model but NOT your effort level (sessions often can't see it), say exactly that and ask the user to confirm or raise it — never assume yourself qualified through the gap.
 
 ## If This, Then That
 

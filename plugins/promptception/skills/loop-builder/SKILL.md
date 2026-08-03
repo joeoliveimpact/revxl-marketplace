@@ -55,7 +55,7 @@ Claude cannot start a loop for them — the client runs the command. Hand it ove
 /loop 20m [the crafted loop prompt]
 ```
 
-Plus the two operating facts every loop owner needs (one line each): loops keep consuming usage while they run, and **"stop the loop"** (or `/loop` again) ends it.
+Plus the two operating facts every loop owner needs (one line each): loops keep consuming usage while they run, and telling Claude to **"stop the loop"** ends it.
 
 If `/loop` doesn't exist in their app, offer the nearest real route: *"Your app doesn't have /loop — a scheduled routine does the same job on a fixed clock. Want me to build it? Say '/schedule-builder'."*
 
