@@ -9,6 +9,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Premortem** (`/premortem`): standalone red-team pass on any completed draft plan, prompt, or spec ... assumes it failed six weeks out and works backwards. KILLER/MAJOR/MINOR findings with evidence and fixes; single source of truth for the protocol referenced by orchestrator-mode.
 - **5 agents**: `orch-scout` (Sonnet retrieval), `orch-reader` (Opus code reads + PORT/WIRE verdicts), `orch-builder` (Opus plan execution), `orch-checker` (Opus independent done-tests, read-only), `orch-premortem` (Opus max-effort adversarial review). All carry the clarity contract: never fill a gap with a guess, always report a COULD-NOT-DETERMINE section.
 - **Trigger hook**: UserPromptSubmit hook that spots orchestrator/premortem trigger phrases in a prompt and reminds Claude to invoke the matching skill.
+- **Three command builders** for Claude Code's newest stock commands, each running the promptception method (brain-dump in, expert prompt out, gap questions with the why attached, beginner teach-mode default): `/goal-builder` (outcome + done-test + scope edges, paste-ready `/goal` line), `/loop-builder` (watch target, per-tick action, stop condition, repeat safety, interval ... paste-ready `/loop` line), `/schedule-builder` (self-contained unattended routines with snag behavior and draft-first outward actions ... creates the schedule on explicit go). Each ends with an orchestrator-mode recommendation when the job clears the intricacy bar.
 
 ## [0.1.0] - 2026-07-06
 

@@ -17,6 +17,15 @@ For the big stuff ... audits, migrations, cross-system builds, multi-session pla
 
 `/premortem` also works standalone: hand it any draft plan and it hunts for what breaks before you ship it. Say "poke holes", "what breaks", or "red-team this".
 
+## The builders (new in 0.2.0)
+Claude Code has three newer commands most people never use well: `/goal` (set what this session is FOR), `/loop` (check or do something over and over), and `/schedule` (make it happen on a clock while you sleep). Each has its own builder that works exactly like Promptception ... brain-dump what you want, it builds the expert version, asks only the questions that close real gaps, and hands you the finished thing.
+
+- `/goal-builder` ... turns "work on my emails" into a goal with a done-test you can actually hit.
+- `/loop-builder` ... builds a loop that knows what to watch, what to do, and ... the part everyone forgets ... when to STOP.
+- `/schedule-builder` ... writes routines that survive running at 6am with nobody watching, then creates the schedule for you on your go.
+
+Each one also tells you when the job is big enough to run in Orchestrator Mode instead.
+
 ## What's a skill?
 A set of instructions Claude loads automatically when you need it. Install once, then Claude just knows how to do the thing... no prompts to memorize. This is how you stop prompting and start building systems.
 
