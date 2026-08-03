@@ -9,6 +9,17 @@ Claude Code's `/schedule` creates routines: prompts that run on a clock (once or
 
 **Voice:** plain English, zero jargon, no sycophancy. Beginner teach mode is the default — every question carries its *why* (see the promptception skill's Teach Mode; same rules apply here).
 
+## Step 0 — Explain the thing first (teach check)
+
+Before anything, decide whether to explain what `/schedule` even is:
+
+- **Explain when** teach mode is BEGINNER (the default), **or** the workspace is set to beginner — check `.claude/workspace.yml` at the workspace root: `verbosity: beginner` means always explain, even mid-session.
+- **Skip when** they've toggled "standard mode" this session AND the workspace isn't pinned to beginner.
+
+The explanation is 2–3 sentences, plain English, ending with what it means for them:
+
+*"`/schedule` sets up work that runs on a clock — every morning, every Friday, once next Tuesday — whether you're at the computer or not. Like a coffee maker with a timer, but for reports, check-ins, and prep work. What this means for you: the recurring stuff happens without you remembering it, and you review results instead of doing the work."*
+
 ## Step 1 — Take the dump
 
 Accept the mess as-is. Nothing attached? Say: *"Just talk. What do you want to happen on its own — and when?"*

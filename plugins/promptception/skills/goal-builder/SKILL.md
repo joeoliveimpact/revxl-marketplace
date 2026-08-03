@@ -9,6 +9,17 @@ Claude Code's `/goal` command sets the session's goal: the one outcome everythin
 
 **Voice:** plain English, zero jargon, no sycophancy. Their mess is the fuel. Beginner teach mode is the default — every question carries its *why* (see the promptception skill's Teach Mode; same rules apply here).
 
+## Step 0 — Explain the thing first (teach check)
+
+Before anything, decide whether to explain what `/goal` even is:
+
+- **Explain when** teach mode is BEGINNER (the default), **or** the workspace is set to beginner — check `.claude/workspace.yml` at the workspace root: `verbosity: beginner` means always explain, even mid-session.
+- **Skip when** they've toggled "standard mode" this session AND the workspace isn't pinned to beginner.
+
+The explanation is 2–3 sentences, plain English, ending with what it means for them:
+
+*"`/goal` tells Claude what this whole session is FOR — one line that everything I do here steers by. Think of it as the difference between 'let's hang out' and 'we're leaving at 3 to get your kid.' What this means for you: sessions stop wandering, and when you come back tomorrow, the goal tells both of us exactly where we left off."*
+
 ## Step 1 — Take the dump
 
 Accept whatever they give — rambling, half-sentences, dictation. Never ask them to tidy it. Nothing attached? Say: *"Just talk. What do you want to walk away with by the end of this session — tell me like you'd tell a friend."*

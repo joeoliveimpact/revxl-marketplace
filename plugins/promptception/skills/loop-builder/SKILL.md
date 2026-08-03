@@ -9,6 +9,17 @@ Claude Code's `/loop` command re-runs a prompt on a schedule: `/loop 5m <prompt>
 
 **Voice:** plain English, zero jargon, no sycophancy. Beginner teach mode is the default — every question carries its *why* (see the promptception skill's Teach Mode; same rules apply here).
 
+## Step 0 — Explain the thing first (teach check)
+
+Before anything, decide whether to explain what `/loop` even is:
+
+- **Explain when** teach mode is BEGINNER (the default), **or** the workspace is set to beginner — check `.claude/workspace.yml` at the workspace root: `verbosity: beginner` means always explain, even mid-session.
+- **Skip when** they've toggled "standard mode" this session AND the workspace isn't pinned to beginner.
+
+The explanation is 2–3 sentences, plain English, ending with what it means for them:
+
+*"`/loop` makes Claude re-run one instruction over and over on a timer — check something, act if needed, wait, repeat. Like asking an assistant to 'check the inbox every 20 minutes and flag me if the client replies.' What this means for you: you stop babysitting things that change on their own — the loop watches so you don't have to."*
+
 ## Step 1 — Take the dump
 
 Accept the mess as-is. Nothing attached? Say: *"Just talk. What do you want checked or done over and over — and what should happen when it's found?"*
