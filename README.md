@@ -1,8 +1,8 @@
 # revxl-marketplace
 
-> A curated catalog of Claude superengines from [REVXL](https://engineforimpact.com). Opinionated, multi-skill plugins built for real coaching businesses.
+![REVXL - The AI Revenue XLerator](docs/demos/marketplace-banner.png)
 
-![marketplace banner placeholder](docs/demos/marketplace-banner.png)
+> A curated catalog of Claude superengines from [REVXL](https://engineforimpact.com). Opinionated, multi-skill plugins built for real coaching businesses.
 
 [![Validate Plugins](https://github.com/joeoliveimpact/revxl-marketplace/actions/workflows/validate-plugins.yml/badge.svg)](https://github.com/joeoliveimpact/revxl-marketplace/actions/workflows/validate-plugins.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -13,40 +13,52 @@
 
 A **superengine** is a multi-skill plugin built around a single domain. One install gives you all the skills, agents, and patterns you need to operate that domain end-to-end. No piecing together loose skills, no figuring out the right combinations.
 
-Each superengine is opinionated about audience, tone, and workflow — so it works out of the box without configuration.
+Each superengine is opinionated about audience, tone, and workflow, so it works out of the box without configuration.
+
+> **Moved:** `plugin-doctor` (fixes stalled plugin updates) lives in its own repo: [joeoliveimpact/plugin-doctor](https://github.com/joeoliveimpact/plugin-doctor).
 
 ---
 
-## Plugins in this marketplace
+## The catalog
 
-> **Moved:** `plugin-doctor` now lives in its own repo — [joeoliveimpact/plugin-doctor](https://github.com/joeoliveimpact/plugin-doctor). Install: `claude plugin marketplace add joeoliveimpact/plugin-doctor` then `claude plugin install plugin-doctor@plugin-doctor`.
+16 plugins. Versions are current as of catalog `0.1.39`.
 
-### 🛠️ [claude-workspace-superengine](plugins/claude-workspace-superengine/)
-Workspace lifecycle for Claude. Scaffolds new workspaces with the canonical 8-file scheme, picks up cleanly at session start, closes out cleanly at session end. Built on the four `agent-optimizer` override constraints.
+### 📣 Marketing & Content
 
-**Skills:** `super-setup`, `session-pickup`, `session-closeout`
-**Agents:** `session-curator`
-**Works in:** Claude Desktop, Claude Code
+| Plugin | Version | What it does |
+|---|---|---|
+| [email-sequence-superengine](plugins/email-sequence-superengine/) | 0.2.1 | Email nurture engine for high-ticket coaches. 8 sequence generators (pre-call, launch, warm, no-show, follow-up, winback, onboarding) in your voice, with story banks and GHL push. 13 skills. |
+| [meta-ads-superengine](plugins/meta-ads-superengine/) | 0.3.0 | Full Meta-ads coaching journey: strategy, breakeven math, creative, launch runbook, daily ops, competitor pulse. 27 skills. **Proprietary license.** |
+| [carousel-superengine](plugins/carousel-superengine/) | 0.4.1 | Voice-matched IG/LinkedIn carousel engine: create, render to finished slides, review, teardown competitor decks. 10 skills. |
+| [shortform-superengine](plugins/shortform-superengine/) | 0.3.1 | Short-form reel scripting with enforced craft screens, competitor pulse, and creator strategy harvesting. 7 skills. |
+| [lead-magnet-superengine](plugins/lead-magnet-superengine/) | 0.1.0 | Builds lead magnets three ways: from scratch, from a source, from your existing content. 6 skills + 1 agent. |
+| [profile-optimization-superengine](plugins/profile-optimization-superengine/) | 0.1.0 | Social-profile optimization (bio, pinned content, CTA structure) for coach acquisition. 6 skills. |
+| [focus-group-superengine](plugins/focus-group-superengine/) | 0.1.1 | Synthetic persona-swarm testing for marketing assets before you publish them. 2 skills. |
+| [socialcrawl-superengine](plugins/socialcrawl-superengine/) | 0.1.1 | Social research plays on the SocialCrawl API: competitor content, trends, engagement. 3 skills. |
 
-→ [Read the docs](plugins/claude-workspace-superengine/README.md)
+### 🤝 Sales & Client Ops
 
----
+| Plugin | Version | What it does |
+|---|---|---|
+| [sales-call-blueprint-superengine](plugins/sales-call-blueprint-superengine/) | 0.1.2 | Turns pre-call DM threads and transcripts into customized sales-call blueprints (triage or strategy). 5 skills + 1 agent. |
+| [ghl-coach-superengine](plugins/ghl-coach-superengine/) | 0.1.1 | Done-with-you GoHighLevel toolkit: MCP install, tags, pipelines, automations, coach-assistant agent. 8 skills + 2 agents. Requires [GoHighLevel-MCP](https://github.com/mastanley13/GoHighLevel-MCP). |
+| [gokollab-community-superengine](plugins/gokollab-community-superengine/) | 0.1.2 | Community-management engine: member onboarding, 1-on-1 call history, Fathom-powered deep posts. 6 skills. |
+| [offer-architect](plugins/offer-architect/) | 0.2.2 | Build market-validated offers Hormozi-style: intake, market research, value stack, pricing matrix, launch gate audit. 10 skills + 1 agent. |
 
-### 📊 [ghl-coach-superengine](plugins/ghl-coach-superengine/)
-A done-with-you GoHighLevel toolkit for health, wellness, and fitness coaches. Walks non-technical clients through MCP install, manages tags + pipelines + automations, ships a multi-step coach-assistant agent.
+### ⚙️ Productivity & Meta
 
-**Skills:** `ghl-mcp-installer`, `ghl-tagging`, `ghl-pipelines`, `ghl-automations`, `ghl-session-startup`
-**Agents:** `ghl-coach-assistant`
-**Requires:** [GoHighLevel-MCP](https://github.com/mastanley13/GoHighLevel-MCP)
-**Works in:** Claude Desktop, Claude Code
-
-→ [Read the docs](plugins/ghl-coach-superengine/README.md)
+| Plugin | Version | What it does |
+|---|---|---|
+| [promptception](plugins/promptception/) | 0.2.0 | Prompts that write prompts: brain-dump in, expert prompt out. Now with Orchestrator Mode (tiered subagent crew + premortem) and builders for `/goal`, `/loop`, `/schedule`. 6 skills + 5 agents. |
+| [workspace-superengine](plugins/workspace-superengine/) | 0.8.2 | Workspace lifecycle: scaffold, session-start, session-closeout, checkpointing, cleanup. Stops Claude from forgetting where you left off. 12 skills + 1 agent. |
+| [notebooklm-superengine](plugins/notebooklm-superengine/) | 0.4.0 | Drive NotebookLM from Claude: build notebooks, curate sources, ask, studio outputs. 8 skills. |
+| [course-crawler](plugins/course-crawler/) | 0.5.0 | Capture online course content into structured, searchable local knowledge. 5 skills. |
 
 ---
 
 ## Install
 
-Per-plugin install — pick what you want. Skips what you don't.
+Pick the plugins you want. Skip what you don't.
 
 ### Claude Desktop (the chat app)
 
@@ -57,20 +69,32 @@ Per-plugin install — pick what you want. Skips what you don't.
    ```
    joeoliveimpact/revxl-marketplace
    ```
-5. Click **Sync** → you'll see each plugin as a separate install card
-6. Click **Install** on the ones you want
-
-✅ Done. Auto-updates whenever this marketplace pushes new versions.
+5. Click **Sync**, then **Install** on the plugins you want
 
 ### Claude Code (developer tool)
 
 ```
 /plugin marketplace add joeoliveimpact/revxl-marketplace
-/plugin install claude-workspace-superengine@revxl-marketplace
-/plugin install ghl-coach-superengine@revxl-marketplace
+/plugin install <plugin-name>@revxl-marketplace
 ```
 
-Or edit `~/.claude/settings.json` directly — see [docs/install-troubleshooting.md](docs/install-troubleshooting.md).
+Or edit `~/.claude/settings.json` directly. See [docs/install-troubleshooting.md](docs/install-troubleshooting.md).
+
+---
+
+## Updates (read this, it is not automatic by default)
+
+Three facts that save you a support message:
+
+1. **Auto-update is OFF by default** for third-party marketplaces like this one. Turn it on once: `/plugin` → **Marketplaces** → `revxl-marketplace` → **Enable auto-update**. Without it, you update manually:
+   ```
+   /plugin marketplace update revxl-marketplace
+   /plugin update <plugin-name>@revxl-marketplace
+   ```
+2. **Claude Desktop caches the catalog in memory.** After an update, fully quit the app (system tray → Quit, not just closing the window) and relaunch. Otherwise you keep seeing the old version even though the new one is on disk.
+3. **Still stuck on an old version?** That's a known pinning stall. Install [plugin-doctor](https://github.com/joeoliveimpact/plugin-doctor) and run `/plugin-doctor`. It diagnoses and fixes it.
+
+New versions ship by version-number bump. If your installed version matches the [catalog](#the-catalog) above, you're current.
 
 ---
 
@@ -79,70 +103,35 @@ Or edit `~/.claude/settings.json` directly — see [docs/install-troubleshooting
 ```
 revxl-marketplace/
 ├── .claude-plugin/
-│   └── marketplace.json              ← marketplace catalog (this file lists all plugins)
-├── .github/
-│   └── workflows/
-│       └── validate-plugins.yml      ← CI: validates schema on every push
+│   └── marketplace.json          ← the catalog (single source of truth for what's published)
+├── .github/workflows/
+│   └── validate-plugins.yml      ← CI: validates structure + catalog on every push
 ├── plugins/
-│   ├── claude-workspace-superengine/ ← self-contained plugin
-│   │   ├── .claude-plugin/plugin.json
-│   │   ├── skills/
-│   │   ├── agents/
-│   │   ├── README.md, CHANGELOG.md, LICENSE
-│   └── ghl-coach-superengine/        ← self-contained plugin
+│   └── <plugin-name>/            ← each plugin fully self-contained
 │       ├── .claude-plugin/plugin.json
-│       ├── skills/
-│       ├── agents/
-│       ├── README.md, CHANGELOG.md, LICENSE
-├── docs/
-│   ├── architecture.md               ← how this marketplace is organized
-│   ├── plugin-conventions.md         ← naming, frontmatter, tone rules
-│   └── creating-plugins.md           ← contributor guide
-├── README.md                         ← this file
-├── CHANGELOG.md                      ← marketplace-level releases
-├── CONTRIBUTING.md
-├── CODEOWNERS
-└── LICENSE
+│       ├── skills/  agents/  hooks/
+│       └── README.md  CHANGELOG.md  LICENSE
+├── docs/                         ← architecture, conventions, troubleshooting
+├── scripts/validate.py           ← local CI mirror (run before pushing)
+├── README.md  CHANGELOG.md  CONTRIBUTING.md  LICENSE
 ```
 
-Each plugin folder is **fully self-contained** — its own manifest, README, CHANGELOG, LICENSE. The marketplace.json INDEXES them; it doesn't host them.
-
----
-
-## Roadmap
-
-| Plugin | Status | Notes |
-|--------|--------|-------|
-| `claude-workspace-superengine` | ✅ v0.1.0 | Initial release |
-| `ghl-coach-superengine` | ✅ v0.1.0 | Initial release |
-| `meta-mcp-superengine` | 🔜 planned | Meta Graph API installer + skills for Instagram/Facebook DMs |
-| `umnico-superengine` | 🔜 planned | Umnico MCP installer + DM management for coaches |
-| `manychat-superengine` | 🔜 planned | ManyChat installer + flow patterns |
-| `plugin-builder-superengine` | 🔜 planned | Meta-plugin: scaffold new superengines |
-
----
-
-## Auto-updates
-
-When you install via Claude Desktop's GitHub path, your plugins auto-refresh from this repo on each app launch. No action needed on your end.
-
-When new plugins ship, they appear in the Customize panel automatically — pick the ones you want, skip the rest.
+A `plugins/` folder that is **not** in `marketplace.json` is work-in-progress and not installable. The catalog decides what's published.
 
 ---
 
 ## For developers
 
 - [docs/architecture.md](docs/architecture.md) — how the marketplace is structured and why
-- [docs/plugin-conventions.md](docs/plugin-conventions.md) — naming, frontmatter, tone rules every superengine follows
-- [docs/creating-plugins.md](docs/creating-plugins.md) — contributor guide for adding a new superengine
-- [CONTRIBUTING.md](CONTRIBUTING.md) — PR process, coding standards, testing
-- [.github/workflows/validate-plugins.yml](.github/workflows/validate-plugins.yml) — CI validation runs on every push
+- [docs/plugin-conventions.md](docs/plugin-conventions.md) — naming, frontmatter, tone rules
+- [docs/creating-plugins.md](docs/creating-plugins.md) — contributor guide
+- [CONTRIBUTING.md](CONTRIBUTING.md) — PR process; **every release PR must update this README's catalog table and the root CHANGELOG** (CI enforces catalog/README parity)
 
 ---
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Each plugin in this marketplace is also MIT-licensed individually.
+The marketplace repo is MIT ([LICENSE](LICENSE)). Each plugin carries its **own** license: all MIT except `meta-ads-superengine` (proprietary; view-only source).
 
 ## Author
 

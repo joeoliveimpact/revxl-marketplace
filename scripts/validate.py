@@ -18,6 +18,9 @@ Checks (mirror the three former CI jobs exactly):
   plugins       every published plugin folder has the required files/structure
   frontmatter   every published SKILL.md frontmatter parses as YAML + has
                 name/description, description >= 30 chars
+  readme        root README catalog table lists every published plugin at its
+                current version + names the catalog version (main page can't
+                silently fall behind releases)
 
 Only plugins listed in marketplace.json are validated (the catalog is the
 source of truth; WIP folders under plugins/ are skipped).
@@ -121,10 +124,38 @@ def check_frontmatter() -> list[str]:
     return errs
 
 
+def check_readme() -> list[str]:
+    """Root README must stay in lockstep with the catalog.
+
+    Guards the failure mode where a release bumps marketplace.json but the
+    main page keeps advertising stale plugins/versions (found 08.02.26: README
+    listed 2 of 16 plugins, one under a dead name). Every published plugin
+    must appear in README.md's catalog table with its current version, and
+    the catalog version itself must be named.
+    """
+    errs: list[str] = []
+    readme = (REPO / "README.md").read_text(encoding="utf-8")
+    m = json.loads(MKT.read_text(encoding="utf-8"))
+    cat_ver = m.get("metadata", {}).get("version") or m.get("version")
+    if cat_ver and f"`{cat_ver}`" not in readme:
+        errs.append(f"::error file=README.md::catalog version {cat_ver} not named in README (update 'catalog `x.y.z`' line)")
+    for p in m.get("plugins", []):
+        name, ver = p["name"], p.get("version")
+        line = next((ln for ln in readme.splitlines() if f"plugins/{name}/" in ln), None)
+        if line is None:
+            errs.append(f"::error file=README.md::published plugin '{name}' missing from README catalog table")
+        elif ver and f"| {ver} |" not in line:
+            errs.append(f"::error file=README.md::'{name}' README row version != catalog ({ver})")
+    if not errs:
+        print(f"OK README catalog table matches marketplace.json ({len(m.get('plugins', []))} plugins, catalog {cat_ver})")
+    return errs
+
+
 SECTIONS = {
     "marketplace": check_marketplace,
     "plugins": check_plugins,
     "frontmatter": check_frontmatter,
+    "readme": check_readme,
 }
 
 
