@@ -4,6 +4,22 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.32–0.1.39] — 2026-07-12 → 2026-08-02 (catch-up entry)
+
+The per-release log went dark for this window; reconstructed from the catalog's git history. Rule going forward (CI-enforced): every release PR updates this file and the README catalog table.
+
+### Added
+- **meta-ads-superengine v0.3.0** (07.23, catalog 0.1.38) — 27-skill Meta-ads coaching journey. First proprietary-licensed plugin in the catalog.
+- **lead-magnet-superengine v0.1.0** (07.12, 0.1.33) — three-door lead-magnet engine.
+- **focus-group-superengine v0.1.0 → 0.1.1** (07.12, 0.1.31/0.1.34) — synthetic persona-swarm marketing tester; 0.1.1 adds honest depth tiers.
+- **profile-optimization-superengine v0.1.0** (07.13, 0.1.36) — social-profile optimization engine.
+
+### Changed
+- **promptception v0.2.0** (08.02, 0.1.39) — Orchestrator Mode (2 skills + 5 tiered agents + trigger hook) and `/goal-builder`, `/loop-builder`, `/schedule-builder`. Repo also gains `.gitattributes` forcing LF on shell scripts.
+- **workspace-superengine v0.8.2** (08.01) — commits the workspace repo at closeout.
+- **carousel-superengine v0.2.1 → v0.2.2** (07.12–13, 0.1.32/0.1.35) — config read-path fix; winning-check + read-side analysis wiring.
+- **carousel-superengine catalog drift fixed** (07.24, 0.1.38) — entry said 0.3.0 while plugin.json shipped 0.4.1; both stale spots corrected.
+
 ## [0.1.31] — 2026-07-21
 
 ### Changed

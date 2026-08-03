@@ -45,7 +45,9 @@ Thanks for your interest. This is a curated marketplace — contributions go thr
 - [ ] All skill descriptions are precise and trigger-rich (see plugin-conventions.md)
 - [ ] Tone matches target audience (default: non-technical, plain English, one-step-at-a-time)
 - [ ] Plugin's CHANGELOG.md updated with a new version entry
-- [ ] Marketplace's CHANGELOG.md updated if a new plugin was added
+- [ ] **Root CHANGELOG.md updated on EVERY release** (new plugin or version bump), not just new plugins
+- [ ] **Root README.md catalog table updated** — plugin row shows the new version, catalog version line current. CI's `readme` check fails the build if this drifts
+- [ ] Release tag cut after merge: `<plugin-name>--v<version>`
 - [ ] No PII or credentials committed
 - [ ] CI validation passes (workflow runs automatically)
 
