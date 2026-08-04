@@ -4,6 +4,11 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.40] — 2026-08-03
+
+### Changed
+- **workspace-superengine v0.9.0** — adds `/update-everything`, one command that runs every update path (marketplaces → plugins → npx skills global+project → CLI), reports a before/after diff, names the Desktop-installed plugins the CLI cannot reach, health-checks workspace-local skills for unparseable frontmatter, and offers to schedule itself weekly.
+
 ## [0.1.32–0.1.39] — 2026-07-12 → 2026-08-02 (catch-up entry)
 
 The per-release log went dark for this window; reconstructed from the catalog's git history. Rule going forward (CI-enforced): every release PR updates this file and the README catalog table.

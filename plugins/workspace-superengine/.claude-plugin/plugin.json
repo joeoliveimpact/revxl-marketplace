@@ -2,12 +2,21 @@
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "workspace-superengine",
   "description": "Stops Claude from forgetting what you were working on. Sets up your workspace so every session picks up where the last one left off, follows your rules, and explains itself in plain language. Add modules for coding, client work, or content as needed. Works in Claude Desktop and Claude Code.",
-  "version": "0.8.2",
+  "version": "0.9.0",
   "author": {
     "name": "Joe Olive",
     "email": "joe@engineforimpact.com"
   },
   "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/workspace-superengine",
   "license": "MIT",
-  "keywords": ["workspace", "session", "scaffolding", "lifecycle", "agent-optimizer", "superengine"]
+  "keywords": [
+    "workspace",
+    "session",
+    "scaffolding",
+    "lifecycle",
+    "agent-optimizer",
+    "superengine",
+    "updates",
+    "maintenance"
+  ]
 }
