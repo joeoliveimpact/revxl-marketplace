@@ -2,6 +2,17 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.9.0 — 2026-08-03
+
+### Added
+- **`/update-everything`** — the missing "update all" command. Claude Code spreads updates across five tools, `claude plugin update` has no bulk mode (it takes a required plugin argument, so 50 plugins means 50 commands), and marketplaces must refresh *before* plugins or updates falsely report "already current". This runs the whole sequence in the right order and reports a per-plugin before/after diff instead of a wall of output.
+  - Covers: marketplaces → plugins (looped, batch never aborts on one failure) → `npx skills` at **both** global and project scope → workspace-local `.claude/skills/` health → optional `claude plugin prune` and `claude update` (both ask first, never auto-run).
+  - **Names the plugins it cannot reach.** Plugins installed through Claude Desktop's Customize panel are invisible to `claude plugin list`; looping only the CLI list would silently leave them stale while reporting success. The skill detects them from loaded skill prefixes and gives the Desktop update walkthrough.
+  - **Local-skill health check**, not just versions: flags `SKILL.md` frontmatter that fails to parse (an unquoted colon inside `description` makes the whole frontmatter fail, and the skill then loads with empty metadata so its triggers silently never fire) and superseded local copies of installed plugins.
+  - Handles `Version: unknown` and git-SHA versions without reporting either as "current"; skips disabled plugins and says so; surfaces the same plugin installed from multiple marketplaces as a question instead of updating every copy blindly.
+  - States the **restart requirement every run**, including when nothing changed.
+  - Ends by offering to schedule itself as a weekly `/schedule` routine at a deliberately off-peak, non-round time, reporting only on weeks when something actually changed.
+
 ## 0.8.2 — 2026-08-01
 
 ### Added
