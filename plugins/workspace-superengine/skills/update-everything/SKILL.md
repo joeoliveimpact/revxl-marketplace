@@ -33,6 +33,8 @@ claude plugin list
 ```
 Parse each entry: `name@marketplace`, `Version:`, `Status:`. Keep this as the BEFORE state — the final report is a diff against it, not a wall of command output.
 
+**Also check for pins here, before updating anything.** For each entry, compare its `installPath` against the directories actually present in `cache/<marketplace>/<plugin>/`. A newer directory sitting there unused means the registry is pinned to an old version while the new one is already downloaded — that IS the diagnosis, in one read, and no command was needed to find it.
+
 Three states to handle correctly, none of which mean "fine":
 - **`Version: unknown`** — the plugin ships no version string. It is neither current nor broken. Update it, then label it `unknown → unknown (no version published)`. Never count it as up to date.
 - **Git-SHA versions** (12-hex, e.g. `0427b5b1281b`) — normal for source-tracked plugins. A changed SHA IS an update; report it as "updated (new build)".
@@ -50,21 +52,62 @@ claude plugin update <name>@<marketplace>
 
 **Duplicates:** the same plugin installed from more than one marketplace (e.g. `superpowers` from three) is a finding, not a loop iteration. **Stop and surface it** — show the marketplaces and versions and ask which to keep. Blindly updating all copies leaves the user with several versions of the same thing and no idea which one is loading.
 
-**Stalls:** if a plugin reports success but the version does not move, say so plainly and give the fix inline — refresh that one marketplace (`claude plugin marketplace update <name>`), retry the update, and if it still will not move, the version registry (`~/.claude/plugins/installed_plugins.json`) is pinning it and a reinstall of that plugin is the fix. Report it; do not attempt registry surgery.
+### Verify every update — the leg nobody checks
 
-## Step 5 — Desktop-installed plugins (Step 2 already covered them — say so)
+`claude plugin update` printing `updated from X to Y` is the OUT leg. **The registry actually changing is the BACK leg, and nothing checks it by default.** That is why a repair can "work" without anyone knowing which part worked.
 
-Plugins installed through Claude Desktop's Customize panel **do not appear in `claude plugin list`**, so the Step 4 loop skips them. They are still updated — just by a different mechanism, and the user needs to be told which.
+After each update, **read `~/.claude/plugins/installed_plugins.json` back** and compare `version` + `installPath` against the snapshot. Report per plugin what actually moved, not what the command claimed.
 
-**How they actually update:** Desktop installs from the shared marketplace clones at `~/.claude/plugins/marketplaces/<marketplace>/`. Those clones are ordinary git checkouts, and `claude plugin marketplace update` (Step 2) pulls them to the latest commit. Refresh the clone, restart Claude, and Desktop loads the new version. **This is why Step 2 runs first and runs unconditionally**, even when the plugin loop has nothing to do.
+### The repair ladder — climb one rung at a time, and name the rung that worked
 
-**Do NOT send the user to Customize → Update.** That button is unreliable — it is the reason this skill exists. Running the terminal command is the fix, not the fallback.
+Field-validated 08.04.26 on 7 pinned plugins: **rung 1 fixed 7 of 7.** Rungs 2 and 3 were never needed. Do not skip ahead.
 
-Detect them so the report is honest: compare the plugin prefixes of skills loaded in this session (`plugin-name:skill-name`) against the Step 3 list. Any prefix that is loaded but absent from `claude plugin list` is Desktop-installed. Confirm the version by reading `~/.claude/plugins/marketplaces/<marketplace>/plugins/<name>/.claude-plugin/plugin.json` — that is the version Desktop will load after a restart.
+| Rung | Action | Escalate when |
+|---|---|---|
+| 0 | `claude plugin marketplace update` (Step 2 — already done) | never sufficient alone |
+| **0.5** | **Transport check — see below. Branch out of the ladder entirely if it fires.** | — |
+| 1 | `claude plugin update <name>@<mkt>` → **read the registry back** | version unchanged in the registry |
+| 2 | `claude plugin uninstall` then `install` (rewrites the registry; also repairs a missing or orphaned cache dir) | still unchanged |
+| 3 | back up `installed_plugins.json` → minimal targeted edit → read back → **auto-rollback on any mismatch** | mismatch after rollback → stop, escalate with the captured state |
 
-Report them as their own group:
+**Always report which rung fixed each plugin.** "Fixed" without naming the rung is the exact failure this replaces.
 
-> *"N plugins are installed through Claude Desktop rather than the CLI: [names]. The marketplace refresh in step 1 already pulled their latest versions — they'll be live once you fully quit and reopen. Skip the Update button in the Customize tab; it doesn't reliably apply. The terminal path you just ran is the one that works."*
+### Rung 0.5 — transport failure is NOT a pin. Never climb the ladder for it.
+
+If an update fails with `Permission denied (publickey)`, `Could not read from remote repository`, or `Failed to clone repository`, the plugin is **not** pinned — the fetch never happened.
+
+Cause: a catalog entry of the form `{"source": "github", "repo": "owner/name"}` resolves to **SSH** (`git@github.com:`). Without an SSH key for GitHub, the clone fails. This is independent of the marketplace clone's own remote, which may well be HTTPS.
+
+Fix — retry the same command with HTTPS preferred:
+```
+CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1 claude plugin update <name>@<marketplace>
+```
+
+**Climbing the ladder here is harmful:** rung 2 re-clones and hits the identical failure, and rung 3 would point the registry at a version that was never downloaded. (Found live: `cli-printing-press` sat at 4.6.1 for months against a published 4.30.1 — 24 versions — purely because of this.)
+
+### Orphaned-but-newer cache dirs
+
+A newer version directory sitting in `cache/<mkt>/<plugin>/` carrying an `.orphaned_at` marker means the new version was downloaded, never adopted by the registry, then marked for garbage collection. It is deleted after ~7–14 days. **Fix the pin before then**, or the case degrades into a missing-cache-dir that only rung 2 can repair. Six of the seven plugins in the live test were in exactly this state.
+
+## Step 5 — Cowork-installed plugins: a third store nothing local can reach
+
+There are **three** plugin stores, they hold different versions, and either of the first two can be the stale one:
+
+| Store | Path | Who loads it | Reachable from here? |
+|---|---|---|---|
+| CLI registry | `~/.claude/plugins/installed_plugins.json` + `cache/` | Claude Code CLI, Desktop **Code tab** | ✅ Steps 2–4 |
+| **Cowork / agent-mode** | `…/local-agent-mode-sessions/<id>/rpm/plugin_<id>/` | Desktop **Cowork tab** | ❌ **No** |
+| Display cache | IndexedDB in the Claude app-data folder | the plugins panel only | n/a |
+
+**Cowork plugins are served as ZIPs from Anthropic's cloud, not from the local marketplace clones**, and **the Cowork copy shadows the CLI copy** when both exist. Anthropic's backend snapshots the marketplace repo at registration and never re-pulls ([#69683](https://github.com/anthropics/claude-code/issues/69683), open); remove-and-re-add is deduplicated server-side, so it does not reset the snapshot either.
+
+**Never claim the terminal run updated these.** It did not, and it cannot.
+
+Detect them: compare the plugin prefixes of skills loaded in this session (`plugin-name:skill-name`) against the Step 3 list. Any prefix loaded but absent from `claude plugin list` is Cowork-installed. Cross-check against `rpm/manifest.json` — an entry missing `updatedAtVerified` while its siblings have it marks an orphaned snapshot, and a `marketplaceName` pointing at a catalog that no longer lists that plugin proves the snapshot is stale.
+
+Report them as their own group, honestly:
+
+> *"N plugins are installed through Claude Desktop's Customize panel: [names]. Those are served from Anthropic's side and nothing on this machine can update them — including what I just ran. The Update button in Customize is also unreliable for the same reason. The one thing that works: remove the plugin in Customize → Skills, which makes Cowork fall back to your CLI copy (which IS current now). Leave it removed — re-adding it re-enables the stale copy."*
 
 ## Step 6 — npx skills, both scopes
 
@@ -91,9 +134,10 @@ Check both of these in each:
 
 Diff Step 3's snapshot against a fresh `claude plugin list`. Lead with what changed. Structure:
 
-- **Updated** — `name: old → new`, one line each
+- **Updated** — `name: old → new (fixed by rung N)`, one line each. Always name the rung.
 - **Already current** — a count, not a list
-- **Needs your attention** — duplicates, stalls, `unknown` versions, disabled skips, broken local frontmatter, Desktop-only plugins
+- **Needs your attention** — transport failures, duplicates, stalls, `unknown` versions, disabled skips, broken local frontmatter
+- **Cowork plugins** — their own group, with the honest "nothing local reaches these" line from Step 5
 - **Nothing changed?** Say exactly that in one line. Silence is a valid, good result.
 
 Never paste raw command output as the report.
