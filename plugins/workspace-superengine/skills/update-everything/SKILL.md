@@ -52,15 +52,19 @@ claude plugin update <name>@<marketplace>
 
 **Stalls:** if a plugin reports success but the version does not move, say so plainly and give the fix inline — refresh that one marketplace (`claude plugin marketplace update <name>`), retry the update, and if it still will not move, the version registry (`~/.claude/plugins/installed_plugins.json`) is pinning it and a reinstall of that plugin is the fix. Report it; do not attempt registry surgery.
 
-## Step 5 — Plugins the CLI cannot see (do not skip this)
+## Step 5 — Desktop-installed plugins (Step 2 already covered them — say so)
 
-**Some plugins are installed through Claude Desktop's Customize panel and do not appear in `claude plugin list` at all.** The CLI cannot read or update them. If you only loop Step 4, those go stale forever while the report says everything is current — the exact failure this skill exists to prevent.
+Plugins installed through Claude Desktop's Customize panel **do not appear in `claude plugin list`**, so the Step 4 loop skips them. They are still updated — just by a different mechanism, and the user needs to be told which.
 
-Detect them: compare the skills actually loaded in this session (their `plugin-name:skill-name` prefixes) against the Step 3 list. Any plugin prefix that is loaded but absent from `claude plugin list` lives on the Desktop surface.
+**How they actually update:** Desktop installs from the shared marketplace clones at `~/.claude/plugins/marketplaces/<marketplace>/`. Those clones are ordinary git checkouts, and `claude plugin marketplace update` (Step 2) pulls them to the latest commit. Refresh the clone, restart Claude, and Desktop loads the new version. **This is why Step 2 runs first and runs unconditionally**, even when the plugin loop has nothing to do.
 
-Name every one of them, then hand off:
+**Do NOT send the user to Customize → Update.** That button is unreliable — it is the reason this skill exists. Running the terminal command is the fix, not the fallback.
 
-> *"These N plugins are installed through Claude Desktop, so this command can't reach them: [names]. To update them: open Claude Desktop → Customize → Skills → find each one → Update. Same restart rule applies."*
+Detect them so the report is honest: compare the plugin prefixes of skills loaded in this session (`plugin-name:skill-name`) against the Step 3 list. Any prefix that is loaded but absent from `claude plugin list` is Desktop-installed. Confirm the version by reading `~/.claude/plugins/marketplaces/<marketplace>/plugins/<name>/.claude-plugin/plugin.json` — that is the version Desktop will load after a restart.
+
+Report them as their own group:
+
+> *"N plugins are installed through Claude Desktop rather than the CLI: [names]. The marketplace refresh in step 1 already pulled their latest versions — they'll be live once you fully quit and reopen. Skip the Update button in the Customize tab; it doesn't reliably apply. The terminal path you just ran is the one that works."*
 
 ## Step 6 — npx skills, both scopes
 
@@ -71,12 +75,17 @@ npx skills update -p     # project skills, when in a project
 ```
 Run `check` first; only update what it reports stale. Cover **both** scopes — a workspace can hold project-level skills that global updates never touch.
 
-## Step 7 — Workspace-local health (what version checks miss)
+## Step 7 — Loose-skill health, local AND global (what version checks miss)
 
-Local skills in `.claude/skills/` have no version and no update path — they go stale invisibly and can be **silently broken**. Check both:
+Skills sitting in a skills folder have no version and no update path — they go stale invisibly and can be **silently broken**. Check **both** locations:
+
+- `.claude/skills/` in the current workspace (project scope)
+- `~/.claude/skills/` (global/user scope)
+
+Check both of these in each:
 
 1. **Frontmatter parses.** Every `.claude/skills/*/SKILL.md` must have YAML frontmatter that parses, with `name` and `description`. The classic killer is an **unquoted colon inside `description`** ("Trigger phrases: ..."), which makes the whole frontmatter fail to parse — the skill then loads with EMPTY metadata and its triggers silently never fire. It looks perfectly fine when read by a human. Report any file that fails, with the fix: quote the description or remove the bare `: `.
-2. **Superseded copies.** A local skill whose name matches an installed plugin is very likely an old copy that the published plugin has replaced. Name it and ask — never delete it yourself.
+2. **Superseded copies.** A loose skill whose name matches an installed plugin is very likely an old copy the published plugin has replaced — and the loose copy can shadow or contradict the current one. Name it, say which plugin supersedes it, and ask. Never delete it yourself.
 
 ## Step 8 — The report (this is the deliverable)
 
