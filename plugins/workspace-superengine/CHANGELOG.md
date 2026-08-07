@@ -2,6 +2,12 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.9.1 — 2026-08-04
+
+### Added
+- **Cache health step**, with the trap that makes it look worse than it is. `.in_use` PID lock files accumulate for months, so a naive read reports a plugin "loading three versions at once" and sends someone chasing a bug that does not exist. The step now requires cross-referencing against actually-running processes — **only a marker matching a live PID is evidence of what is loaded**. Caught during post-restart verification: one plugin showed 10 markers on its old version, every one dead (newest 13 days old), while the single live marker sat correctly on the new version.
+- **Superseded-version reporting + guarded cleanup offer.** Old version directories survive an update and feed the loader-picks-lowest bug ([#77546](https://github.com/anthropics/claude-code/issues/77546)); there is no `claude plugin cache prune` ([#81217](https://github.com/anthropics/claude-code/issues/81217)). Measured on one real machine: **12.4 GB total cache, 8.2 GB superseded (66%), 1,627 dead lock files**, with a single plugin holding five dead versions at ~1.5 GB each. Cleanup is offered, never automatic, and a directory must clear all three gates before it is even proposed: not the registry's current version, no live PID holding a lock in it, and explicit user consent for that specific list.
+
 ## 0.9.0 — 2026-08-03
 
 ### Added

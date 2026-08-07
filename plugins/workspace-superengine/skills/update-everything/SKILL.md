@@ -130,6 +130,31 @@ Check both of these in each:
 1. **Frontmatter parses.** Every `.claude/skills/*/SKILL.md` must have YAML frontmatter that parses, with `name` and `description`. The classic killer is an **unquoted colon inside `description`** ("Trigger phrases: ..."), which makes the whole frontmatter fail to parse — the skill then loads with EMPTY metadata and its triggers silently never fire. It looks perfectly fine when read by a human. Report any file that fails, with the fix: quote the description or remove the bare `: `.
 2. **Superseded copies.** A loose skill whose name matches an installed plugin is very likely an old copy the published plugin has replaced — and the loose copy can shadow or contradict the current one. Name it, say which plugin supersedes it, and ask. Never delete it yourself.
 
+## Step 7.5 — Cache health (and the trap that makes it look worse than it is)
+
+### `.in_use` markers lie unless you cross-check live PIDs
+
+Each cache version directory can hold a `.in_use/` folder of PID lock files. It is tempting to read these as "this is the version currently loaded." **They are not.** They accumulate for months — dead PIDs from long-gone sessions sit alongside the live one, so a naive read reports a plugin "loading three versions at once" and sends someone chasing a bug that does not exist.
+
+Always cross-reference against actually-running processes:
+- Windows: `Get-Process claude | Select-Object -ExpandProperty Id`
+- macOS/Linux: `pgrep -x claude`
+
+A marker whose PID is not running is a corpse. **Only a marker matching a live PID is evidence of what is loaded.** (Field example: one plugin showed 10 markers on its old version — every one dead, the newest 13 days old — while the single live marker sat on the new version. The plugin was perfectly healthy.)
+
+### Superseded version directories
+
+Every plugin keeps its old version directories after an update. They are scheduled for garbage collection (docs say 14 days, [#77546](https://github.com/anthropics/claude-code/issues/77546) reports ~7 — assume the shorter), but until then they pile up, and they feed a real bug: the loader can pick the **lowest** cached version even when the registry correctly points at the newest.
+
+Report, per plugin: total cache size, how much is superseded, and the count of dead lock files. Measured on one real machine: **12.4 GB total, 8.2 GB superseded (66%), 1,627 stale lock files** — a single plugin holding five dead versions at ~1.5 GB each. ([#81217](https://github.com/anthropics/claude-code/issues/81217) tracks the absence of any prune command; there is no `claude plugin cache prune`.)
+
+**Offer cleanup; never run it unprompted.** Deleting a cache directory is destructive and the grace period exists for a reason — a concurrent session may legitimately still be reading an old version. Before proposing any directory for deletion, require **all three**:
+1. it is not the version in `installed_plugins.json`,
+2. no live PID holds a lock in it,
+3. the user said yes to that specific list.
+
+Show the list with sizes and let them choose. If a directory carries `.orphaned_at`, say that it will be removed automatically anyway and deleting it early only reclaims the space sooner.
+
 ## Step 8 — The report (this is the deliverable)
 
 Diff Step 3's snapshot against a fresh `claude plugin list`. Lead with what changed. Structure:
@@ -138,6 +163,7 @@ Diff Step 3's snapshot against a fresh `claude plugin list`. Lead with what chan
 - **Already current** — a count, not a list
 - **Needs your attention** — transport failures, duplicates, stalls, `unknown` versions, disabled skips, broken local frontmatter
 - **Cowork plugins** — their own group, with the honest "nothing local reaches these" line from Step 5
+- **Cache** — one line: total size, superseded size, dead lock count. Offer cleanup only if superseded space is worth reclaiming.
 - **Nothing changed?** Say exactly that in one line. Silence is a valid, good result.
 
 Never paste raw command output as the report.
