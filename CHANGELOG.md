@@ -4,6 +4,11 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.41] — 2026-08-04
+
+### Changed
+- **workspace-superengine v0.9.1** — `/update-everything` gains cache health: live-PID cross-checking so stale `.in_use` lock files stop reading as "loading two versions at once", plus superseded-version reporting and a triple-gated cleanup offer (never the current version, never one a live process holds, never without explicit consent).
+
 ## [0.1.40] — 2026-08-03
 
 ### Changed
