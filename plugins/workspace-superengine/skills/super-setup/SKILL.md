@@ -1,6 +1,6 @@
 ---
 name: super-setup
-description: Use to scaffold a brand-new workspace from scratch — creates RULES.md, CLAUDE.md, ARCHITECTURE.md, GOALS.md, PLANNING.md, MEMORY.md, Checkpoint.md, handoff.md, tasks/, troubleshooting/, outputs/, and .claude/workspace.yml. Trigger phrases include "set up this workspace", "scaffold a new workspace", "I just opened an empty folder", "initialize a project here", "make this folder into a workspace", "/super-setup". Detects Cowork vs Code environment, pre-fills owner identity from global config, and offers a beginner-verbosity mode for first-time clients.
+description: Use to scaffold a brand-new workspace from scratch — creates RULES.md, CLAUDE.md, ARCHITECTURE.md, GOALS.md, PLANNING.md, MEMORY.md, Checkpoint.md, handoff.md, tasks/, troubleshooting/, output/, and .claude/workspace.yml. Trigger phrases include "set up this workspace", "scaffold a new workspace", "I just opened an empty folder", "initialize a project here", "make this folder into a workspace", "/super-setup". Detects Cowork vs Code environment, pre-fills owner identity from global config, and offers a beginner-verbosity mode for first-time clients.
 ---
 
 # super-setup — Workspace Scaffolding (v0.2)
@@ -38,7 +38,7 @@ List the target workspace root. If ANY of these files exist, stop and ask the us
 RULES.md  CLAUDE.md  ARCHITECTURE.md  GOALS.md  PLANNING.md  MEMORY.md  Checkpoint.md  handoff.md
 ```
 
-If all 8 root files exist AND `tasks/`, `troubleshooting/`, `outputs/`, `.claude/` are present → the workspace is already scaffolded. Offer `/session-start` instead and exit.
+If all 8 root files exist AND `tasks/`, `troubleshooting/`, `output/`, `.claude/` are present → the workspace is already scaffolded. Offer `/session-start` instead and exit.
 
 If some files exist and some don't, ask: "Existing scaffold partially present. Overwrite-and-replace, fill-gaps-only, or abort?"
 
@@ -188,8 +188,8 @@ Create the destination directories (`tasks/`, `troubleshooting/`, `.claude/`) as
 ## Step 11 — Create the 3 placeholder folders
 
 Create these as empty (zero-byte) `.gitkeep` files:
-- `outputs/drafts/.gitkeep`
-- `outputs/final/.gitkeep`
+- `output/drafts/.gitkeep`
+- `output/final/.gitkeep`
 - `.claude/rules/.gitkeep`
 
 ## Step 12 — Report
@@ -217,8 +217,8 @@ tasks/STATUS.md
 tasks/findings.md
 troubleshooting/known-issues.md
 .claude/workspace.yml
-outputs/drafts/.gitkeep
-outputs/final/.gitkeep
+output/drafts/.gitkeep
+output/final/.gitkeep
 .claude/rules/.gitkeep
 ```
 

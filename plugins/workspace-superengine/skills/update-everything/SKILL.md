@@ -155,6 +155,49 @@ Report, per plugin: total cache size, how much is superseded, and the count of d
 
 Show the list with sizes and let them choose. If a directory carries `.orphaned_at`, say that it will be removed automatically anyway and deleting it early only reclaims the space sooner.
 
+#### ⚠️ On Windows, a plain delete SILENTLY FAILS on the biggest plugins
+
+This is the failure mode that makes a cleanup *look* successful while doing almost nothing. Observed live: a pass reported `FREED: 0.03 GB` and printed no errors. It had failed on the three largest directories.
+
+Two causes, both routine:
+- **`MAX_PATH` (260 chars).** Any plugin bundling `node_modules` blows past it — `hyperframes` carries paths **268 characters** long under `node_modules/.bun/`. `shutil.rmtree` raises `WinError 3` partway through and leaves the rest.
+- **Read-only attributes** → `WinError 5` (access denied) on individual files.
+
+Three requirements — all of them, or the number reported is fiction:
+
+1. **Prefix every delete path with `\\?\`** (extended-length form, absolute path, backslash separators).
+2. **Pass an `onerror` handler** that clears the read-only bit and retries.
+3. **Compare freed against planned, and report the delta.** A pass that frees far less than it planned must say so loudly instead of printing a success line.
+
+```python
+import os, shutil, stat
+
+EXT = "\\\\?\\"   # literal \\?\
+
+def ext(p):
+    p = os.path.abspath(p).replace("/", os.sep)
+    return p if p.startswith(EXT) else EXT + p
+
+def onerr(func, path, exc):
+    """Read-only attribute is the usual cause of WinError 5 — clear and retry."""
+    try:
+        os.chmod(path, stat.S_IWRITE)
+        func(path)
+    except Exception:
+        pass
+
+size_before = size(vp)                       # walk and sum before deleting
+shutil.rmtree(ext(vp), onerror=onerr)
+if os.path.exists(vp):
+    failed.append(vp)                        # still there = it did NOT work
+else:
+    freed += size_before
+```
+
+**Verify by arithmetic, not by absence of errors.** Re-check `os.path.exists()` on every directory after deleting it, count the failures, and print them. On the live run this fix took the same pass from 0.03 GB to **4.48 GB**.
+
+macOS/Linux need none of this — skip the prefix there; `\\?\` is Windows-only and will break paths elsewhere.
+
 ## Step 8 — The report (this is the deliverable)
 
 Diff Step 3's snapshot against a fresh `claude plugin list`. Lead with what changed. Structure:

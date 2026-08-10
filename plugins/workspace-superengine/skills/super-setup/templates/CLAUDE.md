@@ -38,8 +38,8 @@ Run `/session-start` to automate the read. Run `/session-closeout` at session en
 
 ## Outputs
 
-- `outputs/drafts/` — work-in-progress artifacts
-- `outputs/final/` — ship-ready artifacts
+- `output/drafts/` — work-in-progress artifacts
+- `output/final/` — ship-ready artifacts
 
 ## Settings
 

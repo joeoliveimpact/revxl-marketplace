@@ -2,6 +2,18 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.10.0 — 2026-08-09
+
+### Fixed
+- **Cache cleanup silently deleted nothing on Windows and reported success.** A live pass printed `FREED: 0.03 GB`, no errors, having failed on the three largest directories. Cause: `MAX_PATH` (260 characters). Any plugin bundling `node_modules` exceeds it — `hyperframes` carries 268-character paths under `node_modules/.bun/` — so `shutil.rmtree` raises `WinError 3` partway through and abandons the rest; read-only attributes add `WinError 5` on top. Step 7 now requires all three countermeasures: the `\\?\` extended-length prefix on every delete path, an `onerror` handler that clears the read-only bit and retries, and a **freed-vs-planned comparison** so a pass that reclaims far less than it planned says so loudly instead of printing a success line. Verification is now arithmetic (`os.path.exists()` re-checked per directory, failures counted and printed), not the absence of an exception. The same run went from 0.03 GB to **4.48 GB** after the fix. macOS/Linux skip the prefix — it is Windows-only.
+- **The scaffold created `outputs/` while every real workspace uses `output/`.** Checked across live workspaces: 7 of 7 use the singular form, none use the plural. Every new workspace therefore started out inconsistent with every older one, and any skill following the template wrote to a folder the user's other workspaces did not have. `super-setup` (and the `workspace-plan` / `workspace-verify` / `workspace-cleanup` references, plus the ARCHITECTURE and CLAUDE templates) now use `output/`.
+- **`session-start` treated a missing `PLANNING.md` as a broken scaffold.** It now reads `PLANNING.md` only if present. Absence of that one file is no longer grounds for telling the user to re-run `/super-setup`; the other four scaffold files still are.
+
+### Changed
+- **The configured issue tracker is now read BEFORE the local files (Phase 3.5 → Phase 0.5).** Where a tracker is configured it is the record of record for what is open, done, and in progress; the workspace files are a summary written by whoever closed out last, and they go stale the moment work happens in another workspace. Reading them first anchored the whole brief to the weaker source — observed live, where a status brief reported the last session as five days old while the tracker showed work that had moved the same morning elsewhere.
+- **Tracker/local disagreements are surfaced, never silently resolved.** A local file that contradicts the tracker may be the correct side — work that got done and never filed, or a step the process dropped. The skill now shows both versions and asks which is right, then updates whichever is stale, in either direction. It never overwrites correct information to make two sources agree. The status brief gains a `Drift:` line, omitted entirely when there is nothing to report.
+- **Look up projects and teams by ID where the config provides one** — a name lookup can silently return empty and read as "nothing open."
+
 ## 0.9.1 — 2026-08-04
 
 ### Added

@@ -41,7 +41,7 @@ Before claiming any status or expressing satisfaction:
 
 1. **IDENTIFY** — what would prove this work is done?
    - For a written piece: the file exists at the expected path, it reads end-to-end without gaps.
-   - For a client deliverable: the file is in `outputs/final/` (or the agreed destination), formatted per the client's spec.
+   - For a client deliverable: the file is in `output/final/` (or the agreed destination), formatted per the client's spec.
    - For an offer/program: the landing page is live, the payment link works, the fulfillment doc exists.
    - For a code change: the relevant command runs, the expected output appears, exit code 0.
    - For an ops change: the new process is documented in the right place AND tested at least once.

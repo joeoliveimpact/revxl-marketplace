@@ -64,15 +64,15 @@ This skill is not coding-specific. Examples of work it plans:
 Each step is one concrete action (typically 2–15 minutes of work):
 
 For a content production plan:
-- "Pull the three reference posts from `outputs/final/` and skim for tone" — step
-- "Draft the hook in `outputs/drafts/hook-draft.md`" — step
+- "Pull the three reference posts from `output/final/` and skim for tone" — step
+- "Draft the hook in `output/drafts/hook-draft.md`" — step
 - "Read the hook out loud, cut anything that stumbles" — step
 - "Show the hook to user; wait for approval" — step
 - "Draft the body" — step
 - "Verify against the Definition of Done" — step
 
 For a coaching launch plan:
-- "Write the offer one-liner in `outputs/drafts/offer.md`" — step
+- "Write the offer one-liner in `output/drafts/offer.md`" — step
 - "Get user approval on the one-liner" — step
 - "Draft the sales page outline" — step
 - "Get user approval on outline" — step
@@ -104,7 +104,7 @@ Re-read the Definition of Done at the top of the plan. Tick each criterion. If a
 
 - [ ] **Step N+1: Commit / save / hand off**
 
-Workspace-appropriate: `git commit -m "..."`, move file from `outputs/drafts/` to `outputs/final/`, send to client, etc.
+Workspace-appropriate: `git commit -m "..."`, move file from `output/drafts/` to `output/final/`, send to client, etc.
 ````
 
 ## No Placeholders
