@@ -21,8 +21,8 @@ Map of every root file and folder. Update when you add or remove anything.
 |--------|---------|
 | `tasks/` | Operational task tracking (`STATUS.md`, `findings.md`) |
 | `troubleshooting/` | Known issues, runbooks |
-| `outputs/drafts/` | Work-in-progress artifacts (drafts, scratch) |
-| `outputs/final/` | Ship-ready artifacts |
+| `output/drafts/` | Work-in-progress artifacts (drafts, scratch) |
+| `output/final/` | Ship-ready artifacts |
 | `.claude/` | Workspace-local Claude config: `workspace.yml`, `rules/`, future hooks/agents |
 
 ## Session lifecycle

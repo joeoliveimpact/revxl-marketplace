@@ -43,12 +43,34 @@ the workspace, or run `/agent-optimizer` to load the constraints into context di
 
 ---
 
+## Phase 0.5: Linear Review — the source of truth (conditional)
+
+**Runs BEFORE the local files are read.** Where a tracker is configured, it — not the workspace files — is the record of record for what is open, done, and in progress. Local files are a summary/backup written by whoever closed out last; they go stale the moment work happens somewhere else. Reading them first anchors the brief to the weaker source.
+
+Runs **only if** `.claude/workspace.yml` has a `linear:` block with `status: configured`. If `status` is `unset`/`declined`, or there is no `linear:` block → **skip silently** and go straight to Phase 1.
+
+The trigger is the **configured flag**, NOT a bare MCP connection. The Linear MCP is shared across every workspace, so "is Linear connected?" is true everywhere and can't scope anything — the per-workspace `linear:` binding (team + project) is what decides which project to read.
+
+1. Read the `linear:` block — note `team`, `project` (and their ids), and `scope` if present.
+2. **Connection health-check:** probe the Linear MCP (e.g. `list_issues`). If the workspace is configured but the MCP is **not** connected → surface a one-line warning (`Linear configured but MCP not connected — issues not pulled`), note that the brief is therefore built from local files alone, and continue. **Never fail session-start over Linear.**
+3. Pull open issues (non-completed states), scoped by the `linear:` block:
+   - **Default (project-scoped):** `list_issues` filtered to the configured `project`.
+   - **`scope: team`** (workspace spans multiple projects — e.g. a Client Work hub with one project per client): `list_issues` filtered to the `team`, grouped by project. Use this when the block has a `team` but no `project`.
+   Summarize: total count + the top few by priority/status (and by project, if team-scoped).
+4. Carry the summary into Phase 1 (as the baseline the local files are checked against) and into the Phase 4 brief.
+
+**Look up projects and teams by ID, not by name** where the config provides one — a name lookup can silently return empty and read as "nothing open."
+
+**Cowork:** the Linear MCP works in Claude Desktop too when connected; if not connected, treat as advisory (note it, don't probe-fail).
+
+---
+
 ## Phase 1: Read Handoff Docs (2 min)
 
 1. Use the Read tool on each file (works in both environments):
    - `handoff.md`
    - `ARCHITECTURE.md`
-   - `PLANNING.md`
+   - `PLANNING.md` *(optional — read it if present; not every workspace has one)*
    - `Checkpoint.md` (read only the most recent 1–2 entries — use offset/limit params)
    - `MEMORY.md` (only if today's work touches an indexed topic)
 
@@ -56,7 +78,15 @@ the workspace, or run `/agent-optimizer` to load the constraints into context di
    - Code: optionally `test -f <path>` via Bash if you prefer
    - Cowork: use Glob with the exact filename pattern, OR attempt Read and treat ENOENT as "missing"
 
-If any file is missing → workspace isn't fully scaffolded. Suggest `/super-setup`.
+If `RULES.md`, `handoff.md`, `ARCHITECTURE.md`, or `Checkpoint.md` is missing → the workspace isn't fully scaffolded. Suggest `/super-setup`. A missing `PLANNING.md` alone is not a scaffolding failure — note it and move on.
+
+### Check the local files against what the tracker said (only when Phase 0.5 ran)
+
+Compare the two. Where they disagree — a Linear issue marked Done that handoff still lists as a blocker, work that moved this week with no Checkpoint entry, a P0 with no matching issue — **surface it, do not silently resolve it in either direction.**
+
+Show both versions and ask which is right. The tracker is the default authority for *reporting* state, but a disagreeing local file may be the correct side: work that got done and never filed, or a step the process dropped. Then update whichever side is stale. Never overwrite correct information to make two sources match.
+
+Work done in another workspace still counts — a tracker spans workspaces, these files do not. An unexplained gap between the two usually means exactly that, not that nothing happened.
 
 After reading, state to user:
 - What the last session accomplished (1 sentence from Checkpoint.md top entry)
@@ -91,30 +121,14 @@ Pure-document workspaces skip Phase 3 entirely regardless of environment.
 
 ---
 
-## Phase 3.5: Linear Review (conditional)
-
-Runs **only if** `.claude/workspace.yml` has a `linear:` block with `status: configured`. If `status` is `unset`/`declined`, or there is no `linear:` block → **skip silently**.
-
-The trigger is the **configured flag**, NOT a bare MCP connection. The Linear MCP is shared across every workspace, so "is Linear connected?" is true everywhere and can't scope anything — the per-workspace `linear:` binding (team + project) is what decides which project to read.
-
-1. Read the `linear:` block — note `team`, `project` (and their ids), and `scope` if present.
-2. **Connection health-check:** probe the Linear MCP (e.g. `list_issues`). If the workspace is configured but the MCP is **not** connected → surface a one-line warning (`Linear configured but MCP not connected — issues not pulled`) and continue. **Never fail session-start over Linear.**
-3. Pull open issues (non-completed states), scoped by the `linear:` block:
-   - **Default (project-scoped):** `list_issues` filtered to the configured `project`.
-   - **`scope: team`** (workspace spans multiple projects — e.g. a Client Work hub with one project per client): `list_issues` filtered to the `team`, grouped by project. Use this when the block has a `team` but no `project`.
-   Summarize: total count + the top few by priority/status (and by project, if team-scoped).
-4. Pass the summary to Phase 4 — it appears in the status brief next to the handoff P0s.
-
-**Cowork:** the Linear MCP works in Claude Desktop too when connected; if not connected, treat as advisory (note it, don't probe-fail).
-
----
-
 ## Phase 4: Present Status Brief (1 min)
 
 Format:
 
 ```
 SESSION START — {date}
+
+Linear: {N open — top: ID title (priority, status); or "MCP not connected — brief built from local files only"}
 
 Last session: {1-line summary from Checkpoint.md}
 Handoff status: {clean / X blockers}
@@ -123,16 +137,16 @@ Verification: {all passed / X failed}
 Blockers:
   1. {blocker — action needed}
 
-Linear: {N open issues in {project} — top: ID title (priority); or "not configured" / "MCP not connected"}
+Drift: {none / "Linear shows X, handoff says Y — which is right?"}
 
 Ready to work on:
-  1. {handoff.md P0 #1}
-  2. {handoff.md P0 #2}
+  1. {P0 #1}
+  2. {P0 #2}
 
 Where do you want to start?
 ```
 
-(Omit the Linear line entirely if the workspace has no `linear:` block — don't print "not configured" noise in workspaces that never opted in. Show it only when a `linear:` block exists.)
+(Omit the Linear line entirely if the workspace has no `linear:` block — don't print "not configured" noise in workspaces that never opted in. Show it only when a `linear:` block exists. Omit the Drift line when there is nothing to report — silence is the correct output for a workspace whose files match its tracker.)
 
 End your turn. Wait for direction before starting work.
 

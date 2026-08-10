@@ -4,6 +4,16 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.42] — 2026-08-09
+
+### Fixed
+- **workspace-superengine v0.10.0** — cache cleanup no longer reports success after silently deleting nothing on Windows. `MAX_PATH` (260 chars) made `shutil.rmtree` fail partway through on any plugin bundling `node_modules`; the guidance now requires the `\\?\` extended-length prefix, a read-only `onerror` handler, and a freed-vs-planned comparison so a short delete says so instead of printing a success line. On the live run that surfaced this, the same pass went from 0.03 GB to 4.48 GB.
+- **workspace-superengine v0.10.0** — the scaffold now creates `output/` (singular), matching every existing workspace; it previously created `outputs/`, so every new workspace started out inconsistent with every older one.
+- **workspace-superengine v0.10.0** — `session-start` no longer reports a workspace as incompletely scaffolded when only `PLANNING.md` is absent. It is read if present.
+
+### Changed
+- **workspace-superengine v0.10.0** — `session-start` pulls the configured issue tracker **before** reading local scaffold files (was Phase 3.5, now Phase 0.5). Where a tracker is configured it is the record of record; local files are a summary that goes stale as soon as work happens in another workspace. Disagreements between the two are now surfaced with both versions for the user to resolve — never silently reconciled in either direction.
+
 ## [0.1.41] — 2026-08-04
 
 ### Changed

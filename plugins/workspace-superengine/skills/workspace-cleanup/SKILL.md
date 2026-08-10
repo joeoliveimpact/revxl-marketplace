@@ -57,7 +57,7 @@ Categories:
 
 ### C. Loose outputs
 
-- Files in workspace root that match output-y patterns (`*.draft.md`, `output*.md`, `notes-*.md`, `tmp-*`, `scratch*`) → candidates for move to `outputs/drafts/`.
+- Files in workspace root that match output-y patterns (`*.draft.md`, `output*.md`, `notes-*.md`, `tmp-*`, `scratch*`) → candidates for move to `output/drafts/`.
 
 ### D. Junk patterns
 
@@ -69,7 +69,7 @@ Categories:
 
 ### F. Stray docs in root
 
-- `*.md` files in workspace root that aren't in the scaffold whitelist (RULES, CLAUDE, ARCHITECTURE, GOALS, PLANNING, MEMORY, Checkpoint, handoff, README, CHANGELOG, LICENSE). Candidates for move to `outputs/drafts/` or `tasks/`.
+- `*.md` files in workspace root that aren't in the scaffold whitelist (RULES, CLAUDE, ARCHITECTURE, GOALS, PLANNING, MEMORY, Checkpoint, handoff, README, CHANGELOG, LICENSE). Candidates for move to `output/drafts/` or `tasks/`.
 
 ### G. Duplicate / near-duplicate files
 
@@ -96,8 +96,8 @@ B. Stale drafts (1)
    move     content/drafts/2025-12-old-essay.md  -> content/drafts/_stale/
 
 C. Loose outputs (2)
-   move     scratch-notes.md  -> outputs/drafts/
-   move     output-v3.md      -> outputs/drafts/
+   move     scratch-notes.md  -> output/drafts/
+   move     output-v3.md      -> output/drafts/
 
 D. Junk (4)
    delete   .DS_Store
@@ -110,7 +110,7 @@ E. Empty directories (1)
 
 F. Stray docs (2)
    move     meeting-notes-2026-03.md  -> tasks/
-   move     idea-draft.md             -> outputs/drafts/
+   move     idea-draft.md             -> output/drafts/
 
 G. Duplicates (1)
    surface  roadmap.md in / AND tasks/  (resolve manually)
@@ -138,7 +138,7 @@ For each action, log:
   ! failed    Thumbs.db (permission denied)
 ```
 
-If a destination directory does not exist (e.g. `outputs/drafts/` in a workspace where the user never created it), create it on the fly with a `.gitkeep` if it'd otherwise be empty.
+If a destination directory does not exist (e.g. `output/drafts/` in a workspace where the user never created it), create it on the fly with a `.gitkeep` if it'd otherwise be empty.
 
 ## Step 4 — Append to Checkpoint.md
 
@@ -149,7 +149,7 @@ Record what was done at the bottom of the Checkpoint.md log as a new entry:
 
 - Archived 2 stale specs to .claude/specs/completed/
 - Moved 1 stale draft to content/drafts/_stale/
-- Moved 2 loose outputs to outputs/drafts/
+- Moved 2 loose outputs to output/drafts/
 - Deleted 3 junk files
 - Surfaced 1 duplicate for manual resolution
 
