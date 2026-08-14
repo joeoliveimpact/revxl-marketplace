@@ -43,6 +43,81 @@ If yes to the last → save a memory file (per `~/.claude/CLAUDE.md` auto memory
 
 ---
 
+## Phase 0.7: Write the session summary (5 min)
+
+**Runs before Phase 1 on purpose.** Phase 1's Checkpoint entry points at this file by name, and Phase 2's handoff wiki-links it. Write the thing before you write the two pointers to it, or both pointers are guesses.
+
+One file per session. It is the expansion of the terse Checkpoint burst, and it is the file `/session-continue` reads back when it builds the next session's kickoff prompt. Full format reference: `docs/session-summary-format.md` in this plugin.
+
+### Step 1 ... pick the path
+
+`sessions/session-summary-MM-DD-YY.md` at the workspace root.
+
+- **Create `sessions/` if it does not exist.** Most workspaces were scaffolded before this existed, so a missing folder is normal, not an error.
+- **Collisions get a numeric suffix**, in order: `session-summary-08-14-26.md`, then `-1`, then `-2`. Check with Glob before writing. Never overwrite an existing summary ... a second session on the same day is a second file.
+
+### Step 2 ... write the file
+
+```markdown
+---
+id: session-summary-MM-DD-YY
+tags: [session, episodic, <workspace-slug>]
+date_created: YYYY-MM-DD
+date_updated: YYYY-MM-DD
+source: workspace-canonical
+sot_policy: decay
+source_count: 1
+confidence: 0.8
+---
+
+# Session summary ... YYYY-MM-DD
+
+## [YYYY-MM-DD] <topic ... what this section is actually about>
+
+<The expansion. What was built or decided, why, what it cost, what broke. This is the
+body that used to bloat the Checkpoint entry.>
+
+## [YYYY-MM-DD] <second topic>
+
+<...>
+
+## [YYYY-MM-DD] Open threads for next session
+
+<What is unfinished, and what the next session needs to know to pick it up.>
+
+## Connections
+
+- `depends_on` ... [[<thing this session's work needs>]]
+- `consumes` ... <file or artifact this work reads>
+- `integrates_with` ... <system it touches>
+```
+
+**Four rules, and each one is load-bearing:**
+
+1. **`sot_policy: decay` is not optional.** It marks the file episodic ... recency-weighted, never deleted, superseded by newer sessions rather than by a status flag. A durable decision does NOT belong here; that is Phase 2.7's routing into `RULES.md` / `MEMORY.md` / `GOALS.md`. Episodic and durable never blend.
+2. **Every content header is `## [YYYY-MM-DD] <topic>`.** The date is duplicated from the filename on purpose: retrieval chunks at the H2 boundary and reads the header text, not the filename. A summary with undated headers is a summary the graph cannot date.
+3. **Headers are topical, never procedural.** `## [2026-08-14] Linear source-of-truth rule` retrieves. `## [2026-08-14] Notes` does not, and neither does `Progress` or `Misc`. If a section covers three unrelated things, it is three sections.
+4. **`## Connections` is required, and it is honest about being inert.** On the `/graphify` skill path those lines parse into nothing ... they become an ordinary heading. Their real job is putting the locked verbs (`depends_on consumes exposes integrates_with runs_on references`) in front of the extractor, which otherwise collapses every relationship into `references`. Write it anyway. It costs four lines.
+
+### Step 3 ... wikilinks, with the cost stated correctly
+
+Write `[[wikilinks]]` to related summaries and files. **Structure is free, semantics are paid.**
+
+- On graphify 0.9.42 a free structural pass turns `[[link]]`, `[[link.md]]`, `[text](file.md)` and `[text](./file.md)` into real `references` edges at zero token cost. That pass does **not** run on the `/graphify` skill path, which only hands the extractor the `code` bucket.
+- Keep targets resolvable to a **same-folder sibling, path-relative** where you can ... a link from one summary to another inside `sessions/` qualifies.
+- **Links inside fenced code blocks are skipped.** A link that appears only inside a fence produces nothing.
+
+Do not tell the user "edges are free". Do not tell them there are no free edges. The sentence above is the accurate one.
+
+### Step 4 ... the failure branches
+
+- **`sessions/` cannot be created** (permissions, read-only path): say so plainly, write the summary body into the Checkpoint entry instead of a pointer, and do NOT write a handle line pointing at a file that does not exist.
+
+  > I could not create the `sessions/` folder, so today's write-up went into Checkpoint.md in full instead of its own summary file. Nothing was lost ... the entry is just longer than usual.
+- **Session was genuinely thin** (ten minutes, one small fix): still write the file. A short summary is fine; a missing one breaks the handle in the Checkpoint entry. One dated H2 and a Connections block is a complete summary.
+
+---
+
 ## Phase 1: Append to Checkpoint.md (5 min)
 
 **Both environments:**
@@ -60,6 +135,8 @@ Template:
 ## YYYY-MM-DD — {short title}
 **Duration:** ~Xh
 **TL;DR:** {1–2 sentences capturing what was accomplished}
+**Summary:** [[session-summary-MM-DD-YY]]
+**Terms:** {3 to 5 topic terms, comma separated} (unverified ... no hub yet)
 
 ### Completed
 - {item}
@@ -84,6 +161,53 @@ Template:
 
 **Hard rule:** every section has content or is explicitly marked "(none)". No silent omissions.
 
+**Expect these entries to get much shorter than they used to be.** A pre-summary top entry runs about 60 lines. Now the body lives in the Phase 0.7 summary and the entry is a burst plus two pointer lines. **That is the bloat fix working, not information loss** ... the full write-up is one wiki-link away.
+
+### The retrieval header ... two lines, deliberately not one
+
+`**Summary:**` and `**Terms:**` do different jobs and fail differently. That is why they never get merged into a single line.
+
+| Line | What it is | How it behaves |
+|---|---|---|
+| `**Summary:**` | the **handle** ... the summary file's frontmatter `id`, which is also its filename | Deterministic. It resolves and pulls that one file whole, or the file is missing and you find out immediately. It cannot half-work. |
+| `**Terms:**` | **topic terms** ... fuzzy concepts that fan out through hub search and pull the whole neighborhood, including notes written later in other sessions or other workspaces | Can legitimately return nothing. |
+
+Merged onto one line, a term that returns nothing looks like a broken pointer. Split, it reads as a miss, which is all it is.
+
+**Terms carry `(unverified ... no hub yet)` until the hub exists.** Verifying that a term actually resolves needs the hub's term-resolution index (SKLLPLG-140), which is not built. Writing terms as if they were checked teaches the reader to trust something nobody checked, and the first dead term after that costs the whole header its credibility. **The handle needs no graph at all** ... it is a filename, and it works in a workspace with no hub, no graphify, and no second brain. Once the hub lands, drop the marker on terms you actually resolved.
+
+### The 30-day window ... demote old entries in the same file
+
+Do this every closeout, right after inserting the new entry. **Closeout owns this, not a scheduled job** ... Checkpoint has to work before any graph exists, and the night job is gated behind SKLLPLG-141.
+
+1. **Full zone (top of the file):** every entry from the last 30 days, newest first, complete with burst, handle and terms.
+2. **Floor of 5.** The full zone always keeps at least the 5 newest entries, even when all of them are older than 30 days. A quiet month cannot empty the top of the file.
+3. **Tail (below the full zone, same file):** everything else, one line each, newest first:
+
+   ```
+   - 2026-07-02 · Linear source-of-truth rule → [[session-summary-07-02-26]] · terms: linear, source of truth
+   ```
+
+4. **No second archive artifact.** The tail lives in `Checkpoint.md` under a `## Earlier sessions` heading at the bottom of the file. Do not create an archive file, do not move anything to another folder.
+5. **Ordering:** the full zone stays newest-first, then `## Earlier sessions` last, also newest-first. An old entry that cannot be compressed (see below) stays in the full zone, in date order, which means the full zone can run past 30 days. That is intended, not a bug to tidy up.
+
+**Compress ONLY entries that have a resolvable `**Summary:**` handle.** An entry written before session summaries existed has its body in exactly one place, and compressing it to one line destroys the only copy. Those stay full, however old they are, and they do not count against the floor. Converting them is the backfill's job, and **the backfill is blocked behind SKLLPLG-143's Recycle Bin** ... do not attempt it here, do not attempt it partially, and do not "just do the top few".
+
+**Say out loud how many entries you retained for having no handle. Every closeout, including ... especially ... when the answer is "all of them."**
+
+A file with no handles anywhere compresses nothing, and a demotion step that compresses nothing and reports nothing looks exactly like bloat control working. It is not working; it is waiting on the backfill. The user has to be able to tell those apart, and the only thing that distinguishes them is this line.
+
+- **Some compressed, some retained:**
+  > Compressed 12 older entries to one-liners. Another 9 predate session summaries and have no handle, so I left those in full ... they stay that way until the backfill is unblocked.
+- **Nothing compressed, everything retained** ... the case for any workspace that has been running since before this format existed:
+  > Nothing could be compressed this time: all 47 entries in `Checkpoint.md` predate session summaries, so none of them has a handle to compress down to. The file will keep growing until the backfill converts them, and the backfill is blocked behind SKLLPLG-143. From today forward, new entries carry a handle and will compress normally.
+
+**Silence here is a defect, not a clean result.** Report the count even when it is zero in the other direction (nothing retained, everything compressed) ... that is one short line and it is the only evidence the step ran at all.
+
+If demotion would compress an entry whose handle points at a file that is not on disk, leave it full and say so:
+
+> One older Checkpoint entry points at a session summary I could not find, so I left it in full rather than compressing it down to a link that goes nowhere.
+
 ---
 
 ## Phase 2: Rewrite handoff.md (3 min)
@@ -98,6 +222,9 @@ Template:
 
 ## Last session
 {date} — {title} (see Checkpoint.md for full entry)
+
+## Session summary
+[[session-summary-MM-DD-YY]] · `sessions/session-summary-MM-DD-YY.md`
 
 ## Status
 {1-line system state — what's working, what's not}
@@ -123,6 +250,10 @@ Template:
 ```
 
 If handoff.md doesn't exist, create it. If it exists, fully replace its contents.
+
+**`## Session summary` carries both forms on purpose.** The wiki-link is what a human clicks and what Obsidian resolves; the path is what survives a tool that does not understand wiki-links. Belt and suspenders, one extra line.
+
+**Five of these headings are load-bearing and must not be renamed, reordered out of existence, or reworded:** `## Last session`, `## Session summary`, `## P0 — Next Actions`, `## Verify before building`, `## Key files from last session`. `/session-continue` reads them by name to build the next session's kickoff prompt. Rename one and that prompt silently loses a field ... it will still generate, it will just be missing the part nobody notices is gone. If a section has nothing in it, write `(none)` under it. Never delete the heading.
 
 ---
 
@@ -462,6 +593,7 @@ Report this table to the user. Every applicable file gets a row with action + re
 ```
 | File              | Action     | Reason (if NO CHANGE) |
 |-------------------|------------|-----------------------|
+| sessions/session-summary-MM-DD-YY.md | CREATED | — |
 | Checkpoint.md     | UPDATED    | — |
 | handoff.md        | UPDATED    | — |
 | ARCHITECTURE.md   | ?          | ? |
@@ -479,6 +611,9 @@ Also confirm:
 6. Phase 4.2 ran and produced a spoken result? In Claude Code that is either a list the user answered, or "nothing was left running." In Cowork it is the plain "I cannot do this from here." A closeout that says nothing at all about background processes is a defect.
 7. Phase 2.7 ran? If a deferred marker was present, it was either **honored** (heavy pass ran, items proposed) or **explicitly declined by the user**. A closeout that leaves a deferred marker sitting there without saying a word is a defect. If the workspace was clean, 2.7 correctly produced no output and there is nothing to report here.
 
+8. Session summary written, and does the Checkpoint entry's `**Summary:**` handle point at a file that is actually on disk? Check it with Glob or `test -f`, do not assume it. A handle pointing at nothing is worse than no handle, because it looks like it works.
+9. Demotion ran, **and said something**? Entries older than 30 days (beyond the newest 5) are one-liners in the tail, EXCEPT pre-summary entries with no handle, which stay full on purpose. The retained count was spoken out loud. A demotion that compressed nothing and reported nothing is a defect, not a pass ... it is indistinguishable from bloat control working when it is actually waiting on the backfill.
+
 If any row shows `?` — fix it before reporting complete.
 
 ---
@@ -491,6 +626,8 @@ If the session was under 30 minutes and touched <3 files, you can:
 - Update handoff.md if anything blocks the next session
 
 **Phase 2.7 is never skipped, not even in quick mode.** The light check costs two file reads and produces nothing when the workspace is clean. And the first closeout after a fresh setup is exactly the one most likely to be short ... skipping it there is how parked goals never get asked about at all. If the session really was too thin to build candidates from, 2.7b's thin-session branch already handles that: it says one line and keeps the marker.
+
+**Phase 0.7 is never skipped either, and neither is the demotion step.** The summary can be four lines on a quick session, but it has to exist, because Phase 1 writes a `**Summary:**` handle pointing at it and a handle pointing at nothing is a lie the next session believes. Demotion is a couple of edits and skipping it is how a Checkpoint file quietly grows back to 300 KB.
 
 **Phase 4.2 is never skipped either.** It is one command, and it says nothing at all when the ledger is empty. The short casual session is exactly the one where somebody fires up a dev server, gets distracted, and closes the window ... so skipping it there skips it in the case it was built for.
 
