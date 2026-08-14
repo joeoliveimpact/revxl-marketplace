@@ -361,6 +361,78 @@ If the workspace has live infrastructure, snapshot it. Otherwise skip.
 
 ---
 
+## Phase 4.2: Close background processes this session started
+
+Sessions leak background processes. A dev server, a watcher, a script left running behind a `&`. They sit there eating memory for days, and on a coach's laptop nobody ever notices or knows what to do about it.
+
+**The reason this needs a ledger, and cannot be done by looking at what is running:** the process table cannot tell you what is an orphan.
+
+- **Parent lies.** MCP servers start through `npx`, so their parent is `cmd.exe`, not Claude. Filtering on "no live Claude parent" flagged roughly thirty MCP servers that were actively in use.
+- **Name lies, and this one is dangerous.** Claude Code IS node. Stopping processes named `node` kills the session running the command, plus every other Claude window that is open.
+- **Age lies.** A three-day-old server can be in daily use. A ten-minute-old one can belong to another window that is open right now.
+
+So the plugin records a process at the moment a Bash command starts it, and closes from that record. **The process table is only ever used to VERIFY a record, never to pick a target. Anything not in the ledger is reported, never stopped.**
+
+### `environment: cowork`
+
+**Say this plainly and move on. Do not improvise around it:**
+
+> Cowork has no Bash, so I cannot see or stop background processes from here. That part of closeout only runs in Claude Code. If you have had Claude Code sessions in this workspace, run `/session-closeout` there when you get a chance.
+
+Do not report this phase as clean, done, or skipped-because-nothing-found. It is skipped because the capability is absent. Those are different things and the user needs the real one.
+
+### `environment: code`
+
+**Step 1 ... find the ledger tool.** In order:
+
+1. `"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd" process-ledger list`
+2. If that produces **no output at all**, read `~/.claude/workspace-superengine/process-ledger/cli-path.txt` and run `bash "<the path in that file>" list`.
+3. If neither works, say so out loud:
+
+   > I could not reach the background process tool, so I do not know whether this session left anything running. That is not the same as "nothing is running."
+
+   **Empty output is never evidence of a clean machine.** The wrapper exits quietly when it cannot find bash, which looks exactly like "no processes found" if you are not careful. The real "nothing here" answer is a report that says so in words, which the tool prints when the ledger is genuinely empty.
+
+**Step 1b ... read the first three lines before you read anything else.**
+
+- If the output starts with `PROCESS LEDGER UNAVAILABLE`, that is the whole answer. Tell the user the check could not run and why, in the tool's own words. **Do not report the phase as clean.** "I could not check" and "nothing is running" are different facts.
+- Check the `Workspace:` line actually names this workspace. If it names a parent, a subfolder, or something unexpected, say so ... the answer below it is about a different workspace.
+- The `Resolved by:` line underneath says how it worked that out (`CLAUDE_PROJECT_DIR`, or which marker file it found walking up). When the `Workspace:` line looks wrong, that line is what tells you why, so quote it rather than guessing.
+
+You may also see a line reporting processes **refused as machinery** at recording time. That is a count of things the tool declined to write down at all, such as Claude's own shells. It is informational and needs no action.
+
+**Step 2 ... show the user what it printed.** Show the list itself, not a summary of it. Each entry carries the command, when it was recorded, how much memory it is using right now, and one of five states:
+
+| State | What it means | What you may do |
+|---|---|---|
+| `STOPPABLE` | identity verified, and either this Claude instance started it or the session that did has ended | may be offered to the user |
+| `OTHER-WINDOW` | identity verified, but another Claude window that is still open owns it | report only, never offer |
+| `MISMATCH` | that pid is running something different from what was recorded | report only, never offer, and never "force" it |
+| `MACHINERY` | identity verified, and it is Claude's own plumbing (the shell commands run in, a console host, this plugin's own hooks) | report only, never offer, never stop |
+| `GONE` | it already exited; the entry is closed automatically | nothing to do |
+
+**`MACHINERY` is the tool working, not a problem.** It means the ledger checked the entry, found it accurate, and refused it anyway because stopping it would kill the shell every command runs in, or Claude itself. It never enters the consent list and it is never counted in `STOPPABLE`. Do not escalate it, do not offer it, and do not go looking for another way to stop it. If the user asks what it is, that one sentence is the whole answer.
+
+**Step 3 ... ask, with the cost visible.** Name the specific processes and what stopping them costs. Never ask a blanket "shall I clean up background processes?"
+
+> These two are still running from this session: a dev server on port 3000 (180 MB) and a file watcher (40 MB). Stop them?
+
+**Step 4 ... stop only what they said yes to.**
+
+```
+"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd" process-ledger stop --token <token from the list> --pids <only the pids they approved>
+```
+
+The token ties the approval to that exact list. If anything changed between the list and the stop, the tool refuses the whole batch and tells you to ask again. That refusal is correct behavior, not an error to work around.
+
+The tool re-verifies every process immediately before stopping it and skips any that no longer match. **A skip is a success, not a failure.** Report skips to the user in the tool's own words. Do not retry them, do not look up the pid another way, and never reach for `Stop-Process`, `taskkill`, `kill`, or `pkill` yourself to finish the job. That is the exact move that kills the harness.
+
+**Step 5 ... report the outcome, including the boring one.** "Nothing was left running this session" is a real result and gets said out loud. Silence here reads as "the check was skipped."
+
+**If the user asks you to stop something that is not in the ledger:** decline and explain. The plugin can only prove ownership of what it recorded. Offer the command so they can run it themselves with their own eyes on it.
+
+---
+
 ## Phase 4.5: Commit the Workspace Repo (conditional)
 
 Runs **only if** the workspace root is a git repo. Skip silently otherwise.
@@ -404,7 +476,8 @@ Also confirm:
 3. Any background tasks have verify commands documented?
 4. Any durable user/feedback/project learnings saved to memory?
 5. Workspace repo committed (or explicitly clean / not a repo)? Unpushed commits reported?
-6. Phase 2.7 ran? If a deferred marker was present, it was either **honored** (heavy pass ran, items proposed) or **explicitly declined by the user**. A closeout that leaves a deferred marker sitting there without saying a word is a defect. If the workspace was clean, 2.7 correctly produced no output and there is nothing to report here.
+6. Phase 4.2 ran and produced a spoken result? In Claude Code that is either a list the user answered, or "nothing was left running." In Cowork it is the plain "I cannot do this from here." A closeout that says nothing at all about background processes is a defect.
+7. Phase 2.7 ran? If a deferred marker was present, it was either **honored** (heavy pass ran, items proposed) or **explicitly declined by the user**. A closeout that leaves a deferred marker sitting there without saying a word is a defect. If the workspace was clean, 2.7 correctly produced no output and there is nothing to report here.
 
 If any row shows `?` — fix it before reporting complete.
 
@@ -413,11 +486,13 @@ If any row shows `?` — fix it before reporting complete.
 ## Quick mode (for short sessions)
 
 If the session was under 30 minutes and touched <3 files, you can:
-- Skip Phase 0, Phase 3, Phase 4
+- Skip Phase 0, Phase 3, Phase 4 (the live-infrastructure snapshot) ... **Phase 4.2 is not part of that skip**
 - Write a 3-line Checkpoint.md entry
 - Update handoff.md if anything blocks the next session
 
 **Phase 2.7 is never skipped, not even in quick mode.** The light check costs two file reads and produces nothing when the workspace is clean. And the first closeout after a fresh setup is exactly the one most likely to be short ... skipping it there is how parked goals never get asked about at all. If the session really was too thin to build candidates from, 2.7b's thin-session branch already handles that: it says one line and keeps the marker.
+
+**Phase 4.2 is never skipped either.** It is one command, and it says nothing at all when the ledger is empty. The short casual session is exactly the one where somebody fires up a dev server, gets distracted, and closes the window ... so skipping it there skips it in the case it was built for.
 
 Don't quick-mode a session that touched architecture, made decisions, or hit failures.
 Those need the full procedure.

@@ -155,6 +155,32 @@ Pure-document workspaces skip Phase 3 entirely regardless of environment.
 
 ---
 
+## Phase 3.5: Sweep background processes left by earlier sessions (Code only)
+
+Closeout catches what the session it is closing started. It never runs at all when a session crashes, gets killed, or is closed by shutting the window ... which is exactly how a process ends up still running three days later. This phase is the other half: it picks up what those sessions never got to close.
+
+**`environment: cowork`** ... Cowork has no Bash, so this cannot run. If the user asks, tell them plainly that background process checks only work in Claude Code. Do not report it as clean.
+
+**`environment: code`:**
+
+1. Run `"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd" process-ledger list`. If it produces **no output at all**, fall back to the path stored in `~/.claude/workspace-superengine/process-ledger/cli-path.txt`. If neither works, say that the check could not run. **Do not treat silence as "nothing found."**
+2. If the output starts with `PROCESS LEDGER UNAVAILABLE`, put that in `Blockers` as one line in the tool's own words. Never translate it into "nothing found". Also check the `Workspace:` line names this workspace before trusting anything under it; the `Resolved by:` line underneath says how that was worked out, and is what you quote when the workspace looks wrong.
+3. If it reports nothing recorded, emit nothing here and move on. That is the normal case and it should be quiet.
+4. If it lists entries, put **one line** in the Phase 4 brief's `Blockers` section:
+
+   > 2 background processes from earlier sessions are still running (about 220 MB). Say the word and I will show you the list.
+
+   Then stop. Do not stop anything at session-start on your own initiative. If the user asks, follow **`/session-closeout` Phase 4.2 Steps 2 to 5** exactly ... same list, same explicit consent, same consent token, same rule that a skipped process stays alive.
+
+The sweep returns the same five states closeout uses (`STOPPABLE`, `OTHER-WINDOW`, `MISMATCH`, `MACHINERY`, `GONE`), and the table in **`/session-closeout` Phase 4.2 Step 2** is the single description of them. Only `STOPPABLE` is ever countable as something the user could act on. Two of them come up here often enough to name:
+
+- **`MISMATCH`** is reported and never acted on. That pid is running something other than what was recorded, which on Windows usually just means the number got reused. Stopping it would kill a program this workspace never started.
+- **`MACHINERY`** is Claude's own plumbing, refused even though the entry is accurate. It is the tool working correctly, not a finding. Do not put it in `Blockers` and do not raise it on its own.
+
+You may also see a count of processes **refused as machinery** at recording time. Informational, no action.
+
+---
+
 ## Phase 4: Present Status Brief (1 min)
 
 Format:

@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# Background process ledger ... thin launcher.
+#
+# All the logic lives in process-ledger.pl. This file exists because hook
+# scripts here are extensionless bash invoked through run-hook.cmd (see the
+# comment block in run-hook.cmd for why the names carry no extension).
+#
+# Usage, from hooks.json:
+#   run-hook.cmd process-ledger pre
+#   run-hook.cmd process-ledger post
+#   run-hook.cmd process-ledger session-start
+# Usage, from a skill:
+#   run-hook.cmd process-ledger list
+#   run-hook.cmd process-ledger stop --token <token> --pids <pid,pid>
+#
+# If perl is missing the ledger cannot run. That is reported out loud rather
+# than being allowed to look like "no background processes found", because a
+# quiet no-op here is indistinguishable from a clean machine.
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
+[ -z "$SCRIPT_DIR" ] && SCRIPT_DIR="."
+
+export WSE_LEDGER_HOOK_DIR="$SCRIPT_DIR"
+export WSE_LEDGER_CLI="${SCRIPT_DIR}/process-ledger"
+
+# This launcher's own OS pid, so the ledger can rule out its own machinery
+# instead of relying on a parent-pid walk (which breaks the moment a launcher
+# shell exits, which is routine on Windows).
+if [ -r /proc/self/winpid ]; then
+    WSE_SHIM_PID="$(cat /proc/self/winpid 2>/dev/null)"
+else
+    WSE_SHIM_PID="$$"
+fi
+export WSE_SHIM_PID
+
+# Every entry point has to be equally loud about the same breakage. A quiet
+# stderr line on SessionStart means a whole session runs untracked with nothing
+# in context to say so, which reads exactly like a clean machine.
+#   list / stop  -> banner on stdout, exit 2 (matches the perl CLI)
+#   session-start-> a SessionStart context notice, exit 0
+#   pre / post   -> stderr plus an out-of-band marker file, exit 0 (a hook must
+#                   never break the Bash call it is attached to)
+ledger_unavailable() {
+    _reason="$1"
+    _tmp="${TEMP:-${TMP:-/tmp}}"
+    case "${1:-}" in *) : ;; esac
+    printf '%s  [launcher] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo unknown-time)" "$_reason" \
+        >> "${_tmp}/workspace-superengine-process-ledger-DEGRADED.txt" 2>/dev/null
+    case "${LEDGER_SUB:-}" in
+        list|stop)
+            echo "PROCESS LEDGER UNAVAILABLE"
+            echo "$_reason"
+            echo "This is NOT the same as 'no background processes are running'."
+            echo "Nothing has been recorded and nothing can be stopped."
+            exit 2
+            ;;
+        paths)
+            echo "PROCESS LEDGER UNAVAILABLE"
+            echo "$_reason"
+            exit 2
+            ;;
+        session-start)
+            _msg="The workspace-superengine background process ledger cannot run: ${_reason} Background processes started by Bash commands are NOT being tracked this session, and any report that nothing is running would be false. Tell the user this plainly if background processes come up."
+            if [ -n "${CURSOR_PLUGIN_ROOT:-}" ]; then
+                printf '{\n  "additional_context": "%s"\n}\n' "$_msg"
+            elif [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${COPILOT_CLI:-}" ]; then
+                printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$_msg"
+            else
+                printf '{\n  "additionalContext": "%s"\n}\n' "$_msg"
+            fi
+            exit 0
+            ;;
+        *)
+            echo "workspace-superengine process ledger: $_reason" >&2
+            exit 0
+            ;;
+    esac
+}
+
+LEDGER_SUB="${1:-}"
+
+PERL_BIN=""
+if command -v perl >/dev/null 2>&1; then
+    PERL_BIN="perl"
+elif [ -x /usr/bin/perl ]; then
+    PERL_BIN="/usr/bin/perl"
+fi
+
+if [ -z "$PERL_BIN" ]; then
+    ledger_unavailable "perl was not found on this machine, so the background process ledger cannot run. On Windows, installing Git for Windows provides perl."
+fi
+
+if [ ! -f "${SCRIPT_DIR}/process-ledger.pl" ]; then
+    ledger_unavailable "process-ledger.pl is missing from ${SCRIPT_DIR}, so the plugin install is incomplete. Reinstall workspace-superengine."
+fi
+
+exec "$PERL_BIN" "${SCRIPT_DIR}/process-ledger.pl" "$@"
