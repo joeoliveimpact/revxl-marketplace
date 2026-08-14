@@ -5,6 +5,12 @@
 verbosity: standard       # 'beginner' or 'standard'
 environment: code         # 'code' (Claude Code) or 'cowork' (Claude Desktop / Cowork)
 
+# Goal state (written by /super-setup Step 10.5, honored by /session-closeout Phase 2.7)
+# 'unset' must never survive setup ... super-setup Step 13e refuses to finish on it.
+goals:
+  status: unset           # 'unset' | 'set' | 'deferred' | 'declined'
+  deferred_on: ""         # YYYY-MM-DD, only when status is 'deferred'
+
 # Linear tracking state (managed by linear-kickoff tracking mode)
 linear:
   status: unset           # 'unset' | 'configured' | 'declined'
