@@ -95,6 +95,40 @@ After reading, state to user:
 
 ---
 
+## Phase 1.5: Goal alignment check (silent unless something is actually wrong)
+
+A three-second look at whether this workspace still knows what it is for.
+
+**The default outcome of this phase is total silence.** Say nothing about goals unless one of the two named conditions below is true. No "goals look fine", no green checkmark, no reassurance line, no row in the brief. A check that speaks every single session turns into nagging, nagging gets tuned out, and then nobody reads it on the one session where it mattered. Silence on a clean workspace is the requirement, not a nicety.
+
+Read `.claude/workspace.yml` (the `goals:` block, if it has one) and `GOALS.md`. Both are plain Read-tool reads, so this works the same in Claude Code and in Cowork.
+
+**Check the two conditions in order, and first true wins. Never emit more than one line total.** A workspace that deferred at setup will usually satisfy both at once ... it has the banner AND it still has the untouched placeholder rows underneath ... because they are two symptoms of one debt. Two lines about the same debt is the nagging this phase exists to prevent. Condition 1 fires, you say your one line, you stop checking.
+
+**Condition 1 ... goals were parked at setup.** First: if `goals.status: declined`, this condition is **FALSE** and you skip it, no matter what else you see. Otherwise it is true if `goals.status: deferred`, OR `GOALS.md` carries a `GOALS DEFERRED` banner. Either marker on its own is enough; they are deliberately redundant. Emit exactly one line, and put it in the Phase 4 brief's `Blockers` section:
+
+> Goals are still parked from setup. I'll walk you through them at your next `/session-closeout`, using what you actually work on today.
+
+**Informational only. Do NOT ask the goal question here.** Setup asking too early is the exact bug this whole feature exists to fix, and asking again at session-start ... before any work has happened today ... re-imports it. One line, no question mark, move on.
+
+**Condition 2 ... goals are blank or still placeholder.** First: if `goals.status: declined`, this condition is **FALSE** and you skip it, no matter what the file looks like. Otherwise it is true if `GOALS.md`'s `## Primary purpose` is empty or still reads `{{PURPOSE}}`, or `## Success criteria` holds nothing but the shipped placeholder rows (the ones ending in the literal `…` ellipsis). Emit one line in `Blockers`:
+
+> `GOALS.md` never got filled in. Worth five minutes at closeout ... I'll propose some based on what you work on.
+
+**Legacy workspaces with no `goals:` block.** Any workspace scaffolded before this check existed has no `goals:` block, and that absence is not a problem by itself. Judge those on `GOALS.md` alone: real content → clean, stay silent, and do NOT add the block. **That "do NOT add" is narrow, and it is worth reading twice: it means don't write config just to record that a workspace is fine.** It never means the block can't be created when there is a real state to save ... `/session-closeout` Phase 2.7b Step 5 creates it on a decline for exactly that reason. Placeholder or blank content → Condition 2 applies. A missing block is never on its own a reason to speak.
+
+**`goals.status: declined` beats everything else in this phase.** It means the user explicitly asked to be left alone about goals. Treat the workspace as clean and stay silent. That is why the short-circuit is written into both conditions above rather than left as a note down here ... a condition you have to remember to correct afterwards is a condition somebody evaluates wrong.
+
+**`declined` is not a life sentence, though.** If the user themselves asks to set goals ... "let's set goals", "can we revisit the goals" ... that is a reopen, and the procedure is `/session-closeout` Phase 2.7d: clear the status back to `unset`, remove the end-state line from `GOALS.md`, then run the goal pass. Session-start does not edit `GOALS.md`, so run that procedure rather than half-doing it here. **You still never bring this up first.** The user asks, or nothing happens.
+
+**Precedence, for the one case where the two markers disagree:** if `goals.status: declined` AND a `GOALS DEFERRED` banner are somehow both present, **`declined` wins.** The banner is leftover from before the user declined; their "stop asking" is the newer signal and it is a direct instruction. Stay silent. Do not delete the banner from here ... session-start does not edit `GOALS.md`. The next `/session-closeout` clears it.
+
+**Everything else is clean → emit nothing at all.** Goals present and filled in is the normal case, and it produces zero output from this phase.
+
+Whether today's work contradicts the stated goals is checked at **closeout**, not here. At session-start no work has happened yet, so there is nothing to compare against, and guessing produces exactly the chatter this phase is designed to avoid.
+
+---
+
 ## Phase 2: Verify Anything handoff.md Flagged (3 min)
 
 For each verification item in handoff.md:
@@ -146,7 +180,9 @@ Ready to work on:
 Where do you want to start?
 ```
 
-(Omit the Linear line entirely if the workspace has no `linear:` block — don't print "not configured" noise in workspaces that never opted in. Show it only when a `linear:` block exists. Omit the Drift line when there is nothing to report — silence is the correct output for a workspace whose files match its tracker.)
+(Omit the Linear line entirely if the workspace has no `linear:` block — don't print "not configured" noise in workspaces that never opted in. Show it only when a `linear:` block exists. Omit the Drift line when there is nothing to report — silence is the correct output for a workspace whose files match its tracker.
+
+Goals get no line of their own in this brief, ever. When Phase 1.5 stayed silent ... the normal case ... **nothing about goals appears anywhere in this output.** When Phase 1.5 fired, its single line rides inside `Blockers` and nowhere else.)
 
 End your turn. Wait for direction before starting work.
 
