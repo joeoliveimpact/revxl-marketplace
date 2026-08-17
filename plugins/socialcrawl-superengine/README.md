@@ -1,7 +1,7 @@
 # SocialCrawl Superengine
 
 Deep social research engine on the [SocialCrawl](https://www.socialcrawl.dev) API — the
-full **43-platform / 333-endpoint** canon with exact per-call credit costs, plus guided
+full **48-platform / 381-endpoint** canon with exact per-call credit costs, plus guided
 research plays that turn raw endpoints into finished research artifacts.
 
 Runs standalone, and pairs with the RevXL format engines (shortform-superengine etc.):

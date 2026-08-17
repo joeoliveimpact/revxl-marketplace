@@ -90,7 +90,7 @@ default) — don't create files the user didn't ask for.
 Two-line menu:
 
 - **Ad-hoc API calls** — "ask me for any profile, post, comments, or search; the
-  `socialcrawl` skill covers all 43 platforms."
+  `socialcrawl` skill covers all 48 platforms."
 - **Guided research** — "say things like *'what are people saying about X'*, *'what ads
   is <competitor> running'*, or *'does AI recommend me'* — the `research-plays` skill
   runs the full workflow with costs stated up front."

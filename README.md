@@ -34,7 +34,7 @@ Each superengine is opinionated about audience, tone, and workflow, so it works 
 | [lead-magnet-superengine](plugins/lead-magnet-superengine/) | 0.1.0 | Builds lead magnets three ways: from scratch, from a source, from your existing content. 6 skills + 1 agent. |
 | [profile-optimization-superengine](plugins/profile-optimization-superengine/) | 0.1.0 | Social-profile optimization (bio, pinned content, CTA structure) for coach acquisition. 6 skills. |
 | [focus-group-superengine](plugins/focus-group-superengine/) | 0.1.1 | Synthetic persona-swarm testing for marketing assets before you publish them. 2 skills. |
-| [socialcrawl-superengine](plugins/socialcrawl-superengine/) | 0.1.1 | Social research plays on the SocialCrawl API: competitor content, trends, engagement. 3 skills. |
+| [socialcrawl-superengine](plugins/socialcrawl-superengine/) | 0.2.0 | Social research plays on the SocialCrawl API: competitor content, trends, engagement. 3 skills. |
 
 ### 🤝 Sales & Client Ops
 

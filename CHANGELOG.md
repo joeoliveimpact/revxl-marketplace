@@ -4,6 +4,20 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.43] — 2026-08-16
+
+### Fixed
+- **socialcrawl-superengine v0.2.0** — batch endpoints bill **per row**, not per call. 0.1.x advertised `prism/post-stats` as "refresh a whole watchlist for 1 credit"; it meters per successful URL at that URL's platform rate, so 100 Instagram links is **500 credits, not 1** — a 500× understatement inherited from SocialCrawl's own docs and confirmed by a live test. Eight endpoints bill per row / item / 50-id chunk / page; each now renders its unit, and the credit guard always asks before a metered call. **Anyone who ran a large batch on 0.1.x should check their balance.**
+- **socialcrawl-superengine v0.2.0** — pagination guidance pointed at retired parameters. SocialCrawl shipped a universal `cursor`; the refs still directed callers at each platform's native param (`max_id`, `next_max_id`, `page`), which is the most likely cause of "the skill told me to call the wrong thing". 24 of 48 refs were affected.
+- **socialcrawl-superengine v0.2.0** — the credit guard mis-priced two endpoints: `costs.json` was keyed by bare path, so `POST /web/sessions` (5cr) passed as free against `GET /web/sessions` (0cr), and `POST /web/agent` (25cr) was absent entirely. Costs are now verb-qualified. `POST /youtube/transcripts` is also correctly denied — a live test confirmed 3 credits *per video*, so there is no batch discount that would justify the exception.
+
+### Added
+- **socialcrawl-superengine v0.2.0** — full catalogue coverage: **48 platforms / 381 endpoints** (was 43 / 333), with ebay, home_depot, target, walmart and web as new platform refs. Every endpoint carries the API's own description, its parameters and a ready-to-run curl.
+- **socialcrawl-superengine v0.2.0** — a "Which endpoint should I use?" routing map (seven decision tables) and a five-rung search ladder, so the cheapest correct endpoint is actually reachable; previously every cross-platform search routed to `search/everywhere` at 20 credits while `search/forums` at 10 appeared nowhere. Plus endpoint-selection guidance for all 48 platforms and a pagination section carrying the warning that each page is a separately billed call.
+
+### Changed
+- **socialcrawl-superengine v0.2.0** — refs are generated from SocialCrawl's OpenAPI spec instead of its prose docs, and verified against the **live** catalogue rather than a committed snapshot. The old source documented GET operations only, so it structurally could not see the 17 non-GET endpoints on web / youtube / prism, and a snapshot-based check only ever proved the refs matched a neighbouring file in the repo.
+
 ## [0.1.42] — 2026-08-09
 
 ### Fixed
