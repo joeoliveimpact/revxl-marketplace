@@ -2,7 +2,7 @@
 name: socialcrawl
 description: >
   Interact with the SocialCrawl API — a unified social media + research data API
-  covering 43 platforms and 333 endpoints. Fetch profiles, posts, comments,
+  covering 48 platforms and 381 endpoints. Fetch profiles, posts, comments,
   search results, and analytics from TikTok, Instagram, YouTube, Facebook,
   Twitter/X, LinkedIn, Reddit, Threads, Pinterest, and 30+ more platforms
   (including GitHub, Hacker News, Google Trends, Spotify, Perplexity, and
@@ -20,7 +20,7 @@ description: >
 
 # SocialCrawl API
 
-Unified social + research data API. One API key, one response format, **43 platforms, 333 endpoints**, plus a universal search that fans out to 12 sources in parallel. Author and Post responses are normalized through platform field maps and augmented with deterministic computed fields (`engagement_rate`, `language`, `content_category`, `estimated_reach`) under `data.computed`. List archetypes (PostList, CommentList, SearchResult, Audience, Analytics) pass through as `{ items, next_cursor?, total? }` without computed fields. Add `?format=raw` to bypass the transform pipeline entirely.
+Unified social + research data API. One API key, one response format, **48 platforms, 381 endpoints**, plus a universal search that fans out to 12 sources in parallel. Author and Post responses are normalized through platform field maps and augmented with deterministic computed fields (`engagement_rate`, `language`, `content_category`, `estimated_reach`) under `data.computed`. List archetypes (PostList, CommentList, SearchResult, Audience, Analytics) pass through as `{ items, next_cursor?, total? }` without computed fields. Add `?format=raw` to bypass the transform pipeline entirely.
 
 > ## ⛔ Transcription policy — never spend credits on transcripts
 > **Do NOT call ANY `*/transcript` endpoint to get a transcript — no exceptions, any platform.**
@@ -57,7 +57,7 @@ For all subsequent API calls in the session, use the resolved key directly in th
 
 On the first interaction with this skill in a session:
 
-1. Briefly introduce: "SocialCrawl provides a single API for 43 platforms (333 endpoints), plus a universal search across 12 sources. Let me verify your API key."
+1. Briefly introduce: "SocialCrawl provides a single API for 48 platforms (381 endpoints), plus a universal search across 12 sources. Let me verify your API key."
 2. Resolve the API key using the steps above. If the key is missing or a placeholder, stop here and ask for it before proceeding.
 3. Tell the user you'll make a test call that costs 1 credit, then run:
    ```bash
@@ -83,7 +83,7 @@ Five endpoints that change the cost math for everything:
 | Endpoint | Credits | Why it matters |
 |----------|---------|----------------|
 | `GET /v1/prism/lookup?url=…` | **0** | Universal URL dispatcher — any social/commerce URL → the right detail endpoint's unified response. **Free.** Always prefer it when the user pastes a URL. |
-| `GET /v1/prism/post-stats?urls=…` | **1** | Current engagement for **up to 100 post URLs** in one call (failed URLs refunded). Refresh a whole watchlist for 1 credit. |
+| `POST /v1/prism/post-stats` | **1 _per URL_** | Current engagement for up to 100 post URLs in one call (failed URLs refunded). ⚠️ **Metered per successful URL, NOT per call** — 1cr most platforms, **5cr Instagram and LinkedIn**. 100 IG URLs = **500 credits**, not 1. **POST only** — URLs go in a JSON body. |
 | `GET /v1/prism/comments?url=…` | **1** | Every comment on a post, replies nested, paginated to completion — often 1/5th the price of the platform-native comments call. |
 | `GET /v1/reddit/omni-search?query=…` | **1** | One keyword → threads across all of Reddit with top comments inline. The cheapest voice-of-customer tool in the API. |
 | `GET /v1/prism/handle-audit?handle=…` | **5** | Should you pull this handle? Scores it across platforms and **projects the data volume + credit cost** before you spend. |
@@ -97,7 +97,8 @@ Five endpoints that change the cost math for everything:
 | app_store | 9 | [references/app_store.md](references/app_store.md) |
 | bluesky | 3 | [references/bluesky.md](references/bluesky.md) |
 | content_analysis | 10 | [references/content_analysis.md](references/content_analysis.md) |
-| facebook | 22 | [references/facebook.md](references/facebook.md) |
+| ebay | 2 | [references/ebay.md](references/ebay.md) |
+| facebook | 23 | [references/facebook.md](references/facebook.md) |
 | github | 12 | [references/github.md](references/github.md) |
 | google | 10 | [references/google.md](references/google.md) |
 | google_finance | 3 | [references/google_finance.md](references/google_finance.md) |
@@ -106,6 +107,7 @@ Five endpoints that change the cost math for everything:
 | google_shopping | 4 | [references/google_shopping.md](references/google_shopping.md) |
 | google_trends | 2 | [references/google_trends.md](references/google_trends.md) |
 | hackernews | 4 | [references/hackernews.md](references/hackernews.md) |
+| home_depot | 2 | [references/home_depot.md](references/home_depot.md) |
 | instagram | 33 | [references/instagram.md](references/instagram.md) |
 | kick | 1 | [references/kick.md](references/kick.md) |
 | komi | 1 | [references/komi.md](references/komi.md) |
@@ -114,29 +116,153 @@ Five endpoints that change the cost math for everything:
 | linkedin | 44 | [references/linkedin.md](references/linkedin.md) |
 | linkme | 1 | [references/linkme.md](references/linkme.md) |
 | linktree | 1 | [references/linktree.md](references/linktree.md) |
-| naver | 12 | [references/naver.md](references/naver.md) |
+| naver | 14 | [references/naver.md](references/naver.md) |
 | perplexity | 1 | [references/perplexity.md](references/perplexity.md) |
 | pillar | 1 | [references/pillar.md](references/pillar.md) |
 | pinterest | 5 | [references/pinterest.md](references/pinterest.md) |
 | polymarket | 1 | [references/polymarket.md](references/polymarket.md) |
-| prism | 32 | [references/prism.md](references/prism.md) |
-| reddit | 7 | [references/reddit.md](references/reddit.md) |
+| prism | 33 | [references/prism.md](references/prism.md) |
+| reddit | 8 | [references/reddit.md](references/reddit.md) |
 | rumble | 5 | [references/rumble.md](references/rumble.md) |
-| search | 2 | [references/search.md](references/search.md) |
+| search | 3 | [references/search.md](references/search.md) |
 | snapchat | 1 | [references/snapchat.md](references/snapchat.md) |
 | spotify | 6 | [references/spotify.md](references/spotify.md) |
+| target | 5 | [references/target.md](references/target.md) |
 | tavily | 4 | [references/tavily.md](references/tavily.md) |
-| threads | 5 | [references/threads.md](references/threads.md) |
-| tiktok | 20 | [references/tiktok.md](references/tiktok.md) |
+| threads | 6 | [references/threads.md](references/threads.md) |
+| tiktok | 21 | [references/tiktok.md](references/tiktok.md) |
 | tiktokshop | 5 | [references/tiktokshop.md](references/tiktokshop.md) |
 | tripadvisor | 2 | [references/tripadvisor.md](references/tripadvisor.md) |
 | trustpilot | 2 | [references/trustpilot.md](references/trustpilot.md) |
 | truthsocial | 3 | [references/truthsocial.md](references/truthsocial.md) |
 | twitch | 4 | [references/twitch.md](references/twitch.md) |
 | twitter | 8 | [references/twitter.md](references/twitter.md) |
-| utility | 1 | [references/utility.md](references/utility.md) |
-| youtube | 27 | [references/youtube.md](references/youtube.md) |
+| utility | 4 | [references/utility.md](references/utility.md) |
+| walmart | 5 | [references/walmart.md](references/walmart.md) |
+| web | 22 | [references/web.md](references/web.md) |
+| youtube | 28 | [references/youtube.md](references/youtube.md) |
 <!-- gen:platform-table:end -->
+
+> **Always open the platform's reference file before constructing a call.** Each one lists
+> every endpoint for that platform with its exact parameters, credit cost, and a description
+> of what it returns and when to reach for it. That file — not this table, and not memory —
+> is the authority on which endpoint answers the question. Loading one platform's reference
+> is what keeps this skill cheap; the alternative is carrying all 381 endpoints in context.
+
+## Which endpoint should I use?
+
+Some endpoints do near-identical jobs, and the wrong pick either overspends or returns less
+than you needed. These are the pairs that actually get confused. Costs are per successful
+call — failed and cached responses are not charged.
+
+### A profile, or a profile plus its posts?
+
+`profile` is one call returning the unified author object. `profile/full` is a composite: the
+same profile **plus** recent posts **plus** computed analytics, so you skip the follow-up list
+call.
+
+| Your goal | Use this | Credits |
+|-----------|----------|---------|
+| Just the profile object | `/v1/{platform}/profile` | 1 (LinkedIn 5) |
+| Profile + recent posts + analytics in one call | `/v1/{platform}/profile/full` | 5 |
+
+`profile/full` exists for tiktok, instagram, youtube, twitter, facebook and linkedin. Use plain
+`profile` when you only need counts; use `/full` when the next step is always "and their posts".
+
+### Instagram: the 1-credit or the 5-credit endpoint?
+
+Instagram is served by two upstreams. The 1cr endpoints cover the public surface; the 5cr ones
+unlock what it hides.
+
+| Your goal | Use this | Credits |
+|-----------|----------|---------|
+| Profile, posts, reels, a single post | `/v1/instagram/profile` · `/profile/posts` · `/profile/reels` · `/post` | 1 |
+| A post's **share count** | `/v1/instagram/post/stats` | 5 |
+| Followers / following / similar accounts | `/v1/instagram/followers` · `/following` · `/similar` | 5 |
+| Comments on a post | `/v1/instagram/post/comments` | 5 |
+| Posts by hashtag | `/v1/instagram/search/hashtag` | 5 |
+| Find accounts by keyword | `/v1/instagram/search/profiles` | 1 |
+
+The trap: `/post` (1cr) returns everything about a post **except** shares. Reach for
+`/post/stats` (5cr) only when you specifically need the share count.
+
+### A raw list, or the enriched `/full` list?
+
+| Your goal | Use this | Credits |
+|-----------|----------|---------|
+| One page of a user's reels / posts | `/v1/instagram/profile/reels` · `/profile/posts` | 1 |
+| …with views, likes, comments and per-item shares | `/v1/instagram/profile/reels/full` · `/profile/posts/full` | 5 |
+
+Paging a long back catalogue without needing per-item shares? The plain list is far cheaper.
+
+### Instagram stories and highlights
+
+Stories are ephemeral (24h); highlights are the curated archive and stay put. **Neither carries
+any engagement data — views, likes and shares are always null.** That is Instagram's ceiling,
+not the API's, so never pull stories hoping to measure performance. What they *do* carry is
+format: duration, timestamps, media type and run grouping.
+
+| Your goal | Use this | Credits |
+|-----------|----------|---------|
+| Is this account posting stories right now? | `/v1/instagram/highlights` | 1 |
+| The covers of an account's highlights (id + title) | `/v1/instagram/highlights` | 1 |
+| The stories inside one highlight, with real dates | `/v1/instagram/highlight/detail` | 1 |
+| An account's currently-active stories | `/v1/instagram/stories` | 5 |
+| Download one story's media | `/v1/instagram/story/download` | 5 |
+
+Start with `/highlights` (1cr) — an account with an empty highlights archive charges **0
+credits** (zero-floor refund), so probing blind is free. `/story/download` needs a `story_id`
+from a prior `/stories` call, making it a 10cr two-step. Story *text* lives in the pixels, not
+in `content.text`; recover it with frame extraction + OCR (free) or `/v1/instagram/post` (1cr).
+
+### Search one platform, the forums, or everywhere?
+
+**Climb this ladder — do not start at the top.** Most "search" requests are answered on the
+first rung.
+
+| Your goal | Use this | Credits |
+|-----------|----------|---------|
+| Search a platform you already chose | `/v1/{platform}/search` (tiktok, youtube, reddit, github, google, hackernews…) | 1 |
+| One keyword across all of Reddit | `/v1/reddit/omni-search` | 1 |
+| News across the web | `/v1/search/news` | 1 |
+| Fused forum search (Reddit + Hacker News + Naver) | `/v1/search/forums` | 10 |
+| One query across 12 social platforms | `/v1/search/everywhere` | 20 |
+
+If the platform is known, per-platform `search` at 1cr is the answer — twenty times cheaper
+than `everywhere`. `search/forums` (10cr) is the middle rung for voice-of-customer questions
+that span discussion sites. Escalate to `/v1/search/everywhere` (20cr) only when you genuinely
+want the cross-platform sweep and would otherwise be fusing a dozen results by hand.
+
+### Which comment endpoint?
+
+| Your goal | Use this | Credits |
+|-----------|----------|---------|
+| One page of top-level comments | `/v1/{platform}/post/comments` | 1 (Reddit + Instagram 5) |
+| Every comment on a post, replies nested, paged to completion | `/v1/prism/comments` | 1 |
+| Look up one comment by URL or id | `/v1/{platform}/comment` | 2 (Instagram 5) |
+| Re-check up to 25 known comments | `POST /v1/prism/comment-lookup` | 2 |
+
+`/v1/prism/comments` is usually the right call: complete thread, no pagination loop, and on
+Reddit or Instagram it costs a fifth of the platform-native comment list.
+
+### Getting a transcript
+
+**All `*/transcript` endpoints are banned in this plugin** (see the policy at the top) — the
+table is here so the ban is not mistaken for "there is no way to do this".
+
+| Your goal | Use this | Credits |
+|-----------|----------|---------|
+| YouTube captions, cheapest | `/v1/youtube/video/subtitles` | 1 |
+| Anything else | local captions → Groq → Whisper chain | 0 |
+
+`/v1/youtube/video/subtitles` (1cr) is **not** a transcript endpoint and is not banned — it
+returns raw caption files. Parse those instead of paying 3–10cr per transcript call.
+
+### Still unsure?
+
+Point a URL at `/v1/prism/lookup` (**0 credits**) and it dispatches to the correct detail
+endpoint automatically. When you don't know whether a handle is worth pulling at all,
+`/v1/prism/handle-audit` (5cr) projects the data volume and credit cost before you spend.
 
 ## Workflow
 
@@ -164,10 +290,19 @@ detail endpoint's unified response — prefer it over per-platform URL parsing.
 3. Generate a working code snippet using `$SOCIALCRAWL_API_KEY` env var for the key
 4. Present the code without executing
 
-**User wants a cross-platform search ("what's everyone saying about X", "search across Reddit + Twitter + YouTube + …"):**
-1. Read [references/search.md](references/search.md)
-2. Confirm the **20-credit cost** with the user before executing
-3. Construct the `/v1/search/everywhere?query=…` call (sync JSON or SSE — see search.md)
+**User wants a search ("what's everyone saying about X", "search across Reddit + Twitter + YouTube + …"):**
+1. **Climb the ladder — start at the bottom rung that answers the question**, not at the top:
+   - One platform named or implied → `/v1/{platform}/search` (**1cr**). All of Reddit →
+     `/v1/reddit/omni-search` (**1cr**). News → `/v1/search/news` (**1cr**).
+   - Discussion sites collectively (Reddit + Hacker News + Naver) → `/v1/search/forums` (**10cr**).
+   - A genuine sweep across 12 social platforms → `/v1/search/everywhere` (**20cr**).
+2. Read [references/search.md](references/search.md) before the 10cr or 20cr rungs
+3. Confirm the cost with the user before executing anything above 1cr
+4. For `everywhere`, construct `/v1/search/everywhere?query=…` (sync JSON or SSE — see search.md)
+
+> Do not reach for `search/everywhere` because the request *sounds* broad. "What are people
+> saying about X on Reddit" is a **1-credit** call. The 20cr endpoint is for when you want the
+> planned, fused, reranked cross-platform result and would otherwise fuse a dozen calls by hand.
 
 **User asks about capabilities:**
 1. Answer from the platform table above
@@ -186,7 +321,7 @@ detail endpoint's unified response — prefer it over per-platform URL parsing.
 
 Base URL: `https://www.socialcrawl.dev`
 
-All endpoints are GET requests:
+Almost every endpoint is a GET:
 
 ```
 curl -s -H "x-api-key: $SOCIALCRAWL_API_KEY" \
@@ -194,6 +329,52 @@ curl -s -H "x-api-key: $SOCIALCRAWL_API_KEY" \
 ```
 
 URL-encode parameter values that contain spaces or special characters.
+
+**17 endpoints are not GET** — they take a JSON body instead of query params, and they live
+only on `web`, `youtube` and `prism`. Each platform reference file marks them with a method
+prefix (**POST** / **DELETE** / **PATCH**) and shows the body shape. The ones worth knowing:
+
+```
+curl -s -X POST "https://www.socialcrawl.dev/v1/prism/post-stats" \
+  -H "x-api-key: $SOCIALCRAWL_API_KEY" \
+  -H "content-type: application/json" \
+  -d '{"urls":["https://…","https://…"]}'
+```
+
+| Endpoint | Credits | What it's for |
+|----------|---------|---------------|
+| `POST /v1/prism/post-stats` | 1 **per URL** (IG/LI 5) | Up to 100 post URLs, current engagement, failures refunded |
+| `POST /v1/prism/profiles` | 1 **per item** (LI 5) | Up to 50 handles → canonical Author each |
+| `POST /v1/prism/comment-lookup` | 2 **per item** (IG 5) | Re-check up to 25 known comments |
+| `POST /v1/youtube/transcripts` | 3 **per video** | ⛔ Banned (transcripts). Listed so the price is not mistaken for a batch discount. |
+| `POST /v1/youtube/videos` · `/channels` | 5 **per 50-id chunk** | Batch video / channel detail, up to 1000 ids. Still the best saving available — 1000 ids = 20 chunks = 100cr vs 1000cr one-at-a-time — but it is not 5cr flat. |
+| `POST /v1/web/crawl` · `/batch-scrape` | 1 | Start an async crawl job → poll `GET /v1/web/jobs/{job_id}` (0cr) |
+| `POST /v1/web/agent` | **25** | Agentic browse-and-extract. The most expensive single call in the API — confirm first, every time. |
+
+> ### ⚠️ "Batch" does not mean "flat rate" — check which kind you have
+> Two different billing models hide behind the same POST-an-array shape, and confusing them
+> is the most expensive mistake available in this API:
+>
+> **Not one endpoint in this API charges a flat rate for an arbitrarily large array.** The
+> credit number is a *unit price*; only the unit changes. Multiply before you send.
+>
+> | Endpoint | The unit you are billed for | Worked example |
+> |----------|-----------------------------|----------------|
+> | `POST /prism/post-stats` | one successful **URL** — 1cr, but **5cr Instagram/LinkedIn** | 100 IG URLs = **500cr** |
+> | `POST /prism/profiles` | one **item** — 1cr, LinkedIn 5cr | 50 LinkedIn handles = **250cr** |
+> | `POST /prism/comment-lookup` | one **item** — 2cr TikTok, 5cr Instagram, more with `deep_scan` | 25 IG comments = **125cr** |
+> | `POST /youtube/transcripts` | one successful **row** — 3cr | 100 videos = **300cr** (⛔ banned anyway) |
+> | `POST /youtube/videos` · `/channels` | one **50-id chunk** — 5cr | 1000 ids = **100cr** (vs 1000cr singly) |
+> | `GET /facebook/profile/reels/full` | one **page of 10 reels** — 5cr | `limit=50` = **25cr** |
+> | `GET /threads/search` | one **window** (~15–20 posts) — 1cr | `limit=100` ≈ **5–7cr** |
+>
+> The chunked ones (`youtube/videos`, `youtube/channels`) are still by far the cheapest way to
+> pull many ids — a 10× saving — just not a flat one. The per-row ones offer no discount at
+> all; what they buy is **per-row isolation and automatic refunds** on dead rows, which is
+> failure insurance, not a bulk rate.
+>
+> Verified live 08.08.26: `POST /youtube/transcripts` with 2 ids, 1 succeeding, billed
+> `credits_used: 3` — exactly the single-row price.
 
 ### Parameter rules
 

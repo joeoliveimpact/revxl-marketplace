@@ -64,12 +64,18 @@ Error responses:
 
 | Tier | Cost | Count | Typical endpoints |
 |------|------|-------|-------------------|
-| standard | 1 credit | ~178 endpoints | Profiles, posts, search, comments, GitHub direct calls, HN, Tavily, Perplexity research, Twitter AI Search |
-| advanced | 5 credits | ~100 endpoints | Audience, ad libraries, trending, full-profile bundles, GitHub composites (`repo/top-issues`, `repo/dossier`) |
-| premium | 10 credits | ~20 endpoints | Transcripts (⛔ banned in this plugin), age/gender detection, deep listings-database search |
-| **flat override** | **0–50 credits** | ~30 endpoints | Prism intelligence bundles (`leads`/`creator-vet`/`brand-mentions` = **50**, `share-of-voice` = 40, several reports 25–35), all `content_analysis/*` (20), `search/everywhere` (20) — and the free end: `prism/lookup` (0), `prism/post-stats`/`prism/comments` (1) |
+| standard | 1 credit | 217 endpoints | Profiles, posts, search, comments, GitHub direct calls, HN, Tavily, Perplexity research |
+| advanced | 5 credits | 134 endpoints | Audience, ad libraries, trending, full-profile bundles, GitHub composites (`repo/top-issues`, `repo/dossier`), Twitter AI Search |
+| premium | 10 credits | 29 endpoints | Transcripts (⛔ banned in this plugin), age/gender detection, deep listings-database search |
+| **flat override** | **0–50 credits** | 37 endpoints | Prism intelligence bundles (`leads`/`creator-vet`/`brand-mentions` = **50**, `share-of-voice`/`korea-gap` = 40, several reports 25–35), all `content_analysis/*` (20), `search/everywhere` (20), `web/agent` (**25**) — and the free end: `prism/lookup` (0), `prism/post-stats`/`prism/comments` (1) |
 
-Total: **333 endpoints across 43 platforms.**
+> The tier label and the actual charge are **not** the same thing: 37 endpoints carry a flat
+> override that ignores the 1/5/10 ladder entirely. Counted from the committed spec's
+> `x-credit-tier` and `x-credit-cost` (08.08.26) — 18 endpoints are free, and the off-ladder
+> band runs 2, 3, 15, 20, 25, 26, 30, 35, 40 and 50 credits. Always read the per-endpoint
+> credit column in the platform reference; never infer cost from the tier name.
+
+Total: **381 endpoints across 48 platforms.**
 
 Flat overrides bypass the 1/5/10 ladder entirely — the band runs **0 to 50 credits**, so the
 tier label alone understates the expensive end by 5×. The per-endpoint credit column in every
@@ -126,6 +132,34 @@ Unified **Author** schema: `id`, `username`, `display_name`, `avatar_url`, `bio`
 Unified **Post** schema: `id`, `content.text`, `content.media_urls`, `content.thumbnail_url`, `content.duration_seconds`, `author.username`, `author.display_name`, `author.avatar_url`, `author.verified`, `engagement.views`, `engagement.likes`, `engagement.comments`, `engagement.shares`, `engagement.saves`, `published_at`.
 
 Endpoints that return lists (PostList, CommentList, SearchResult, Analytics, Audience) are currently passthrough for computed fields — they **do** go through the upstream-envelope stripper, which normalises list responses to `{ items, next_cursor?, total? }` regardless of the upstream key name. The stripper walks a 26-key priority list (`posts`, `comments`, `aweme_list`, `search_item_list`, `videos`, `shorts`, `reels`, `tweets`, `ads`, `products`, `product_reviews`, `pins`, `photos`, `highlights`, `boards`, `users`, `user_list`, `followers`, `followings`, `advertisers`, `searchResults`, `results`, `media_data`, `mediaData`, `data`, `items`) and prefers the first non-empty array, so mixed-shape endpoints (e.g. YouTube `channel/shorts` returning `{ videos: [], shorts: [...] }`) land on the populated list rather than the first one seen.
+
+## Pagination — always send the universal `cursor`
+
+Every paginated endpoint accepts a universal **`cursor`** parameter. Take
+`pagination.next_cursor` from the previous response and send it back **verbatim**. The API
+maps it to whatever that endpoint's upstream actually wants — a cursor token (`max_id`,
+`next_max_id`, `continuation`), a page number (`page`), or an offset. You never construct,
+decode, inspect, or look up a cursor. Omit it for page 1; an absent `next_cursor` means the
+last page.
+
+The native per-endpoint params still exist and still work, and each ref lists them so you
+can recognise them in older code — but **do not reach for them**. They differ per platform
+(and sometimes per endpoint on the same platform), which is exactly the guessing the
+universal cursor removes. Reach for the native param only when an endpoint has no `cursor`.
+
+```bash
+# page 1
+curl "https://www.socialcrawl.dev/v1/instagram/profile/posts?handle=nasa" -H "x-api-key: KEY"
+# -> { "data": { "items": [...], "pagination": { "next_cursor": "QVFE...zA9" } } }
+
+# page 2 — same call, cursor echoed back untouched
+curl "https://www.socialcrawl.dev/v1/instagram/profile/posts?handle=nasa&cursor=QVFE...zA9" \
+  -H "x-api-key: KEY"
+```
+
+⚠️ **Each page is a separate billed call.** A 1cr endpoint paged 10 deep costs 10 credits.
+Decide how many pages you need *before* starting, and state the total to the user — paging
+is the easiest way to spend far more than the endpoint's sticker price.
 
 ## Response Warnings (`data._warnings`)
 
