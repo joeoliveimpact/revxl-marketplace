@@ -77,7 +77,7 @@ the user question from `${CLAUDE_PLUGIN_ROOT}/core/source-chains.md` for that jo
 |---|---|
 | `competitor_discovery` | SearXNG → Tavily (if `ranked`) → WebSearch floor |
 | `page_extract` | Firecrawl (if `scrape`) → Playwright → WebFetch floor |
-| `video_teardown` | yt-dlp → ffmpeg → Whisper server (profile `transcribe` endpoint) → Groq (if `GROQ_API_KEY`) (visual-scene analysis may use the `video-use` skill) |
+| `video_teardown` | yt-dlp → ffmpeg → Whisper server (profile `transcribe` endpoint) → Groq (if `GROQ_API_KEY`) (visual-scene analysis may use the `video-use` skill). **Pass a vocabulary prompt** built from the brand's canonical names — without one Whisper silently mangles product names it hasn't seen. Write it as a punctuated sentence, not a comma list, and check the output length on multi-take source. See `lm-setup` → Transcribe. |
 | `social_intel` | Metricool MCP (OPTIONAL — only if profile `social` upgrade is connected; tool name TBD, mark as placeholder) → SocialCrawl (if `social`) → WebSearch floor. Nothing hard-fails when Metricool is absent. |
 | `magnet_dna` | page_extract chain for URLs; video_teardown chain for video links |
 | `synthesis` | Bundled `${CLAUDE_PLUGIN_ROOT}/references/` docs (frameworks, benchmarks, anti-patterns — always available) |

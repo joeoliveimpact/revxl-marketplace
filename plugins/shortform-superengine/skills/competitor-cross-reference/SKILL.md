@@ -353,7 +353,14 @@ runtime, so warn about time, not credits).
 
    | Engine | Method | Notes |
    |---|---|---|
-   | Groq cloud | `whisper-large-v3-turbo` via Groq API | Fast; needs `GROQ_API_KEY` in env. |
+   | Groq cloud | `whisper-large-v3-turbo` via Groq API | Fast; needs `GROQ_API_KEY` in env. Prefer turbo over full `large-v3` — same accuracy on names, ~3x cheaper, and safer with a prompt. |
+
+   **Pass a `prompt` with the niche's proper nouns.** Competitor videos are dense with
+   tool and brand names Whisper has never seen, and it silently substitutes the nearest
+   English phrase ("Kling 01" → "cling a one"). Build the sentence from brand-brain and
+   read `brand-brain/references/transcription-vocabulary.md` first — a prompt written as
+   a bare comma list strips all punctuation from the transcript, and a prompt can drop
+   repeated takes, so compare the output length against an unprompted run.
    | Local Whisper | `faster-whisper` (local CPU/GPU) | Offline; slower but never fails. |
 
    **Save per-segment timestamps** (`[{start, end, text}]`), never just the joined text — beat/pattern timing analysis is impossible without them. Batch scale reference: local GPU (faster-whisper `small`, cuda) ≈ 1.5s/reel transcribe + 3s ffmpeg; ~1,000 reels ≈ 40–50 min with ~6 parallel ffmpeg prefetch workers feeding one GPU.

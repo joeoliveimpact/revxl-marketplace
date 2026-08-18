@@ -174,7 +174,71 @@ def srt_to_text(p: Path) -> str:
     return "\n".join(out) + "\n"
 
 
-def transcribe_groq(ffmpeg: str, video: Path, dest: Path, api_key: str) -> tuple[Path, Path]:
+def course_vocab(video: dict) -> "str | None":
+    """
+    Build the transcription vocabulary prompt for one video.
+
+    Course audio is dense with names Whisper has never seen — the instructor,
+    the product being taught, the tools referenced. Unprompted it substitutes the
+    nearest common-English phrase ("Kling 01" -> "cling a one") silently, and the
+    error then propagates into every downstream note and summary.
+
+    The names are already in hand: yt-dlp gives us the channel and title before we
+    transcribe. Phrasing them as a sentence primes the decoder for the right domain
+    at no configuration cost.
+
+    Deliberately a natural sentence, not a term list: Whisper imitates the style of
+    its prompt, so an unpunctuated list teaches it to emit a transcript with no
+    capitals or punctuation at all.
+
+    Measured trade (Groq whisper-large-v3-turbo, real clip): the derived prompt
+    recovered "Kling 01" and "Higgsfield Soul" from "uh cling a one higgs field
+    soul", and also collapsed a sentence the speaker had said twice. Net -97 chars.
+    Correct tool names are worth more than a duplicated sentence in reference
+    material, which is why this is on by default here — but it IS lossy, so set
+    COURSE_CRAWLER_VOCAB=off when transcribing something you need verbatim.
+
+    COURSE_CRAWLER_VOCAB overrides the derived text; set it to "off" to disable.
+    """
+    override = os.environ.get("COURSE_CRAWLER_VOCAB", "").strip()
+    if override.lower() in ("off", "0", "false", "none"):
+        return None
+    if override:
+        return override
+
+    def clean(v: str, cap: int) -> str:
+        # Titles carry emoji, pipes and bracket tags that would only add noise.
+        v = re.sub(r"[^\w\s.,'&/+-]", " ", v or "")
+        return re.sub(r"\s+", " ", v).strip()[:cap]
+
+    title = clean(video.get("title", ""), 120)
+    channel = clean(video.get("channel", ""), 60)
+    if channel and title:
+        return f"This is a lesson from the channel {channel}, titled {title}."
+    if title:
+        return f"This is a lesson titled {title}."
+    if channel:
+        return f"This is a lesson from the channel {channel}."
+    return None
+
+
+def transcribe_groq(ffmpeg: str, video: Path, dest: Path, api_key: str,
+                    vocab: str | None = None) -> tuple[Path, Path]:
+    """
+    `vocab` biases decoding toward spellings you supply — pass the course's product,
+    tool and instructor names. Without it Whisper substitutes the nearest common-English
+    phrase for anything it has not seen ("Kling 01" -> "cling a one"), silently.
+
+    Write it as a PUNCTUATED SENTENCE, not a bare comma list: Whisper imitates the
+    style of its prompt, so an unpunctuated list makes it emit a transcript with no
+    capitals or punctuation at all. Groq caps this field at 224 tokens.
+
+    Caveat: a prompt can also cause a speaker's repeated takes to be dropped, since
+    Whisper suppresses what looks like a repetition loop. On multi-take source, compare
+    the output length against an unprompted run before trusting it.
+
+    Callers normally get this from course_vocab() rather than building it by hand.
+    """
     import httpx
     audio = dest / "_audio.mp3"
     subprocess.run([ffmpeg, "-y", "-hide_banner", "-loglevel", "error",
@@ -182,13 +246,16 @@ def transcribe_groq(ffmpeg: str, video: Path, dest: Path, api_key: str) -> tuple
                     str(audio)], check=True)
     srt_path = dest / "transcript.srt"
     txt_path = dest / "transcript.txt"
+    payload = {"model": "whisper-large-v3-turbo", "response_format": "verbose_json"}
+    if vocab:
+        payload["prompt"] = vocab
     for attempt in range(1, 7):
         with audio.open("rb") as f:
             r = httpx.post(
                 "https://api.groq.com/openai/v1/audio/transcriptions",
                 headers={"Authorization": f"Bearer {api_key}"},
                 files={"file": (audio.name, f, "audio/mpeg")},
-                data={"model": "whisper-large-v3-turbo", "response_format": "verbose_json"},
+                data=payload,
                 timeout=600.0,
             )
         if r.status_code < 400:
@@ -304,7 +371,8 @@ def process_one(video: dict, out_dir: Path, want: set[str], yt_dlp: str, ffmpeg:
             pass
         if transcript_source is None:
             if groq_key:
-                transcribe_groq(ffmpeg, video_dir / "video.mp4", video_dir, groq_key)
+                transcribe_groq(ffmpeg, video_dir / "video.mp4", video_dir, groq_key,
+                                vocab=course_vocab(video))
                 transcript_source = "groq"
             else:
                 transcribe_local(video_dir / "video.mp4", video_dir, whisper_model)

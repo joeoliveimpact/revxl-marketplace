@@ -93,7 +93,11 @@ captions, which are *not* what the creator says on camera, and the analysis is d
 1. **`yt-dlp`** — fetches the reel's video/audio (and any subtitle track) so the
    transcribers have something to eat. **Required floor** — it feeds everything below.
 2. **Groq** — fast cloud transcription (`whisper-large-v3-turbo`). Near-free, needs
-   a free API key.
+   a free API key. **Pass a vocabulary prompt built from brand-brain** — without one,
+   Whisper mangles brand and product names it has never seen (measured: the correct
+   brand name appeared 3 times against 18 mangled ones in the same body of audio).
+   See `brand-brain/references/transcription-vocabulary.md` — it also covers the two
+   ways a prompt can backfire.
 3. **Local Whisper** — `faster-whisper` transcribes on the user's own computer.
    Offline, $0, slower. Needs `ffmpeg` + the `faster-whisper` Python package.
 

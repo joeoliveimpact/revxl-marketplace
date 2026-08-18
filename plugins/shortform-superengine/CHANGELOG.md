@@ -4,6 +4,26 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.3.2] — 2026-08-17
+
+### Added
+- **brand-brain reference `transcription-vocabulary.md`.** How to turn the names
+  already mined into `voc/business-config.md` and the `## Vocabulary` block of
+  `voc/voice-guide.md` into a Whisper/Groq vocabulary prompt — and the two ways
+  that prompt backfires (a bare comma list strips punctuation from the entire
+  transcript; a prompt can drop a speaker's retakes, so compare output length).
+- Guidance at both points that reach for Groq (`onboarding`,
+  `competitor-cross-reference`), including preferring `whisper-large-v3-turbo`
+  over full `large-v3` — no worse on proper nouns, ~3x cheaper, and it did not
+  lose speech with a prompt where full v3 dropped 219 characters.
+
+### Why
+Measured across 48 minutes of real audio transcribed without a vocabulary: the
+correct brand name appeared 3 times against 18 mangled ones. In one case a
+reviewer read a mangled product name as the speaker stumbling and marked 9.4s
+for deletion.
+
+
 ## [0.3.1] — 2026-07-21
 
 ### Added
