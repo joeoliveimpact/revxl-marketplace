@@ -708,8 +708,9 @@ def main() -> int:
     parser.add_argument("--slide-tesseract-cmd", default=None,
                         help="Explicit path to the tesseract binary "
                              "(else PATH / known install locations)")
-    parser.add_argument("--whisper-model", default="small",
-                        choices=["tiny", "base", "small", "medium", "large-v3"])
+    parser.add_argument("--whisper-model", default=None,
+                        choices=["tiny", "base", "small", "large-v3-turbo", "medium", "large-v3"],
+                        help="default: large-v3-turbo on GPU, small on CPU")
     parser.add_argument("--skip-existing", action="store_true",
                         help="Skip lessons that already have a transcript")
     parser.add_argument("--limit", type=int, default=None)
@@ -721,6 +722,10 @@ def main() -> int:
     parser.add_argument("--no-groq", action="store_true",
                         help="(legacy) same as --whisper openai/local")
     args = parser.parse_args()
+    if args.whisper_model is None:
+        # GPU gets the accurate model; CPU keeps the fast one. See
+        # youtube_pull.default_whisper_model for the measured rationale.
+        args.whisper_model = 'large-v3-turbo' if _whisper_device()[0] == 'cuda' else 'small'
 
     course_dir = Path(args.course_dir).expanduser().resolve()
     # Windows MAX_PATH (260) fix: extended-length prefix so deep

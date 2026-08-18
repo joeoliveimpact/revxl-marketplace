@@ -93,7 +93,18 @@ Then use `AskUserQuestion` with:
 
 **If no GPU was detected:** don't pitch the GPU path. Briefly offer local CPU Whisper (`<venv-python> -m pip install faster-whisper` ... "works offline and free, but slow") vs. a cloud API vs. captions-only, and let them pick. Only install on confirmation.
 
-`process_videos.py` auto-detects the GPU at runtime (`_whisper_device()`) — no config needed. `--whisper auto` (default) order is **local → groq → openai**, so once faster-whisper is in the venv it is used automatically.
+`process_videos.py` and `youtube_pull.py` both auto-detect the GPU at runtime (`_whisper_device()`) — no config needed. `--whisper auto` (default) order is **local → groq → openai**, so once faster-whisper is in the venv it is used automatically.
+
+**Model is chosen to match the hardware, automatically:**
+
+| Hardware | Default model | Why |
+|---|---|---|
+| GPU | `large-v3-turbo` | Costs ~1s more load than `small` and is dramatically better on proper nouns — the errors that make a transcript unusable |
+| CPU | `small` | Turbo's encoder runs full size regardless of decoder shortcuts, so it is meaningfully slower on CPU; a laptop pulling a long course would crawl |
+
+Override with `--whisper-model` either way. First run on a GPU downloads ~1.5 GB (vs 464 MB for `small`) — one time, cached thereafter. Worth mentioning to the user before the first pull so the wait is expected.
+
+`medium` remains selectable for compatibility but is strictly dominated: turbo is only 6% larger, more accurate, *and* faster.
 
 **Step 4c — optional API fallback (only if the user wants it):** ask via `AskUserQuestion` whether they also want an API fallback for machines with no GPU:
 - **Groq** — `gsk_...` key, https://console.groq.com/keys (fast, cheap, free tier).

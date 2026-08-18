@@ -2,6 +2,18 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.7.0 — 2026-08-17
+
+### Fixed
+
+- **`youtube_pull.py` transcribed on CPU even when a GPU was present.** `transcribe_local()` hardcoded `device="cpu", compute_type="int8"`, ignoring the `_whisper_device()` detection that `process_videos.py` had been using all along. YouTube course pulls on a GPU machine were far slower than they needed to be.
+
+### Changed
+
+- **Whisper model default now matches the hardware.** GPU → `large-v3-turbo`, CPU → `small` (was: `small` everywhere). Turbo is dramatically better on proper nouns — the errors that make a transcript unusable — and on a GPU costs about a second of extra load. On CPU the encoder still runs full size, so `small` stays the default there rather than making a laptop crawl. `--whisper-model` overrides either.
+- **`large-v3-turbo` added to `--whisper-model` choices** in both scripts. It was previously unselectable, so the only way to get better accuracy was full `large-v3` — roughly double the size and, on constrained hardware, prone to running out of memory.
+- Disk, measured: `small` 464 MB · `large-v3-turbo` 1547 MB · `medium` 1460 MB. `medium` is kept for compatibility but is strictly dominated — turbo is 6% larger, more accurate, and faster.
+
 ## 0.6.0 — 2026-08-17
 
 ### Added
