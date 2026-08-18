@@ -12,10 +12,10 @@
   "plugins": [
     {
       "name": "course-crawler",
-      "description": "v0.5.0 · Capture any online content as a clean local archive for knowledge bases. Single pages, full multi-lesson courses (Kajabi/Teachable/Thinkific/Skool classrooms/custom), and YouTube playlists. Detects the agentic browser you have, handles login (assisted or manual cookie paste), and outputs clean Markdown + categorized reference links + downloaded assets + slide frames + transcripts. Local GPU Whisper by default (Groq/OpenAI fallback). Works on Mac and Windows.",
+      "description": "v0.6.0 · Capture any online content as a clean local archive for knowledge bases. Single pages, full multi-lesson courses (Kajabi/Teachable/Thinkific/Skool classrooms/custom), and YouTube playlists. Detects the agentic browser you have, handles login (assisted or manual cookie paste), and outputs clean Markdown + categorized reference links + downloaded assets + slide frames + transcripts. Local GPU Whisper by default (Groq/OpenAI fallback). Works on Mac and Windows.",
       "source": "./plugins/course-crawler",
       "category": "productivity",
-      "version": "0.5.0",
+      "version": "0.6.0",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"
@@ -196,10 +196,10 @@
     },
     {
       "name": "shortform-superengine",
-      "description": "v0.3.1 · Turn competitor research into Instagram reel scripts in your own voice. One guided setup, then by talking to Claude: cross-reference your reels against tiered competitors for a 10-section strategy roadmap, harvest a trusted creator's whole library into a framework corpus, and script reels off what already wins in your niche (Hook to CTA, with craft scoring). Bring-your-own SocialCrawl key (your data, your credits); captions-first transcription with Groq or local Whisper fallback; plain-English teach mode by default. For coaches who want data-driven short-form that still sounds like them.",
+      "description": "v0.3.2 · Turn competitor research into Instagram reel scripts in your own voice. One guided setup, then by talking to Claude: cross-reference your reels against tiered competitors for a 10-section strategy roadmap, harvest a trusted creator's whole library into a framework corpus, and script reels off what already wins in your niche (Hook to CTA, with craft scoring). Bring-your-own SocialCrawl key (your data, your credits); captions-first transcription with Groq or local Whisper fallback; plain-English teach mode by default. For coaches who want data-driven short-form that still sounds like them.",
       "source": "./plugins/shortform-superengine",
       "category": "marketing",
-      "version": "0.3.1",
+      "version": "0.3.2",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"
@@ -321,10 +321,10 @@
     },
     {
       "name": "lead-magnet-superengine",
-      "description": "v0.1.0 · Turn any starting point into a high-converting lead magnet. Three doors: build from scratch (guided Q&A on your offer, customer, and promise), revamp your existing magnet (audited against a 15-point rubric), or reverse-engineer a competitor's without copying. Voice-matched via the shared brand-brain, grounded in bundled conversion frameworks and benchmarks, delivered as a finished PDF with a what/why doc and nurture handoff. Works day one with zero setup; optional live-research upgrades are honest about what's actually connected. For coaches shipping lead magnets fast.",
+      "description": "v0.1.1 · Turn any starting point into a high-converting lead magnet. Three doors: build from scratch (guided Q&A on your offer, customer, and promise), revamp your existing magnet (audited against a 15-point rubric), or reverse-engineer a competitor's without copying. Voice-matched via the shared brand-brain, grounded in bundled conversion frameworks and benchmarks, delivered as a finished PDF with a what/why doc and nurture handoff. Works day one with zero setup; optional live-research upgrades are honest about what's actually connected. For coaches shipping lead magnets fast.",
       "source": "./plugins/lead-magnet-superengine",
       "category": "marketing",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"

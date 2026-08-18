@@ -2,6 +2,15 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.6.0 — 2026-08-17
+
+### Added
+
+- **Transcription vocabulary prompt, derived from video metadata.** Groq was called with no vocabulary hint, so any name Whisper had not seen was silently replaced with the nearest common-English phrase — "Kling 01" came back as "uh cling a one". `course_vocab()` now builds a prompt from the channel and title yt-dlp already fetched ("This is a lesson from the channel X, titled Y."), which carries the instructor and tool names. On by default; `COURSE_CRAWLER_VOCAB` overrides the derived text and `COURSE_CRAWLER_VOCAB=off` disables it.
+  - Deliberately a prose sentence, not a term list: Whisper imitates its prompt's style, so an unpunctuated list makes it emit a transcript with no capitals or punctuation at all.
+  - **Lossy trade, documented at the function:** on a real clip this recovered "Kling 01" and "Higgsfield Soul" *and* collapsed a sentence the speaker said twice (net −97 chars). Correct tool names beat a duplicated sentence in reference material; use `=off` when you need verbatim.
+- `transcribe_groq()` takes an optional `vocab` and forwards it as Groq's `prompt`.
+
 ## 0.5.0 — 2026-06-02
 
 ### Added
