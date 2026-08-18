@@ -174,21 +174,41 @@ def srt_to_text(p: Path) -> str:
     return "\n".join(out) + "\n"
 
 
-def transcribe_groq(ffmpeg: str, video: Path, dest: Path, api_key: str) -> tuple[Path, Path]:
+def transcribe_groq(ffmpeg: str, video: Path, dest: Path, api_key: str,
+                    vocab: str | None = None) -> tuple[Path, Path]:
+    """
+    `vocab` biases decoding toward spellings you supply — pass the course's product,
+    tool and instructor names. Without it Whisper substitutes the nearest common-English
+    phrase for anything it has not seen ("Kling 01" -> "cling a one"), silently.
+
+    Write it as a PUNCTUATED SENTENCE, not a bare comma list: Whisper imitates the
+    style of its prompt, so an unpunctuated list makes it emit a transcript with no
+    capitals or punctuation at all. Groq caps this field at 224 tokens.
+
+    Caveat: a prompt can also cause a speaker's repeated takes to be dropped, since
+    Whisper suppresses what looks like a repetition loop. On multi-take source, compare
+    the output length against an unprompted run before trusting it.
+
+    Set COURSE_CRAWLER_VOCAB to supply this without changing the call site.
+    """
     import httpx
+    vocab = vocab or os.environ.get("COURSE_CRAWLER_VOCAB", "").strip() or None
     audio = dest / "_audio.mp3"
     subprocess.run([ffmpeg, "-y", "-hide_banner", "-loglevel", "error",
                     "-i", str(video), "-vn", "-ar", "16000", "-ac", "1", "-b:a", "32k",
                     str(audio)], check=True)
     srt_path = dest / "transcript.srt"
     txt_path = dest / "transcript.txt"
+    payload = {"model": "whisper-large-v3-turbo", "response_format": "verbose_json"}
+    if vocab:
+        payload["prompt"] = vocab
     for attempt in range(1, 7):
         with audio.open("rb") as f:
             r = httpx.post(
                 "https://api.groq.com/openai/v1/audio/transcriptions",
                 headers={"Authorization": f"Bearer {api_key}"},
                 files={"file": (audio.name, f, "audio/mpeg")},
-                data={"model": "whisper-large-v3-turbo", "response_format": "verbose_json"},
+                data=payload,
                 timeout=600.0,
             )
         if r.status_code < 400:

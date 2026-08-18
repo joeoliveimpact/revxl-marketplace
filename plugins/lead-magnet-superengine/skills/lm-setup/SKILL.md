@@ -131,7 +131,9 @@ probes["ranked"] = lambda: bool(os.getenv("TAVILY_API_KEY"))
 
 **Why it matters:** Video teardowns are one of the highest-signal competitive research moves. Without transcription, you have to watch the whole video and paste key points manually.
 
-**How to enable:** Run a Whisper server (Whisper.cpp, faster-whisper, or any compatible endpoint) and set `"enabled": true` and `"endpoint": "http://<your-whisper-host>:<port>"` in your profile's `transcribe` block. Groq's `whisper-large-v3-turbo` works as an API fallback if you set `GROQ_API_KEY`.
+**How to enable:** Run a Whisper server (Whisper.cpp, faster-whisper, or any compatible endpoint) and set `"enabled": true` and `"endpoint": "http://<your-whisper-host>:<port>"` in your profile's `transcribe` block. Groq's `whisper-large-v3-turbo` works as an API fallback if you set `GROQ_API_KEY`. Prefer turbo over full `large-v3` — measured no worse on proper nouns, ~3x cheaper, and it does not lose speech when a prompt is supplied.
+
+**Whichever engine you use, pass a vocabulary prompt.** Whisper substitutes the nearest common-English phrase for brand and product names it has never seen — silently, and often. Build a short punctuated sentence from the brand's canonical names (brand-brain's `business-config.md` and the `## Vocabulary` block in `voice-guide.md` already hold them) and pass it as Groq's `prompt` or a local server's `initial_prompt`/`hotwords`. Two caveats worth knowing before you do: a bare comma list strips punctuation from the whole transcript, and a prompt can cause a speaker's retakes to be dropped — compare the output length against an unprompted run on multi-take source.
 
 **Detection:**
 
