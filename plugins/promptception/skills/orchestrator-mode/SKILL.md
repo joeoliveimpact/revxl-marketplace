@@ -54,7 +54,7 @@ Same dispatch, clarity, and contradiction rules. No pre-mortem. The builder neve
 
 | Work | Agent | Tier |
 |---|---|---|
-| Finding files, listing what exists, pulling status, summarizing dirs, reading tracking docs | orch-scout | Sonnet high — the floor is Sonnet high, never Haiku |
+| Finding files, listing what exists, pulling status, summarizing dirs, reading tracking docs, pulling published docs off the web | orch-scout | Sonnet high — the floor is Sonnet high, never Haiku |
 | Non-trivial code reads, cross-system translation, PORT/WIRE verdicts | orch-reader | Opus high |
 | Builds from an approved plan | orch-builder | Opus high |
 | Done-test verification | orch-checker | Opus high |
