@@ -4,6 +4,19 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.43] — 2026-08-21
+
+### Changed
+- **promptception v0.3.0** — the four builders now share one entry gate instead of each carrying its own copy of the same opening routine. It runs in two phases: a read-only look at what the session actually has plus the teach decision before the user's brain-dump, then the right-door check and the ownership question after it. Half those checks cannot be judged before the user has spoken, which is why the four copies had drifted apart.
+- **promptception v0.3.0** — new `/plan-builder` for jobs too big for a single prompt, plus a mastery layer across every builder: a closing debrief, reasoning stated at real decision points, one next-level suggestion, and a repeat user gets to draft first and be coached.
+- **promptception v0.3.0** — tool behavior moved into per-tool reference files, each with a dated sources block. Facts that come from observation rather than Anthropic's documentation are labeled as observation.
+
+### Fixed
+- **promptception v0.3.0** — a workspace set to `verbosity: standard` had beginner explanations forced on it anyway. The old skip rule left a case matching neither branch; the new rule is a true partition where only the exact value `standard` turns teaching off.
+- **promptception v0.3.0** — the builders told a stuck user to type `/schedule-builder`, but the plugin has no commands directory at any version and its skills surface namespaced. Every sibling skill is now offered in plain language.
+- **promptception v0.3.0** — `/plan-builder` contradicted itself about where a direct invocation starts.
+- **promptception v0.3.0** — the capability probe named no routes to try. It now lists what to look for per capability, and stays read-only until the moment a promise is actually made.
+
 ## [0.1.43] — 2026-08-16
 
 ### Fixed

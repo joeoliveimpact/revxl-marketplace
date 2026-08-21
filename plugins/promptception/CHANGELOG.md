@@ -2,6 +2,26 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.3.0] - 2026-08-21
+
+### Added
+- **`/plan-builder`** ... the heavy tier of the plan engine, for jobs too big for one prompt and sometimes too big for one chat. Researches first, stress-tests the plan before you see it, then runs it with a builder and an independent checker.
+- **Shared entry gate** (`references/entry-gate.md`) ... one routine every builder runs, in two phases. Phase A before your brain-dump: a read-only look at what this session actually has, then the teach decision. Phase B after it: the right-door check, the ownership question, and later the confirming probe. Two phases because half those checks cannot be judged until you have said what you want.
+- **Mastery layer** (`references/mastery.md`) ... a closing debrief covering what was built and why those choices beat the alternatives, reasoning stated at real decision points, one next-level suggestion you did not ask for, and progressive ownership where a repeat user drafts first and gets coached. Nothing to switch on, nothing stored.
+- **Per-tool reference files** ... `goal-mechanics.md`, `loop-mechanics.md`, `schedule-mechanics.md`, each with a dated sources block naming the page every fact came from. Facts observed in live runs rather than documented are labeled as observation.
+- **Off-switch rule** ... every builder that creates something which runs later hands back the specific way to stop it. Loops have three flavors with three different switches, and stopping the wrong way leaves one firing while you believe it is dead.
+
+### Fixed
+- **Teaching was forced on a `verbosity: standard` workspace.** The old skip rule needed a session toggle AND a non-beginner workspace, so a plain standard workspace matched neither branch and got beginner explanations anyway. Now a true partition: only the exact value `standard` turns teaching off, and anything unclear, including an unreadable file, means on.
+- **Dead escape hatch.** The builders told you to type `/schedule-builder` when a tool was missing, firing exactly when you were already stuck. The plugin has no commands directory at any version and its skills surface namespaced, so sibling skills are now offered in plain language.
+- **`/plan-builder` contradicted itself** about whether a direct invocation starts at Step 0 or Step 1.
+- **The capability probe named no routes to try.** It now lists what to look for per capability, and stays read-only until a promise is actually made ... probing a scheduler by trying it creates a real task on your account.
+- **Loop timing was understated.** The interval is a floor, not a metronome: a 60 second interval was observed reporting 72 seconds and firing on the next whole minute, so cadence drifts later over a long run. The lateness rule now carries its sub-hourly qualifier, which matters because the template loop is 20 minutes.
+
+### Changed
+- The four builders shrank as their shared routine moved out, and all now sit inside the house length standard.
+- `/goal-builder` no longer risks setting a live goal during the interview. The confirming probe is deferred to delivery, where a zero-risk availability check does the job instead.
+
 ## [0.2.0] - 2026-08-02
 
 ### Added

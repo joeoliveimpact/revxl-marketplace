@@ -21,7 +21,7 @@ Each superengine is opinionated about audience, tone, and workflow, so it works 
 
 ## The catalog
 
-16 plugins. Versions are current as of catalog `0.1.42`.
+16 plugins. Versions are current as of catalog `0.1.43`.
 
 ### 📣 Marketing & Content
 
@@ -30,8 +30,8 @@ Each superengine is opinionated about audience, tone, and workflow, so it works 
 | [email-sequence-superengine](plugins/email-sequence-superengine/) | 0.2.1 | Email nurture engine for high-ticket coaches. 8 sequence generators (pre-call, launch, warm, no-show, follow-up, winback, onboarding) in your voice, with story banks and GHL push. 13 skills. |
 | [meta-ads-superengine](plugins/meta-ads-superengine/) | 0.3.0 | Full Meta-ads coaching journey: strategy, breakeven math, creative, launch runbook, daily ops, competitor pulse. 27 skills. **Proprietary license.** |
 | [carousel-superengine](plugins/carousel-superengine/) | 0.4.1 | Voice-matched IG/LinkedIn carousel engine: create, render to finished slides, review, teardown competitor decks. 10 skills. |
-| [shortform-superengine](plugins/shortform-superengine/) | 0.3.1 | Short-form reel scripting with enforced craft screens, competitor pulse, and creator strategy harvesting. 7 skills. |
-| [lead-magnet-superengine](plugins/lead-magnet-superengine/) | 0.1.0 | Builds lead magnets three ways: from scratch, from a source, from your existing content. 6 skills + 1 agent. |
+| [shortform-superengine](plugins/shortform-superengine/) | 0.3.2 | Short-form reel scripting with enforced craft screens, competitor pulse, and creator strategy harvesting. 7 skills. |
+| [lead-magnet-superengine](plugins/lead-magnet-superengine/) | 0.1.1 | Builds lead magnets three ways: from scratch, from a source, from your existing content. 6 skills + 1 agent. |
 | [profile-optimization-superengine](plugins/profile-optimization-superengine/) | 0.1.0 | Social-profile optimization (bio, pinned content, CTA structure) for coach acquisition. 6 skills. |
 | [focus-group-superengine](plugins/focus-group-superengine/) | 0.1.1 | Synthetic persona-swarm testing for marketing assets before you publish them. 2 skills. |
 | [socialcrawl-superengine](plugins/socialcrawl-superengine/) | 0.2.0 | Social research plays on the SocialCrawl API: competitor content, trends, engagement. 3 skills. |
@@ -49,10 +49,10 @@ Each superengine is opinionated about audience, tone, and workflow, so it works 
 
 | Plugin | Version | What it does |
 |---|---|---|
-| [promptception](plugins/promptception/) | 0.2.0 | Prompts that write prompts: brain-dump in, expert prompt out. Now with Orchestrator Mode (tiered subagent crew + premortem) and builders for `/goal`, `/loop`, `/schedule`. 6 skills + 5 agents. |
+| [promptception](plugins/promptception/) | 0.3.0 | Prompts that write prompts: brain-dump in, expert prompt out. Orchestrator Mode (tiered subagent crew + premortem), builders for `/goal`, `/loop`, `/schedule`, plus `/plan-builder` for jobs too big for one prompt. 7 skills + 5 agents. |
 | [workspace-superengine](plugins/workspace-superengine/) | 0.10.0 | Workspace lifecycle: scaffold, session-start, session-closeout, checkpointing, cleanup. Plus `/update-everything`, the one command that updates every plugin, marketplace, and skill layer at once. Stops Claude from forgetting where you left off. 13 skills + 1 agent. |
 | [notebooklm-superengine](plugins/notebooklm-superengine/) | 0.4.0 | Drive NotebookLM from Claude: build notebooks, curate sources, ask, studio outputs. 8 skills. |
-| [course-crawler](plugins/course-crawler/) | 0.5.0 | Capture online course content into structured, searchable local knowledge. 5 skills. |
+| [course-crawler](plugins/course-crawler/) | 0.7.0 | Capture online course content into structured, searchable local knowledge. 5 skills. |
 
 ---
 
