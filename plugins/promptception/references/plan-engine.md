@@ -73,6 +73,6 @@ Everything in SHARED, plus orchestration layered on top. Nothing in SHARED gets 
 
 - **Plans in orchestrator mode:** tiered audit → design → **premortem** before the plan is shown. The reading is done by dispatched agents so the user's chat stays lean.
 - **Agents read; they never ask.** Any open question an agent hits comes back as a report and the main session asks it. See `asking-questions.md`.
-- **The review gate lives inside the skill's own flow.** Do not lean on a permission mode or a plan mode to create the pause — Cowork has no plan mode at all. The skill presents the plan and waits, itself.
+- **The review gate lives inside the skill's own flow.** Where a real plan-mode tool responds, use it ... it enforces the pause instead of promising it. Where it doesn't (some surfaces have no design-before-acting phase at all ... probe, never name the surface), the skill presents the plan and waits, itself.
 - **Executes in orchestrator mode:** builder/checker, both-directions verification.
 - **A human is present for the planning half.** Only execution can ever run unattended, and unattended execution runs orchestrator **execution mode**, never plan mode — no premortem, no batched questions, deviations reported rather than decided.

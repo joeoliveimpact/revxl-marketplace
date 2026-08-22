@@ -25,6 +25,10 @@ needed, wait, repeat. Like asking an assistant to 'check the inbox every 20 minu
 if the client replies.' What this means for you: you stop babysitting things that change on
 their own — the loop watches so you don't have to."*
 
+**If nobody's there to answer** (headless, scheduled, an unattended tick), don't block on an ask:
+take the safest stated default and say in the output which one you took and why, or stop and name
+exactly what was missing. Full rule: `${CLAUDE_PLUGIN_ROOT}/references/asking-questions.md`.
+
 ## Step 1 — Take the dump
 
 Accept the mess as-is. Nothing attached? Say: *"Just talk. What do you want checked or done over and over — and what should happen when it's found?"*
@@ -69,10 +73,12 @@ language. Never dump it at them.
 
 1. **"Here's the loop hiding inside what you said:"** → the full command in a copy-able block
 2. **Loop Rubric** — ask about any fuzzy dimension (3–5 questions per round, up to 3 rounds, batched, never re-ask — `${CLAUDE_PLUGIN_ROOT}/references/asking-questions.md`):
+   - **Repeat safety** — what breaks if it fires twice. **Repeat safety is first because it's the
+     one that decides whether this loop is safe to exist at all** ... an outward-firing loop with
+     no "already done?" check is the strongest warning in the fitness gate.
    - **Watch target** — what exactly gets checked each tick
    - **Per-tick action** — and what happens on the quiet ticks
    - **Stop condition** — how this ends
-   - **Repeat safety** — what breaks if it fires twice
    - **Interval** — how fast does the watched thing really change
    - Re-show the updated command between rounds. Escape hatch only on explicit impatience, costs named first.
 
@@ -84,7 +90,7 @@ Claude cannot start a loop for them — the client runs the command. Hand it ove
 /loop [INTERVAL] [the crafted loop prompt]
 ```
 
-**Does it run here? Probe, don't guess.** Never tell them which app or environment they're in — try the scheduling capability and report exactly what you saw: `${CLAUDE_PLUGIN_ROOT}/references/capability-probe.md`. If it can't be probed, say that plainly and hand them the fallback in the same breath: *"I can't verify from here whether `/loop` runs in your setup. The command is written out and ready to paste. If it isn't in your version, a scheduled routine does the same job on a clock — just say the word and I'll build that instead."*
+**Does it run here? Probe, don't guess ... and mind which probe.** Never tell them which app or environment they're in (`${CLAUDE_PLUGIN_ROOT}/references/capability-probe.md`). Phase A's read-only inventory already answers the question you need first: does the scheduling machinery exist in this session at all. **Do not create anything to find out.** For `/loop` that is not a harmless test ... a real probe arms a real recurring task on the same scheduler family everything else here uses, it counts against the 50-task session cap, and a cron-backed one survives the ordinary stop call. **That is B3, and it happens only after they've said go.** When it does fire: create it, read it back, then delete it immediately, and say exactly what you saw. Say what you saw either way, probed or not. If it can't be probed, say that plainly and hand them the fallback in the same breath: *"I can't verify from here whether `/loop` runs in your setup. The command is written out and ready to paste. If it isn't in your version, a scheduled routine does the same job on a clock — just say the word and I'll build that instead."*
 
 **The operating facts every loop owner needs** — one line each, only the ones that apply:
 

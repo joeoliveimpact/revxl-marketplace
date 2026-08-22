@@ -13,7 +13,7 @@ that touch their goal, in their language. **Never dump this file at them.**
 - **`/goal` does not change permission mode.** It removes the per-turn prompts, not the per-tool ones. For unattended turns they want **auto mode**, which removes the per-tool approvals — the two are designed to pair.
 - On Pro, Max and Team plans, **auto is often already the default** — but only in a terminal or the VS Code extension, and only on Claude Code v2.1.228+ on macOS/Linux/WSL, or **v2.1.233+ on native Windows**. Earlier versions start in Manual, so have them look at the mode indicator rather than assume it's handled.
 - **Headless runs start in Manual.** `claude -p` and the Agent SDK ignore that plan default, so that auto default never covers an unattended run — the mode has to be set when the run starts (`--permission-mode`).
-- **Asking Claude in chat to change the permission mode doesn't work.** It's a control in their app, and only they can flip it. Hand them that fact plainly instead of promising to do it.
+- **Claude can tighten the permission mode itself, but never loosen it.** Verified live: a session moved itself into plan mode (a more restrictive mode) with the user's consent. No tool grants a looser mode ... that half is inferred from tool absence, not tested ... which is exactly why auto mode has to come from the user's own controls. Hand them that plainly instead of promising to flip it for them.
 
 ### When bare `/goal` isn't recognized
 

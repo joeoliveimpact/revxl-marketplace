@@ -89,7 +89,9 @@ Two constraints from Phase A:
 
 ### B2. Ownership — who writes the first draft?
 
-Ask once per session, with **AskUserQuestion**:
+Ask once per session, the way the house asks: popup first via **AskUserQuestion**, and the same
+question as plain text wherever that tool isn't available. Never hard-require the popup
+(`${CLAUDE_PLUGIN_ROOT}/references/asking-questions.md`).
 
 > *"Have you built one of these with me before?"*
 
@@ -98,6 +100,9 @@ Ask once per session, with **AskUserQuestion**:
   rubric out loud so they can see what changed and why. They keep the skill; that is the point.
 
 One ask. Do not re-ask it later in the same session, and never make them prove anything.
+
+**The promptception skill asks this same question at its own Step 1.** A builder reached by
+escalation from promptception must not re-ask it, the answer is already in the session.
 
 ### B3. Confirming probe — at the moment of the promise, once
 

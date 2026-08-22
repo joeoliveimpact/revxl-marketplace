@@ -24,6 +24,11 @@ interchangeable: one runs on Anthropic's computers, one runs on yours, one runs 
 What this means for you: picking the wrong one is how a routine 'runs fine' every day and never
 touches the files you actually wanted it to."*
 
+**If nobody's there to answer** (headless, or this skill running inside a routine), don't block on
+an ask: take the safest stated default and say in the output which one you took and why, or stop
+and name exactly what was missing. Full rule:
+`${CLAUDE_PLUGIN_ROOT}/references/asking-questions.md`.
+
 ## Step 1 — Take the dump
 
 Accept the mess as-is. Nothing attached? Say: *"Just talk. What do you want to happen on its own — and when?"*

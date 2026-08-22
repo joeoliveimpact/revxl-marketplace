@@ -4,6 +4,16 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.44] — 2026-08-22
+
+### Added
+- **promptception v0.3.1** — a `commands/` directory: seven thin routers so the commands the README advertises exist as real files on every surface. On the Claude Code CLI the bare names already resolved to the namespaced skills (proven by control experiment); the routers cover surfaces where a command registers and shadows a same-named skill, and each routes straight back to its skill.
+- **promptception v0.3.1** — plan-builder enforces its review gate with real plan mode where the session supports it (consent asked once up front; the finished plan is presented through the plan-approval gate; the hand-rolled pause remains the fallback). The silent skeleton draft returns as the interview's question generator, plans have no question cap (batches of up to four, as many rounds as the blanks demand), and the crew engages automatically the moment the interview completes.
+- **Repo CI** — new `plugin_integrity` section in `scripts/validate.py`: dead reference paths, orphan references, bare sibling slash commands, advertised-command resolution, absolute paths, hook integrity, word ceilings. Two checks ship as warnings pending cleanup of 53 pre-existing findings in other plugins (SKLLPLG-192).
+
+### Fixed
+- **promptception v0.3.1** — goal-builder's flat claim that Claude can never change the permission mode, corrected to the verified asymmetry (it can tighten with consent; only loosening needs the user's controls). loop-builder's capability probe can no longer create a real scheduled task without an explicit go, and its rubric now leads with repeat safety. loop-mechanics no longer contradicts itself on what Esc stops. The ownership question is no longer asked twice on the escalation route. Every builder carries a headless not-asked path.
+
 ## [0.1.43] — 2026-08-21
 
 ### Changed
