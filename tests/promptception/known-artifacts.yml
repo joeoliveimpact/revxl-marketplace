@@ -1,0 +1,25 @@
+# Known artifacts — transcript noise that is NOT a defect in the plugin under test.
+# The harness (run.py, Step 5) suppresses matches from reports and never counts them
+# toward any assertion. Every entry needs: pattern, source, reason, date observed.
+# Remove an entry when its upstream cause is fixed — a stale allowlist hides real regressions.
+
+known_artifacts:
+  - pattern: "emit-event.sh: line 12: jq: command not found"
+    match: substring
+    source: claude-session-driver plugin (superpowers-marketplace), SessionEnd hook
+    reason: >
+      Fires on every headless `claude -p` run on this machine because jq is not
+      installed. Unrelated to promptception; without this entry it pollutes every
+      Tier B transcript and can trip a naive hook-error assertion.
+    observed: 2026-08-21
+    allowlisted_by: Joe (in-session ruling, 08.21.26)
+
+  - pattern: "SessionEnd hook [bash ${CLAUDE_PLUGIN_ROOT}/hooks/emit-event.sh] failed"
+    match: substring
+    source: same as above — the harness-level error line that wraps it
+    reason: >
+      Same failure, outer wrapper. Note the literal ${CLAUDE_PLUGIN_ROOT} here is
+      the OTHER plugin's hook command string, not evidence of promptception's
+      variable failing to expand. A provenance assertion must not count this line.
+    observed: 2026-08-21
+    allowlisted_by: Joe (in-session ruling, 08.21.26)

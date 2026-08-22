@@ -43,7 +43,7 @@ Recurring tasks **expire 7 days after they're created** — one final fire, then
 
 ### Stopping it
 
-- **Esc while it's waiting** clears the pending wakeup, so it doesn't fire again. Esc only reaches `/loop` tasks — anything they scheduled by just asking Claude in plain English is untouched by it and stays in place until they delete it.
+- **Esc while it's waiting** clears the **pending wakeup** of a `/loop` task. Whether that kills the loop depends on the flavor: a self-paced loop is done, but a **cron-backed fixed-interval loop still has its cron entry and fires again** ... killing that one means deleting the entry (off-switch table below). Esc only reaches `/loop` tasks — anything they scheduled by just asking Claude in plain English is untouched by it and stays in place until they delete it.
 - In self-paced mode (no interval), Claude can end the loop itself once the job is genuinely done.
 - If an iteration ends without either scheduling the next one or stopping, one fallback wakeup fires about **20 minutes later**, and then the loop ends.
 - A fixed-interval loop keeps going until it's stopped or the seven days are up.

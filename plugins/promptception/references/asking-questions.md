@@ -16,6 +16,8 @@ Same questions, same wording, same why-lines, same round rules. Only the deliver
 
 ## Round rules (identical on both paths)
 
+**The popup carries at most 4 questions per call.** That is the tool's own limit, not a style choice ... a round needing more than 4 becomes consecutive batches of up to 4.
+
 - **3–5 questions per round.** More than five is an interrogation.
 - **Up to 3 rounds.** Round 1 covers every fuzzy dimension. Rounds 2 and 3 fire only if the answers opened new gaps, and ask only about what's still fuzzy.
 - **Batched, never scattered.** Ask them together, in one round. Never drip one question per turn.

@@ -27,6 +27,10 @@ yet? If it isn't, I start another turn on my own, over and over, until it's true
 model decides it never can be. What this means for you: you paste one line and walk away,
 instead of typing 'keep going' fourteen times."*
 
+**If nobody's there to answer** (headless, scheduled, an unattended run), don't block on an ask:
+take the safest stated default and say in the output which one you took and why, or stop and name
+exactly what was missing. Full rule: `${CLAUDE_PLUGIN_ROOT}/references/asking-questions.md`.
+
 ## Step 1 — Take the dump
 
 Accept whatever they give — rambling, half-sentences, dictation. Never ask them to tidy it. Nothing attached? Say: *"Just talk. What has to be TRUE before I'm allowed to stop — tell me like you'd tell a friend."*

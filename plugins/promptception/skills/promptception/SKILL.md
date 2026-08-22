@@ -11,6 +11,14 @@ The user gives you a **rough brain-dump** — rambling, spoken-style, out of ord
 
 **Hand back the skill, not just the prompt.** `${CLAUDE_PLUGIN_ROOT}/references/mastery.md` holds the four shapes that do it — the closing debrief, saying why at each real fork, the one upgrade they didn't ask for, and letting a repeat user draft first while you coach. A, B and C run every time and there is nothing to switch on. **D is conditional** — it needs to know they've done this before, which is the one question Step 1 asks.
 
+**If the teach check says explain** (`${CLAUDE_PLUGIN_ROOT}/references/entry-gate.md` decides,
+and it decides for every skill here), this is the explanation ... plain English, said **once**,
+never per step:
+
+*"You talk messy and I build the prompt an expert would have written out of it, show it to you,
+then ask only the questions that close a real gap ... and run it on your go. What this means for
+you: you never need to learn prompting, because dumping your real thoughts IS the input."*
+
 ## Step 1 — Take the dump
 
 Whatever they give you — typed rant, dictation full of "um, and also, wait, actually" — accept it as-is. **Never ask them to rephrase or tidy it.** If they invoke promptception with nothing attached, say: *"Just talk. Tell me what you want like you'd tell a friend — messy is perfect."*

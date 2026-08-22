@@ -21,6 +21,12 @@ Checks (mirror the three former CI jobs exactly):
   readme        root README catalog table lists every published plugin at its
                 current version + names the catalog version (main page can't
                 silently fall behind releases)
+  plugin_integrity
+                mechanical per-plugin checks: ${CLAUDE_PLUGIN_ROOT} paths
+                resolve, reference docs aren't orphaned, no bare sibling
+                slash-commands in prose, advertised commands exist, no
+                absolute machine paths, hooks wired to real scripts, and
+                skills/references stay under their word ceilings
 
 Only plugins listed in marketplace.json are validated (the catalog is the
 source of truth; WIP folders under plugins/ are skipped).
@@ -31,11 +37,61 @@ Exit code 0 = all good, 1 = at least one error (errors printed, GitHub
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 MKT = REPO / ".claude-plugin" / "marketplace.json"
+
+# --- plugin_integrity ------------------------------------------------------
+
+# Per-check severity. "error" fails the build; "warning" annotates only.
+# sibling_slash and word_ceiling start as warnings: they surface 50+ real but
+# pre-existing defects across seven plugins, and turning every release PR red
+# on legacy debt is worse than tracking it. Promoting one to a hard gate once
+# its backlog is cleared is a one-word flip here.
+SEVERITY = {
+    "dead_ref": "error",
+    "orphan_ref": "warning",
+    "sibling_slash": "warning",
+    "advertised_cmd": "error",
+    "abs_path": "error",
+    "hooks": "error",
+    "word_ceiling": "warning",
+}
+
+# Slash-commands a plugin may advertise without shipping commands/<name>.md:
+# Claude Code built-ins that plugin docs legitimately reference.
+EXTERNALLY_PROVIDED_COMMANDS = {
+    "goal", "loop", "schedule", "clear", "resume", "continue",
+    "model", "permissions", "help", "verify", "mcp",
+}
+
+# Dirs whose *.md count as shipped plugin prose (excludes README/CHANGELOG,
+# where a "${CLAUDE_PLUGIN_ROOT}/references/..." ellipsis is prose, not a path).
+DOC_DIRS = ("skills", "references", "agents", "commands")
+
+# House standard is 1500-2000 words; ceilings carry headroom so only real
+# bloat trips them.
+SKILL_WORD_CEILING = 2200
+REFERENCE_WORD_CEILING = 1800
+
+# Absolute machine paths that must never ship. Bare "C:\" is deliberately NOT
+# listed: it matches legitimate docs (the standard Windows Edge install path,
+# a doubled-backslash "C:\\Users\\...\\server.js" placeholder). "C:\Users" is
+# the actual leaked-home-directory signature.
+ABS_PATH_PATTERNS = ("C:\\Users", "C:/Users", "/Users/", "/home/")
+
+RX_PLUGIN_ROOT = re.compile(r"\$\{CLAUDE_PLUGIN_ROOT\}/([^\s`\"'\)\]\},;:*]+)")
+RX_HOOK_SCRIPT = re.compile(r"[^\s\"']*\.(?:py|sh|js|mjs|cjs|ps1)")
+
+# Advertised slash-commands. Deliberately narrow -- backticked `/name`, bold
+# **/name**, or a "- /name" bullet -- so file paths and URL fragments can't
+# masquerade as command references.
+RX_CMD_TICK = re.compile(r"`/([a-z][a-z0-9-]*[a-z0-9])`")
+RX_CMD_BOLD = re.compile(r"\*\*/([a-z][a-z0-9-]*[a-z0-9])\*\*")
+RX_CMD_BULLET = re.compile(r"^\s*[-*]\s+/([a-z][a-z0-9-]*[a-z0-9])(?![\w-])", re.M)
 
 
 def _published() -> set[str]:
@@ -151,11 +207,170 @@ def check_readme() -> list[str]:
     return errs
 
 
+def _read(p: Path) -> str:
+    return p.read_text(encoding="utf-8", errors="replace")
+
+
+def _body_after_frontmatter(text: str) -> str:
+    """Everything after the closing --- of YAML frontmatter (or all of it).
+
+    A skill naming its own triggers in frontmatter is legitimate; the same
+    string in prose is a bare slash-command.
+    """
+    if not text.startswith("---"):
+        return text
+    end = text.find("---", 3)
+    return text[end + 3:] if end != -1 else text
+
+
+def _doc_mds(plugin: Path):
+    for sub in DOC_DIRS:
+        d = plugin / sub
+        if d.exists():
+            yield from sorted(d.rglob("*.md"))
+
+
+def check_plugin_integrity() -> list[str]:
+    """Mechanical integrity of every published plugin.
+
+    Catches the defect classes a human reviewer misses on a release PR: dead
+    ${CLAUDE_PLUGIN_ROOT} paths, reference docs nothing links to, bare sibling
+    slash-commands in prose, advertised commands that resolve nowhere, leaked
+    absolute machine paths, broken hook wiring, and word-count bloat.
+
+    Severity per check comes from SEVERITY; warnings print but never fail.
+    """
+    errs: list[str] = []
+
+    def emit(key: str, rel: str, msg: str) -> None:
+        if SEVERITY[key] == "error":
+            errs.append(f"::error file={rel}::{msg}")
+        else:
+            print(f"::warning file={rel}::{msg}")
+
+    for name in sorted(_published()):
+        d = REPO / "plugins" / name
+        if not d.is_dir():
+            continue
+        pre = len(errs)
+
+        # 1. every ${CLAUDE_PLUGIN_ROOT}/<relpath> must resolve
+        for md in _doc_mds(d):
+            for m in RX_PLUGIN_ROOT.finditer(_read(md)):
+                rel = m.group(1)
+                if not (d / rel).exists():
+                    emit("dead_ref", f"plugins/{name}/{md.relative_to(d).as_posix()}",
+                         f"dead reference path ${{CLAUDE_PLUGIN_ROOT}}/{rel}")
+
+        # 2. reference docs nothing else in the plugin points at
+        refdir = d / "references"
+        if refdir.exists():
+            others = list(d.rglob("*.md"))
+            for rf in sorted(refdir.glob("*.md")):
+                rel = rf.relative_to(d).as_posix()
+                incoming = sum(1 for o in others
+                               if o.resolve() != rf.resolve() and rel in _read(o))
+                if incoming == 0:
+                    emit("orphan_ref", f"plugins/{name}/{rel}",
+                         "orphan reference doc (0 incoming references)")
+
+        # 3. bare sibling slash-commands in body text
+        skill_dirs = {p.parent.name for p in d.glob("skills/*/SKILL.md")}
+        targets = list(d.glob("skills/*/SKILL.md"))
+        if refdir.exists():
+            targets += sorted(refdir.glob("*.md"))
+        for f in targets:
+            own = f.parent.name if f.name == "SKILL.md" else None
+            body = _body_after_frontmatter(_read(f))
+            for sk in sorted(skill_dirs):
+                if sk == own:
+                    continue
+                # not preceded by word char / . / / / \ / - so that relative
+                # paths like ../sibling/SKILL.md don't read as commands
+                rx = re.compile(r"(?<![\w./\\-])/" + re.escape(sk) + r"(?![\w-])")
+                if rx.search(body):
+                    emit("sibling_slash",
+                         f"plugins/{name}/{f.relative_to(d).as_posix()}",
+                         f"bare sibling slash-command /{sk} in body text")
+
+        # 4. advertised slash-commands must resolve to something shipped
+        advertised: set[str] = set()
+        rm = d / "README.md"
+        sources = [_read(rm)] if rm.exists() else []
+        pj = d / ".claude-plugin" / "plugin.json"
+        if pj.exists():
+            try:
+                sources.append(json.loads(_read(pj)).get("description", "") or "")
+            except Exception:
+                pass  # plugin.json validity is check_plugins()' job
+        for text in sources:
+            for rx in (RX_CMD_TICK, RX_CMD_BOLD, RX_CMD_BULLET):
+                advertised |= set(rx.findall(text))
+        for cmd in sorted(advertised):
+            if cmd in EXTERNALLY_PROVIDED_COMMANDS:
+                continue
+            # skills surface as slash-invocables; commands/ routers are optional
+            if (d / "commands" / f"{cmd}.md").exists():
+                continue
+            if (d / "skills" / cmd / "SKILL.md").exists():
+                continue
+            emit("advertised_cmd", f"plugins/{name}/README.md",
+                 f"advertised command /{cmd} has no commands/{cmd}.md "
+                 f"or skills/{cmd}/SKILL.md")
+
+        # 5. no absolute machine paths in shipped files
+        for f in sorted(list(d.rglob("*.md")) + list(d.rglob("*.json"))):
+            if f.name == "CHANGELOG.md":  # may quote history
+                continue
+            text = _read(f)
+            for pat in ABS_PATH_PATTERNS:
+                if pat in text:
+                    emit("abs_path", f"plugins/{name}/{f.relative_to(d).as_posix()}",
+                         f"absolute machine path ({pat}) in shipped file")
+                    break
+
+        # 6. hooks.json parses and every script it names exists
+        hj = d / "hooks" / "hooks.json"
+        if hj.exists():
+            try:
+                data = json.loads(_read(hj))
+            except Exception as e:
+                emit("hooks", f"plugins/{name}/hooks/hooks.json", f"invalid JSON: {e}")
+            else:
+                for m in RX_HOOK_SCRIPT.finditer(json.dumps(data)):
+                    rel = (m.group(0)
+                           .replace("${CLAUDE_PLUGIN_ROOT}/", "")
+                           .replace("\\\\", "/")
+                           .replace("\\", "/")
+                           .lstrip("/"))
+                    if not (d / rel).exists():
+                        emit("hooks", f"plugins/{name}/hooks/hooks.json",
+                             f"hook script not found: {rel}")
+
+        # 7. word ceilings
+        for sk in sorted(d.glob("skills/*/SKILL.md")):
+            w = len(_read(sk).split())
+            if w > SKILL_WORD_CEILING:
+                emit("word_ceiling", f"plugins/{name}/{sk.relative_to(d).as_posix()}",
+                     f"SKILL.md is {w} words (ceiling {SKILL_WORD_CEILING})")
+        if refdir.exists():
+            for rf in sorted(refdir.glob("*.md")):
+                w = len(_read(rf).split())
+                if w > REFERENCE_WORD_CEILING:
+                    emit("word_ceiling", f"plugins/{name}/{rf.relative_to(d).as_posix()}",
+                         f"reference is {w} words (ceiling {REFERENCE_WORD_CEILING})")
+
+        if len(errs) == pre:
+            print(f"OK {name}: integrity")
+    return errs
+
+
 SECTIONS = {
     "marketplace": check_marketplace,
     "plugins": check_plugins,
     "frontmatter": check_frontmatter,
     "readme": check_readme,
+    "plugin_integrity": check_plugin_integrity,
 }
 
 

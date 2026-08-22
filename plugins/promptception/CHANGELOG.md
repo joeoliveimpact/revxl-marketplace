@@ -2,6 +2,24 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.3.1] - 2026-08-22
+
+### Added
+- **`commands/` directory** ... seven thin routers (/promptception plus the six builders and review skills) so every command the README names exists as a real file. On the Claude Code CLI, bare names already resolve to the namespaced skills; the routers cover surfaces where a command registers and shadows a same-named skill, and each routes straight back to its skill.
+- **plan-builder: the review gate is now enforced, not promised**, where the session has a real plan-mode tool. Consent is asked once, up front, in plain language; the finished plan is presented through the plan-approval gate; where the tool is absent the skill's own pause remains, unchanged. Mechanics live in `references/plan-mode-gate.md`.
+- **plan-builder: the silent skeleton draft is back as the question generator.** A skeleton plan is drafted silently first ... steps, ownership guesses, blanks ... and its blanks generate the interview, so you are only ever asked what the draft proved it needed.
+- **plan-builder: no question cap for plans.** Batches of up to four, as many rounds as the blanks demand; eight to ten questions is normal for a real plan. The crew engages automatically the moment the last blank resolves, and execution always runs with a builder and an independent checker.
+
+### Fixed
+- **The permission-mode claim was too flat.** Claude can move a session to a MORE restrictive mode itself, with your consent (verified live); only loosening still needs your own controls. goal-mechanics now says exactly that.
+- **loop-builder's capability probe could arm a real recurring task without your go.** Now: read-only inventory first, create-and-read-back only after an explicit yes, and anything created for the probe is deleted the moment it has been read back.
+- **loop-builder's rubric leads with Repeat safety**, with the reason stated: it is the dimension that decides whether the loop is safe to exist.
+- **loop-mechanics contradicted itself on Esc.** Now precise: Esc clears the pending wakeup; a self-paced loop is done, a cron-backed fixed-interval loop fires again until its entry is deleted.
+- **The ownership question was asked twice** when promptception escalated into plan-builder. The escalation carve-out now covers it.
+- **promptception's teach explanation existed nowhere.** When teaching is on, it now explains itself in two sentences.
+- **The entry gate hard-required the question popup**, which the asking rules forbid. Popup-first, plain-text fallback.
+- **Headless runs had no instructed behavior at an ask.** Every builder now carries the not-asked path: take the stated default and say so, or stop and name what was missing. Never block.
+
 ## [0.3.0] - 2026-08-21
 
 ### Added
