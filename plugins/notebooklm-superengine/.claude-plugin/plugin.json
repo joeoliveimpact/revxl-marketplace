@@ -1,5 +1,5 @@
 {
-  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "notebooklm-superengine",
   "description": "Gets Google NotebookLM working on your computer and keeps it working. One guided setup handles the install and the Google sign-in — the part that usually breaks — on Mac or Windows. After that you build research notebooks, ask them questions, and turn them into podcasts and study guides just by talking to Claude. Local-only: no servers, tunnels, or extra accounts.",
   "version": "0.4.0",

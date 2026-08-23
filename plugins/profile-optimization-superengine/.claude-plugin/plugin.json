@@ -1,5 +1,5 @@
 {
-  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "profile-optimization-superengine",
   "description": "Audit and optimize a coach's Facebook and Instagram personal profile for organic lead gen. Name the platform (or do both), and the engine scores every profile element and hands back specific, algorithm-compliant, copy-paste-ready fixes: Facebook bio (101), profile pic + cover (320x320 / 820x360), Featured section, About, pinned post, CTAs; Instagram Name field (64), bio (150), single link, Story Highlights, pinned trio, grid, account type, SEO, and content pillars. Enforces the 2026 single-direct-link standard (aggregators only as an anti-pattern) and amplified CTA language. Bundles a shared brand-brain voice layer and a teach-mode that explains the WHY behind each fix. Built for the B2C fitness, health, and wellness vertical. Recommendations only... it never posts or messages.",
   "version": "0.1.0",

@@ -1,5 +1,5 @@
 {
-  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
   "name": "revxl-marketplace",
   "description": "REVXL's curated catalog of Claude superengines — opinionated, multi-skill plugins built for real coaching businesses. One install, per-plugin picker, auto-updates.",
   "owner": {
