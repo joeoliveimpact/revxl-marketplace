@@ -4,6 +4,11 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.45] — 2026-08-23
+
+### Fixed
+- **promptception v0.3.2** ... plan-builder asked for consent to run in plan mode and then never called `EnterPlanMode`. The consent was collected, nothing switched, and 0.3.1's changelog claimed the gate was enforced when it was not. Step 6 now calls the tool, writes the plan into the file the harness designates, and calls `ExitPlanMode` to hold the approval gate. The Step 0 consent wording was also corrected: the read-only lock starts when the plan is ready, not across the whole pass.
+
 ## [0.1.44] — 2026-08-22
 
 ### Added
