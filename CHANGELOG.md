@@ -4,6 +4,11 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.46] — 2026-08-24
+
+### Fixed
+- **promptception v0.3.3** ... 0.3.1's `commands/` directory was itself the client-blocking bug. A `commands/<name>.md` sharing its name with `skills/<name>/` is served instead of the skill on Claude Code Desktop, so all seven promptception skills launched with no instructions and clients reported that the skill's instructions never reached them. A router's "invoke the X skill" line is text handed to the model, not a second lookup, so nothing ever loaded the skill body. 0.3.1 added those routers specifically to cover "surfaces where a command registers and shadows a same-named skill"; the routers were that shadow. All seven are deleted, returning the plugin to the 0.3.0 shape that worked. Every advertised command still resolves, because a skill is slash-invocable on its own.
+
 ## [0.1.45] — 2026-08-23
 
 ### Fixed
