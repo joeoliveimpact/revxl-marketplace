@@ -386,6 +386,36 @@
 "unit": "page of 10 reels",
 "worst": 5
 },
+"GET prism/ai-visibility": {
+"note": "defaults runs=8 x 2 engines = 16 probes = 32cr; 20 prompts x 20 runs = 1600cr; use preset= for a flat budget",
+"unit": "probe (prompt x run x engine)",
+"worst": 2
+},
+"GET prism/comments": {
+"note": "1cr per page (min 2), driven by max= not limit=; an Instagram URL is a flat 5cr instead",
+"unit": "internal page scanned",
+"worst": 5
+},
+"GET prism/org-radar": {
+"note": "1cr to resolve the org + 5cr per repo; unused per-repo credits refunded",
+"unit": "repo dossiered",
+"worst": 5
+},
+"GET prism/share-of-voice": {
+"note": "40cr/brand (20 web-only); brands= takes 2-5, so 5 brands = 200cr",
+"unit": "brand",
+"worst": 40
+},
+"GET reddit/omni-search": {
+"note": "1cr per search page + 1cr per successfully-expanded thread (min 5); failed threads refunded",
+"unit": "search page + expanded thread",
+"worst": 1
+},
+"GET search/news": {
+"note": "base planning fee + 1cr per leg that returned articles; unused ceiling auto-refunded",
+"unit": "leg returning articles",
+"worst": 1
+},
 "GET threads/search": {
 "note": "limit=100 = ~5-7cr",
 "unit": "window (~15-20 posts)",

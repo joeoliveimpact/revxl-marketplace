@@ -7,8 +7,8 @@ description: >
   Twitter/X, LinkedIn, Reddit, Threads, Pinterest, and 30+ more platforms
   (including GitHub, Hacker News, Google Trends, Spotify, Perplexity, and
   Tavily) through a single API. Includes the Prism cross-platform layer
-  (resolve any social URL with one free call, batch post stats for up to 100
-  URLs, unified creator cards, handle audits) and a universal search that fans
+  (resolve any social URL with one 1-credit call, metered batch post stats,
+  unified creator cards, handle audits) and a universal search that fans
   out to 12 sources in parallel with SSE streaming.
   Use when the user wants to: (1) fetch social or research data (profiles,
   posts, comments, search), (2) resolve a pasted social URL to structured data,
@@ -42,16 +42,37 @@ Resolve the API key before making any call, checking these sources in order:
 
 1. **Env var**: `echo "$SOCIALCRAWL_API_KEY"` — if set and starts with `sc_` (and is not a placeholder like `sc_your_api_key_here`), use it.
 2. **Config file**: `cat ~/.config/socialcrawl/api_key 2>/dev/null` — if the file exists and contains a key starting with `sc_`, use it.
-3. **Ask the user**: If neither source has a valid key:
-   - Tell the user: "I need your SocialCrawl API key to continue. You can find it at https://socialcrawl.dev/dashboard — every account starts with 100 free credits."
-   - Ask them to paste their key.
-   - After receiving the key, **auto-save it** so they never need to paste it again:
-     ```bash
-     mkdir -p ~/.config/socialcrawl && echo "sc_xxxxx" > ~/.config/socialcrawl/api_key
-     ```
-   - Tell the user: "I've saved your key to `~/.config/socialcrawl/api_key` so it will be available in future sessions."
+3. **Send them to the setup helper — never ask for the key value.** A pasted key is written
+   into the transcript, the session log, and any screenshot of either. You do not need the
+   value; you only need a working key on disk, which the free balance call confirms.
+   - Tell the user: "I need a SocialCrawl key to continue. If you already have an account
+     it's under **API Keys** at https://www.socialcrawl.dev/dashboard. If you don't, start
+     free here (100 credits, no card): https://www.socialcrawl.dev/?ref=AQNU384G"
+   - Then point them at the helper and wait — it hides the key as they type, verifies it,
+     and saves it with owner-only permissions:
+     - **Windows** — double-click `setup/setup-key.bat`
+     - **macOS / Linux** — double-click `setup/setup-key.command`
+   - **No real home directory?** (Cowork reports `HOME` as `/root` or `/sessions/…`; browser
+     chat has no user filesystem.) A file written there is invisible to every Claude Code
+     session. Use the env var instead, set outside the session: `setx SOCIALCRAWL_API_KEY
+     "sc_…"` on Windows, or `export SOCIALCRAWL_API_KEY="sc_…"` in the shell profile on
+     macOS/Linux.
+   - **If they paste a key anyway, don't refuse it** — the exposure already happened and
+     wasting it helps nobody. Save it, then tell them: *"That key is now in this
+     conversation's transcript. Rotate it — create a new key in the dashboard and delete
+     this one — then run the setup helper so the replacement never touches a chat."*
+     Treat a pasted key as compromised, not as a successful setup.
 
-For all subsequent API calls in the session, use the resolved key directly in the curl command (do not rely on the env var being set).
+For all subsequent API calls, **never inline the key value into the command.** Read it at call
+time with command substitution so the key stays out of the transcript, the session log, and any
+screenshot:
+
+```bash
+curl -s -H "x-api-key: $(cat ~/.config/socialcrawl/api_key)" "https://www.socialcrawl.dev/v1/..."
+```
+
+If the key came from the env var instead, use `"x-api-key: $SOCIALCRAWL_API_KEY"`. Either form records
+only the *location* of the key, never its value — matching how every generated reference file writes it.
 
 ## First Use
 
@@ -61,9 +82,10 @@ On the first interaction with this skill in a session:
 2. Resolve the API key using the steps above. If the key is missing or a placeholder, stop here and ask for it before proceeding.
 3. Tell the user you'll make a test call that costs 1 credit, then run:
    ```bash
-   curl -s -H "x-api-key: KEY" "https://www.socialcrawl.dev/v1/tiktok/profile?handle=tiktok"
+   curl -s -H "x-api-key: $(cat ~/.config/socialcrawl/api_key)" "https://www.socialcrawl.dev/v1/tiktok/profile?handle=tiktok"
    ```
-   (Replace `KEY` with the resolved key value.)
+   (Command substitution keeps the key out of the transcript. Use `$SOCIALCRAWL_API_KEY` if the key
+   is in the env var instead. **Never paste the key value into the command.**)
 4. If successful, confirm the key works and show credits_remaining. Then respond to whatever the user actually asked.
 5. If it fails, report the error and help troubleshoot (see Error Handling below).
 <!-- canon-only:begin -->
@@ -82,10 +104,10 @@ Five endpoints that change the cost math for everything:
 
 | Endpoint | Credits | Why it matters |
 |----------|---------|----------------|
-| `GET /v1/prism/lookup?url=…` | **0** | Universal URL dispatcher — any social/commerce URL → the right detail endpoint's unified response. **Free.** Always prefer it when the user pastes a URL. |
+| `GET /v1/prism/lookup?url=…` | **1** | Universal URL dispatcher — any social/commerce URL → the right detail endpoint's unified response. ⚠️ **Bills 1cr, not 0.** The stored catalog price, the vendor's own `pricing.md`, and `utility/endpoints` all say 0; measured live and uncached, it charges 1 (08.23.26). Still the cheapest way to resolve a pasted URL — just not a free one. |
 | `POST /v1/prism/post-stats` | **1 _per URL_** | Current engagement for up to 100 post URLs in one call (failed URLs refunded). ⚠️ **Metered per successful URL, NOT per call** — 1cr most platforms, **5cr Instagram and LinkedIn**. 100 IG URLs = **500 credits**, not 1. **POST only** — URLs go in a JSON body. |
-| `GET /v1/prism/comments?url=…` | **1** | Every comment on a post, replies nested, paginated to completion — often 1/5th the price of the platform-native comments call. |
-| `GET /v1/reddit/omni-search?query=…` | **1** | One keyword → threads across all of Reddit with top comments inline. The cheapest voice-of-customer tool in the API. |
+| `GET /v1/prism/comments?url=…` | **1 _per page_** | Every comment on a post, replies nested, paginated to completion. ⚠️ **Metered: 1cr per internal page scanned (min 2), driven by `max`, not `limit`.** A deep pull is not 1 credit. An Instagram URL is a flat 5cr instead. Still usually beats the platform-native comments call. |
+| `GET /v1/reddit/omni-search?query=…` | **1 _per page + thread_** | One keyword → threads across all of Reddit with top comments inline. Still the cheapest voice-of-customer entry point, but ⚠️ **metered: 1cr per search page + 1cr per expanded thread (min 5)**; failed threads refunded. |
 | `GET /v1/prism/handle-audit?handle=…` | **5** | Should you pull this handle? Scores it across platforms and **projects the data volume + credit cost** before you spend. |
 
 ## Platforms
@@ -191,7 +213,7 @@ The trap: `/post` (1cr) returns everything about a post **except** shares. Reach
 | Your goal | Use this | Credits |
 |-----------|----------|---------|
 | One page of a user's reels / posts | `/v1/instagram/profile/reels` · `/profile/posts` | 1 |
-| …with views, likes, comments and per-item shares | `/v1/instagram/profile/reels/full` · `/profile/posts/full` | 5 |
+| …with views, likes, comments and per-item shares | `/v1/instagram/profile/reels/full` · `/profile/posts/full` | **5 _per page_** ⚠️ metered — measured 5cr at one page, 10cr at two. Not 5cr flat for a back catalogue. |
 
 Paging a long back catalogue without needing per-item shares? The plain list is far cheaper.
 
@@ -223,13 +245,14 @@ first rung.
 | Your goal | Use this | Credits |
 |-----------|----------|---------|
 | Search a platform you already chose | `/v1/{platform}/search` (tiktok, youtube, reddit, github, google, hackernews…) | 1 |
-| One keyword across all of Reddit | `/v1/reddit/omni-search` | 1 |
-| News across the web | `/v1/search/news` | 1 |
+| One keyword across all of Reddit | `/v1/reddit/omni-search` | **5–8+** ⚠️ metered: 1/search page + 1/expanded thread, min 5 |
+| News across the web | `/v1/search/news` | **~7** ⚠️ metered: base fee + 1/leg returning articles |
 | Fused forum search (Reddit + Hacker News + Naver) | `/v1/search/forums` | 10 |
 | One query across 12 social platforms | `/v1/search/everywhere` | 20 |
 
 If the platform is known, per-platform `search` at 1cr is the answer — twenty times cheaper
-than `everywhere`. `search/forums` (10cr) is the middle rung for voice-of-customer questions
+than `everywhere`, and the only flat-1cr rung on this ladder.
+`search/forums` (10cr) is the middle rung for voice-of-customer questions
 that span discussion sites. Escalate to `/v1/search/everywhere` (20cr) only when you genuinely
 want the cross-platform sweep and would otherwise be fusing a dozen results by hand.
 
@@ -238,12 +261,13 @@ want the cross-platform sweep and would otherwise be fusing a dozen results by h
 | Your goal | Use this | Credits |
 |-----------|----------|---------|
 | One page of top-level comments | `/v1/{platform}/post/comments` | 1 (Reddit + Instagram 5) |
-| Every comment on a post, replies nested, paged to completion | `/v1/prism/comments` | 1 |
+| Every comment on a post, replies nested, paged to completion | `/v1/prism/comments` | **2–5+** ⚠️ metered: 1/internal page (min 2), driven by `max`; Instagram URL = flat 5 |
 | Look up one comment by URL or id | `/v1/{platform}/comment` | 2 (Instagram 5) |
-| Re-check up to 25 known comments | `POST /v1/prism/comment-lookup` | 2 |
+| Re-check up to 25 known comments | `POST /v1/prism/comment-lookup` | **2 _per item_** ⚠️ metered — 2cr TikTok, 5cr Instagram, more with `deep_scan`. 25 IG comments = **125cr**, not 2. |
 
-`/v1/prism/comments` is usually the right call: complete thread, no pagination loop, and on
-Reddit or Instagram it costs a fifth of the platform-native comment list.
+`/v1/prism/comments` is usually the right call: complete thread, no pagination loop. On Reddit
+it undercuts the 5cr platform-native list on a shallow pull — but it is **metered by pages
+scanned**, so a deep pull can pass it. Cap `max` and quote the range.
 
 ### Getting a transcript
 
@@ -260,7 +284,8 @@ returns raw caption files. Parse those instead of paying 3–10cr per transcript
 
 ### Still unsure?
 
-Point a URL at `/v1/prism/lookup` (**0 credits**) and it dispatches to the correct detail
+Point a URL at `/v1/prism/lookup` (**1 credit** — the catalog stores 0, it bills 1) and it
+dispatches to the correct detail
 endpoint automatically. When you don't know whether a handle is worth pulling at all,
 `/v1/prism/handle-audit` (5cr) projects the data volume and credit cost before you spend.
 
@@ -268,7 +293,7 @@ endpoint automatically. When you don't know whether a handle is worth pulling at
 
 Determine what the user wants, then follow the matching workflow:
 
-**User pasted a URL:** `prism/lookup` (0 credits) resolves any social/commerce URL to the right
+**User pasted a URL:** `prism/lookup` (1 credit) resolves any social/commerce URL to the right
 detail endpoint's unified response — prefer it over per-platform URL parsing.
 
 **User wants data:**
@@ -292,8 +317,10 @@ detail endpoint's unified response — prefer it over per-platform URL parsing.
 
 **User wants a search ("what's everyone saying about X", "search across Reddit + Twitter + YouTube + …"):**
 1. **Climb the ladder — start at the bottom rung that answers the question**, not at the top:
-   - One platform named or implied → `/v1/{platform}/search` (**1cr**). All of Reddit →
-     `/v1/reddit/omni-search` (**1cr**). News → `/v1/search/news` (**1cr**).
+   - One platform named or implied → `/v1/{platform}/search` (**1cr flat** — the only flat
+     rung). All of Reddit → `/v1/reddit/omni-search` (**5–8cr+**, metered: 1cr per search
+     page + 1cr per expanded thread, min 5). News → `/v1/search/news` (**~7cr**, metered:
+     base fee + 1cr per leg returning articles).
    - Discussion sites collectively (Reddit + Hacker News + Naver) → `/v1/search/forums` (**10cr**).
    - A genuine sweep across 12 social platforms → `/v1/search/everywhere` (**20cr**).
 2. Read [references/search.md](references/search.md) before the 10cr or 20cr rungs
@@ -430,7 +457,8 @@ After every call, report `credits_used` and `credits_remaining` from the respons
 - **Empty-upstream 404s** — when upstream returns a 200 with an empty body (nonexistent profile/post), the credit is auto-refunded and you get `RESOURCE_NOT_FOUND`.
 - **Universal search zero-floor** — `/v1/search/everywhere` auto-refunds when every source fails (or all return empty). Partial results are billable.
 - **`GET /v1/credits/balance`** — meta endpoint.
-- **`GET /v1/prism/lookup`** — the universal URL dispatcher is a 0-credit call.
+- ⚠️ **`GET /v1/prism/lookup` is NOT free.** It is documented as 0 by every vendor source and
+  bills **1 credit**; measured live and uncached 08.23.26. Do not list it as a free call.
 - **Pre-flight rejections** — 400/401/402/405/409/422/404-endpoint-not-found never deduct.
 
 ## Idempotent Retries

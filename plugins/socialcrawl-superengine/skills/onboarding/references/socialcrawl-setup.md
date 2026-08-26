@@ -16,8 +16,15 @@
 3. In the dashboard, open the left sidebar → **API Keys**.
 4. Click **+ Create** → give the key a name (e.g. your business name).
 5. Reveal it (the 👁 eye icon) and **copy** it — the key starts with **`sc_`**.
-6. Paste it back here. It gets saved to `~/.config/socialcrawl/api_key` so it's
-   remembered every future session.
+6. **Do not paste the key into the chat.** Run the setup helper instead — it hides
+   the key as you type, verifies it, and saves it to `~/.config/socialcrawl/api_key`
+   so it's remembered every future session:
+   - **Windows** — double-click `setup/setup-key.bat`
+   - **macOS / Linux** — double-click `setup/setup-key.command`
+     (first time only: `chmod +x setup/setup-key.command`)
+
+   Pasting a key into chat writes it into the conversation transcript, session logs,
+   and any screenshot of them. The helper keeps it off all three.
 7. Your credit balance shows top-right of the dashboard (100 to start; top up
    under **Get Credits** / **Payments** when you run low).
 

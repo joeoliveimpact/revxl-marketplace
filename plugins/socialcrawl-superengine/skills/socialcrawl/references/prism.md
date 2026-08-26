@@ -8,11 +8,11 @@
 | Resource | Params | Credits | Description |
 |----------|--------|---------|-------------|
 | /lookup | `url` | 0 | Universal URL dispatcher: any social/commerce URL → the right detail endpoint's unified response. |
-| /comments | `url` | 1 | Every comment on a post, replies nested, server-paginated to completion. |
+| /comments | `url` | 1 **/internal page scanned** | Every comment on a post, replies nested, server-paginated to completion. |
 | /brand-mentions | `keyword`, `date_from` | 50 | Brand mention volume time-series, sentiment split, top sources, and recent mentions for one keyword. |
 | /demand-signals | `keyword` | 30 | Consumer-demand nowcast: app-review velocity, web mention slope, Reddit velocity, and commerce review levels, fused into a published demand index. |
 | /campaign | `hashtag` / `phrase` | 35 | Campaign tracker: pre/during/post volume lift, cross-platform engagement, and ranked top amplifiers for a hashtag or phrase. |
-| /ai-visibility | `brand`?, `prompts`?, `topic`?, `competitors`?, … | 2 | AI Share-of-Voice / GEO monitoring: prompt set x reruns to per-brand appearance-% per AI engine plus a cited-domain ranking. |
+| /ai-visibility | `brand`?, `prompts`?, `topic`?, `competitors`?, … | 2 **/probe (prompt x run x engine)** | AI Share-of-Voice / GEO monitoring: prompt set x reruns to per-brand appearance-% per AI engine plus a cited-domain ranking. |
 | /crisis-postmortem | `brand` | 35 | Crisis post-mortem: a who-said-what-first timeline across web, Reddit, Hacker News, and social, with an origin, peak, propagation sequence, and a grounded narrative. |
 | /crisis-radar | `brand`?, `sensitivity`?, `confirm`?, `baseline_days`?, … | 15 | Stateless crisis breach check: a z-score on daily mention volume and negative share, with on-breach confirmation and a severity grade. |
 | /devtool-pulse | `query` | 20 | Developer-brand health: a devtool's repo dossier + Hacker News reaction + Reddit chatter + dev-blog echo, in one call. |
@@ -26,10 +26,10 @@
 | /audience-questions | `topic` | 30 | The real questions a topic's audience asks — harvested from Reddit + YouTube threads and clustered by intent (who/what/why/how/vs). |
 | /product-reviews | `query` / `asin` / `gid` | 30 | A product's reviews across Amazon + Google Shopping + Trustpilot, folded into a cross-marketplace rating + themed pros/cons report. |
 | /apps-lookup | `title` / `google_play_id` / `app_store_id` | 30 | One app across Google Play + the App Store — resolved, title-matched, and compared into a cross-store rating + listing report. |
-| /org-radar | `org` | 26 | A GitHub org's footprint — its top repos each expanded into a full dossier (releases, issue load, top request/complaint), rolled up. |
+| /org-radar | `org` | 26 **/repo dossiered** | A GitHub org's footprint — its top repos each expanded into a full dossier (releases, issue load, top request/complaint), rolled up. |
 | /creator-vet | `handle` | 50 | Vet a creator before partnering — engagement quality, commenter authenticity, posting cadence, and controversy signals, optionally across platforms. |
 | /korea-gap | `query` | 40 | What the world is talking about that Korea isn't (and vice versa) — the global vs Korean (Naver) conversation gap for a brand/topic. |
-| /share-of-voice | `brands` | 40 | Engagement-weighted Share of Voice across 2-5 brands, with web+social split, emotion overlay, and ESOV. |
+| /share-of-voice | `brands` | 40 **/brand** | Engagement-weighted Share of Voice across 2-5 brands, with web+social split, emotion overlay, and ESOV. |
 | /review-integrity | `query` / `asin` / `gid` | 30 | Cross-source review integrity verdict (statistical, deterministic). |
 | /answers | `query` | 15 | Multi-engine AI consensus: one question → Perplexity + Grok + Tavily answers verbatim, merged citations, and an agreement matrix. |
 | /video-intel | `url` | 5 | One video URL → detail + stats + transcript + top comments + commenter sample, across YouTube/TikTok/Rumble/Instagram. |
@@ -71,9 +71,11 @@ curl "https://www.socialcrawl.dev/v1/prism/lookup?url=<url>" \
   -H "x-api-key: $SOCIALCRAWL_API_KEY"
 ```
 
-### /comments — 1cr
+### /comments — 1cr per internal page scanned
 
 Give it any TikTok, YouTube, Facebook, Reddit, Hacker News, or Instagram post URL and it harvests every top-level comment — paginated to the end — with replies nested where the platform supports it (TikTok, YouTube, Facebook). Reddit and Hacker News return their whole nested thread; Instagram is top-level only. Pass `sort=top` to get the most-liked comments first (ranked by `engagement.likes`) — ideal for pulling the top comments on a high-volume post; pair it with `limit` to cap how many you get back (e.g. `sort=top&max=500&limit=200` scans ~500 and returns the top 200). YouTube sorts upstream so its top set is exact; other platforms are sorted across the scanned set. Metered at 1 credit per internal page call (minimum 2) — `sort`/`limit` never change the price, which always follows pages scanned (`max`). Instagram is the exception: an Instagram post URL is a flat 5 credits per call whatever `max` and `replies` you pass, because that source returns the comment set in one mobile-upstream call rather than by page. Returns sync JSON, or a typed SSE stream when you send `Accept: text/event-stream` — a `page` chunk lands as each page settles. The `next_cursor` is one opaque token that resumes every leg; `legs[]` reports each page's status, cost, and latency.
+
+> ⚠️ **Metered per internal page scanned — the 1cr figure is a UNIT price, not the price of the request.** 1cr per page (min 2), driven by max= not limit=; an Instagram URL is a flat 5cr instead. Multiply by the number of internal page scanneds you send before calling; only successful units are charged.
 
 **Parameters**
 
@@ -148,9 +150,11 @@ curl "https://www.socialcrawl.dev/v1/prism/campaign?hashtag=<hashtag>" \
   -H "x-api-key: $SOCIALCRAWL_API_KEY"
 ```
 
-### /ai-visibility — 2cr
+### /ai-visibility — 2cr per probe (prompt x run x engine)
 
 Probes your brand (and competitors) across grounded-answer AI engines (Perplexity Sonar + Grok) over a prompt set with N reruns, then reports the share of runs your brand appeared in per engine (appearance-%, never volatile rank) plus a ranking of the domains those engines cite. Add include=web_baseline to see which AI-cited domains you do not yet rank on. Metered 2 credits per probe (one prompt x run x engine); use preset=quick|standard|deep for a flat budget. v1 detects mentions deterministically via recognition tokens. Supply brand plus prompts (or a topic). The self-serve entry tier of Profound/Otterly/Peec.
+
+> ⚠️ **Metered per probe (prompt x run x engine) — the 2cr figure is a UNIT price, not the price of the request.** defaults runs=8 x 2 engines = 16 probes = 32cr; 20 prompts x 20 runs = 1600cr; use preset= for a flat budget. Multiply by the number of probe (prompt x run x engine)s you send before calling; only successful units are charged.
 
 **Parameters**
 
@@ -409,9 +413,11 @@ curl "https://www.socialcrawl.dev/v1/prism/apps-lookup?title=<title>" \
   -H "x-api-key: $SOCIALCRAWL_API_KEY"
 ```
 
-### /org-radar — 26cr
+### /org-radar — 26cr per repo dossiered
 
 Lists a GitHub org's repositories, picks the top N by stars (forks/archived filtered), and runs the repo/dossier composite on each in parallel, folded into an org-level rollup. Metered: 1cr to resolve the org + 5cr per repo dossiered; the unused per-repo credits are refunded down to the dossiers that actually succeeded. The org repo-list leg is critical (unknown org → 404 + full refund).
+
+> ⚠️ **Metered per repo dossiered — the 26cr figure is a UNIT price, not the price of the request.** 1cr to resolve the org + 5cr per repo; unused per-repo credits refunded. Multiply by the number of repo dossiereds you send before calling; only successful units are charged.
 
 **Parameters**
 
@@ -458,9 +464,11 @@ curl "https://www.socialcrawl.dev/v1/prism/korea-gap?query=<query>" \
   -H "x-api-key: $SOCIALCRAWL_API_KEY"
 ```
 
-### /share-of-voice — 40cr
+### /share-of-voice — 40cr per brand
 
 Per brand, fans out to content_analysis summary/phrase-trends/sentiment plus /search/everywhere (consuming the real per-platform items_by_source counts, not the capped fused list), then computes a published-formula SOV (web + social, equal-weighted by default), optional true-share-of-category (numeric `category_code`), and ESOV (`market_shares`, Binet/Field — a planning signal, not a growth guarantee). Metered at 40cr/brand (20 web-only); a brand whose social search half-failed is automatically cheaper, with the reason legible in `legs[]` + per-brand `coverage`.
+
+> ⚠️ **Metered per brand — the 40cr figure is a UNIT price, not the price of the request.** 40cr/brand (20 web-only); brands= takes 2-5, so 5 brands = 200cr. Multiply by the number of brands you send before calling; only successful units are charged.
 
 **Parameters**
 

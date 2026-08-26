@@ -4,6 +4,11 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.47] — 2026-08-25
+
+### Changed
+- **socialcrawl-superengine v0.2.1** — the credit guard has never fired since 0.1.1 and now does in terminal sessions; six metered endpoints were priced as flat calls; `prism/lookup` was hardcoded free but bills 1 credit; the API key is no longer written into commands or requested in chat, with a new `setup/` key helper.
+
 ## [0.1.46] — 2026-08-24
 
 ### Fixed

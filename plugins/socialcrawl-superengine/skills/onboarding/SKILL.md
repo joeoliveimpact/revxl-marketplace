@@ -32,13 +32,47 @@ Check the marker: `~/.claude/socialcrawl-superengine/.superengine`.
 
 ## Step 1 — API key
 
-Delegate to the `socialcrawl` skill's **API Key** resolution (env var →
-`~/.config/socialcrawl/api_key` → ask + auto-save). It ships in this plugin, so it's
-always present.
+**Never ask the user to type or paste the key into the conversation.** A pasted key is
+written into the transcript, the session log, and any screenshot of either. Everything
+below exists to avoid that. You never need the key's *value* — only confirmation that a
+working key is on disk, which the free balance call gives you.
 
-If the user has **no SocialCrawl account yet**, walk them through
-[references/socialcrawl-setup.md](references/socialcrawl-setup.md) — signup link,
-where the key lives in the dashboard, and the free-credits note.
+**1a. Already resolvable?** Check the `socialcrawl` skill's first two sources — env var
+`SOCIALCRAWL_API_KEY`, then `~/.config/socialcrawl/api_key`. If either has a key starting
+with `sc_`, setup is done; skip to Step 2. Do not re-run setup on a working key.
+
+**1b. No account yet?** Walk them through
+[references/socialcrawl-setup.md](references/socialcrawl-setup.md) — referral signup link,
+where the key lives in the dashboard, and the free-credits note. Then continue to 1c.
+
+**1c. Point them at the setup helper.** It takes the key in *their own terminal* with the
+input hidden, verifies it, and writes the file with owner-only permissions. Give them the
+one line for their OS and wait — do not proceed until they say it's done:
+
+- **Windows** — double-click `setup/setup-key.bat`
+- **macOS / Linux** — double-click `setup/setup-key.command`
+  (first time only: `chmod +x setup/setup-key.command`)
+
+Then verify with Step 2. The helper already tested the key, so Step 2 is confirming that
+*this* session can read it.
+
+**1d. Helper can't run?** Some surfaces have no real home directory — Claude Cowork's two
+sandboxes report `HOME` as `/root` or `/sessions/…`, and browser chat has no user
+filesystem at all. A file written there is invisible to every Claude Code session. Say so
+plainly and use the env var instead, set outside this session:
+
+- **Windows** — `setx SOCIALCRAWL_API_KEY "sc_…"` in their own terminal, then restart
+- **macOS / Linux** — add `export SOCIALCRAWL_API_KEY="sc_…"` to their shell profile
+
+**1e. If a key lands in the chat anyway** — because they pasted it before you could ask
+them not to — **do not refuse it.** The exposure already happened; wasting it helps nobody.
+Save it to `~/.config/socialcrawl/api_key`, then tell them plainly:
+
+> "That key is now in this conversation's transcript. Rotate it when you get a chance —
+> create a new key in the dashboard and delete this one — then run the setup helper so the
+> replacement never touches a chat."
+
+Treat a pasted key as compromised, not as a successful setup.
 
 ## Step 2 — Verify
 
