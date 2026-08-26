@@ -1,10 +1,14 @@
-# Big-gun runbooks — 15–50 credit one-shot deliverables
+# Big-gun runbooks — 15–200 credit one-shot deliverables
+
+Most of these are flat-priced. **`share-of-voice` is not** — it meters per brand and is the
+only play here that can pass 50cr. Check each runbook's header before quoting.
 
 Every play here follows the same **gate ritual, no exceptions**:
 
 1. `GET /v1/credits/balance` (0cr) — show the balance.
 2. Name the exact cost: *"This is a premium one-shot: `<endpoint>` costs **N credits**
-   (about $X at your plan's rate). Run it?"*
+   (about $X at your plan's rate). Run it?"* — **on a metered play, N is the computed
+   worst case for the parameters you are actually sending, not the unit price.**
 3. Wait for an explicit yes. A vague "sure, whatever's needed" earlier in the
    conversation does NOT count.
 4. One call. **Never batched, never looped, never auto-repeated.** A re-run (new keyword,
@@ -26,8 +30,9 @@ the real questions the audience asks, not guesses.
 (who / what / why / how / vs).
 **Deliverable:** content-seed bank — each cluster becomes a content pillar; the verbatim
 questions become hooks. Feeds a brand-brain topics shelf directly.
-**Cadence:** once per niche per quarter. Between runs, the 1cr `reddit/omni-search` covers
-incremental mining.
+**Cadence:** once per niche per quarter. Between runs, `reddit/omni-search` covers
+incremental mining — cheaper, but **not 1cr**: it is metered at 1cr per search page + 1cr
+per expanded thread with a floor of 5, so budget **5–8cr+ per keyword**.
 
 ## Creator vetting — `prism/creator-vet` · 50cr · [J]
 
@@ -53,15 +58,20 @@ are switching from, that competitor.
 opening line each. Route into the outreach pipeline the same day; these conversations
 go stale in days, not weeks.
 
-## Share of voice — `prism/share-of-voice` · 40cr · [C]
+## Share of voice — `prism/share-of-voice` · **80–200cr (metered per brand)** · [C]
 
 **Worth it when:** a competitive-audit deliverable needs the headline number — who owns
 the conversation in this niche?
 **Call:** `GET /v1/prism/share-of-voice?brands=<2-5 brands CSV>`
+⚠️ **Cost is 40cr PER BRAND, not 40cr per call** (20cr/brand if you restrict it to web-only).
+`brands=` accepts 2–5, so the real range is **80–200cr** — the single most expensive call
+this plugin can make. **Count the brands, multiply, and name that number in the gate.**
+Measured live: 40cr at one brand.
 **You get:** engagement-weighted SoV with web + social split, emotion overlay, and excess
 share of voice (ESOV).
 **Deliverable:** the flagship page of a competitive audit — SoV pie + "where the gap is"
-paragraph. One call per audit; the brand list is fixed at call time, so agree it first.
+paragraph. One call per audit; the brand list is fixed at call time, so agree it first —
+adding a brand after the fact costs another 40.
 
 ## Reputation report — `prism/reputation` · 30cr · [C]
 

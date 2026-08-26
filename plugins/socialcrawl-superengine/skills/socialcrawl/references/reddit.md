@@ -14,7 +14,7 @@
 | /post/comments | `url` | 5 | List Reddit post comments |
 | /subreddit/search | `subreddit` | 1 | Search within a subreddit |
 | /post/transcript | `url` | 10 | Get a Reddit video post transcript — ⛔ **BANNED in this plugin: 10 credits, no advantage. Transcribe with the local captions→Groq→Whisper chain instead.** |
-| /omni-search | `query` | 1 | Reddit VoC sweep: one keyword → threads across all of Reddit with subreddit attribution and top comments inline. |
+| /omni-search | `query` | 1 **/search page + expanded thread** | Reddit VoC sweep: one keyword → threads across all of Reddit with subreddit attribution and top comments inline. |
 
 ### Parameter legend
 
@@ -144,9 +144,11 @@ curl "https://www.socialcrawl.dev/v1/reddit/post/transcript?url=<url>" \
   -H "x-api-key: $SOCIALCRAWL_API_KEY"
 ```
 
-### /omni-search — 1cr
+### /omni-search — 1cr per search page + expanded thread
 
 Runs reddit/search, expands the top N threads' comments in parallel (capped 15/thread), and rolls up which subreddits are talking — volume + a per-community tone label. Returns sync JSON or a typed SSE stream that emits each thread as its comments land. Metered at 1 credit per search page + 1 credit per successfully-expanded thread (minimum 5); a failed thread isn't billed and the unused thread ceiling is refunded. `subreddit=` scopes the sweep to one community. The `next_cursor` resumes the search. Honest note: Reddit search is the slowest social search on the API (10–12s) and relevance is loose — a VoC sweep, not precision ranking.
+
+> ⚠️ **Metered per search page + expanded thread — the 1cr figure is a UNIT price, not the price of the request.** 1cr per search page + 1cr per successfully-expanded thread (min 5); failed threads refunded. Multiply by the number of search page + expanded threads you send before calling; only successful units are charged.
 
 **Parameters**
 
