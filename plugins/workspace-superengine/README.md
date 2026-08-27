@@ -41,6 +41,11 @@ Reads RULES.md → handoff.md → ARCHITECTURE.md → PLANNING.md → recent Che
 
 Appends a Checkpoint.md entry, rewrites handoff.md, walks every other root file with explicit UPDATE/NO-CHANGE — no silent skips. Includes a quick-mode for trivial sessions.
 
+### `session-continue`
+**Triggers:** "close out and queue tomorrow", "wrap up and start the next session", "continue this tomorrow"
+
+Runs the full `session-closeout`, then reads back what closeout just wrote and builds the next session's kickoff prompt out of it. Spawns that prompt as a task chip you click when you're ready to start ... so the next session opens already knowing where the last one stopped.
+
 ---
 
 ## Agents

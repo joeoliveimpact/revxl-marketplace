@@ -2,6 +2,14 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.11.0 — 2026-08-27
+
+### Added
+- **`session-continue` ... close out and queue tomorrow in one pass.** It runs the full `session-closeout`, then reads back the files closeout just wrote (`Checkpoint.md`, `handoff.md`, the new session summary) and assembles the next session's kickoff prompt from them, spawning it as a task chip. The click stays on purpose: starting a session is a human gate, and it is where local, worktree or cloud gets chosen, which is not a choice a skill should make silently.
+- **`session-closeout` writes a per-session summary file (new Phase 0.7).** `sessions/session-summary-MM-DD-YY.md`, written *before* Phase 1 so that the Checkpoint entry's `**Summary:**` handle and the handoff's wiki-link both point at a file that already exists. The Checkpoint entry itself shrinks to a burst plus two pointer lines, and the full write-up lives one link away. That is the bloat fix, not information loss.
+- **A machine-readable phase manifest on the Checkpoint entry's `**Summary:**` line** ... `phases: 0,0.7,1,2,2.5-skipped-no-mcp,3,4-na,4.5-na,5`. Every phase carries a token, and an absent phase is unreadable because it cannot be told apart from a phase that ran unrecorded. A closeout that died after Phase 1 leaves a summary file and a dated Checkpoint entry behind exactly like one that finished, so file presence proves nothing; `session-continue` reads this line instead of counting files.
+- **`docs/session-summary-format.md`** ... the full format reference for the new summary artifact: frontmatter, dated topical headers, the `Connections` block, and why `sot_policy: decay` is not optional.
+
 ## 0.10.0 — 2026-08-09
 
 ### Fixed

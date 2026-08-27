@@ -4,6 +4,13 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.47] — 2026-08-27
+
+### Added
+- **workspace-superengine v0.11.0** ... a new `session-continue` skill. It runs the full closeout, then reads back the files closeout just wrote and assembles the next session's kickoff prompt out of them, spawning it as a task chip the user clicks when they are ready to start.
+- **workspace-superengine v0.11.0** ... `session-closeout` now writes a per-session summary file of its own (new Phase 0.7) instead of packing the whole write-up into the Checkpoint entry, and records a machine-readable phase manifest on that entry. Nothing said in chat survives the session, so a later session reading disk previously had no way to tell a closeout that finished from one that stopped partway ... a summary file and a dated entry are left behind either way. The manifest is what tells those apart.
+- **workspace-superengine v0.11.0** ... new `docs/session-summary-format.md`, the format reference for the session-summary artifact.
+
 ## [0.1.46] — 2026-08-24
 
 ### Fixed
