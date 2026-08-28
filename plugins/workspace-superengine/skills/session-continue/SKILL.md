@@ -271,9 +271,13 @@ Full write-up: `sessions/session-summary-MM-DD-YY.md`
 
 ---
 
-## Step 3: Spawn the chip
+## Step 3: Write the prompt to disk, then spawn the chip
 
-Spawn the prompt as a task via `spawn_task`, with the title prefixed **`START LOCALLY → `**.
+**Write it to disk first, before spawning anything.** `sessions/kickoff-MM-DD-YY.md`, beside the session summary, same numeric-suffix rule on a collision.
+
+A task chip is not a durable artifact. If it is never clicked, dismissed by accident, or lost with the session, the assembled prompt is gone and nothing anywhere records that this skill ran at all. **That contradicts the rule this whole skill is built on** ... disk is auditable and a context window is not, and a chip is neither. Writing the file costs one Write call and makes the prompt reviewable, correctable and re-runnable tomorrow.
+
+Then spawn the prompt as a task via `spawn_task`, with the title prefixed **`START LOCALLY → `**.
 
 ```
 title:  START LOCALLY → Finish the process-ledger consent token
@@ -286,7 +290,7 @@ prompt: <the assembled text from 2e>
 
 Then tell the user, in one or two lines, what is on the chip:
 
-> Tomorrow's session is queued: "Finish the process-ledger consent token". Click it when you're ready ... pick **Start locally**, which lives behind the small dropdown arrow on the chip, not on the main button. This workspace isn't a git repo, so worktree won't work.
+> Tomorrow's session is queued: "Finish the process-ledger consent token". Click it when you're ready ... pick **Start locally**, which lives behind the small dropdown arrow on the chip, not on the main button. This workspace isn't a git repo, so worktree won't work. The prompt is also saved at `sessions/kickoff-MM-DD-YY.md` if you want to read or edit it first.
 
 ---
 
@@ -294,7 +298,8 @@ Then tell the user, in one or two lines, what is on the chip:
 
 | What happened | What to do |
 |---|---|
-| **`spawn_task` is unavailable** in this environment | Do not fail, and do not quietly drop the work. Print the assembled prompt in a fenced block and say: *"I can't spawn a task chip from here, so here's tomorrow's opening message ... copy it into a fresh session and it'll pick up from where we stopped."* The prompt is the deliverable; the chip is just delivery. |
+| **`spawn_task` is unavailable** in this environment | Do not fail, and do not quietly drop the work. Step 3 already wrote the prompt to `sessions/kickoff-MM-DD-YY.md`, so point at that file and print it in a fenced block as well: *"I can't spawn a task chip from here, so tomorrow's opening message is saved at `sessions/kickoff-MM-DD-YY.md` ... open a fresh session and paste it in."* The prompt is the deliverable; the chip is just delivery. |
+| **The prompt could not be written to disk** (permissions, read-only path) | Say so plainly, then spawn the chip anyway ... a chip with no file beats no chip. Do not silently skip the write and imply it happened. |
 | **Closeout did not complete** | Say which phase stopped and what that costs, then offer the choice. *"Closeout stopped before it rewrote handoff.md, so anything I put on a chip would be yesterday's plan. Want me to finish the closeout first, or spawn a chip that says the handoff is stale?"* Never build silently on a stale handoff. |
 | **Closeout had already completed** before this skill was invoked | Step 1's check found `handoff.md` already carrying today's date under `## Last session`. Do not run closeout again ... it is not idempotent, and a second run appends a second Checkpoint entry, writes a second summary file and repoints `handoff.md` at half the record. Ask whether to skip to Step 2 or whether work since then needs its own closeout, and default to skipping. |
 | **No `handoff.md` at all** | The workspace is not scaffolded. Say so, point at `/super-setup`, and do not create a handoff from here just to have something to read. |
@@ -306,13 +311,14 @@ Then tell the user, in one or two lines, what is on the chip:
 
 ## Verification before you report done
 
-1. Did the prompt get built from files re-read off disk, not from this conversation?
-2. Does it carry the **absolute** workspace path?
-3. Are the hard rails **verbatim** ... same words, same commands, same order?
-4. Does every field that was missing appear as a named gap rather than as nothing at all?
-5. If any gap exists, is the thin-flag block at the top of the prompt AND was it said out loud to the user?
-6. Does the `Route:` line state a finding from a check that actually ran, rather than an assumption?
-7. Read the prompt once as if you had never seen this workspace. **Could you act on it?** If any step of it only makes sense because you were here today, that step is built on memory and has to be cut or sourced from a file.
+1. Was the assembled prompt written to `sessions/kickoff-MM-DD-YY.md`, and does that file exist? Check it, do not assume it.
+2. Did the prompt get built from files re-read off disk, not from this conversation?
+3. Does it carry the **absolute** workspace path?
+4. Are the hard rails **verbatim** ... same words, same commands, same order?
+5. Does every field that was missing appear as a named gap rather than as nothing at all?
+6. If any gap exists, is the thin-flag block at the top of the prompt AND was it said out loud to the user?
+7. Does the `Route:` line state a finding from a check that actually ran, rather than an assumption?
+8. Read the prompt once as if you had never seen this workspace. **Could you act on it?** If any step of it only makes sense because you were here today, that step is built on memory and has to be cut or sourced from a file.
 
 ---
 
