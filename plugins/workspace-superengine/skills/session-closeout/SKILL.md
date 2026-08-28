@@ -376,31 +376,7 @@ Also confirm:
 6. Session summary written, and does the Checkpoint entry's `**Summary:**` handle point at a file that is actually on disk? Check it with Glob or `test -f`, do not assume it. A handle pointing at nothing is worse than no handle, because it looks like it works.
 7. Demotion ran, **and said something**? Entries older than 30 days (beyond the newest 5) are one-liners in the tail, EXCEPT pre-summary entries with no handle, which stay full on purpose. The retained count was spoken out loud. A demotion that compressed nothing and reported nothing is a defect, not a pass ... it is indistinguishable from bloat control working when it is actually waiting on the backfill.
 
-8. Phase manifest written to `Checkpoint.md` (below), with a token for every phase and no omissions?
-
 If any row shows `?` — fix it before reporting complete.
-
-### Write the phase manifest into the Checkpoint entry
-
-The table above goes to the user in chat and then it is gone. **Nothing said in chat survives the session.** `/session-continue` runs later, reads disk, and has no way at all to tell a closeout that finished from one that died after Phase 1 ... both leave a summary file and a Checkpoint entry behind. So record which phases actually ran, on disk, by extending the `**Summary:**` line Phase 1 already wrote:
-
-```
-**Summary:** sessions/session-summary-MM-DD-YY.md | phases: 0,0.7,1,2,2.5-skipped-no-mcp,3,4-na,4.5-na,5
-```
-
-Keep the handle in whatever form Phase 1 wrote it, wiki-link or path ... the manifest is everything after the ` | `. Edit that one line in place with the Edit tool. **One line, never wrapped** ... it gets read by a reader that reads one line.
-
-**Every phase gets a token, and no phase is omitted.** An absent phase is unreadable: it cannot be told apart from a phase that ran and went unrecorded. The phases are `0, 0.7, 1, 2, 2.5, 3, 4, 4.5, 5`, in that order. Three token forms, and nothing else:
-
-| Token | Means | Example |
-|---|---|---|
-| `<phase>` | it ran | `1` |
-| `<phase>-skipped-<reason>` | applicable, did not run, reason in one hyphenated phrase | `2.5-skipped-no-mcp`, `3-skipped-quick-mode` |
-| `<phase>-na` | not applicable in this workspace | `4-na` (no live infrastructure), `4.5-na` (not a git repo) |
-
-**`-skipped` with no reason is not a valid token.** "Skipped" on its own is the same silence this line exists to break.
-
-**Write the manifest even when the run is degraded, and especially then.** A closeout that reached Phase 1 and stopped should leave `phases: 0,0.7,1` behind, because that short line is exactly what tells the next reader where it died. If you can write the manifest at all, you got far enough to edit `Checkpoint.md`.
 
 ---
 

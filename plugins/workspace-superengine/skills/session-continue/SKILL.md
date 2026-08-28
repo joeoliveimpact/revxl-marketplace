@@ -39,28 +39,18 @@ If the user explicitly invokes `/session-continue`, skip the suggestion and proc
 
 ## Step 1: Run `/session-closeout`, in full, unchanged
 
-**First, check whether closeout already ran today.** `/session-closeout` is not idempotent ... a second run writes a second summary file, appends a second Checkpoint entry, re-runs the 30-day demotion over a file it just rewrote, and replaces `handoff.md` so it points at only the second half of the record. Running it twice splits one session's record in two. So check disk before invoking it, and check it by reading the **phase manifest**, not by looking for files:
+**First, check whether closeout already ran today.** `/session-closeout` is not idempotent ... a second run writes a second summary file, appends a second Checkpoint entry, re-runs the 30-day demotion over a file it just rewrote, and replaces `handoff.md` so it points at only the second half of the record. Running it twice splits one session's record in two. So check disk before invoking it.
 
-- **Read `Checkpoint.md`'s top entry.** If it does not carry today's date, closeout has not run today.
-- **Find the manifest on that entry's `**Summary:**` line.** Closeout's Phase 5 writes it in this shape:
+**Read `handoff.md` and look at `## Last session`.** That line carries the date closeout stamped on it when it rewrote the file. Two outcomes:
 
-  ```
-  **Summary:** sessions/session-summary-MM-DD-YY.md | phases: 0,0.7,1,2,2.5-skipped-no-mcp,3,4-na,4.5-na,5
-  ```
+| What you found | What to do |
+|---|---|
+| `## Last session` carries **today's** date | Closeout's handoff rewrite already ran today. Ask the user (below); the default is skipping to Step 2. |
+| It carries an **older** date, or there is no such line | Treat closeout as not-run and go to the invocation below. |
 
-- **Read the manifest. Do not count files.** A summary file on disk proves Phase 0.7 ran. It proves nothing whatsoever about Phase 1 or Phase 2. The manifest is the only artifact that tells the three states below apart.
+**Check the handoff ... not `Checkpoint.md`, and never the presence of files.** Closeout writes the Checkpoint entry in Phase 1 and rewrites the handoff in Phase 2. A run that dies between those two leaves a Checkpoint entry dated today while `handoff.md` is still yesterday's, and yesterday's handoff is exactly what would send Step 2 off to build tomorrow's prompt from a stale plan. A Checkpoint-date check passes that case silently. A handoff-date check catches it, because the handoff is both the last thing closeout writes that this skill depends on and the file Step 2 reads. And a session summary sitting on disk proves Phase 0.7 ran and proves nothing else at all.
 
-**Three outcomes, and only one of them means "skip the closeout":**
-
-| What you found | State | What to do |
-|---|---|---|
-| Top entry is today's, and the manifest runs through the last phase ... every phase from `0` to `5` present, each one either ran, `-skipped-<reason>`, or `-na` | **COMPLETE** | Closeout finished. Ask the user (below); the default is skipping to Step 2. |
-| Top entry is today's, manifest present but **stops short** ... `phases: 0,0.7,1` with no `2` after it | **PARTIAL** | Closeout died mid-run. Name the phase it stopped after and what that costs, then go to Step 4's degraded branch. **Do not skip to Step 2.** |
-| No manifest on the line, no `**Summary:**` line at all, or no entry for today | **UNKNOWN** | Treat it as not-run **and say so out loud**: you could not confirm prior state from disk. Then proceed to the invocation below. |
-
-**The PARTIAL row is the entire reason this check changed shape.** Closeout dying between Phase 1 and Phase 2 leaves a session summary on disk and a Checkpoint entry dated today, while `handoff.md` is still yesterday's. The old presence test ... "is there a summary? is there a handle?" ... passes both of those, skips ahead, and hands Step 2 a stale handoff to build tomorrow's prompt from. That is precisely the failure this skill exists to prevent, wearing the costume of the thing working. **A missing or short manifest is a loud degrade. It is never a silent proceed.**
-
-**COMPLETE → ask. Do not assume.** A real second working session on the same day and a double-run look nearly identical from disk, and only the user knows which one this is:
+**If the handoff already carries today's date, ask. Do not assume.** A real second working session on the same day and a double-run look nearly identical from disk, and only the user knows which one this is:
 
 > "Closeout already ran today and wrote `sessions/session-summary-MM-DD-YY.md`. Do you want me to skip straight to building the kickoff prompt from those files, or has there been more work since that needs its own closeout?"
 
@@ -68,17 +58,16 @@ If the user explicitly invokes `/session-continue`, skip the suggestion and proc
 
 **Call the Skill tool.** Pass it the skill `workspace-superengine:session-closeout` and let it run its whole procedure.
 
-**Make the call. Do not describe the call.** Writing "invoking closeout now" and then continuing is not an invocation, and in a transcript the two are indistinguishable ... which is exactly how it goes unnoticed. The only evidence that closeout ran is the files it wrote and the manifest it left behind, so make the tool call, then check the evidence.
+**Make the call. Do not describe the call.** Writing "invoking closeout now" and then continuing is not an invocation, and in a transcript the two are indistinguishable ... which is exactly how it goes unnoticed. The only evidence that closeout ran is the files it wrote, so make the tool call, then check the files.
 
 **Use the namespaced form exactly: `workspace-superengine:session-closeout`.** A bare `/session-closeout` is a skill name in slash costume ... this plugin ships no `commands/` directory, so there is no command by that name, and what a bare slash string resolves to here is unverified. The namespaced argument is the form that names one specific thing.
 
 **Do not reimplement any of it here, do not skip phases to save time, and do not quick-mode it on this skill's behalf.** Closeout owns the session summary (Phase 0.7), the Checkpoint entry (Phase 1) and the handoff rewrite (Phase 2). This skill's entire input is what those three phases put on disk.
 
-**Then assert it actually ran.** When the call returns, re-read `Checkpoint.md`'s top entry and read the phase manifest off its `**Summary:**` line, using the same three-outcome table above.
+**Then assert it actually ran.** When the call returns, re-read `handoff.md` and check `## Last session` again ... the same check as before the call, used the second time as a receipt.
 
-- **COMPLETE** ... go to Step 2.
-- **PARTIAL** ... say which phase it stopped after, and go to Step 4's degraded branch.
-- **No manifest** ... say it loudly, in these words or close to them: *"Closeout reported back, but it left no phase manifest in `Checkpoint.md`, so I cannot confirm which phases actually ran."* Then go to Step 4's degraded branch. **Do not proceed on the assumption that it worked.**
+- **It carries today's date** ... Phase 2 finished, the handoff on disk is this session's, go to Step 2.
+- **It does not** ... say it loudly, in these words or close to them: *"Closeout reported back, but `handoff.md` still carries an older date under `## Last session`, so its handoff rewrite did not finish. Anything I build now would be built on a stale plan."* Then go to Step 4's degraded branch. **Do not proceed on the assumption that it worked.**
 
 **If closeout does not complete** ... the user aborts it, a write fails, they say "skip the closeout, just make the chip" ... do not silently continue as if it ran. Go to Step 4's degraded branch. A kickoff prompt built on a stale handoff is the failure this skill exists to prevent, wearing the costume of the thing working.
 
@@ -263,7 +252,7 @@ Then tell the user, in one or two lines, what is on the chip:
 |---|---|
 | **`spawn_task` is unavailable** in this environment | Do not fail, and do not quietly drop the work. Print the assembled prompt in a fenced block and say: *"I can't spawn a task chip from here, so here's tomorrow's opening message ... copy it into a fresh session and it'll pick up from where we stopped."* The prompt is the deliverable; the chip is just delivery. |
 | **Closeout did not complete** | Say which phase stopped and what that costs, then offer the choice. *"Closeout stopped before it rewrote handoff.md, so anything I put on a chip would be yesterday's plan. Want me to finish the closeout first, or spawn a chip that says the handoff is stale?"* Never build silently on a stale handoff. |
-| **Closeout had already completed** before this skill was invoked | Step 1's manifest read found today's Checkpoint entry carrying a **COMPLETE** phase manifest. Do not run closeout again ... it is not idempotent, and a second run appends a second Checkpoint entry, writes a second summary file and repoints `handoff.md` at half the record. Ask whether to skip to Step 2 or whether work since then needs its own closeout, and default to skipping. |
+| **Closeout had already completed** before this skill was invoked | Step 1's check found `handoff.md` already carrying today's date under `## Last session`. Do not run closeout again ... it is not idempotent, and a second run appends a second Checkpoint entry, writes a second summary file and repoints `handoff.md` at half the record. Ask whether to skip to Step 2 or whether work since then needs its own closeout, and default to skipping. |
 | **No `handoff.md` at all** | The workspace is not scaffolded. Say so, point at `/super-setup`, and do not create a handoff from here just to have something to read. |
 | **`handoff.md` exists but has no P0 items** | Spawn anyway, with the thin flag and `MISSION NOT SET`. *"There's no P0 in the handoff, so the chip has no mission ... it'll open with the summary and ask you what you want to do. Want to name a first task now instead?"* **Do not invent a mission**, not even an obvious-looking one like "continue yesterday's work". |
 | **Session summary missing** (Phase 0.7 could not write it) | Read order falls back to `Checkpoint.md`'s top entry, thin flag set, and the prompt says which file is missing rather than pointing at a path that does not exist. |
