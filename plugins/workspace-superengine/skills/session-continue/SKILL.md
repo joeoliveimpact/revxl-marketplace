@@ -83,8 +83,49 @@ Read, in this order:
 
 1. `handoff.md` (the version closeout just wrote)
 2. `sessions/session-summary-MM-DD-YY.md` (the path from handoff's `## Session summary`)
-3. `Checkpoint.md`, top entry only
+3. `Checkpoint.md`, top entry only ... including its `**Session log:**` line
 4. `.claude/workspace.yml` (environment, verbosity, and any `linear:` block)
+5. **the session transcript**, at the path on that `**Session log:**` line ... conversation layer only, see below
+
+#### Reading the transcript ... the conversation layer, not the file
+
+**Filter it. Never read the raw `.jsonl`.** Keep only `message.content` blocks of type `text`, from roles `user` and `assistant`. Drop `tool_use`, `tool_result` and `thinking` blocks entirely.
+
+That filter is the difference between cheap and unaffordable. **Measured on one real session: a 0.90 MB transcript held 29.6 KB of actual conversation ... 3.2% of the file.** The other 97% was tool plumbing: git output, file reads, JSON payloads. None of it belongs in a kickoff prompt.
+
+```bash
+# Code environment. Conversation layer only, in order.
+python -c "
+import json,sys
+sys.stdout.reconfigure(encoding='utf-8', errors='replace')   # Windows: stdout defaults to cp1252 and dies on any non-Latin-1 char
+for line in open(sys.argv[1],encoding='utf-8',errors='replace'):
+    try: d=json.loads(line)
+    except: continue
+    m=d.get('message') or {}
+    c=m.get('content')
+    if isinstance(c,str): print(m.get('role','?').upper(),':',c); continue
+    if not isinstance(c,list): continue
+    for b in c:
+        if isinstance(b,dict) and b.get('type')=='text':
+            print(m.get('role','?').upper(),':',b.get('text',''))
+" <transcript path>
+```
+
+**Cowork:** no Bash. Say the transcript could not be filtered and build the prompt from the files alone, with the transcript path still cited in the read order so tomorrow's session can open it.
+
+**No `**Session log:**` line, or the path is not on disk:** proceed without it. This is a soft degrade, not a thin flag ... the transcript enriches the prompt, it does not carry a required field. Say one line that it was unavailable.
+
+#### What the transcript is for, and what it is not
+
+**It is the evidence. `handoff.md` is the decision.** The transcript holds every reversed call, abandoned approach and corrected mistake, all weighted exactly the same as the conclusions that survived. A prompt built from raw transcript can resurrect something this session deliberately killed, and it will sound just as confident as the parts that were kept.
+
+So: **the handoff decides what carries forward. The transcript explains why.** Take Mission, Deliverable, Step-0 and Hard rails from the handoff exactly as the field map says. Use the transcript to add the reasoning behind them, and nothing else.
+
+**Where the two disagree, say so ... do not pick a winner.** If the handoff records an outcome the transcript shows was later reversed, or the transcript settles something the handoff never captured, that is a finding and it goes to the user now, while it can still be fixed:
+
+> The handoff says the phase manifest ships as designed, but the log shows we cut it later in the session. Which one should tomorrow's prompt carry?
+
+That check exists nowhere else. It is the reason for reading both rather than either.
 
 **Then check every file the read order is about to cite.** For each path in `## Key files from last session`, and for the session summary itself, get its size (Code: `wc -c`; Cowork: Read it and look). Three outcomes:
 
@@ -94,7 +135,9 @@ Read, in this order:
 
 **Never repeat the handoff's description of a file as though it were true when the file does not back it up.** `handoff.md` describes intent, not disk. A handoff line saying "the field map, rows 1 to 11 done" against a 35-byte file is exactly the failure this whole skill is built to prevent: correctly cited, verbatim faithful, and useless. Keep the description, and mark it against what is actually there ... see the Read order row in 2b for the wording.
 
-**This is not bureaucracy, it is the whole design.** A prompt built from chat memory is a summary of a summary ... it inherits everything this session got wrong, drifted on, or half-decided, and it inherits it invisibly. A prompt built from disk is exactly as good as the handoff, which is a thing the user can read and correct. If a field is not in the files, it does not go in the prompt. **Ever.** If you find yourself supplying a detail from memory because "the handoff didn't quite capture it", stop ... the correct fix is to say so and offer to add it to `handoff.md` first, then rebuild.
+**Why disk and not this conversation, when the conversation obviously holds more.** It does hold more. That is not the axis. The axis is that **disk is auditable and a context window is not** ... the user can read `handoff.md`, disagree with it, and correct it; they cannot do any of that to what a model remembers. The transcript satisfies both at once, which is why it is item 5 rather than an argument for working from memory.
+
+If a field is not in the files, it does not go in the prompt. **Ever.** If you find yourself supplying a detail from memory because "the handoff didn't quite capture it", stop ... the correct fix is to say so and offer to add it to `handoff.md` first, then rebuild.
 
 ### 2b ... the field map
 
@@ -202,8 +245,9 @@ Full write-up: `sessions/session-summary-MM-DD-YY.md`
 ## Read first, in this order
 
 1. `sessions/session-summary-MM-DD-YY.md` ... what happened last session and why
-2. `<key file path>` ... <its note from handoff.md>
-3. `<key file path>` ... <its note>
+2. `<transcript path>` ... the full session log, if one was stamped. Filter to `user`/`assistant` text blocks; the raw file is ~97% tool output. Open it when you need the reasoning behind a decision, not just the decision.
+3. `<key file path>` ... <its note from handoff.md>
+4. `<key file path>` ... <its note>
 
 ## Step 0 ... close these before building
 
