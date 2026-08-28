@@ -84,7 +84,7 @@ Read, in this order:
 1. `handoff.md` (the version closeout just wrote)
 2. `sessions/session-summary-MM-DD-YY.md` (the path from handoff's `## Session summary`)
 3. `Checkpoint.md`, top entry only ... including its `**Session log:**` line
-4. `.claude/workspace.yml` (environment, verbosity, and any `linear:` block)
+4. `.claude/workspace.yml` (environment and verbosity ... this skill uses nothing else from it)
 5. **the session transcript**, at the path on that `**Session log:**` line ... conversation layer only, see below
 
 #### Reading the transcript ... the conversation layer, not the file
@@ -150,7 +150,7 @@ Six fields. Each row says where it comes from and what happens when the source i
 | **Read order** | The session-summary path first, then `handoff.md` → `## Key files from last session` in the order listed, each with its note. Every entry carries the 2a disk check. | Missing section → read order is the session summary alone, plus the line `handoff.md listed no key files.` Missing summary too → say `No session summary on disk` and set the thin flag. **Per entry, from the 2a check:** a **missing** file gets `**MISSING from disk.**` appended to its line; a **stub** gets `**UNVERIFIED ... the file on disk is <N> bytes, a stub, not what this describes. Check before building on it.**` Keep the handoff's description in both cases and put the mark right after it, in the read-order entry itself. Never in a footnote, never only in the thin block ... a reader skimming a numbered list has to hit it without looking anywhere else. |
 | **Step-0 batch** | Any item under `## P0 — Next Actions` or `## P1 — Deferred` that is phrased as a **decision** or carries the words **confirm** or **resolve**. Also anything in `## Blockers` that needs an answer rather than an action. | None found → `No open decisions. Go straight to the mission.` That is a real, good answer and it does NOT set the thin flag. **Unless the Mission is also not set** ... then write `No open decisions were recorded either.` Pointing a reader at a mission that does not exist is the kind of small wrongness that makes a whole prompt read as auto-generated slop. |
 | **Hard rails** | `handoff.md` → `## Verify before building`, **verbatim**. Copy the lines exactly, including any commands. Do not paraphrase, do not reorder, do not "clean up". **One narrow exception, spelled out below the table: a commit hash or pinned version is never transcribed as fact.** | Section missing or `(none)` → `No pre-build checks were recorded.` and set the thin flag. Rails are the highest-cost field to lose, because their absence looks identical to "nothing to check". |
-| **Skills** | `/session-start` always first. Then whichever mode the P0 names ... if P0 item 1 says "build", "plan", "verify", "clean up", map it to the matching workspace skill (`/workspace-plan`, `/workspace-verify`, `/workspace-cleanup`, and so on). | P0 names no mode → list `/session-start` alone. Do not invent a second skill to make the list look fuller. |
+| **Skills** | `/session-start` always first. Then whichever mode the P0 names ... if P0 item 1 says "build", "plan", "verify", "clean up", map it to the matching workspace skill (`/workspace-plan`, `/workspace-verify`, `/workspace-cleanup`, and so on). | P0 names no mode → list `/session-start` alone, and this does **NOT** set the thin flag ... it is a normal outcome, not a gap. Do not invent a second skill to make the list look fuller. |
 
 **Verbatim means verbatim.** For Hard rails especially: retype nothing, summarize nothing. If a rail says `check the Tailscale link is up before hitting the rig`, that exact sentence goes in the prompt. Rewording a safety rule is its own hazard, and it is the reason this field is copied rather than written.
 
@@ -244,8 +244,8 @@ Full write-up: `sessions/session-summary-MM-DD-YY.md`
 
 ## Read first, in this order
 
-1. `sessions/session-summary-MM-DD-YY.md` ... what happened last session and why
-2. `<transcript path>` ... the full session log, if one was stamped. Filter to `user`/`assistant` text blocks; the raw file is ~97% tool output. Open it when you need the reasoning behind a decision, not just the decision.
+1. `sessions/session-summary-MM-DD-YY.md` ... what happened last session and why (use the exact path from handoff's `## Session summary`, suffix included ... a second same-day session carries `-1`)
+2. `<transcript path>` ... the full session log, if one was stamped. Filter to `user`/`assistant` text blocks ... on the one session this was measured against, the rest of the file was tool output. Open it when you need the reasoning behind a decision, not just the decision.
 3. `<key file path>` ... <its note from handoff.md>
 4. `<key file path>` ... <its note>
 

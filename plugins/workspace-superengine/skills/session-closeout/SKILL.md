@@ -55,6 +55,7 @@ One file per session. It is the expansion of the terse Checkpoint burst, and it 
 
 - **Create `sessions/` if it does not exist.** Most workspaces were scaffolded before this existed, so a missing folder is normal, not an error.
 - **Collisions get a numeric suffix**, in order: `session-summary-08-14-26.md`, then `-1`, then `-2`. Check with Glob before writing. Never overwrite an existing summary ... a second session on the same day is a second file.
+- **Every pointer written later carries the suffix you actually used.** Phase 1's `**Summary:**` handle and Phase 2's `## Session summary` block both show `session-summary-MM-DD-YY` as a placeholder, not a literal. On a second same-day session the file is `-1` and so is every pointer at it. A pointer at the un-suffixed name is the handle-pointing-at-nothing failure this phase exists to avoid, self-inflicted.
 
 ### Step 2 ... write the file
 
@@ -107,7 +108,7 @@ body that used to bloat the Checkpoint entry.>
 
 Write `[[wikilinks]]` to related summaries and files. **Structure is free, semantics are paid.**
 
-- On graphify 0.9.42 a free structural pass turns `[[link]]`, `[[link.md]]`, `[text](file.md)` and `[text](./file.md)` into real `references` edges at zero token cost. That pass does **not** run on the `/graphify` skill path, which only hands the extractor the `code` bucket.
+- On graphify versions that ship the link parser, a free structural pass turns `[[link]]`, `[[link.md]]`, `[text](file.md)` and `[text](./file.md)` into real `references` edges at zero token cost. That pass does **not** run on the `/graphify` skill path, which only hands the extractor the `code` bucket. **Older builds have no link parser at all, so never state the cost for a specific machine without checking it** ... `which graphify` and `graphify --version` first. Full detail: `docs/session-summary-format.md`.
 - Keep targets resolvable to a **same-folder sibling, path-relative** where you can ... a link from one summary to another inside `sessions/` qualifies.
 - **Links inside fenced code blocks are skipped.** A link that appears only inside a fence produces nothing.
 
@@ -200,11 +201,11 @@ Transcripts live at `~/.claude/projects/<workspace-path-slug>/<session-id>.jsonl
 
 Merged onto one line, a term that returns nothing looks like a broken pointer. Split, it reads as a miss, which is all it is.
 
-**Terms carry `(unverified ... no hub yet)` until the hub exists.** Verifying that a term actually resolves needs the hub's term-resolution index (SKLLPLG-140), which is not built. Writing terms as if they were checked teaches the reader to trust something nobody checked, and the first dead term after that costs the whole header its credibility. **The handle needs no graph at all** ... it is a filename, and it works in a workspace with no hub, no graphify, and no second brain. Once the hub lands, drop the marker on terms you actually resolved.
+**Terms carry `(unverified ... no hub yet)` until the hub exists.** Verifying that a term actually resolves needs the hub's term-resolution index, which is not built yet. Writing terms as if they were checked teaches the reader to trust something nobody checked, and the first dead term after that costs the whole header its credibility. **The handle needs no graph at all** ... it is a filename, and it works in a workspace with no hub, no graphify, and no second brain. Once the hub lands, drop the marker on terms you actually resolved.
 
 ### The 30-day window ... demote old entries in the same file
 
-Do this every closeout, right after inserting the new entry. **Closeout owns this, not a scheduled job** ... Checkpoint has to work before any graph exists, and the night job is gated behind SKLLPLG-141.
+Do this every closeout, right after inserting the new entry. **Closeout owns this, not a scheduled job** ... Checkpoint has to work before any graph exists, and the scheduled night job that would otherwise own it does not exist yet.
 
 1. **Full zone (top of the file):** every entry from the last 30 days, newest first, complete with burst, handle and terms.
 2. **Floor of 5.** The full zone always keeps at least the 5 newest entries, even when all of them are older than 30 days. A quiet month cannot empty the top of the file.
@@ -217,7 +218,7 @@ Do this every closeout, right after inserting the new entry. **Closeout owns thi
 4. **No second archive artifact.** The tail lives in `Checkpoint.md` under a `## Earlier sessions` heading at the bottom of the file. Do not create an archive file, do not move anything to another folder.
 5. **Ordering:** the full zone stays newest-first, then `## Earlier sessions` last, also newest-first. An old entry that cannot be compressed (see below) stays in the full zone, in date order, which means the full zone can run past 30 days. That is intended, not a bug to tidy up.
 
-**Compress ONLY entries that have a resolvable `**Summary:**` handle.** An entry written before session summaries existed has its body in exactly one place, and compressing it to one line destroys the only copy. Those stay full, however old they are, and they do not count against the floor. Converting them is the backfill's job, and **the backfill is blocked behind SKLLPLG-143's Recycle Bin** ... do not attempt it here, do not attempt it partially, and do not "just do the top few".
+**Compress ONLY entries that have a resolvable `**Summary:**` handle.** An entry written before session summaries existed has its body in exactly one place, and compressing it to one line destroys the only copy. Those stay full, however old they are, and they do not count against the floor. Converting them is the backfill's job, and **the backfill is blocked until deletions are recoverable** ... do not attempt it here, do not attempt it partially, and do not "just do the top few".
 
 **Say out loud how many entries you retained for having no handle. Every closeout, including ... especially ... when the answer is "all of them."**
 
@@ -226,7 +227,7 @@ A file with no handles anywhere compresses nothing, and a demotion step that com
 - **Some compressed, some retained:**
   > Compressed 12 older entries to one-liners. Another 9 predate session summaries and have no handle, so I left those in full ... they stay that way until the backfill is unblocked.
 - **Nothing compressed, everything retained** ... the case for any workspace that has been running since before this format existed:
-  > Nothing could be compressed this time: all 47 entries in `Checkpoint.md` predate session summaries, so none of them has a handle to compress down to. The file will keep growing until the backfill converts them, and the backfill is blocked behind SKLLPLG-143. From today forward, new entries carry a handle and will compress normally.
+  > Nothing could be compressed this time: all 47 entries in `Checkpoint.md` predate session summaries, so none of them has a handle to compress down to. The file will keep growing until the backfill converts them, and the backfill is blocked until deletions are recoverable. From today forward, new entries carry a handle and will compress normally.
 
 **Silence here is a defect, not a clean result.** Report the count even when it is zero in the other direction (nothing retained, everything compressed) ... that is one short line and it is the only evidence the step ran at all.
 
@@ -289,14 +290,16 @@ Runs **only if** `.claude/workspace.yml` has a `linear:` block with `status: con
 
 Trigger is the **configured flag**, not bare MCP connection (the MCP is shared across all workspaces; the per-workspace `linear:` binding scopes which project to write).
 
-1. Read the `linear:` block — `team`, `project` (+ ids).
-2. **Connection health-check:** if configured but the Linear MCP isn't connected → warn one line, skip the sync, and record `Linear sync skipped — MCP not connected` in the Checkpoint entry. **Never fail closeout over Linear.**
+**Name the tools and call them.** This phase describes an outcome; these are the calls that produce it. The Linear MCP may register under an **opaque id** rather than a readable name, so load its tools by exact name (`select:mcp__<server-id>__list_issues,...`) using the `mcp_server_id` pinned in the `linear:` block, or enumerate the deferred-tool list for `list_issues` / `save_issue` / `save_comment` and read the id off those names. A failed keyword search for "linear" is **not** evidence the connector is down.
+
+1. Read the `linear:` block — `team`, `project` (+ ids), and `mcp_server_id` if present.
+2. **Connection health-check:** probe with `list_issues`. If configured but the Linear MCP isn't connected → warn one line, skip the sync, and record `Linear sync skipped — MCP not connected` in the Checkpoint entry. **Never fail closeout over Linear.**
 3. Sync this session's work, sourced from the Checkpoint entry you just wrote. Scope by the `linear:` block:
    - **Default (project-scoped):** sync to the configured `project`.
    - **`scope: team`** (no single `project` — workspace spans multiple): pick the right project under the `team` based on what was worked on (e.g. a Client Work hub → the specific `Clients/<name>` project). If no matching project exists yet, create it under the team, then sync.
-   - Work **started** this session → create issues (or move existing) to **In Progress**.
-   - Work **completed** → move matching issues to **Done** (create + close if none existed).
-   - **Search first** — never duplicate an issue that already exists.
+   - **Search first** with `list_issues` — never duplicate an issue that already exists.
+   - Work **started** this session → `save_issue` to create, or to move an existing issue to **In Progress**.
+   - Work **completed** → `save_issue` to move matching issues to **Done** (create + close if none existed).
 4. Keep it coarse: one issue per meaningful unit of work, NOT per file touched.
 5. Record the issue IDs touched in the Checkpoint entry (so the sync is auditable).
 
@@ -407,9 +410,11 @@ If any row shows `?` — fix it before reporting complete.
 If the session was under 30 minutes and touched <3 files, you can:
 - Skip Phase 0, Phase 3, Phase 4
 - Write a 3-line Checkpoint.md entry
-- Update handoff.md if anything blocks the next session
+- Keep handoff.md's `## Last session` current ... Phase 2 still runs, see below
 
 **Phase 0.7 is never skipped either, and neither is the demotion step.** The summary can be four lines on a quick session, but it has to exist, because Phase 1 writes a `**Summary:**` handle pointing at it and a handle pointing at nothing is a lie the next session believes. Demotion is a couple of edits and skipping it is how a Checkpoint file quietly grows back to 300 KB.
+
+**Phase 2 is never skipped, even when nothing blocks the next session.** `handoff.md` is rewritten every closeout without exception, because `/session-continue` decides whether a closeout ran **by reading the date under `## Last session`**. A quick mode that leaves that date stale makes a completed closeout look like one that never happened, and continue then runs a second full closeout over the top of it ... two Checkpoint entries, two summary files, one session. If genuinely nothing changed for the next session, rewrite the file anyway and say so in `## Status`. The date is the receipt.
 
 Don't quick-mode a session that touched architecture, made decisions, or hit failures.
 Those need the full procedure.
