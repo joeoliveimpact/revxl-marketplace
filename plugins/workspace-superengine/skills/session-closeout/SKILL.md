@@ -1,6 +1,6 @@
 ---
 name: session-closeout
-description: Use at the end of a working session to capture state — updates Checkpoint.md with a session log entry and rewrites handoff.md with next-session priorities. Trigger phrases include "let's wrap up", "closing out for the day", "session closeout", "save state", "I'm done for now", "/session-closeout", and any signal the user is ending work (e.g. "logging off", "see you tomorrow"). Pairs with /session-start.
+description: Use at the end of a working session to capture state — writes a session summary file, updates Checkpoint.md with a log entry, and rewrites handoff.md with next-session priorities. Trigger phrases include "let's wrap up", "closing out for the day", "session closeout", "save state", "I'm done for now", "/session-closeout", and any signal the user is ending work (e.g. "logging off"). If the user also wants the NEXT session queued up as a one-click chip — "see you tomorrow", "continue this tomorrow", "close out and get the next one ready" — use /session-continue instead, which runs this skill in full and then builds that prompt. Pairs with /session-start.
 ---
 
 # Session Closeout Procedure
@@ -26,7 +26,7 @@ Read `.claude/workspace.yml#verbosity` at skill entry. If the value is `beginner
 
 If the user's prompt is borderline — could fit this skill or could just want a quick direct answer — ask before firing:
 
-> "Sounds like you're wrapping up — want me to run `/session-closeout` to update Checkpoint.md and handoff.md? Or just stop here without logging?"
+> "Sounds like you're wrapping up — three options: `/session-closeout` to save state, `/session-continue` to save state **and** queue tomorrow's session as a one-click chip, or just stop here without logging. Which?"
 
 Only run the full process below after the user confirms. If the user explicitly invokes `/session-closeout`, skip the suggestion and proceed.
 
@@ -106,13 +106,9 @@ body that used to bloat the Checkpoint entry.>
 
 ### Step 3 ... wikilinks, with the cost stated correctly
 
-Write `[[wikilinks]]` to related summaries and files. **Structure is free, semantics are paid.**
+Write `[[wikilinks]]` to related summaries and files. **Structure is free, semantics are paid** ... on builds that ship the link parser, a structural pass turns links into real `references` edges at zero token cost, but that pass does not run on the `/graphify` skill path, and links inside fenced code blocks are skipped entirely.
 
-- On graphify versions that ship the link parser, a free structural pass turns `[[link]]`, `[[link.md]]`, `[text](file.md)` and `[text](./file.md)` into real `references` edges at zero token cost. That pass does **not** run on the `/graphify` skill path, which only hands the extractor the `code` bucket. **Older builds have no link parser at all, so never state the cost for a specific machine without checking it** ... `which graphify` and `graphify --version` first. Full detail: `docs/session-summary-format.md`.
-- Keep targets resolvable to a **same-folder sibling, path-relative** where you can ... a link from one summary to another inside `sessions/` qualifies.
-- **Links inside fenced code blocks are skipped.** A link that appears only inside a fence produces nothing.
-
-Do not tell the user "edges are free". Do not tell them there are no free edges. The sentence above is the accurate one.
+Keep targets resolvable to a same-folder sibling where you can. **Do not tell the user "edges are free", and do not tell them there are no free edges.** Which builds parse what, and how to check: `docs/session-summary-format.md`.
 
 ### Step 4 ... the failure branches
 
@@ -169,71 +165,25 @@ Template:
 
 ### `**Session log:**` ... stamp the transcript path, or say you could not
 
-The raw session transcript holds every turn of this session at full fidelity, and it is the one artifact that is *not* a summary of anything. `/session-continue` reads it to recover the reasoning behind a decision, which is precisely what a handoff compresses out. But nothing else on disk records which transcript belongs to which session, so unless this line is written, that link is gone the moment the session ends.
+The raw transcript is the one artifact that is not a summary of anything, and **nothing else on disk records which transcript belongs to which session** ... so unless this line is written, `/session-continue` cannot find it later.
 
-Transcripts live at `~/.claude/projects/<workspace-path-slug>/<session-id>.jsonl`, where the slug is the absolute workspace path with separators replaced by `-`.
-
-**Two ways to identify the file, in order:**
-
-1. **From a session id the environment already exposes.** In Claude Code the scratchpad directory path contains the session id, and the transcript is that id plus `.jsonl`. Verified on Claude Code desktop 08.27.26.
-2. **Newest `.jsonl` by modification time** in the project directory, and only when its mtime is within the last few minutes ... a live session's transcript is being appended to right now.
-
-**Then confirm the file exists before writing the path** (Code: `test -f`; Cowork: Glob). Never write a transcript path you did not confirm ... a citation to a file that is not there is worse than no citation, because it reads as though somebody checked.
-
-**If neither method resolves, write what happened instead of a guess:**
-
-```
-**Session log:** could not determine (two sessions ran concurrently; newest-by-mtime is unreliable)
-```
-
-**Method 2 is unreliable when sessions overlap.** If two are running, the newest transcript may not be this one. Say so on the line rather than stamping a path that might point at somebody else's session.
-
-**Expect these entries to get much shorter than they used to be.** A pre-summary top entry runs about 60 lines. Now the body lives in the Phase 0.7 summary and the entry is a burst plus two pointer lines. **That is the bloat fix working, not information loss** ... the full write-up is one wiki-link away.
+Identify the file, **confirm it exists before writing the path**, and if you cannot identify it write what happened instead of a guess. How to find it and the exact fallback wording: `${CLAUDE_PLUGIN_ROOT}/references/session-log-stamping.md`.
 
 ### The retrieval header ... two lines, deliberately not one
 
-`**Summary:**` and `**Terms:**` do different jobs and fail differently. That is why they never get merged into a single line.
+`**Summary:**` is a **handle** ... a filename. It resolves and pulls one file whole, or it is missing and you find out immediately. It cannot half-work, and it needs no graph at all.
 
-| Line | What it is | How it behaves |
-|---|---|---|
-| `**Summary:**` | the **handle** ... the summary file's frontmatter `id`, which is also its filename | Deterministic. It resolves and pulls that one file whole, or the file is missing and you find out immediately. It cannot half-work. |
-| `**Terms:**` | **topic terms** ... fuzzy concepts that fan out through hub search and pull the whole neighborhood, including notes written later in other sessions or other workspaces | Can legitimately return nothing. |
+`**Terms:**` are **topic terms** ... fuzzy, fanned out through hub search, and they can legitimately return nothing. **They carry `(unverified)` until a term-resolution index exists**, because writing them as if they were checked teaches the reader to trust something nobody checked.
 
-Merged onto one line, a term that returns nothing looks like a broken pointer. Split, it reads as a miss, which is all it is.
-
-**Terms carry `(unverified ... no hub yet)` until the hub exists.** Verifying that a term actually resolves needs the hub's term-resolution index, which is not built yet. Writing terms as if they were checked teaches the reader to trust something nobody checked, and the first dead term after that costs the whole header its credibility. **The handle needs no graph at all** ... it is a filename, and it works in a workspace with no hub, no graphify, and no second brain. Once the hub lands, drop the marker on terms you actually resolved.
+**Never merge the two onto one line.** Merged, a term that returns nothing reads as a broken pointer. Split, it reads as a miss, which is all it is. Full rationale: `docs/session-summary-format.md`.
 
 ### The 30-day window ... demote old entries in the same file
 
-Do this every closeout, right after inserting the new entry. **Closeout owns this, not a scheduled job** ... Checkpoint has to work before any graph exists, and the scheduled night job that would otherwise own it does not exist yet.
+**Run this every closeout, right after inserting the new entry.** Entries older than 30 days compress to one-liners in a `## Earlier sessions` tail at the bottom of the same file, the newest 5 always stay full, and **entries with no `**Summary:**` handle are never compressed** ... their body exists in exactly one place and compressing it destroys the only copy.
 
-1. **Full zone (top of the file):** every entry from the last 30 days, newest first, complete with burst, handle and terms.
-2. **Floor of 5.** The full zone always keeps at least the 5 newest entries, even when all of them are older than 30 days. A quiet month cannot empty the top of the file.
-3. **Tail (below the full zone, same file):** everything else, one line each, newest first:
+**Say out loud how many entries you retained for having no handle. Every closeout, including ... especially ... when the answer is "all of them."** A demotion that compressed nothing and reported nothing looks exactly like bloat control working when it is actually waiting on the backfill, and that line is the only thing that tells those apart.
 
-   ```
-   - 2026-07-02 · Linear source-of-truth rule → [[session-summary-07-02-26]] · terms: linear, source of truth
-   ```
-
-4. **No second archive artifact.** The tail lives in `Checkpoint.md` under a `## Earlier sessions` heading at the bottom of the file. Do not create an archive file, do not move anything to another folder.
-5. **Ordering:** the full zone stays newest-first, then `## Earlier sessions` last, also newest-first. An old entry that cannot be compressed (see below) stays in the full zone, in date order, which means the full zone can run past 30 days. That is intended, not a bug to tidy up.
-
-**Compress ONLY entries that have a resolvable `**Summary:**` handle.** An entry written before session summaries existed has its body in exactly one place, and compressing it to one line destroys the only copy. Those stay full, however old they are, and they do not count against the floor. Converting them is the backfill's job, and **the backfill is blocked until deletions are recoverable** ... do not attempt it here, do not attempt it partially, and do not "just do the top few".
-
-**Say out loud how many entries you retained for having no handle. Every closeout, including ... especially ... when the answer is "all of them."**
-
-A file with no handles anywhere compresses nothing, and a demotion step that compresses nothing and reports nothing looks exactly like bloat control working. It is not working; it is waiting on the backfill. The user has to be able to tell those apart, and the only thing that distinguishes them is this line.
-
-- **Some compressed, some retained:**
-  > Compressed 12 older entries to one-liners. Another 9 predate session summaries and have no handle, so I left those in full ... they stay that way until the backfill is unblocked.
-- **Nothing compressed, everything retained** ... the case for any workspace that has been running since before this format existed:
-  > Nothing could be compressed this time: all 47 entries in `Checkpoint.md` predate session summaries, so none of them has a handle to compress down to. The file will keep growing until the backfill converts them, and the backfill is blocked until deletions are recoverable. From today forward, new entries carry a handle and will compress normally.
-
-**Silence here is a defect, not a clean result.** Report the count even when it is zero in the other direction (nothing retained, everything compressed) ... that is one short line and it is the only evidence the step ran at all.
-
-If demotion would compress an entry whose handle points at a file that is not on disk, leave it full and say so:
-
-> One older Checkpoint entry points at a session summary I could not find, so I left it in full rather than compressing it down to a link that goes nowhere.
+The rules, the ordering, and the exact wording of both spoken reports: `${CLAUDE_PLUGIN_ROOT}/references/checkpoint-demotion.md`.
 
 ---
 

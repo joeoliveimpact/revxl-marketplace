@@ -87,33 +87,7 @@ Read, in this order:
 4. `.claude/workspace.yml` (environment and verbosity ... this skill uses nothing else from it)
 5. **the session transcript**, at the path on that `**Session log:**` line ... conversation layer only, see below
 
-#### Reading the transcript ... the conversation layer, not the file
-
-**Filter it. Never read the raw `.jsonl`.** Keep only `message.content` blocks of type `text`, from roles `user` and `assistant`. Drop `tool_use`, `tool_result` and `thinking` blocks entirely.
-
-That filter is the difference between cheap and unaffordable. **Measured on one real session: a 0.90 MB transcript held 29.6 KB of actual conversation ... 3.2% of the file.** The other 97% was tool plumbing: git output, file reads, JSON payloads. None of it belongs in a kickoff prompt.
-
-```bash
-# Code environment. Conversation layer only, in order.
-python -c "
-import json,sys
-sys.stdout.reconfigure(encoding='utf-8', errors='replace')   # Windows: stdout defaults to cp1252 and dies on any non-Latin-1 char
-for line in open(sys.argv[1],encoding='utf-8',errors='replace'):
-    try: d=json.loads(line)
-    except: continue
-    m=d.get('message') or {}
-    c=m.get('content')
-    if isinstance(c,str): print(m.get('role','?').upper(),':',c); continue
-    if not isinstance(c,list): continue
-    for b in c:
-        if isinstance(b,dict) and b.get('type')=='text':
-            print(m.get('role','?').upper(),':',b.get('text',''))
-" <transcript path>
-```
-
-**Cowork:** no Bash. Say the transcript could not be filtered and build the prompt from the files alone, with the transcript path still cited in the read order so tomorrow's session can open it.
-
-**No `**Session log:**` line, or the path is not on disk:** proceed without it. This is a soft degrade, not a thin flag ... the transcript enriches the prompt, it does not carry a required field. Say one line that it was unavailable.
+**Filter the transcript to `user`/`assistant` text blocks. Never read the raw `.jsonl`** ... on the one session this was measured against, the conversation was a small fraction of the file and the rest was tool output. The filter command, the Cowork branch, and what to do when no log was stamped: `${CLAUDE_PLUGIN_ROOT}/references/transcript-filtering.md`.
 
 #### What the transcript is for, and what it is not
 
@@ -154,25 +128,17 @@ Six fields. Each row says where it comes from and what happens when the source i
 
 **Verbatim means verbatim.** For Hard rails especially: retype nothing, summarize nothing. If a rail says `check the Tailscale link is up before hitting the rig`, that exact sentence goes in the prompt. Rewording a safety rule is its own hazard, and it is the reason this field is copied rather than written.
 
-#### The one exception: `## Verify before building` holds rules, not state
+#### The one exception: rules are verbatim, state is re-derived
 
-**A rule stays true next month. A fact about one moment does not.** "Never `sed -i` in this repo" is a rule ... it will be just as true in November. `b38ef37` is state ... it is a claim about which commit was at the tip of a branch at one instant, and it goes stale the next time anybody commits.
+**A rule stays true next month. A fact about one moment does not.** So copy the rails verbatim, with one carve-out: **a commit hash, a pinned version, or a claim that some binary or service EXISTS is never transcribed into the prompt as fact.** Emit the command that re-derives it instead, or hand the check forward:
 
-**So: a commit hash or a pinned version string is never transcribed into the prompt as fact.** When a rail line contains one, keep the rail, and emit the command that re-derives the current value in place of the literal:
+- `build from b38ef37` becomes `build from the current tip ... re-derive it: git -C <repo> log --oneline -1`
+- `pinned at graphify 0.9.42` becomes `confirm the installed version before relying on it: graphify --version`
+- an unprobed binary becomes `the handoff refers to ghl-cli. Confirm it is installed ... it was not probed when this prompt was written.`
 
-- Rail says `build from b38ef37` → prompt carries `build from the current tip ... re-derive it: git -C <repo> log --oneline -1`.
-- Rail says `pinned at graphify 0.9.42` → prompt carries `confirm the installed version before relying on it: graphify --version`.
+**If you probed it, say so and say how.** `ghl-cli is on PATH (checked at generation time).`
 
-**Why this is worth an exception to a verbatim rule.** Yesterday this workspace's handoff named `b38ef37` when the real value was `b0b06e0`, one commit later. And in another workspace three consecutive generated prompts carried 4, then 6, then 9 hardcoded hashes ... each one built from a handoff that already contained the previous prompt's. One of them named a version that had been rolled back 81 seconds after it was written, and told the next session not to re-verify it. Copying a rail faithfully is correct. Copying a timestamped fact faithfully is how a wrong value gets laundered into an instruction.
-
-#### The same rule for things that are claimed to exist
-
-**The prompt may not assert that a binary, a connector, an MCP server or a service EXISTS unless it was probed at generation time.** Existence is state, exactly like a commit hash.
-
-- **Probed and present** → say so, and say how you know: `ghl-cli is on PATH (checked at generation time).`
-- **Not probed, or probe unavailable** → hand the check forward instead of the claim: `The handoff refers to ghl-cli. Confirm it is installed before building on it ... it was not probed when this prompt was written.`
-
-A prior cold read caught a generated prompt stating that "the work runs the locally-installed ghl-cli" when that binary was not on PATH at all. The claim came from a string match on handoff prose, it read as authoritative, and nothing in the prompt marked it as unchecked.
+The measured incidents behind this rule, and why it is worth an exception to a verbatim instruction: `${CLAUDE_PLUGIN_ROOT}/references/state-not-fact.md`.
 
 ### 2c ... route detection, stated and never guessed
 
@@ -217,57 +183,7 @@ And say one line to the user before spawning:
 
 ### 2e ... assemble
 
-```markdown
-# START LOCALLY → <5 to 8 word mission title>
-
-<thin-flag block, only if 2d fired>
-
-**Workspace:** `<absolute path to the workspace root>`
-**Route:** <the single line from 2c>
-
-Run `/session-start` first ... it reads RULES.md, `handoff.md`, `ARCHITECTURE.md`,
-`PLANNING.md` when present, and the newest one or two `Checkpoint.md` entries, then
-works through whatever `handoff.md` listed under `Verify before building` and reports
-what failed. **It does not read session summaries** ... that one is yours to open, and
-it is item 1 below. Then work the mission below.
-
-## Mission
-
-<P0 item 1, verbatim>
-
-Last session: <date> ... <title from the Checkpoint entry>.
-Full write-up: `sessions/session-summary-MM-DD-YY.md`
-
-## Deliverable
-
-<the artifact or outcome, or the not-stated line from 2b>
-
-## Read first, in this order
-
-1. `sessions/session-summary-MM-DD-YY.md` ... what happened last session and why (use the exact path from handoff's `## Session summary`, suffix included ... a second same-day session carries `-1`)
-2. `<transcript path>` ... the full session log, if one was stamped. Filter to `user`/`assistant` text blocks ... on the one session this was measured against, the rest of the file was tool output. Open it when you need the reasoning behind a decision, not just the decision.
-3. `<key file path>` ... <its note from handoff.md>
-4. `<key file path>` ... <its note>
-
-## Step 0 ... close these before building
-
-- <decision item, verbatim>
-- <decision item, verbatim>
-
-## Hard rails ... verbatim from handoff.md "Verify before building"
-
-- <rail, verbatim>
-- <rail, verbatim>
-
-## Skills
-
-1. `/session-start`
-2. `<the mode the P0 names>` ... <one clause on why>
-```
-
-**Title, when there is no mission to name it after:** `START LOCALLY → <workspace name>, no mission set`. Do not title it after something else in the handoff to make the button look normal ... the button is the first place the user finds out the chip is thin.
-
-**The absolute workspace path is not optional.** A prompt that says "read handoff.md" with no root is unusable in a fresh session that does not know where it is. Same reason the title carries the route instruction: this text gets read cold, by someone with no other context, and every assumption it makes about what the reader already knows is a hole.
+The template, the title rule, and why the absolute workspace path is mandatory: `${CLAUDE_PLUGIN_ROOT}/references/kickoff-prompt-template.md`. Assemble the six fields from 2b into that shape exactly ... it is the output contract, not a suggestion.
 
 ---
 
@@ -294,18 +210,11 @@ Then tell the user, in one or two lines, what is on the chip:
 
 ---
 
-## Step 4: The degraded branches. Every one of them says something readable.
+## Step 4: The degraded branches
 
-| What happened | What to do |
-|---|---|
-| **`spawn_task` is unavailable** in this environment | Do not fail, and do not quietly drop the work. Step 3 already wrote the prompt to `sessions/kickoff-MM-DD-YY.md`, so point at that file and print it in a fenced block as well: *"I can't spawn a task chip from here, so tomorrow's opening message is saved at `sessions/kickoff-MM-DD-YY.md` ... open a fresh session and paste it in."* The prompt is the deliverable; the chip is just delivery. |
-| **The prompt could not be written to disk** (permissions, read-only path) | Say so plainly, then spawn the chip anyway ... a chip with no file beats no chip. Do not silently skip the write and imply it happened. |
-| **Closeout did not complete** | Say which phase stopped and what that costs, then offer the choice. *"Closeout stopped before it rewrote handoff.md, so anything I put on a chip would be yesterday's plan. Want me to finish the closeout first, or spawn a chip that says the handoff is stale?"* Never build silently on a stale handoff. |
-| **Closeout had already completed** before this skill was invoked | Step 1's check found `handoff.md` already carrying today's date under `## Last session`. Do not run closeout again ... it is not idempotent, and a second run appends a second Checkpoint entry, writes a second summary file and repoints `handoff.md` at half the record. Ask whether to skip to Step 2 or whether work since then needs its own closeout, and default to skipping. |
-| **No `handoff.md` at all** | The workspace is not scaffolded. Say so, point at `/super-setup`, and do not create a handoff from here just to have something to read. |
-| **`handoff.md` exists but has no P0 items** | Spawn anyway, with the thin flag and `MISSION NOT SET`. *"There's no P0 in the handoff, so the chip has no mission ... it'll open with the summary and ask you what you want to do. Want to name a first task now instead?"* **Do not invent a mission**, not even an obvious-looking one like "continue yesterday's work". |
-| **Session summary missing** (Phase 0.7 could not write it) | Read order falls back to `Checkpoint.md`'s top entry, thin flag set, and the prompt says which file is missing rather than pointing at a path that does not exist. |
-| **Two sessions today** ... several `session-summary-MM-DD-YY*` files | Use the one `handoff.md` points at. It is the newest by definition, because closeout just wrote both. |
+Something will be missing sooner or later ... closeout aborted, no `handoff.md`, no P0, `spawn_task` unavailable, the prompt could not be written. **Every one of those has a written branch, and every branch says something readable to the user rather than failing silently or proceeding as if nothing happened.** The full table: `${CLAUDE_PLUGIN_ROOT}/references/degraded-branches.md`.
+
+**Never invent a degraded path that is not in that file.** Silence is the failure mode this skill exists to prevent.
 
 ---
 
@@ -322,6 +231,6 @@ Then tell the user, in one or two lines, what is on the chip:
 
 ---
 
-## Non-goal, recorded so it does not get re-proposed
+## Non-goals and recorded rationale
 
-A headless `claude -p "<prompt>"` through Bash is the only way to remove the click. **It is the wrong trade.** It runs the next session non-interactively, which means the user cannot steer it, cannot answer its questions, and cannot pick local vs worktree vs cloud. The click is not friction to be optimized away ... it is the human gate on starting a session, and it is where a real decision gets made.
+Settled questions that should not be re-opened ... chiefly why the chip's click is kept rather than optimised away with a headless `claude -p`: `docs/kickoff-prompt-rationale.md`.
