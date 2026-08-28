@@ -149,12 +149,12 @@ universal cursor removes. Reach for the native param only when an endpoint has n
 
 ```bash
 # page 1
-curl "https://www.socialcrawl.dev/v1/instagram/profile/posts?handle=nasa" -H "x-api-key: KEY"
+curl "https://www.socialcrawl.dev/v1/instagram/profile/posts?handle=nasa" -H "x-api-key: $(cat ~/.config/socialcrawl/api_key)"
 # -> { "data": { "items": [...], "pagination": { "next_cursor": "QVFE...zA9" } } }
 
 # page 2 — same call, cursor echoed back untouched
 curl "https://www.socialcrawl.dev/v1/instagram/profile/posts?handle=nasa&cursor=QVFE...zA9" \
-  -H "x-api-key: KEY"
+  -H "x-api-key: $(cat ~/.config/socialcrawl/api_key)"
 ```
 
 ⚠️ **Each page is a separate billed call.** A 1cr endpoint paged 10 deep costs 10 credits.

@@ -26,7 +26,21 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 function pass() { process.exit(0); }                  // no decision -> normal permission flow
-function emit(obj) { try { process.stdout.write(JSON.stringify(obj)); } catch {} process.exit(0); }
+function emit(obj) {
+  // A PreToolUse decision MUST carry hookEventName, and its reason MUST ride in
+  // permissionDecisionReason. Claude Code silently discards a decision missing either
+  // and lets the tool call through — which is exactly how this guard sat inert from
+  // 2026-07-05 to 2026-08-17 while returning a correct-looking "deny" on stdout.
+  const out = obj.hookSpecificOutput;
+  if (out && out.permissionDecision) {
+    out.hookEventName = "PreToolUse";
+    if (obj.systemMessage && !out.permissionDecisionReason) {
+      out.permissionDecisionReason = obj.systemMessage;
+    }
+  }
+  try { process.stdout.write(JSON.stringify(obj)); } catch {}
+  process.exit(0);
+}
 
 let input;
 try {
@@ -125,7 +139,11 @@ try {
     // platform. They sit outside the published platform catalogue, so they are absent from
     // the generated cost map and would otherwise fall through to the conservative 5cr
     // "unknown endpoint" branch and prompt the user on a free call.
-    if (p.startsWith("credits/") || p.startsWith("prism/lookup")) return 0;
+    if (p.startsWith("credits/")) return 0;
+    // prism/lookup: the catalog, the vendor's pricing.md and utility/endpoints all store 0,
+    // but it bills 1 — measured live and uncached 08.23.26. Overridden here rather than in
+    // costs.json because costs.json is gen_refs.py output and a regen restores the vendor's 0.
+    if (p.startsWith("prism/lookup")) return 1;
     let c;
     if (COSTS) {
       const hit = lookup(VERB, p);

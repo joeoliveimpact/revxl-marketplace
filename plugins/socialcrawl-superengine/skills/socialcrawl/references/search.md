@@ -9,7 +9,7 @@
 |----------|--------|---------|-------------|
 | /everywhere | `query` | 20 | Universal social search across 14 platforms |
 | /forums | `query` | 10 | Fused forum search across Reddit, Hacker News, and Naver 지식iN/카페 — with top comments inline on hero threads by default. |
-| /news | `query` | 1 | Planned multi-country news search: one query, localized and fanned out across Google News editions in a single call. |
+| /news | `query` | 1 **/leg returning articles** | Planned multi-country news search: one query, localized and fanned out across Google News editions in a single call. |
 
 ### Parameter legend
 
@@ -63,9 +63,11 @@ curl "https://www.socialcrawl.dev/v1/search/forums?query=<query>" \
   -H "x-api-key: $SOCIALCRAWL_API_KEY"
 ```
 
-### /news — 1cr
+### /news — 1cr per leg returning articles
 
 Plans your query into search angles, localizes each angle into the language of every requested country edition (one combined LLM call, fail-open), then fans out up to 12 parallel legs against Google News (50 supported country editions) and merges the articles into one deduplicated list. Every leg reports truthful provenance: `query_source` says whether its keyword was `translated`, confirmed `original`, or a `fallback_original` after a localization failure. Supports streaming via `Accept: text/event-stream` (the `plan_refined` chunk always carries the expanded legs with per-leg provenance before any leg settles) and sync via `Accept: application/json`. Filters: `publisher`, `from`/`to` exact date windows (these pin legs to the primary source), `time_range` recency, `depth` per-leg article depth, `max_legs` cost cap. Billing is metered: a base fee covers planning, then 1 credit per leg that returned articles; the unused ceiling is refunded automatically.
+
+> ⚠️ **Metered per leg returning articles — the 1cr figure is a UNIT price, not the price of the request.** base planning fee + 1cr per leg that returned articles; unused ceiling auto-refunded. Multiply by the number of leg returning articless you send before calling; only successful units are charged.
 
 **Parameters**
 

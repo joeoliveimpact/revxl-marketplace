@@ -4,7 +4,7 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.1.47] — 2026-08-27
+## [0.1.48] — 2026-08-28
 
 ### Added
 - **workspace-superengine v0.11.0** ... `session-closeout` stamps the session transcript's path onto the Checkpoint entry, and `session-continue` reads that transcript alongside the handoff. The handoff records what was decided; the log holds the reasoning behind it, and where the two disagree the user is asked rather than one being picked silently.
@@ -12,6 +12,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **workspace-superengine v0.11.0** ... a new `session-continue` skill. It runs the full closeout, then reads back the files closeout just wrote and assembles the next session's kickoff prompt out of them, spawning it as a task chip the user clicks when they are ready to start.
 - **workspace-superengine v0.11.0** ... `session-closeout` now writes a per-session summary file of its own (new Phase 0.7) instead of packing the whole write-up into the Checkpoint entry. The Checkpoint entry shrinks to a burst plus a pointer at that file, and a 30-day window demotes older entries to one-liners in the same file.
 - **workspace-superengine v0.11.0** ... new `docs/session-summary-format.md`, the format reference for the session-summary artifact.
+
+## [0.1.47] — 2026-08-25
+
+### Changed
+- **socialcrawl-superengine v0.2.1** — the credit guard has never fired since 0.1.1 and now does in terminal sessions; six metered endpoints were priced as flat calls; `prism/lookup` was hardcoded free but bills 1 credit; the API key is no longer written into commands or requested in chat, with a new `setup/` key helper.
 
 ## [0.1.46] — 2026-08-24
 

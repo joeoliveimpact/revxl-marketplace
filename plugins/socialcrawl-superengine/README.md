@@ -1,6 +1,6 @@
 # SocialCrawl Superengine
 
-Deep social research engine on the [SocialCrawl](https://www.socialcrawl.dev) API — the
+Deep social research engine on the [SocialCrawl](https://www.socialcrawl.dev/?ref=AQNU384G) API — the
 full **48-platform / 381-endpoint** canon with exact per-call credit costs, plus guided
 research plays that turn raw endpoints into finished research artifacts.
 
