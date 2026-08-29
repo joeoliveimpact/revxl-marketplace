@@ -154,6 +154,11 @@ Which is correct? [1/2/type new]:
 Ask the user (single AskUserQuestion batch):
 1. **Workspace name** — short, used in document headers.
 2. **Primary purpose** — one sentence; populates `GOALS.md` and `CLAUDE.md`.
+3. **Success criteria** ... ask it, but hand them a real way out. Word it close to this:
+
+   > Last one, and "I don't know yet" is a completely fine answer: how would you know this workspace had done its job? If you'd rather answer that once you've actually worked in here for a session, just say "not yet" and I'll bring it up at your first closeout instead.
+
+   Almost nobody can answer this at setup, because nobody has used the workspace yet. That is expected. **Do not push, do not re-ask, and never fill it in yourself** ... a made-up goal is worse than a parked one. Whatever comes back, Step 10.5 turns it into a recorded state.
 
 Skip questions whose answers are obvious from prior context (directory name, prior messages).
 
@@ -185,6 +190,57 @@ For each template under `templates/`, read it from the plugin directory, perform
 
 Create the destination directories (`tasks/`, `troubleshooting/`, `.claude/`) as needed before writing.
 
+## Step 10.5 ... Record the goals state (mandatory: two paths, no third)
+
+Setup is not allowed to finish with goals in an unknown state. Take the answer to Q3, sort it into exactly one of two paths, and write the matching marker. "Leave it blank and move on" is not one of the paths, and Step 13e will catch you if you try.
+
+**Sort the answer:**
+
+| Path | When |
+|---|---|
+| **ANSWERED** | Q2 gave a real purpose sentence AND Q3 produced at least one criterion specific enough to check later ... "50 qualified leads a month", "every client call has a written summary inside 24 hours". |
+| **DEFERRED** | Anything else. Skipped, "not yet", "I don't know", "you decide", a vague non-answer, or Q2 answered and Q3 not. **When in doubt, DEFERRED.** For a workspace nobody has worked in yet this is the normal outcome, not a failure. |
+
+### If ANSWERED
+
+1. In `GOALS.md`, replace the placeholder criterion rows under `## Success criteria` (the shipped rows that end in the literal `…` ellipsis) with one checkbox per criterion the user gave. Delete any leftover placeholder rows rather than shipping `…` into a live file.
+2. In `.claude/workspace.yml`, set:
+
+   ```yaml
+   goals:
+     status: set
+     deferred_on: ""
+   ```
+
+### If DEFERRED
+
+1. In `.claude/workspace.yml`, set:
+
+   ```yaml
+   goals:
+     status: deferred
+     deferred_on: "YYYY-MM-DD"     # today
+   ```
+
+2. Insert this block into `GOALS.md` directly under the `## Success criteria` heading, above the placeholder rows. Copy it verbatim, swapping in today's date:
+
+   ```markdown
+   > **GOALS DEFERRED ... set up YYYY-MM-DD, not answered yet.**
+   > You hadn't worked in this workspace yet, so success criteria were left open on purpose. That is by design, not an oversight.
+   > The next `/session-closeout` is required to walk you through this, using what you actually did in your first session.
+   > Don't delete this block by hand. Closeout clears it once real goals are in place.
+   ```
+
+3. Say one line to the user, no question attached:
+
+   > Goals are parked until your first closeout. I'll propose some then, based on what you actually work on ... much easier to answer once you've used the place.
+
+### Why two markers and not one (belt and suspenders)
+
+The `.claude/workspace.yml` block is what the skills branch on. The `GOALS.md` banner is what a human sees. If either goes missing ... a config repair, a hand-edit, a file restored from backup ... the other still tells the next closeout that goals are owed. `session-start` and `session-closeout` both treat **either** marker on its own as authoritative.
+
+**Both environments:** Step 10.5 is Read / Edit / Write only. No Bash, so it behaves identically in Claude Code and in Cowork.
+
 ## Step 11 — Create the 3 placeholder folders
 
 Create these as empty (zero-byte) `.gitkeep` files:
@@ -198,7 +254,7 @@ Tell the user which files were created. Don't dump contents — list paths only.
 
 ## Step 13 — Verify (REQUIRED before claiming done)
 
-Perform all three checks below. Surface any failure to the user and DO NOT report success.
+Perform all four checks below. Surface any failure to the user and DO NOT report success.
 
 ### 13a — File existence
 
@@ -232,15 +288,30 @@ Read `CLAUDE.md`. Count lines. Must be **≤ 150**. If over, STOP and report the
 
 For each of the 12 non-`.gitkeep` files, search for the literal strings `{{WORKSPACE_NAME}}`, `{{PURPOSE}}`, `{{DATE}}`, and any pattern matching `{{` `}}`. If ANY remains, STOP, report which file and which placeholder, do not claim success.
 
+### 13e ... Goals state is recorded (never left `unset`)
+
+This is the check that makes a silent blank-goals finish impossible. Read `.claude/workspace.yml` and `GOALS.md`, and confirm ONE of these two shapes holds completely:
+
+- **Set** ... `goals.status: set`, `## Primary purpose` in `GOALS.md` is a real sentence (not `{{PURPOSE}}`, not empty), and `## Success criteria` has at least one filled checkbox with no `…` placeholder rows left behind.
+- **Deferred** ... `goals.status: deferred` with a real `deferred_on` date, AND the `GOALS DEFERRED` banner is present in `GOALS.md`.
+
+**STOP and do not report success** if any of these is true:
+- `goals.status` is still `unset` (Step 10.5 never ran)
+- status says `set` but the criteria are still placeholders
+- status says `deferred` but there is no banner in `GOALS.md`, or the banner is there and the status is not `deferred`
+
+Say exactly which half is missing, go finish Step 10.5, then re-run this check. Setup is not complete while goals are in an unknown state ... that ordering bug is the whole reason this step exists.
+
 ### 13d — Success report
 
-Only if 13a, 13b, 13c all pass, report:
+Only if 13a, 13b, 13c, 13e all pass, report:
 
 ```
 Workspace scaffolded: {{WORKSPACE_NAME}}
   ✓ 15 artifacts created
   ✓ CLAUDE.md within 150-line budget
   ✓ no template placeholders remaining
+  ✓ goals recorded (set, or deferred to first closeout)
 
 Next: open handoff.md for P0, or run /session-start.
 ```
@@ -269,4 +340,4 @@ If either condition fails (no Linear, or no `linear-kickoff` skill), **skip sile
 - **Intent Clarification:** if workspace name or purpose is ambiguous, ask once.
 - **Least Complexity:** 15 artifacts is the floor. Modules add more — they are separate skills.
 - **Surgical Execution:** never overwrite without confirmation in Step 0.
-- **Declarative Focus:** DoD is "15 artifacts exist; CLAUDE.md ≤ 150 lines; no `{{...}}` left." Anything beyond that is a separate task.
+- **Declarative Focus:** DoD is "15 artifacts exist; CLAUDE.md ≤ 150 lines; no `{{...}}` left; goals recorded as either `set` or `deferred`, never `unset`." Anything beyond that is a separate task.
