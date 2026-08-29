@@ -2,6 +2,13 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.11.1 — 2026-08-29
+
+### Fixed
+- **`session-continue` no longer stops between its own steps.** The skill declared that it "does two things in order" and never said *in one turn*, so a question asked inside Step 1 ... the same-day check that decides whether closeout already ran ... ended the run. The model answered it, finished the closeout, and reported "ready for Step 2 whenever you are." Nothing had gone wrong except that the user typed one command and got handed the wheel back before the chip existed. A search of the shipped 4,434-word file found zero instances of any continuity rule: no "one turn", no "do not stop", no statement that the chip click is the only gate. Three additions close it ... the top contract now states that Steps 1 to 3 complete in a single turn and that a mid-step question picks a path rather than ending the run; Step 1's same-day ask says explicitly to continue through Step 3 either way it is answered; and Step 3 promotes the chip click from "correct" to **the only** human gate in the skill.
+- The ask itself was right and is unchanged. Two real sessions on one day and an accidental double-run are indistinguishable from disk, and only the user can tell them apart. What was missing was the instruction to keep going afterward.
+- **Why the eval missed it:** 0.11.0 shipped on six fixture runs graded 20 PASS / 0 FAIL. Those fixtures exercised the *stale-handoff* path the skill was designed around. None of them ran two sessions on the same date, which is the only path that reaches the ask. The failure the author anticipates is the one the author tests.
+
 ## 0.11.0 — 2026-08-27
 
 ### Added
