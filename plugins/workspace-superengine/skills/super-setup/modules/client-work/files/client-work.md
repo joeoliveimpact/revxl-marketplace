@@ -11,7 +11,7 @@ This workspace contains material from multiple clients. The following rules appl
 
 1. **Never read another client's folder unless the current task names it explicitly.** "Look at how I handled the last client" is not explicit — ask which one.
 2. **Never quote, paraphrase, or reference Client A's material in a deliverable for Client B.** Patterns, templates, and frameworks are fine; specifics are not.
-3. **Do not write a client's name, business details, or session notes into shared files** (RULES.md, GOALS.md, MEMORY.md, the root README, or any file outside `clients/<that-client>/`).
+3. **Do not write a client's name, business details, or session notes into shared files** (.claude/rules/overrides.md, GOALS.md, MEMORY.md, the root README, or any file outside `clients/<that-client>/`).
 4. **Outputs default to `clients/<client-name>/deliverables/` unless the user says otherwise.** Loose deliverables in workspace root are a leak risk.
 
 ## Boundaries

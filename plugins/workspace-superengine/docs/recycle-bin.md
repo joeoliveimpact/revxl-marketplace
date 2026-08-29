@@ -36,10 +36,13 @@ _recycle-bin/
 - `Original path` is workspace-relative, forward slashes.
 - `Quarantined` is stamped at move time and is **the only source of truth for age**. NTFS
   last-access updates are off by default on Windows, so file timestamps cannot be trusted
-  here. Never age a file from the filesystem.
+  here. Never age a file from the filesystem. Both date columns use `YYYY-MM-DD`, exactly
+  like the batch folder name; mixed formats break the eligibility arithmetic.
 - `Eligible` is quarantined + 7 days. At eligibility, one question gets asked ... move the
   batch to permanent cloud storage, or delete it ... naming every file. Silence is not
-  consent; an unanswered ask means the batch stays.
+  consent; an unanswered ask means the batch stays. **No skill polls for eligibility yet**:
+  the question fires when a human opens the manifest or asks about the bin, and a future
+  release may give a closeout phase the job. Nothing is ever deleted for lack of asking.
 - Rows are never deleted. A restore, a final deletion, or any other outcome is recorded by
   annotating the `Notes` column with a dated note.
 
@@ -52,8 +55,9 @@ Outside two cases, the bin is out of scope for every skill and session:
 - The user asks about quarantined files, a restore, or the final cleanup directly.
 
 Do not read the bin for context, do not search it when answering questions, do not count its
-contents in any audit of what the workspace contains. A quarantined file is one the workspace
-already decided it does not need.
+contents in any audit of what the workspace contains. Results from a mechanical sweep (a Glob
+or Grep whose pattern happens to reach into `_recycle-bin/`) are discarded unread. A
+quarantined file is one the workspace already decided it does not need.
 
 ## Restoring
 
@@ -64,11 +68,14 @@ than overwriting either copy.
 ## Name collisions inside a batch
 
 Two same-named files quarantined the same day get numeric suffixes on the *second* arrival
-(`RULES.md`, then `RULES-1.md`), and each keeps its own manifest row. The row's `File` column
-carries the name as stored in the bin; `Original path` disambiguates.
+(`RULES.md`, then `RULES-1.md`, then `RULES-2.md`), and each keeps its own manifest row. The
+suffix goes before the FIRST dot (`data-1.tar.gz`). The row's `File` column carries the name
+as stored in the bin; `Original path` disambiguates.
 
 ## Creating the bin
 
-The first skill that needs to quarantine something creates `_recycle-bin/`, a `README.md`
-carrying the contract above, and `MANIFEST.md` with the table header. Creation is silent; the
-quarantine that triggered it is what gets reported.
+The first skill that needs to quarantine something creates `_recycle-bin/`, a `README.md`,
+and `MANIFEST.md` with the table header. The README carries the three numbered contract
+points and the scope-discipline section, restated in full ... a browsing human must get the
+whole contract without this plugin installed. Creation is silent; the quarantine that
+triggered it is what gets reported.

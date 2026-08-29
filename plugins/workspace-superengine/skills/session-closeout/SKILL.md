@@ -32,9 +32,9 @@ Only run the full process below after the user confirms. If the user explicitly 
 
 ---
 
-## Phase 0: Confirm RULES.md Compliance (30s)
+## Phase 0: Confirm Override-Constraint Compliance (30s)
 
-Before writing the session log, do a quick self-check against RULES.md:
+Before writing the session log, do a quick self-check against the four override constraints (`.claude/rules/overrides.md`; legacy root `RULES.md` on unmigrated workspaces):
 - Did this session honor Surgical Execution? (no out-of-scope edits)
 - Did this session honor Least Complexity? (no over-engineering)
 - Any feedback patterns from the user worth saving to memory?
@@ -99,7 +99,7 @@ body that used to bloat the Checkpoint entry.>
 
 **Four rules, and each one is load-bearing:**
 
-1. **`sot_policy: decay` is not optional.** It marks the file episodic ... recency-weighted, never deleted, superseded by newer sessions rather than by a status flag. **Episodic and durable never blend.** A durable decision does NOT belong here: a decision meant to bind every future session goes in `RULES.md`, `MEMORY.md` or `GOALS.md`, and must never be marked `decay`.
+1. **`sot_policy: decay` is not optional.** It marks the file episodic ... recency-weighted, never deleted, superseded by newer sessions rather than by a status flag. **Episodic and durable never blend.** A durable decision does NOT belong here: a decision meant to bind every future session goes in `.claude/rules/overrides.md`, `MEMORY.md` or `GOALS.md`, and must never be marked `decay`.
 2. **Every content header is `## [YYYY-MM-DD] <topic>`.** The date is duplicated from the filename on purpose: retrieval chunks at the H2 boundary and reads the header text, not the filename. A summary with undated headers is a summary the graph cannot date.
 3. **Headers are topical, never procedural.** `## [2026-08-14] Linear source-of-truth rule` retrieves. `## [2026-08-14] Notes` does not, and neither does `Progress` or `Misc`. If a section covers three unrelated things, it is three sections.
 4. **`## Connections` is required, and it is honest about being inert.** On the `/graphify` skill path those lines parse into nothing ... they become an ordinary heading. Their real job is putting the locked verbs (`depends_on consumes exposes integrates_with runs_on references`) in front of the extractor, which otherwise collapses every relationship into `references`. Write it anyway. It costs four lines.
@@ -313,7 +313,7 @@ Route each candidate to a destination **before** you show it, using the house ru
 
 | What the item is | Where it goes |
 |---|---|
-| A durable constraint ... a rule that should bind every future session | `RULES.md` |
+| A durable constraint ... a rule that should bind every future session | `.claude/rules/overrides.md` |
 | A fact about the user or the project ... true regardless of what you work on next | `MEMORY.md`, as a dated bullet under the right bucket. A long write-up gets its own file under `memory/` plus an index line in `MEMORY.md`, per MEMORY.md's own "long write-ups go in their own files; link them from here" instruction. |
 | An outcome or objective ... something you could check later and say yes or no to | `GOALS.md` |
 
@@ -327,7 +327,7 @@ Here's what today suggests. Yes or no to each ... "no" costs nothing.
      "Every client call has a written summary in output/ within 24 hours."
      (why: you did three of these today and asked me to standardize the format)
 
-  2. RULE  → RULES.md
+  2. RULE  → .claude/rules/overrides.md
      "Nothing goes out to a client without you seeing it first."
      (why: you stopped me twice today right before a send)
 
@@ -342,7 +342,7 @@ Yes to all, or just pick numbers ... "1 and 3" is a perfectly good answer.
 
 - **Never auto-write.** Nothing on that list lands anywhere until the user says yes to that specific item.
 - **Per item, not all-or-nothing.** "1 and 3" means item 2 is dropped and not re-proposed this session.
-- `RULES.md` is normally never edited (Phase 3's table says exactly that). An explicitly accepted rule from this pass is the one exception, because the user just said it out loud. Append it under a `## Workspace-specific rules` heading at the bottom. **Never touch the four override constraints.**
+- `.claude/rules/overrides.md` is normally never edited (Phase 3's table says exactly that). An explicitly accepted rule from this pass is the one exception, because the user just said it out loud. Append it under a `## Workspace-specific rules` heading at the bottom. **Never touch the four override constraints.**
 - Stamp every accepted item per 2.7c before writing it.
 
 **Step 4 ... clear the marker, in this order.**
@@ -396,7 +396,7 @@ One session of evidence is `source_count: 1`, so a first-pass item is always pro
   ---
   ```
 
-- **Destination is a bullet or a checkbox** (`GOALS.md`, `RULES.md`, a `MEMORY.md` line) ... carry the same three inline at the end of the line:
+- **Destination is a bullet or a checkbox** (`GOALS.md`, `.claude/rules/overrides.md`, a `MEMORY.md` line) ... carry the same three inline at the end of the line:
 
   ```markdown
   - [ ] Every client call has a written summary in output/ within 24 hours. _(inferred from session 2026-08-13 · source_count: 1 · provisional: true)_
@@ -442,7 +442,7 @@ Walk through each of the other root files. For each, decide UPDATE or NO CHANGE 
 | GOALS.md | Goals shifted, new success metric, or new active integration |
 | PLANNING.md | Initiative completed, new initiative started, or pending item resolved |
 | MEMORY.md | New memory file added — append to index |
-| RULES.md | NEVER edit unless user explicitly asks — these are the override constraints |
+| .claude/rules/overrides.md | NEVER edit unless user explicitly asks — these are the override constraints |
 | CLAUDE.md | Workspace purpose changed or new core file added |
 
 ---

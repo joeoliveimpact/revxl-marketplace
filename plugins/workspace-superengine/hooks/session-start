@@ -25,7 +25,7 @@ fi
 
 # --- Job 2: scaffold existence check ---
 scaffold_warning=""
-if [ ! -f "${WORKSPACE_ROOT}/RULES.md" ] || [ ! -f "${WORKSPACE_ROOT}/CLAUDE.md" ]; then
+if { [ ! -f "${WORKSPACE_ROOT}/.claude/rules/overrides.md" ] && [ ! -f "${WORKSPACE_ROOT}/RULES.md" ]; } || [ ! -f "${WORKSPACE_ROOT}/CLAUDE.md" ]; then
     scaffold_warning="This workspace isn't scaffolded. Run /super-setup."
 fi
 

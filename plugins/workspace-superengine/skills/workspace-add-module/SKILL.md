@@ -39,7 +39,7 @@ Do NOT use for:
 
 ## Step 0 — Preconditions
 
-1. Confirm the workspace is scaffolded. Look for `RULES.md` and `CLAUDE.md` at workspace root. If either is missing, stop and recommend `/super-setup`.
+1. Confirm the workspace is scaffolded. Look for `CLAUDE.md` at workspace root plus a rules file (`.claude/rules/overrides.md` or a legacy root `RULES.md`). If missing, stop and recommend `/super-setup`.
 2. Read `.claude/workspace.yml`. If absent, stop with the same recommendation.
 
 ## Step 1 — Discover available modules

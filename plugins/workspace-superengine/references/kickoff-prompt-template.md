@@ -13,7 +13,7 @@ Read this at 2e, once the six fields from 2b are in hand. It is the literal outp
 **Workspace:** `<absolute path to the workspace root>`
 **Route:** <the single line from 2c>
 
-Run `/session-start` first ... it reads RULES.md, `handoff.md`, `ARCHITECTURE.md`,
+Run `/session-start` first ... it verifies the override constraints, then reads `handoff.md`, `ARCHITECTURE.md`,
 `PLANNING.md` when present, and the newest one or two `Checkpoint.md` entries, then
 works through whatever `handoff.md` listed under `Verify before building` and reports
 what failed. **It does not read session summaries** ... that one is yours to open, and

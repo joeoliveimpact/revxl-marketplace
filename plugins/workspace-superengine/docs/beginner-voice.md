@@ -30,7 +30,7 @@ If the term appears again in the same preamble, the inline definition can be dro
 
 ### 2. Analogies over acronyms
 
-Bad: "Loading the RULES.md overrides via the agent-optimizer SKILL."
+Bad: "Loading the override constraints via the agent-optimizer SKILL."
 Good: "Think of agent-optimizer as a coach standing behind Claude — it reminds Claude of four ground rules before every task."
 
 Avoid acronyms entirely where possible. Where unavoidable, expand on first use.

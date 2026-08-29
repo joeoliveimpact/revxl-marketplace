@@ -31,7 +31,8 @@ Where this workspace has a `linear:` block in `.claude/workspace.yml`, Linear is
 
 - **Conflict: surface it, never silently resolve it.** A disagreeing local file may be the correct side ... work that got done and never filed. Show both versions and ask which is right, then sync the stale side, either direction.
 - **Read Linear before claiming state.** Never report status or priorities from local files alone.
-- **Write Linear before local.** New work: file the issue first, then summarize locally.
+- **Write Linear before local.** New work: file the issue first, then summarize locally. Work finished: move the Linear issue, then write the local entry.
+- **Keep them in sync both directions.** Unsynced drift is a reportable finding, not a footnote.
 - **Work done in another workspace still counts.** Linear spans workspaces; these files do not.
 
 Workspaces with no `linear:` block skip this section.

@@ -38,8 +38,13 @@ Only run the full process below after the user confirms. If the user explicitly 
 Surgical Execution, Declarative Focus) govern every action this session. Where they live
 depends on the workspace's generation; check in this order:
 
-1. **`.claude/rules/overrides.md` exists** → the harness already loaded it into this
-   session. Do not re-read it. State one line: constraints active via rules file. Done.
+1. **`.claude/rules/overrides.md` exists** → in the Code environment the harness already
+   loaded it into this session; do not re-read it, state one line (constraints active via
+   rules file) and move on. In the Cowork environment, Read the file ... harness rules
+   loading is unverified there, so the Read IS the load. **If a root `RULES.md` ALSO
+   exists**, it is stale ... it stopped being authoritative at migration. Say so in one
+   line and (Code only) quarantine it per the migration step below; never leave both
+   copies live, and never silently ignore it.
 2. **Legacy: root `RULES.md` exists and `.claude/rules/overrides.md` does not** (Code
    environment only) → **migrate it now, once:**
    - Read `RULES.md` in full. Write `.claude/rules/overrides.md`: a frontmatter block
@@ -50,8 +55,10 @@ depends on the workspace's generation; check in this order:
      workspace-specific standing policy in these files.**
    - Quarantine the original: move `RULES.md` to `_recycle-bin/<YYYY-MM-DD>/RULES.md`
      and append a row to `_recycle-bin/MANIFEST.md` (create the bin and manifest per
-     `docs/recycle-bin.md` if absent). Never delete it, and never leave both copies
-     live ... two live copies with one authoritative is a silent-drift trap.
+     `docs/recycle-bin.md` in this plugin if absent). The row needs at minimum the
+     filename, the workspace-relative original path, and the quarantine date as
+     `YYYY-MM-DD`. Never delete the file, and never leave both copies live ... two live
+     copies with one authoritative is a silent-drift trap.
    - Tell the user in one line: rules moved to `.claude/rules/overrides.md` (loads
      every session now); original in the recycle bin.
    - The migrated file takes effect from the NEXT session; for THIS session, apply the
