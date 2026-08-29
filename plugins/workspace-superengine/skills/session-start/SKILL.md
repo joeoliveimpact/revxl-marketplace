@@ -1,6 +1,6 @@
 ---
 name: session-start
-description: Use at the start of a working session to load context — reads RULES.md, handoff.md, ARCHITECTURE.md, PLANNING.md, recent Checkpoint.md entries, and surfaces priorities for this session. Trigger phrases include "let's start the session", "pick up where we left off", "what was I working on", "session start", "/session-start", and any opening message that suggests the user is resuming work without saying so explicitly (e.g. "morning", "back at it"). Replaces the legacy /session-pickup command.
+description: Use at the start of a working session to load context ... verifies the override constraints (migrating a legacy RULES.md into .claude/rules/overrides.md when found), reads handoff.md, ARCHITECTURE.md, PLANNING.md, recent Checkpoint.md entries, and surfaces priorities for this session. Trigger phrases include "let's start the session", "pick up where we left off", "what was I working on", "session start", "/session-start", and any opening message that suggests the user is resuming work without saying so explicitly (e.g. "morning", "back at it"). Replaces the legacy /session-pickup command.
 ---
 
 # Session Start Procedure
@@ -32,14 +32,35 @@ Only run the full process below after the user confirms. If the user explicitly 
 
 ---
 
-## Phase 0: RULES.md — Non-Negotiable (30s)
+## Phase 0: Override constraints ... Non-Negotiable (30s)
 
-**Always first.** Read `RULES.md` at workspace root. The four override constraints
-(Intent Clarification, Least Complexity, Surgical Execution, Declarative Focus) govern
-every action this session.
+**Always first.** The four override constraints (Intent Clarification, Least Complexity,
+Surgical Execution, Declarative Focus) govern every action this session. Where they live
+depends on the workspace's generation; check in this order:
 
-If RULES.md is missing → flag immediately. Suggest running `/super-setup` to scaffold
-the workspace, or run `/agent-optimizer` to load the constraints into context directly.
+1. **`.claude/rules/overrides.md` exists** → the harness already loaded it into this
+   session. Do not re-read it. State one line: constraints active via rules file. Done.
+2. **Legacy: root `RULES.md` exists and `.claude/rules/overrides.md` does not** (Code
+   environment only) → **migrate it now, once:**
+   - Read `RULES.md` in full. Write `.claude/rules/overrides.md`: a frontmatter block
+     whose `description:` says these are the workspace's override constraints, loaded
+     every session, migrated from the legacy root RULES.md ... and **no `paths:` key**
+     (unscoped is the load mechanism) ... followed by the RULES.md body **verbatim.
+     Do not summarize, reorder, or drop anything: fleet audit 08.29.26 found
+     workspace-specific standing policy in these files.**
+   - Quarantine the original: move `RULES.md` to `_recycle-bin/<YYYY-MM-DD>/RULES.md`
+     and append a row to `_recycle-bin/MANIFEST.md` (create the bin and manifest per
+     `docs/recycle-bin.md` if absent). Never delete it, and never leave both copies
+     live ... two live copies with one authoritative is a silent-drift trap.
+   - Tell the user in one line: rules moved to `.claude/rules/overrides.md` (loads
+     every session now); original in the recycle bin.
+   - The migrated file takes effect from the NEXT session; for THIS session, apply the
+     constraints from the RULES.md you just read.
+   In the Cowork environment, skip the migration (no reliable file moves there): read
+   whichever of the two files exists and apply the constraints from it.
+3. **Neither file exists** → flag immediately. Suggest running `/super-setup` to
+   scaffold the workspace, or run `/agent-optimizer` to load the constraints into
+   context directly.
 
 ---
 
@@ -78,7 +99,7 @@ The trigger is the **configured flag**, NOT a bare MCP connection. The Linear MC
    - Code: optionally `test -f <path>` via Bash if you prefer
    - Cowork: use Glob with the exact filename pattern, OR attempt Read and treat ENOENT as "missing"
 
-If `RULES.md`, `handoff.md`, `ARCHITECTURE.md`, or `Checkpoint.md` is missing → the workspace isn't fully scaffolded. Suggest `/super-setup`. A missing `PLANNING.md` alone is not a scaffolding failure — note it and move on.
+If `handoff.md`, `ARCHITECTURE.md`, or `Checkpoint.md` is missing ... or the rules slot is empty (neither `.claude/rules/overrides.md` nor a legacy root `RULES.md` exists) ... the workspace isn't fully scaffolded. Suggest `/super-setup`. A missing `PLANNING.md` alone is not a scaffolding failure ... note it and move on.
 
 ### Check the local files against what the tracker said (only when Phase 0.5 ran)
 
@@ -226,7 +247,7 @@ End your turn. Wait for direction before starting work.
 
 If today's work touches any of these, verify before building:
 
-- **Stale references:** Use the Grep tool to search RULES.md, handoff.md, Checkpoint.md top entry for path strings; verify each path exists via Glob (Cowork) or `test -f` (Code).
+- **Stale references:** Use the Grep tool to search `.claude/rules/overrides.md`, handoff.md, Checkpoint.md top entry for path strings; verify each path exists via Glob (Cowork) or `test -f` (Code).
 - **Drift between Checkpoint.md and reality:** "Service X running" claims that don't match actual state
 - **Context bloat:** large directories advertised in system prompts (skills/, memory/ inside agent workspaces)
 - **Credential expiry:** API keys, tokens that may have rotated
