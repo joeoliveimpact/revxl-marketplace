@@ -6,7 +6,7 @@ What the next session should do first. Rewritten in full by `/session-closeout` 
 
 ## P0 (do first)
 
-- [ ] Read `CLAUDE.md` and `RULES.md` if you haven't this session.
+- [ ] Read `CLAUDE.md` if you haven't this session (the override constraints load automatically from `.claude/rules/overrides.md`).
 - [ ] Confirm the scaffold matches your real intent — edit `GOALS.md` and `ARCHITECTURE.md` if anything is off.
 - [ ] Add your first real project row to `PLANNING.md`.
 
