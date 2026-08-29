@@ -1,6 +1,6 @@
 ---
 name: session-closeout
-description: Use at the end of a working session to capture state — updates Checkpoint.md with a session log entry and rewrites handoff.md with next-session priorities. Trigger phrases include "let's wrap up", "closing out for the day", "session closeout", "save state", "I'm done for now", "/session-closeout", and any signal the user is ending work (e.g. "logging off", "see you tomorrow"). Pairs with /session-start.
+description: Use at the end of a working session to capture state — writes a session summary file, updates Checkpoint.md with a log entry, and rewrites handoff.md with next-session priorities. Trigger phrases include "let's wrap up", "closing out for the day", "session closeout", "save state", "I'm done for now", "/session-closeout", and any signal the user is ending work (e.g. "logging off"). If the user also wants the NEXT session queued up as a one-click chip — "see you tomorrow", "continue this tomorrow", "close out and get the next one ready" — use /session-continue instead, which runs this skill in full and then builds that prompt. Pairs with /session-start.
 ---
 
 # Session Closeout Procedure
@@ -26,7 +26,7 @@ Read `.claude/workspace.yml#verbosity` at skill entry. If the value is `beginner
 
 If the user's prompt is borderline — could fit this skill or could just want a quick direct answer — ask before firing:
 
-> "Sounds like you're wrapping up — want me to run `/session-closeout` to update Checkpoint.md and handoff.md? Or just stop here without logging?"
+> "Sounds like you're wrapping up — three options: `/session-closeout` to save state, `/session-continue` to save state **and** queue tomorrow's session as a one-click chip, or just stop here without logging. Which?"
 
 Only run the full process below after the user confirms. If the user explicitly invokes `/session-closeout`, skip the suggestion and proceed.
 
@@ -40,6 +40,82 @@ Before writing the session log, do a quick self-check against RULES.md:
 - Any feedback patterns from the user worth saving to memory?
 
 If yes to the last → save a memory file (per `~/.claude/CLAUDE.md` auto memory rules) before proceeding.
+
+---
+
+## Phase 0.7: Write the session summary (5 min)
+
+**Runs before Phase 1 on purpose.** Phase 1's Checkpoint entry points at this file by name, and Phase 2's handoff wiki-links it. Write the thing before you write the two pointers to it, or both pointers are guesses.
+
+One file per session. It is the expansion of the terse Checkpoint burst, and it is the file `/session-continue` reads back when it builds the next session's kickoff prompt. Full format reference: `docs/session-summary-format.md` in this plugin.
+
+### Step 1 ... pick the path
+
+`sessions/session-summary-MM-DD-YY.md` at the workspace root.
+
+- **Create `sessions/` if it does not exist.** Most workspaces were scaffolded before this existed, so a missing folder is normal, not an error.
+- **Collisions get a numeric suffix**, in order: `session-summary-08-14-26.md`, then `-1`, then `-2`. Check with Glob before writing. Never overwrite an existing summary ... a second session on the same day is a second file.
+- **Every pointer written later carries the suffix you actually used.** Phase 1's `**Summary:**` handle and Phase 2's `## Session summary` block both show `session-summary-MM-DD-YY` as a placeholder, not a literal. On a second same-day session the file is `-1` and so is every pointer at it. A pointer at the un-suffixed name is the handle-pointing-at-nothing failure this phase exists to avoid, self-inflicted.
+
+### Step 2 ... write the file
+
+Write it yourself, here, in this context. Everything the summary needs ... what was built, why, what it cost, what broke, what is unfinished ... is already in this conversation, and reconstructing it from file timestamps somewhere else would get it wrong in ways nobody catches.
+
+The file to be written, exactly this shape:
+
+```markdown
+---
+id: session-summary-MM-DD-YY
+tags: [session, episodic, <workspace-slug>]
+date_created: YYYY-MM-DD
+date_updated: YYYY-MM-DD
+source: workspace-canonical
+sot_policy: decay
+source_count: 1
+confidence: 0.8
+---
+
+# Session summary ... YYYY-MM-DD
+
+## [YYYY-MM-DD] <topic ... what this section is actually about>
+
+<The expansion. What was built or decided, why, what it cost, what broke. This is the
+body that used to bloat the Checkpoint entry.>
+
+## [YYYY-MM-DD] <second topic>
+
+<...>
+
+## [YYYY-MM-DD] Open threads for next session
+
+<What is unfinished, and what the next session needs to know to pick it up.>
+
+## Connections
+
+- `depends_on` ... [[<thing this session's work needs>]]
+- `consumes` ... <file or artifact this work reads>
+- `integrates_with` ... <system it touches>
+```
+
+**Four rules, and each one is load-bearing:**
+
+1. **`sot_policy: decay` is not optional.** It marks the file episodic ... recency-weighted, never deleted, superseded by newer sessions rather than by a status flag. **Episodic and durable never blend.** A durable decision does NOT belong here: a decision meant to bind every future session goes in `RULES.md`, `MEMORY.md` or `GOALS.md`, and must never be marked `decay`.
+2. **Every content header is `## [YYYY-MM-DD] <topic>`.** The date is duplicated from the filename on purpose: retrieval chunks at the H2 boundary and reads the header text, not the filename. A summary with undated headers is a summary the graph cannot date.
+3. **Headers are topical, never procedural.** `## [2026-08-14] Linear source-of-truth rule` retrieves. `## [2026-08-14] Notes` does not, and neither does `Progress` or `Misc`. If a section covers three unrelated things, it is three sections.
+4. **`## Connections` is required, and it is honest about being inert.** On the `/graphify` skill path those lines parse into nothing ... they become an ordinary heading. Their real job is putting the locked verbs (`depends_on consumes exposes integrates_with runs_on references`) in front of the extractor, which otherwise collapses every relationship into `references`. Write it anyway. It costs four lines.
+
+### Step 3 ... wikilinks, with the cost stated correctly
+
+Write `[[wikilinks]]` to related summaries and files. **Structure is free, semantics are paid** ... on builds that ship the link parser, a structural pass turns links into real `references` edges at zero token cost, but that pass does not run on the `/graphify` skill path, and links inside fenced code blocks are skipped entirely.
+
+Keep targets resolvable to a same-folder sibling where you can. **Do not tell the user "edges are free", and do not tell them there are no free edges.** Which builds parse what, and how to check: `docs/session-summary-format.md`.
+
+### Step 4 ... the failure branches
+
+- **`sessions/` cannot be created** (permissions, read-only path): say so plainly, write the summary body into the Checkpoint entry instead of a pointer, and do NOT write a handle line pointing at a file that does not exist.
+
+  > I could not create the `sessions/` folder, so today's write-up went into Checkpoint.md in full instead of its own summary file. Nothing was lost ... the entry is just longer than usual.
+- **Session was genuinely thin** (ten minutes, one small fix): still write the file. A short summary is fine; a missing one breaks the handle in the Checkpoint entry. One dated H2 and a Connections block is a complete summary.
 
 ---
 
@@ -60,6 +136,9 @@ Template:
 ## YYYY-MM-DD — {short title}
 **Duration:** ~Xh
 **TL;DR:** {1–2 sentences capturing what was accomplished}
+**Summary:** [[session-summary-MM-DD-YY]]
+**Terms:** {3 to 5 topic terms, comma separated} (unverified ... no hub yet)
+**Session log:** {path to this session's transcript, or how it could not be determined}
 
 ### Completed
 - {item}
@@ -84,6 +163,28 @@ Template:
 
 **Hard rule:** every section has content or is explicitly marked "(none)". No silent omissions.
 
+### `**Session log:**` ... stamp the transcript path, or say you could not
+
+The raw transcript is the one artifact that is not a summary of anything, and **nothing else on disk records which transcript belongs to which session** ... so unless this line is written, `/session-continue` cannot find it later.
+
+Identify the file, **confirm it exists before writing the path**, and if you cannot identify it write what happened instead of a guess. How to find it and the exact fallback wording: `${CLAUDE_PLUGIN_ROOT}/references/session-log-stamping.md`.
+
+### The retrieval header ... two lines, deliberately not one
+
+`**Summary:**` is a **handle** ... a filename. It resolves and pulls one file whole, or it is missing and you find out immediately. It cannot half-work, and it needs no graph at all.
+
+`**Terms:**` are **topic terms** ... fuzzy, fanned out through hub search, and they can legitimately return nothing. **They carry `(unverified)` until a term-resolution index exists**, because writing them as if they were checked teaches the reader to trust something nobody checked.
+
+**Never merge the two onto one line.** Merged, a term that returns nothing reads as a broken pointer. Split, it reads as a miss, which is all it is. Full rationale: `docs/session-summary-format.md`.
+
+### The 30-day window ... demote old entries in the same file
+
+**Run this every closeout, right after inserting the new entry.** Entries older than 30 days compress to one-liners in a `## Earlier sessions` tail at the bottom of the same file, the newest 5 always stay full, and **entries with no `**Summary:**` handle are never compressed** ... their body exists in exactly one place and compressing it destroys the only copy.
+
+**Say out loud how many entries you retained for having no handle. Every closeout, including ... especially ... when the answer is "all of them."** A demotion that compressed nothing and reported nothing looks exactly like bloat control working when it is actually waiting on the backfill, and that line is the only thing that tells those apart.
+
+The rules, the ordering, and the exact wording of both spoken reports: `${CLAUDE_PLUGIN_ROOT}/references/checkpoint-demotion.md`.
+
 ---
 
 ## Phase 2: Rewrite handoff.md (3 min)
@@ -98,6 +199,9 @@ Template:
 
 ## Last session
 {date} — {title} (see Checkpoint.md for full entry)
+
+## Session summary
+[[session-summary-MM-DD-YY]] · `sessions/session-summary-MM-DD-YY.md`
 
 ## Status
 {1-line system state — what's working, what's not}
@@ -124,6 +228,10 @@ Template:
 
 If handoff.md doesn't exist, create it. If it exists, fully replace its contents.
 
+**`## Session summary` carries both forms on purpose.** The wiki-link is what a human clicks and what Obsidian resolves; the path is what survives a tool that does not understand wiki-links. Belt and suspenders, one extra line.
+
+**Five of these headings are load-bearing and must not be renamed, reordered out of existence, or reworded:** `## Last session`, `## Session summary`, `## P0 — Next Actions`, `## Verify before building`, `## Key files from last session`. `/session-continue` reads them by name to build the next session's kickoff prompt. Rename one and that prompt silently loses a field ... it will still generate, it will just be missing the part nobody notices is gone. If a section has nothing in it, write `(none)` under it. Never delete the heading.
+
 ---
 
 ## Phase 2.5: Sync to Linear (conditional)
@@ -132,14 +240,16 @@ Runs **only if** `.claude/workspace.yml` has a `linear:` block with `status: con
 
 Trigger is the **configured flag**, not bare MCP connection (the MCP is shared across all workspaces; the per-workspace `linear:` binding scopes which project to write).
 
-1. Read the `linear:` block — `team`, `project` (+ ids).
-2. **Connection health-check:** if configured but the Linear MCP isn't connected → warn one line, skip the sync, and record `Linear sync skipped — MCP not connected` in the Checkpoint entry. **Never fail closeout over Linear.**
+**Name the tools and call them.** This phase describes an outcome; these are the calls that produce it. The Linear MCP may register under an **opaque id** rather than a readable name, so load its tools by exact name (`select:mcp__<server-id>__list_issues,...`) using the `mcp_server_id` pinned in the `linear:` block, or enumerate the deferred-tool list for `list_issues` / `save_issue` / `save_comment` and read the id off those names. A failed keyword search for "linear" is **not** evidence the connector is down.
+
+1. Read the `linear:` block — `team`, `project` (+ ids), and `mcp_server_id` if present.
+2. **Connection health-check:** probe with `list_issues`. If configured but the Linear MCP isn't connected → warn one line, skip the sync, and record `Linear sync skipped — MCP not connected` in the Checkpoint entry. **Never fail closeout over Linear.**
 3. Sync this session's work, sourced from the Checkpoint entry you just wrote. Scope by the `linear:` block:
    - **Default (project-scoped):** sync to the configured `project`.
    - **`scope: team`** (no single `project` — workspace spans multiple): pick the right project under the `team` based on what was worked on (e.g. a Client Work hub → the specific `Clients/<name>` project). If no matching project exists yet, create it under the team, then sync.
-   - Work **started** this session → create issues (or move existing) to **In Progress**.
-   - Work **completed** → move matching issues to **Done** (create + close if none existed).
-   - **Search first** — never duplicate an issue that already exists.
+   - **Search first** with `list_issues` — never duplicate an issue that already exists.
+   - Work **started** this session → `save_issue` to create, or to move an existing issue to **In Progress**.
+   - Work **completed** → `save_issue` to move matching issues to **Done** (create + close if none existed).
 4. Keep it coarse: one issue per meaningful unit of work, NOT per file touched.
 5. Record the issue IDs touched in the Checkpoint entry (so the sync is auditable).
 
@@ -222,6 +332,7 @@ Report this table to the user. Every applicable file gets a row with action + re
 ```
 | File              | Action     | Reason (if NO CHANGE) |
 |-------------------|------------|-----------------------|
+| sessions/session-summary-MM-DD-YY.md | CREATED | — |
 | Checkpoint.md     | UPDATED    | — |
 | handoff.md        | UPDATED    | — |
 | ARCHITECTURE.md   | ?          | ? |
@@ -237,6 +348,9 @@ Also confirm:
 4. Any durable user/feedback/project learnings saved to memory?
 5. Workspace repo committed (or explicitly clean / not a repo)? Unpushed commits reported?
 
+6. Session summary written, and does the Checkpoint entry's `**Summary:**` handle point at a file that is actually on disk? Check it with Glob or `test -f`, do not assume it. A handle pointing at nothing is worse than no handle, because it looks like it works.
+7. Demotion ran, **and said something**? Entries older than 30 days (beyond the newest 5) are one-liners in the tail, EXCEPT pre-summary entries with no handle, which stay full on purpose. The retained count was spoken out loud. A demotion that compressed nothing and reported nothing is a defect, not a pass ... it is indistinguishable from bloat control working when it is actually waiting on the backfill.
+
 If any row shows `?` — fix it before reporting complete.
 
 ---
@@ -246,7 +360,11 @@ If any row shows `?` — fix it before reporting complete.
 If the session was under 30 minutes and touched <3 files, you can:
 - Skip Phase 0, Phase 3, Phase 4
 - Write a 3-line Checkpoint.md entry
-- Update handoff.md if anything blocks the next session
+- Keep handoff.md's `## Last session` current ... Phase 2 still runs, see below
+
+**Phase 0.7 is never skipped either, and neither is the demotion step.** The summary can be four lines on a quick session, but it has to exist, because Phase 1 writes a `**Summary:**` handle pointing at it and a handle pointing at nothing is a lie the next session believes. Demotion is a couple of edits and skipping it is how a Checkpoint file quietly grows back to 300 KB.
+
+**Phase 2 is never skipped, even when nothing blocks the next session.** `handoff.md` is rewritten every closeout without exception, because `/session-continue` decides whether a closeout ran **by reading the date under `## Last session`**. A quick mode that leaves that date stale makes a completed closeout look like one that never happened, and continue then runs a second full closeout over the top of it ... two Checkpoint entries, two summary files, one session. If genuinely nothing changed for the next session, rewrite the file anyway and say so in `## Status`. The date is the receipt.
 
 Don't quick-mode a session that touched architecture, made decisions, or hit failures.
 Those need the full procedure.

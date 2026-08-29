@@ -37,16 +37,21 @@ Optionally chains into `anthropic-skills:setup-cowork` for plugin/connector setu
 Reads RULES.md → handoff.md → ARCHITECTURE.md → PLANNING.md → recent Checkpoint.md, runs any verifications flagged in handoff.md, and presents a status brief. Conditional infrastructure-health phase for workspaces with live services.
 
 ### `session-closeout`
-**Triggers:** "checkpoint", "wrap up", "close out", "handoff", context > 50%
+**Triggers:** "let's wrap up", "closing out for the day", "session closeout", "save state", "I'm done for now"
 
 Appends a Checkpoint.md entry, rewrites handoff.md, walks every other root file with explicit UPDATE/NO-CHANGE — no silent skips. Includes a quick-mode for trivial sessions.
+
+### `session-continue`
+**Triggers:** "close out and queue tomorrow", "wrap up and start the next session", "continue this tomorrow"
+
+Runs the full `session-closeout`, then reads back what closeout just wrote and builds the next session's kickoff prompt out of it. Spawns that prompt as a task chip you click when you're ready to start ... so the next session opens already knowing where the last one stopped.
 
 ---
 
 ## Agents
 
 ### `session-curator` (Claude Code only)
-**Triggers:** same closeout keywords + proactive when context > 50%, also manually delegatable
+**Triggers:** "checkpoint", "save progress", "save where we are but keep going", proactive when context > 50%, also manually delegatable. **Mid-session only** — end-of-session phrases route to `session-closeout` or `session-continue`.
 
 Token-efficient session compression. Runs the full file walk in its own context window, returns a ~300-token verification table to the parent. Saves an estimated **~5K parent tokens per closeout** by keeping eight scaffold-file reads out of the parent context.
 

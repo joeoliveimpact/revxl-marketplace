@@ -2,6 +2,17 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.11.0 — 2026-08-27
+
+### Added
+- **`session-continue` ... close out and queue tomorrow in one pass.** It runs the full `session-closeout`, then reads back the files closeout just wrote (`Checkpoint.md`, `handoff.md`, the new session summary) and assembles the next session's kickoff prompt from them, spawning it as a task chip. The click stays on purpose: starting a session is a human gate, and it is where local, worktree or cloud gets chosen, which is not a choice a skill should make silently.
+- **`session-closeout` writes a per-session summary file (new Phase 0.7).** `sessions/session-summary-MM-DD-YY.md`, written *before* Phase 1 so that the Checkpoint entry's `**Summary:**` handle and the handoff's wiki-link both point at a file that already exists. The Checkpoint entry itself shrinks to a burst plus two pointer lines, and the full write-up lives one link away. That is the bloat fix, not information loss.
+- **The session transcript is now a source for the kickoff prompt.** `session-closeout` stamps a `**Session log:**` path onto the Checkpoint entry ... nothing else on disk records which transcript belongs to which session, so without it that link dies with the session. `session-continue` reads the log's conversation layer (filtered to `user`/`assistant` text blocks: on one measured session that was **29.6 KB out of a 0.90 MB file, 3.2%** ... the rest is tool plumbing) alongside `handoff.md`. The handoff still decides what carries forward; the transcript supplies the reasoning it compressed out, and where the two disagree that goes to the user as a finding instead of being resolved silently.
+- **This plugin's first `references/` directory.** Six on-demand reference files carrying the material that is only needed at one moment — the transcript filter, the kickoff-prompt template, the degraded-branch table, the never-transcribe-a-hash evidence, the Checkpoint demotion rules, and session-log stamping. `session-continue` came down from ~5,330 words to ~4,150 and `session-closeout` from ~4,305 to ~3,420. Both remain over the 2,200 ceiling on purpose: what is left runs on every invocation, so moving it would add a mandatory second read rather than defer anything. Recorded in `docs/skill-size-exceptions.md`.
+- **`session-curator` is scoped to mid-session work.** It shared bare trigger words ("wrap up", "close out", "handoff") with `session-closeout` while writing a pre-0.11.0 handoff — including a dated `## Last session`, which is exactly the line `session-continue` reads to decide whether a closeout already ran. Its description now routes end-of-session phrasing to the skills that own that format, and Mode 2 says plainly that its templates are older than the current contract.
+- **The kickoff prompt is written to `sessions/kickoff-MM-DD-YY.md`** before the chip is spawned. A chip is not a durable artifact: unclicked or lost, the assembled prompt was gone and nothing recorded that the skill had run.
+- **`docs/session-summary-format.md`** ... the full format reference for the new summary artifact: frontmatter, dated topical headers, the `Connections` block, and why `sot_policy: decay` is not optional.
+
 ## 0.10.0 — 2026-08-09
 
 ### Fixed

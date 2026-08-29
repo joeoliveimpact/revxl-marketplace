@@ -1,16 +1,9 @@
 ---
 name: session-curator
 description: |
-  Use this agent when the parent session needs to checkpoint progress or close out — without burning parent context on heavy file-walking. Triggers on "checkpoint", "wrap up", "close out", "handoff", "save progress", or proactively when context exceeds 50%. Also use for mid-session compression: parent delegates a session summary so it can keep working with fresh context.
+  Use this agent for MID-SESSION compression — when the parent needs to checkpoint progress or free up context WITHOUT ending the session, and without burning parent context on heavy file-walking. Triggers on "checkpoint", "save progress", "save where we are but keep going", or proactively when context exceeds 50%.
 
-  <example>
-  Context: User wraps up a coding session
-  user: "let's close out"
-  assistant: "I'll launch the session-curator agent to walk the scaffold files and update Checkpoint.md and handoff.md."
-  <commentary>
-  Closeout keyword fires session-curator instead of parent doing the file walk in-context.
-  </commentary>
-  </example>
+  NOT for end-of-session closeout. "wrap up", "close out", "handoff", "done for the day" and "see you tomorrow" belong to the session-closeout skill, or session-continue when the next session should also be queued. Those own the session-summary file and the load-bearing handoff headings that this agent does not write, so firing this agent on an end-of-session phrase produces a handoff that later skills cannot read correctly. Route end-of-session phrasing there, not here.
 
   <example>
   Context: Long session has filled most of context window
@@ -31,11 +24,11 @@ description: |
   </example>
 
   <example>
-  Context: User says "handoff" implying end-of-session priorities update
-  user: "handoff this for next time"
-  assistant: "I'll use session-curator to rewrite handoff.md with current state and P0s."
+  Context: Parent is at the end of the session and says "close out"
+  user: "let's close out"
+  assistant: "That's an end-of-session closeout, so I'll run the session-closeout skill rather than session-curator — closeout writes the session summary and the handoff headings the next session reads."
   <commentary>
-  Handoff keyword — agent owns the rewrite end-to-end.
+  Counter-example. End-of-session phrasing routes to session-closeout, NOT to this agent.
   </commentary>
   </example>
 model: sonnet
@@ -128,6 +121,10 @@ Append at the top, below the format header. Strict template:
 Every section gets content or explicit "(none)". No silent omissions.
 
 ## handoff.md Format (Mode 2 only)
+
+**Mode 2 is reached by explicit parent delegation only, never by an end-of-session trigger phrase** ... see the routing note in this agent's description.
+
+**These templates predate workspace-superengine 0.11.0 and are missing headings that later skills read.** `session-closeout` writes a `## Session summary` heading here and a `**Summary:**` handle plus a `**Session log:**` line on the Checkpoint entry; the templates below write none of them. A handoff produced by this agent is therefore readable by a human but *thin* to `/session-continue`, which will fall back and say so rather than fail. **When the full 0.11.0 format matters, delegate to `session-closeout` instead of this agent.**
 
 Full rewrite, not append. Replace entire file with:
 

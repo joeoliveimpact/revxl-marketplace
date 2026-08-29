@@ -90,11 +90,14 @@ Fires on:
 - "I just opened an empty folder"
 - "Initialize a project here"
 
-### `/session-start` and `/session-closeout`
+### `/session-start`, `/session-closeout` and `/session-continue`
 
 Fires on:
-- "Let's start the session" / "Pick up where we left off" / "Morning" / "What was I working on"
-- "Let's wrap up" / "Closing out for the day" / "I'm done for now"
+- `/session-start` — "Let's start the session" / "Pick up where we left off" / "Morning" / "What was I working on"
+- `/session-closeout` — "Let's wrap up" / "Closing out for the day" / "I'm done for now"
+- `/session-continue` — "Close out and queue the next session" / "Wrap up and set up tomorrow" / "See you tomorrow" / "I'm done, get the next one ready"
+
+`/session-continue` runs `/session-closeout` in full first, then builds the next session's opening prompt from what closeout wrote and puts it on a one-click chip. Use closeout alone when no follow-on session is wanted.
 
 ### `/agent-optimizer`
 
