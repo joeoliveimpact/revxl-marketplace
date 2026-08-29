@@ -51,7 +51,7 @@ confidence: 0.8                   # 0.0 to 1.0
 
 `sot_policy: decay` marks this file **episodic**: recency-weighted, append and decay, never delete, supersession by recency rather than by status flags.
 
-**Episodic and durable never blend.** A session summary records what happened. A decision that should bind every future session is durable and belongs in `RULES.md`, `MEMORY.md` or `GOALS.md` ... never `decay`.
+**Episodic and durable never blend.** A session summary records what happened. A decision that should bind every future session is durable and belongs in `.claude/rules/overrides.md`, `MEMORY.md` or `GOALS.md` ... never `decay`.
 
 ---
 

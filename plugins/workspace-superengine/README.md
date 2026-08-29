@@ -20,8 +20,8 @@ Built on top of the four `agent-optimizer` override constraints (Intent Clarific
 **Triggers:** "set up my workspace", "scaffold this folder", "initialize a new project"
 
 Creates eight canonical scaffold files in any folder so Claude knows where things live:
-- `RULES.md` — non-negotiable override constraints
-- `CLAUDE.md` — system instructions, references RULES.md
+- `.claude/rules/overrides.md` — non-negotiable override constraints, loaded by the harness every session
+- `CLAUDE.md` — system instructions
 - `ARCHITECTURE.md` — workspace map
 - `GOALS.md` — primary objectives
 - `PLANNING.md` — active initiatives
@@ -34,7 +34,7 @@ Optionally chains into `anthropic-skills:setup-cowork` for plugin/connector setu
 ### `session-start`
 **Triggers:** "pick up where we left off", "what's the status?", "where are we?", session start
 
-Reads RULES.md → handoff.md → ARCHITECTURE.md → PLANNING.md → recent Checkpoint.md, runs any verifications flagged in handoff.md, and presents a status brief. Conditional infrastructure-health phase for workspaces with live services.
+Verifies the override constraints (migrating a legacy RULES.md into .claude/rules/overrides.md when found), then reads handoff.md → ARCHITECTURE.md → PLANNING.md → recent Checkpoint.md, runs any verifications flagged in handoff.md, and presents a status brief. Conditional infrastructure-health phase for workspaces with live services.
 
 ### `session-closeout`
 **Triggers:** "let's wrap up", "closing out for the day", "session closeout", "save state", "I'm done for now"
@@ -59,7 +59,7 @@ Two modes:
 - **Mid-session checkpoint** — parent stays working, agent saves a recovery point
 - **Full closeout** — agent walks all eight files and updates everything
 
-Built-in RULES.md compliance self-check before returning.
+Built-in override-constraint compliance self-check before returning.
 
 ---
 
@@ -97,16 +97,16 @@ You don't need command names. The triggers match how people actually talk.
 
 ## Design principles
 
-- **One source of truth per concern.** RULES.md owns rules. ARCHITECTURE.md owns the map. handoff.md owns next-session priorities. No file blurs roles.
+- **One source of truth per concern.** `.claude/rules/overrides.md` owns rules. ARCHITECTURE.md owns the map. handoff.md owns next-session priorities. No file blurs roles.
 - **Append-only logs, rewriteable briefs.** Checkpoint.md grows. handoff.md is replaced each session.
-- **Never edit RULES.md** unless explicitly asked. Constraints are deliberate, not curatorial.
+- **Never edit `.claude/rules/overrides.md`** unless explicitly asked. Constraints are deliberate, not curatorial.
 - **Verifiable scaffolding.** Either all eight files exist, or none — no partial state.
 
 ---
 
 ## Dependencies
 
-- **Recommended:** `agent-optimizer` skill (provides canonical RULES.md content). If absent, super-setup writes an inline backup version.
+- **Recommended:** `agent-optimizer` skill (provides the canonical override-constraint content). If absent, super-setup writes an inline backup version.
 
 ---
 

@@ -7,7 +7,7 @@
     "email": "joe@engineforimpact.com"
   },
   "metadata": {
-    "version": "0.1.49"
+    "version": "0.1.50"
   },
   "plugins": [
     {
@@ -38,10 +38,10 @@
     },
     {
       "name": "workspace-superengine",
-      "description": "v0.11.1 · Stops Claude from forgetting what you were working on. Sets up your workspace so every session picks up where the last one left off, follows your rules, and explains itself in plain language. Add modules for coding, client work, or content as needed. Works in Claude Desktop and Claude Code.",
+      "description": "v0.12.0 · Stops Claude from forgetting what you were working on. Sets up your workspace so every session picks up where the last one left off, follows your rules, and explains itself in plain language. Add modules for coding, client work, or content as needed. Works in Claude Desktop and Claude Code.",
       "source": "./plugins/workspace-superengine",
       "category": "productivity",
-      "version": "0.11.1",
+      "version": "0.12.0",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"

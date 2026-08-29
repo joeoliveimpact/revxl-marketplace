@@ -39,7 +39,7 @@ Do NOT use for:
 
 ## Step 0 — Preconditions
 
-1. Confirm we're in a scaffolded workspace (`RULES.md` + `CLAUDE.md` exist at root).
+1. Confirm we're in a scaffolded workspace (`CLAUDE.md` at root, plus `.claude/rules/overrides.md` or a legacy root `RULES.md`).
 2. Read `.claude/workspace.yml#environment` to know whether to emit a `.sh` or `.ps1` script.
 
 ## Step 1 — Gather the four pieces of info

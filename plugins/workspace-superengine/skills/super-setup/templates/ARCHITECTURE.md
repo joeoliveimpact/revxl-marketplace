@@ -6,7 +6,7 @@ Map of every root file and folder. Update when you add or remove anything.
 
 | File | Purpose |
 |------|---------|
-| `RULES.md` | Four override constraints (non-negotiable, every prompt) |
+| `.claude/rules/overrides.md` | Four override constraints (harness-loaded, every session) |
 | `CLAUDE.md` | Workspace constitution and session checklist |
 | `ARCHITECTURE.md` | This file — workspace map |
 | `GOALS.md` | Primary purpose + success criteria |
@@ -28,7 +28,7 @@ Map of every root file and folder. Update when you add or remove anything.
 ## Session lifecycle
 
 ```
-session-start  →  read RULES → handoff → ARCHITECTURE → PLANNING → Checkpoint
+session-start  →  read handoff → ARCHITECTURE → PLANNING → Checkpoint (overrides.md is harness-loaded)
 work happens
 session-closeout  →  update Checkpoint.md, rewrite handoff.md
 ```

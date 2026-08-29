@@ -58,7 +58,7 @@ Session is ending. Parent wants the full handoff procedure done.
 - Append Checkpoint.md entry (newest at top under format header)
 - Rewrite handoff.md (complete replacement — it's the next-session brief, not a log)
 - Walk every other root file: ARCHITECTURE.md, GOALS.md, PLANNING.md, MEMORY.md — UPDATE only if this session caused real change; explicit NO-CHANGE otherwise
-- **Never edit RULES.md** unless user explicitly asked
+- **Never edit `.claude/rules/overrides.md`** (or a legacy root `RULES.md`) unless user explicitly asked
 - Return: handoff verification table
 
 ## Inputs
@@ -85,7 +85,7 @@ For each file below, perform the listed check and decide UPDATE or NO-CHANGE. Be
 | GOALS.md | Goals shifted, new metric, or new active integration |
 | PLANNING.md | Initiative completed, new initiative started, or pending item resolved |
 | MEMORY.md | New memory file added under .claude/memory/ — append the index entry |
-| RULES.md | NEVER (explicit user request only — escalate back to parent if asked) |
+| .claude/rules/overrides.md (or legacy RULES.md) | NEVER (explicit user request only — escalate back to parent if asked) |
 | CLAUDE.md | Workspace purpose changed or new core file added |
 
 ## Checkpoint.md Entry Format
@@ -157,9 +157,9 @@ Full rewrite, not append. Replace entire file with:
 - {path} — {brief note}
 ```
 
-## RULES.md Compliance Self-Check
+## Override-Constraint Compliance Self-Check
 
-Before returning, briefly scan the session for RULES.md violations to flag in Checkpoint.md:
+Before returning, briefly scan the session for override-constraint violations (`.claude/rules/overrides.md`) to flag in Checkpoint.md:
 - **Surgical Execution:** any out-of-scope edits this session?
 - **Least Complexity:** any over-engineering shipped?
 - **Intent Clarification:** any assumptions made on ambiguous requests?
@@ -196,7 +196,7 @@ That's it. No file contents, no entry quotes, no apologies, no extra commentary.
 
 - **No Checkpoint.md or handoff.md exists** — workspace isn't superengine-scaffolded. Escalate to parent: "Workspace missing scaffold files. Run /super-setup first."
 - **Session was trivial (under 10 minutes, single file touched)** — quick mode: 3-line Checkpoint.md entry, skip Phase 3 file walks, update handoff.md only if blockers exist.
-- **User asks for RULES.md edit** — refuse and escalate to parent. RULES.md changes are deliberate, not curatorial.
+- **User asks to edit the override constraints** — refuse and escalate to parent. Changes to `.claude/rules/overrides.md` are deliberate, not curatorial.
 - **Conflicting handoff.md state (current contents reference work this session reversed)** — flag in your response so parent can verify before you overwrite.
 - **Memory worth saving** (durable user/feedback/project facts) — note in your response; parent owns the actual memory write under the auto-memory protocol.
 

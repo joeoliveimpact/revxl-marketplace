@@ -1,6 +1,6 @@
 ---
 name: super-setup
-description: Use to scaffold a brand-new workspace from scratch — creates RULES.md, CLAUDE.md, ARCHITECTURE.md, GOALS.md, PLANNING.md, MEMORY.md, Checkpoint.md, handoff.md, tasks/, troubleshooting/, output/, and .claude/workspace.yml. Trigger phrases include "set up this workspace", "scaffold a new workspace", "I just opened an empty folder", "initialize a project here", "make this folder into a workspace", "/super-setup". Detects Cowork vs Code environment, pre-fills owner identity from global config, and offers a beginner-verbosity mode for first-time clients.
+description: Use to scaffold a brand-new workspace from scratch — creates CLAUDE.md, ARCHITECTURE.md, GOALS.md, PLANNING.md, MEMORY.md, Checkpoint.md, handoff.md, tasks/, troubleshooting/, output/, .claude/workspace.yml, and .claude/rules/overrides.md. Trigger phrases include "set up this workspace", "scaffold a new workspace", "I just opened an empty folder", "initialize a project here", "make this folder into a workspace", "/super-setup". Detects Cowork vs Code environment, pre-fills owner identity from global config, and offers a beginner-verbosity mode for first-time clients.
 ---
 
 # super-setup — Workspace Scaffolding (v0.2)
@@ -35,10 +35,10 @@ The substitutions performed on every copy:
 List the target workspace root. If ANY of these files exist, stop and ask the user before overwriting:
 
 ```
-RULES.md  CLAUDE.md  ARCHITECTURE.md  GOALS.md  PLANNING.md  MEMORY.md  Checkpoint.md  handoff.md
+CLAUDE.md  ARCHITECTURE.md  GOALS.md  PLANNING.md  MEMORY.md  Checkpoint.md  handoff.md  .claude/rules/overrides.md  RULES.md (legacy)
 ```
 
-If all 8 root files exist AND `tasks/`, `troubleshooting/`, `output/`, `.claude/` are present → the workspace is already scaffolded. Offer `/session-start` instead and exit.
+If all of CLAUDE.md, ARCHITECTURE.md, GOALS.md, PLANNING.md, MEMORY.md, Checkpoint.md, handoff.md exist (RULES.md and .claude/rules/overrides.md both count for the rules slot) AND `tasks/`, `troubleshooting/`, `output/`, `.claude/` are present → the workspace is already scaffolded. Offer `/session-start` instead and exit.
 
 If some files exist and some don't, ask: "Existing scaffold partially present. Overwrite-and-replace, fill-gaps-only, or abort?"
 
@@ -175,7 +175,7 @@ For each template under `templates/`, read it from the plugin directory, perform
 
 | Source (in plugin) | Destination (in workspace) |
 |---|---|
-| `templates/RULES.md` | `RULES.md` |
+| `templates/rules/overrides.md` | `.claude/rules/overrides.md` |
 | `templates/CLAUDE.md` | `CLAUDE.md` |
 | `templates/ARCHITECTURE.md` | `ARCHITECTURE.md` |
 | `templates/GOALS.md` | `GOALS.md` |
@@ -261,8 +261,8 @@ Perform all four checks below. Surface any failure to the user and DO NOT report
 Confirm all 15 artifacts exist at the expected paths in the target workspace:
 
 ```
-RULES.md
 CLAUDE.md
+.claude/rules/overrides.md
 ARCHITECTURE.md
 GOALS.md
 PLANNING.md
@@ -335,7 +335,7 @@ If either condition fails (no Linear, or no `linear-kickoff` skill), **skip sile
 
 ---
 
-## Ground rules (inherited from RULES.md)
+## Ground rules (the four override constraints)
 
 - **Intent Clarification:** if workspace name or purpose is ambiguous, ask once.
 - **Least Complexity:** 15 artifacts is the floor. Modules add more — they are separate skills.
