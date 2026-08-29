@@ -117,7 +117,7 @@ Override the root with `WORKSPACE_SUPERENGINE_LEDGER_HOME` (used by the tests so
 {"type":"open","uid":"1786720640-47128-1","pid":47128,
  "started_at":"2026-08-14T15:17:18Z","started_epoch":1786720638,
  "cmd":"\"C:\\Program Files\\Git\\usr\\bin\\sleep.exe\" 400",
- "workspace":"C:/Users/joe/ws","session":"sess-alpha-0001","started_by":"bash-tool",
+ "workspace":"<workspace-root>","session":"sess-alpha-0001","started_by":"bash-tool",
  "ppid":88044,"rss_kb_at_record":5372,"recorded_at":"2026-08-14T15:17:20Z",
  "tool_command":"sleep 400 &","gate":"trailing &",
  "matched_on":"command token 'sleep'","window_fallback":false,
