@@ -2,8 +2,8 @@
 # SessionStart hook for workspace-superengine
 # Three jobs:
 #   1. Load bundled agent-optimizer SKILL.md content into session context.
-#   2. Scaffold existence check — if RULES.md or CLAUDE.md missing from
-#      workspace root, prompt the user to run /super-setup.
+#   2. Scaffold existence check — warn when CLAUDE.md is missing, or when
+#      neither .claude/rules/overrides.md nor a legacy root RULES.md exists.
 #   3. Broadcast .claude/workspace.yml (verbosity + environment) as a
 #      system reminder.
 

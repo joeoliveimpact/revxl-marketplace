@@ -579,6 +579,7 @@ Report this table to the user. Every applicable file gets a row with action + re
 | GOALS.md          | ?          | ? |
 | PLANNING.md       | ?          | ? |
 | MEMORY.md         | ?          | ? |
+| .claude/rules/overrides.md | ?  | NO CHANGE almost always; UPDATED only via 2.7b's accepted-rule exception |
 ```
 
 Also confirm:
@@ -590,8 +591,8 @@ Also confirm:
 6. Phase 4.2 ran and produced a spoken result? In Claude Code that is either a list the user answered, or "nothing was left running." In Cowork it is the plain "I cannot do this from here." A closeout that says nothing at all about background processes is a defect.
 7. Phase 2.7 ran? If a deferred marker was present, it was either **honored** (heavy pass ran, items proposed) or **explicitly declined by the user**. A closeout that leaves a deferred marker sitting there without saying a word is a defect. If the workspace was clean, 2.7 correctly produced no output and there is nothing to report here.
 
-6. Session summary written, and does the Checkpoint entry's `**Summary:**` handle point at a file that is actually on disk? Check it with Glob or `test -f`, do not assume it. A handle pointing at nothing is worse than no handle, because it looks like it works.
-7. Demotion ran, **and said something**? Entries older than 30 days (beyond the newest 5) are one-liners in the tail, EXCEPT pre-summary entries with no handle, which stay full on purpose. The retained count was spoken out loud. A demotion that compressed nothing and reported nothing is a defect, not a pass ... it is indistinguishable from bloat control working when it is actually waiting on the backfill.
+8. Session summary written, and does the Checkpoint entry's `**Summary:**` handle point at a file that is actually on disk? Check it with Glob or `test -f`, do not assume it. A handle pointing at nothing is worse than no handle, because it looks like it works.
+9. Demotion ran, **and said something**? Entries older than 30 days (beyond the newest 5) are one-liners in the tail, EXCEPT pre-summary entries with no handle, which stay full on purpose. The retained count was spoken out loud. A demotion that compressed nothing and reported nothing is a defect, not a pass ... it is indistinguishable from bloat control working when it is actually waiting on the backfill.
 
 If any row shows `?` — fix it before reporting complete.
 
