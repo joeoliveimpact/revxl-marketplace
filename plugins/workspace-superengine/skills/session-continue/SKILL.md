@@ -12,6 +12,10 @@ One command at the end of a session. It does two things in order:
 
 **The point is zero hand-authoring.** Nobody writes a kickoff prompt by hand, and nobody re-explains yesterday to a fresh Claude.
 
+**One command means one run.** Steps 1 to 3 complete in a SINGLE turn. This skill does not hand back to the user between them, and it never reports partial progress as if it were the deliverable. A question asked inside a step resolves which path that step takes ... it does not end the run. Answer it, then keep going.
+
+**The chip click at the end is the only human gate in this skill.** If you find yourself about to say "ready for Step 2 whenever you are" or anything like it, that is the bug: the user typed one command precisely so they would not have to drive the rest of it. Closing out and stopping is `/session-closeout`, which already exists.
+
 ## Runtime environment
 
 Read `.claude/workspace.yml#environment` on entry.
@@ -68,6 +72,8 @@ If the resumed run cannot complete either, that is the "Closeout did not complet
 > "Closeout already ran today and wrote `sessions/session-summary-MM-DD-YY.md`. Do you want me to skip straight to building the kickoff prompt from those files, or has there been more work since that needs its own closeout?"
 
 **The safe default is skipping to Step 2** and building the prompt from the files already on disk. A second real closeout is the exception, and the user names it explicitly.
+
+**Whichever way they answer, continue through Step 3 in the same turn.** This ask picks a path; it does not end the run. Skipping to Step 2 means going there NOW, not reporting that Step 2 is available. Running a second closeout means running it and then going to Step 2. Handing back here strands the user one command short of the chip, which is the entire thing they asked for.
 
 **Call the Skill tool.** Pass it the skill `workspace-superengine:session-closeout` and let it run its whole procedure.
 
@@ -216,6 +222,8 @@ prompt: <the assembled text from 2e>
 **Why the prefix, given the route line already says it:** the user reads the title on the button. They may never read the body before clicking, and the button next to it says "Start with worktree". The prefix is the instruction placed where the decision actually gets made. Keep it on the title even when 2c found that worktree would work fine ... local is the right default for a workspace whose scaffold files live on this machine, and one consistent title is worth more than a title that changes shape.
 
 **The click stays, and that is correct.** Starting an interactive session is a human gate. It is also where local / worktree / cloud gets chosen, which is a choice no skill should make silently on the user's behalf.
+
+**It is also the ONLY gate.** Every step before it runs without stopping. The chip is what the user asked for, so reaching it is the finish line ... not a milestone to check in about on the way.
 
 Then tell the user, in one or two lines, what is on the chip:
 

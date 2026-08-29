@@ -4,6 +4,11 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.49] — 2026-08-29
+
+### Fixed
+- **workspace-superengine v0.11.1** ... `session-continue` could stop halfway and hand back to the user instead of finishing. It ran the closeout, then reported progress and waited, stranding the user one command short of the task chip that is the entire reason the skill exists. Reported from a live run the day 0.11.0 shipped.
+
 ## [0.1.48] — 2026-08-28
 
 ### Added
