@@ -4,6 +4,11 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.50] ... 2026-08-29
+
+### Changed
+- **workspace-superengine v0.12.0** ... the override constraints move from a root `RULES.md` (read only when session-start ran) to `.claude/rules/overrides.md`, which Claude Code loads into every session natively. Existing workspaces migrate themselves on their next `/session-start`: verbatim copy, original quarantined to a recycle bin with a manifest row, one-line receipt. Ships the recycle-bin doctrine (quarantine, never delete) and the phase-a work landed earlier the same week: deferred goal elicitation and the background process ledger.
+
 ## [0.1.49] — 2026-08-29
 
 ### Fixed

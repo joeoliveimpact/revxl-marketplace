@@ -2,6 +2,20 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.12.0 ... 2026-08-29
+
+### Added
+- **`.claude/rules/overrides.md` is the new home of the override constraints.** An unscoped rules file the harness loads into every session, replacing the root `RULES.md` that only existed in context after `/session-start` read it. Verified on the CLI surface with a canary test before shipping. New workspaces scaffold it directly; existing workspaces migrate lazily ... `/session-start` finds a legacy `RULES.md`, copies its body verbatim into the rules file, and quarantines the original to the workspace recycle bin with a manifest row. The copy is deliberately content-blind because a fleet audit found dated standing policy in these files with no other copy anywhere.
+- **Recycle bin doctrine** (`docs/recycle-bin.md`): quarantine, never delete. Nothing enters without a manifest row, everything stays recoverable until emptied, emptying is an explicit act. Age reads from the manifest's quarantined column, never NTFS timestamps. This is the engine-free slice of the graph-brain work; it makes a future Checkpoint backfill legal without running it.
+
+### Changed
+- `session-start` Phase 0 now resolves the constraints in order: rules file present (harness-loaded, Code) or Read (Cowork); legacy `RULES.md` present (migrate once); neither (unscaffolded flag). A workspace holding BOTH files is told the root copy is stale and it gets quarantined ... two live copies with one authoritative is a silent-drift trap.
+- The SessionStart hook's scaffold check accepts either rules location, so migrated and freshly scaffolded workspaces stop being warned "isn't scaffolded".
+- 31-edit reference sweep across 12 files: super-setup, session-closeout, session-curator, workspace-add-hook/-module, README, kickoff prompt template, session-summary-format, beginner-voice, client-work module all point at the new location. Durable-decision routing now writes rules to the rules file.
+
+### Removed
+- `super-setup/templates/RULES.md`. Its replacement `templates/rules/overrides.md` carries the four constraints, the subagent-binding clause, the Linear source-of-truth hard rule, and the user's in-conversation escape hatch.
+
 ## 0.11.1 — 2026-08-29
 
 ### Fixed
