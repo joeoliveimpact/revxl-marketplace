@@ -62,8 +62,8 @@ def check_version(data):
     if major != '1':
         print('ERROR: analysis-data.json schema major version %s is unsupported (need 1.x). Re-run analyze.py.' % v)
         sys.exit(1)
-    if v not in ('1.0', '1.1', '1.2'):
-        print('WARN: schema %s is newer than this renderer knows (1.2) - unknown keys ignored.' % v)
+    if v not in ('1.0', '1.1', '1.2', '1.3'):
+        print('WARN: schema %s is newer than this renderer knows (1.3) - unknown keys ignored.' % v)
     return v
 
 
@@ -279,6 +279,44 @@ def render_overview(data, theme, chartjs, stamp, delta, history):
     body = '<div class="cards">' + ''.join(
         '<div class="card"><div class="k">%s</div><div class="v">%s</div><div class="d">%s</div></div>'
         % (esc(k), esc(v), esc(d)) for k, v, d in cards) + '</div>\n'
+
+    # "This period" — the real breakouts, read STRAIGHT off analysis-data.json
+    # (schema 1.3). Deliberately NOT routed through --prev/compute_delta: that channel
+    # fails open (G11 prints a WARN, exits 0 and renders an empty week), and its
+    # new_outliers is a diff of two capped all-time top-30 lists, which structurally
+    # cannot contain a reel published this period (G17, a 38x under-report).
+    pb = data.get('period_breakouts')
+    if pb and pb.get('reels'):
+        rows = pb['reels']
+        body += ('<section class="panel"><h2>This period</h2>'
+                 '<p class="note">%s reels published %s → %s that beat their own creator\'s all-time '
+                 'median by ≥2.5×. Uncapped, transcript-agnostic, client excluded. This is the '
+                 'breakout list. The outlier wall below is the all-time hall of fame.</p>'
+                 % (esc(pb.get('n', len(rows))), esc((pb.get('window_from') or '')[:10]),
+                    esc((pb.get('window_to') or '')[:10])))
+        body += ('<div class="wall">' + ''.join(
+            '<div class="oc"><div class="m">%s×</div><div class="who">@%s<span class="chip %s">%s</span></div>'
+            '<div class="hook">“%s”</div><div class="meta">%s views · %s hook · %s</div>'
+            '<a href="%s" target="_blank" rel="noopener">watch reel →</a></div>'
+            % (esc(round(o['mult'], 1)), esc(o['handle']), esc(o['tier']), esc(o['tier']),
+               esc((o.get('hook_line') or '')[:90]), esc(fmt_n(o['views'])), esc(o['hook']),
+               esc((o.get('published_at') or '')[:10]), esc(o['url']))
+            for o in rows[:24]) + '</div>')
+        body += twin_table('pbT', ['Mult', 'Handle', 'Tier', 'Views', 'Published', 'Hook', 'Hook line', 'URL'],
+                           [['%.1fx' % o['mult'], '@' + o['handle'], o['tier'], fmt_n(o['views']),
+                             (o.get('published_at') or '')[:10], o['hook'],
+                             (o.get('hook_line') or '')[:90], o['url']] for o in rows])
+        body += '</section>\n'
+    elif pb is not None:
+        body += ('<section class="panel"><h2>This period</h2>'
+                 '<p class="note">No reel published %s → %s cleared ≥2.5× its creator\'s own median.</p>'
+                 '</section>\n' % (esc((pb.get('window_from') or '')[:10]), esc((pb.get('window_to') or '')[:10])))
+    else:
+        body += ('<section class="panel"><h2>This period</h2>'
+                 '<p class="note">DEGRADED: this analysis-data.json predates schema 1.3 and carries no '
+                 '<code>period_breakouts</code> block, so the period breakout list cannot be rendered. '
+                 'Re-run analyze.py. Any "new outliers" below come from a capped all-time top-30 diff '
+                 'and are NOT the period\'s breakouts.</p></section>\n')
 
     if delta:
         wn = []
