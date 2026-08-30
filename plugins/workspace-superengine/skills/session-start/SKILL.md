@@ -44,7 +44,9 @@ depends on the workspace's generation; check in this order:
    loading is unverified there, so the Read IS the load. **If a root `RULES.md` ALSO
    exists**, it is stale ... it stopped being authoritative at migration. Say so in one
    line and (Code only) quarantine it and repoint its references, per the quarantine,
-   manifest, and repointing bullets of the migration step below. **Do not run that
+   manifest, repointing, and receipt bullets of the migration step below. In the
+   Cowork environment nothing can be moved, so say the root copy is stale and leave
+   it; the next Code session retires it. **Do not run that
    step's first bullet here**: `overrides.md` already exists, and rewriting it from a
    legacy body would overwrite the live rules with the stale copy. Never leave both
    copies live, and never silently ignore it.
@@ -56,11 +58,15 @@ depends on the workspace's generation; check in this order:
      (unscoped is the load mechanism) ... followed by the RULES.md body **verbatim.
      Do not summarize, reorder, or drop anything: fleet audit 08.29.26 found
      workspace-specific standing policy in these files.**
-   - Quarantine the original: move `RULES.md` to `_recycle-bin/<YYYY-MM-DD>/RULES.md`.
-     If that exact path is already taken, suffix before the FIRST dot (`RULES-1.md`,
-     then `RULES-2.md`) and give the new file its own row. Never overwrite a file
-     already in the bin.
-   - Append a row to `_recycle-bin/MANIFEST.md`. If the bin is absent, create it as
+   - Quarantine the original. **If `_recycle-bin/` does not exist yet, create it
+     first**, in the shape the next bullet specifies, then create today's
+     `<YYYY-MM-DD>/` batch folder. Only then move `RULES.md` to
+     `_recycle-bin/<YYYY-MM-DD>/RULES.md`, and append its manifest row in the same
+     pass: a file sitting in the bin with no row is the one state the contract
+     forbids. If that exact path is already taken, suffix before the FIRST dot
+     (`RULES-1.md`, then `RULES-2.md`) and give the new file its own row. Never
+     overwrite a file already in the bin.
+   - The row goes in `_recycle-bin/MANIFEST.md`. Build the bin as
      `docs/recycle-bin.md` specifies rather than improvising a shape: `_recycle-bin/`
      holding a `README.md`, a `MANIFEST.md`, and the dated batch folder. The manifest
      header row is exactly
@@ -87,18 +93,31 @@ depends on the workspace's generation; check in this order:
      back, and the quarantined copy has to stay byte-identical. Everything inside
      `.claude/rules/overrides.md`: its body is verbatim by the rule two bullets above,
      and its frontmatter names the file it came from on purpose. And every hit in
-     `Checkpoint.md`, `handoff.md` history, session logs, or any dated entry: those
-     record what happened and rewriting them falsifies the record. What survives is
-     the live pointers, typically `CLAUDE.md`'s opening rules line and its
-     read-at-session-start table, plus any module or rules file citing the path.
-     Rewrite only those to `.claude/rules/overrides.md`, noting that it now loads
-     automatically. In a table row the shipped shape is
-     `| .claude/rules/overrides.md | Every prompt, loaded automatically |`. Change
-     only the reference lines and leave the rest of those files untouched. Name the
-     files you edited. Skipping this aims every pointer at the recycle bin.
+     `Checkpoint.md`, `handoff.md` history, session logs, `tasks/findings.md`,
+     `troubleshooting/known-issues.md`, or any dated entry: those record what
+     happened and rewriting them falsifies the record. Then rewrite ONLY prose and
+     table references in markdown config: `CLAUDE.md`'s opening rules line and its
+     read-at-session-start table, `ARCHITECTURE.md`'s file map, other
+     `.claude/rules/*.md`, and module docs. **Leave code and config alone.** A string
+     literal in a script is not a pointer, and a path in `.gitignore` rewritten this
+     way silently untracks the rules file; a workspace-root marker list needs the new
+     path ADDED, never substituted, because other workspaces still have the old file.
+     Use the Grep tool or `rg`, never `grep -r`, which walks `.git`. Write the target
+     as `.claude/rules/overrides.md`, noting that it now loads automatically. In a
+     table row, copy the shape `super-setup` scaffolds (this example tracks
+     `super-setup/templates/CLAUDE.md`; the two move together):
+
+     ```
+     | `.claude/rules/overrides.md` | Loaded automatically every session |
+     ```
+
+     Change only the reference lines and leave the rest of those files untouched.
+     Name the files you edited. Skipping this aims every pointer at the recycle bin.
    - Tell the user in one line: rules moved to `.claude/rules/overrides.md` (loads
-     every session now); original in the recycle bin; and, only if you actually
-     rewrote any, which files had their pointers updated.
+     every session now) ... or, on the both-files-present path where nothing moved,
+     that the stale root copy was retired to the recycle bin and `overrides.md` was
+     left untouched ... plus, only if you actually rewrote any, which files had their
+     pointers updated.
    - The migrated file takes effect from the NEXT session; for THIS session, apply the
      constraints from the RULES.md you just read.
    In the Cowork environment, skip the migration (no reliable file moves there): read
