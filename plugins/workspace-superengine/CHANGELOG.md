@@ -2,6 +2,15 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.12.1 ... 2026-08-29
+
+### Fixed
+- **The migration repoints `RULES.md` references instead of orphaning them.** Most workspaces' `CLAUDE.md` opens with a "read RULES.md first" line and lists the file in a read-at-session-start table; some cite it by rule number. Quarantining the original left every one of those pointers aimed at the recycle bin. Phase 0 now rewrites them to `.claude/rules/overrides.md` in the same pass, touching only the reference lines.
+- **The recycle bin it creates matches `docs/recycle-bin.md`.** Phase 0 pointed at that doc rather than carrying its schema, so a session that never opened it improvised: four manifest columns instead of the specified six, and no `README.md`. The missing `Notes` column has a real consequence, since the documented restore procedure annotates it there. The six-column header and all three bin parts are now written into the step itself.
+
+### Notes
+- Both defects were found by the first real-world run of the 0.12.0 migration, against a populated workspace rather than the synthetic fixture. The core migration passed: `overrides.md` written unscoped with a byte-for-byte verbatim body, the original quarantined byte-identical (confirmed independently by git recording the move as a rename), the root file retired, and the receipt given.
+
 ## 0.12.0 ... 2026-08-29
 
 ### Added

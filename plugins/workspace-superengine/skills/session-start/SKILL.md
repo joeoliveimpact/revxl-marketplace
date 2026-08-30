@@ -54,13 +54,26 @@ depends on the workspace's generation; check in this order:
      Do not summarize, reorder, or drop anything: fleet audit 08.29.26 found
      workspace-specific standing policy in these files.**
    - Quarantine the original: move `RULES.md` to `_recycle-bin/<YYYY-MM-DD>/RULES.md`
-     and append a row to `_recycle-bin/MANIFEST.md` (create the bin and manifest per
-     `docs/recycle-bin.md` in this plugin if absent). The row needs at minimum the
-     filename, the workspace-relative original path, and the quarantine date as
-     `YYYY-MM-DD`. Never delete the file, and never leave both copies live ... two live
-     copies with one authoritative is a silent-drift trap.
+     and append a row to `_recycle-bin/MANIFEST.md`. If the bin is absent, create all
+     three parts `docs/recycle-bin.md` specifies rather than improvising a shape: a
+     `README.md` carrying the contract, the dated batch folder, and a `MANIFEST.md`
+     whose header row is exactly `| File | Original path | Quarantined | Eligible | Reason | Notes |`
+     over a matching separator row. **All six columns are required.** `Original path`
+     is workspace-relative with forward slashes, `Quarantined` is today as
+     `YYYY-MM-DD`, `Eligible` is that date plus 7 days, and `Notes` starts empty
+     because a later restore annotates it there. A short manifest is the measured
+     failure mode, not a hypothetical: the first real migration improvised four
+     columns and left a restore nowhere to record itself. Never delete the file, and
+     never leave both copies live ... two live copies with one authoritative is a
+     silent-drift trap.
+   - Repoint the references before they dangle. Most workspaces' `CLAUDE.md` opens
+     with a "read RULES.md first" line and lists `RULES.md` in a read-at-session-start
+     table; some cite it by rule number. Grep the workspace for `RULES.md`, and
+     rewrite each hit to `.claude/rules/overrides.md`, saying it now loads
+     automatically. Change only those reference lines and leave the rest of those
+     files untouched. Skipping this leaves every pointer aimed at the recycle bin.
    - Tell the user in one line: rules moved to `.claude/rules/overrides.md` (loads
-     every session now); original in the recycle bin.
+     every session now); original in the recycle bin; pointers to it repointed.
    - The migrated file takes effect from the NEXT session; for THIS session, apply the
      constraints from the RULES.md you just read.
    In the Cowork environment, skip the migration (no reliable file moves there): read

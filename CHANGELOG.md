@@ -4,6 +4,11 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.51] ... 2026-08-29
+
+### Fixed
+- **workspace-superengine v0.12.1** ... the lazy `RULES.md` migration now repoints the references it used to orphan, and creates a recycle bin matching the documented schema. Found by running the migration on its first real populated workspace instead of the fixture: the core copy was verbatim and the original byte-identical, but the manifest was improvised at four columns instead of six, leaving a restore nowhere to annotate, and the bin `README.md` was never created. Phase 0 pointed at `docs/recycle-bin.md` rather than carrying the schema, so a session that never opened the doc could not follow it.
+
 ## [0.1.50] ... 2026-08-29
 
 ### Changed
