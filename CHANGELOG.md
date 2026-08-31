@@ -4,6 +4,11 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.53] ... 2026-08-31
+
+### Fixed
+- **workspace-superengine v0.12.3** ... the SessionStart hook no longer pastes the entire `agent-optimizer` skill into every session, cutting roughly **1,296 tokens per session for every client**. 0.12.0 had already moved those four constraints to `.claude/rules/overrides.md` for the harness to load natively; the hook's copy was left behind, so the same rules landed up to four times per session. The hook's scaffold check and `workspace.yml` broadcast are unchanged and verified still firing. Written for 0.12.2 but missed that release, since only two of the branch's four commits were attached to the PR.
+
 ## [0.1.52] ... 2026-08-31
 
 ### Fixed
