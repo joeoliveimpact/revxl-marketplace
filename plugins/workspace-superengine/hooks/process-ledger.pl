@@ -141,7 +141,11 @@ sub normalise_path {
 sub find_workspace_root {
     my ($start) = @_;
     my $dir = normalise_path($start);
-    my @markers = ('.claude/workspace.yml', 'CLAUDE.md', 'RULES.md', '.git');
+    # RULES.md is legacy. 0.12.0 quarantines it into _recycle-bin/ and writes
+    # .claude/rules/overrides.md in its place, so a current workspace no longer
+    # has one. Kept in the list so a pre-0.12.0 workspace still resolves.
+    my @markers = ('.claude/workspace.yml', '.claude/rules/overrides.md',
+                   'CLAUDE.md', 'RULES.md', '.git');
     my $hops = 0;
     while (length $dir && $hops++ < 40) {
         for my $m (@markers) {
@@ -1216,8 +1220,8 @@ sub cmd_list {
         print "\n";
         unavailable_banner(
             "I could not work out which workspace this is. CLAUDE_PROJECT_DIR is not set and "
-          . "there is no .claude/workspace.yml, CLAUDE.md, RULES.md or .git anywhere above the "
-          . "current directory",
+          . "there is no .claude/workspace.yml, .claude/rules/overrides.md, CLAUDE.md or .git "
+          . "anywhere above the current directory",
             "I cannot tell you what this workspace left running");
         print "Run this from the workspace root, or run /super-setup to scaffold it.\n";
         print "\nSTOPPABLE: 0\nCONSENT TOKEN: none\n";
