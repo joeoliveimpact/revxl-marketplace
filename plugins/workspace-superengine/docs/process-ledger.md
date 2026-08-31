@@ -146,7 +146,7 @@ Only `STOPPABLE` enters the consent token and the `STOPPABLE:` count. **`MACHINE
 
 ### Finding the workspace
 
-The hook side gets `CLAUDE_PROJECT_DIR`. The CLI side, run from a skill's Bash call, **does not** ... verified unset there. So the CLI walks up from the current directory for a real marker (`.claude/workspace.yml`, `CLAUDE.md`, `RULES.md`, `.git`) instead of trusting cwd. Trusting cwd meant running from a subdirectory hashed to a different slug, so `list` read an empty folder and reported a clean machine while the populated ledger sat one slug over.
+The hook side gets `CLAUDE_PROJECT_DIR`. The CLI side, run from a skill's Bash call, **does not** ... verified unset there. So the CLI walks up from the current directory for a real marker (`.claude/workspace.yml`, `.claude/rules/overrides.md`, `CLAUDE.md`, `.git`, plus legacy `RULES.md`) instead of trusting cwd. Trusting cwd meant running from a subdirectory hashed to a different slug, so `list` read an empty folder and reported a clean machine while the populated ledger sat one slug over.
 
 If no marker is found anywhere above, the tool **refuses** and says so, rather than answering "nothing is running" about a workspace it could not identify. `list` prints the resolved path and how it was resolved on every run, and names any sibling ledgers that do exist under the same root.
 

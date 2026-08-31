@@ -2,6 +2,14 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.12.2 ... 2026-08-31
+
+### Fixed
+- **The background process ledger no longer keys workspace detection on a file this plugin removes.** `find_workspace_root` walked up looking for a root `RULES.md`, which 0.12.0's own lazy migration quarantines into `_recycle-bin/` and replaces with `.claude/rules/overrides.md`. That marker is now in the list, and the UNRESOLVED banner stops telling the user to look for a file the plugin deletes. `RULES.md` stays in the list, annotated as legacy, so a workspace that has not migrated yet still resolves.
+
+### Notes
+- Never a live break. Every scaffolded workspace also carries `CLAUDE.md` and usually `.git`, so detection kept succeeding through the other markers. What was wrong was a marker going stale by design, and a banner naming a file the user would never find. Caught by `plugin-dev:skill-reviewer` during the 0.12.1 review and held out of that PR, which was scoped to `session-start` SKILL.md.
+
 ## 0.12.1 ... 2026-08-29
 
 ### Fixed

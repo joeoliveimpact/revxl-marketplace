@@ -4,6 +4,11 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.52] ... 2026-08-31
+
+### Fixed
+- **workspace-superengine v0.12.2** ... the background process ledger stopped keying workspace detection on `RULES.md`, the file 0.12.0's own lazy migration quarantines into the recycle bin. `.claude/rules/overrides.md` joins the marker list, and the "I could not work out which workspace this is" banner no longer names a file the plugin removes. `RULES.md` is kept as a legacy marker so an unmigrated workspace still resolves. Never a live break, since `CLAUDE.md` and `.git` covered every scaffolded workspace between 0.12.0 and now.
+
 ## [0.1.51] ... 2026-08-29
 
 ### Fixed
