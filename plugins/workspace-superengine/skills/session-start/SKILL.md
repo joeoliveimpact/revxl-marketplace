@@ -7,6 +7,12 @@ description: Use at the start of a working session to load context ... verifies 
 
 Run at the start of every session. Don't start building until Phase 0 + Phase 4 complete.
 
+## Compaction guard ... re-invoke this skill if the session compacted
+
+This file is long. After a context compaction the skill body is re-injected **truncated to roughly the first 5,000 tokens, keeping only the start**, so the later phases silently vanish.
+
+**If the session has compacted since you invoked this skill, invoke it again before relying on any phase below.** A phase that appears to be missing is the symptom, not a phase that does not exist.
+
 ## Runtime environment
 
 This skill reads `.claude/workspace.yml#environment` on entry. Two paths:
@@ -156,7 +162,7 @@ The trigger is the **configured flag**, NOT a bare MCP connection. The Linear MC
    - `handoff.md`
    - `ARCHITECTURE.md`
    - `PLANNING.md` *(optional — read it if present; not every workspace has one)*
-   - `Checkpoint.md` (read only the most recent 1–2 entries — use offset/limit params)
+   - `Checkpoint.md` (the 5 newest entries, under a token ceiling ... see the read guard below)
    - `MEMORY.md` (only if today's work touches an indexed topic)
 
 2. Existence check before each read:
@@ -164,6 +170,49 @@ The trigger is the **configured flag**, NOT a bare MCP connection. The Linear MC
    - Cowork: use Glob with the exact filename pattern, OR attempt Read and treat ENOENT as "missing"
 
 If `handoff.md`, `ARCHITECTURE.md`, or `Checkpoint.md` is missing ... or the rules slot is empty (neither `.claude/rules/overrides.md` nor a legacy root `RULES.md` exists) ... the workspace isn't fully scaffolded. Suggest `/super-setup`. A missing `PLANNING.md` alone is not a scaffolding failure ... note it and move on.
+
+### The Checkpoint read guard ... 5 entries, never zero
+
+`Checkpoint.md` grows without bound, so read a window off the top of it, never the
+whole file.
+
+- **Split entries on the `## ` heading and on nothing else.** Do NOT split on a date
+  pattern. Real files carry two heading formats, often in the same file ...
+  `## 2026-08-25` and `## 08.31.26` ... and a date regex that only knows one of them
+  silently welds every entry it cannot match onto the one above it, turning dozens of
+  entries into a handful of fake giants. Keying on `## ` handles both formats with no
+  special cases.
+- **Read the 5 newest entries.** Five is not a fresh guess: the full zone's floor in
+  `${CLAUDE_PLUGIN_ROOT}/references/checkpoint-demotion.md` is 5, and this window
+  matches it on purpose. Do not substitute a different number ... a second number that
+  disagrees with shipped doctrine is a defect, not a tuning choice.
+- **Stop early at roughly 10,000 tokens.** If the next entry would cross the ceiling,
+  stop before it and keep what you already have.
+- **NEVER read zero entries.** If the single newest entry is larger than the whole
+  ceiling by itself, read it anyway. Some history beats none.
+- **Say what you loaded, out loud, whenever it came up short of 5:**
+
+  > Loaded the 2 newest Checkpoint entries (10k ceiling); 41 older entries are in the
+  > file and were not read.
+
+  A guard that quietly returns 2 entries looks identical to a Checkpoint that only has
+  2 entries in it, and nothing downstream can tell those apart. The silence is the
+  defect, not the short read.
+
+### Reading last session's transcript, when you need it (optional)
+
+The newest Checkpoint entry carries a `**Session log:**` path. **Never read that
+`.jsonl` raw** ... it is roughly 97% tool plumbing. Run the extractor, which prints the
+`USER:`/`ASSISTANT:` conversation layer and nothing else:
+
+```bash
+python "${CLAUDE_PLUGIN_ROOT}/scripts/extract-transcript.py" <session-id or .jsonl path>
+```
+
+Worth doing only when the handoff and Checkpoint disagree, or when a decision needs its
+reasoning back. Skip it otherwise ... session-start is a briefing, not a reconstruction.
+Degrade branches (no Bash, no stamped path, empty result):
+`${CLAUDE_PLUGIN_ROOT}/references/transcript-filtering.md`.
 
 ### Check the local files against what the tracker said (only when Phase 0.5 ran)
 

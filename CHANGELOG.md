@@ -4,6 +4,15 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.54] ... 2026-09-01
+
+### Fixed
+- **workspace-superengine v0.13.0** ... `session-start` stops reading `Checkpoint.md` whole (5 newest entries under a ~10k ceiling, never zero), and `session-start` / `session-closeout` / `session-continue` each gained a compaction guard. Claude Code re-injects an invoked skill body capped at roughly 5,000 tokens **keeping only the start of the file**, so a long skill silently loses its tail mid-session; `session-continue` was losing the step that writes the prompt and spawns the chip. Also ships `scripts/extract-transcript.py`, which fixes an over-capture bug in the old prose snippet without introducing the opposite one.
+
+### Added
+- **The validator can now fail on skill size.** `scripts/validate.py` gained a token ceiling at **error** severity (5,000 tokens, estimated bytes/4, with a waiver list). The existing word ceiling was a warning that never changed the exit code, so it reported the problem and passed anyway. Introducing the check found **10 published SKILL.md files over the ceiling across six plugins** ... all pre-existing, all baselined as waivers with dated reasons so the gate catches new bloat instead of blocking unrelated work. The list is tracked as an issue, not left buried in a Python dict.
+- **CI now runs all five validator sections.** It ran three. `plugin_integrity` and `readme` were local-only, which meant an error the script was fully capable of raising could never fail a pull request ... including the new token ceiling, and including the README catalog drift the release process depends on.
+
 ## [0.1.53] ... 2026-08-31
 
 ### Fixed

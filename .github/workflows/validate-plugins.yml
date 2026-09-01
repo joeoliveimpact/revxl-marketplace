@@ -3,6 +3,11 @@ name: Validate Plugins
 # CI runs the SAME script contributors run locally: scripts/validate.py
 # (run `python scripts/validate.py` before pushing). Keeping the logic in
 # one committed file means CI and local can never drift.
+#
+# All FIVE sections run here as of 2026-09-01. Before that CI ran only three,
+# so plugin_integrity and readme were local-only ... which meant an error the
+# script was fully capable of raising could never fail a PR. If you add a
+# section to scripts/validate.py, add a job for it here in the same change.
 
 on:
   push:
@@ -34,3 +39,21 @@ jobs:
       - name: Install pyyaml
         run: pip install pyyaml
       - run: python3 scripts/validate.py --section frontmatter
+
+  validate-plugin-integrity:
+    runs-on: ubuntu-latest
+    name: Validate plugin integrity (incl. the 5000-token SKILL.md ceiling)
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pyyaml
+        run: pip install pyyaml
+      - run: python3 scripts/validate.py --section plugin_integrity
+
+  validate-readme:
+    runs-on: ubuntu-latest
+    name: Validate README catalog matches the manifests
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pyyaml
+        run: pip install pyyaml
+      - run: python3 scripts/validate.py --section readme

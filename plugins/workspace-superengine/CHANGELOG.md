@@ -2,6 +2,22 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.13.0 ... 2026-09-01
+
+### Fixed
+
+- **`session-start` no longer reads `Checkpoint.md` whole.** It now reads the 5 newest entries, stops early at roughly 10,000 tokens, and never reads zero. On a real workspace whose log had grown to ~156,950 tokens, 5 entries is 8,526. The floor of 5 is not a new number: it matches the one already in `references/checkpoint-demotion.md`. Entries are split on the `## ` heading and never on a date pattern, because real logs carry two date formats in the same file and a single-format regex silently welds entries into a handful of fake giants. When the guard returns fewer than 5, it now says so out loud with the count that exists, since a quiet short read is indistinguishable from a short file.
+
+- **Three skills now tell you to re-invoke them after a compaction.** Claude Code re-injects an invoked skill body capped at roughly 5,000 tokens and **keeps only the start of the file**, so a long skill silently loses its tail for the rest of the session. `session-closeout` is 11,445 estimated tokens, so after a compaction its goals system, background-process consent procedure, all nine final verification checks and quick mode were simply absent, with no error. `session-start` and `session-continue` have the same shape; `session-continue` was losing the step that actually writes the prompt and spawns the chip. Each now carries a short guard inside its first 300 tokens, where truncation cannot reach it, telling the model to invoke the skill again if the session has compacted.
+
+### Added
+
+- **`scripts/extract-transcript.py`** ... the transcript filter is a real script instead of a prose snippet that got retyped, and drifted, at every use. It also fixes a bug the snippet had: task notifications, system reminders, hook output, local command output and slash-command envelopes all arrive wearing role `user`, so a filter that only drops non-text blocks kept every one of them as if it were the human talking. Two things it deliberately does NOT do: it does not drop a block merely because it contains a machine wrapper, because reminders are routinely prepended to a real sentence and dropping the block deletes the speech; and it unwraps `<command-args>` rather than discarding it, because that payload is what the user actually typed. Reachable from `session-start`, not only `/session-continue`.
+
+### Notes
+
+- **Reordering was tried and reverted.** Moving rarely-executed sections below the truncation line is the obvious fix, and it was measured: it moved **zero** sections above the cut in either file, and made both files larger. `session-closeout`'s must-survive content totals roughly 6,723 tokens against a 5,000 budget, so no ordering fits it. The guard does the work; the reorder was cost without benefit. Trimming these three under 5,000 properly is tracked separately and needs measurement first, not a reordering.
+
 ## 0.12.3 ... 2026-08-31
 
 ### Fixed

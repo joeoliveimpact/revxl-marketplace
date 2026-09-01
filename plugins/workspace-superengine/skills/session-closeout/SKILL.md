@@ -7,6 +7,12 @@ description: Use at the end of a working session to capture state — writes a s
 
 Run at end of every session. No skipping the file updates — those are non-negotiable.
 
+## Compaction guard ... re-invoke this skill if the session compacted
+
+This file is long. After a context compaction the skill body is re-injected **truncated to roughly the first 5,000 tokens, keeping only the start**, so the later phases silently vanish.
+
+**If the session has compacted since you invoked this skill, invoke it again before relying on any phase below.** A phase that appears to be missing is the symptom, not a phase that does not exist.
+
 ## Runtime environment
 
 This skill reads `.claude/workspace.yml#environment` on entry.
