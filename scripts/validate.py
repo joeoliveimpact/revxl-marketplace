@@ -307,7 +307,17 @@ def check_plugin_integrity() -> list[str]:
         # 1. every ${CLAUDE_PLUGIN_ROOT}/<relpath> must resolve
         for md in _doc_mds(d):
             for m in RX_PLUGIN_ROOT.finditer(_read(md)):
-                rel = m.group(1)
+                # Trailing dots and ellipses are prose, not path. House style uses
+                # "..." for a pause, so a reference cited mid-sentence captures as
+                # "references/mine.md..." here, and a changelog placeholder can
+                # capture as "references/" plus a lone U+2026. Windows silently
+                # STRIPS trailing dots when resolving a path, so 37 of these
+                # resolved fine locally and the check only failed once this section
+                # started running on Linux in CI. A real filename never ends in a
+                # dot or an ellipsis, so stripping both is safe.
+                rel = m.group(1).rstrip(".\u2026")
+                if not rel or rel.endswith("/"):
+                    continue
                 if not (d / rel).exists():
                     emit("dead_ref", f"plugins/{name}/{md.relative_to(d).as_posix()}",
                          f"dead reference path ${{CLAUDE_PLUGIN_ROOT}}/{rel}")

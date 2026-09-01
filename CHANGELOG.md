@@ -13,6 +13,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **The validator can now fail on skill size.** `scripts/validate.py` gained a token ceiling at **error** severity (5,000 tokens, estimated bytes/4, with a waiver list). The existing word ceiling was a warning that never changed the exit code, so it reported the problem and passed anyway. Introducing the check found **10 published SKILL.md files over the ceiling across six plugins** ... all pre-existing, all baselined as waivers with dated reasons so the gate catches new bloat instead of blocking unrelated work. The list is tracked as an issue, not left buried in a Python dict.
 - **CI now runs all five validator sections.** It ran three. `plugin_integrity` and `readme` were local-only, which meant an error the script was fully capable of raising could never fail a pull request ... including the new token ceiling, and including the README catalog drift the release process depends on.
 
+### Fixed (found by turning those sections on)
+- **`dead_ref` could not fail on Windows.** The reference regex captures everything up to whitespace, so a path cited mid-sentence captured the prose ellipsis after it as part of the filename ... `references/mine.md...`. Windows silently strips trailing dots when resolving a path, so all 34 of these resolved locally and the check passed. Linux does not, so the very first CI run of this section reported 34 dead references across the catalog. Trailing dots and ellipses are now stripped before the existence check. Worth stating plainly: this check had been structurally incapable of failing for any reference followed by punctuation, on the only platform it was ever run on, and the house style of using "..." instead of an em-dash is what put the ellipses there.
+
 ## [0.1.53] ... 2026-08-31
 
 ### Fixed
