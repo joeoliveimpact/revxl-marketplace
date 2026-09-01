@@ -25,8 +25,9 @@ Checks (mirror the three former CI jobs exactly):
                 mechanical per-plugin checks: ${CLAUDE_PLUGIN_ROOT} paths
                 resolve, reference docs aren't orphaned, no bare sibling
                 slash-commands in prose, advertised commands exist, no
-                absolute machine paths, hooks wired to real scripts, and
-                skills/references stay under their word ceilings
+                absolute machine paths, hooks wired to real scripts,
+                skills/references stay under their word ceilings, and no
+                SKILL.md exceeds the token ceiling
 
 Only plugins listed in marketplace.json are validated (the catalog is the
 source of truth; WIP folders under plugins/ are skipped).
@@ -59,6 +60,7 @@ SEVERITY = {
     "abs_path": "error",
     "hooks": "error",
     "word_ceiling": "warning",
+    "token_ceiling": "error",
 }
 
 # Slash-commands a plugin may advertise without shipping commands/<name>.md:
@@ -76,6 +78,54 @@ DOC_DIRS = ("skills", "references", "agents", "commands")
 # bloat trips them.
 SKILL_WORD_CEILING = 2200
 REFERENCE_WORD_CEILING = 1800
+
+# Hard ceiling, unlike the word ceilings above. 5000 tokens is the documented
+# per-skill cap for re-injecting skill bodies after context compaction: a
+# SKILL.md over it is silently truncated mid-session, keeping only its start,
+# so the back half of the skill stops existing with no error anywhere.
+# Tokens are ESTIMATED as bytes/4 ... this is a cheap approximation, not an
+# exact tokenizer count, and the failure message says so so the number stays
+# auditable from the file alone.
+SKILL_TOKEN_CEILING = 5000
+SKILL_TOKEN_ESTIMATE_NOTE = "estimated as bytes/4, not an exact tokenizer count"
+
+# Skills knowingly over SKILL_TOKEN_CEILING, keyed "<plugin>/<skill>" with the
+# reason it is recorded rather than fixed. A waiver is a tracked exception, not
+# an exemption from the problem: anything over the ceiling and NOT listed here
+# fails the build.
+TOKEN_CEILING_WAIVERS = {
+    # Baseline recorded 2026-09-01 when this gate was introduced. Every entry below
+    # was ALREADY over the ceiling before the gate existed, so blocking on them would
+    # stop unrelated work in six other plugins rather than catching new bloat. They
+    # are tracked in Linear, not buried here ... see SKLLPLG-255.
+    #
+    # A waiver is a recorded exception with an owner, never a silent pass. Do not add
+    # to this list to get a red run green; trim the skill instead.
+    "workspace-superengine/session-closeout":
+        "11445 est; was 11256 before 0.13.0 added its compaction guard. Reordering "
+        "was tried and measurably moved zero sections above the cut, so it was "
+        "reverted; the guard is the fix. Trim to <5000 tracked in SKLLPLG-245",
+    "workspace-superengine/session-continue":
+        "7013 est; was 6860 before the compaction guard. Same measured result as "
+        "closeout ... reorder reverted. Trim to <5000 tracked in SKLLPLG-245",
+    "workspace-superengine/session-start":
+        "6860 est; was 6164 before 0.13.0's read guard and compaction guard. "
+        "Already over at HEAD. Trim to <5000 tracked in SKLLPLG-245",
+    "socialcrawl-superengine/socialcrawl":
+        "8590 est; pre-existing 2026-09-01 baseline, untriaged. SKLLPLG-255",
+    "profile-optimization-superengine/profile-ig-audit":
+        "7753 est; pre-existing 2026-09-01 baseline, untriaged. SKLLPLG-255",
+    "shortform-superengine/reel-scripter":
+        "7159 est; pre-existing 2026-09-01 baseline, untriaged. SKLLPLG-255",
+    "profile-optimization-superengine/profile-fb-audit":
+        "7000 est; pre-existing 2026-09-01 baseline, untriaged. SKLLPLG-255",
+    "shortform-superengine/competitor-cross-reference":
+        "6227 est; pre-existing 2026-09-01 baseline, untriaged. SKLLPLG-255",
+    "focus-group-superengine/focus-group-run":
+        "5735 est; pre-existing 2026-09-01 baseline, untriaged. SKLLPLG-255",
+    "shortform-superengine/onboarding":
+        "5425 est; pre-existing 2026-09-01 baseline, untriaged. SKLLPLG-255",
+}
 
 # Absolute machine paths that must never ship. Bare "C:\" is deliberately NOT
 # listed: it matches legitimate docs (the standard Windows Edge install path,
@@ -257,7 +307,17 @@ def check_plugin_integrity() -> list[str]:
         # 1. every ${CLAUDE_PLUGIN_ROOT}/<relpath> must resolve
         for md in _doc_mds(d):
             for m in RX_PLUGIN_ROOT.finditer(_read(md)):
-                rel = m.group(1)
+                # Trailing dots and ellipses are prose, not path. House style uses
+                # "..." for a pause, so a reference cited mid-sentence captures as
+                # "references/mine.md..." here, and a changelog placeholder can
+                # capture as "references/" plus a lone U+2026. Windows silently
+                # STRIPS trailing dots when resolving a path, so 37 of these
+                # resolved fine locally and the check only failed once this section
+                # started running on Linux in CI. A real filename never ends in a
+                # dot or an ellipsis, so stripping both is safe.
+                rel = m.group(1).rstrip(".\u2026")
+                if not rel or rel.endswith("/"):
+                    continue
                 if not (d / rel).exists():
                     emit("dead_ref", f"plugins/{name}/{md.relative_to(d).as_posix()}",
                          f"dead reference path ${{CLAUDE_PLUGIN_ROOT}}/{rel}")
@@ -359,6 +419,20 @@ def check_plugin_integrity() -> list[str]:
                 if w > REFERENCE_WORD_CEILING:
                     emit("word_ceiling", f"plugins/{name}/{rf.relative_to(d).as_posix()}",
                          f"reference is {w} words (ceiling {REFERENCE_WORD_CEILING})")
+
+        # 8. token ceiling (hard gate, unlike 7): a SKILL.md over the
+        #    compaction re-injection cap is silently truncated mid-session.
+        for sk in sorted(d.glob("skills/*/SKILL.md")):
+            est = len(sk.read_bytes()) // 4
+            if est <= SKILL_TOKEN_CEILING:
+                continue
+            if f"{name}/{sk.parent.name}" in TOKEN_CEILING_WAIVERS:
+                continue
+            emit("token_ceiling", f"plugins/{name}/{sk.relative_to(d).as_posix()}",
+                 f"SKILL.md is ~{est} tokens ({SKILL_TOKEN_ESTIMATE_NOTE}), over "
+                 f"the {SKILL_TOKEN_CEILING}-token ceiling ... it will be silently "
+                 f"truncated when skill bodies are re-injected after compaction. "
+                 f"Trim it, or record it in TOKEN_CEILING_WAIVERS with a reason.")
 
         if len(errs) == pre:
             print(f"OK {name}: integrity")

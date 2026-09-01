@@ -5,6 +5,12 @@ description: Use at the very end of a working session when the user wants the NE
 
 # Session Continue ... close out, then tee up the next session
 
+## Compaction guard ... re-invoke this skill if the session compacted
+
+This file is long. After a context compaction the skill body is re-injected **truncated to roughly the first 5,000 tokens, keeping only the start**, so the later steps silently vanish.
+
+**If the session has compacted since you invoked this skill, invoke it again before relying on any step below.** A step that appears to be missing is the symptom, not a step that does not exist.
+
 One command at the end of a session. It does two things in order:
 
 1. Runs `/session-closeout` in full, unchanged.
