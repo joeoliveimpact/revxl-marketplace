@@ -1,11 +1,19 @@
 #!/usr/bin/env bash
 # SessionStart hook for workspace-superengine
-# Three jobs:
-#   1. Load bundled agent-optimizer SKILL.md content into session context.
-#   2. Scaffold existence check — warn when CLAUDE.md is missing, or when
+# Two jobs:
+#   1. Scaffold existence check — warn when CLAUDE.md is missing, or when
 #      neither .claude/rules/overrides.md nor a legacy root RULES.md exists.
-#   3. Broadcast .claude/workspace.yml (verbosity + environment) as a
+#   2. Broadcast .claude/workspace.yml (verbosity + environment) as a
 #      system reminder.
+#
+# This hook used to also paste the whole agent-optimizer SKILL.md into every
+# session. 0.12.0 moved the override constraints to .claude/rules/overrides.md,
+# which the harness loads natively every session, but the injection was left
+# standing. The result was the same four rules arriving up to four times per
+# session (hook, rules file, project CLAUDE.md, global CLAUDE.md) for roughly
+# 2,300 redundant tokens before any work started. The injection is gone; the
+# rules file is the single source. Do not re-add it. On Cowork, where plugin
+# hooks never load, this hook never ran anyway, so nothing regressed there.
 
 set -euo pipefail
 
@@ -15,21 +23,13 @@ PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # Workspace root: Claude Code sets CLAUDE_PROJECT_DIR; fall back to $PWD.
 WORKSPACE_ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
 
-# --- Job 1: load agent-optimizer ---
-agent_optimizer_path="${PLUGIN_ROOT}/skills/agent-optimizer/SKILL.md"
-if [ -f "$agent_optimizer_path" ]; then
-    agent_optimizer_content=$(cat "$agent_optimizer_path")
-else
-    agent_optimizer_content="(agent-optimizer SKILL.md missing from plugin — reinstall workspace-superengine)"
-fi
-
-# --- Job 2: scaffold existence check ---
+# --- Job 1: scaffold existence check ---
 scaffold_warning=""
 if { [ ! -f "${WORKSPACE_ROOT}/.claude/rules/overrides.md" ] && [ ! -f "${WORKSPACE_ROOT}/RULES.md" ]; } || [ ! -f "${WORKSPACE_ROOT}/CLAUDE.md" ]; then
     scaffold_warning="This workspace isn't scaffolded. Run /super-setup."
 fi
 
-# --- Job 3: broadcast workspace.yml ---
+# --- Job 2: broadcast workspace.yml ---
 workspace_yml="${WORKSPACE_ROOT}/.claude/workspace.yml"
 workspace_config=""
 if [ -f "$workspace_yml" ]; then
@@ -69,7 +69,7 @@ escape_for_json() {
 }
 
 # --- Compose session context ---
-session_context="<EXTREMELY_IMPORTANT>\nworkspace-superengine is active.\n\n**Below is the full content of the bundled agent-optimizer skill. These four override constraints govern behavior on ALL tasks and override any other guidance when in conflict.**\n\n$(escape_for_json "$agent_optimizer_content")"
+session_context="<EXTREMELY_IMPORTANT>\nworkspace-superengine is active."
 
 if [ -n "$workspace_config" ]; then
     session_context="${session_context}\n\n<workspace-config>\n$(escape_for_json "$workspace_config")\n</workspace-config>"

@@ -2,6 +2,15 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.12.3 ... 2026-08-31
+
+### Fixed
+- **The SessionStart hook stopped pasting the whole `agent-optimizer` skill into every session.** 0.12.0 moved the four override constraints to `.claude/rules/overrides.md`, which the harness loads natively every session, but the hook's own copy was left standing. The same four rules were arriving up to four times per session: this hook, the rules file, the project `CLAUDE.md`, and the global `CLAUDE.md`. The hook was the largest copy at roughly **1,296 tokens per session**, spent before any work began. Measured by running both hook versions from the real hooks directory so `PLUGIN_ROOT` resolved: old `additionalContext` 5,394 chars, new 207. The hook keeps its other two jobs, both verified still firing ... the scaffold existence check and the `workspace.yml` broadcast.
+
+### Notes
+- Safe on both surfaces. On Claude Code the rules file is loaded natively, confirmed live. On Cowork plugin hooks never load at all, so this hook never ran there and nothing regressed.
+- This change was written for 0.12.2 but never reached that release: GitHub associated only two of the branch's four commits with the PR, so the squash merge shipped the ledger fix alone. 0.12.2's changelog described only what actually landed, so no incorrect claim reached clients. Re-shipped here from the same verified commit.
+
 ## 0.12.2 ... 2026-08-31
 
 ### Fixed
