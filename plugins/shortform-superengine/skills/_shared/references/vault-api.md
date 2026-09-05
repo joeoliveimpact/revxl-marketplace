@@ -25,7 +25,7 @@ echoed, and anything else is treated as degraded).
 At a named trigger point, after the cache check below:
 
 > Invoke `workspace-superengine:revxl-brain-search` with the Skill tool, args
-> `depth=med plugin=shortform-superengine spoke=content-strategy question: <query> (variants: <niche + format terms>)`.
+> `depth=med plugin=shortform-superengine spoke=content-strategy question: <query> ... angles: <niche + format terms>`.
 
 `depth=med` is 1 search with up to 2 note reads; use `depth=low` for a search
 with no reads. The skill returns cited hits (`[brain] <path>`, snippet) and the
@@ -51,8 +51,8 @@ newest patterns."*
   and 50 reads per key per day, shared across every vault and every RevXL plugin
   ... a loop that queries per-reel-per-competitor will exhaust the client's whole
   day. Brain invocations fire at **named steps only**, never inside loops. A pull
-  may serve multiple layers via the variants in the question (reel-scripter's hook
-  pull also carries retention/loser variant terms) ... broaden the variants, never
+  may serve multiple layers via the angle terms in the question (reel-scripter's hook
+  pull also carries retention/loser angle terms) ... broaden the angles, never
   add invocations; when note-reads compete, the step's primary intent wins. The
   skill's own cap (10 searches / 6 reads per invocation) sits above this and is
   never the operative limit here.

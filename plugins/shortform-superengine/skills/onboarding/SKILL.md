@@ -178,7 +178,8 @@ onboarding does not run it by hand. If they don't have one: *"Ask Joe for your B
 key — until then the engine runs on its built-in reference library, which works
 fine but doesn't get the newest patterns."* **Never block on it.**
 
-Verify: invoke `workspace-superengine:revxl-brain-search` with args `test`. It prints
+Verify: invoke `workspace-superengine:revxl-brain-search` with the Skill tool, args
+`test plugin=shortform-superengine`. It prints
 the connection card (server, search, note read, last logged call) and handles the cold
 start itself (see [`../_shared/references/vault-api.md`](../_shared/references/vault-api.md)).
 If the Skill tool does not list it, say that workspace-superengine is missing and move on.

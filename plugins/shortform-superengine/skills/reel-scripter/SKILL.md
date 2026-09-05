@@ -91,11 +91,11 @@ Wiring per [`../_shared/references/vault-api.md`](../_shared/references/vault-ap
 (the `revxl-brain-search` skill finds the key). **Check
 `<project>/brain-pulls/` first** — a cached pull for this topic means no call.
 No cache: ONE invocation of `workspace-superengine:revxl-brain-search` (`depth=med
-plugin=shortform-superengine spoke=content-strategy question: <the reel's topic/theme>`),
-variants = niche + format terms inside the question (e.g. `["<niche> reels", "<format> hook"]`). The format
+plugin=shortform-superengine spoke=content-strategy question: <the reel's topic/theme> ...
+angles: <niche> reels; <format> hook`). The format
 isn't locked yet at this step, so read it off the INPUT when it shows one: list-shaped
-source → `"listicle reel"`; client story/transformation → `"story reel"`; belief-flip →
-`"myth bust reel"`; no clear shape → default `["<niche> reels", "<topic>"]` and let hybrid
+source → `listicle reel`; client story/transformation → `story reel`; belief-flip →
+`myth bust reel`; no clear shape → `angles: <niche> reels; <topic>` and let hybrid
 search do the aiming — **never skip the pull because the content doesn't fit a mold.** Save
 the cited hits to `<project>/brain-pulls/<topic-slug>.md` and weave them into the
 brief's menu as extra evidence, cited `[brain] <path>`. No key / skill missing / any failure →
@@ -208,10 +208,11 @@ Proof → CTA → Text-overlay storyboard → Caption hook. Per section, run
      proven shapes from `./references/hook-formulas.md`. On IG the hook is the **frame-1
      on-screen text** — write it to double as burned-in caption.
      **Brain pull #2 (Trigger 2 of 2, optional):** if the Brain key resolves and the hook bucket
-     feels stale or thin, ONE invocation of `revxl-brain-search` (`depth=med`) — question `hook <bucket> <topic>` with the bucket
-     Step 2 locked; add retention/loop + "patterns to avoid" terms to the `variants` so the same
-     pull refreshes the psychology + loser layers. When note-reads compete, hook hits win over
-     psychology hits. Up to 2 note reads (the skill's `depth=med`). Cache to `<project>/brain-pulls/`, cite
+     feels stale or thin, ONE invocation of `workspace-superengine:revxl-brain-search`
+     (`depth=low plugin=shortform-superengine spoke=content-strategy question: hook <bucket>
+     <topic> ... angles: retention loop; patterns to avoid`) with the bucket Step 2 locked, so the
+     same pull refreshes the psychology + loser layers. `depth=low` is 1 search and 0 note reads:
+     trigger 1's `depth=med` already carries this reel's note reads. Cache to `<project>/brain-pulls/`, cite
      `[brain] <path>`. Same degrade rules; **total Brain budget for the whole reel: ≤2 searches
      + ≤3 note reads, never inside loops.**
      Use the client's vocabulary; pull verbatim audience pains from `voc-profile.md` where they

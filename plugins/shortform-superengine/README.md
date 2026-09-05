@@ -14,6 +14,8 @@ Every skill ends with **Next moves** — exact-phrase offers for the natural nex
 
 **Bundled dependencies** (used by the skills above, not invoked directly): **`brand-brain`** — mines the client's real sources into the shared brand voice at `~/.claude/revxl/<brand>/voc/`; **`socialcrawl`** — the bundled SocialCrawl API reference the data layer runs on.
 
+**Requirements:** a SocialCrawl key (wired by `onboarding`) for the analysis skills. A RevXL Brain key from Joe is optional: with it, `reel-scripter` pulls Joe's current short-form strategy patterns at two named points and cites them as `[brain] <path>`. The connection comes from the **workspace-superengine** plugin (0.14.0 or later, skill `revxl-brain-search`); without the key, or without that plugin, the engine runs on its bundled reference library and says so once.
+
 Commands:
 
 - **`/teach-mode beginner|off`** — switches the assistant's end-user voice: `beginner` (plain-English-first, explains terms) or `off` (standard voice). Defaults to `beginner` on first install; persists across sessions.
