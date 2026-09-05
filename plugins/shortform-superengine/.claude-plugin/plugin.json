@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "shortform-superengine",
   "description": "Short-form content superengine: turns competitor + creator intelligence into platform-ready short-form video scripts in the client's brand voice. Cross-references Instagram reels against tiered competitors, harvests trusted-creator libraries, and scripts reels from the analysis.",
-  "version": "0.3.1",
+  "version": "0.3.3",
   "author": {
     "name": "Joe Olive",
     "email": "joe@engineforimpact.com"
