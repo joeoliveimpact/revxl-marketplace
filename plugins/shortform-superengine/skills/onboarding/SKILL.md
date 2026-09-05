@@ -172,17 +172,16 @@ intelligence that updates continuously — unlike the bundled reference files, i
 never goes stale. Access is part of the client's active RevXL subscription; the
 key comes from Joe, not a signup page.
 
-Resolution ladder (mirrors SocialCrawl): env `VAULT_API_KEY` (starts `vk_`) →
-file `~/.config/revxl/vault_api_key` → ask the client to paste the key Joe gave
-them + auto-save to that file. If they don't have one: *"Ask Joe for your Brain
+The key ladder (env `VAULT_API_KEY`, then `~/.config/revxl/vault_api_key`, then ask
+once and save) belongs to the `revxl-brain-search` skill in workspace-superengine;
+onboarding does not run it by hand. If they don't have one: *"Ask Joe for your Brain
 key — until then the engine runs on its built-in reference library, which works
 fine but doesn't get the newest patterns."* **Never block on it.**
 
-Verify (when a key is present): `GET https://brain.engineforimpact.com/health`
-returns `{"ok":true}`, then one test search (see
-[`../_shared/references/vault-api.md`](../_shared/references/vault-api.md)).
-Cold start note: the very first search after idle can take up to ~60s — that's
-normal, don't declare it broken; retry once before flagging.
+Verify: invoke `workspace-superengine:revxl-brain-search` with args `test`. It prints
+the connection card (server, search, note read, last logged call) and handles the cold
+start itself (see [`../_shared/references/vault-api.md`](../_shared/references/vault-api.md)).
+If the Skill tool does not list it, say that workspace-superengine is missing and move on.
 
 ### Optional services (detect-and-note, never block)
 
