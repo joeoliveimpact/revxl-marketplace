@@ -4,6 +4,11 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.55] ... 2026-09-04
+
+### Added
+- **workspace-superengine v0.14.0** ... `revxl-brain-search`, the one client skill for the Brain API (`brain.engineforimpact.com`). Search, read, related and a connection test that doubles as the doctor, with the client's own `vk_` key. Read-only, never picks a spoke, capped at 10 searches and 6 reads per run, a spend line on every Brain-backed answer, and a call ledger at `~/.config/revxl/brain-calls.jsonl` that gives a client machine its first evidence of what actually reached the Brain. Key lookup and error wording reused from `joeoliveimpact/brain-connection-test`. The three content plugins that call the Brain today (meta-ads, shortform, carousel) keep their own wiring for now and move to the named invocation one release at a time.
+
 ## [0.1.54] ... 2026-09-01
 
 ### Fixed

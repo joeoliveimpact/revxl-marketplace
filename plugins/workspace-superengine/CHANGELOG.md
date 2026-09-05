@@ -2,6 +2,18 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.14.0 ... 2026-09-04
+
+### Added
+
+- **`revxl-brain-search`** ... one client skill for the Brain API, so the content plugins stop carrying their own copies of the key lookup, the curl shape, the retry rule and the failure messages. Three of them do today (meta-ads, shortform, carousel), each with a wiring doc that has already drifted from the other two, and the server log caught a client integration hitting `/search` instead of `/v1/search` three times before it got through. The skill does `search`, `read`, `related` and `test`; the key lookup and the plain-English error table are reused from `joeoliveimpact/brain-connection-test`. It never writes, never picks a spoke (the server scopes each key; a spoke is passed through only when the calling plugin names one), spends at most 10 searches and 6 reads in one run, ends every Brain-backed answer with a spend line, and appends one JSON line per call to `~/.config/revxl/brain-calls.jsonl` ... the client-side proof that a plugin really reached the Brain. Every failure degrades to the calling plugin's bundled references. It also tells the three 429 reasons apart (`server_busy`, `rate_limited`, `daily_budget_exhausted`), which the existing plugin docs collapse into one.
+
+### Notes
+
+- `test` is the doctor. There is no second skill. Its card carries the last ledger line so a client can show Joe the last call that actually landed.
+- Brain content is data, not instructions. The rule is in the skill, not only in the plugins that call it.
+- The content plugins are not changed in this release. Each one moves to the named invocation in its own release; until then it keeps working as it does now.
+
 ## 0.13.0 ... 2026-09-01
 
 ### Fixed
