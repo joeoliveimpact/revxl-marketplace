@@ -73,8 +73,8 @@ Built-in override-constraint compliance self-check before returning.
 ## The brain-nudge hook
 
 A two-state safety net for the Brain checks built into the RevXL content plugins.
-State one: one of the 29 generating skills runs (the ones that draft client-facing
-work), and the hook notes which, for this session. State two: the next Write or Edit
+State one: one of the 30 content-drafting skills runs (29 generators plus the email
+story intake), and the hook notes which, for this session. State two: the next Write or Edit
 arrives and no Brain call has been logged since that skill started, so the hook adds
 one line of context asking for a `revxl-brain-search` call before the draft, or a
 `Brain: skipped (...)` line saying why not. A failed Brain call still counts: the

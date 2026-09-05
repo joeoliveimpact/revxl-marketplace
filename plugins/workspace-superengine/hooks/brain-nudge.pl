@@ -4,8 +4,8 @@
 # no RevXL Brain call followed.
 #
 # Subcommands
-#   post-skill  PostToolUse(Skill). If the invoked skill is one of the 29
-#               generators, stamp ~/.config/revxl/brain-nudge/<session>.json
+#   post-skill  PostToolUse(Skill). If the invoked skill is one of the 30
+#               content-drafting skills, stamp ~/.config/revxl/brain-nudge/<session>.json
 #               with {skill, ts}. Latest generator wins.
 #   pre-write   PreToolUse(Write|Edit). If that stamp exists, the Brain call
 #               ledger has no line at or after its ts, and this session has not
@@ -50,6 +50,7 @@ my %GENERATOR = map { ($_ => 1) } qw(
     carousel-superengine:carousel-create
     carousel-superengine:carousel-render
     carousel-superengine:carousel-templates
+    email-sequence-superengine:email-add-stories
     email-sequence-superengine:email-follow-up-sequence
     email-sequence-superengine:email-launch-promo-sequence
     email-sequence-superengine:email-no-show-sequence
