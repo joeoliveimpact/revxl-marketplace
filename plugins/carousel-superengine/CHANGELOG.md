@@ -1,5 +1,19 @@
 # Changelog — carousel-superengine
 
+## 0.5.0 ... 2026-09-05
+
+**Brain calls go through `revxl-vault-search`.** The wiring reference keeps its name and the
+carousel specifics (the per-carousel budget, the working-folder cache, the evidence line) and
+drops its own key ladder, the three curl blocks and the error table. Those live in one place for
+every RevXL plugin now: the `revxl-vault-search` skill in workspace-superengine 0.14.0, which also
+logs every call and tells the three 429 reasons apart. carousel-create's two trigger points invoke
+it by name, and the `content-strategy` spoke is named explicitly on every call so a wrong-vault
+answer is caught (before, the server default was relied on with no guard). carousel-setup runs
+the skill's connection `test` once during the wizard, so the client sees the connection card
+before build #1. Requires
+workspace-superengine 0.14.0 or later for live Brain pulls; without it the engine degrades to its
+bundled references and says so once.
+
 ## 0.3.0 — 2026-07-18
 
 **Simulated-user test pass (same day, pre-merge):** six agents role-played coaches against the

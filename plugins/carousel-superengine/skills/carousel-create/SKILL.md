@@ -80,29 +80,32 @@ Show the map with **one Brain status line** —
 `Brain: [brain] <path> woven` or `Brain: skipped (no key / cached / degraded / budget)`; the
 pull must leave a visible trace either way. Beginner levels get one plain-English line
 on why this order. Adjust on feedback, then write.
-   **Brain pull #1 (Trigger 1 of 2):** resolve the Brain key per
-   `${CLAUDE_PLUGIN_ROOT}/references/vault-api.md` (ladder: env → `~/.config/revxl/vault_api_key`
-   → ask once). **Check `brain-pulls/` in the working folder first** — a cached pull for this
-   topic means no call. Key + no cache: ONE `/v1/search` — `query` = the carousel's topic/pain,
-   `variants` shaped by the blueprint locked in step 2 (**query recipes** — the row always
+   **Brain pull #1 (Trigger 1 of 2):** wiring per
+   `${CLAUDE_PLUGIN_ROOT}/references/vault-api.md` (the `revxl-vault-search` skill finds the
+   key). **Check `brain-pulls/` in the working folder first** — a cached pull for this
+   topic means no call. No cache: ONE invocation of `workspace-superengine:revxl-vault-search`
+   (`depth=med plugin=carousel-superengine spoke=content-strategy question: <the carousel's topic/pain> ... angles: <the blueprint's terms>`),
+   the angle terms taken from the blueprint locked in step 2 (**query recipes** ... the row always
    exists because step 2 forces the pick):
-   | Blueprint | variants |
+   | Blueprint | angle terms (into the question text, after `angles:`) |
    |---|---|
-   | A educational | `["educational carousel structure", "<topic> framework"]` |
-   | B story-led | `["story-led carousel", "story arc retention"]` |
-   | C case-study | `["case study carousel", "proof content structure"]` |
-   Always append the raw topic/pain as its own variant. Input leaning across two blueprints →
-   take one variant from each row. Recipes shape `variants` only — `query` stays the topic/pain,
+   | A educational | `educational carousel structure; <topic> framework` |
+   | B story-led | `story-led carousel; story arc retention` |
+   | C case-study | `case study carousel; proof content structure` |
+   The question always leads with the raw topic/pain. Input leaning across two blueprints →
+   take one term from each row. Recipes shape the `angles:` tail only, the question head stays the topic/pain,
    and hybrid search mode forgives imperfect fits; **never skip the pull because the content
    doesn't fit a mold.** Save the cited hits to `brain-pulls/<topic-slug>.md` and weave them
-   into the slide map as extra evidence, cited `[brain] <path>`. No key / 4xx / 5xx / timeout →
-   follow the reference's degrade table and move on — the Brain never blocks a carousel.
+   into the slide map as extra evidence, cited `[brain] <path>`. No key / skill missing / any failure →
+   degrade per the reference and move on — the Brain never blocks a carousel.
 
 **4. Write the package** per the template: 3 hook alternates (different archetypes) with a
-recommended pick + reason — **Brain pull #2 (Trigger 2 of 2, optional):** if the key resolves
-and the hook bank feels stale or thin, ONE `/v1/search` — `query` = `hook <archetype> <topic>`
-using the archetype you're drafting (one variant per archetype when drafting across several;
-no clean archetype → plain `hook <topic>`) + up to 3 `/v1/note` reads on the top hits; current
+recommended pick + reason ... **Brain pull #2 (Trigger 2 of 2, optional):** if
+the hook bank feels stale or thin, ONE invocation of `workspace-superengine:revxl-vault-search`
+(`depth=low plugin=carousel-superengine spoke=content-strategy question: hook <archetype> <topic>`)
+using the archetype you're drafting (drafting across several → name them after `angles:`;
+no clean archetype → plain `hook <topic>`). `depth=low` is one search and no note reads, which is
+what keeps the whole carousel inside the budget below; current
 hook patterns beat frozen ones. Cache to
 `brain-pulls/`, cite `[brain] <path>`, same degrade rules; **total Brain budget for the whole
 carousel: ≤2 searches + ≤3 note reads, never inside loops** · per-slide copy (20% rule, 25-50 words, bold skim path) · per-slide
