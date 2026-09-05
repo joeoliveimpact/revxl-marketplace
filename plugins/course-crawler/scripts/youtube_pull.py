@@ -322,7 +322,7 @@ def transcribe_local(video: Path, dest: Path, model_name: str) -> tuple[Path, Pa
     srt = dest / "transcript.srt"
     device, compute_type = _whisper_device()
     model = WhisperModel(model_name, device=device, compute_type=compute_type)
-    segs, _ = model.transcribe(str(video), beam_size=5)
+    segs, _ = model.transcribe(str(video), beam_size=5, vad_filter=True)
 
     def ts(s):
         h = int(s // 3600); m = int((s % 3600) // 60); sec = s % 60

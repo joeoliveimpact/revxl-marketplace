@@ -445,7 +445,7 @@ def _whisper_worker(video_path: str, dest_dir: str, model_name: str,
     txt_path = dest / "transcript.txt"
     srt_path = dest / "transcript.srt"
     model = WhisperModel(model_name, device=device, compute_type=compute_type)
-    segments, _info = model.transcribe(video_path, beam_size=5)
+    segments, _info = model.transcribe(video_path, beam_size=5, vad_filter=True)
     with txt_path.open("w", encoding="utf-8") as t, srt_path.open("w", encoding="utf-8") as s:
         for i, seg in enumerate(segments, start=1):
             t.write(seg.text.strip() + "\n")
