@@ -32,7 +32,8 @@ shared across every RevXL plugin the client runs. `related` spends a search.
 
 ### Depth ladder
 
-Pick the depth the caller asked for; default `med`.
+Pick the depth the caller asked for; default `med`. An `angles:` tail on the
+question supplies the variants (last section).
 
 | Depth | Spend | What it does |
 |---|---|---|
@@ -230,6 +231,13 @@ report. Never keep calling after a 403 or a 429.
 
 Invoke this skill with the Skill tool as `workspace-superengine:revxl-brain-search`
 with args shaped `depth=<low|med|high> plugin=<your plugin name> [spoke=<area>]
-question: <the question>`. Name a spoke only if your plugin requires one. Read the echoed `spoke` back before using the
+question: <the question>`. Name a spoke only if your plugin requires one.
+
+The question may end with `angles: <a>; <b>; <c>`. Those angles become the search
+`variants`, in order, instead of rewrites you invent, still capped by depth (`low`
+none, `med` 2, `high` 3); extras are dropped, never extra searches. `variants` is
+not a caller field, so a plugin that wants specific rewrites puts them here.
+
+Read the echoed `spoke` back before using the
 hits. If this skill is not installed, degrade to your bundled references and tell the
 client that workspace-superengine is missing.

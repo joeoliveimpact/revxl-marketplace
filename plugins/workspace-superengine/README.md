@@ -49,7 +49,9 @@ Runs the full `session-closeout`, then reads back what closeout just wrote and b
 ### `revxl-brain-search`
 **Triggers:** "check the brain for", "search the brain", "what does the brain say about", "test the brain connection", and any RevXL plugin that needs Joe's newest strategy material before it writes
 
-The one way a RevXL plugin talks to the Brain (Joe's live content-strategy knowledge base at brain.engineforimpact.com) with the client's own key. Search, read, related, and a connection test that doubles as the doctor. Read-only, capped at 10 searches and 6 reads per run, every call logged to `~/.config/revxl/brain-calls.jsonl`, and every failure degrades to the calling plugin's bundled references in plain English. Not brand-brain (your local voice profile) ... that is a different thing.
+The one way a RevXL plugin talks to the Brain (Joe's live content-strategy knowledge base at brain.engineforimpact.com) with the client's own key. Search, read, related, and a connection test that doubles as the doctor. Read-only, capped at 10 searches and 6 reads per run, every call logged to `~/.config/revxl/brain-calls.jsonl`, and every failure degrades to the calling plugin's bundled references in plain English. Not brand-brain (your local voice profile) ... that is a different thing. A calling
+plugin can steer the search by ending its question with `angles: <a>; <b>; <c>`;
+those angles become the search variants instead of rewrites the skill invents.
 
 ---
 
@@ -65,6 +67,31 @@ Two modes:
 - **Full closeout** — agent walks all eight files and updates everything
 
 Built-in override-constraint compliance self-check before returning.
+
+---
+
+## The brain-nudge hook
+
+A two-state safety net for the Brain checks built into the RevXL content plugins.
+State one: one of the 29 generating skills runs (the ones that draft client-facing
+work), and the hook notes which, for this session. State two: the next Write or Edit
+arrives and no Brain call has been logged since that skill started, so the hook adds
+one line of context asking for a `revxl-brain-search` call before the draft, or a
+`Brain: skipped (...)` line saying why not. A failed Brain call still counts: the
+question is whether the Brain was checked, not whether it answered.
+
+It speaks once per generator run, never blocks a Write, never returns a permission
+decision, and says nothing at all when anything goes wrong (no perl, no home
+directory, an unreadable or unparseable ledger). The trigger points written into
+each plugin are the mechanism; this is the belt to their suspenders.
+
+State lives in `~/.config/revxl/brain-nudge/<session>.json`, read against
+`~/.config/revxl/brain-calls.jsonl` ... the ledger `revxl-brain-search` already
+writes on every call.
+
+**Claude Cowork never loads plugin hooks**, so the nudge runs on Claude Desktop and
+Claude Code only. Nothing is lost on Cowork beyond the reminder: each plugin's own
+Brain trigger points are skill text, which Cowork does load.
 
 ---
 

@@ -2,6 +2,31 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.15.0 ... 2026-09-05
+
+### Added
+
+- **`brain-nudge` hook** ... catches the case the trigger points inside the content
+  plugins are supposed to cover and occasionally will not: a generating skill drafts
+  client work without checking the Brain first. PostToolUse on `Skill` records which
+  of the 29 generating skills ran this session; PreToolUse on `Write|Edit` checks
+  `~/.config/revxl/brain-calls.jsonl` for a call at or after that moment and, finding
+  none, adds one line of context asking for a `revxl-brain-search` call or the
+  `Brain: skipped (...)` line with its reason. A failed Brain call counts as a call.
+  It speaks once per generator run, never blocks a Write, never returns a permission
+  decision, and fails silently on every error (no perl, no home directory, an
+  unreadable or unparseable ledger) ... an uncertain nudge is worse than no nudge.
+  Claude Cowork does not load plugin hooks, so this is Desktop and Code only; the
+  plugins' own trigger points still fire there.
+
+### Changed
+
+- **`revxl-brain-search` accepts an `angles:` hint.** A calling plugin can end its
+  question with `angles: <a>; <b>; <c>` and those angles become the search variants,
+  in order, instead of rewrites the skill invents ... the plugin's recipe knows its
+  own vocabulary. The depth ladder still caps how many are sent and extras are
+  dropped, never turned into extra searches. `variants` remains not a caller field.
+
 ## 0.14.0 ... 2026-09-04
 
 ### Added

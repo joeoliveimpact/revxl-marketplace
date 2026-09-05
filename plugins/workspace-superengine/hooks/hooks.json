@@ -32,6 +32,16 @@
             "async": false
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" brain-nudge pre-write",
+            "async": false
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -41,6 +51,16 @@
           {
             "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" process-ledger post",
+            "async": false
+          }
+        ]
+      },
+      {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" brain-nudge post-skill",
             "async": false
           }
         ]

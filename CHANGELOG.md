@@ -4,6 +4,17 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.64] ... 2026-09-05
+
+### Added
+- **workspace-superengine v0.15.0** ... the `brain-nudge` hook. PostToolUse on `Skill`
+records which of the 29 generating skills ran; PreToolUse on `Write|Edit` adds one line
+of context when no Brain call has been logged since it started, asking for a
+`revxl-brain-search` call or the `Brain: skipped (...)` line. Once per generator run,
+never blocks, silent on every error. Cowork does not load plugin hooks, so it is Desktop
+and Code only. `revxl-brain-search` also learns an `angles: a; b; c` hint: a calling
+plugin's recipe terms become the search variants instead of rewrites the skill invents.
+
 ## [0.1.56] ... 2026-09-04
 
 ### Fixed

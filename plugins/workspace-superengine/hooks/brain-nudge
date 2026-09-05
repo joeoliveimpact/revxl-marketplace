@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Brain nudge ... thin launcher.
+#
+# All the logic lives in brain-nudge.pl. This file exists because hook scripts
+# here are extensionless bash invoked through run-hook.cmd (see the comment
+# block in run-hook.cmd for why the names carry no extension).
+#
+# Usage, from hooks.json:
+#   run-hook.cmd brain-nudge post-skill
+#   run-hook.cmd brain-nudge pre-write
+#
+# Unlike the process ledger, silence is the right failure here. The nudge is
+# the belt to the plugins own trigger points, which are the primary mechanism,
+# so a broken nudge must cost the session nothing: no output, no non-zero exit,
+# nothing that could interrupt the Write it is attached to.
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
+[ -z "$SCRIPT_DIR" ] && exit 0
+[ -f "${SCRIPT_DIR}/brain-nudge.pl" ] || exit 0
+
+PERL_BIN=""
+if command -v perl >/dev/null 2>&1; then
+    PERL_BIN="perl"
+elif [ -x /usr/bin/perl ]; then
+    PERL_BIN="/usr/bin/perl"
+fi
+[ -z "$PERL_BIN" ] && exit 0
+
+exec "$PERL_BIN" "${SCRIPT_DIR}/brain-nudge.pl" "$@"
