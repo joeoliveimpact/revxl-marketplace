@@ -4,6 +4,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.4.0] ... 2026-09-05
+
+### Changed
+- **Brain calls go through `revxl-brain-search`.** The wiring reference keeps its name
+  and the shortform specifics (the per-reel budget, the project cache, the evidence line)
+  and drops its own key ladder, the three curl blocks and the error table. Those live in
+  one place for every RevXL plugin now: the `revxl-brain-search` skill in
+  workspace-superengine 0.14.0, which also logs every call and tells the three 429
+  reasons apart. reel-scripter's two trigger points invoke it by name; onboarding runs
+  the skill's connection test instead of its own health check. The `content-strategy`
+  spoke is now named explicitly on every call, so a wrong-vault answer is caught
+  (before, the server default was relied on with no guard).
+- plugin.json said 0.3.1 while the catalog and changelog said 0.3.2 (SKLLPLG-211); all
+  three read 0.4.0 now.
+- Requires workspace-superengine 0.14.0 or later for live Brain pulls; without it the
+  engine degrades to its bundled references and says so once.
+
 ## [0.3.2] — 2026-08-17
 
 ### Added

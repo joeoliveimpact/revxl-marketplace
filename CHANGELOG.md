@@ -4,6 +4,11 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.57] ... 2026-09-05
+
+### Changed
+- **shortform-superengine v0.4.0** ... Brain calls go through `revxl-brain-search` (workspace-superengine 0.14.0): the wiring doc keeps its shortform specifics and drops its own key ladder, curl blocks and error table; reel-scripter's two triggers invoke the skill by name; onboarding runs the skill's connection test; the `content-strategy` spoke is named explicitly. Also closes the 0.3.1 / 0.3.2 version drift in plugin.json.
+
 ## [0.1.55] ... 2026-09-04
 
 ### Added

@@ -21,7 +21,7 @@ Each superengine is opinionated about audience, tone, and workflow, so it works 
 
 ## The catalog
 
-16 plugins. Versions are current as of catalog `0.1.55`.
+16 plugins. Versions are current as of catalog `0.1.57`.
 
 ### 📣 Marketing & Content
 
@@ -30,7 +30,7 @@ Each superengine is opinionated about audience, tone, and workflow, so it works 
 | [email-sequence-superengine](plugins/email-sequence-superengine/) | 0.2.1 | Email nurture engine for high-ticket coaches. 8 sequence generators (pre-call, launch, warm, no-show, follow-up, winback, onboarding) in your voice, with story banks and GHL push. 13 skills. |
 | [meta-ads-superengine](plugins/meta-ads-superengine/) | 0.3.0 | Full Meta-ads coaching journey: strategy, breakeven math, creative, launch runbook, daily ops, competitor pulse. 27 skills. **Proprietary license.** |
 | [carousel-superengine](plugins/carousel-superengine/) | 0.4.1 | Voice-matched IG/LinkedIn carousel engine: create, render to finished slides, review, teardown competitor decks. 10 skills. |
-| [shortform-superengine](plugins/shortform-superengine/) | 0.3.2 | Short-form reel scripting with enforced craft screens, competitor pulse, and creator strategy harvesting. 7 skills. |
+| [shortform-superengine](plugins/shortform-superengine/) | 0.4.0 | Short-form reel scripting with enforced craft screens, competitor pulse, and creator strategy harvesting. 7 skills. |
 | [lead-magnet-superengine](plugins/lead-magnet-superengine/) | 0.1.1 | Builds lead magnets three ways: from scratch, from a source, from your existing content. 6 skills + 1 agent. |
 | [profile-optimization-superengine](plugins/profile-optimization-superengine/) | 0.1.0 | Social-profile optimization (bio, pinned content, CTA structure) for coach acquisition. 6 skills. |
 | [focus-group-superengine](plugins/focus-group-superengine/) | 0.1.1 | Synthetic persona-swarm testing for marketing assets before you publish them. 2 skills. |
