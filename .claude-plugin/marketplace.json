@@ -7,7 +7,7 @@
     "email": "joe@engineforimpact.com"
   },
   "metadata": {
-    "version": "0.1.57"
+    "version": "0.1.58"
   },
   "plugins": [
     {
@@ -399,10 +399,10 @@
     },
     {
       "name": "meta-ads-superengine",
-      "description": "v0.3.0 · Meta ads engine for coaches — strategy, creative, and ops from zero to a launched, scaling campaign. Run setup once, then get routed through the full journey: breakeven math before $1 is spent, qualified-signal infrastructure (Pixel + CAPI), compliance checked live, stage-appropriate campaign plans, voice-matched creative, disciplined testing, and read-only-first ops that talk you out of panic tweaks. Teach mode glosses both Claude terms and Meta jargon, so a first-time coach never hears an unexplained acronym — and an experienced operator can run everything terse. Never a dead end: every skill ends with your ranked next moves.",
+      "description": "v0.4.0 · Meta ads engine for coaches — strategy, creative, and ops from zero to a launched, scaling campaign. Run setup once, then get routed through the full journey: breakeven math before $1 is spent, qualified-signal infrastructure (Pixel + CAPI), compliance checked live, stage-appropriate campaign plans, voice-matched creative, disciplined testing, and read-only-first ops that talk you out of panic tweaks. Teach mode glosses both Claude terms and Meta jargon, so a first-time coach never hears an unexplained acronym — and an experienced operator can run everything terse. Never a dead end: every skill ends with your ranked next moves.",
       "source": "./plugins/meta-ads-superengine",
       "category": "marketing",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"

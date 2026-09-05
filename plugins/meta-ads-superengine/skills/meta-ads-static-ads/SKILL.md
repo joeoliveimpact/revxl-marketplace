@@ -42,8 +42,10 @@ silent-generic. Write the design direction:
 when installed (one pointer line); this skill designs single statics +
 carousel STRUCTURE only.
 
-**3. Brain (1 search).** Recipe = format(static) row: query "static ad cold
-traffic coaching", variants keyed to long-copy vs pattern. Self-evidencing
+**3. Brain (1 search + up to 2 reads, via `revxl-vault-search`).** Invoke
+`workspace-superengine:revxl-vault-search` with the Skill tool, args
+`depth=med plugin=meta-ads-superengine spoke=meta-ads-strategy question: static
+ad cold traffic coaching ... angles: long copy; pattern interrupt`. Self-evidencing
 line; degrade F9.
 
 **4. Write** the design-directions artifact; note its path on each concept row's own `artifacts.static` key (never touch another kind's key).

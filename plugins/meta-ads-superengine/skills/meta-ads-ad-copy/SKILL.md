@@ -34,8 +34,11 @@ copy-frameworks.md), write primary text + headline sets:
   stated up front and respected: copy that would violate one is not offered,
   with the constraint named.
 
-**3. Brain (1 search).** Recipe = awareness + format(copy) rows. Self-
-evidencing line; degrade F9.
+**3. Brain (1 search + up to 2 reads, via `revxl-vault-search`).** Invoke
+`workspace-superengine:revxl-vault-search` with the Skill tool, args
+`depth=med plugin=meta-ads-superengine spoke=meta-ads-strategy question: ad copy
+for coaching offers ... angles: <awareness stage> message frame; long copy vs
+short copy`. Self-evidencing line; degrade F9.
 
 **4. Write** the copy blocks artifact (paste-ready per concept, slots
 labeled); note its path on each concept row's own `artifacts.copy` key (never touch another kind's key).

@@ -38,8 +38,11 @@ VSL, captions noted as mandatory, 4:5 + 9:16 export note with safe zones.
 path (publish → run the winner via its Post ID) — coordinates with
 best-content.
 
-**5. Brain (1 search).** Recipe = format(video/vsl) row keyed to the
-architecture. Self-evidencing line; degrade F9.
+**5. Brain (1 search + up to 2 reads, via `revxl-vault-search`).** Invoke
+`workspace-superengine:revxl-vault-search` with the Skill tool, args
+`depth=med plugin=meta-ads-superengine spoke=meta-ads-strategy question: <the
+script architecture> ... angles: VSL script CTA placement; offer-CTA paid-native
+script`. Self-evidencing line; degrade F9.
 
 **6. Write** the script artifact; note its path on each concept row's own `artifacts.script` key (never touch another kind's key).
 

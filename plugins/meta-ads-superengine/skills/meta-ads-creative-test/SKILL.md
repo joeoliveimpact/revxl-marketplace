@@ -50,7 +50,11 @@ behavior; when in doubt, hold.
 (new B-roll, format repackage, actor swap); every significant edit resets
 learning.
 
-**5. Brain (1 search).** Recipe = ops-verdict row keyed to the diagnosis.
+**5. Brain (1 search + up to 2 reads, via `revxl-vault-search`).** Invoke
+`workspace-superengine:revxl-vault-search` with the Skill tool, args
+`depth=med plugin=meta-ads-superengine spoke=meta-ads-strategy question: <the
+creative-test diagnosis> ... angles: creative fatigue frequency CPM; dimensional
+swing vs native CT-Tool test`.
 Self-evidencing line; degrade F9.
 
 **6. Write** `creatives[].status` (killed/winner + dates).

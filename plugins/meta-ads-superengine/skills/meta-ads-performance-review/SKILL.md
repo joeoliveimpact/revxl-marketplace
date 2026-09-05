@@ -90,9 +90,11 @@ only; it never triggers a kill directly, and the mandatory pre-kill check
 line in the monthly backend audit and beside a fatigue / weak-signal call.
 Never in the verdict line; the diagnosis stays primary-metric + CRM.
 
-**4. Brain (1 search).** Recipe = ops-verdict row: query the diagnosis + stage
-posture, variants keyed to the primary finding ("creative fatigue CPL rising
-frequency"). Self-evidencing line; degrade F9.
+**4. Brain (1 search + up to 2 reads, via `revxl-vault-search`).** Invoke
+`workspace-superengine:revxl-vault-search` with the Skill tool, args
+`depth=med plugin=meta-ads-superengine spoke=meta-ads-strategy question: <the
+diagnosis> at <the stage> posture ... angles: the primary finding; creative
+fatigue CPL rising frequency`. Self-evidencing line; degrade F9.
 
 **5. Pre-kill check (mandatory)** before any kill recommendation — the
 last-click exception (a high-spend "low-ROAS" ad may be feeding the

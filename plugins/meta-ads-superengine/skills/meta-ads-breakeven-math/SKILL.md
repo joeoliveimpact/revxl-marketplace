@@ -79,9 +79,11 @@ Anchor the reframe (canon/framework): *high-ticket coaches can tolerate
 advanced advertiser doesn't have the best ROAS, they have the biggest
 tolerable CAC.*
 
-**3. Brain (named trigger — 1 search max).** Recipe row = funnel-event /
-topic: query "breakeven CPL high-ticket coaching", variants keyed to the
-offer type. Weave a corroborating pattern if returned; cite `[brain] <path>`.
+**3. Brain (named trigger ... 1 search + up to 2 reads, via `revxl-vault-search`).** Invoke
+`workspace-superengine:revxl-vault-search` with the Skill tool, args
+`depth=med plugin=meta-ads-superengine spoke=meta-ads-strategy question: breakeven
+CPL high-ticket coaching ... angles: the offer type; the funnel event`.
+Weave a corroborating pattern if returned; cite `[brain] <path>`.
 Emit the self-evidencing line. Degrade per `vault-api.md` (F9).
 
 **4. Write targets.** `targets.{cpl, cpql, cost_per_call, breakeven_roas,

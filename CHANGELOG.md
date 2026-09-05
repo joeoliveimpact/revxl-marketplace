@@ -4,6 +4,11 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.58] ... 2026-09-05
+
+### Changed
+- **meta-ads-superengine v0.4.0** ... Brain calls go through `revxl-vault-search` (workspace-superengine 0.14.0). The plugin's wiring doc keeps its meta-ads specifics and drops its own key ladder, curl blocks and error table; all fifteen Brain-calling skills name the skill ... fourteen trigger points plus setup, which runs the skill's connection test. First of the phase-2 releases that remove every inline Brain call from the catalog.
+
 ## [0.1.57] ... 2026-09-05
 
 ### Added
