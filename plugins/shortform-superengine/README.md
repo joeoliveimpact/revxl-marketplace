@@ -4,7 +4,7 @@ RevXL **Short-form superengine** — format engine #1 in the content family. Tur
 
 Five user-facing skills ship today:
 
-- **`onboarding`** — one-time first-run setup: detects what's on the machine, installs/offers the transcription tools (Groq + local Whisper in parallel, `yt-dlp` fetch floor), wires the required SocialCrawl key (+ optional RevXL Brain key), sets the default end-user voice (teach mode), writes a setup marker, and verifies end-to-end. Run this first.
+- **`onboarding`** — one-time first-run setup: detects what's on the machine, installs/offers the transcription tools (Groq + local Whisper in parallel, `yt-dlp` fetch floor), wires the required SocialCrawl key (+ optional RevXL Vault key ... the Vault is Joe's live strategy API, not your brand brain), sets the default end-user voice (teach mode), writes a setup marker, and verifies end-to-end. Run this first.
 - **`competitor-cross-reference`** — cross-references a client's Instagram reels against tiered competitors into a 10-section strategy roadmap (regression-locked metrics engine) **plus an offline HTML visual pack** (overview dashboard, per-competitor profiles, client profile — self-contained, client-brandable).
 - **`competitor-pulse`** — the weekly heartbeat on a finished analysis: last-7-days delta pull (credit-gated), winners flagged, charts refreshed, "what changed this week" brief; roster add/remove/swap; field keyword search; comment mining. Scheduling is suggested, never silent.
 - **`creator-strategy-harvest`** — harvests a trusted creator's full library (YouTube + newsletter) into a dated, recency-ruled, framework-extracted corpus for vault ingestion (YouTube subtitle tracks — real spoken-word transcripts, fetched in seconds).
@@ -17,3 +17,10 @@ Every skill ends with **Next moves** — exact-phrase offers for the natural nex
 Commands:
 
 - **`/teach-mode beginner|off`** — switches the assistant's end-user voice: `beginner` (plain-English-first, explains terms) or `off` (standard voice). Defaults to `beginner` on first install; persists across sessions.
+
+## Hooks
+
+Two hooks ship in `hooks/hooks.json`:
+
+- **Skill nudge** (`UserPromptSubmit`, `hooks/skill-trigger.sh`) ... when a prompt contains one of the skills' unmistakable trigger phrases ("script a reel", "competitor cross-reference", "build my brand brain", "run the weekly pulse", "harvest <creator>'s library", "onboard shortform", "socialcrawl"), it adds one line naming the skill to invoke instead of doing the work by hand. Silent on everything else; exit 0 always; fail-open on empty or malformed input. Ceiling: it fires in Claude Code (terminal and Desktop, verified on Windows Desktop 09.04.26) and never in Cowork, which does not load plugin hooks.
+- **Credit guard** (`PreToolUse` on `Bash`, `hooks/credit-guard.mjs` + `hooks/costs.json`) ... the same file socialcrawl-superengine ships: hard-denies the banned `*/transcript` endpoints and asks before metered or >=5-credit SocialCrawl calls. The two copies must be updated together. Same Cowork ceiling as above.

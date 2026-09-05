@@ -10,6 +10,13 @@ if len(sys.argv) < 2:
     sys.exit(1)
 
 ROOT = sys.argv[1]
+# --baseline-days N (optional, SKLLPLG-260): the per-account denominator behind field_lift becomes
+# that account's median over reels published in its last N days instead of all-time. All-time
+# medians surface old viral hits (measured 09.03.26 in trend_recut.py). Default None = all-time,
+# so behaviour is unchanged unless set.
+BASELINE_DAYS = None
+if '--baseline-days' in sys.argv[2:]:
+    BASELINE_DAYS = float(sys.argv[sys.argv.index('--baseline-days') + 1])
 def J(p): return json.load(open(p, encoding='utf-8'))
 
 def fix(t):
@@ -93,6 +100,14 @@ def themes_of(cap):
 # captions stay as a separate packaging-surface read (<=20%). With no transcripts,
 # every reel falls back to caption and output is byte-identical to the caption-only
 # code path (the regression gate can't drift).
+def _items_of(d):
+    # SKLLPLG-263: ONE reader for every payload shape. The puller wraps as {reels:[...]};
+    # regression/mock data uses {items:[...]}; the raw API list is {data:{items}}. Every
+    # loader in this skill goes through here so no branch can silently read zero rows
+    # (the transcript loader read only `reels`; field_vet.py read only `reels` on one track).
+    if not isinstance(d, dict): return []
+    return d.get('reels') or d.get('items') or (d.get('data') or {}).get('items') or []
+
 def _tx_index():
     idx = {}
     paths = [os.path.join(ROOT, 'source', 'client-transcripts.json')] + \
@@ -101,7 +116,7 @@ def _tx_index():
         if not os.path.exists(p): continue
         try: d = J(p)
         except Exception: continue
-        for r in d.get('reels') or []:
+        for r in _items_of(d):
             if r.get('url') and r.get('text'):
                 idx[r['url']] = fix(r['text'])
     return idx
@@ -139,17 +154,30 @@ def _epoch(pub):
             return None
     return None
 
+DROPPED = {'pinned': 0, 'junk': 0}   # SKLLPLG-261: rows excluded BEFORE any median (emitted in meta)
 def reels_of(path):
     d = J(path); out=[]
-    # puller wraps as {reels:[...]}; regression/mock data uses {items:[...]}; API list is {data:{items}}
-    items = d.get('reels', d.get('items', d.get('data',{}).get('items',[])))
-    for it in items:
-        p = it.get('post',{}); e = p.get('engagement',{})
+    for it in _items_of(d):
+        p = it.get('post',{}); e = p.get('engagement',{}); c_ = p.get('content',{})
+        # SKLLPLG-261: a pinned reel (post.flags.pinned on the live payload) sits at the top of
+        # the profile for years and carries views no ordinary post earns -- 76 of 742 on one
+        # client pull, median 153,634 vs 4,280. Junk rows (no views reported, a sub-3s clip,
+        # nothing said and nothing written) carry no signal at all. Either one inside a median
+        # poisons every ranking downstream, so both are dropped HERE, before anything is
+        # counted, and counted loudly (meta.dropped_pinned / meta.dropped_junk + console).
+        # A MISSING duration is not evidence of junk and never drops a row on its own.
+        if (p.get('flags') or {}).get('pinned') or p.get('pinned'):
+            DROPPED['pinned'] += 1; continue
+        views = e.get('views') or 0
+        dur = c_.get('duration_seconds')
+        cap = fix(c_.get('text',''))
+        tx = TX.get(p.get('url'))
+        if views == 0 or (dur is not None and dur < 3) or (not cap.strip() and not tx):
+            DROPPED['junk'] += 1; continue
         out.append(dict(
-            url=p.get('url'), views=e.get('views') or 0, likes=e.get('likes') or 0,
-            comments=e.get('comments') or 0, cap=fix(p.get('content',{}).get('text','')),
-            dur=p.get('content',{}).get('duration_seconds'), pub=_epoch(p.get('published_at')),
-            tx=TX.get(p.get('url')),
+            url=p.get('url'), views=views, likes=e.get('likes') or 0,
+            comments=e.get('comments') or 0, cap=cap, dur=dur, pub=_epoch(p.get('published_at')),
+            tx=tx,
         ))
     return out
 
@@ -182,6 +210,48 @@ def cadence(c):
     return (len(ps)/span_days*7) if span_days>0 else None
 for h,c in creators.items(): c['cadence']=cadence(c)
 
+# transcript coverage (C7): drives the dual-track emit below
+_n_reels_total = sum(len(c['reels']) for c in creators.values())
+_n_reels_tx = sum(1 for c in creators.values() for r in c['reels'] if r.get('tx'))
+TX_COVERAGE = (_n_reels_tx / _n_reels_total) if _n_reels_total else 0
+# SKLLPLG-263: coverage below the floor is a LOUD degrade, never a silent one. Uncovered reels
+# fall back to caption hooks/themes, so a 48%-covered corpus ranks half its field on the
+# packaging surface and says nothing. Per project: analysis-config.json transcript_coverage_min.
+TX_MIN = float(cfg.get('transcript_coverage_min', 0.6))
+TX_DEGRADED = 0 < TX_COVERAGE < TX_MIN
+
+# ---- per-account lift (SKLLPLG-260) -----------------------------------------
+# A pooled field median lets one large account BE the field: its floor sits above the
+# small accounts' ceilings, so its hook types read as "the field's winners" and the
+# per-account read collapses to ~1.0 (Jared's finding, 09.04.26). extract_patterns.py
+# already normalises every reel against its OWN creator's median; this applies the same
+# rule to hook_taxonomy / theme_performance / gaps. lift = median over accounts of
+# med(views in bucket) / that account's median views, >= 2 reels per account; 1.0 is
+# neutral. Emitted ADDITIVELY (schema 1.4) -- field_med_views stays for display, and every
+# ranking comparator downstream (scripting_brief.py) switches to field_lift.
+LIFT_MIN_ACCOUNTS, LIFT_MIN_N = 3, 8
+def _acct_med(h):
+    c = creators[h]
+    if BASELINE_DAYS:
+        pubs = [r['pub'] for r in c['reels'] if isinstance(r.get('pub'), (int, float))]
+        if pubs:
+            cut = max(pubs) - BASELINE_DAYS * 86400
+            vs = [r['views'] for r in c['reels'] if isinstance(r.get('pub'), (int, float)) and r['pub'] >= cut]
+            if len(vs) >= 2: return med(vs)
+    return c['stats']['med_views']
+def _lift(by_handle):
+    ratios = []
+    for h, vs in by_handle.items():
+        if len(vs) < 2: continue
+        mv = _acct_med(h)
+        if mv <= 0: continue
+        ratios.append(med(vs) / mv)
+    return (round(med(ratios), 4) if ratios else None), len(ratios)
+def _read(accounts, n):
+    return 'ok' if (accounts >= LIFT_MIN_ACCOUNTS and n >= LIFT_MIN_N) else 'thin'
+def _lift_key(by_handle, pooled):
+    return (-((_lift(by_handle)[0]) or 0), -med(pooled))
+
 # ================= OUTPUT =================
 out=[]
 def w(s=''): out.append(s)
@@ -189,6 +259,10 @@ def w(s=''): out.append(s)
 w(TITLE)
 w(f'\nGenerated from {sum(len(c["reels"]) for c in creators.values())} reels (client {len(client["reels"])} + {len(creators)-1} competitors). '
   'Engagement = views/likes/comments only (SocialCrawl drops IG saves/shares). Reach efficiency = median views / followers.\n')
+if DROPPED['pinned'] or DROPPED['junk']:
+    w(f"**Dropped before any median (SKLLPLG-261):** {DROPPED['pinned']} pinned, {DROPPED['junk']} junk (no views / under 3s / nothing said or written).\n")
+if TX_DEGRADED:
+    w(f"**DEGRADED: transcript coverage {TX_COVERAGE*100:.0f}% is below the {TX_MIN*100:.0f}% floor** -- uncovered reels are diagnosed on captions; treat hook/theme ranks as provisional until transcripts are harvested.\n")
 
 # per-creator table
 w('## Per-creator metrics (sorted by reach efficiency)')
@@ -219,46 +293,57 @@ rollup('CLIENT',[CLIENT_HANDLE]); rollup('GURU',TIERS['GURU']); rollup('LARGE',T
 if lane_on:
     for lane in LANES: rollup('-- ' + lane + ' lane', LANES[lane])
 
-# transcript coverage (C7): drives the dual-track emit below
-_n_reels_total = sum(len(c['reels']) for c in creators.values())
-_n_reels_tx = sum(1 for c in creators.values() for r in c['reels'] if r.get('tx'))
-TX_COVERAGE = (_n_reels_tx / _n_reels_total) if _n_reels_total else 0
+# transcript coverage (C7): computed above, before the md header, so the degrade line is at the top
 
 # hook taxonomy — PRIMARY (spoken-first via r_hook; == caption when no transcripts)
 w('\n## Hook taxonomy — field vs client (median views by hook type)')
 field_hook=defaultdict(list); client_hook=defaultdict(list)
 cap_field_hook=defaultdict(list); cap_client_hook=defaultdict(list)
+field_hook_h=defaultdict(lambda: defaultdict(list)); cap_field_hook_h=defaultdict(lambda: defaultdict(list))  # bucket -> handle -> views (lift)
 for h,c in creators.items():
     for r in c['reels']:
         ht=r_hook(r)
         (client_hook if h==CLIENT_HANDLE else field_hook)[ht].append(r['views'])
+        if h!=CLIENT_HANDLE: field_hook_h[ht][h].append(r['views'])
         cht=hook_type(r['cap'])   # caption bucket: separate accumulators, never merged
         (cap_client_hook if h==CLIENT_HANDLE else cap_field_hook)[cht].append(r['views'])
-w('\n| Hook type | Field n | Field med views | Client n | Client med views |')
-w('|---|--:|--:|--:|--:|')
-for ht in sorted(field_hook, key=lambda k:-med(field_hook[k])):
-    w(f"| {ht} | {len(field_hook[ht])} | {med(field_hook[ht]):,.0f} | {len(client_hook.get(ht,[]))} | {med(client_hook.get(ht,[])):,.0f} |")
+        if h!=CLIENT_HANDLE: cap_field_hook_h[cht][h].append(r['views'])
+_hl = {ht: _lift(field_hook_h[ht]) for ht in field_hook}
+_chl = {ht: _lift(cap_field_hook_h[ht]) for ht in cap_field_hook}
+w('\n| Hook type | Field n | Field med views | Field lift | Accts | Read | Client n | Client med views |')
+w('|---|--:|--:|--:|--:|---|--:|--:|')
+for ht in sorted(field_hook, key=lambda k:_lift_key(field_hook_h[k], field_hook[k])):
+    _l,_a=_hl[ht]
+    w(f"| {ht} | {len(field_hook[ht])} | {med(field_hook[ht]):,.0f} | {(_l or 0):.2f}x | {_a} | {_read(_a,len(field_hook[ht]))} | {len(client_hook.get(ht,[]))} | {med(client_hook.get(ht,[])):,.0f} |")
 
 # theme prevalence + performance (field)
 w('\n## Theme performance (field-wide, by median views of reels touching theme)')
 theme_v=defaultdict(list); theme_client=defaultdict(list)
 cap_theme_v=defaultdict(list); cap_theme_client=defaultdict(list)
+theme_v_h=defaultdict(lambda: defaultdict(list)); cap_theme_v_h=defaultdict(lambda: defaultdict(list))  # theme -> handle -> views (lift)
 for h,c in creators.items():
     for r in c['reels']:
         for th in r_themes(r):
             (theme_client if h==CLIENT_HANDLE else theme_v)[th].append(r['views'])
+            if h!=CLIENT_HANDLE: theme_v_h[th][h].append(r['views'])
         for th in themes_of(r['cap']):   # caption bucket
             (cap_theme_client if h==CLIENT_HANDLE else cap_theme_v)[th].append(r['views'])
+            if h!=CLIENT_HANDLE: cap_theme_v_h[th][h].append(r['views'])
+_tl = {th: _lift(theme_v_h[th]) for th in theme_v}
+_ctl = {th: _lift(cap_theme_v_h[th]) for th in cap_theme_v}
+_theme_order = sorted(theme_v, key=lambda k:_lift_key(theme_v_h[k], theme_v[k]))
 if lane_on:
-    w('\n| Theme | Field reels | Field med views | Client reels | Client med views |')
-    w('|---|--:|--:|--:|--:|')
-    for th in sorted(theme_v, key=lambda k:-med(theme_v[k])):
-        w(f"| {th} | {len(theme_v[th])} | {med(theme_v[th]):,.0f} | {len(theme_client.get(th,[]))} | {med(theme_client.get(th,[])):,.0f} |")
+    w('\n| Theme | Field reels | Field med views | Field lift | Accts | Read | Client reels | Client med views |')
+    w('|---|--:|--:|--:|--:|---|--:|--:|')
+    for th in _theme_order:
+        _l,_a=_tl[th]
+        w(f"| {th} | {len(theme_v[th])} | {med(theme_v[th]):,.0f} | {(_l or 0):.2f}x | {_a} | {_read(_a,len(theme_v[th]))} | {len(theme_client.get(th,[]))} | {med(theme_client.get(th,[])):,.0f} |")
 else:
-    w('\n| Theme | Field reels | Field med views | Client reels |')
-    w('|---|--:|--:|--:|')
-    for th in sorted(theme_v, key=lambda k:-med(theme_v[k])):
-        w(f"| {th} | {len(theme_v[th])} | {med(theme_v[th]):,.0f} | {len(theme_client.get(th,[]))} |")
+    w('\n| Theme | Field reels | Field med views | Field lift | Accts | Read | Client reels |')
+    w('|---|--:|--:|--:|--:|---|--:|')
+    for th in _theme_order:
+        _l,_a=_tl[th]
+        w(f"| {th} | {len(theme_v[th])} | {med(theme_v[th]):,.0f} | {(_l or 0):.2f}x | {_a} | {_read(_a,len(theme_v[th]))} | {len(theme_client.get(th,[]))} |")
 
 # theme performance by lane (only when lanes configured)
 if lane_on:
@@ -338,13 +423,13 @@ for name,hs in [('CLIENT',[CLIENT_HANDLE])]+list(TIERS.items()):
     print(f"  {name:6} median reach-eff {med([c['stats']['reach_eff'] for c in cs2])*100:5.2f}%  (median ER {med([c['stats']['med_er'] for c in cs2])*100:.2f}%)")
 print(f'\nCLIENT rank by reach-eff among all {len(creators)}:',
       [h for h,_ in sorted(creators.items(), key=lambda kv:-kv[1]['stats']['reach_eff'])].index(CLIENT_HANDLE)+1, f'of {len(creators)}')
-print('\nHOOK TYPES by field median views (desc):')
-for ht in sorted(field_hook, key=lambda k:-med(field_hook[k])):
-    print(f"  {ht:22} field_med {med(field_hook[ht]):>9,.0f} (n={len(field_hook[ht]):3})  | client n={len(client_hook.get(ht,[]))} med={med(client_hook.get(ht,[])):,.0f}")
+print('\nHOOK TYPES by per-account lift (desc; 1.0x = neutral):')
+for ht in sorted(field_hook, key=lambda k:_lift_key(field_hook_h[k], field_hook[k])):
+    print(f"  {ht:22} lift {(_hl[ht][0] or 0):5.2f}x accts={_hl[ht][1]:2} {_read(_hl[ht][1],len(field_hook[ht])):5} field_med {med(field_hook[ht]):>9,.0f} (n={len(field_hook[ht]):3})  | client n={len(client_hook.get(ht,[]))} med={med(client_hook.get(ht,[])):,.0f}")
 print('\nCLIENT hook mix:', asc(dict(Counter(r_hook(r) for r in client['reels']))))
-print('\nTHEME field median views (desc):')
-for th in sorted(theme_v, key=lambda k:-med(theme_v[k])):
-    print(f"  {th:22} field_med {med(theme_v[th]):>9,.0f} (n={len(theme_v[th]):3}) | client_n={len(theme_client.get(th,[]))}")
+print('\nTHEMES by per-account lift (desc; 1.0x = neutral):')
+for th in _theme_order:
+    print(f"  {th:22} lift {(_tl[th][0] or 0):5.2f}x accts={_tl[th][1]:2} {_read(_tl[th][1],len(theme_v[th])):5} field_med {med(theme_v[th]):>9,.0f} (n={len(theme_v[th]):3}) | client_n={len(theme_client.get(th,[]))}")
 print('\nTOP 12 OUTLIERS:')
 if lane_on:
     for m,h,t,ln,v,ht,th,line,url,src in outliers[:12]:
@@ -356,6 +441,10 @@ print('\nCADENCE: client {:.1f}/wk | field median {:.1f}/wk'.format(
     client['cadence'] or 0, med([c['cadence'] for h,c in creators.items() if c['cadence'] and h!=CLIENT_HANDLE])))
 if TX_COVERAGE > 0:
     print(f'\nTRANSCRIPT COVERAGE: {_n_reels_tx}/{_n_reels_total} reels ({TX_COVERAGE*100:.0f}%) -- hooks/themes keyed on the SPOKEN track; caption patterns kept as a separate packaging-surface read')
+if DROPPED['pinned'] or DROPPED['junk']:
+    print(f"\nDROPPED before any median (SKLLPLG-261): pinned={DROPPED['pinned']} junk={DROPPED['junk']}")
+if TX_DEGRADED:
+    print(f"\nDEGRADED: transcript coverage {TX_COVERAGE*100:.0f}% is below the {TX_MIN*100:.0f}% floor -- hook/theme ranks are provisional")
 print('\nwrote analysis-data.md')
 
 # ================= analysis-data.json (core->format interface; additive LAST write) =================
@@ -420,13 +509,16 @@ try:
                                       _rollup_obj('SMALL', TIERS['SMALL'])] if r]}
     if lane_on:
         _rollups['lanes'] = [r for r in (_rollup_obj(l, LANES[l]) for l in LANES) if r]
+    # schema 1.4 (SKLLPLG-260): field_lift / field_accounts / read are ADDITIVE; field_med_views stays.
     _hooktax = [{'hook': ht, 'field_n': len(field_hook[ht]), 'field_med_views': med(field_hook[ht]),
-                 'client_n': len(client_hook.get(ht, [])), 'client_med_views': med(client_hook.get(ht, []))}
-                for ht in sorted(field_hook, key=lambda k: -med(field_hook[k]))]
+                 'client_n': len(client_hook.get(ht, [])), 'client_med_views': med(client_hook.get(ht, [])),
+                 'field_lift': _hl[ht][0], 'field_accounts': _hl[ht][1], 'read': _read(_hl[ht][1], len(field_hook[ht]))}
+                for ht in sorted(field_hook, key=lambda k: _lift_key(field_hook_h[k], field_hook[k]))]
     _themeperf = []
-    for th in sorted(theme_v, key=lambda k: -med(theme_v[k])):
+    for th in _theme_order:
         e = {'theme': th, 'field_reels': len(theme_v[th]), 'field_med_views': med(theme_v[th]),
-             'client_reels': len(theme_client.get(th, [])), 'client_med_views': med(theme_client.get(th, []))}
+             'client_reels': len(theme_client.get(th, [])), 'client_med_views': med(theme_client.get(th, [])),
+             'field_lift': _tl[th][0], 'field_accounts': _tl[th][1], 'read': _read(_tl[th][1], len(theme_v[th]))}
         if lane_on:
             bl = {}
             for l in LANES:
@@ -450,15 +542,16 @@ try:
         fshare = fr / _total_field if _total_field else 0
         cshare = cr / _total_client if _total_client else 0
         oppo = round(fmv / _field_theme_max * 100)  # 0-100 opportunity = field value vs the top theme
+        _lf = {'field_lift': _tl[th][0], 'field_accounts': _tl[th][1], 'read': _read(_tl[th][1], fr)}
         if cr == 0:
-            _gaps.append({'theme': th, 'reason': 'absent', 'field_med_views': fmv,
+            _gaps.append({'theme': th, 'reason': 'absent', 'field_med_views': fmv, **_lf,
                           'field_reels': fr, 'client_reels': cr,
                           'client_med_views': med(theme_client.get(th, [])),
                           'headline': f'Zero reels on {th} — the field runs {fr} at {fmv:,.0f} median views.',
                           'why': f'Pure whitespace: the field proves demand on {th} and the client has posted nothing.',
                           'oppo': oppo})
         elif cshare < 0.5 * fshare:
-            _gaps.append({'theme': th, 'reason': 'underweight', 'field_med_views': fmv,
+            _gaps.append({'theme': th, 'reason': 'underweight', 'field_med_views': fmv, **_lf,
                           'field_reels': fr, 'client_reels': cr,
                           'client_med_views': med(theme_client.get(th, [])),
                           'headline': f'Thin on {th} — {cr} client reels vs the field’s {fr} at {fmv:,.0f} median views.',
@@ -557,7 +650,11 @@ try:
                       'n_competitors': len(creators) - 1, 'lane_on': lane_on,
                       'themes': list(THEMES.keys()), 'source': 'competitor-cross-reference/analyze.py',
                       'transcript_coverage': round(TX_COVERAGE, 4),
-                      'schema_version': '1.3',
+                      'transcript_coverage_min': TX_MIN, 'degraded': TX_DEGRADED,
+                      'dropped_pinned': DROPPED['pinned'], 'dropped_junk': DROPPED['junk'],
+                      'lift_min': {'accounts': LIFT_MIN_ACCOUNTS, 'n': LIFT_MIN_N},
+                      'baseline_days': BASELINE_DAYS,
+                      'schema_version': '1.4',
                       'generated_at': _gen_at}}
     # captions bucket (C7, additive): the caption-keyed read, separate from the
     # primary spoken-keyed hook_taxonomy/theme_performance above. Present only
@@ -568,13 +665,15 @@ try:
             'hook_taxonomy': [{'hook': ht, 'field_n': len(cap_field_hook[ht]),
                                'field_med_views': med(cap_field_hook[ht]),
                                'client_n': len(cap_client_hook.get(ht, [])),
-                               'client_med_views': med(cap_client_hook.get(ht, []))}
-                              for ht in sorted(cap_field_hook, key=lambda k: -med(cap_field_hook[k]))],
+                               'client_med_views': med(cap_client_hook.get(ht, [])),
+                               'field_lift': _chl[ht][0], 'field_accounts': _chl[ht][1], 'read': _read(_chl[ht][1], len(cap_field_hook[ht]))}
+                              for ht in sorted(cap_field_hook, key=lambda k: _lift_key(cap_field_hook_h[k], cap_field_hook[k]))],
             'theme_performance': [{'theme': th, 'field_reels': len(cap_theme_v[th]),
                                    'field_med_views': med(cap_theme_v[th]),
                                    'client_reels': len(cap_theme_client.get(th, [])),
-                                   'client_med_views': med(cap_theme_client.get(th, []))}
-                                  for th in sorted(cap_theme_v, key=lambda k: -med(cap_theme_v[k]))]}
+                                   'client_med_views': med(cap_theme_client.get(th, [])),
+                                   'field_lift': _ctl[th][0], 'field_accounts': _ctl[th][1], 'read': _read(_ctl[th][1], len(cap_theme_v[th]))}
+                                  for th in sorted(cap_theme_v, key=lambda k: _lift_key(cap_theme_v_h[k], cap_theme_v[k]))]}
     # ---- schema 1.3 keys, appended AFTER `captions` -------------------------
     # Insertion order matters: every byte before this point is unchanged from 1.2
     # except meta.schema_version and the added meta.generated_at.

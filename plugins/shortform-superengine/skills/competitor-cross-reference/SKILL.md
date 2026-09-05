@@ -148,6 +148,11 @@ competitor **ad-library recon** (what they run as paid creative) and, for the ro
 competitive framing, a cost-gated **share-of-voice** one-shot. If the marker is absent,
 mention once that the `socialcrawl-superengine` plugin adds these and continue — never
 block the pipeline on it.
+Detect the install by EITHER that marker OR a directory matching
+`~/.claude/plugins/cache/*/socialcrawl-superengine/` (an installed-but-never-run copy has no
+marker). When it is installed, invoke its `research-plays` skill by name
+(`socialcrawl-superengine:research-plays`) for the pull, per `docs/plugin-conventions.md`
+"Cross-plugin coordination".
 
 ---
 
@@ -392,7 +397,8 @@ projects/<YYYY-MM-DD>-<client-slug>-baseline/
 
 Generated on top of this as the project lives: `visuals/` (the HTML pack),
 `history/` + `refresh-log.md` (written by `competitor-pulse`), `brain-pulls/`
-(written by `reel-scripter`).
+(the RevXL Vault cache written by `reel-scripter` ... the Vault is Joe's live strategy API,
+not your brand brain; the directory keeps its historical name).
 
 ---
 

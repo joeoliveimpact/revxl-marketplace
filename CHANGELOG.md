@@ -4,6 +4,15 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.57] ... 2026-09-05
+
+### Added
+- **editor-superengine v0.1.0** ... new plugin. `reel-first-cuts` takes a raw talking-head recording to a finished spoken cut (probe and calibrate, line ruling, a waveform-verified cut list, gap tightening in source coordinates, a speed ruling, one render from the raw, a whole-cut silence budget, the ear pass) and `reel-motion-comps` runs the design-iteration loop for the visuals (divergent directions over real plates, parametric ladders, measured verification, the reviewer rules from frames). `editor-start-here` routes. Every script a skill calls ships inside the plugin and is invoked via `${CLAUDE_PLUGIN_ROOT}`, including a bundled word-timestamp transcriber (`transcribe_words.py`, VAD on, word timestamps on, no vocabulary prompt) so the skill needs no outside ASR. Four shared references carry the house rules, the frame-zero hook standard, preview-before-render, and the art-director design prompt. Deferred to 0.2 as tracked cards: the sound pass, canvas review, the tool router, zoom suggestions. The reference build's private fixtures do not ship.
+- **shortform-superengine v0.3.4** ... the ranker stops rewarding account size. Every hook, theme and gap now carries a per-account lift (each account's reels against that account's own median, then the median across accounts; 1.0 is neutral) and the brief ranks on it, never on the pooled view count, which let one large account be the field. Pinned reels and junk rows are dropped before any median and counted loudly. The gap-to-close names three hooks and three themes instead of one, and the scripter checks the project's own scripts before proposing a pairing again. Transcript coverage below the floor prints a DEGRADED line instead of ranking silently. Plus a UserPromptSubmit nudge that names the right skill when a client is about to do the job by hand, the SocialCrawl credit guard (same file as socialcrawl-superengine's), named delegation to `research-plays` when socialcrawl-superengine is installed, and the vault rename below.
+
+### Changed
+- **workspace-superengine v0.14.1** ... `revxl-brain-search` is now `revxl-vault-search`, the client trigger is "check the vault", and the thing is called the RevXL Vault, so it can never be confused with brand-brain, the client's own voice profile (Joe's ruling 09.04.26). Endpoints, key and ledger unchanged.
+
 ## [0.1.56] ... 2026-09-04
 
 ### Fixed

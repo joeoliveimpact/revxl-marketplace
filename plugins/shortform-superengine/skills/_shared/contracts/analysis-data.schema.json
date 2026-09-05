@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Content Superengine - analysis-data.json (core->format interface)",
-  "description": "Machine-readable twin of analysis-data.md, emitted by competitor-cross-reference/analyze.py as the LAST write (md stays authoritative). Format engines (reel-scripter, render_visuals, future Carousel/Thread/...) consume ONLY this file. The boundary rule: core writes this schema, format reads it, no cross-skill code imports. VERSIONING: minor bumps (1.0 -> 1.1) are ADDITIVE-ONLY — new optional keys; consumers ignore unknown keys and must not require minor-version keys. Major bumps are breaking; consumers hard-stop on a major mismatch. Current: 1.3 (adds top-level outliers_full + period_breakouts and meta.generated_at; 1.2 added outlier.src, meta.transcript_coverage, top-level captions bucket; 1.1 added creator.hook_mix). THREE OUTLIER VIEWS since 1.3, do not confuse them: `outliers` = the all-time top-30 hall of fame (unchanged, capped); `outliers_full` = the same records uncapped AND client-excluded (the whole >=2.5x FIELD population); `period_breakouts` = what broke out INSIDE a declared window, also client-excluded, which neither of the other two can answer because the top-30 floor sits far above any single period's best reel. Since 1.2 the PRIMARY hook_taxonomy/theme_performance/outliers key on the SPOKEN transcript when one exists (caption fallback per reel, marked by outlier.src); the caption-keyed read lives in the separate top-level captions bucket — packaging surface only, never merged into the primary diagnosis.",
+  "description": "Machine-readable twin of analysis-data.md, emitted by competitor-cross-reference/analyze.py as the LAST write (md stays authoritative). Format engines (reel-scripter, render_visuals, future Carousel/Thread/...) consume ONLY this file. The boundary rule: core writes this schema, format reads it, no cross-skill code imports. VERSIONING: minor bumps (1.0 -> 1.1) are ADDITIVE-ONLY — new optional keys; consumers ignore unknown keys and must not require minor-version keys. Major bumps are breaking; consumers hard-stop on a major mismatch. Current: 1.4 (adds OPTIONAL field_lift / field_accounts / read on hook_taxonomy, theme_performance, gaps and the captions bucket -- the per-account lift the ranking comparators use, SKLLPLG-260 -- plus meta.dropped_pinned / dropped_junk / lift_min / transcript_coverage_min / degraded / baseline_days; 1.3 adds top-level outliers_full + period_breakouts and meta.generated_at; 1.2 added outlier.src, meta.transcript_coverage, top-level captions bucket; 1.1 added creator.hook_mix). THREE OUTLIER VIEWS since 1.3, do not confuse them: `outliers` = the all-time top-30 hall of fame (unchanged, capped); `outliers_full` = the same records uncapped AND client-excluded (the whole >=2.5x FIELD population); `period_breakouts` = what broke out INSIDE a declared window, also client-excluded, which neither of the other two can answer because the top-30 floor sits far above any single period's best reel. Since 1.2 the PRIMARY hook_taxonomy/theme_performance/outliers key on the SPOKEN transcript when one exists (caption fallback per reel, marked by outlier.src); the caption-keyed read lives in the separate top-level captions bucket — packaging surface only, never merged into the primary diagnosis.",
   "type": "object",
   "required": ["client", "creators", "rollups", "hook_taxonomy", "theme_performance", "gaps", "outliers", "meta"],
   "properties": {
@@ -25,7 +25,10 @@
           "field_n": { "type": "integer" },
           "field_med_views": { "type": "number" },
           "client_n": { "type": "integer" },
-          "client_med_views": { "type": "number" }
+          "client_med_views": { "type": "number" },
+          "field_lift": { "type": ["number", "null"], "description": "OPTIONAL (schema 1.4+): median over competitor accounts of med(views in this bucket) / that account's own median views (>=2 reels per account). 1.0 = neutral. THE ranking comparator; field_med_views is display only. null when no account qualifies." },
+          "field_accounts": { "type": "integer", "description": "OPTIONAL (schema 1.4+): how many accounts contributed to field_lift." },
+          "read": { "type": "string", "enum": ["ok", "thin"], "description": "OPTIONAL (schema 1.4+): thin when field_accounts < 3 or field_n < 8; never a winner or loser read." }
         }
       }
     },
@@ -40,6 +43,9 @@
           "field_med_views": { "type": "number" },
           "client_reels": { "type": "integer" },
           "client_med_views": { "type": "number" },
+          "field_lift": { "type": ["number", "null"], "description": "OPTIONAL (schema 1.4+): see hook_taxonomy.field_lift." },
+          "field_accounts": { "type": "integer", "description": "OPTIONAL (schema 1.4+)" },
+          "read": { "type": "string", "enum": ["ok", "thin"], "description": "OPTIONAL (schema 1.4+)" },
           "by_lane": {
             "type": "object",
             "description": "lane -> {med_views, n}; present only when the project has lanes",
@@ -63,7 +69,10 @@
           "client_med_views": { "type": "number", "description": "optional (emitted since 07.06 fixes)" },
           "headline": { "type": "string", "description": "optional ready-to-quote gap headline" },
           "why": { "type": "string", "description": "optional one-line rationale" },
-          "oppo": { "type": "integer", "description": "optional 0-100 opportunity score (field value vs top theme)" }
+          "oppo": { "type": "integer", "description": "optional 0-100 opportunity score (field value vs top theme)" },
+          "field_lift": { "type": ["number", "null"], "description": "OPTIONAL (schema 1.4+): the theme's per-account lift, carried so gaps rank on it." },
+          "field_accounts": { "type": "integer", "description": "OPTIONAL (schema 1.4+)" },
+          "read": { "type": "string", "enum": ["ok", "thin"], "description": "OPTIONAL (schema 1.4+)" }
         }
       }
     },
@@ -104,6 +113,12 @@
         "source": { "type": "string" },
         "transcript_coverage": { "type": "number", "description": "OPTIONAL (schema 1.2+): fraction of analyzed reels with a spoken transcript (0-1). 0 = caption-only run; health signal for degraded diagnosis." },
         "schema_version": { "type": "string" },
+        "dropped_pinned": { "type": "integer", "description": "OPTIONAL (schema 1.4+, SKLLPLG-261): reels excluded BEFORE any median because post.flags.pinned was true." },
+        "dropped_junk": { "type": "integer", "description": "OPTIONAL (schema 1.4+, SKLLPLG-261): reels excluded BEFORE any median as junk -- no views reported, a measured duration under 3s, or nothing said and nothing written. A MISSING duration never drops a row." },
+        "lift_min": { "type": "object", "description": "OPTIONAL (schema 1.4+): the floors behind read=thin ({accounts: 3, n: 8})." },
+        "transcript_coverage_min": { "type": "number", "description": "OPTIONAL (schema 1.4+, SKLLPLG-263): the coverage floor (default 0.6, analysis-config.json transcript_coverage_min)." },
+        "degraded": { "type": "boolean", "description": "OPTIONAL (schema 1.4+): true when 0 < transcript_coverage < transcript_coverage_min; the md and console carry a loud line." },
+        "baseline_days": { "type": ["number", "null"], "description": "OPTIONAL (schema 1.4+): --baseline-days window behind the lift denominators; null = all-time." },
         "generated_at": { "type": "string", "description": "OPTIONAL (schema 1.3+): UTC ISO-8601 (YYYY-MM-DDTHH:MM:SSZ) instant this file was emitted. The emit is guarded by a bare try/except that KEEPS the previous analysis-data.json on any error, so without this stamp a silently-stale file is indistinguishable from a fresh one. Consumers should compare it against the run they think they are reading." }
       }
     },

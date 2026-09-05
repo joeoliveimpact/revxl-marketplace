@@ -60,6 +60,28 @@ def content_words(text, n=8):
 def ranked(counter):
     return sorted(counter.items(), key=lambda kv: (-kv[1], kv[0]))
 
+# SKLLPLG-260: every RANKING comparator scores on per-account lift (schema 1.4: median over
+# accounts of a bucket's median / that account's own median; 1.0 = neutral), never on the
+# pooled field median, which lets one large account be the field. field_med_views stays for
+# DISPLAY. Pre-1.4 files carry no field_lift: there the pooled median is normalised against
+# the list's median-of-medians so the comparator is still a ~1.0-neutral ratio and the old
+# ordering is preserved. read == 'thin' (< 3 accounts or < 8 reels) is never a winner or a
+# loser read (Joe accepted this honesty cost, R2 09.04.26).
+def _pooled(rows):
+    return reel_io.med([x['field_med_views'] for x in rows]) if rows else 0
+def _score(x, pooled):
+    v = x.get('field_lift')
+    if v is not None:
+        return v
+    return (x['field_med_views'] / pooled) if pooled else 0
+def _thin(x):
+    return x.get('read') == 'thin'
+# A read needs a margin in BOTH directions. The loser bar has always been 0.8x (a 20%
+# margin); a winner at 1.05x with no margin is noise wearing a label. On a real 3,251-reel
+# corpus every hook type sat between 0.99x and 1.08x (09.05.26): with the bar at 1.0 the
+# brief still crowned a winner at +8%. Mirrored: 1.2x. Between the bars is 'near baseline'.
+LIFT_WINNER, LIFT_LOSER = 1.2, 0.8
+
 # ----------------------------------------------------------------------------
 # load the core interface (REQUIRED) + transcripts (OPTIONAL -> FULL mode)
 # ----------------------------------------------------------------------------
@@ -193,23 +215,26 @@ themeperf = data.get('theme_performance', [])
 if gaps:
     # absent first, then underweight; within each, highest field median views first
     order = {'absent': 0, 'underweight': 1}
-    gaps_sorted = sorted(gaps, key=lambda g: (order.get(g['reason'], 2), -g['field_med_views'], g['theme']))
+    _pg = _pooled(gaps)
+    gaps_sorted = sorted(gaps, key=lambda g: (order.get(g['reason'], 2), -_score(g, _pg), g['theme']))
     jx['attack_themes'] = [
-        {'theme': g['theme'], 'reason': g['reason'],
+        {'theme': g['theme'], 'reason': g['reason'], 'field_lift': g.get('field_lift'), 'read': g.get('read'),
          'field_med_views': g['field_med_views'], 'field_reels': g['field_reels'],
          'client_reels': g['client_reels'], 'client_med_views': g.get('client_med_views', 0)}
         for g in gaps_sorted]
     w('')
     w('Themes the field gets paid on that you under-serve. Make these first.')
     w('')
-    w('| Theme | Gap | Field med views | Field reels | Your reels | Why it matters |')
-    w('|---|---|--:|--:|--:|---|')
+    w('| Theme | Gap | Lift | Field med views | Field reels | Your reels | Why it matters |')
+    w('|---|---|--:|--:|--:|--:|---|')
     for g in gaps_sorted:
         if g['reason'] == 'absent':
             why = 'The field proves demand and you have posted ZERO. Pure whitespace -- claim it.'
         else:
             why = 'The field leans in far harder than you do; you are leaving reach on the table.'
-        w(f"| {g['theme']} | {g['reason']} | {fnum(g['field_med_views'])} | {g['field_reels']} | "
+        if _thin(g):
+            why += ' (thin field evidence -- provisional)'
+        w(f"| {g['theme']} | {g['reason']} | {_score(g, _pg):.2f}x | {fnum(g['field_med_views'])} | {g['field_reels']} | "
           f"{g['client_reels']} | {why} |")
 else:
     w('')
@@ -220,7 +245,8 @@ else:
     w('| Theme | Field med views | Field reels | Your reels | Your med views |')
     w('|---|--:|--:|--:|--:|')
     covered = [t for t in themeperf if t.get('client_reels', 0) > 0]
-    covered.sort(key=lambda t: (-t['field_med_views'], t['theme']))
+    _pc = _pooled(covered)
+    covered.sort(key=lambda t: (-_score(t, _pc), t['theme']))
     jx['attack_themes'] = [
         {'theme': t['theme'], 'reason': 'covered',
          'field_med_views': t['field_med_views'], 'field_reels': t['field_reels'],
@@ -240,44 +266,52 @@ w('')
 w('## 2. Winning hook types (and the ones you are sleeping on)')
 hooks = [h for h in data.get('hook_taxonomy', []) if h['hook'] != 'none']
 # rank by field median views desc, stable by hook name
-hooks_sorted = sorted(hooks, key=lambda h: (-h['field_med_views'], h['hook']))
+_ph = _pooled(hooks)
+hooks_sorted = sorted(hooks, key=lambda h: (-_score(h, _ph), h['hook']))
 field_med_overall = reel_io.med([h['field_med_views'] for h in hooks_sorted]) if hooks_sorted else 0
 w('')
-w('Hook = the FIRST move (caption line 1 / spoken first sentence). Ranked by field median views.')
+w('Hook = the FIRST move (caption line 1 / spoken first sentence). Ranked by per-account lift: '
+  'each account\'s reels scored against that account\'s OWN median, then the median across accounts. '
+  '1.00x = the field\'s baseline; a winner needs 1.2x and a loser sits under 0.8x; the pooled view count is shown but never ranks.')
 w('')
-w('| Hook type | Field med views | Field n | Your n | Your med views | Read |')
-w('|---|--:|--:|--:|--:|---|')
+w('| Hook type | Lift | Accts | Field med views | Field n | Your n | Your med views | Read |')
+w('|---|--:|--:|--:|--:|--:|--:|---|')
 underused = []  # winners the client barely uses
 jx['winning_hooks'] = []
 for h in hooks_sorted:
-    above = h['field_med_views'] >= field_med_overall
+    sc = _score(h, _ph)
+    above = sc >= LIFT_WINNER
     thin = h['client_n'] <= 2
-    if above and thin:
+    if _thin(h):
+        read = 'Thin field evidence (<3 accounts or <8 reels) -- no read'
+        read_key = 'thin'
+    elif above and thin:
         read = 'WINNER you under-use -- lean in'
         read_key = 'under-use'
         underused.append(h)
     elif above:
         read = 'Strong field hook; you use it'
         read_key = 'use-it'
-    elif h['field_n'] >= 3 and h['field_med_views'] < field_med_overall * 0.8:
-        # loser read is GUARDED: needs real evidence (n>=3) AND a clear margin (<80% of the
-        # median-of-medians) -- otherwise ~half of all hook types would mechanically read
+    elif h['field_n'] >= 3 and sc < LIFT_LOSER:
+        # loser read is GUARDED: needs real evidence (n>=3, read != thin) AND a clear margin
+        # (lift < 0.8x) -- otherwise ~half of all hook types would mechanically read
         # "below median" off noise.
         read = 'Below-median; deprioritize'
         read_key = 'deprioritize'
     else:
-        read = 'Below median but weak signal (thin n or near-median) -- not a loser read'
+        read = 'Near baseline (0.8x-1.2x lift) or thin n -- neither a winner nor a loser read'
         read_key = 'weak-signal'
     jx['winning_hooks'].append(
         {'hook': h['hook'], 'field_med_views': h['field_med_views'], 'field_n': h['field_n'],
+         'field_lift': h.get('field_lift'), 'field_accounts': h.get('field_accounts'),
          'client_n': h['client_n'], 'client_med_views': h['client_med_views'], 'read': read_key})
-    w(f"| {h['hook']} | {fnum(h['field_med_views'])} | {h['field_n']} | {h['client_n']} | "
+    w(f"| {h['hook']} | {sc:.2f}x | {h.get('field_accounts', '-')} | {fnum(h['field_med_views'])} | {h['field_n']} | {h['client_n']} | "
       f"{fnum(h['client_med_views'])} | {read} |")
 w('')
 if underused:
     w('**Biggest hook openings for you (high field reach, low usage):**')
-    for h in sorted(underused, key=lambda h: (-h['field_med_views'], h['hook']))[:4]:
-        w(f"- **{h['hook']}** -- field median {fnum(h['field_med_views'])} views across "
+    for h in sorted(underused, key=lambda h: (-_score(h, _ph), h['hook']))[:4]:
+        w(f"- **{h['hook']}** -- {_score(h, _ph):.2f}x lift, field median {fnum(h['field_med_views'])} views across "
           f"{h['field_n']} reels, but you have only {h['client_n']}. Add this to your rotation.")
 else:
     w('You already touch every above-median hook type at least a few times -- the lift is '
@@ -583,16 +617,23 @@ if client_themes:
 # the explicit gap: top winning hook you under-use + top gap theme
 w('')
 w('**The gap to close:**')
+# FIX-D (SKLLPLG-201): three candidates, not one. A deterministic [0] here made every brief on
+# the same corpus recommend the same pairing -- "one concept re-skinned". Top-1 is the
+# headline; the next two are named so the scripter has an ARRAY of angles to pick from.
 if underused:
-    top_u = sorted(underused, key=lambda h: (-h['field_med_views'], h['hook']))[0]
+    top_us = sorted(underused, key=lambda h: (-_score(h, _ph), h['hook']))[:3]
+    top_u = top_us[0]
     w(f"- Hook: the field's strongest hooks include **{top_u['hook']}** "
-      f"({fnum(top_u['field_med_views'])} median views) yet you have only {top_u['client_n']}. "
-      'Bake it into your next batch.')
+      f"({_score(top_u, _ph):.2f}x lift, {fnum(top_u['field_med_views'])} median views) yet you have only {top_u['client_n']}. "
+      'Bake it into your next batch.'
+      + (f" Also open: {', '.join('**' + h['hook'] + '**' for h in top_us[1:])}." if len(top_us) > 1 else ''))
 if gaps:
     order = {'absent': 0, 'underweight': 1}
-    top_g = sorted(gaps, key=lambda g: (order.get(g['reason'], 2), -g['field_med_views'], g['theme']))[0]
-    w(f"- Theme: **{top_g['theme']}** ({top_g['reason']}, {fnum(top_g['field_med_views'])} field "
-      f"median views) -- you run {top_g['client_reels']} reels here vs {top_g['field_reels']} field. Close it.")
+    top_gs = sorted(gaps, key=lambda g: (order.get(g['reason'], 2), -_score(g, _pg), g['theme']))[:3]
+    top_g = top_gs[0]
+    w(f"- Theme: **{top_g['theme']}** ({top_g['reason']}, {_score(top_g, _pg):.2f}x lift, {fnum(top_g['field_med_views'])} field "
+      f"median views) -- you run {top_g['client_reels']} reels here vs {top_g['field_reels']} field. Close it."
+      + (f" Next: {', '.join('**' + g['theme'] + '**' for g in top_gs[1:])}." if len(top_gs) > 1 else ''))
 else:
     if themeperf:
         top_head = max((t for t in themeperf if t.get('client_reels', 0) > 0),
@@ -611,14 +652,18 @@ else:
 # capture §7 (current_patterns) from the SAME settled variables the .md just rendered
 _gap_bits = []
 if underused:
-    _gu = sorted(underused, key=lambda h: (-h['field_med_views'], h['hook']))[0]
-    _gap_bits.append(f"Hook: lean into {_gu['hook']} ({fnum(_gu['field_med_views'])} field median "
-                     f"views) -- you have only {_gu['client_n']}.")
+    _gus = sorted(underused, key=lambda h: (-_score(h, _ph), h['hook']))[:3]
+    _gu = _gus[0]
+    _gap_bits.append(f"Hook: lean into {_gu['hook']} ({_score(_gu, _ph):.2f}x lift, {fnum(_gu['field_med_views'])} field median "
+                     f"views) -- you have only {_gu['client_n']}."
+                     + (f" Also open: {', '.join(h['hook'] for h in _gus[1:])}." if len(_gus) > 1 else ''))
 if gaps:
     _go = {'absent': 0, 'underweight': 1}
-    _gg = sorted(gaps, key=lambda g: (_go.get(g['reason'], 2), -g['field_med_views'], g['theme']))[0]
-    _gap_bits.append(f"Theme: {_gg['theme']} ({_gg['reason']}, {fnum(_gg['field_med_views'])} field "
-                     f"median views) -- you run {_gg['client_reels']} vs {_gg['field_reels']} field.")
+    _ggs = sorted(gaps, key=lambda g: (_go.get(g['reason'], 2), -_score(g, _pg), g['theme']))[:3]
+    _gg = _ggs[0]
+    _gap_bits.append(f"Theme: {_gg['theme']} ({_gg['reason']}, {_score(_gg, _pg):.2f}x lift, {fnum(_gg['field_med_views'])} field "
+                     f"median views) -- you run {_gg['client_reels']} vs {_gg['field_reels']} field."
+                     + (f" Next: {', '.join(g['theme'] for g in _ggs[1:])}." if len(_ggs) > 1 else ''))
 else:
     _th = None
     if themeperf:
@@ -641,19 +686,19 @@ w('')
 w("## 8. Avoid -- this niche's losers")
 w('')
 w('The same analysis as Sections 1-2, inverted: what THIS field itself punishes. A hook/theme '
-  'lands here only with real evidence (n >= 3) AND a clear margin (<80% of the median-of-'
-  'medians) -- thin or near-median reads are never called losers.')
+  'lands here only with real evidence (n >= 3, not a thin read) AND a clear margin (per-account '
+  'lift below 0.8x) -- thin or near-baseline reads are never called losers.')
 loser_hooks = [x for x in jx['winning_hooks'] if x['read'] == 'deprioritize']
-theme_med_overall = reel_io.med([t['field_med_views'] for t in themeperf]) if themeperf else 0
+_pt = _pooled(themeperf)
 loser_themes = sorted(
     [t for t in themeperf
-     if t['field_reels'] >= 3 and t['field_med_views'] < theme_med_overall * 0.8],
-    key=lambda t: (t['field_med_views'], t['theme']))
+     if t['field_reels'] >= 3 and not _thin(t) and _score(t, _pt) < LIFT_LOSER],
+    key=lambda t: (_score(t, _pt), t['theme']))
 w('')
 if loser_hooks:
     w('**Hook types this field punishes (do not build an option on these):**')
     for x in loser_hooks:
-        w(f"- **{x['hook']}** -- field median {fnum(x['field_med_views'])} views across "
+        w(f"- **{x['hook']}** -- {_score(x, _ph):.2f}x lift, field median {fnum(x['field_med_views'])} views across "
           f"{x['field_n']} reels (field median-of-medians: {fnum(field_med_overall)}).")
 else:
     w('**Hook types:** none cleared the loser bar (n >= 3 + <80% margin) -- no hook type is a '
@@ -662,7 +707,7 @@ w('')
 if loser_themes:
     w('**Themes the field under-rewards (spend elsewhere):**')
     for t in loser_themes:
-        w(f"- **{t['theme']}** -- field median {fnum(t['field_med_views'])} views across "
+        w(f"- **{t['theme']}** -- {_score(t, _pt):.2f}x lift, field median {fnum(t['field_med_views'])} views across "
           f"{t['field_reels']} reels.")
 else:
     w('**Themes:** none cleared the loser bar -- no theme is a confident avoid in this field.')
@@ -745,13 +790,13 @@ print(f'themes tracked: {len(meta.get("themes", []))}  |  gaps flagged: {len(gap
 if gaps:
     order = {'absent': 0, 'underweight': 1}
     print('attack themes:')
-    for g in sorted(gaps, key=lambda g: (order.get(g['reason'], 2), -g['field_med_views'], g['theme'])):
-        print(f'  - {asc(g["theme"]):22} {g["reason"]:11} field_med={g["field_med_views"]:>10,.0f} you={g["client_reels"]}')
+    for g in sorted(gaps, key=lambda g: (order.get(g['reason'], 2), -_score(g, _pg), g['theme'])):
+        print(f'  - {asc(g["theme"]):22} {g["reason"]:11} lift={_score(g, _pg):5.2f}x field_med={g["field_med_views"]:>10,.0f} you={g["client_reels"]}')
 else:
     print('attack themes: none flagged (cover-existing-themes-harder mode)')
 if underused:
     print('under-used winning hooks:')
-    for h in sorted(underused, key=lambda h: (-h['field_med_views'], h['hook']))[:4]:
-        print(f'  - {asc(h["hook"]):22} field_med={h["field_med_views"]:>10,.0f} you_n={h["client_n"]}')
+    for h in sorted(underused, key=lambda h: (-_score(h, _ph), h['hook']))[:4]:
+        print(f'  - {asc(h["hook"]):22} lift={_score(h, _ph):5.2f}x field_med={h["field_med_views"]:>10,.0f} you_n={h["client_n"]}')
 print(f'avoid: {len(loser_hooks)} hook types, {len(loser_themes)} themes flagged as niche losers')
 print('wrote scripting-brief.md')

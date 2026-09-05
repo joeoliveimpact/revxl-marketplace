@@ -24,7 +24,8 @@ this file is the convention + the edge registry for maintenance.
    stops at its credit checkpoint — schedules wake work up, they never spend.
 4. **State-gated:** don't offer visuals without `analysis-data.json`; don't
    offer "script the winner" without a winner; detect markers
-   (`socialcrawl-superengine`, Brain key, NotebookLM) before offering their
+   (`socialcrawl-superengine`, the RevXL Vault key (Joe's live strategy API, not
+   the brand brain), NotebookLM) before offering their
    edges — absent tools get one line, never a block slot.
 5. **Offer-once discipline:** never re-offer something declined this session;
    marker says scheduled → don't offer scheduling again.

@@ -46,10 +46,10 @@ Appends a Checkpoint.md entry, rewrites handoff.md, walks every other root file 
 
 Runs the full `session-closeout`, then reads back what closeout just wrote and builds the next session's kickoff prompt out of it. Spawns that prompt as a task chip you click when you're ready to start ... so the next session opens already knowing where the last one stopped.
 
-### `revxl-brain-search`
-**Triggers:** "check the brain for", "search the brain", "what does the brain say about", "test the brain connection", and any RevXL plugin that needs Joe's newest strategy material before it writes
+### `revxl-vault-search`
+**Triggers:** "check the vault for", "search the vault", "what does the vault say about", "test the vault connection", and any RevXL plugin that needs Joe's newest strategy material before it writes
 
-The one way a RevXL plugin talks to the Brain (Joe's live content-strategy knowledge base at brain.engineforimpact.com) with the client's own key. Search, read, related, and a connection test that doubles as the doctor. Read-only, capped at 10 searches and 6 reads per run, every call logged to `~/.config/revxl/brain-calls.jsonl`, and every failure degrades to the calling plugin's bundled references in plain English. Not brand-brain (your local voice profile) ... that is a different thing.
+The one way a RevXL plugin talks to the RevXL Vault (Joe's live content-strategy knowledge base at brain.engineforimpact.com) with the client's own key. Search, read, related, and a connection test that doubles as the doctor. Read-only, capped at 10 searches and 6 reads per run, every call logged to `~/.config/revxl/brain-calls.jsonl` (the ledger keeps its historical filename), and every failure degrades to the calling plugin's bundled references in plain English. Not brand-brain (your local voice profile) ... different names on purpose.
 
 ---
 
