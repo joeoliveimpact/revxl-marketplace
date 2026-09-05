@@ -125,9 +125,13 @@ After **every** call, success or failure, append one line to
 `~/.config/revxl/brain-calls.jsonl` (create the folder and file if missing). This is
 the client-side proof that a plugin really reached the Brain. Never put the key in it.
 
-```json
-{"ts":"2026-09-04T15:04:05Z","op":"search","spoke":"content-strategy","status":200,"hits":8,"secs":1.4,"plugin":"shortform-superengine"}
+```bash
+mkdir -p ~/.config/revxl
+printf '{"ts":"%s","op":"search","spoke":"content-strategy","status":200,"hits":8,"secs":1.4,"plugin":"shortform-superengine"}
+' \n  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> ~/.config/revxl/brain-calls.jsonl
 ```
+
+`ts` always comes from `date -u` inside the command, never typed by hand.
 
 `op` is `search`, `read`, `related`, or `test` (the `/health` probe is free and is not
 logged); `spoke` is what the server echoed
@@ -179,9 +183,10 @@ engine can pull Joe's newest strategy material on this machine."**
 
 ## If something fails ... say it in plain English
 
-Read the JSON body's `detail` field. Then say the matching line, do what it says, and
-**degrade**: continue the caller's task on the plugin's bundled reference files, tell
-the client once that the Brain was skipped and why, and write the ledger line.
+**First write the ledger line for the failed call** (Step 3; a failure is still a call).
+Then read the JSON body's `detail` field, say the matching line, do what it says, and
+**degrade**: continue the caller's task on the plugin's bundled reference files and tell
+the client once that the Brain was skipped and why.
 
 | Server response | What to tell the client, and what to do |
 |---|---|
