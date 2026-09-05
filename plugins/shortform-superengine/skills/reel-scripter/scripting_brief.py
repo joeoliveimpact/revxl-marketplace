@@ -76,6 +76,11 @@ def _score(x, pooled):
     return (x['field_med_views'] / pooled) if pooled else 0
 def _thin(x):
     return x.get('read') == 'thin'
+# A read needs a margin in BOTH directions. The loser bar has always been 0.8x (a 20%
+# margin); a winner at 1.05x with no margin is noise wearing a label. On a real 3,251-reel
+# corpus every hook type sat between 0.99x and 1.08x (09.05.26): with the bar at 1.0 the
+# brief still crowned a winner at +8%. Mirrored: 1.2x. Between the bars is 'near baseline'.
+LIFT_WINNER, LIFT_LOSER = 1.2, 0.8
 
 # ----------------------------------------------------------------------------
 # load the core interface (REQUIRED) + transcripts (OPTIONAL -> FULL mode)
@@ -267,7 +272,7 @@ field_med_overall = reel_io.med([h['field_med_views'] for h in hooks_sorted]) if
 w('')
 w('Hook = the FIRST move (caption line 1 / spoken first sentence). Ranked by per-account lift: '
   'each account\'s reels scored against that account\'s OWN median, then the median across accounts. '
-  '1.00x = the field\'s baseline; the pooled view count is shown but never ranks.')
+  '1.00x = the field\'s baseline; a winner needs 1.2x and a loser sits under 0.8x; the pooled view count is shown but never ranks.')
 w('')
 w('| Hook type | Lift | Accts | Field med views | Field n | Your n | Your med views | Read |')
 w('|---|--:|--:|--:|--:|--:|--:|---|')
@@ -275,7 +280,7 @@ underused = []  # winners the client barely uses
 jx['winning_hooks'] = []
 for h in hooks_sorted:
     sc = _score(h, _ph)
-    above = sc >= 1.0
+    above = sc >= LIFT_WINNER
     thin = h['client_n'] <= 2
     if _thin(h):
         read = 'Thin field evidence (<3 accounts or <8 reels) -- no read'
@@ -287,14 +292,14 @@ for h in hooks_sorted:
     elif above:
         read = 'Strong field hook; you use it'
         read_key = 'use-it'
-    elif h['field_n'] >= 3 and sc < 0.8:
+    elif h['field_n'] >= 3 and sc < LIFT_LOSER:
         # loser read is GUARDED: needs real evidence (n>=3, read != thin) AND a clear margin
         # (lift < 0.8x) -- otherwise ~half of all hook types would mechanically read
         # "below median" off noise.
         read = 'Below-median; deprioritize'
         read_key = 'deprioritize'
     else:
-        read = 'Below median but weak signal (thin n or near-median) -- not a loser read'
+        read = 'Near baseline (0.8x-1.2x lift) or thin n -- neither a winner nor a loser read'
         read_key = 'weak-signal'
     jx['winning_hooks'].append(
         {'hook': h['hook'], 'field_med_views': h['field_med_views'], 'field_n': h['field_n'],
@@ -687,7 +692,7 @@ loser_hooks = [x for x in jx['winning_hooks'] if x['read'] == 'deprioritize']
 _pt = _pooled(themeperf)
 loser_themes = sorted(
     [t for t in themeperf
-     if t['field_reels'] >= 3 and not _thin(t) and _score(t, _pt) < 0.8],
+     if t['field_reels'] >= 3 and not _thin(t) and _score(t, _pt) < LIFT_LOSER],
     key=lambda t: (_score(t, _pt), t['theme']))
 w('')
 if loser_hooks:
