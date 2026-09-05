@@ -7,7 +7,7 @@
     "email": "joe@engineforimpact.com"
   },
   "metadata": {
-    "version": "0.1.56"
+    "version": "0.1.57"
   },
   "plugins": [
     {
@@ -38,10 +38,10 @@
     },
     {
       "name": "workspace-superengine",
-      "description": "v0.14.0 · Stops Claude from forgetting what you were working on. Sets up your workspace so every session picks up where the last one left off, follows your rules, and explains itself in plain language. Add modules for coding, client work, or content as needed. Works in Claude Desktop and Claude Code.",
+      "description": "v0.14.1 · Stops Claude from forgetting what you were working on. Sets up your workspace so every session picks up where the last one left off, follows your rules, and explains itself in plain language. Add modules for coding, client work, or content as needed. Works in Claude Desktop and Claude Code.",
       "source": "./plugins/workspace-superengine",
       "category": "productivity",
-      "version": "0.14.0",
+      "version": "0.14.1",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"
@@ -196,10 +196,10 @@
     },
     {
       "name": "shortform-superengine",
-      "description": "v0.3.3 · Turn competitor research into Instagram reel scripts in your own voice. One guided setup, then by talking to Claude: cross-reference your reels against tiered competitors for a 10-section strategy roadmap, harvest a trusted creator's whole library into a framework corpus, and script reels off what already wins in your niche (Hook to CTA, with craft scoring). Bring-your-own SocialCrawl key (your data, your credits); captions-first transcription with Groq or local Whisper fallback; plain-English teach mode by default. For coaches who want data-driven short-form that still sounds like them.",
+      "description": "v0.3.4 · Turn competitor research into Instagram reel scripts in your own voice. One guided setup, then by talking to Claude: cross-reference your reels against tiered competitors for a 10-section strategy roadmap, harvest a trusted creator's whole library into a framework corpus, and script reels off what already wins in your niche (Hook to CTA, with craft scoring). Bring-your-own SocialCrawl key (your data, your credits); captions-first transcription with Groq or local Whisper fallback; plain-English teach mode by default. For coaches who want data-driven short-form that still sounds like them.",
       "source": "./plugins/shortform-superengine",
       "category": "marketing",
-      "version": "0.3.3",
+      "version": "0.3.4",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"
@@ -215,6 +215,34 @@
         "creator-research",
         "coaching",
         "socialcrawl",
+        "revxl",
+        "superengine"
+      ]
+    },
+    {
+      "name": "editor-superengine",
+      "description": "v0.1.0 · Turn a raw talking-head recording into a finished first cut, then iterate the reel's visuals. reel-first-cuts probes the file, rules the lines with you, builds a waveform-verified cut list, tightens the gaps, renders once from the raw and holds the whole cut to a silence budget; reel-motion-comps runs the design loop (divergent directions over real plates, parametric ladders, measured checks, you rule from frames). Every script ships inside the plugin, including a word-timestamp transcriber. For people editing short-form reels who want the cut to sound right before anything gets drawn on it.",
+      "source": "./plugins/editor-superengine",
+      "category": "marketing",
+      "version": "0.1.0",
+      "author": {
+        "name": "Joe Olive",
+        "email": "joe@engineforimpact.com"
+      },
+      "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/editor-superengine",
+      "license": "MIT",
+      "keywords": [
+        "editing",
+        "reels",
+        "first-cut",
+        "talking-head",
+        "silence",
+        "whisper",
+        "motion",
+        "hook",
+        "instagram",
+        "tiktok",
+        "shortform",
         "revxl",
         "superengine"
       ]

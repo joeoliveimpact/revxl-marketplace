@@ -4,6 +4,56 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.3.4] — 2026-09-05
+
+### Fixed
+- **Rankings follow lift, not account size** (SKLLPLG-260, 201). `hook_taxonomy`,
+  `theme_performance` and `gaps` carry `field_lift`, `field_accounts` and `read`
+  (schema 1.4, additive): each account's reels in a bucket are scored against that
+  account's OWN median views, then the median across accounts; 1.0 is neutral. The
+  brief's every ranking comparator now uses lift; the pooled view count stays on
+  screen but never ranks. A winner needs 1.2x lift and a loser sits under 0.8x; between
+  the bars is near baseline. Fewer than 3 accounts or 8 reels reads `thin` and is never
+  a winner or a loser. `field_vet.py` bands the same way. A pooled median had let one
+  large account be the field (a keyword read 10.80x pooled, 1.27x per account).
+  `--baseline-days N` optionally windows the denominators; default all-time.
+- **Pinned and junk rows are dropped before any median** (SKLLPLG-261). `post.flags.pinned`
+  rows, reels with no views reported, clips measured under 3 s, and rows with nothing
+  said and nothing written never enter a ranking. Counts land in
+  `meta.dropped_pinned` / `meta.dropped_junk`, in `analysis-data.md` and on the
+  console. A missing duration never drops a row on its own.
+- **Three candidates, not one** (SKLLPLG-201). The gap-to-close names the top hook and
+  the next two, the top theme and the next two, so the same corpus stops yielding one
+  concept re-skinned. The scripter also reads `<project>/scripts/*.md` and excludes
+  pairings it already wrote unless nothing else remains.
+- **Loud degrade, one payload reader** (SKLLPLG-263). Transcript coverage below
+  `transcript_coverage_min` (default 0.6, `analysis-config.json`) prints a DEGRADED
+  line in the md and on the console and sets `meta.degraded`. One `_items_of()` reader
+  handles `{reels}` / `{items}` / `{data.items}` on both tracks in `analyze.py` and
+  `field_vet.py`.
+
+### Added
+- **A UserPromptSubmit nudge** (`hooks/skill-trigger.sh`): when a prompt reads like a
+  job one of the seven skills owns, one line names the skill to invoke. Fires in Claude
+  Code (terminal and Desktop); never in Cowork, which does not load plugin hooks.
+- **The SocialCrawl credit guard** (`hooks/credit-guard.mjs` + `costs.json`), the same file
+  socialcrawl-superengine ships; the two copies must move together.
+- **Named delegation**: when socialcrawl-superengine is installed (marker or cache dir),
+  the four pull sites invoke `socialcrawl-superengine:research-plays` by name. Never blocks.
+
+### Changed
+- **The vault is the RevXL Vault** (Joe's ruling 09.04.26): every mention of the live
+  strategy API at brain.engineforimpact.com now says Vault, so it can never be confused
+  with brand-brain. Step 0d says "check the vault" and routes to
+  `workspace-superengine:revxl-vault-search` when workspace-superengine 0.14.1+ is
+  installed. The `brain-pulls/` folder, the host and `VAULT_API_KEY` keep their names.
+- **The Vault status line is mandatory** (SKLLPLG-268): every brief states searches, reads
+  and ok / degraded / skipped, even at zero calls; where Vault doctrine and local stats
+  disagree, the brief says so and ranks the doctrine first. The Vault still never blocks
+  a script.
+- `render_visuals.py` accepts schema 1.4. An old brief reads a 1.4 file; the new brief on
+  a 1.3 file keeps the old order.
+
 ## [0.3.3] — 2026-09-04
 
 ### Fixed

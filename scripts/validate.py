@@ -116,7 +116,8 @@ TOKEN_CEILING_WAIVERS = {
     "profile-optimization-superengine/profile-ig-audit":
         "7753 est; pre-existing 2026-09-01 baseline, untriaged. SKLLPLG-255",
     "shortform-superengine/reel-scripter":
-        "7159 est; pre-existing 2026-09-01 baseline, untriaged. SKLLPLG-255",
+        "7518 est (7159 at the 2026-09-01 baseline; +359 on 2026-09-05 for the dedupe, "
+        "delegation, Vault and status-line prose of 0.3.4). Untriaged. SKLLPLG-255",
     "profile-optimization-superengine/profile-fb-audit":
         "7000 est; pre-existing 2026-09-01 baseline, untriaged. SKLLPLG-255",
     "shortform-superengine/competitor-cross-reference":
