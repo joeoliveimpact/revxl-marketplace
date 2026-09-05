@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "course-crawler",
   "description": "Capture any online content as a clean local archive for knowledge bases. Single pages, full multi-lesson courses (Kajabi/Teachable/Thinkific/Skool classrooms/custom), and YouTube playlists. Detects the agentic browser you have, handles login (assisted or manual cookie paste), and outputs clean Markdown + categorized reference links + downloaded assets + slide frames + transcripts. Local GPU Whisper by default (Groq/OpenAI fallback). Works on Mac and Windows.",
-  "version": "0.5.0",
+  "version": "0.7.1",
   "author": {
     "name": "Joe Olive",
     "email": "joe@engineforimpact.com"

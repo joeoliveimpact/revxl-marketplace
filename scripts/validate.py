@@ -166,6 +166,39 @@ def check_marketplace() -> list[str]:
     return errs
 
 
+def check_version_parity() -> list[str]:
+    """Every catalogue entry's version must equal its plugin.json version.
+
+    Guards the failure mode found 09.04.26: three of sixteen plugins had a
+    catalogue version that did not match plugin.json (shortform 0.3.1/0.3.2,
+    course-crawler 0.5.0/0.7.0, lead-magnet 0.1.0/0.1.1). The bump is manual
+    in two files (docs/plugin-conventions.md) and nothing enforced it, so
+    fixes committed here sat in the repo and never reached an installed
+    client. Runs inside the `plugins` section so CI needs no workflow change.
+    Missing or invalid plugin.json is check_plugins() job and is skipped here.
+    """
+    errs: list[str] = []
+    m = json.loads(MKT.read_text(encoding="utf-8"))
+    n = 0
+    for p in m.get("plugins", []):
+        name, cat_ver = p.get("name"), p.get("version")
+        pj = REPO / p["source"] / ".claude-plugin" / "plugin.json"
+        if not pj.exists():
+            continue
+        try:
+            man_ver = json.loads(pj.read_text(encoding="utf-8")).get("version")
+        except Exception:
+            continue
+        if cat_ver != man_ver:
+            rel = pj.relative_to(REPO).as_posix()
+            errs.append(f"::error file={rel}::{name}: plugin.json version {man_ver} "
+                        f"!= marketplace.json {cat_ver} (bump BOTH; docs/plugin-conventions.md)")
+        else:
+            n += 1
+    if not errs:
+        print(f"OK version parity: {n} plugin.json == marketplace.json")
+    return errs
+
 def check_plugins() -> list[str]:
     errs: list[str] = []
     published = _published()
@@ -195,6 +228,7 @@ def check_plugins() -> list[str]:
         else:
             print(f"OK {name}: structure"
                   f"{' +skills' if has_skill else ''}{' +agents' if has_agent else ''}")
+    errs.extend(check_version_parity())
     return errs
 
 

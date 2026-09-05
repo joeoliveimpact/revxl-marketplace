@@ -70,7 +70,7 @@ After installing the plugin, run the `ghl-mcp-installer` skill: just say _"insta
 
 ## "Auto-update isn't working"
 
-Auto-update fires when the `metadata.version` in marketplace.json or a plugin's `version` field changes. If you've added a plugin via GitHub path and don't see updates:
+Auto-update fires when a plugin's `version` moves in **both** `plugin.json` and its `marketplace.json` entry (bump `metadata.version` in marketplace.json in the same release). One file alone does not trigger it; see `docs/plugin-conventions.md`. If you've added a plugin via GitHub path and don't see updates:
 
 1. Force-refresh by removing and re-adding the marketplace in Customize → Skills
 2. Check the marketplace's GitHub commit log — confirm new commits exist

@@ -16,10 +16,33 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   the skill's connection test instead of its own health check. The `content-strategy`
   spoke is now named explicitly on every call, so a wrong-vault answer is caught
   (before, the server default was relied on with no guard).
-- plugin.json said 0.3.1 while the catalog and changelog said 0.3.2 (SKLLPLG-211); all
-  three read 0.4.0 now.
 - Requires workspace-superengine 0.14.0 or later for live Brain pulls; without it the
   engine degrades to its bundled references and says so once.
+
+## [0.3.3] — 2026-09-04
+
+### Fixed
+- **The 08.28 breakout-engine fix is now actually in the repo.** It was applied to
+  the marketplace working tree and hand-patched into client caches on 08.28.26 and
+  never committed, so every fresh install and every update kept the old ranker.
+  Four files land byte-for-byte:
+  - `analyze.py` — the client's own reels are excluded from the field outliers
+    (Joe's ruling 08.28.26), so the brief can no longer recommend a pairing whose
+    only evidence is a reel the client already posted; `outliers_full` is emitted
+    alongside the capped list.
+  - `scripting_brief.py` — reads `outliers_full`. The 30-row cap hid 483 of 513
+    qualifying field reels from the theme × hook table.
+  - `analysis-data.schema.json` — schema 1.3 (`outliers_full`, `period_breakouts`,
+    `meta.generated_at`).
+  - `render_visuals.py` — accepts schema 1.3, and **GURU joins `TIER_ORDER`**
+    (SKLLPLG-262). `analyze.py` computed the tier; the renderer silently dropped it.
+- **VAD enabled on the local faster-whisper path** (`transcribe_reels.py`,
+  SKLLPLG-259). `vad_filter` defaults to False and was never set, so trailing
+  silence decoded into invented sentences, sometimes in another language. Measured
+  at roughly 8% of reels before the fix. `vad_filter=True` only: no batching, no
+  VAD tuning, no `condition_on_previous_text` change (unmeasured; tracked
+  separately). `onnxruntime` already ships with faster-whisper, so nothing new to
+  install.
 
 ## [0.3.2] — 2026-08-17
 

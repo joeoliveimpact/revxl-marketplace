@@ -74,7 +74,7 @@ except Exception:
 log(f"=== transcribe START · model={MODEL_SIZE} dev={dev} top={TOP_N} bottom={BOT_N} ===")
 
 def transcribe(wav):
-    segs, info = model.transcribe(wav, language="en")
+    segs, info = model.transcribe(wav, language="en", vad_filter=True)
     seg_list = [{"s": round(s.start, 2), "e": round(s.end, 2), "text": s.text.strip()} for s in segs]
     return " ".join(s["text"] for s in seg_list).strip(), seg_list, round(info.duration, 2)
 

@@ -4,10 +4,23 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.1.57] ... 2026-09-05
+## [0.1.58] ... 2026-09-05
 
 ### Changed
-- **shortform-superengine v0.4.0** ... Brain calls go through `revxl-brain-search` (workspace-superengine 0.14.0): the wiring doc keeps its shortform specifics and drops its own key ladder, curl blocks and error table; reel-scripter's two triggers invoke the skill by name; onboarding runs the skill's connection test; the `content-strategy` spoke is named explicitly. Also closes the 0.3.1 / 0.3.2 version drift in plugin.json.
+- **shortform-superengine v0.4.0** ... Brain calls go through `revxl-brain-search` (workspace-superengine 0.14.0): the wiring doc keeps its shortform specifics and drops its own key ladder, curl blocks and error table; reel-scripter's two triggers invoke the skill by name; onboarding runs the skill's connection test; the `content-strategy` spoke is named explicitly.
+
+## [0.1.56] ... 2026-09-04
+
+### Fixed
+- **shortform-superengine v0.3.3** ... lands the 08.28 breakout-engine fix that was hand-patched into client caches but never committed: the client's own reels are excluded from the field outliers (Joe's ruling 08.28.26), `outliers_full` replaces the 30-row cap that hid 483 of 513 qualifying field reels, analysis schema 1.3, and the GURU tier is now drawn by `render_visuals.py` (it was computed and then dropped). Also enables VAD (`vad_filter=True`) on the local faster-whisper path, which was decoding trailing silence into invented sentences.
+- **course-crawler v0.7.1** ... enables VAD on both local faster-whisper paths (`process_videos.py`, `youtube_pull.py`). Because the catalogue had sat at 0.7.0 while `plugin.json` said 0.5.0, clients on 0.5.0 also receive 0.6.0 (transcription vocabulary prompt) and 0.7.0 (GPU/CPU model default, turbo selectable) with this update.
+- **lead-magnet-superengine 0.1.1** ... `plugin.json` now says 0.1.1, matching the catalogue. No content change.
+
+### Added
+- **The validator now fails on manifest/catalogue version drift.** `scripts/validate.py` gained `check_version_parity()` inside the `plugins` section: every published plugin's `plugin.json` version must equal its `marketplace.json` entry, at error severity. Three of sixteen plugins were drifted when the check was introduced (shortform 0.3.1/0.3.2, course-crawler 0.5.0/0.7.0, lead-magnet 0.1.0/0.1.1), which is why fixes committed to this repo were not reaching clients. Proved by making it fail on purpose before the drift was corrected.
+
+### Changed
+- `docs/install-troubleshooting.md` said auto-update fires when either `metadata.version` or a plugin's version changes; `docs/plugin-conventions.md` said both files must be bumped. The troubleshooting doc now matches conventions: bump both.
 
 ## [0.1.55] ... 2026-09-04
 

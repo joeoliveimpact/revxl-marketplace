@@ -5,6 +5,7 @@
 - Guidance added at every point the research chain reaches for transcription: `lm-setup`, `lm-research`, `core/source-chains.md`.
 - Two caveats documented alongside the recommendation, because both fail silently: a bare comma list strips capitalization and punctuation from the whole transcript, and a prompt can drop a speaker's retakes — compare output length on multi-take source.
 - Prefer Groq `whisper-large-v3-turbo` over full `large-v3`: no worse on proper nouns, ~3x cheaper, and it kept speech that full v3 dropped.
+- (09.04.26) `plugin.json` bumped to 0.1.1 to match this entry and the catalogue; it had stayed at 0.1.0, so this release never reached installed clients until now.
 
 
 ## 0.1.0 — initial release
