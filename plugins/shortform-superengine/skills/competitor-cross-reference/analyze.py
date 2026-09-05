@@ -363,6 +363,40 @@ print('\nwrote analysis-data.md')
 # SILENT on stdout (a print here would break the EWH stdout oracle) and GUARDED
 # (never crashes the run — md + console stay authoritative). Lane-keyed blocks omitted when lane-free.
 try:
+    from datetime import datetime as _dt, timezone as _tz
+    # ---- schema 1.3 helpers (G17, 08.27.26) --------------------------------
+    # meta.generated_at: this emit sits in a bare try/except that KEEPS the previous
+    # analysis-data.json on any error, so a stale file is indistinguishable from a
+    # fresh one. A generation stamp makes staleness visible.
+    _now_dt = _dt.now(_tz.utc)
+    _now_ts = _now_dt.timestamp()
+    def _iso(ts): return _dt.fromtimestamp(ts, _tz.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    _gen_at = _iso(_now_ts)
+
+    # Period window, derived from the project's OWN pull log: _delta/<YYYY-MM-DD>[-suffix].
+    # The NEWEST dir is the pull that produced this corpus, so the period that pull
+    # covers OPENS at the pull before it -> window = [previous pull, generation time].
+    # Deliberately NOT derived from history/ snapshots: on 08.27.26 the newest snapshot
+    # and the newest _delta dir disagreed by 22 days.
+    # CONVENTION: each history/ snapshot answers for its own day (it carries the literal
+    # window_from/window_to it was generated with), so retroactive per-scan filtering
+    # comes free -- read the snapshot for that day instead of recomputing a window.
+    def _window_from_delta(root, now_ts):
+        ddir = os.path.join(root, '_delta')
+        ds = set()
+        if os.path.isdir(ddir):
+            for name in os.listdir(ddir):
+                mt = re.match(r'^(\d{4}-\d{2}-\d{2})', name)
+                if mt and os.path.isdir(os.path.join(ddir, name)):
+                    ds.add(mt.group(1))
+        ds = sorted(ds)
+        if len(ds) >= 2: d = ds[-2]      # the pull before the one that built this corpus
+        elif ds:         d = ds[-1]      # only one pull on record -> it opens the window
+        else:            return now_ts - 7 * 86400   # no pull log -> documented 7d default
+        return _dt.fromisoformat(d + 'T00:00:00+00:00').timestamp()
+    _win_from_ts = _window_from_delta(ROOT, _now_ts)
+    _win_from = _iso(_win_from_ts)
+
     def _creator_obj(c):
         s = c['stats']
         return {'handle': c['handle'], 'tier': c['tier'], 'lane': c.get('lane'),
@@ -430,17 +464,90 @@ try:
                           'headline': f'Thin on {th} — {cr} client reels vs the field’s {fr} at {fmv:,.0f} median views.',
                           'why': f'The field leans into {th} far harder than the client; reach is being left on the table.',
                           'oppo': oppo})
-    _oj = []
-    for i, tup in enumerate(outliers[:30]):
+    # Outlier records are built ONCE over the FULL >=2.5x population and then sliced.
+    # `outliers` stays the historic all-time top-30 leaderboard and is byte-identical
+    # to the pre-1.3 emit: it is sliced from the UNFILTERED list and the enumerate index i
+    # is the same for the first 30 entries, so the `{handle}-{i}` id fallback cannot drift.
+    # The client filter is applied AFTER that slice, never before it, so the top-30 cannot
+    # move even if a client reel were ever to rank into it.
+    _oj_unfiltered = []
+    for i, tup in enumerate(outliers):
         if lane_on: m, h, t, ln, v, ht, th, line, url, src = tup
         else: m, h, t, v, ht, th, line, url, src = tup; ln = None
         _sc = re.search(r'/reel/([^/]+)/', url or '')
         _rid = _sc.group(1) if _sc else f'{h}-{i}'
         # dashboard reel-card aliases (id/outlier/creator/title) alongside the native keys
-        _oj.append({'id': _rid, 'mult': round(m, 3), 'outlier': round(m, 3),
+        _oj_unfiltered.append({'id': _rid, 'mult': round(m, 3), 'outlier': round(m, 3),
                     'handle': h, 'creator': '@' + h, 'tier': t, 'lane': ln, 'views': v,
                     'hook': ht, 'themes': th, 'hook_line': line, 'title': line, 'url': url,
                     'src': src})
+    _oj = _oj_unfiltered[:30]
+    # outliers_full is the FIELD population: the client is excluded (Joe's ruling 08.28.26),
+    # so "field outliers" is literally true wherever a consumer reads it -- reel-scripter's
+    # theme x hook and opener mining were previously counting the client's own reels as
+    # evidence about the field. `outliers` above is deliberately sliced BEFORE this filter.
+    _oj_all = [_r for _r in _oj_unfiltered if _r['handle'] != CLIENT_HANDLE]
+
+    # ---- period breakouts (schema 1.3) -------------------------------------
+    # What actually broke out INSIDE the window, which the top-30 leaderboard
+    # structurally cannot answer (its floor sat at 87.4x on 08.27.26, so no reel
+    # published this period could ever enter it -- G17, a 38x under-report).
+    # Uncapped, no transcript requirement, client excluded (a client reel is not a
+    # field breakout). Same record shape as `outliers`, plus published_at.
+    def _period_breakouts_block():
+        rows, skipped = [], []
+        for h, c in creators.items():
+            if h == CLIENT_HANDLE:
+                continue
+            # Denominator: this creator's ALL-TIME median views over ALL their reels,
+            # zeros included -- the SAME median `outliers` uses (c['stats']['med_views']),
+            # so the two views cannot disagree about what "2.5x their own median" means.
+            # The guard is what makes it >0: a creator whose all-reels median is <=0 (more
+            # than half their reels report no views at all) is SKIPPED entirely rather than
+            # divided by. Hence the label `..._gt0_...` -- the denominator is guaranteed
+            # positive by the skip, not by pre-filtering the sample.
+            # (Orchestrator ruling 08.28.26. Pre-filtering to views>0 instead was measured
+            # to skip 0 creators and silently hand three zero-view creators a synthetic
+            # denominator they had not earned.)
+            mv = med([r['views'] for r in c['reels']])
+            if mv <= 0:
+                skipped.append(h)
+                continue
+            for r in c['reels']:
+                pub = r.get('pub')
+                if pub is None:            # None-publication-date guard: an undated reel
+                    continue               # cannot be placed in a window -- never counted
+                if pub < _win_from_ts or pub > _now_ts:
+                    continue
+                if r['views'] < 2.5 * mv:
+                    continue
+                _sc2 = re.search(r'/reel/([^/]+)/', r['url'] or '')
+                _line = r_hookline(r)
+                rows.append({'id': _sc2.group(1) if _sc2 else f'{h}-{pub:.0f}',
+                             'mult': round(r['views'] / mv, 3), 'outlier': round(r['views'] / mv, 3),
+                             'handle': h, 'creator': '@' + h, 'tier': c['tier'], 'lane': c.get('lane'),
+                             'views': r['views'], 'hook': r_hook(r), 'themes': r_themes(r),
+                             'hook_line': _line, 'title': _line, 'url': r['url'], 'src': r_src(r),
+                             'published_at': _iso(pub)})
+        rows.sort(key=lambda x: (-x['mult'], x['handle'], x['url'] or ''))
+        return {'window_from': _win_from, 'window_to': _gen_at,
+                'denominator': 'all_time_median_views_gt0_at_generation',
+                'client_excluded': CLIENT_HANDLE,
+                'n': len(rows), 'creators_skipped_median_le_0': len(skipped),
+                'creators_skipped': sorted(skipped),
+                'note': ('Reels PUBLISHED inside [window_from, window_to], scored against each '
+                         'creator\'s own all-time median views over ALL their reels (zeros '
+                         'included -- the same median `outliers` uses), measured at generation '
+                         'time. A creator whose median is <=0 is SKIPPED, never divided by, which '
+                         'is what guarantees the denominator is >0 (see creators_skipped). '
+                         'Uncapped and transcript-agnostic. This is the "what '
+                         'broke out this period" answer; `outliers` is the all-time top-30 hall of '
+                         'fame and `outliers_full` the uncapped all-time field population -- neither can '
+                         'answer it. The window opens at the previous _delta pull. Each history/ '
+                         'snapshot answers for its own day because it carries these literal '
+                         'timestamps, so retroactive per-scan filtering comes free: read the '
+                         'snapshot for that day instead of recomputing a window.'),
+                'reels': rows}
     _data = {'client': _creator_obj(client),
              'creators': [_creator_obj(c) for h, c in sorted(creators.items(), key=lambda kv: -kv[1]['stats']['reach_eff'])],
              'rollups': _rollups, 'hook_taxonomy': _hooktax, 'theme_performance': _themeperf,
@@ -450,7 +557,8 @@ try:
                       'n_competitors': len(creators) - 1, 'lane_on': lane_on,
                       'themes': list(THEMES.keys()), 'source': 'competitor-cross-reference/analyze.py',
                       'transcript_coverage': round(TX_COVERAGE, 4),
-                      'schema_version': '1.2'}}
+                      'schema_version': '1.3',
+                      'generated_at': _gen_at}}
     # captions bucket (C7, additive): the caption-keyed read, separate from the
     # primary spoken-keyed hook_taxonomy/theme_performance above. Present only
     # when transcripts exist (without them primary IS caption-keyed already).
@@ -467,6 +575,11 @@ try:
                                    'client_reels': len(cap_theme_client.get(th, [])),
                                    'client_med_views': med(cap_theme_client.get(th, []))}
                                   for th in sorted(cap_theme_v, key=lambda k: -med(cap_theme_v[k]))]}
+    # ---- schema 1.3 keys, appended AFTER `captions` -------------------------
+    # Insertion order matters: every byte before this point is unchanged from 1.2
+    # except meta.schema_version and the added meta.generated_at.
+    _data['outliers_full'] = _oj_all              # uncapped all-time >=2.5x FIELD population (client excluded)
+    _data['period_breakouts'] = _period_breakouts_block()
     open(os.path.join(ROOT, 'analysis-data.json'), 'w', encoding='utf-8').write(
         json.dumps(_data, indent=2, ensure_ascii=False))
 except Exception as _e:

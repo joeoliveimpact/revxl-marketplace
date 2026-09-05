@@ -298,7 +298,14 @@ w('On a Reel the attention cliff is ~2 seconds (spoken + visual together) -- the
 # ---------------------------------------------------------------------------
 w('')
 w('## 3. Theme x hook -- what pairing actually overperforms')
-outliers = data.get('outliers', [])
+# Prefer the UNCAPPED >=2.5x population (schema 1.3) over the all-time top-30 table:
+# `outliers` is a fixed 30-slot leaderboard whose floor sat at 87.4x on 08.27.26, so a
+# theme x hook read off it is a read off 30 extreme reels, not off the 513 field reels that
+# actually overperformed (G17). `outliers_full` also excludes the client (Joe's ruling 08.28.26),
+# so "field outliers" below is literally true -- the client's own reels are no longer counted as
+# evidence about the field. Falls back to `outliers` on pre-1.3 files (30 records, client-inclusive
+# in principle) -- identical old behaviour, so the fallback is a degrade, not a different answer.
+outliers = data.get('outliers_full') or data.get('outliers', [])
 # group: theme -> hook -> [views]; only outliers carrying >=1 theme
 tk = defaultdict(lambda: defaultdict(list))
 theme_tot = defaultdict(list)
