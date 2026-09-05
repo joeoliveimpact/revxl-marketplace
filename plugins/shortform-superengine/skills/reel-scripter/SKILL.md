@@ -86,9 +86,12 @@ It auto-detects **FULL** mode (spoken transcripts present) vs **CAPTION-ONLY** d
    words do you never use? What's your one CTA?). Note in the final script that voice was
    interim, not the full profile.
 
-**0d. Brain pull #1 — current frameworks for this topic (Trigger 1 of 2).**
-Resolve the Brain key per [`../_shared/references/vault-api.md`](../_shared/references/vault-api.md)
-(ladder: env → `~/.config/revxl/vault_api_key` → ask once). **Check
+**0d. Vault pull #1 — current frameworks for this topic (Trigger 1 of 2).**
+The RevXL Vault is Joe's live strategy API, not your brand brain (0c). The pull is done by
+saying "check the vault" and invoking `workspace-superengine:revxl-vault-search` when
+workspace-superengine >= 0.14.1 is installed; otherwise use the bundled curl shape in
+[`../_shared/references/vault-api.md`](../_shared/references/vault-api.md)
+(key ladder: env → `~/.config/revxl/vault_api_key` → ask once). **Check
 `<project>/brain-pulls/` first** — a cached pull for this topic means no call.
 If a key resolves and no cache: ONE `/v1/search` — `query` = the reel's topic/theme,
 `variants` = niche + format terms (e.g. `["<niche> reels", "<format> hook"]`). The format
@@ -97,19 +100,29 @@ source → `"listicle reel"`; client story/transformation → `"story reel"`; be
 `"myth bust reel"`; no clear shape → default `["<niche> reels", "<topic>"]` and let hybrid
 search do the aiming — **never skip the pull because the content doesn't fit a mold.** Save
 the cited hits to `<project>/brain-pulls/<topic-slug>.md` and weave them into the
-brief's menu as extra evidence, cited `[brain] <path>`. No key / 4xx / 5xx / timeout →
-follow the reference's degrade table and move on — the Brain never blocks a script.
+brief's menu as extra evidence, cited `[vault] <path>`. No key / 4xx / 5xx / timeout →
+follow the reference's degrade table and move on — the Vault never blocks a script.
 
 ### ✋ Checkpoint 0 — Confirm the voice anchor + brief read
 Show: the mode (FULL/caption-only), the top 2–3 attack themes from the brief, the voice
-source (full `voc/` vs interim), and **one Brain status line** — `Brain: [brain] <path> woven`
-or `Brain: skipped (no key / cached / degraded / budget)`. The pull must leave a visible trace
-either way. **Pause** until the user confirms the voice sounds right and
+source (full `voc/` vs interim), and **one Vault status line, mandatory on every brief** even
+when zero calls were made: `Vault: <n> searches, <m> reads | <ok|degraded|skipped: reason>`
+(e.g. `Vault: 1 search, 2 reads | ok` · `Vault: 0 searches, 0 reads | skipped: cached <path>` ·
+`Vault: 0 searches, 0 reads | skipped: no key`). The pull must leave a visible trace
+either way; a cache hit or a missing key is never a reason to drop the line. Where Vault
+doctrine and the brief's locally derived stats disagree, the brief says so in one sentence
+and ranks the doctrine first. (SKLLPLG-268) **Pause** until the user confirms the voice sounds right and
 picks a direction — do not script in a voice you haven't confirmed.
 
 ---
 
 ### Step 1 — Pick the move
+
+**Dedupe against what is already scripted (before proposing).** Read `<project>/scripts/*.md`;
+every approved reel there carries an `Angle: <theme> × <hook type>` line (Step 5 writes it).
+Build the set of used `(theme, hook)` pairs and exclude them from the angles you propose,
+unless nothing else remains. When a pair is repeated on purpose, say so in the proposal:
+"you scripted this pairing on <date of that file>". (SKLLPLG-201)
 
 From `scripting-brief.md`, propose **2–3 concrete reel angles**, each = {attack theme ×
 winning hook type × the gap it closes}, with the evidence cited (`@handle · metric · reel URL`
@@ -206,12 +219,12 @@ Proof → CTA → Text-overlay storyboard → Caption hook. Per section, run
      templates in `./references/opener-patterns.md` (micro-intro is YT-only — skip on IG), and
      proven shapes from `./references/hook-formulas.md`. On IG the hook is the **frame-1
      on-screen text** — write it to double as burned-in caption.
-     **Brain pull #2 (Trigger 2 of 2, optional):** if the Brain key resolves and the hook bucket
+     **Vault pull #2 (Trigger 2 of 2, optional):** if the Vault key resolves and the hook bucket
      feels stale or thin, ONE `/v1/search` — `query` = `hook <bucket> <topic>` with the bucket
      Step 2 locked; add retention/loop + "patterns to avoid" terms to the `variants` so the same
      pull refreshes the psychology + loser layers. When note-reads compete, hook hits win over
      psychology hits. Up to 3 `/v1/note` reads. Cache to `<project>/brain-pulls/`, cite
-     `[brain] <path>`. Same degrade rules; **total Brain budget for the whole reel: ≤2 searches
+     `[vault] <path>`. Same degrade rules; **total Vault budget for the whole reel: ≤2 searches
      + ≤3 note reads, never inside loops.**
      Use the client's vocabulary; pull verbatim audience pains from `voc-profile.md` where they
      fit (the client's words beat yours).
@@ -386,6 +399,11 @@ chosen angle (Checkpoint 0 voice rules still apply).
 exists, offer the superengine's plays to enrich the pool — trend deep-dives and the
 cost-gated `audience-questions` seeding (real audience questions clustered by intent).
 Absent → one-line mention, continue.
+Detect the install by EITHER that marker OR a directory matching
+`~/.claude/plugins/cache/*/socialcrawl-superengine/` (an installed-but-never-run copy has no
+marker). When it is installed, invoke its `research-plays` skill by name
+(`socialcrawl-superengine:research-plays`) for the pull, per `docs/plugin-conventions.md`
+"Cross-plugin coordination".
 
 ---
 

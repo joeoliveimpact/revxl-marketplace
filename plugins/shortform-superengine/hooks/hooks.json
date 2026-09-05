@@ -1,0 +1,29 @@
+{
+  "description": "shortform-superengine hooks. (1) UserPromptSubmit: when the prompt contains one of the skills' trigger phrases, inject one line naming the skill to invoke instead of doing the work by hand. (2) PreToolUse on Bash: SocialCrawl credit guard, cost-gates paid API calls before they spend and hard-blocks the banned transcript endpoints. Both fail-open (any error -> allow / silent).",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/skill-trigger.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/credit-guard.mjs\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

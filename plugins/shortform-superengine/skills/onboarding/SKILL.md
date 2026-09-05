@@ -165,16 +165,17 @@ socialcrawl.dev.)
 Save the key to `~/.config/socialcrawl/api_key`. Confirm with the balance/auth
 test (also Step 7). **Can't run analysis without it.**
 
-### RevXL Brain — optional (key issued by Joe)
+### RevXL Vault — optional (key issued by Joe)
 
-The living knowledge base behind the engine: current, curated content-strategy
+Joe's live strategy API, not your brand brain (that is 4b, built locally). The living
+knowledge base behind the engine: current, curated content-strategy
 intelligence that updates continuously — unlike the bundled reference files, it
 never goes stale. Access is part of the client's active RevXL subscription; the
 key comes from Joe, not a signup page.
 
 Resolution ladder (mirrors SocialCrawl): env `VAULT_API_KEY` (starts `vk_`) →
 file `~/.config/revxl/vault_api_key` → ask the client to paste the key Joe gave
-them + auto-save to that file. If they don't have one: *"Ask Joe for your Brain
+them + auto-save to that file. If they don't have one: *"Ask Joe for your Vault
 key — until then the engine runs on its built-in reference library, which works
 fine but doesn't get the newest patterns."* **Never block on it.**
 
@@ -387,6 +388,11 @@ have the SocialCrawl Superengine installed: deep research plays (audience voice 
 competitor ad recon, AI-visibility audits) are available on top."* If absent, add one
 line — *"Optional: the `socialcrawl-superengine` plugin from the same marketplace adds
 deep research plays (VoC mining, ad recon, audits)."* — and move on.
+Detect the install by EITHER that marker OR a directory matching
+`~/.claude/plugins/cache/*/socialcrawl-superengine/` (an installed-but-never-run copy has no
+marker). When it is installed, the plays are run by invoking its `research-plays` skill by
+name (`socialcrawl-superengine:research-plays`), per `docs/plugin-conventions.md`
+"Cross-plugin coordination".
 
 Sub-mode exits (refresh / reauth / update / show) end the same way: a short
 **Next moves** — 1) back to work (cross-reference or reel-scripter) · 2) run a

@@ -2,6 +2,12 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.14.1 ... 2026-09-05
+
+### Changed
+
+- **`revxl-brain-search` is renamed `revxl-vault-search`.** The client trigger becomes "check the vault", and the thing it reaches is called the RevXL Vault so it can never be confused with brand-brain, the client's own local voice profile (Joe's ruling 09.04.26). Host, `vk_` key, endpoints and budgets are unchanged, and the ledger file keeps its name (`~/.config/revxl/brain-calls.jsonl`) so existing entries are not orphaned.
+
 ## 0.14.0 ... 2026-09-04
 
 ### Added
