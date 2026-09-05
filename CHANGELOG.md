@@ -4,7 +4,7 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.1.64] ... 2026-09-05
+## [0.1.60] ... 2026-09-05
 
 ### Added
 - **workspace-superengine v0.15.0** ... the `brain-nudge` hook. PostToolUse on `Skill`

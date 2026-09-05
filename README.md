@@ -21,7 +21,7 @@ Each superengine is opinionated about audience, tone, and workflow, so it works 
 
 ## The catalog
 
-16 plugins. Versions are current as of catalog `0.1.64`.
+16 plugins. Versions are current as of catalog `0.1.60`.
 
 ### 📣 Marketing & Content
 
