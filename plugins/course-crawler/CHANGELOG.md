@@ -2,6 +2,13 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.7.1 — 2026-09-04
+
+### Fixed
+
+- **VAD enabled on both local faster-whisper paths** (`process_videos.py`, `youtube_pull.py`; SKLLPLG-259, 270). `vad_filter` defaults to False in faster-whisper and neither script set it, so long trailing silence in course videos decoded into invented sentences. `vad_filter=True` only — no batching, no VAD tuning. `onnxruntime` already ships with faster-whisper; nothing new to install.
+- **Clients on 0.5.0 receive 0.6.0 and 0.7.0 with this update.** `plugin.json` had stayed at 0.5.0 while the catalogue moved to 0.7.0, so auto-update never fired. Both are new to a 0.5.0 install: 0.6.0 adds the transcription vocabulary prompt derived from video metadata, 0.7.0 makes the Whisper model default follow the hardware (GPU → `large-v3-turbo`, CPU → `small`) and fixes `youtube_pull.py` transcribing on CPU with a GPU present. Read both entries below.
+
 ## 0.7.0 — 2026-08-17
 
 ### Fixed
