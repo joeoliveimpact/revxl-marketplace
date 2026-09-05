@@ -1,5 +1,5 @@
 ---
-name: editor-start-here
+name: editor-superengine:editor-start-here
 description: The router for editor-superengine. Use when someone says "edit my reel", "cut this talking head", "first cut", "tighten the gaps", "design the hook", "motion comps", "where do I start with editing", or "editor superengine". Also use any time it is not yet clear whether the ask is about the spoken cut or the visuals. Names the pipeline order, sends the work to the right skill, and runs the dependency check before anything touches a file.
 ---
 
@@ -37,6 +37,8 @@ improvising it here.
 | "ladder the blur", "iterate this element" | `reel-motion-comps`, step 3 |
 | "will this get covered by the Instagram UI" | `reel-motion-comps`, safe-zone pre-check |
 | a sound pass, music, captions, compositing | not in 0.1.0, say so |
+
+Invoke each with the Skill tool by its full name: `editor-superengine:reel-first-cuts`, `editor-superengine:reel-motion-comps`.
 
 ## The four shared references
 

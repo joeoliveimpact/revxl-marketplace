@@ -1,5 +1,5 @@
 ---
-name: reel-motion-comps
+name: editor-superengine:reel-motion-comps
 description: The design-iteration loop for reel visuals — direction comps over real plates, parametric ladders for craft tweaks, measured verification, and rulings taken from frames. Use when someone says "design the hook", "motion comps", "direction comps for the reel", "hook treatment options", "ladder the blur", "iterate this visual", "reel design pass", or "comp the intro". For anyone designing or iterating the on-screen visuals of a short-form reel after picture lock. Not for the spoken cut itself, and not for captions.
 ---
 

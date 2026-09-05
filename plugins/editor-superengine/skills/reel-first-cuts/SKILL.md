@@ -1,5 +1,5 @@
 ---
-name: reel-first-cuts
+name: editor-superengine:reel-first-cuts
 description: Turn a raw talking-head recording into a finished first cut — line selection, a waveform-verified EDL, gap tightening, ear-driven gap corrections, and a speed ramp — in one build pass. Use whenever someone has raw camera footage plus an approved script and wants the spoken edit assembled, on asks like "cut this reel", "build the A-roll", "tighten the gaps", "the pause after X is too long", "make it 1.15x", "why does this cut sound clipped". Also use when a cut already exists and the complaint is audible — an orphaned word, a gap that drags, a clipped consonant. Not for graphics, captions, layout or compositing; those come after picture lock.
 ---
 
