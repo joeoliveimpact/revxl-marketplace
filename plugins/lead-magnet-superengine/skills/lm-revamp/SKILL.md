@@ -77,6 +77,47 @@ Actively check for these five failure modes:
 
 ---
 
+### Step 2.5: Brain Pull (diagnosis locked, before the reshape plan) via `revxl-vault-search`
+
+**What happens:** with the scorecard filled and no recommendation written yet, Claude
+checks the Brain once for current structure and current language, so the reshape plan is
+argued against what is converting now, not only against the bundled rubric.
+
+Wiring per `${CLAUDE_PLUGIN_ROOT}/references/vault-api.md` (the `revxl-vault-search`
+skill in workspace-superengine finds the key; this skill never runs a key ladder).
+
+**Check `brain-pulls/` in the working folder first** ... a cached pull for this format
+and niche on the same spoke means no invocation for that spoke; reuse it and print
+`Brain: skipped (cached)`.
+
+No cache: two invocations, in this order.
+
+1. Invoke `workspace-superengine:revxl-vault-search` with the Skill tool, args
+   `depth=med plugin=lead-magnet-superengine spoke=frameworks-reference-library question: lead magnet weaknesses and fixes for a <format> magnet ... angles: does it solve one narrow problem; does it deliver the win; the bridge to the paid offer`.
+2. Invoke `workspace-superengine:revxl-vault-search` with the Skill tool, args
+   `depth=low plugin=lead-magnet-superengine spoke=content-strategy question: refreshing an existing lead magnet for <niche> ... angles: stronger hook and title; CTA and next step; current opt-in patterns`.
+
+That is 2 searches and 2 note reads for the whole step: `depth=med` is 1 search plus up
+to 2 reads, `depth=low` is 1 search plus 0 reads. The cap is 2 searches + 3 note reads
+per named step, so this fits with a read to spare. Do not raise the second invocation to
+`med` ... that would spend 4 reads and breach the cap. Read the echoed `spoke` back on
+each invocation; anything other than the one asked for is degraded.
+
+Weave what comes back into the reshape plan's strategic bets as extra evidence, every
+borrowed idea cited `[brain] <path>`: structure fixes from `frameworks-reference-library`,
+hook, title and CTA language from `content-strategy`. The frameworks library is a
+third-party reference library ... take its structure and ideas, never its words (the rule
+is in the wiring reference). A Brain hit never overrides a rubric FAIL; it explains or
+sharpens the fix. Save both pulls to `brain-pulls/<slug>.md`, slug carrying the spoke.
+
+**Output of this step:** one line, printed in the reshape plan directly under the
+**Rubric score:** line, exactly one of these two:
+`Brain: [brain] <path> woven` or `Brain: skipped (no key / cached / degraded / budget)`.
+No key, the skill missing, or any failure: degrade per the wiring reference and move on
+... the Brain never blocks a revamp.
+
+---
+
 ### Step 3: Present the Reshape Plan → PAUSE FOR APPROVAL
 
 **What happens:** Claude presents a concise reshape plan — what's being kept, what's being cut, what's being rewritten, and the strategic rationale for each change. Then it **stops and waits**.

@@ -182,6 +182,42 @@ Store answer as `seed.next_problem_bridge`.
 
 ---
 
+### Phase 1.5 ... Brain pull (brief locked, before the blueprint) via `revxl-vault-search`
+
+Wiring per `${CLAUDE_PLUGIN_ROOT}/references/vault-api.md` (the `revxl-vault-search`
+skill in workspace-superengine finds the key; this skill never runs a key ladder). All
+five answers are confirmed and nothing has been drafted yet, so this is the named step.
+
+**Check `brain-pulls/` in the working folder first** ... a cached pull for this niche and
+narrow problem on the same spoke means no invocation for that spoke; reuse it and print
+`Brain: skipped (cached)`.
+
+No cache: two invocations, in this order.
+
+1. Invoke `workspace-superengine:revxl-vault-search` with the Skill tool, args
+   `depth=med plugin=lead-magnet-superengine spoke=frameworks-reference-library question: lead magnet structure for <niche> coaches ... angles: magnet types consumable tool and lead-qualifying; the step sequence of a great lead magnet; narrow problem to next problem bridge`.
+2. Invoke `workspace-superengine:revxl-vault-search` with the Skill tool, args
+   `depth=low plugin=lead-magnet-superengine spoke=content-strategy question: lead magnet hooks and titles for <niche> ... angles: opt-in headline patterns; CTA language; what is converting now`.
+
+That is 2 searches and 2 note reads for the whole step: `depth=med` is 1 search plus up
+to 2 reads, `depth=low` is 1 search plus 0 reads. The cap is 2 searches + 3 note reads
+per named step, so this fits with a read to spare. Do not raise the second invocation to
+`med` ... that would spend 4 reads and breach the cap. Read the echoed `spoke` back on
+each invocation; anything other than the one asked for is degraded.
+
+Weave what comes back into the seed as extra evidence, every borrowed idea cited
+`[brain] <path>`: structure and step sequence from `frameworks-reference-library`, hook,
+title and CTA language from `content-strategy`. The frameworks library is a third-party
+reference library ... take its structure and ideas, never its words (the rule is in the
+wiring reference). Save both pulls to `brain-pulls/<slug>.md`, slug carrying the spoke.
+
+At the Phase 2 confirmation checkpoint print exactly one line:
+`Brain: [brain] <path> woven` or `Brain: skipped (no key / cached / degraded / budget)`.
+No key, the skill missing, or any failure: degrade per the wiring reference and move on
+... the Brain never blocks a build.
+
+---
+
 ### Phase 2 — Seed and Hand Off to Build Core
 
 Once all five answers are confirmed, assemble the seed object:

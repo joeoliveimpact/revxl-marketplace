@@ -203,6 +203,45 @@ Then lock in the blueprint inputs for `${CLAUDE_PLUGIN_ROOT}/core/build-core.md`
 
 ---
 
+### Step 5.5 ... Brain pull (blueprint inputs locked, before generation) via `revxl-vault-search`
+
+Wiring per `${CLAUDE_PLUGIN_ROOT}/references/vault-api.md` (the `revxl-vault-search`
+skill in workspace-superengine finds the key; this skill never runs a key ladder). The
+blueprint inputs are locked and no original line has been written yet, so this is the
+named step.
+
+**Check `brain-pulls/` in the working folder first** ... a cached pull for this magnet
+type and niche on the same spoke means no invocation for that spoke; reuse it and print
+`Brain: skipped (cached)`.
+
+No cache: two invocations, in this order.
+
+1. Invoke `workspace-superengine:revxl-vault-search` with the Skill tool, args
+   `depth=med plugin=lead-magnet-superengine spoke=frameworks-reference-library question: the mechanics behind a <source magnet type> lead magnet ... angles: why the type works; its step sequence; where the paid-offer bridge sits`.
+2. Invoke `workspace-superengine:revxl-vault-search` with the Skill tool, args
+   `depth=low plugin=lead-magnet-superengine spoke=content-strategy question: lead magnet positioning for <niche> ... angles: an adjacent angle on a crowded topic; hook and title patterns; CTA language`.
+
+That is 2 searches and 2 note reads for the whole step: `depth=med` is 1 search plus up
+to 2 reads, `depth=low` is 1 search plus 0 reads. The cap is 2 searches + 3 note reads
+per named step, so this fits with a read to spare. Do not raise the second invocation to
+`med` ... that would spend 4 reads and breach the cap. Read the echoed `spoke` back on
+each invocation; anything other than the one asked for is degraded.
+
+Weave what comes back into the abstracted pattern as extra evidence, every borrowed idea
+cited `[brain] <path>`: mechanics and step sequence from `frameworks-reference-library`,
+positioning, hook and CTA language from `content-strategy`. The frameworks library is a
+third-party reference library, so the same originality guardrail that governs the source
+material governs it: structure and ideas only, never its words. Brain hits are source
+strings for the Verbatim-Overlap Self-Check in Step 6 like any other source. Save both
+pulls to `brain-pulls/<slug>.md`, slug carrying the spoke.
+
+With the Step 6 output print exactly one line:
+`Brain: [brain] <path> woven` or `Brain: skipped (no key / cached / degraded / budget)`.
+No key, the skill missing, or any failure: degrade per the wiring reference and move on
+... the Brain never blocks a build.
+
+---
+
 ### Step 6 — Generate Original Magnet → Verbatim-Overlap Self-Check → Output
 
 Hand the blueprint inputs to `${CLAUDE_PLUGIN_ROOT}/core/build-core.md` (Stages 2–5) to draft, design, score, and output.

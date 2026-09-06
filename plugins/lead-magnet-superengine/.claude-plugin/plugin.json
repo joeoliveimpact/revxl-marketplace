@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "lead-magnet-superengine",
   "description": "Turn any starting point — scratch, your own old lead magnet, or someone else's material — into a high-converting lead magnet. Works out of the box by asking you questions; connects live research sources as optional, guided-install upgrades. Built for coaches.",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "author": { "name": "Joe Olive", "email": "joe@engineforimpact.com" },
   "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/lead-magnet-superengine",
   "license": "MIT",
