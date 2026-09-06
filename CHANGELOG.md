@@ -4,6 +4,11 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.60] ... 2026-09-05
+
+### Added
+- **lead-magnet-superengine v0.2.0** ... the three build doors (`lm-create`, `lm-inspired-by`, `lm-revamp`) each check the RevXL Brain once, after the brief is locked and before the first draft line: `frameworks-reference-library` at `depth=med` for structure and step sequence, then `content-strategy` at `depth=low` for hooks, titles and CTA language ... 2 searches + 2 note reads per step, inside the plugin's cap. New `references/vault-api.md` carries the spokes, the six recipes, the cache rule, the budget arithmetic, the evidence line and the reference library's structure-and-ideas-only copyright rule; `lm-setup` runs the connection test. Every call goes through `revxl-vault-search` (workspace-superengine 0.14.0), so the plugin holds no key ladder, no curl and no endpoint.
+
 ## [0.1.59] ... 2026-09-05
 
 ### Changed

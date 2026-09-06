@@ -223,3 +223,29 @@ The upgrades configured here map to the fallback chains that govern how each cap
 | Social | `social` | Metricool MCP | SocialCrawl → WebSearch floor |
 
 Framework recall (Hormozi magnet types, benchmarks, anti-patterns) is not an upgrade — it ships bundled in `${CLAUDE_PLUGIN_ROOT}/references/`.
+
+---
+
+## The RevXL Brain (optional, not a profile upgrade)
+
+**What it adds:** Joe's live lead-magnet material ... current frameworks and step
+sequences from the `frameworks-reference-library` spoke, current hooks, titles and CTA
+language from `content-strategy` ... pulled at one named step inside each build door and
+cited as `[brain] <path>`. It is not one of the five upgrades above: nothing is written
+to the profile and there is no endpoint to configure here.
+
+**How to enable:** a Brain key from Joe (it starts with `vk_`) plus the
+workspace-superengine plugin, version 0.15.0 or later. That plugin's
+`revxl-vault-search` skill owns the key ladder (environment, then
+`~/.config/revxl/vault_api_key`, then ask once and save). This skill never runs that
+ladder and never health-checks the Brain by hand.
+
+**Check the connection:** invoke `workspace-superengine:revxl-vault-search` with the
+Skill tool, args `test plugin=lead-magnet-superengine`. It prints the connection card
+(server, search, note read, last logged call) and handles a cold start itself. If the
+Skill tool does not list it, say that workspace-superengine is missing and move on.
+
+**If it is not there:** no key, or no workspace-superengine, and the three build doors
+run on the bundled reference docs in `${CLAUDE_PLUGIN_ROOT}/references/` and print
+`Brain: skipped (no key)` once. Nothing blocks. Wiring detail lives in
+`${CLAUDE_PLUGIN_ROOT}/references/vault-api.md`.
