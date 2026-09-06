@@ -48,6 +48,12 @@ Offer, don't push: "Optional... I can scan a few top accounts in your niche and 
 - Yes → route to `profile-competitor-scan` (it runs its own key-resolution + credit ritual). On success it writes `${CLAUDE_PLUGIN_DATA}/competitors/benchmarks.md` and stamps `{{COMPETITORS_SCANNED}}`.
 - No/skip → fine. Leave `{{COMPETITORS_SCANNED}}: none`. The audits run without benchmarks and can add the scan any time. Never gate setup on it.
 
+## 5c. Optional: the RevXL Brain (mention, never block)
+Joe's live content-strategy knowledge base. With a key, both audits pull current profile positioning, bio and pinned-content patterns, hooks and CTA language at one named step before scoring, cited as `[brain] <path>`. Needs a key from Joe (starts with `vk_`) plus the workspace-superengine plugin, version 0.15.0 or later. Nothing is written to config... there is no Brain setting to persist.
+- The key ladder (environment, then `~/.config/revxl/vault_api_key`, then ask once and save) belongs to workspace-superengine's `revxl-vault-search` skill. This wizard never runs that ladder and never health-checks the Brain by hand.
+- **Connection test:** invoke `workspace-superengine:revxl-vault-search` with the Skill tool, args `test plugin=profile-optimization-superengine`. It prints the connection card (server, search, note read, last logged call) and handles a cold start itself. If the Skill tool does not list it, say workspace-superengine is missing and move on.
+- No key, or no workspace-superengine... the audits run on the 19 bundled Facebook and Instagram reference files and print `Brain: skipped (no key)` once. Never gate setup on it. Wiring detail: `${CLAUDE_PLUGIN_ROOT}/references/vault-api.md`.
+
 ## 6. Finish (persist + confirm)
 - Write all values into `${CLAUDE_PLUGIN_DATA}/business-config.md` (the exact write target... never into the plugin's `${CLAUDE_PLUGIN_ROOT}` references copy, which is the template). Set `{{SETUP_COMPLETE}}: true`.
 - Brand-level tokens (`{{NICHE}}`, `{{IDEAL_CLIENT}}`, `{{OFFER}}`, `{{BRAND_NAME}}`, `{{BRAND_VOICE}}`) also read/write the shared `~/.claude/revxl/<brand>/voc/business-config.md` when present (Cowork/Code)... engine-specific keys (platforms, account type, DM keyword, toggles, markers) stay in `${CLAUDE_PLUGIN_DATA}`.

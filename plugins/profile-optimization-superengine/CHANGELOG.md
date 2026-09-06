@@ -2,6 +2,18 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.0]... 2026-09-05
+
+### Added
+- **The RevXL Brain, at one named step in each audit.** `profile-fb-audit` and `profile-ig-audit` each gain a Step 2.5 that checks the Brain once, after intake is locked and before the first recommendation: `depth=med` on the `content-strategy` spoke for current profile positioning, bio and pinned-content patterns, hooks and CTA language. One trigger is 1 search and at most 2 note reads, so the plugin's cap of 2 searches + 3 note reads per named step is met by construction.
+- **New wiring reference `references/vault-api.md`:** the spoke and its wrong-vault guard, the two query recipes, the `brain-pulls/` cache rule, the budget arithmetic, the evidence line and the degrade rule. No key ladder, no curl and no endpoint... the connection lives in workspace-superengine's `revxl-vault-search` skill.
+- **Evidence line on every action plan:** `Brain: [brain] <path> woven` or `Brain: skipped (no key / cached / degraded / budget)`, so a coach can always tell whether a pull happened.
+- `profile-setup` step 5c mentions the Brain as an optional connection (nothing is persisted to config) and runs the connection test by invoking `workspace-superengine:revxl-vault-search` with args `test plugin=profile-optimization-superengine`.
+- README: the optional-Brain line under Compatibility and a short Brain section.
+
+### Changed
+- Requires workspace-superengine 0.15.0 or later for live Brain pulls. Without it, or without a key, both audits run on the 19 bundled Facebook and Instagram reference files and say so once. A Brain hit never overrides a bundled rule: the single-direct-link standard, the character limits and the amplified-CTA language stay as written.
+
 ## [0.1.0]... 2026-07-13
 
 ### Added

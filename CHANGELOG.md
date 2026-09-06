@@ -4,6 +4,11 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.61] ... 2026-09-05
+
+### Added
+- **profile-optimization-superengine v0.2.0** ... both audits (`profile-fb-audit`, `profile-ig-audit`) gain a Step 2.5 that checks the RevXL Brain once, after intake is locked and before the first recommendation: `content-strategy` at `depth=med`, which is 1 search and at most 2 note reads, so the plugin's cap is met by construction. New `references/vault-api.md` carries the spoke and its wrong-vault guard, the two recipes, the cache rule, the budget arithmetic, the evidence line and the degrade rule; `profile-setup` runs the connection test. Every call goes through `revxl-vault-search` (workspace-superengine 0.14.0), so the plugin holds no key ladder, no curl and no endpoint. A Brain hit never overrides a bundled rule.
+
 ## [0.1.60] ... 2026-09-05
 
 ### Added
