@@ -49,6 +49,29 @@ Don't force all 9. A couple of good real everyday stories beat nine thin busines
 - **Scar-as-credential** — the failure/loss is now proof, not shame.
 - If an answer is thin, probe ONCE: "what happened right before that?" / "what did they actually say?" / "where were you sitting?"
 
+**Brain pull via `revxl-vault-search` ... structure check before you write the bank.** Fires
+once the coach's answers are captured and before a single entry is written. Wiring per
+${CLAUDE_PLUGIN_ROOT}/references/vault-api.md. **Check `<project>/brain-pulls/` first**
+... a cached pull means no call, and the evidence line reads `skipped (cached)`. No cache:
+ONE invocation of `workspace-superengine:revxl-vault-search` with the Skill tool, args
+`depth=med plugin=email-sequence-superengine spoke=email-reference-library
+question: story-driven email structure ... angles: which everyday story types carry an
+email; where the open loop sits; the turn from story to lesson`.
+You are looking at successful marketing emails. Look for structure, framework, sequence
+shape, subject-line pattern, open and close moves, and ideas. Never reproduce a line of
+a source email. The client's voice comes from brand-brain, the structure from the Brain.
+Use what comes back as STRUCTURE only ... it tags each entry with the engine and shape it
+fits and tells you which thin answer is worth one more probe; it never supplies story
+content, and nothing from the Brain is ever written into the bank as if the coach said
+it. Cite `[brain] <path>` and save the pull to `<project>/brain-pulls/story-intake.md` (a story intake has no campaign, so the slug is fixed and the pull is reused across intakes).
+When you confirm what you captured, print exactly one line: `Brain: [brain] <path>
+woven` or `Brain: skipped (no key / cached / degraded / budget)`.
+`med` is 1 search + up to 2 note reads, and this step fires no second pull, so it spends
+1 search + up to 2 reads against the cap of at most 2 searches + 3 note reads per named
+step.
+No key / workspace-superengine missing / any failure ... degrade per the wiring doc,
+print `Brain: skipped (degraded)`, and keep going. The Brain never blocks a story intake.
+
 ## Write to the story-bank
 For each answer, append an entry to the story-bank (see ${CLAUDE_PLUGIN_ROOT}/references/story-bank.md):
 - the RAW story (verbatim-ish, the coach's words/details)

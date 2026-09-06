@@ -52,6 +52,22 @@ engine — proven required ingredients (Hormozi + Settle), not nice-to-haves.
 
 > This is long. For beginners, OFFER to do it in 2 passes (essentials now: 1-2,5,7,10,13,21-26; the deeper avatar/offer fields next session). Don't force all 26 in one sitting — but flag that the deep fields are what make the copy convert.
 
+## Brain key (optional, ask last)
+
+Ask once, in plain English: *"Did Joe give you a RevXL Brain key? With one, every sequence
+gets checked against a library of successful marketing emails as I build ... structure and
+subject-line patterns, never their words."* The key itself belongs to the
+`revxl-vault-search` skill in workspace-superengine (it looks for one, or asks and saves it
+once); this wizard never asks for the value and never stores it.
+
+Then run the connection test: invoke `workspace-superengine:revxl-vault-search` with the
+Skill tool, args `test plugin=email-sequence-superengine`. It prints the connection card
+(server, search, note read, last logged call) and handles a cold first call itself. If the
+Skill tool does not list `workspace-superengine:revxl-vault-search`, tell the coach that
+workspace-superengine is missing, that the engine will run on its bundled campaign
+frameworks, and move on. Setup never blocks on the Brain. Wiring:
+${CLAUDE_PLUGIN_ROOT}/references/vault-api.md.
+
 ## Finish
 - Write all values into business-config. Brand-level tokens (avatar, offer, positioning) also read/write the shared `~/.claude/revxl/<brand>/voc/business-config.md` when present, per the note in business-config.md — engine-specific keys stay in `${CLAUDE_PLUGIN_DATA}`.
 - Confirm back to the coach in plain English (per explanation level).

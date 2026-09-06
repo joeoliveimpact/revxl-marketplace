@@ -4,6 +4,11 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.63] ... 2026-09-05
+
+### Added
+- **email-sequence-superengine v0.3.0** ... the email engine checks the Brain before it drafts. Nine content skills each carry one named trigger that invokes `workspace-superengine:revxl-vault-search` against the `email-reference-library` spoke (a corpus of successful marketing emails) and takes STRUCTURE only ... sequence shape, subject-line patterns, open and close moves ... never a line of source copy. New `references/vault-api.md` carries the wiring: spokes, invocation, the vault's copyright rule verbatim, one recipe per generator, cache, budget, evidence line, degrade. `email-setup` runs the skill's connection test. Requires workspace-superengine 0.14.0 or later for live pulls.
+
 ## [0.1.62] ... 2026-09-05
 
 ### Added

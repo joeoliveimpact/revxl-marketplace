@@ -21,13 +21,13 @@ Each superengine is opinionated about audience, tone, and workflow, so it works 
 
 ## The catalog
 
-17 plugins. Versions are current as of catalog `0.1.62`.
+17 plugins. Versions are current as of catalog `0.1.63`.
 
 ### 📣 Marketing & Content
 
 | Plugin | Version | What it does |
 |---|---|---|
-| [email-sequence-superengine](plugins/email-sequence-superengine/) | 0.2.1 | Email nurture engine for high-ticket coaches. 8 sequence generators (pre-call, launch, warm, no-show, follow-up, winback, onboarding) in your voice, with story banks and GHL push. 13 skills. |
+| [email-sequence-superengine](plugins/email-sequence-superengine/) | 0.3.0 | Email nurture engine for high-ticket coaches. 8 sequence generators (pre-call, launch, warm, no-show, follow-up, winback, onboarding) in your voice, with story banks and GHL push. 13 skills. |
 | [meta-ads-superengine](plugins/meta-ads-superengine/) | 0.4.0 | Full Meta-ads coaching journey: strategy, breakeven math, creative, launch runbook, daily ops, competitor pulse. 27 skills. **Proprietary license.** |
 | [carousel-superengine](plugins/carousel-superengine/) | 0.5.0 | Voice-matched IG/LinkedIn carousel engine: create, render to finished slides, review, teardown competitor decks. 10 skills. |
 | [shortform-superengine](plugins/shortform-superengine/) | 0.3.4 | Short-form reel scripting with enforced craft screens, competitor pulse, and creator strategy harvesting. 7 skills. |
