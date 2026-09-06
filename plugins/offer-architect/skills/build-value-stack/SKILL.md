@@ -15,6 +15,25 @@ Apply Hormozi's $100M Offers framework — full construction, not just an invent
 - Reference (primary): `references/kb/00-master-protocol.md` (orchestration) + `kb/01-value-equation.md`, `kb/03-trim-and-stack.md`, `kb/04-scarcity-urgency-bonuses.md`, `kb/05-guarantees.md`, `kb/06-naming.md`
 - Reference (quick): `references/hormozi-100m-offers-summary.md`
 
+## Step 0b ... Brain pull: framework structure for this stack (via `revxl-vault-search`)
+
+Wiring per [`../../references/vault-api.md`](../../references/vault-api.md). **Check `brain-pulls/` first**
+... a cached pull for this offer means no invocation. No cache: ONE invocation of
+`workspace-superengine:revxl-vault-search` with the Skill tool, args
+`depth=med plugin=offer-architect spoke=frameworks-reference-library question: value stack construction for <niche> <offer type> ... angles: value equation drivers; trim and stack; bonus stack structure; guarantee stack`.
+Read the echoed `spoke` back; anything other than `frameworks-reference-library` is
+degraded.
+
+Weave what comes back as **structure and ideas only**: it may reshape which value-equation driver to engineer first, the order of the Trim & Stack inventory, the shape of the bonus set, or the guarantee ladder. It never supplies a
+sentence. Never quote, closely paraphrase or reproduce the source text ... cite
+`[brain] <path>` as the source of the idea, not of the words. Save the cited hits to
+`brain-pulls/<offer-slug>.md`. At Step 10 (Confirm) print exactly one evidence line:
+`Brain: [brain] <path> woven` or `Brain: skipped (no key / cached / degraded / budget)`.
+No key, skill missing, mismatched spoke or any other failure ... degrade per the
+reference, print the skipped line and keep going; the Brain never blocks this step.
+This is the only Brain invocation in this skill: 1 search and at most 2 note reads,
+inside the cap of 2 searches + 3 note reads per named step.
+
 ## Step 1 — Value Equation diagnostic
 
 Score the current/proposed offer 0-1 on each of the four drivers, with explicit rationale and an upgrade move for each:

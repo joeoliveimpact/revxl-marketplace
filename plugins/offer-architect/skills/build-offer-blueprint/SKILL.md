@@ -37,6 +37,28 @@ Locate and read all of:
 
 If Coach Profile or Market Research is missing, stop. Route the coach back through `intake-coach` and `research-market` first.
 
+## Step 0b ... Brain pull: blueprint structure and launch-gate framing (via `revxl-vault-search`)
+
+Wiring per [`../../references/vault-api.md`](../../references/vault-api.md). **Check `brain-pulls/` first**
+... a cached pull for this offer means no invocation. No cache: ONE invocation of
+`workspace-superengine:revxl-vault-search` with the Skill tool, args
+`depth=med plugin=offer-architect spoke=frameworks-reference-library question: offer blueprint and launch readiness for <niche> <offer name> ... angles: offer document structure; naming frameworks; risk reversal; launch gate criteria`.
+Read the echoed `spoke` back; anything other than `frameworks-reference-library` is
+degraded.
+
+Weave what comes back as **structure and ideas only**: it may reshape how a Blueprint section is framed, which naming angles are worth generating at Step 2, or how risk reversal is presented. It never supplies a
+sentence. Never quote, closely paraphrase or reproduce the source text ... cite
+`[brain] <path>` as the source of the idea, not of the words. Save the cited hits to
+`brain-pulls/<offer-slug>.md`. At Step 9 (Hand-off to the coach) print exactly one evidence line:
+`Brain: [brain] <path> woven` or `Brain: skipped (no key / cached / degraded / budget)`.
+No key, skill missing, mismatched spoke or any other failure ... degrade per the
+reference, print the skipped line and keep going; the Brain never blocks this step.
+This is **not** the market audit. `offer-market-auditor` runs later, at Step 5,
+against a drafted Blueprint and with open-web evidence; this pull runs first and
+only shapes the draft. Never feed Brain hits to the auditor as market data.
+This is the only Brain invocation in this skill: 1 search and at most 2 note reads,
+inside the cap of 2 searches + 3 note reads per named step.
+
 ## Step 1 — Intake gap-check (three modes)
 
 Walk every required field in `templates/intake-required-fields.md`. For each:

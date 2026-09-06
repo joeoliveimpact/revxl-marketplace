@@ -7,7 +7,7 @@
     "email": "joe@engineforimpact.com"
   },
   "metadata": {
-    "version": "0.1.61"
+    "version": "0.1.62"
   },
   "plugins": [
     {
@@ -80,10 +80,10 @@
     },
     {
       "name": "offer-architect",
-      "description": "v0.2.2 · Build market-validated, Hormozi-structured coaching offers — start to finish. 10 skills + 1 audit agent take a coach from intake → deep market research → value stack → pricing matrix → finalized offer → a 3–5 page Offer Blueprint (the coach's source of truth) + a Projected Success Score report (0–100 launch-readiness with plain-English priority fixes). Two-layer scoring: preventive exit-checks at every step + capstone audit. Hard rule on no-inventing-deliverables via provenance tags.",
+      "description": "v0.3.0 · Build market-validated, Hormozi-structured coaching offers — start to finish. 10 skills + 1 audit agent take a coach from intake → deep market research → value stack → pricing matrix → finalized offer → a 3–5 page Offer Blueprint (the coach's source of truth) + a Projected Success Score report (0–100 launch-readiness with plain-English priority fixes). Two-layer scoring: preventive exit-checks at every step + capstone audit. Hard rule on no-inventing-deliverables via provenance tags.",
       "source": "./plugins/offer-architect",
       "category": "coaching",
-      "version": "0.2.2",
+      "version": "0.3.0",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"
