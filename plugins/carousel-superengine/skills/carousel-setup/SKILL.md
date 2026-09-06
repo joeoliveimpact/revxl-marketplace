@@ -39,6 +39,16 @@ Ask conversationally, per `{{EXPLANATION_LEVEL}}`. Push for CONCRETE phrasing in
 15. **Full-slide fetch setup** (Claude Code only) — full-slide teardown needs Python 3.10+ and the client's own Instagram cookies. No install, no browser script — the fetch is stdlib-only. Check `python --version` ≥ 3.10. If present, OFFER to capture cookies now: walk the client through the 2-minute Cookie-Editor export in ${CLAUDE_PLUGIN_ROOT}/references/ig-cookie-setup.md, save the pasted JSON to `${CLAUDE_PLUGIN_DATA}/ig_session.json`, and mark `{{FULL_SLIDE_FETCH}}: available`. Skipping is fine — teardown falls back to the SocialCrawl cover path, and cookies can be pasted later at first teardown. Refresh only when a fetch reports `login_required` (no scheduled expiry). On Cowork/Desktop (no local Python) mark `unavailable`.
 16. **Call transcripts** — `{{TRANSCRIPT_SOURCE}}`: does the coach record calls (Fathom, Fireflies, Granola…)? Connected service → name it; otherwise `manual` (paste when needed — default). Plain: "If your calls get recorded, I can turn this week's client questions straight into carousels."
 
+**RevXL Brain key (optional ... nothing to ask, nothing stored here)** ... the Brain is Joe's live
+content-strategy knowledge base; with a key, `carousel-create` pulls the newest patterns at two named
+points. The `workspace-superengine` plugin owns the key and the connection, so this wizard records
+nothing ... it only checks the line works. Run the connection test now: invoke
+`workspace-superengine:revxl-vault-search` with the Skill tool, args `test plugin=carousel-superengine`.
+The skill finds the key (or asks for it once), then prints its connection card ... ask the coach to
+screenshot it for Joe. If the Skill tool does not list that skill, say *"workspace-superengine is
+missing ... install it to get the newest patterns,"* and move on. No key or no workspace-superengine is
+fine: every skill runs on the bundled library and says so once.
+
 **E. Output + rendering**
 17. **Output destination** — chat draft (default) / workspace file / both.
 18. **Render preference** — `{{RENDER_PREF}}`: when a build finishes, images via image-gen (A) / Claude Design prompt (C) / ask each time (default). Plain-English the two: "A = I generate the finished slides, optionally with YOUR face on them. C = I hand you one prompt; Claude's Design tool builds the cards on your existing plan."

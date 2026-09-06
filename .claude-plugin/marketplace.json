@@ -7,7 +7,7 @@
     "email": "joe@engineforimpact.com"
   },
   "metadata": {
-    "version": "0.1.58"
+    "version": "0.1.59"
   },
   "plugins": [
     {
@@ -277,10 +277,10 @@
     },
     {
       "name": "carousel-superengine",
-      "description": "v0.4.1 · Voice-matched Instagram and LinkedIn carousel engine for coaches — from topic to finished slide images. Run setup once, then generate complete carousels: per-slide copy, design, caption, hashtags, and the actual images (AI-generated in your look, optionally with your trained face; a paste-ready Claude Design prompt; or local PNG/LinkedIn-PDF rendering on Claude Code). Save any finished look as a reusable template and every next build takes minutes. Includes a paste-a-link teardown, a niche-wide competitor synthesis, carousel-from-your-calls, and optional scheduled draft builds (suggest-only; you approve everything). Drafts only — you post. Your config, voice, and templates persist across plugin updates.",
+      "description": "v0.5.0 · Voice-matched Instagram and LinkedIn carousel engine for coaches — from topic to finished slide images. Run setup once, then generate complete carousels: per-slide copy, design, caption, hashtags, and the actual images (AI-generated in your look, optionally with your trained face; a paste-ready Claude Design prompt; or local PNG/LinkedIn-PDF rendering on Claude Code). Save any finished look as a reusable template and every next build takes minutes. Includes a paste-a-link teardown, a niche-wide competitor synthesis, carousel-from-your-calls, and optional scheduled draft builds (suggest-only; you approve everything). Drafts only — you post. Your config, voice, and templates persist across plugin updates.",
       "source": "./plugins/carousel-superengine",
       "category": "marketing",
-      "version": "0.4.1",
+      "version": "0.5.0",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"

@@ -4,6 +4,11 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.59] ... 2026-09-05
+
+### Changed
+- **carousel-superengine v0.5.0** ... Brain calls go through `revxl-vault-search` (workspace-superengine 0.14.0): the wiring doc keeps its carousel specifics and drops its own key ladder, curl blocks and error table; carousel-create's two triggers invoke the skill by name; the `content-strategy` spoke is named explicitly; carousel-setup runs the skill's connection test.
+
 ## [0.1.58] ... 2026-09-05
 
 ### Changed

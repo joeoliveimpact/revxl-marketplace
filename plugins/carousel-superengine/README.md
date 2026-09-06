@@ -78,9 +78,17 @@ approve every draft, and "stop the weekly carousel" kills it anytime. Posting is
 - Spend credits without telling you first (scheduled runs spend none unless you explicitly cap some in)
 - Ship your voice/config data anywhere... the brand brain lives on your machine
 
+## The RevXL Brain (optional)
+
+With a Brain key from Joe, carousel-create pulls the newest content-strategy patterns at two named points and cites them as `[brain] <path>`. The connection comes from the workspace-superengine plugin (`revxl-vault-search`): it finds or asks for the key once, keeps every call inside the daily budget, and explains any failure in plain English. Without a key, or without workspace-superengine, the engine runs on its built-in library and says so once.
+
 ## Requirements
 
 - None for generation.
+- RevXL Brain (optional): a Brain key from Joe plus the workspace-superengine plugin (0.14.0 or
+  later), which provides the connection. Adds live pulls of Joe's newest content-strategy patterns
+  at carousel-create's two named points, cited `[brain] <path>`; without either, the engine runs on
+  its bundled library and says so once.
 - Teardown/inspire link pulls: a free [SocialCrawl](https://www.socialcrawl.dev/?ref=AQNU384G) API key
   (bring-your-own-key; the engine walks you through it).
 - Full-slide teardown (optional): Claude Code + Python 3.10+ and your own Instagram cookies, exported
