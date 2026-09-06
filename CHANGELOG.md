@@ -4,6 +4,18 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.62] ... 2026-09-05
+
+### Added
+- **offer-architect v0.3.0** ... Brain wiring. A new `references/vault-api.md` names the
+  `frameworks-reference-library` spoke and carries the copyright rule verbatim (structure
+  and ideas only, never quoted or closely paraphrased, cited as the source of the idea
+  and not the words). `build-value-stack`, `price-matrix`, `finalize-offer` and
+  `build-offer-blueprint` each invoke `workspace-superengine:revxl-vault-search` once at
+  a named step before drafting and print a `Brain:` evidence line; `intake-coach` runs
+  the connection test. `plugin.json` gains the `$schema`, `homepage` and `license`
+  fields it was the only catalog plugin missing.
+
 ## [0.1.61] ... 2026-09-05
 
 ### Added

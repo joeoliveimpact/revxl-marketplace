@@ -1,11 +1,14 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "offer-architect",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Guided pipeline that takes a coach from \"I have an idea\" to a finalized, market-validated, Hormozi-structured offer document — plus a NotebookLM-ready video deliverable for prospects.",
   "author": {
     "name": "Joe Olive",
-    "email": "joe@bizzfixx.com"
+    "email": "joe@engineforimpact.com"
   },
+  "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/offer-architect",
+  "license": "MIT",
   "keywords": [
     "coaching",
     "offer",

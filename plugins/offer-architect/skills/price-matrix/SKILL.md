@@ -14,6 +14,25 @@ Three pricing ladders for the coach to pick a launch posture from.
 - Value Stack (especially total perceived value)
 - Reference: Hormozi commitment-pricing data (annual 2% churn vs monthly 10.7%, LTV 5×)
 
+## Step 0b ... Brain pull: pricing structure patterns (via `revxl-vault-search`)
+
+Wiring per [`../../references/vault-api.md`](../../references/vault-api.md). **Check `brain-pulls/` first**
+... a cached pull for this offer means no invocation. No cache: ONE invocation of
+`workspace-superengine:revxl-vault-search` with the Skill tool, args
+`depth=med plugin=offer-architect spoke=frameworks-reference-library question: pricing and commitment ladder for <niche> <container lengths> ... angles: commitment pricing ladder; premium price anchoring; tier structure; triggers to raise price`.
+Read the echoed `spoke` back; anything other than `frameworks-reference-library` is
+degraded.
+
+Weave what comes back as **structure and ideas only**: it may reshape the ladder's tier spread, how the premium anchor is framed, or which trigger events belong on the raise-price list. It never supplies a
+sentence. Never quote, closely paraphrase or reproduce the source text ... cite
+`[brain] <path>` as the source of the idea, not of the words. Save the cited hits to
+`brain-pulls/<offer-slug>.md`. At Step 8 (Confirm + recommendation) print exactly one evidence line:
+`Brain: [brain] <path> woven` or `Brain: skipped (no key / cached / degraded / budget)`.
+No key, skill missing, mismatched spoke or any other failure ... degrade per the
+reference, print the skipped line and keep going; the Brain never blocks this step.
+This is the only Brain invocation in this skill: 1 search and at most 2 note reads,
+inside the cap of 2 searches + 3 note reads per named step.
+
 ## Step 1 — Anchor the math
 
 From market research, identify:

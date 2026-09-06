@@ -2,6 +2,33 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.3.0] - 2026-09-05
+
+### Added
+- `references/vault-api.md` ... the RevXL Brain wiring reference for this plugin: the
+  `frameworks-reference-library` spoke, the copyright rule (structure and ideas only,
+  never quoted, cited as the source of the idea and not the words), the invocation, the
+  per-skill query recipes, the cache and budget rules, the evidence line and the
+  degrade rules.
+- Brain trigger at one named step in `build-value-stack`, `price-matrix`,
+  `finalize-offer` and `build-offer-blueprint` (`Step 0b`, after the inputs are read
+  and before the first draft). Each fires ONE `depth=med` invocation of
+  `workspace-superengine:revxl-vault-search` with `plugin=offer-architect` and
+  `spoke=frameworks-reference-library`, checks `brain-pulls/` first, and prints a
+  `Brain: ...` evidence line at the skill's next checkpoint. `export-roadmap-video`
+  gets no trigger: it repackages decisions already locked upstream.
+- `intake-coach` Step 1b runs the Brain connection test (`test plugin=offer-architect`)
+  and degrades in plain English when workspace-superengine is missing.
+- README: optional-Brain-key line under dependencies and a Brain section.
+
+### Changed
+- `plugin.json` now carries the `$schema`, `homepage` and `license` (MIT, matching the
+  shipped LICENSE) fields every other catalog plugin has, and the author email matches
+  the rest of the catalog.
+- Requires workspace-superengine 0.15.0 or later for live Brain pulls; without it the
+  pipeline degrades to its bundled references and says so once. No curl, no key
+  handling and no endpoint lives in this plugin.
+
 ## [0.2.2] — 2026-05-15
 
 ### Changed

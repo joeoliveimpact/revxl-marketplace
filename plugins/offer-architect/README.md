@@ -62,6 +62,23 @@ The plugin writes to a `Clients/[Coach Name]/` folder in your workspace. Researc
 - `brand-voice` plugin — for voice capture and enforcement
 - `gws-docs` skill — for pulling existing Google Docs the coach has
 - Web search capability (built into Claude Code)
+- RevXL Brain key (optional) ... adds live pulls of current offer-framework structure
+  at four named steps; the connection comes from the `workspace-superengine` plugin
+  (0.15.0 or later). Without it the pipeline runs on the bundled `references/` library.
+
+## The RevXL Brain (optional)
+
+With a Brain key from Joe, four skills (`build-value-stack`, `price-matrix`,
+`finalize-offer`, `build-offer-blueprint`) check the vault at one named step each
+before they draft, and cite what they used as `[brain] <path>`. They read one spoke,
+`frameworks-reference-library`, an outside-author business-frameworks corpus, and they
+read it for **structure and ideas only** ... never a quote, never a close paraphrase,
+never reproduced text. The citation is the source of the idea, not of the words. The
+connection itself comes from the `workspace-superengine` plugin (`revxl-vault-search`):
+it finds or asks for the key once, keeps every call inside the daily budget, and
+explains any failure in plain English. Without a key, or without workspace-superengine,
+the pipeline runs on its bundled reference library and says so once. See
+`references/vault-api.md` for the full wiring rules.
 
 ## Origin
 
@@ -95,3 +112,10 @@ The `kb/` folder is the **canonical executable reference** — skills should pre
 `0.2.1` — adds preventive scoring layer: `skill-exit-checks.md` + exit-check step in all 7 upstream skills (intake-coach, research-market, find-gaps, assess-feasibility, build-value-stack, price-matrix, finalize-offer). Each skill runs its slice of the PSS rubric before completing — catching gaps at source instead of letting them leak to the capstone. The capstone PSS now reflects offer quality, not pipeline hygiene.
 
 `0.2.2` — clarity + consistency polish. Exit-check steps in all 7 upstream skills now have explicit step numbers (was placeholder "Step N"). `start` skill updated to (a) include `build-offer-blueprint` in the pipeline routing — was missing — (b) set coach expectation that the pipeline may pause for quality gates or external deep-research prompts, and (c) flag the Offer Blueprint + PSS as the true DoD with NotebookLM bundle/video as optional follow-ons. Math bugs fixed in Jared's dry-run artifacts (bonus stack arithmetic, speed-to-launch projection). Band wording aligned across rubric, template, capstone skill, and gauge mockups — only 90+ now signals "launch now."
+
+`0.3.0` ... Brain wiring. New `references/vault-api.md`; `build-value-stack`,
+`price-matrix`, `finalize-offer` and `build-offer-blueprint` each check the vault at
+one named step through `workspace-superengine:revxl-vault-search`; `intake-coach` runs
+the connection test. Spoke `frameworks-reference-library`, structure and ideas only.
+`plugin.json` gains the `$schema`, `homepage` and `license` fields every other
+catalog plugin carries.

@@ -21,6 +21,21 @@ Before asking the coach anything, check whether brand/voice/business materials a
 
 Summarize what was found before asking new questions — never ask for info you already have.
 
+## Step 1b ... Brain connection check (optional, never blocks)
+
+The RevXL Brain is Joe's live framework knowledge base. A Brain key is part of the
+RevXL subscription and comes from Joe, not a signup page. To check whether this
+machine is connected, invoke `workspace-superengine:revxl-vault-search` with the Skill
+tool, args `test plugin=offer-architect`. It prints the connection card (server,
+search, note read, last logged call), finds or asks for the key itself, and explains
+any failure in plain English. Nothing in this plugin handles the key.
+
+If the Skill tool does not list it, tell the coach that workspace-superengine is
+missing and move on. No key, or a card that does not pass ... say once: *"Ask Joe for
+your Brain key ... until then the engine runs on its built-in framework library, which
+works fine but does not get the newest offer patterns."* Then continue the intake.
+This check never blocks, and it is the only Brain call in this skill.
+
 ## Step 2 — Structured intake (one AskUserQuestion batch per category, max 4 questions per batch)
 
 Cover these categories. Each is a question or a small batch:

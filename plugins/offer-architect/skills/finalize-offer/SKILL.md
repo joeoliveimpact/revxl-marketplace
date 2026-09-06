@@ -20,6 +20,25 @@ Locate and read all of:
 
 If any are missing, stop and route back through the pipeline.
 
+## Step 0b ... Brain pull: lock-in structure for the final offer (via `revxl-vault-search`)
+
+Wiring per [`../../references/vault-api.md`](../../references/vault-api.md). **Check `brain-pulls/` first**
+... a cached pull for this offer means no invocation. No cache: ONE invocation of
+`workspace-superengine:revxl-vault-search` with the Skill tool, args
+`depth=med plugin=offer-architect spoke=frameworks-reference-library question: locking a <niche> offer for launch ... angles: guarantee structures; scarcity and urgency mechanisms; sales mechanism and onboarding shape; final offer document sections`.
+Read the echoed `spoke` back; anything other than `frameworks-reference-library` is
+degraded.
+
+Weave what comes back as **structure and ideas only**: it may reshape which guarantee and scarcity options the Step 1 decision pass puts in front of the coach, and how the final document's sections are ordered. It never supplies a
+sentence. Never quote, closely paraphrase or reproduce the source text ... cite
+`[brain] <path>` as the source of the idea, not of the words. Save the cited hits to
+`brain-pulls/<offer-slug>.md`. At Step 5 (Hand-off summary) print exactly one evidence line:
+`Brain: [brain] <path> woven` or `Brain: skipped (no key / cached / degraded / budget)`.
+No key, skill missing, mismatched spoke or any other failure ... degrade per the
+reference, print the skipped line and keep going; the Brain never blocks this step.
+This is the only Brain invocation in this skill: 1 search and at most 2 note reads,
+inside the cap of 2 searches + 3 note reads per named step.
+
 ## Step 1 — Decision question pass (sequenced AskUserQuestion batches)
 
 Walk the coach through the unresolved decisions, in order. Max 4 questions per batch:
