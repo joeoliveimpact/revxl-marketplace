@@ -35,9 +35,11 @@ coach, but the append-only log stays authoritative and the no-vibes evidence
 gate is unchanged — whether the log was fed by manual paste, CSV, or MCP, live
 data corroborates it, never replaces it.
 
-**2. Brain (1 search).** Recipe = ops-verdict (scaling) row: query the
-stage-exit + raise posture, variants keyed to the diagnosed stage ("stage 3
-ramp ceiling raise-in-place"). Self-evidencing line; degrade F9.
+**2. Brain (1 search + up to 2 reads, via `revxl-vault-search`).** Invoke
+`workspace-superengine:revxl-vault-search` with the Skill tool, args
+`depth=med plugin=meta-ads-superengine spoke=meta-ads-strategy question:
+stage-exit and raise posture ... angles: the diagnosed stage; stage 3 ramp
+ceiling raise-in-place`. Self-evidencing line; degrade F9.
 
 **3. Verdict:**
 - **GO:** raise-in-place — **≤20%, same campaign, then hands off 48–72h.**

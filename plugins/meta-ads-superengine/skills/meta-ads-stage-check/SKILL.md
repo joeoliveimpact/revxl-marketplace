@@ -44,8 +44,11 @@ Consecutive-days are counted window-aware (metrics.md); cite the covering rows.
 Demand **kpi-log evidence, not vibes** (read `kpi_log`); no evidence → the
 move is "keep gathering data", route to daily-brief/performance-review.
 
-**4. Brain (1 search).** Recipe = stage row: query the stage posture, variants
-keyed to the diagnosed stage ("stage 1 test broad CBO kill discipline").
+**4. Brain (1 search + up to 2 reads, via `revxl-vault-search`).** Invoke
+`workspace-superengine:revxl-vault-search` with the Skill tool, args
+`depth=med plugin=meta-ads-superengine spoke=meta-ads-strategy question: <the
+diagnosed stage> posture ... angles: the diagnosed stage; stage 1 test broad
+CBO kill discipline`.
 Self-evidencing line; degrade F9.
 
 **5. Write** `stage`.

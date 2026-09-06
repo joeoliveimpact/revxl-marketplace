@@ -31,8 +31,11 @@ struggles"). Label h1/h2/… per naming grammar — CT-Tool variant IDs.
 **3. 40-character check** on every hook (the mobile cutoff); flag any that
 bury the payload.
 
-**4. Brain (1 search).** Recipe = awareness row: query "hook <awareness
-stage> coaching", variants keyed to the concept's pain. Self-evidencing
+**4. Brain (1 search + up to 2 reads, via `revxl-vault-search`).** Invoke
+`workspace-superengine:revxl-vault-search` with the Skill tool, args
+`depth=med plugin=meta-ads-superengine spoke=meta-ads-strategy question: hook
+<awareness stage> coaching ... angles: the concept's pain; the awareness
+frame`. Self-evidencing
 line; degrade F9.
 
 **5. Write** the hook sheet artifact; note its path on each concept row's own `artifacts.hooks` key (never touch another kind's key).

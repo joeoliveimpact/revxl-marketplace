@@ -85,8 +85,11 @@ segments the coach KNOWS differ in value (age band, source, device) — inject
 LTV knowledge Meta can't see; accept possibly higher CPL for better quality.
 Skip at Stage 1 (no data yet).
 
-**6. Brain (1 search).** Recipe = funnel-event / signal row: query "CAPI pixel
-dedup EMQ coaching", variants keyed to the CRM. Self-evidencing line;
+**6. Brain (1 search + up to 2 reads, via `revxl-vault-search`).** Invoke
+`workspace-superengine:revxl-vault-search` with the Skill tool, args
+`depth=med plugin=meta-ads-superengine spoke=meta-ads-strategy question: CAPI
+pixel dedup EMQ coaching ... angles: the CRM; the qualified-lead event`.
+Self-evidencing line;
 degrade F9.
 
 **7. Live-check the product surface** (menu paths, one-click CAPI availability)

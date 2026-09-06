@@ -39,9 +39,11 @@ concrete: named objects, budgets, settings.
 exception (multiple ad sets / saturation) — **alongside, never instead of**,
 the conversion campaign (framework 5.3). Only for $10k+.
 
-**3. Brain (1–2 searches).** Recipe = stage row (campaign structure rides on
-the stage posture): query "campaign structure stage N consolidated CBO",
-variants keyed to stage + offer tier.
+**3. Brain (1 search + up to 2 reads, via `revxl-vault-search`).** Campaign structure rides on
+the stage posture. Invoke `workspace-superengine:revxl-vault-search` with the
+Skill tool, args `depth=med plugin=meta-ads-superengine spoke=meta-ads-strategy
+question: campaign structure stage <N> consolidated CBO ... angles: the stage
+posture; the offer tier`.
 Self-evidencing line; degrade F9.
 
 **4. Write** the plan artifact (naming convention) → `campaign_plan` (path).

@@ -187,8 +187,8 @@ One coach = usually one brand; agencies/multi-offer = N files, fully isolated.
 > **Marker (`.superengine`):** owned by setup — Section 0 writes `active_brand`
 > (+ optional `marker_version`), Section D updates `installed_at`/`connections`.
 > **`connections.brain_key` (optional):** the ask-once outcome so later trigger
-> points stay silent ... `"ok <date>"` | `"declined <date>"` | `"server-401 <date>"`;
-> absent = never asked (run the ladder). See `vault-api.md`.
+> points stay silent ... `"ok <date>"` | `"declined <date>"`;
+> absent = never asked (the `revxl-vault-search` skill runs the ladder). See `vault-api.md`.
 > **`tooling_level` (optional):** the Claude/tooling-familiarity level
 > (`new`/`learning`/`pro`) when it DIVERGES from the ads-familiarity `teach-level`;
 > absent = the two axes match (today's behavior). See `teach-mode.md`.

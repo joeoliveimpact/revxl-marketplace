@@ -64,9 +64,13 @@ offered, with the constraint named.
 ANGLE candidates (never structure clones); own-winners get "replicate into
 paid" priority slots (founder-face default — it outperforms polish).
 
-**5. Brain (heaviest consumer — 2 searches).** Recipe rows: awareness +
-format ("problem aware hook coaching", "static long copy cold traffic"
-keyed to the concepts just cut). Weave returned patterns; cite
+**5. Brain (heaviest consumer ... 1 search + up to 2 reads, via `revxl-vault-search`, depth med).** Invoke
+`workspace-superengine:revxl-vault-search` with the Skill tool, args
+`depth=med plugin=meta-ads-superengine spoke=meta-ads-strategy question: creative
+concepts for coaching offers ... angles: problem aware hook coaching; static long
+copy cold traffic` (angles keyed to the concepts just cut). The `high` depth
+would spend up to 3 search units and breach this plugin's
+2-searches-per-named-step cap, so this step stays at `med`. Weave returned patterns; cite
 `[brain] <path>`; self-evidencing line; degrade F9.
 
 **6. Write** concept rows into `creatives[]` (status draft) + route each to
