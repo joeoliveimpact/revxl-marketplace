@@ -42,8 +42,10 @@ volume to optimize.
   CRM-native Meta integration — the actual wiring is signal-setup's job
   (Say: "set up tracking").
 
-**4. Brain (1 search).** Recipe = funnel-event row: query "qualified lead
-event conversion leads", variants keyed to the CRM + gate. Self-evidencing
+**4. Brain (1 search + up to 2 reads, via `revxl-vault-search`).** Invoke
+`workspace-superengine:revxl-vault-search` with the Skill tool, args
+`depth=med plugin=meta-ads-superengine spoke=meta-ads-strategy question: qualified
+lead event conversion leads ... angles: the CRM; the qualification gate`. Self-evidencing
 line; degrade F9.
 
 **5. Write** `funnel.{qualified_event, qualification_gate, wiring,

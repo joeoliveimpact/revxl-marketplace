@@ -51,6 +51,12 @@ Two phrases are worth memorizing:
 The first time through, the engine runs a short setup — your offer, your price,
 your CRM — and everything after that builds on it.
 
+## The RevXL Brain (optional)
+
+**Requires the workspace-superengine plugin, version 0.14.0 or later.** That is where the `revxl-vault-search` skill lives, and it is the only way this engine reaches the Brain: it finds or asks for the key once, keeps every call inside the daily budget, and explains any failure in plain English.
+
+With a Brain key from Joe, fourteen skills pull the newest Meta-ads strategy patterns at named points and cite them as `[brain] <path>`, and setup runs the Brain connection test ... fifteen skills in all that reach the Brain. Without a key, or without workspace-superengine 0.14.0 or later, the engine runs on its built-in library and says so once.
+
 ## Connecting Ads Manager (optional)
 
 You do **not** need to connect anything to use the engine. Typing or pasting

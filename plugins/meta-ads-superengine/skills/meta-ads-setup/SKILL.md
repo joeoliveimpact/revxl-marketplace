@@ -79,12 +79,24 @@ here on.
 Detect, never demand — absent is NEVER a blocker (family law):
 | Connection | Detect | Unlocks | Fix |
 |---|---|---|---|
-| Brain key | ladder per `vault-api.md` (env → `~/.config/revxl/vault_api_key`) | freshest strategy patterns woven into deliverables | paste your access key here when you have it — I'll store it for you (degrades cleanly without it — F9) |
+| Brain key | run the Brain connection test below | freshest strategy patterns woven into deliverables | paste your access key here when you have it ... the test stores it for you (degrades cleanly without it ... F9); workspace-superengine missing → install it |
 | Brand brain (voc/) | `~/.claude/revxl/<brand>/voc/voice-guide.md` | copy in YOUR voice; absent → offer capture at first creative skill, not now | build the brand brain (voc/) — offered at the first creative skill |
 | Meta MCP | connected tools | live numbers instead of pasting; manual-paste always works | Say: "connect ads manager" |
 | GHL MCP | connected tools | qualified-event fast-path wiring | Say: "connect ads manager" |
 | socialcrawl key | env → `~/.config/socialcrawl/api_key` | competitor/own-content mining (✋ credit-gated) | paste your `sc_` key here when you have it — I'll store it for you |
 | carousel-superengine | its `.superengine` marker | slide production handoff | install carousel-superengine |
+
+**Brain connection test (the Brain-key row above).** Invoke
+`workspace-superengine:revxl-vault-search` with the Skill tool, args
+`test plugin=meta-ads-superengine` (the `test` op takes no spoke and no
+question ... it runs its own fixed probe). The skill finds the
+key or asks for it once, probes the server, runs one search and one read, and
+prints its connection card. Record the outcome to `connections.brain_key`:
+`"ok <date>"` on a pass, `"declined <date>"` if the coach declines to paste a
+key. If the Skill tool does not list `revxl-vault-search`, workspace-superengine
+is not installed: mark the row ⚠️, say *"install workspace-superengine
+to connect the Brain"*, leave `connections.brain_key` absent, and move on ...
+absent is never a blocker (F9).
 
 → Write results into the marker's `connections` block.
 

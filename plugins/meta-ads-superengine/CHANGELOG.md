@@ -5,6 +5,24 @@ All notable changes to Meta Ads Superengine are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-09-05
+
+### Changed
+
+- **Brain calls go through `revxl-vault-search`.** The wiring reference keeps its
+  name and everything meta-ads specific (the `meta-ads-strategy` spoke rule, the
+  recipe table, the anchored cache, the evidence line, the compliance boundary)
+  and drops its own key ladder, the three curl blocks and the error table. Those
+  live in one place for every RevXL plugin now: the `revxl-vault-search` skill in
+  workspace-superengine 0.14.0, which also logs every call and tells the three
+  429 reasons apart. All fifteen Brain-calling skills name it: the fourteen
+  trigger points say so in their headers and each spells out the full
+  invocation, and setup's Brain-key row runs the skill's connection test. Behaviour at each trigger is
+  unchanged: same recipes, same budget, same `Brain: [brain] <path> woven /
+  skipped (...)` line, degrade never blocks the journey.
+- Requires workspace-superengine 0.14.0 or later for live Brain pulls; without
+  it the engine degrades to its bundled references and says so once.
+
 ## [0.3.0] - 2026-07-22
 
 ### Added

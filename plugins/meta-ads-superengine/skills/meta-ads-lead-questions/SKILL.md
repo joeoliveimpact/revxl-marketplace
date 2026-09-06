@@ -48,8 +48,11 @@ voice sketch; **write `voice_sketch` on capture**) and proceed **labeled
 - Mechanics: Instant Form (native, low friction) vs external quiz — recommend
   per the coach's stack and volume goal.
 
-**3. Brain (1 search, optional).** Recipe = funnel-event / awareness: query
-"lead qualification questions coaching", variants keyed to the gate.
+**3. Brain (1 search, no reads, optional, via `revxl-vault-search`).** Invoke
+`workspace-superengine:revxl-vault-search` with the Skill tool, args
+`depth=low plugin=meta-ads-superengine spoke=meta-ads-strategy question: lead
+qualification questions coaching ... angles: the qualification gate; the
+awareness stage`.
 Self-evidencing line; degrade F9.
 
 **4. Write** the artifact (workspace naming convention); note path in
