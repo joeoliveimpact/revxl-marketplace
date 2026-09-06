@@ -99,6 +99,14 @@ If a live view is blocked by a login wall, it degrades gracefully to screenshots
 | Claude Code | all 6 | Browser audit only if a browser tool is present, else screenshots. Persistent brand brain + persisted setup config. Competitor scan available (SocialCrawl key + credits). |
 | Claude.ai Chat | 5 of 6 | Screenshot intake. Voice captured inline per session (no persistent brain / no persisted config). Competitor scan needs a shell, so it's unavailable here. |
 
+**Optional: a RevXL Brain key.** With a key from Joe, both audits pull Joe's newest profile positioning, bio and pinned-content patterns, hooks and CTA language at one named step before scoring, cited as `[brain] <path>`. The connection comes from the workspace-superengine plugin (`revxl-vault-search`, version 0.15.0 or later), not from this one. Without a key, or without workspace-superengine, the audits run on the 19 bundled reference files and say so once.
+
+---
+
+## The RevXL Brain (optional)
+
+One knowledge area backs the audits: `content-strategy`, Joe's own live strategy material... current profile positioning, bio and pinned-content patterns, hooks and CTA language. It is checked once per audit, after your intake is locked and before the first recommendation, and every idea it contributes is cited as `[brain] <path>`. A Brain hit never overrides a bundled rule: the single-direct-link standard, the character limits and the amplified-CTA language stay as written. Every action plan prints one line, `Brain: [brain] <path> woven` or `Brain: skipped (...)`, so you always know whether a pull happened.
+
 ---
 
 ## Changelog

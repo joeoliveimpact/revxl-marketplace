@@ -21,7 +21,7 @@ Each superengine is opinionated about audience, tone, and workflow, so it works 
 
 ## The catalog
 
-17 plugins. Versions are current as of catalog `0.1.60`.
+17 plugins. Versions are current as of catalog `0.1.61`.
 
 ### 📣 Marketing & Content
 
@@ -33,7 +33,7 @@ Each superengine is opinionated about audience, tone, and workflow, so it works 
 | [shortform-superengine](plugins/shortform-superengine/) | 0.3.4 | Short-form reel scripting with enforced craft screens, competitor pulse, and creator strategy harvesting. 7 skills. |
 | [editor-superengine](plugins/editor-superengine/) | 0.1.0 | Raw talking-head recording to a finished first cut (waveform-verified boundaries, gap tightening, one render from the raw, a silence budget), then the design-iteration loop for the reel's visuals. Every script ships inside; bundled or bring-your-own Whisper. 3 skills. |
 | [lead-magnet-superengine](plugins/lead-magnet-superengine/) | 0.2.0 | Builds lead magnets three ways: from scratch, from a source, from your existing content. 6 skills + 1 agent. |
-| [profile-optimization-superengine](plugins/profile-optimization-superengine/) | 0.1.0 | Social-profile optimization (bio, pinned content, CTA structure) for coach acquisition. 6 skills. |
+| [profile-optimization-superengine](plugins/profile-optimization-superengine/) | 0.2.0 | Social-profile optimization (bio, pinned content, CTA structure) for coach acquisition. 6 skills. |
 | [focus-group-superengine](plugins/focus-group-superengine/) | 0.1.1 | Synthetic persona-swarm testing for marketing assets before you publish them. 2 skills. |
 | [socialcrawl-superengine](plugins/socialcrawl-superengine/) | 0.2.1 | Social research plays on the SocialCrawl API: competitor content, trends, engagement. 3 skills. |
 

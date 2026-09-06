@@ -206,6 +206,24 @@ Once you have enough to score all 11 elements, proceed to the scorecard.
 
 ---
 
+## Step 2.5 ... Brain pull (intake locked, before the first recommendation) via `revxl-vault-search`
+
+Wiring per `${CLAUDE_PLUGIN_ROOT}/references/vault-api.md` (the `revxl-vault-search` skill in workspace-superengine finds the key... this skill never runs a key ladder). Intake is locked and nothing has been scored or recommended yet, so this is the named step.
+
+**Check `brain-pulls/` in the working folder first**... a cached pull for this platform and niche means no invocation; reuse it and print `Brain: skipped (cached)`.
+
+No cache: ONE invocation. Invoke `workspace-superengine:revxl-vault-search` with the Skill tool, args `depth=med plugin=profile-optimization-superengine spoke=content-strategy question: instagram personal profile optimization for <niche> coaches ... angles: name field and bio hook; highlights and pinned trio; single-link CTA and DM keyword`.
+
+One trigger at `depth=med` is 1 search and up to 2 note reads. The cap is 2 searches + 3 note reads per named step, so a single trigger meets it by construction... there is nothing to total, and a second trigger is never added here. Never invoke inside a loop and never once per profile element. Read the echoed `spoke` back; anything other than `content-strategy` is degraded.
+
+Fill `<niche>` from `{{NICHE}}` (loaded or confirmed in Step 2). Weave what comes back into the Step 3 scoring notes and the Step 4 fix blocks as extra evidence, every borrowed idea cited `[brain] <path>`... the same way competitor benchmarks are woven. A Brain hit never overrides a bundled reference rule: the single-direct-link standard, the 64-character Name field and 150-character bio limits and the amplified-CTA language stay exactly as written. Save the pull to `brain-pulls/<slug>.md`.
+
+With the Step 5 action plan print exactly one line:
+`Brain: [brain] <path> woven` or `Brain: skipped (no key / cached / degraded / budget)`.
+No key, the skill missing, or any failure: score and recommend from the bundled references, print the skipped line, and move on... the Brain never blocks an audit.
+
+---
+
 ## Step 3 ... Audit & Score
 
 ### Optional: competitor benchmarks (detect, never require)
