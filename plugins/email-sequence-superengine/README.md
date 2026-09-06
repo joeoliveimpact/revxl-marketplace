@@ -94,8 +94,24 @@ Full step-by-step in the [marketplace INSTALL guide](../../README.md#install).
 |------------|----------------------|---------------------------|
 | Push finished copy into your CRM as templates | GoHighLevel MCP (`ghl-push`) | Copy the drafts out manually / export |
 | Match your written voice automatically | A workspace voice guide or VoC source | Answer the voice questions in `email-setup` |
+| Check every sequence's structure against a corpus of successful marketing emails | Optional RevXL Brain key, connected by workspace-superengine 0.15.0 or later (`revxl-vault-search`) | The bundled campaign frameworks |
 
 Sending, domain warm-up, SPF/subdomain setup, and list hygiene are **your** responsibility and gate any real send. This plugin writes the copy; it does not send it.
+
+---
+
+## The RevXL Brain (optional)
+
+With a Brain key from Joe, every generator checks its structure against the
+`email-reference-library` spoke ... a corpus of successful marketing emails from master
+copywriters ... at one named point before it drafts, and cites what it used as
+`[brain] <path>`. **Structure only:** the engine takes sequence shape, subject-line
+patterns, and open and close moves, and never reproduces a line of a source email. Your
+voice still comes from your own brand brain. The connection comes from the
+workspace-superengine plugin (`revxl-vault-search`, 0.15.0 or later): it finds or asks for
+the key once, keeps every call inside the daily budget, and explains any failure in plain
+English. Without a key, or without workspace-superengine, the engine runs on its bundled
+campaign frameworks and says so once.
 
 ---
 

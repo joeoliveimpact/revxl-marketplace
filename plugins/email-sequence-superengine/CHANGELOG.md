@@ -2,6 +2,32 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.3.0] ... 2026-09-05
+
+### Added
+- **Every content skill checks the Brain before it drafts.** Nine skills (the eight
+  campaign generators plus `email-add-stories`) each gained ONE named trigger point, fired
+  after the brief is locked and before the first line is written: one invocation of
+  `workspace-superengine:revxl-vault-search` against the `email-reference-library` spoke,
+  a corpus of successful marketing emails from master copywriters. What comes back is
+  STRUCTURE ... sequence shape, subject-line pattern, open and close moves ... never a
+  line of source copy, which is that vault's own client-facing rule. The coach's voice
+  still comes from brand-brain. Each pull is cached to `<project>/brain-pulls/`, cited
+  `[brain] <path>`, and evidenced at the next checkpoint with `Brain: [brain] <path>
+  woven` or `Brain: skipped (...)`. An optional second pull (`depth=low`, spoke
+  `content-strategy`) covers subject-line hooks and CTA moves when the first found none.
+- **`references/vault-api.md`** ... the wiring reference: both spokes, the invocation, the
+  copyright rule verbatim from the vault, one query recipe per generator, the cache rule,
+  the per-step budget (at most 2 searches + 3 note reads), the evidence line and the
+  degrade rule. No curl, no key ladder and no endpoint appear anywhere in this plugin.
+- **`email-setup` runs the Brain connection test** ... it invokes the skill with `test` and
+  shows the coach the connection card, or says workspace-superengine is missing. Setup
+  never blocks on the Brain.
+
+### Changed
+- Requires workspace-superengine 0.15.0 or later for live Brain pulls; without it (or
+  without a key) the engine degrades to its bundled campaign frameworks and says so once.
+
 ## [0.2.1] — 2026-07-04
 
 Premortem-driven hardening of the bundled `brand-brain` producer + its consumers. A premortem found the signature-bits pipeline weak at both ends: bit candidates from a single private call carried no quality bar, and no consumer reads `signature-bits.md` yet — so v0.2.0's "human-canonized humor" described a ceremony whose output nothing consumed. This release makes the honest state explicit and hardens the brain's labeling.

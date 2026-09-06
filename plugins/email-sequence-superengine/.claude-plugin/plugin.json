@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "email-sequence-superengine",
   "description": "Voice-matched broadcast email sequences for high-ticket coaches. Run setup once, then generate any of 8 campaigns: pre-call show-up, pre-sell VSL script, launch, warm nurture, no-show recovery, post-call follow-up, win-back, and new-client onboarding. Broadcast model (built once, fires to everyone) with a dosed storytelling engine, pitch-floor controls, a voice-edge dial, teach-mode explanations, and ESP-agnostic output plus optional GoHighLevel push. Drafts only, never sends. Your stories and config persist across plugin updates.",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "author": {
     "name": "Joe Olive",
     "email": "joe@engineforimpact.com"
