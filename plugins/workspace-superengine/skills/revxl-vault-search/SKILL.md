@@ -32,7 +32,8 @@ shared across every RevXL plugin the client runs. `related` spends a search.
 
 ### Depth ladder
 
-Pick the depth the caller asked for; default `med`.
+Pick the depth the caller asked for; default `med`. An `angles:` tail on the
+question supplies the variants (last section).
 
 | Depth | Spend | What it does |
 |---|---|---|
@@ -47,9 +48,10 @@ answer needs more than the cap, say what you found and what was left unread.
 ### Spokes (knowledge areas)
 
 The server decides which areas the client's key can reach. **Never infer a spoke from
-the question.** Send a `spoke` field only when the invoking plugin or the client named
-one explicitly (for example meta-ads-superengine names `meta-ads-strategy`). With no
-spoke in the body the server answers from the key's default area. Always report the
+the question.** Send a `spoke` field on every call when the invoking plugin or the
+client named one explicitly (for example meta-ads-superengine names
+`meta-ads-strategy`), and never when they did not. With no spoke in the body the
+server answers from the key's default area. Always report the
 `spoke` the server echoes back, so the calling plugin can check it got the area it
 expected.
 
@@ -93,8 +95,12 @@ Search:
 ```bash
 curl -s -m 90 -w "\nHTTP:%{http_code} TIME:%{time_total}" -X POST https://brain.engineforimpact.com/v1/search \
   -H "x-api-key: $VAULT_API_KEY" -H "content-type: application/json" \
-  -d '{"query":"<the question>","variants":["<rewrite 1>","<rewrite 2>"],"limit":8}'
+  -d '{"query":"<the question>","variants":["<rewrite 1>","<rewrite 2>"],"limit":8,"spoke":"<spoke>"}'
 ```
+
+When the caller passed `spoke=`, every body in this invocation carries
+`"spoke":"<that value>"` (search, note, related); drop the field only when no spoke
+was named.
 
 Returns `{spoke, hits[{path, title, tags, snippet, score, rank, links}]}`. `links` are
 related note paths, the "go deeper" trail. Optional fields, use only when the caller
@@ -107,7 +113,7 @@ Read (each path spends 1 read; up to 3 per call):
 ```bash
 curl -s -m 90 -w "\nHTTP:%{http_code} TIME:%{time_total}" -X POST https://brain.engineforimpact.com/v1/note \
   -H "x-api-key: $VAULT_API_KEY" -H "content-type: application/json" \
-  -d '{"paths":["<hit path>","<hit path 2>"],"related":false}'
+  -d '{"paths":["<hit path>","<hit path 2>"],"related":false,"spoke":"<spoke>"}'
 ```
 
 Returns `{spoke, notes[{path, found, title, tags, body, links, backlinks}]}`.
@@ -117,7 +123,7 @@ Related (spends 1 search):
 ```bash
 curl -s -m 90 -w "\nHTTP:%{http_code} TIME:%{time_total}" -X POST https://brain.engineforimpact.com/v1/related \
   -H "x-api-key: $VAULT_API_KEY" -H "content-type: application/json" \
-  -d '{"path":"<hit path>","depth":1,"direction":"both","limit":8}'
+  -d '{"path":"<hit path>","depth":1,"direction":"both","limit":8,"spoke":"<spoke>"}'
 ```
 
 The paths are exactly `/v1/search`, `/v1/note`, `/v1/related`. Not `/search`, not a
@@ -232,6 +238,13 @@ report. Never keep calling after a 403 or a 429.
 
 Invoke this skill with the Skill tool as `workspace-superengine:revxl-vault-search`
 with args shaped `depth=<low|med|high> plugin=<your plugin name> [spoke=<area>]
-question: <the question>`. Name a spoke only if your plugin requires one. Read the echoed `spoke` back before using the
+question: <the question>`. Name a spoke only if your plugin requires one.
+
+The question may end with `angles: <a>; <b>; <c>`. Those angles become the search
+`variants`, in order, instead of rewrites you invent, still capped by depth (`low`
+none, `med` 2, `high` 3); extras are dropped, never extra searches. `variants` is
+not a caller field, so a plugin that wants specific rewrites puts them here.
+
+Read the echoed `spoke` back before using the
 hits. If this skill is not installed, degrade to your bundled references and tell the
 client that workspace-superengine is missing.
