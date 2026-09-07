@@ -2,6 +2,41 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.15.0 ... 2026-09-07
+
+### Added
+
+- **`brain-nudge` hook** ... catches the case the trigger points inside the content
+  plugins are supposed to cover and occasionally will not: a generating skill drafts
+  client work without checking the Vault first. PostToolUse on `Skill` records which
+  of the 30 content-drafting skills (29 generators plus the email story intake) ran
+  this session; PreToolUse on `Write|Edit` checks `~/.config/revxl/brain-calls.jsonl`
+  for a call at or after that moment and, finding none, adds one line of context
+  asking for a `revxl-vault-search` call or the `Brain: skipped (...)` line with its
+  reason (the evidence line keeps the wording every plugin trigger point prints). A
+  failed Vault call counts as a call. It speaks once per generator run, never blocks a
+  Write, never returns a permission decision, and fails silently on every error (no
+  perl, no home directory, an unreadable or unparseable ledger) ... an uncertain nudge
+  is worse than no nudge. Claude Cowork does not load plugin hooks, so this is Desktop
+  and Code only; the plugins' own trigger points still fire there.
+
+### Changed
+
+- **`revxl-vault-search` accepts an `angles:` hint.** A calling plugin can end its
+  question with `angles: <a>; <b>; <c>` and those angles become the search variants,
+  in order, instead of rewrites the skill invents ... the plugin's recipe knows its
+  own vocabulary. The depth ladder still caps how many are sent and extras are
+  dropped, never turned into extra searches. `variants` remains not a caller field.
+
+### Fixed
+
+- **The `revxl-vault-search` request templates now carry the caller's spoke on every
+  search, note and related call.** The field was described in prose only and was
+  dropped in practice, so a plugin naming `email-reference-library` could be answered
+  from the key's default area. This is the fix that lead-magnet 0.2.0,
+  profile-optimization 0.2.0, offer-architect 0.3.0 and email-sequence 0.3.0 name
+  0.15.0 as their floor for.
+
 ## 0.14.1 ... 2026-09-05
 
 ### Changed

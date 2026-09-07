@@ -4,6 +4,23 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.64] ... 2026-09-07
+
+### Added
+- **workspace-superengine v0.15.0** ... the `brain-nudge` hook. PostToolUse on `Skill`
+records which of the 30 content-drafting skills (29 generators plus the email story
+intake) ran; PreToolUse on `Write|Edit` adds one line of context when no Vault call has
+been logged since it started, asking for a `revxl-vault-search` call or the
+`Brain: skipped (...)` line. Once per generator run, never blocks, silent on every error.
+Cowork does not load plugin hooks, so it is Desktop and Code only. `revxl-vault-search`
+also learns an `angles: a; b; c` hint: a calling plugin's recipe terms become the search
+variants instead of rewrites the skill invents. Rebuilt from the closed PR #56 onto the
+renamed skill; this is the release lead-magnet 0.2.0, profile-optimization 0.2.0,
+offer-architect 0.3.0 and email-sequence 0.3.0 name as their floor.
+
+### Fixed
+- **workspace-superengine v0.15.0** ... the `revxl-vault-search` request templates now carry the caller's spoke on every search, note and related call; before, the field was described in prose only and was dropped in practice, so a plugin naming `email-reference-library` could be answered from the key's default area.
+
 ## [0.1.63] ... 2026-09-05
 
 ### Added
