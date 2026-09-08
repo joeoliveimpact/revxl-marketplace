@@ -4,6 +4,66 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.4.0] ... 2026-09-08
+
+### Added
+- **A front door and a compass.** `shortform-start` ("start shortform") opens the
+  journey, migrates a 0.3.x marker-only machine into the new state file without
+  re-asking anything, and hands off. `shortform-next` ("what's next in shortform")
+  reads that state and ranks two to four moves, and it writes nothing, so you can
+  ask it as often as you like.
+- **`content-plan`**, the weekly plan exit: 7 to 15 source-tagged ideas from four
+  sources (the field's outliers, your own material and VoC, fresh signals via
+  `google_news`, `google_trends` and `reddit`, and audience questions), balanced
+  across your pillars and deduped against everything already scripted.
+- **`## Terminal paths` in the top third of every skill.** Every ending, including
+  every failure, decline and degrade, now has a written block that offers the next
+  move. Placement is the point: after a context compaction the tail of a long
+  SKILL.md is gone, and the skill that produces the deliverable was exactly the one
+  losing its routing.
+- **The routing gate.** `scripts/check_routing.py`, wired as `validate.py --section
+  routing` and a sixth CI job, fails the build on a block past the compaction cut,
+  a block outside Terminal paths, a block citing no journey-map id, a registry
+  edge no block cites, an endpoint no table row names, a stale catalog version
+  prefix, or a wrong README skill count.
+- **`skills/_shared/references/`**: `journey-map.md` (the roster and the edge
+  registry, E0 to E24 and F1 to F9), `routing.md` (the block grammar),
+  `state-schema.md` (one state file per brand, one writer per key) and
+  `socialcrawl-endpoints.md` (every endpoint this plugin calls, with its price).
+
+### Changed
+- **The Vault runs on the 0.15.0 contract**, so live pulls need
+  workspace-superengine 0.15.1 or later. Without it the skills say so in one line
+  and continue on the bundled references. The Vault never blocks a script.
+- **Topic Pool moved out of `reel-scripter` into `content-plan`**, which is where
+  a weekly pool belongs and which fixes the pools-are-too-small problem: one source
+  became four. `reel-scripter` gains "script idea N from my content plan".
+- **Six retained skills retrofitted** to the same pattern: the description carries
+  every phrase a block offers, `## Prereq (E0)` names the door, state is read at
+  the start and the owned keys written at the end.
+- **`reel-scripter` and `competitor-cross-reference` steps now summarise inline**,
+  with the full prose in `references/`. Every guardrail and checkpoint survives;
+  the step text you read in the file is shorter than it was.
+
+### Removed
+- **The bundled `socialcrawl` skill.** Its endpoints are now
+  `_shared/references/socialcrawl-endpoints.md` and nothing calls it by name.
+  Anything deeper than that table (field search beyond the roster, creator vetting,
+  share of voice, lead finding) belongs to socialcrawl-superengine, and the compass
+  renders a written install refusal that routes rather than stalling.
+- **The "hand off to the vault" option** on a finished harvest (SKLLPLG-78).
+  Engines read the Vault; they never write to it.
+
+### Known limits
+- The pulse's `instagram/search/reels` leg is priced at 5cr where the docs say 1cr,
+  and `prism/universal` is undocumented. Both carry a "verify against
+  `credits_used`" note in the endpoints table; no credits were spent to settle it.
+- `own-content-analysis` and `subject-matter` ship in 0.5.0. Until then "read my
+  results" routes to the weekly pulse, and every block offering them is marked
+  "(if installed)".
+- The SKLLPLG-236 reel-scripter repairs and the SKLLPLG-234 competitor-pulse
+  repairs ship in 0.4.1. No Python script in this plugin changed in 0.4.0.
+
 ## [0.3.4] — 2026-09-05
 
 ### Fixed

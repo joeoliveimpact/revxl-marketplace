@@ -1,50 +1,107 @@
 ---
 name: reel-scripter
 description: >
-  Analysis-driven Instagram reel scripting. Trigger phrases: "write a reel
-  script", "script a reel from my analysis", "turn my competitor analysis into
-  a reel", "draft an IG reel in my voice", "reel-scripter", "script the next
-  reel for <client>", "give me a reel hook + body + CTA", "weekly topic pool",
-  "idea bank", "20 ideas from the best performers". Consumes a completed
-  competitor-cross-reference run (analysis-data.json) plus the client's voice
-  profile, and produces an in-voice reel script grounded in the niche's *proven*
-  moves — Hook → Secondary hook → Body beats → Proof → CTA, plus caption and a
-  flow-check. Shortform format engine #1 of the Content Superengine.
+  Analysis-driven Instagram reel scripting. Trigger phrases:
+  "write a reel script", "write a reel script from my analysis",
+  "script a reel from my analysis", "turn my competitor analysis into a reel",
+  "draft an IG reel in my voice", "script the next reel for <client>",
+  "give me a reel hook + body + CTA", "script the next angle",
+  "script that reel", "script the top gap", "script the top seed",
+  "script the top idea", "script the top question",
+  "script idea N from my content plan".
+  Consumes a completed competitor-cross-reference run (analysis-data.json)
+  plus the client's voice profile, and produces an in-voice reel script
+  grounded in the niche's *proven* moves: hook, secondary hook, body beats,
+  proof, CTA, plus a caption and a flow-check.
+  Shortform format engine #1 of the Content Superengine.
 ---
 
 ## Teach mode
 
-Read `~/.claude/revxl/teach-mode` if it exists, else default `beginner`. In
-**beginner**: plain-English-first — explain in plain words, then name the
-technical term with a one-line gloss on first use, and add a "what this means for
-you" line where the consequence isn't obvious. In **off**: standard professional
-voice, no glosses. Convention + adjust rules: `../_shared/references/teach-mode.md`
-(`/teach-mode off`, or a plain request like "stop explaining the basics", →
-rewrite that file and confirm).
+One family-shared dial: `~/.claude/revxl/teach-level` (`new` / `learning` / `pro`, default
+`new`), legacy `teach-mode` mapped on read. Copy the read snippet verbatim from
+`../_shared/references/teach-mode.md`, re-read it at every start, mirror it to
+`state.teach_level`.
+
+## Terminal paths
+
+Every ending routes. Edge ids: `../_shared/references/journey-map.md`. Block grammar:
+`../_shared/references/routing.md`.
+
+**Next moves ... script written**
+(E6) the script is on disk with its evidence line. Pick the next move off it.
+1. *If `angles_unpicked[]` is not empty:* the next Step 1 angle, already vetted. Say: "script the next angle"
+2. *If it is empty:* build the week's plan so the next reel has a source. Say: "content plan"
+3. Refresh the pack so the client sees the field this attacks. Say: "regenerate my visuals"
+4. *If `pulse.scheduled` is false:* next week's winners land here. Say: "run the weekly pulse"
+
+**Next moves ... no analysis at Step 0a**
+(E9, F2) no `analysis-data.json` on disk, so there is nothing to script off.
+The field read comes first.
+1. Field analysis first: no `analysis-data.json`, nothing to script off. Say: "analyze my Instagram against my competitors"
+2. *If the marker is missing:* set up first, the analysis needs the key. Say: "set up shortform superengine"
+3. Lost in the order? Say: "what's next in shortform"
+
+**Next moves ... voice guide missing or stale (gate VOICE)**
+(F7) no voice guide on disk, or one over 7 days old.
+1. Continue on the Step 0c interim anchor; the script is labelled "voice: interim".
+2. *If no `voc/` exists:* capture the voice once; every later script inherits it. Say: "capture my voice"
+3. *If one exists, is over 7 days old, and `declined_offers` holds no `voc_refresh:<voc.refreshed_at>` entry:* refresh it, offered once, then proceed on it either way. Say: "refresh my voice guide"
+
+**Next moves ... Vault degraded: no key, or workspace-superengine missing, or the callee errored**
+(F3) the Vault leg is unavailable. The reel still finishes on the bundled references.
+1. Finish the reel on the bundled `./references/`, printing `Vault: 0 searches, 0 reads | skipped: <reason>`. The Vault never blocks a script.
+2. Retry at the next reel, never twice inside one named step; or install workspace-superengine for the live pulls, then script again. Say: "write a reel script"
+3. Check what else is stale before spending. Say: "what's next in shortform"
+
+**Next moves ... voice not confirmed at Checkpoint 0**
+(E0b) the user did not confirm the voice anchor, so nothing is scripted yet.
+1. Capture the voice properly first, once. Say: "build my brand brain"
+2. Redo the interim anchor the other way (top captions, or the Q&A), then re-show Checkpoint 0.
+3. Park the reel and pick it up later. Say: "what's next in shortform"
+
+**Next moves ... an idea picked from the content plan**
+(E7) an idea arrived from `content-plan` as the chosen angle.
+1. Script it: idea N is the angle, the run starts at Checkpoint 0. Say: "script idea N from my content plan"
+2. *If no `content-plan-<week>.md` is on disk (E0):* build the plan first. Say: "content plan"
+3. Prefer a field angle? Step 1 proposes 2 to 3 off the analysis. Say: "write a reel script"
+
+**Next moves ... subject-first requested**
+(F8) `mode` is subject-first and no subject material is on disk.
+1. subject-matter ships in 0.5.0; until then field-first. Every claim here traces to `analysis-data.json`, and the brief that satisfies that guardrail is what 0.5.0 adds. Say: "use my own material" (if installed)
+2. Bring the topic inside field-first: Step 1's vet adapts the framing, never vetoes it. Say: "write a reel script"
+3. No analysis yet? That is the real blocker. Say: "analyze my Instagram against my competitors"
+
+## Prereq (E0)
+
+- **Brand slug, required, and the first thing resolved.** `active_brand` from
+  `~/.claude/shortform-superengine/.superengine` (legacy `brand`, same value): it picks the
+  state file and the voice directory. Absent: hand off to the compass ... say
+  "what's next in shortform" and it renders the setup line as #1. Step 0a never runs
+  without the slug.
+- **Analysis, required.** `<project>/analysis-data.json` from a finished
+  `competitor-cross-reference` run, plus `analysis.date` in state. Without it this skill
+  refuses and routes (E9 above); it never improvises a field read.
+- **Voice, optional.** `~/.claude/revxl/<brand>/voc/`. Absent, Step 0c captures an interim
+  anchor and says so on the script. A reel is never gated on it.
+
+## State
+
+Contract: `../_shared/references/state-schema.md`. **Read at start** from
+`~/.claude/shortform-superengine/state/<brand>.json`: `active_brand` (marker), `analysis`,
+`voc.present` (derived from the `voc/` directory, never a stored field), `mode`,
+`declined_offers`, `scripts[]`, `angles_unpicked[]`, `plan`, `project_path`. **Written here and nowhere
+else:** `scripts[]`, `angles_unpicked[]`, `completed_skills`, `open_loops`, `declined_offers`,
+`updated_at`. `plan` belongs to `content-plan`, read-only here. No invented keys.
 
 ## Overview
 
-`reel-scripter` is the **Shortform** format engine. It does not guess what to post —
-it reads what already wins in the client's niche (from a `competitor-cross-reference`
-run) and writes a single reel in the client's own voice off that evidence.
-
-Inputs it stands on:
-- **The analysis** — `<project>/analysis-data.json` (the core→format interface produced by
-  `competitor-cross-reference/analyze.py`). Ranked gaps, winning hook types, theme×hook,
-  outliers, opener patterns. This is the *what to say* layer.
-- **The brief** — `reel-scripter/scripting_brief.py` distils that JSON (+ transcripts when
-  present) into `<project>/scripting-brief.md`: attack themes, winning hooks, opener
-  patterns, winning structures, length targets. This is the *how it's working* layer.
-- **The voice** — shared `voc/` artifacts (`voice-guide.md`, `voc-profile.md`,
-  `business-config`) when available; **degrades** to a fast interim voice-anchor capture
-  when they aren't. This is the *sound like the client* layer.
-
-It is a **guided, checkpointed** pipeline — you pause for a human decision at each ✋ before
-spending the next move. One run = one finished reel script written to `<project>/scripts/<slug>.md`.
-
-> **Definition of done:** a reel script the client could film today — hook that earns the
-> first 3 seconds, a body built on a structure the niche has proven, a CTA matched to the
-> goal, a caption, and an honest craft-score + flow-check — all in the client's voice.
+`reel-scripter` is the **Shortform** format engine. It never guesses what to post: it reads
+what already wins in the client's niche (from a `competitor-cross-reference` run) and writes
+one reel in the client's own voice off that evidence. A **guided, checkpointed** pipeline,
+one run = one reel at `<project>/scripts/<slug>.md`. The three input layers, the ✋ pause
+rule and the definition of done in full: `./references/pipeline-detail.md`, "Inputs" and
+"Definition of done".
 
 ---
 
@@ -57,105 +114,91 @@ spending the next move. One run = one finished reel script written to `<project>
 `analyze.py` to emit the JSON. If there is no analysis at all, stop and route the user to
 `competitor-cross-reference` first — this skill is analysis-driven by design.
 
+No analysis on disk is a terminal path, not an error: render E9 above and stop.
+
 **0b. Run the brief.**
 
 ```bash
 python ${CLAUDE_PLUGIN_ROOT}/skills/reel-scripter/scripting_brief.py <project_dir>
 ```
 
-This writes `<project_dir>/scripting-brief.md`. Read it — it is your menu of proven moves, and
-its **§8 Avoid list is this niche's own losers** (hooks/themes/opening vocabulary the field
-punishes) — every option you generate later is screened against it.
-It auto-detects **FULL** mode (spoken transcripts present) vs **CAPTION-ONLY** degrade
-(no transcripts — structures inferred from captions, flagged in a banner).
+This writes `<project_dir>/scripting-brief.md`. Read it: your menu of proven moves, and its
+**§8 Avoid list is this niche's own losers**, which screens every option later. Its two
+modes: `./references/pipeline-detail.md` "Step 0b".
 
-**0c. Resolve the voice.** In priority order:
-1. Shared `voc/` artifacts — `voice-guide.md` (rules/tone), `voc-profile.md` (verbatim
-   audience pains, vocabulary, phrases to use/avoid), `business-config` (offer, ICP, CTAs).
-   Check the shared brand brain FIRST — `~/.claude/revxl/<brand>/voc/` (brand slug from the
-   onboarding marker/config; a brain built from ANY engine lives here) — then the project,
-   then the workspace-level `voc/` if one is wired. On read: compute `days_since_update`
-   from the stamp; >7 days → surface the age + offer a brand-brain refresh ONCE, never gate
-   scripting on it. If the stamp says `provisional: true` (fewer than 3 sources mined),
-   treat rankings and voice reads as hypotheses — confirm with the user instead of leaning
-   bold. Never quote `voc-profile.md` "Mirror Language (hypothesis)" entries as audience
-   VoC — that's the client's own phrasing about themselves, not their market's.
-2. **Interim capture (degrade)** — if no `voc/`, capture a lightweight voice anchor now:
-   either 3–5 of the client's own top captions/transcripts (already in the project) **or** a
-   4-question voice Q&A (Who are you talking to? What do you say that they don't expect? What
-   words do you never use? What's your one CTA?). Note in the final script that voice was
-   interim, not the full profile.
+**0c. Resolve the voice.** Priority: shared `voc/` at `~/.claude/revxl/<brand>/voc/` FIRST
+(a brain built by any engine lives there), then the project, then the workspace. Full read
+rules (the interim capture degrade when no `voc/` exists, `days_since_update` and the
+single refresh offer, `provisional: true`, the Mirror-Language ban):
+`./references/pipeline-detail.md` "Step 0c". No `voc/` renders **no voice guide on disk**.
+A `voc/` over 7 days old gets ONE refresh offer (F7), offered only when no
+`voc_refresh:<voc.refreshed_at>` entry is in `declined_offers`; proceeding without it
+records that entry (shape: `../_shared/references/state-schema.md`), written at once, not
+at the end, which stops the compass re-offering it.
 
-**0d. Vault pull #1 — current frameworks for this topic (Trigger 1 of 2).**
-The RevXL Vault is Joe's live strategy API, not your brand brain (0c). The pull is done by
-saying "check the vault" and invoking `workspace-superengine:revxl-vault-search` when
-workspace-superengine >= 0.14.1 is installed; otherwise use the bundled curl shape in
-[`../_shared/references/vault-api.md`](../_shared/references/vault-api.md)
-(key ladder: env → `~/.config/revxl/vault_api_key` → ask once). **Check
-`<project>/brain-pulls/` first** — a cached pull for this topic means no call.
-If a key resolves and no cache: ONE `/v1/search` — `query` = the reel's topic/theme,
-`variants` = niche + format terms (e.g. `["<niche> reels", "<format> hook"]`). The format
-isn't locked yet at this step, so read it off the INPUT when it shows one: list-shaped
-source → `"listicle reel"`; client story/transformation → `"story reel"`; belief-flip →
-`"myth bust reel"`; no clear shape → default `["<niche> reels", "<topic>"]` and let hybrid
-search do the aiming — **never skip the pull because the content doesn't fit a mold.** Save
-the cited hits to `<project>/brain-pulls/<topic-slug>.md` and weave them into the
-brief's menu as extra evidence, cited `[vault] <path>`. No key / 4xx / 5xx / timeout →
-follow the reference's degrade table and move on — the Vault never blocks a script.
+**0d. Vault pull #1, the angle and its doctrine (named trigger point 1 of 2).**
+Check `<project>/brain-pulls/<slug>.md` first: a cached pull younger than **14 days** is
+reused, no call. Otherwise invoke the callee ONCE, MAKE-topic recipe from
+`../_shared/references/vault-api.md`:
+
+```
+Skill: workspace-superengine:revxl-vault-search
+args:  depth=med plugin=shortform-superengine spoke=content-strategy
+       question: <the reel's topic>
+       angles: content_ideation; transpositioning; evergreen_content
+```
+
+`depth=med` is **1 search and up to 2 reads for this step**, the whole budget. Never loop.
+Read the echoed `spoke` back; if it is not `content-strategy`, say so and treat the hits as
+unscoped. Save them to `<project>/brain-pulls/<slug>.md`, weave them into the brief's menu,
+cite `[vault] <path>`. The callee owns the key: this skill never reads or prints one. Errors
+degrade per `vault-api.md` and the run continues (**Vault degraded**); the skill not
+resolving is **workspace-superengine missing**.
 
 ### ✋ Checkpoint 0 — Confirm the voice anchor + brief read
-Show: the mode (FULL/caption-only), the top 2–3 attack themes from the brief, the voice
-source (full `voc/` vs interim), and **one Vault status line, mandatory on every brief** even
-when zero calls were made: `Vault: <n> searches, <m> reads | <ok|degraded|skipped: reason>`
-(e.g. `Vault: 1 search, 2 reads | ok` · `Vault: 0 searches, 0 reads | skipped: cached <path>` ·
-`Vault: 0 searches, 0 reads | skipped: no key`). The pull must leave a visible trace
-either way; a cache hit or a missing key is never a reason to drop the line. Where Vault
-doctrine and the brief's locally derived stats disagree, the brief says so in one sentence
-and ranks the doctrine first. (SKLLPLG-268) **Pause** until the user confirms the voice sounds right and
-picks a direction — do not script in a voice you haven't confirmed.
+Show: the mode (FULL or caption-only), the top 2 to 3 attack themes, the voice source (full
+`voc/` vs interim), and **one Vault status line, mandatory on every brief** even at zero
+calls: `Vault: <n> searches, <m> reads | <ok|degraded|skipped: reason>`. A cache hit or a
+missing callee is never a reason to drop it. Where Vault doctrine and the brief's local
+stats disagree, the brief says so in one sentence and ranks the doctrine first.
+(SKLLPLG-268) **Pause** until the user confirms the voice and picks a direction. Never
+script in a voice you have not confirmed; a decline renders **voice not confirmed at
+Checkpoint 0** above.
 
 ---
 
 ### Step 1 — Pick the move
 
-**Dedupe against what is already scripted (before proposing).** Read `<project>/scripts/*.md`;
-every approved reel there carries an `Angle: <theme> × <hook type>` line (Step 5 writes it).
-Build the set of used `(theme, hook)` pairs and exclude them from the angles you propose,
-unless nothing else remains. When a pair is repeated on purpose, say so in the proposal:
-"you scripted this pairing on <date of that file>". (SKLLPLG-201)
+**Dedupe before proposing.** Read `state.scripts[]` AND `<project>/scripts/*.md`; every
+approved reel there carries an `Angle: <theme> × <hook type>` line (Step 5 writes it). State
+is the fast path, the files are the truth when they disagree. Exclude used `(theme, hook)`
+pairs unless nothing else remains; a deliberate repeat says so: "you scripted this pairing
+on <date of that file>". (SKLLPLG-201)
 
-From `scripting-brief.md`, propose **2–3 concrete reel angles**, each = {attack theme ×
-winning hook type × the gap it closes}, with the evidence cited (`@handle · metric · reel URL`
-from the analysis). Example shape: *"Myth-bust on [under-served high-value theme] — the field's
-myth-bust hooks median Nx the client's; closes the [gap] gap."*
+From `scripting-brief.md`, propose **2 to 3 concrete reel angles**, each = {attack theme ×
+winning hook type × the gap it closes}, evidence cited (`@handle · metric · reel URL`).
+Example shape: `./references/pipeline-detail.md` "Step 1 propose".
 
 **Custom-idea field vet (mandatory when the user brings their OWN topic).** A brief-derived
-angle is already field-backed; a user-supplied idea is NOT — vet it before committing beats.
-Run its topic word(s) through the field:
+angle is field-backed; a user-supplied idea is not. Vet it before committing beats:
 
 ```bash
 python ${CLAUDE_PLUGIN_ROOT}/skills/reel-scripter/field_vet.py <project_dir> <keyword> [keyword2 ...]
 ```
 
-It reports, per keyword, the field's median views vs the field median (spoken track PRIMARY,
-captions a separate read — the C7 weighting) + a verdict. Pass the obvious frame word AND its
-adjacent candidates (e.g. `carousel design template canva`) so a losing frame surfaces its winning
-neighbor. This is the topic-level twin of §8's hook-level firewall: §8 screens hook *type*, this
-screens topic *frame*. **The idea is never vetoed — only the framing adapts.** Branch on the verdict:
+**The idea is never vetoed, only the framing adapts.** Which keywords to pass, the report
+and the four verdict branches (WINNER / NEUTRAL, LOSER, UNTESTED / THIN / NONE, thin-n):
+`./references/pipeline-detail.md` "Step 1 field vet".
 
-- **WINNER / NEUTRAL** → field-backed. Proceed; frame on the strongest winning word.
-- **LOSER (has data, underperforms)** → the field has *tried* this and it flops. **Pivot, don't
-  ditch:** keep the creator's core idea, present **2–3 data-backed adjustments** (reframe the
-  headline to the strongest adjacent WINNER, and/or swap to a proven hook type, and/or narrow to
-  the sub-angle that wins) with the numbers. The user picks; you never silently override.
-- **UNTESTED / THIN / NONE (little or no field data)** → **do NOT treat as a loser.** No data ≠ bad
-  idea — it may be genuinely new or timely (fresh news, a just-shipped tool, first-to-market), which
-  is a first-mover *edge*, not a red flag. Two moves: (1) say plainly it's untested — upside and
-  risk both live in the unknown; (2) **de-risk without killing it** — ride the novel topic on a
-  *proven hook type* + the *nearest proven frame word* so the novelty gambles on content, not also
-  on structure. Offer that as the safer build; let the user choose bold-novel vs de-risked-novel.
+**Deeper field layer (optional, detect-first).** With socialcrawl-superengine installed
+(the two-step probe is in `../_shared/references/socialcrawl-endpoints.md`),
+`research-plays` widens the angle set. Absent, do not fake it: hand off to the compass ... say
+"what's next in shortform" and it renders the F9 install refusal (edge F9), then continue on
+the analysis.
 
-Thin n (<5) counts as UNTESTED, not LOSER — a handful of reels is a hint, never a rule.
+**Persist the angles not taken.** On the Checkpoint 1 pick, write every other proposed angle
+to `state.angles_unpicked[]` as `{angle, from, opened}`, so "script the next angle" survives
+a session boundary. Step 5 removes the one scripted.
 
 ### ✋ Checkpoint 1 — Pick one angle
 **Pause.** The user picks one angle (or redirects). Everything downstream serves that one move.
@@ -164,32 +207,16 @@ Thin n (<5) counts as UNTESTED, not LOSER — a handful of reels is a hint, neve
 
 ### Step 2 — Structure → beats
 
-For the chosen hook type, pull the matching body skeleton from
-`./references/body-structures.md` (organized by hook bucket: question / myth-bust / listicle /
-story / pain-callout / contrarian / statement). Consult `./references/retention-psychology.md`
-to pick the post-hook structure by intent (Transformation Arc / Myth-Buster / Authority Solution)
-and plan the loops: where the primary loop pays off, secondary-hook count + placement for the
-length (strongest at the 12–15s window), and the beat-to-beat question chain. Lay out the beat
-list for THIS reel: `Hook → Secondary hook → Body beat 1..n → Proof → CTA`. Keep it to the length
-target the brief gives (most winning reels are short — respect it).
+For the chosen hook type, pull the body skeleton from `./references/body-structures.md` and
+the post-hook structure and loop plan from `./references/retention-psychology.md`. Lay out
+this reel's beat list, `Hook, Secondary hook, Body beat 1..n, Proof, CTA`, inside the
+brief's length target. Most winning reels are short; respect it.
 
-**Optimize the skeleton BEFORE showing it (mandatory).** A raw beat list is a draft, not the
-skeleton — screen it against the brief's proven structure the same way Step 3 screens options,
-then present the TIGHTENED version with a one-line why per change. Never hand the user an
-un-optimized skeleton and wait to be asked. The four screens:
-- **One idea, not a list (brief §5).** Winners develop a single mechanism, not five. If the body
-  carries 3+ separate develop/proof beats, collapse them — a demo that IS the proof is one beat,
-  not two; two half-payoffs read weaker than one full one.
-- **Length budget (brief §6).** Beat count must fit the seconds target (~one beat per 8–12s of
-  talk). Over budget → merge or cut, never pad to fill.
-- **One loop, paid late (`retention-psychology.md`).** The hook opens the curiosity loop; no beat
-  may resolve it early. The secondary hook DEEPENS the loop, never answers it; the full payoff
-  lands in the last third.
-- **Single lever (no second idea).** Kill any beat that introduces a second topic ("…and also
-  what it costs") — that's a different reel. One reel, one lever.
-State what you trimmed and why ("6 → 5: merged demo+receipt — one payoff, not two"). The user
-still owns Checkpoint 2 and can override any trim (their call beats the data) — but they approve
-an already-optimized skeleton, not a raw dump.
+**Optimize the skeleton BEFORE showing it (mandatory).** A raw beat list is a draft: screen
+it, then present the TIGHTENED version with a one-line why per change. Never hand over an
+un-optimized skeleton. The four screens (one idea not a list, length budget, one loop paid
+late, single lever): `./references/pipeline-detail.md` "Step 2". The user owns Checkpoint 2
+and can override any trim.
 
 ### ✋ Checkpoint 2 — Approve the skeleton (then it FREEZES)
 Show the empty beat list (labels only, no copy yet). **Pause** for the user to add/cut/reorder
@@ -200,117 +227,64 @@ fills it — only the user can change it after this point, voice never can.
 
 ### Step 3 — Fill in voice: scored options, the user assembles
 
-The skeleton is frozen. Voice work happens **inside** it: voice may reword a beat, never add /
-cut / reorder / re-purpose one, and never soften a beat's move (a myth-bust stays a myth-bust).
-Substance comes from the analysis + the client's own input; `voc/` artifacts set **tone and
-vocabulary only** — never sentences to inject verbatim. **Mandatory when the angle is the
-client's own topic:** BEFORE generating body/proof options, interview them per locked teaching
-beat — one question per beat their brain-dump hasn't already covered (their story, their step,
-their number). Options are generated only from what they actually said; if a beat has no answer,
-flag it and ask — never paper over with invented teaching.
+The skeleton is frozen. Voice works **inside** it: reword a beat, never add, cut, reorder,
+re-purpose or soften one. Substance comes from the analysis and the client's own input;
+`voc/` sets tone and vocabulary only. On a client-supplied angle the beat-by-beat interview
+is **mandatory before any option is generated**, and an unanswered beat is flagged, never
+filled with invented teaching.
 
-Work the skeleton **section by section, in order** — Hook → Secondary hook(s) → Body beats →
-Proof → CTA → Text-overlay storyboard → Caption hook. Per section, run
-**generate → screen → score → gate → pick**:
+Work **section by section, in order** (Hook, Secondary hook(s), Body beats, Proof, CTA,
+Text-overlay storyboard, Caption hook), running **generate ... screen ... score ... gate ...
+pick** per section. Option counts, hook laws, secondary-hook placement and dosage,
+storyboard rules, screening tables, the 1 to 10 scoring dimensions and the score-7 gate:
+`./references/step3-options.md`. Run them from there; they are not restated here.
 
-1. **Generate** options in the client's voice, each built on the brief's proven moves:
-   - **Hook (5–8 options)** — obey `./references/hook-mastery.md` law (single subject, single
-     question; trust anchor on line 2–3), the **HOOK → PROMISE** opener structure + bucket
-     templates in `./references/opener-patterns.md` (micro-intro is YT-only — skip on IG), and
-     proven shapes from `./references/hook-formulas.md`. On IG the hook is the **frame-1
-     on-screen text** — write it to double as burned-in caption.
-     **Vault pull #2 (Trigger 2 of 2, optional):** if the Vault key resolves and the hook bucket
-     feels stale or thin, ONE `/v1/search` — `query` = `hook <bucket> <topic>` with the bucket
-     Step 2 locked; add retention/loop + "patterns to avoid" terms to the `variants` so the same
-     pull refreshes the psychology + loser layers. When note-reads compete, hook hits win over
-     psychology hits. Up to 3 `/v1/note` reads. Cache to `<project>/brain-pulls/`, cite
-     `[vault] <path>`. Same degrade rules; **total Vault budget for the whole reel: ≤2 searches
-     + ≤3 note reads, never inside loops.**
-     Use the client's vocabulary; pull verbatim audience pains from `voc-profile.md` where they
-     fit (the client's words beat yours).
-   - **Secondary hooks — compute placements FIRST (mandatory), then 3 options per placement.**
-     Read the reel's length target and take the placement COUNT from
-     `./references/retention-psychology.md` §4's dosage table (30s→1 · 45s→1–2 · 60s→2–3 ·
-     90s→3–4) — never a single placement for a 60s+ reel. Lay the slots at the drop-off
-     points: 12–15s is always the strongest slot, then roughly every 15–20s through the back
-     half. Generate 3 scored options PER SLOT. Scripted content moments, not edit effects;
-     every tease sits on value already delivered.
-   - **Body beats + Proof (2–3 options per beat)** — fill the skeleton one idea per beat; run
-     the loop mechanics (`retention-psychology.md`: connective question-chain, partial payoffs).
-   - **CTA (2–3 options)** — matching scaffold from `./references/cta-scaffolds.md`, mapped to
-     the client's actual goal/offer (from `business-config`). ONE ask only.
-   - **Text-overlay storyboard (2 whole-storyboard options)** — the on-screen text plan for the
-     entire reel: a beat → overlay-line table over the frozen skeleton, one row per beat, **1:1**
-     (no beat skipped, none added). Frame-1 overlay = the picked hook **verbatim** (the
-     three-hook alignment check depends on it); every other line **≤6 words**, reinforcing the
-     beat's move — never transcribing the spoken line. Must pass the **silent-scroll glance
-     test**: the overlays alone, read in order with the sound off, still tell the story arc.
-   - **Caption hook (2–3 options)** — a second angle on the idea, not a copy of the spoken hook.
-2. **Screen** every option — the brief's **§8 Avoid list first** (this niche's losers), then the
-   universal tables (`opener-patterns.md` losing openers, `say-this-not-that.md` incl. approach
-   losers). A hit disqualifies the option outright; **brand-voice phrasing is not exempt.**
-3. **Score each surviving option 1–10:** hooks on single-subject clarity / single question
-   planted / scroll-stop power; secondary hooks on information-gap / narrative fit / value
-   balance; body + proof on the Story Locks rubric (`./references/story-locks.md`); CTA on
-   clarity / alignment / friction; storyboards on silent-scroll story / beat reinforcement /
-   ≤6-word discipline; caption hook on cut-off curiosity / keyword / complementary
-   angle.
-4. **Gate:** present only options scoring **≥7**, with scores and a withheld count ("8 generated,
-   3 cleared"). Fewer than 2 clear → regenerate once, then show the best available flagged
-   "below bar". The bar defaults to 7; the user can move it for the run.
-5. **The user picks** — by score plus *"which sounds most like something you'd actually say."*
-   No auto-alternatives: rewrites happen on request, per option. The pick locks; the next
-   section's options are generated **in continuity with everything picked so far**.
+**Vault pull #2, the hook (named trigger point 2 of 2).** Only when the hook layer is thin
+or stale, and only after Step 2 locked the bucket. Check `<project>/brain-pulls/` first
+(same 14-day TTL), then invoke the callee ONCE, MAKE-hook recipe from `vault-api.md`:
+
+```
+Skill: workspace-superengine:revxl-vault-search
+args:  depth=med plugin=shortform-superengine spoke=content-strategy
+       question: what makes the first three seconds work for <the locked angle>
+       angles: hook_first_3_seconds; hook_alignment; hook_negative_framing
+```
+
+Same budget, cache, degrade and evidence line. **Two named steps per reel, 0d and this
+one.** That is the entire Vault spend for a reel.
 
 On the picked hook, run the **three-hook alignment check** (`hook-mastery.md`): visual, spoken,
 and text hook must mean the same thing — fix before moving on.
 
-When every section is picked, dial the **edge** to the voice guide (how blunt/contrarian the
-client is), then run the assembled draft through the **8 Swaps** line-edit pass in
-`./references/story-locks.md` (name it · kill hedges · go negative · add contrast · loop-openers
-every ~20–30s · narrate the doubt · **second-person default** — "can this be `you`, not `I`?",
-keeping first person only for the creator's own proof) and fix weak lines with
-`./references/say-this-not-that.md` —
-this pass tightens lines; it never restructures. Then write the **caption** (picked caption hook
-+ context + the same single CTA).
+Then dial the **edge** to the voice guide, run the draft through the **8 Swaps** pass in
+`./references/story-locks.md`, and fix weak lines with `./references/say-this-not-that.md`.
+That pass tightens lines, never restructures. Then write the **caption** (picked caption
+hook, context, the same single CTA).
 
 ---
 
 ### Step 4 — Flow-check + craft score
 
-**4a. Hook lens — the 4 Hook Killers.** Run the hook through
-`../_shared/references/hook-diagnostics.md`: does it lose on **DELAY** (payoff too late),
-**CONFUSION** (ambiguous/jargon), **IRRELEVANCE** ("I"-framing, no viewer benefit), or
-**DISINTEREST** (topic the audience doesn't care about)? Fix any that fire before scoring.
-Re-scan the full assembled wording (hook, body, CTA, caption, overlays) against the brief's §8 Avoid list
-and the universal losing tables — line edits and voice phrasing are not exempt.
+**4a. Hook lens, the 4 Hook Killers.** Run the hook through
+`../_shared/references/hook-diagnostics.md`, fix any that fire, then re-scan the whole
+assembled wording against the brief's §8 Avoid list and the losing tables (detail:
+`./references/pipeline-detail.md` "Step 4a").
 
-**4b. Loop integrity — open/close looping (mandatory, run before the flow read).** The #1 retention
-mechanic is keeping a curiosity loop open at ALL times — a loop may only resolve once the next is
-already open and pulling. Walk the beat **seams** (the gap between every pair of adjacent beats) and
-label, at each seam, which loop is still OPEN. Fail conditions to fix before Checkpoint 4:
-- **Dead seam** — a seam where every loop opened so far is already resolved and no new one is open.
-  The attention drops there. Fix: hold a reveal longer, or plant a connective re-hook at that seam
-  ("but that's not even the part that…", "here's what I didn't expect", "and that's when it got
-  weird") so a loop is live across it.
-- **Early close** — the reel's spanning loop pays off before the last third. Hold the payoff later.
-- **Flat run** — 2+ consecutive beats that are pure declaration with no forward pull. Convert one
-  into a question-chain link that opens the next beat.
+**4b. Loop integrity (mandatory, before the flow read).** Walk the beat **seams** and label,
+at each seam, which loop is still OPEN. The three fail conditions (dead seam, early close,
+flat run) and their fixes: `./references/pipeline-detail.md` "Step 4b".
+
 Rule: from the hook to the CTA there is never a moment with zero open loops. The spanning loop
 (opened at hook or secondary) resolves in the final beat, not before. Flag every seam you fixed.
 
-**4c. Flow-check + skeleton integrity.** Read the script top to bottom as a viewer: does each
-beat earn the next? Any dead beat, any place the attention drops — flag and tighten. Then
-confirm the draft matches the Checkpoint-2 skeleton **beat-for-beat** (no beat added / cut /
-reordered, no move softened) — any drift gets flagged at Checkpoint 4. A change the **user**
-asks for at Checkpoint 4 is always allowed — the lock binds voice, not the user.
+**4c. Flow-check + skeleton integrity.** Read it top to bottom as a viewer, tighten any dead
+beat, then confirm the draft matches the Checkpoint-2 skeleton **beat-for-beat**. A change
+the **user** asks for is always allowed: the lock binds voice, not the user.
 
-**4d. Craft score.** Score **Hook / Body / CTA / overall (0–100)** against the **Story Locks rubric**
-(`./references/story-locks.md`) — how many of the 6 Story Locks + 8 Swaps the script lands (contrast,
-zero hedges, named framework, negative-frame, loop-openers at cadence, viewer-framing). This is an
-honest **craft** read, **not** a performance prediction: it never claims views. State the one
-highest-leverage fix. *(This is the **single** craft score for the script — the dashboard's Scripting
-Studio displays it, it does not recompute its own.)*
+**4d. Craft score.** **Hook / Body / CTA / overall (0 to 100)** on the Story Locks rubric
+(`./references/story-locks.md`). Craft only, **never** a performance prediction, and it
+never claims views. State the one highest-leverage fix. Both sub-steps in full:
+`./references/pipeline-detail.md` "Step 4c and 4d".
 
 ### ✋ Checkpoint 4 — Review the scored draft
 Show the full draft + the four scores + the top fix + which Hook Killers were caught. **Pause**
@@ -321,89 +295,25 @@ for the user's edits or approval.
 ### Step 5 — Write the script file (one reel per run)
 
 Write the approved reel to `<project>/scripts/<slug>.md` (slug = short kebab of the angle).
-Structure:
-
-```
-# <Reel title / angle>
-> Voice: <full voc | interim>  ·  Mode: <full | caption-only>  ·  Angle: <theme × hook>
-
-## On-screen hook
-## Script
-  Hook:
-  Secondary:
-  Body:
-  Proof:
-  CTA:
-## Text overlays
-  <beat → on-screen line table; frame-1 = the hook verbatim>
-## Caption
-## Craft score
-  Hook __/100 · Body __/100 · CTA __/100 · Overall __/100 — top fix: ...
-## Evidence
-  <@handle · metric · reel URL> citations from the analysis the angle stands on
-```
-
+The section template (the `Voice` / `Mode` / `Angle` header line, On-screen hook, Script,
+Text overlays, Caption, Craft score, Evidence) is in `./references/pipeline-detail.md`
+"Step 5 template". Write every section; the `Angle:` line is what Step 1's dedupe reads.
 Report the path. One run = one script.
 
-**Next moves**
-1. Script the next angle — the unpicked angles from Step 1 are still on the table; I'll re-show them. Say: "script the next angle"
-2. Build the weekly idea bank instead of going reel-by-reel. Say: "weekly topic pool"
-3. Refresh the visual pack so the client sees the field this script attacks. Say: "regenerate my visuals"
-4. *If no pulse is scheduled yet:* want next week's winners to land here automatically? The weekly competitor pulse feeds this skill fresh outliers. Say: "run the weekly pulse"
+**Write state, then the evidence line.** Append `{slug, angle, source, date}` to
+`state.scripts[]`, drop the scripted angle from `state.angles_unpicked[]`, append
+`reel-scripter` to `completed_skills`, refresh `updated_at`. Print the Vault line again,
+exactly as at Checkpoint 0, then render **script written (E6)** above.
 
 ---
 
-## Topic Pool mode — "20 ideas from the best performers"
+## Content plan
 
-An alternate, ideation-only mode. Trigger phrases: "weekly topic pool", "topic pool",
-"idea bank", "20 ideas", "what should I post this week". Runs INSTEAD of the
-script pipeline — it produces ideas, not a script.
-
-**Inputs (same Step 0 resolution):** `scripting-brief.md` + `analysis-data.json`, plus
-the project's `transcripts/` when present. In FULL mode, mine the **top ~3
-highest-performing transcripts per competitor** (rank by the analysis's outlier/views
-data); in caption-only degrade, mine outlier captions + hook lines and say so.
-
-**Output:** `<project>/topic-pool.md` — **~20 concrete reel ideas** from the niche's
-proven winners, grouped by attack theme. Each idea is one tight block:
-
-```
-N. <Idea title — the angle in one line>
-   Hook bucket: <from the analysis>  ·  Theme: <attack theme>  ·  Gap it closes: <gap>
-   Why it wins: <the proven move it's stolen from, one line>
-   Evidence: @handle · <metric> · <reel URL>
-```
-
-Rules:
-- Every idea cites evidence (`@handle · metric · URL`) — same discipline as angles in
-  Step 1. No vibes-only ideas.
-- Cross-check each idea's hook bucket + theme against the brief's §8 Avoid list — an idea riding
-  a niche-loser bucket/theme gets tagged `[avoid-list]` so nobody scripts it blind.
-- Spread across the brief's attack themes; don't let one theme eat the pool.
-- These are **ideas in the niche's language, not yet in the client's voice** — voice
-  work happens when an idea is picked.
-- Refresh cadence: the pool is a **weekly** artifact. If `topic-pool.md` is older than
-  ~7 days (or the analysis has been re-run), offer to regenerate instead of appending.
-
-**The handoff (always end with it):** present the pool and ask — *"Pick one and I'll
-make it yours"* — then run the normal pipeline from Step 1 with the picked idea as the
-chosen angle (Checkpoint 0 voice rules still apply).
-
-**If they don't pick (never a dead end)** — **Next moves**
-1. The pool is saved at `<project>/topic-pool.md` — later, say: "script idea N from my topic pool"
-2. Keep it fresh without lifting a finger — the weekly competitor pulse regenerates the pool off new data. Want it weekly? Say: "run the weekly pulse"
-3. Re-spread the pool toward a theme you care about. Say: "rebuild the pool, lean <theme>"
-4. Or I just script the single best idea now. Say: "script the top idea"
-
-**Deeper trend/seed layer (optional):** if `~/.claude/socialcrawl-superengine/.superengine`
-exists, offer the superengine's plays to enrich the pool — trend deep-dives and the
-cost-gated `audience-questions` seeding (real audience questions clustered by intent).
-Absent → one-line mention, continue.
-Detect the install by EITHER that marker OR a directory matching
-`~/.claude/plugins/cache/*/socialcrawl-superengine/` (an installed-but-never-run copy has no
-marker). When it is installed, invoke its `research-plays` skill by name
-(`socialcrawl-superengine:research-plays`) for the pull, per `docs/plugin-conventions.md`
-"Cross-plugin coordination".
+The weekly idea pool is `content-plan`'s, not this skill's
+(`./references/pipeline-detail.md` "Content plan"). Coming back with an idea, the entry is "script idea N from my content plan": read
+`<project>/content-plan-<newest week>.md`, take idea N (with its source tag and angle) as
+the chosen angle, then run from Checkpoint 0 for voice and on to Step 2. Step 1's proposal
+is skipped; the guardrails are not. No plan on disk is a missing prereq (E0).
 
 ---
 
@@ -435,27 +345,12 @@ marker). When it is installed, invoke its `research-plays` skill by name
 
 ## References
 
-- `./scripting_brief.py` — deterministic brief generator (incl. §8 niche Avoid list); run first (Step 0b)
-- `./references/hook-mastery.md` — the hook doctrine: single subject / single question, three-hook alignment, 7-step process (Step 3)
-- `./references/retention-psychology.md` — the content inside the beats: loops, partial payoffs, secondary-hook placement, post-hook structures (Steps 2–3)
-- `./references/story-locks.md` — the 6 Story Locks + 8 Swaps craft-scoring rubric + line-edit pass (Step 4c)
-- `./references/opener-patterns.md` — HOOK→PROMISE(→MICRO-INTRO, YT-only) + first-3-seconds opener templates by hook bucket, incl. the losing-openers table
-- `./references/hook-formulas.md` — view-validated hook formulas mapped to the analysis's hook buckets
-- `./references/body-structures.md` — body skeletons by hook bucket (Step 2)
-- `./references/cta-scaffolds.md` — CTA patterns by goal (Step 3)
-- `./references/say-this-not-that.md` — weak→strong rewrites, tagged to the 4 Hook Killers
-- `../_shared/references/hook-diagnostics.md` — the 4 Hook Killers hook lens (Step 4a)
-- `../_shared/contracts/analysis-data.schema.json` — the analysis JSON this skill consumes
+Every reference is linked from the step that uses it. The full entry-point index,
+every script included: `./references/pipeline-detail.md` "Reference index".
 
 ---
 
 ## Non-Goals
 
-- Generating a content calendar or a batch of finished reels — script mode writes
-  **one** script per run. (Topic Pool mode may list ~20 *ideas*, but never batch-writes
-  scripts — each idea still goes through the full pipeline one at a time.)
-- Multi-platform (TikTok/Shorts/YouTube) — IG reels only; sibling format engines own the rest.
-- Running the competitor analysis — that's `competitor-cross-reference`; this consumes its output.
-- Predicting performance — craft quality only, never a views/virality forecast.
-- Building the voice profile — that's the shared voice-matching skill; this consumes `voc/` or
-  degrades to interim capture.
+One script per run. Everything this skill deliberately does not do, in full:
+`./references/pipeline-detail.md` "Non-Goals".

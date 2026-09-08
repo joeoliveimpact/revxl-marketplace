@@ -23,8 +23,9 @@
 
 ## Where the key is stored / resolved
 
-The engine resolves the key in this order (handled by the bundled `socialcrawl`
-skill — it ships inside this plugin, so it's always available):
+The engine resolves the key in this order (the ladder lives in
+[`../../_shared/references/socialcrawl-endpoints.md`](../../_shared/references/socialcrawl-endpoints.md)
+under "The key"):
 1. Env var `SOCIALCRAWL_API_KEY` (if set and starts with `sc_`)
 2. File `~/.config/socialcrawl/api_key`
 3. Ask the user (then auto-save to the file above)

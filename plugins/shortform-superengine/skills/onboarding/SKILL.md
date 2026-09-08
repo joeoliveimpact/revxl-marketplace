@@ -3,8 +3,9 @@ name: onboarding
 description: >
   One-time setup for the shortform-superengine plugin. Run this first, right
   after installing. Trigger phrases: "set up shortform superengine", "onboard
-  shortform", "install/configure the reel plugin", "shortform setup", "get the
-  shortform superengine ready", "finish setting up the content engine". Detects
+  shortform", "install the reel plugin", "configure the reel plugin",
+  "shortform setup", "get the shortform superengine ready", "finish setting
+  up the content engine", "show my setup". Detects
   what's already on the machine, installs/offers the missing transcription tools,
   wires the required SocialCrawl key (+ optional Groq/Firecrawl/voice), writes a
   setup marker so it only runs once, and verifies everything end-to-end.
@@ -17,26 +18,71 @@ competitor cross-reference and script a reel," with no Joe-specific infrastructu
 
 ## Teach mode
 
-Read `~/.claude/revxl/teach-mode` (one word) if it exists, else treat it as
-`beginner`. Convention: `_shared/references/teach-mode.md`.
-- **beginner** (default): plain-English-first. Explain a thing in plain words,
-  *then* name the technical term with a one-line gloss. Add a "what this means
-  for you" line whenever the consequence isn't obvious.
-- **off**: standard voice, no glosses.
+Read the family dial at entry, on every run: `~/.claude/revxl/teach-level`
+(one word) if it exists, else the legacy `~/.claude/revxl/teach-mode` mapped
+(`beginner` to `new`, `off` to `pro`), else `new`. Convention and the switch:
+`../_shared/references/teach-mode.md`.
 
-During onboarding you have not written the file yet, so you'll be in **beginner**
-by default — which is right for a client's first touch. (You write the default in
-Step 6.)
+At **new**, the default, explain in plain words first, THEN name the technical
+term with a one-line gloss on first use, and add a "what this means for you" line
+wherever the consequence is not obvious. `pro` means teaching off, never less
+safe: gates, refusals and cost warnings render at full strength at every level.
+On a fresh machine neither file exists, so a first touch runs at **new**; Step 6
+writes the default. Mirror the level you read into `state.teach_level`.
+
+## Prereq (E0)
+
+None. onboarding is the door itself: it is where every other skill's E0 refusal
+sends a client, so it refuses nobody, and it is safe to re-run (Step 0 routes an
+already-onboarded machine into the sub-modes). It is also the first writer on a
+fresh install: read `state/<brand>.json` at entry if it is there, Step 6 creates
+it when it is not. With no marker, scan
+`~/.claude/shortform-superengine/state/*.json` before asking: one file, take its
+`brand` and `goal` and say so in a line; several, ask which; none, ask as today.
+Schema and rule zero:
+`../_shared/references/state-schema.md`. The ledger, and every trigger phrase
+quoted below: `../_shared/references/journey-map.md`.
+
+## Terminal paths
+
+Every ending is written out here, so a client is never left with a wired machine
+and no idea what to say next. Ids are journey-map rows; the block shape is
+`../_shared/references/routing.md`. Render one of these, never an invented menu.
+
+**Next moves ... setup complete**
+(E1)
+1. Analyze this account against its competitors ... the field read every goal needs first. Say: "analyze my Instagram against my competitors"  <- start here
+2. Let the compass read what setup just wrote and rank the moves. Say: "what's next in shortform"
+3. *If the brand brain was skipped at Step 4b:* capture the client's real voice first, so the scripts sound like them. Say: "build my brand brain"
+4. *If a thought-leader's library is worth capturing:* pull the whole thing into a dated corpus. Say: "harvest <creator>'s library"
+
+**Next moves ... a prior analysis is already on this machine**
+(E1)
+1. *If `state.pulse.scheduled` is false AND the marker's `competitor_pulse.scheduled` is false:* keep that field read alive week to week ... new winners, refreshed charts, one brief. Say: "make the pulse weekly"
+2. Script off what already wins in that analysis. Say: "write a reel script from my analysis"
+3. Pick the first job and let me route you. Say: "start shortform"
+
+**Next moves ... sub-mode exit**
+(E2, refresh / reauth / update / show)
+1. Back to work ... the compass reads where this brand actually is and ranks what to do next. Say: "what's next in shortform"
+2. Print what is wired on this machine, any time. Say: "show my setup"
+3. Straight back into the field read. Say: "analyze my Instagram against my competitors"
+
+**Next moves ... a runtime is missing**
+(E0b)
+1. Install Python 3.10+ from python.org, then re-run setup ... the analysis engine and every bundled script run on it. Say: "shortform setup"
+2. *If only Node is missing:* install it (Windows `winget install OpenJS.NodeJS.LTS`, Mac `brew install node`) and re-run ... connectors fail to attach silently without it. Say: "shortform setup"
+3. Capture the voice while you sort the install out ... brand-brain needs no runtime beyond Claude. Say: "build my brand brain"
+
+**Next moves ... no SocialCrawl key yet**
+(E0b)
+1. Get the key ... the click-path is in [`./references/socialcrawl-setup.md`](references/socialcrawl-setup.md), 100 free credits, about two minutes. Say: "shortform setup"
+2. Build the brand brain meanwhile ... voice work needs no social data at all. Say: "build my brand brain"
+3. Come back and finish the wiring later. Say: "finish setting up the content engine"
 
 ## Layer 2: suggest before invoking
 
-If the user's prompt is borderline — could be a fresh setup or could be a quick
-question — ask first:
-
-> "Looks like you want to set up the shortform superengine — want me to run the
-> full onboarding (detect tools, wire your keys, verify)? It's a one-time thing."
-
-If they explicitly invoke `/onboarding` or clearly ask to set up, skip the ask.
+Borderline prompt (could be a fresh setup, could be a quick question)? Ask before running the full onboarding; wording in [`./references/setup-detail.md`](references/setup-detail.md). If they explicitly invoke `/onboarding` or clearly ask to set up, skip the ask.
 
 ---
 
@@ -47,18 +93,11 @@ If they explicitly invoke `/onboarding` or clearly ask to set up, skip the ask.
 1. If the marker is **absent** → fresh install. Tell the user, in plain language,
    what the next ~2 minutes will do: "I'll check which tools you already have,
    help install anything missing, connect your data key, and confirm it all works."
-2. If the marker is **present** → already set up. Don't re-run blind. Offer sub-modes:
-   - **refresh** — re-detect tools + re-verify (nothing destructive),
-   - **reauth** — re-enter a key (SocialCrawl/Groq),
-   - **update** — re-run a specific step,
-   - **show** — print current setup from the marker.
-   Pick one with the user; only run what they choose.
-   - **stale plugin?** If the user reports the plugin won't pick up the latest
-     version (common on **Mac desktop** — marketplace updates silently don't sync),
-     point them to [`./references/updating.md`](references/updating.md) for the
-     uninstall/reinstall workaround. Not your bug to fix here — just unblock them.
-   - **install / connection trouble?** A tool won't install, a connector won't
-     attach, or antivirus is blocking the setup → [`./references/troubleshooting.md`](references/troubleshooting.md).
+2. If the marker is **present** → already set up. Don't re-run blind. Offer the
+   sub-modes ... **refresh** (re-detect + re-verify), **reauth** (re-enter a key),
+   **update** (re-run one step), **show** (print the current setup). Run only what
+   they choose. What each covers, plus the stale-plugin and install-trouble routes:
+   [`./references/setup-detail.md`](references/setup-detail.md).
 
 ---
 
@@ -73,70 +112,49 @@ Windows or Mac).
 | `ftfy` | `python -c "import ftfy"` | cleans up garbled text in captions |
 | Node.js 18+ | `node --version` | some helper tools + MCP connectors won't run/attach without it |
 
-- **Python missing** → stop and point them to python.org (everything downstream needs it).
-- **`ftfy` missing** → offer `pip install ftfy`.
-- **Node.js missing** → offer to install it (Windows: `winget install OpenJS.NodeJS.LTS`,
-  or nodejs.org → LTS installer; Mac: `brew install node`). Don't skip this — a missing
-  Node is a common cause of connectors silently failing to attach later.
-
-> Install or connection hiccup (a tool won't install, a connector won't attach, antivirus
-> blocking it)? See [`./references/troubleshooting.md`](references/troubleshooting.md).
+Python missing is the one hard stop: point them at python.org and render the runtime block from `## Terminal paths`. `ftfy` and Node.js are offers, never blocks. Per-platform install commands, and the install-trouble route: [`./references/setup-detail.md`](references/setup-detail.md).
 
 ---
 
 ## Step 2 — Transcription options (detect → pick the chain)
 
-This is the heart of setup. **Real spoken-word transcription is not optional garnish —
-it is the primary text every analysis reads.** Without it the engine falls back to post
-captions, which are *not* what the creator says on camera, and the analysis is degraded.
+This is the heart of setup. Why spoken-word transcription, never captions, is the text
+every analysis reads: [`./references/setup-detail.md`](references/setup-detail.md).
 
-1. **`yt-dlp`** — fetches the reel's video/audio (and any subtitle track) so the
-   transcribers have something to eat. **Required floor** — it feeds everything below.
-2. **Groq** — fast cloud transcription (`whisper-large-v3-turbo`). Near-free, needs
-   a free API key. **Pass a vocabulary prompt built from brand-brain** — without one,
-   Whisper mangles brand and product names it has never seen (measured: the correct
-   brand name appeared 3 times against 18 mangled ones in the same body of audio).
-   See `brand-brain/references/transcription-vocabulary.md` — it also covers the two
-   ways a prompt can backfire.
-3. **Local Whisper** — `faster-whisper` transcribes on the user's own computer.
-   Offline, $0, slower. Needs `ffmpeg` + the `faster-whisper` Python package.
-
-Groq and local Whisper run **in parallel — first healthy transcript wins**. Install
-BOTH so transcription never stalls on one engine having a bad day.
+The chain in one line: **`yt-dlp`** fetches the media, **Groq**
+(`whisper-large-v3-turbo`) transcribes in the cloud, **local Whisper**
+(`faster-whisper` + `ffmpeg`) transcribes on the client's own machine, and the two
+transcribers run **in parallel, first healthy transcript wins**. Install BOTH. Why,
+and the brand-vocabulary prompt Groq needs:
+[`./references/setup-detail.md`](references/setup-detail.md).
 
 ### Detect
 
-| Tier | Probe | Plain meaning |
-|------|-------|--------------|
-| Fetch (yt-dlp) | `yt-dlp --version` | can download a reel's video/audio + subtitle track |
-| Groq | env `GROQ_API_KEY` set? | has a cloud-transcribe key |
-| Local Whisper | `python -c "import faster_whisper"` **and** `ffmpeg -version` | can transcribe offline |
+Probe each tier: `yt-dlp --version` (fetch), env `GROQ_API_KEY` (cloud transcribe), `python -c "import faster_whisper"` plus `ffmpeg -version` (offline). What each tier buys: [`./references/setup-detail.md`](references/setup-detail.md).
 
 ### The gate rule (what counts as "set up enough")
 
-> **Require `yt-dlp` (the fetch floor), AND require at least one real transcriber
-> — Groq OR local Whisper. Then actively recommend adding the other: the two run
-> in parallel (first wins), so the target setup is BOTH — no reel ever falls
-> through the cracks.**
+> **Require at least one real transcriber ... Groq OR local Whisper ... then
+>   actively recommend adding the other: the two run in parallel (first wins), so
+>   the target setup is BOTH, and no reel falls through the cracks. `yt-dlp` is
+>   NOT part of this gate: since 0.4.0 it is harvest-only.**
 
-Why: captions alone can't handle a reel that *has no captions*, so one true
-transcriber is the real floor — and two transcribers mean a Groq outage or an
-offline session still can't stall a run. This chain is also the **only** way this
-plugin ever transcribes: SocialCrawl's `*/transcript` endpoints are banned
-(10 credits/reel, no advantage — see the `socialcrawl` skill's transcription policy).
+Why one true transcriber is the floor and two is the target:
+[`./references/setup-detail.md`](references/setup-detail.md). This chain is also
+the **only** way this plugin ever transcribes: SocialCrawl's `*/transcript` endpoints are banned
+(10 credits/reel, no advantage). See the "Never" section of
+[`../_shared/references/socialcrawl-endpoints.md`](../_shared/references/socialcrawl-endpoints.md).
 
 Resolve with the user:
-- **yt-dlp missing** → offer `pip install yt-dlp` (required — can't continue without it).
+- **yt-dlp missing** → offer `pip install yt-dlp`, and say what it is for: since
+  0.4.0 it is needed **only by `creator-strategy-harvest`**. The cross-reference,
+  reel-scripter and pulse chains do not use it, so a failed or skipped install is
+  recorded in `setup.tools.yt_dlp` and onboarding carries on. It never blocks.
 - **Neither Groq nor local Whisper** → must add one:
   - Groq: send them to `console.groq.com/keys` (free), then set `GROQ_API_KEY`.
   - Local: offer `pip install faster-whisper` + install `ffmpeg` (Windows: `winget
     install Gyan.FFmpeg` or point to ffmpeg.org; Mac: `brew install ffmpeg`).
-- **Has one, not the other** → recommend adding the second now (don't just mention
-  it). Example, in beginner voice: *"You've got captions + offline Whisper, so you're
-  covered — but I'd add Groq too. It's a free API key (console.groq.com/keys), super
-  fast, and it means you have multiple ways to transcribe, so nothing gets through
-  the cracks. Want to grab it now? Takes about a minute."* Accept a "skip" gracefully
-  and move on — recommend, never block.
+- **Has one, not the other** → recommend adding the second now, do not just mention it, and accept a skip gracefully. Wording: [`./references/setup-detail.md`](references/setup-detail.md).
 
 Record the resolved chain (which tiers are live) — it goes in the marker so
 `competitor-cross-reference` knows what it can use.
@@ -148,118 +166,63 @@ Record the resolved chain (which tiers are live) — it goes in the marker so
 ### SocialCrawl — required (bring-your-own-key)
 
 The social-data source. **Each client uses their own key + credits** — never
-yours, never the public's (this is why the key is exposed to the paying client:
-it's the only way they don't draw down someone else's credits).
+yours, never the public's. Why the key is exposed to the paying client:
+[`./references/setup-detail.md`](references/setup-detail.md).
 
-Don't reinvent the key flow — **delegate to the bundled `socialcrawl` skill's
-resolution** (it ships inside this plugin at `skills/socialcrawl/`, so it's always
-present — no separate install): env `SOCIALCRAWL_API_KEY` (starts `sc_`) → file
-`~/.config/socialcrawl/api_key` → ask the client + auto-save.
+Don't reinvent the key flow. The resolution ladder lives in
+[`../_shared/references/socialcrawl-endpoints.md`](../_shared/references/socialcrawl-endpoints.md)
+under "The key": env `SOCIALCRAWL_API_KEY` (starts `sc_`) → file
+`~/.config/socialcrawl/api_key` → ask the client once, then auto-save to that
+file and tell them where it went.
 
-If no key is found, walk them through getting one. Point them at
-[`./references/socialcrawl-setup.md`](references/socialcrawl-setup.md) — the
-click-path (sign up via the **referral link** `https://www.socialcrawl.dev/?ref=AQNU384G`,
-100 free credits → **API Keys** → **Create** → copy the `sc_…` key → paste), a Loom
-slot, and the verify calls. (Always hand clients the referral sign-up link, not a bare
-socialcrawl.dev.)
-Save the key to `~/.config/socialcrawl/api_key`. Confirm with the balance/auth
+If no key is found, walk them through getting one with [`./references/socialcrawl-setup.md`](references/socialcrawl-setup.md): the click-path, the referral sign-up link (always that link, never a bare socialcrawl.dev), a Loom slot and the verify calls.
+Save the key to `~/.config/socialcrawl/api_key` and confirm with the auth
 test (also Step 7). **Can't run analysis without it.**
 
-### RevXL Vault — optional (key issued by Joe)
+### RevXL Vault (optional, key issued by Joe)
 
-Joe's live strategy API, not your brand brain (that is 4b, built locally). The living
-knowledge base behind the engine: current, curated content-strategy
-intelligence that updates continuously — unlike the bundled reference files, it
-never goes stale. Access is part of the client's active RevXL subscription; the
-key comes from Joe, not a signup page.
-
-Resolution ladder (mirrors SocialCrawl): env `VAULT_API_KEY` (starts `vk_`) →
-file `~/.config/revxl/vault_api_key` → ask the client to paste the key Joe gave
-them + auto-save to that file. If they don't have one: *"Ask Joe for your Vault
-key — until then the engine runs on its built-in reference library, which works
-fine but doesn't get the newest patterns."* **Never block on it.**
-
-Verify (when a key is present): `GET https://brain.engineforimpact.com/health`
-returns `{"ok":true}`, then one test search (see
-[`../_shared/references/vault-api.md`](../_shared/references/vault-api.md)).
-Cold start note: the very first search after idle can take up to ~60s — that's
-normal, don't declare it broken; retry once before flagging.
+Joe's live strategy library, not the brand brain (that is 4b, built locally). The
+plugin reaches it through `workspace-superengine`, never over HTTP, and this
+plugin never handles a Vault key
+(`../_shared/references/vault-api.md`). Detect whether
+`workspace-superengine` is loaded, record it in `setup.keys_present.vault` and
+`setup.ws_superengine_version`, and **never block on it**: absent means the engine
+runs on its bundled reference library (edge F3). Wiring detail:
+[`./references/setup-detail.md`](references/setup-detail.md).
 
 ### Optional services (detect-and-note, never block)
 
-| Service | What to do |
-|---------|-----------|
-| Groq | Already handled in Step 2 if they chose it (cloud transcription). |
-| Firecrawl | Open-web research (client website positioning). If the `firecrawl` CLI is installed + authed, note it; else mention it's optional and skip. |
-| NotebookLM | Only if they use it for creator harvests. Hand off to its own installer; don't configure here. |
+Groq is handled in Step 2. Firecrawl and NotebookLM are detect-and-note only: never configure them here, never block on them. A client with only SocialCrawl can run the full core flow. What to say for each: [`./references/setup-detail.md`](references/setup-detail.md).
 
-A client with only SocialCrawl can run the full core flow.
+### Token hygiene (trim connectors you don't need here)
 
-### Token hygiene — trim connectors you don't need here
-
-Every MCP connector loaded in a workspace spends tokens on **every** message, just
-by being available — whether or not you use it. This plugin ships **no** MCP servers
-of its own, so it adds nothing here; the cost comes from other connectors the client
-has switched on globally (Drive, Telegram, calendars, CRMs, etc.).
-
-In **this** shortform workspace, the core flow only needs: SocialCrawl (data), the
-transcription chain, and the recordings source from Step 4. Offer, in plain words:
-*"You've got a bunch of connectors switched on. For reel work you only need a few —
-want to switch the rest off in this workspace so Claude stays fast and doesn't burn
-tokens carrying tools it won't use? You can flip them back on anytime."* Let the user
-decide which to keep; never disable anything without confirming. This is advisory —
-**purely the user's call**, and reversible.
+Offer, in plain words, to switch off the MCP connectors this workspace does not
+need; let the client pick; never disable anything without confirming; say that
+it is reversible. What a loaded connector costs on every message, the full
+script and the reasoning:
+[`./references/setup-detail.md`](references/setup-detail.md).
 
 ---
 
 ## Step 4 — Voice + brand brain (source ladder)
 
 The reel scripts come out in the **client's brand voice**, which lives at
-`~/.claude/revxl/<brand>/voc/`. The voice isn't a one-time form — it's a **living
-brand brain** built from the client's **own words, wherever they live**: their tone,
-*who they help* and *the pains they help with*, the **topics** they're on right now,
-and the **jokes that actually land**. Onboarding only **wires the sources and the
-cadence** — the dedicated voice skill does the mining.
-
-Two different needs, different best-sources:
-- **Voice** (how they sound) → best from *spoken* or *written-by-them*.
-- **Offer + avatar** (what they sell, who they help, the pains) → can come from
-  anywhere, even a form.
+`~/.claude/revxl/<brand>/voc/`: a living brand brain built from the client's own
+words. Onboarding only **wires the sources and the cadence**; the bundled
+`brand-brain` skill does the mining. Voice comes from spoken or written-by-them
+material; offer and avatar can come from anywhere, even a form. Why that split
+matters: [`./references/setup-detail.md`](references/setup-detail.md).
 
 ### 4a — Find a voice source (walk the ladder, top → down)
 
-Walk down until something exists. Tag each found source with a **voice-confidence**
-(A/B/C); stamp the brain with the overall confidence so consumers (reel-scripter)
-know how hard to lean on the voice.
-
-| Tier | Sources | Detect / pull | Voice-confidence |
-|------|---------|---------------|------------------|
-| **A — spoken** | Fathom / Fireflies recordings, podcast, YouTube, webinar/VSL, Loom, voice memos | Fathom or Fireflies MCP available? ask for a podcast/YT handle | **A (high)** — real cadence + objections + jokes |
-| **B — written-by-them** | their own social captions/reels, sent newsletters, DMs, community posts (Skool/GHL/Telegram), their tweets/threads | **own posts via SocialCrawl (already wired)**; ask for a newsletter export | **B (med)** — their writing voice + current topics |
-| **C — written-FOR-them** | website, sales/landing pages, course copy | firecrawl the site | **C (low for voice)** — usually copywriter-written; use for **offer/avatar only** |
-| **D — none yet** | guided interview | see the floor below | floor — works for everyone |
-
-Rules:
-- **Prefer the highest tier present; blend downward.** A spoken source *sets* the
-  voice; B/C add offer + topics. **Never let a Tier-C site set the voice** — that's
-  the noise-factor trap; keep them sounding like *them*.
-- **Their own social is the no-recordings primary.** SocialCrawl is already wired, so
-  with no recordings, pulling their own captions is the lowest-friction *real* voice
-  source. Almost everyone has it.
-- **Offer/avatar pulls wider than voice** — also testimonials/reviews (the *avatar's*
-  own pain language — gold), intake forms, an existing brand guide. Tag these as
-  offer/avatar inputs, **not** voice.
-
-**The floor (Tier D) — brand-new owner / nothing to pull.** If A–C come up empty (new
-business, no audience, no site), don't dead-end:
-1. **Guided interview now** — the voice skill interviews them (same move as the email
-   engine's story intake): voice from their raw answers + offer + avatar from
-   structured Q&A. In Cowork/voice it even captures *spoken* voice.
-2. **Record going forward** — turn on call recording (Fathom) from call #1, save voice
-   memos. The brain compounds: day-1 thin-but-real → week-4 rich. Ties into the
-   freshness heartbeat (4c).
-Stamp `voice_confidence: "interview"` so reel-scripter leans conservative until real
-sources accumulate.
+Walk the ladder top down and stop at the first tier that exists: **A spoken**
+(recordings, podcast, YouTube, webinar, Loom, voice memos), **B written-by-them**
+(own captions and reels through SocialCrawl, newsletters, DMs, community posts),
+**C written-for-them** (website, sales pages ... offer and avatar only, never the
+voice), **D none yet** (the guided interview floor). Tag each source with a
+voice-confidence letter and stamp the overall confidence on the brain. The table,
+the blending rules and the floor:
+[`./references/setup-detail.md`](references/setup-detail.md).
 
 Record the found sources + overall confidence in the marker (`voice_sources`,
 `voice_confidence`). **Never hard-fail** — worst case is interview-floor, never a dead end.
@@ -275,15 +238,10 @@ Record the found sources + overall confidence in the marker (`voice_sources`,
 
 ### 4c — Auto-refresh offer (keep it fresh, hands-off)
 
-A brand brain goes stale: tone drifts, and — more importantly — the **topics** your
-clients raise change week to week. A reel built off a 3-day-old hot objection lands;
-one built off month-old topics doesn't. So offer to keep it fresh automatically:
-
-- **Cowork client** → offer a **scheduled task** that re-mines recent recordings on a
-  cadence. Ask their slot: *"Friday night, Monday morning, or a time you pick?"*
-- **Code client** → offer a **routine / cron** (Windows Scheduled Task or `/schedule`)
-  on the same cadence.
-- Target: **never more than 6–7 days stale.**
+Offer to keep the brain fresh automatically ... a scheduled task for a Cowork
+client, a routine or cron for a Code client, and ask which slot (*"Friday night,
+Monday morning, or a time you pick?"*). Why it goes stale, and the 6-to-7-day
+target: [`./references/setup-detail.md`](references/setup-detail.md).
 
 Capture the choice in the marker (`brand_brain.refresh`). **`brand-brain` is bundled
 in this plugin**, so wire the auto-refresh schedule now — it points at the bundled
@@ -296,27 +254,28 @@ Do not hard-fail on missing voice. v1 ships with interim-voice degrade.
 
 ## Step 5 — (placeholder) tier-aware hooks for v2
 
-v2 adds a content-loop (calendar + Metricool scheduling/measurement, tier-gated).
-Nothing to configure now. Just leave the marker shape forward-compatible (Step 6
-includes a `tier` field set to `unknown`) so the v2 Metricool step drops in clean.
+Nothing to configure now. The marker's `tier` field keeps the shape forward-compatible for the v2 content loop: [`./references/setup-detail.md`](references/setup-detail.md).
 
 ---
 
 ## Step 6 — Write state
 
 1. Ensure `~/.claude/shortform-superengine/` exists.
-2. Write the marker `~/.claude/shortform-superengine/.superengine`:
+2. Write the marker `~/.claude/shortform-superengine/.superengine`. Read the
+   `version` value out of this plugin's `.claude-plugin/plugin.json` at write
+   time and copy it in. **Never hardcode a version literal here**: the marker
+   went stale that way once already.
 
 ```json
 {
-  "version": "0.3.1",
+  "version": "<the version field read from .claude-plugin/plugin.json>",
   "onboarded_at": "<ISO date>",
   "transcription_chain": ["captions", "groq|local|both"],
   "connections": { "socialcrawl": true, "groq": false, "firecrawl": false },
   "voice_sources": ["fathom|fireflies|own-social|newsletter|podcast|website|interview"],
   "voice_confidence": "A|B|C|interview|none",
-  "brand": "<brand-slug or null>",
-  "voc_present": false,
+  "active_brand": "<brand-slug>",
+  "brand": "<the same brand-slug>",
   "brand_brain": {
     "present": false,
     "updated_at": null,
@@ -327,20 +286,33 @@ includes a `tier` field set to `unknown`) so the v2 Metricool step drops in clea
 }
 ```
 
-`voice_sources` = which source-ladder tiers were found (Step 4a); `voice_confidence`
-= the overall tier the brain rests on (`A` spoken → `C` written-for-them → `interview`
-floor → `none`). Consumers lean bolder on A, conservative on interview. `brand_brain`
-= the living voice/ICP/topics/humor artifact: `present` once the bundled `brand-brain`
-skill has built it, `updated_at` its last-build stamp (the freshness clock reads this),
-and `refresh` the auto-refresh choice from Step 4c (`scheduled: true` once the user
-picks a cadence — brand-brain is bundled, so the schedule can point at it now).
+`active_brand` is authoritative; `brand` carries the same slug so 0.3.4 readers
+keep working. Ask for the brand rather than writing null: every downstream file
+is keyed to that slug. **Never write `voc_present`** (vestigial at 0.4.0, nothing
+reads it, `voc.present` is derived from `~/.claude/revxl/<brand>/voc/` on read);
+if an old marker holds one, leave it and never trust it. Keep the
+`competitor_pulse` block exactly this shape: `shortform-start` migrates it into
+`state.pulse`. Field-by-field notes: [`./references/setup-detail.md`](references/setup-detail.md).
 
-3. **teach_mode default.** Ensure `~/.claude/revxl/` exists. If
-   `~/.claude/revxl/teach-mode` does **not** exist, create it with the single word
-   `beginner`. If it already exists, leave it (the user may have set it). Tell the
-   user, plainly: *"I've set the assistant to beginner mode — it'll explain things
-   in plain English first. Say 'turn off teach mode' or run `/teach-mode off` anytime
-   to switch to the standard voice."*
+3. **Write the journey file.** Create
+   `~/.claude/shortform-superengine/state/<brand>.json` from the template in
+   `../_shared/references/state-schema.md` when it is absent, then write only the
+   keys this skill owns: `setup.complete`, `setup.keys_present.socialcrawl` and
+   `.vault` (presence only, never a key itself), `setup.tools.yt_dlp` / `.groq` /
+   `.whisper`, `setup.socialcrawl_superengine_installed`,
+   `setup.ws_superengine_version`, plus `brand` (this file's own slug) and
+   `project_path` if the client already has a project directory. Then the
+   every-skill keys: append `onboarding` to `completed_skills`, refresh
+   `updated_at`, mirror the teach level into `teach_level`, log declined offers in
+   `declined_offers`. Nothing else: rule zero.
+
+4. **Teach level.** Ensure `~/.claude/revxl/` exists, then: neither file present
+   -> write `new` to `teach-level` and the legacy word `beginner` to `teach-mode`;
+   only the legacy `teach-mode` present -> migrate in place (`beginner` to `new`,
+   `off` to `pro`) and write that word to `teach-level`; `teach-level` already
+   present -> leave both alone, the client set it. Then one line: *"I've set the
+   assistant to new mode ... it explains things in plain English first. Say
+   `/teach-mode pro` any time for the standard voice."*
 
 ---
 
@@ -352,57 +324,28 @@ Run real checks, report a pass/fail table — never claim done without proof:
 - **No placeholders:** grep the marker for `{{` → must be zero.
 - **SocialCrawl auth:** one cheap live call (a credit-balance or a 1-result search)
   → confirms the key works. If it 401s, send them back to Step 3.
-- **Transcription chain:** the recorded chain satisfies the gate rule (yt-dlp + ≥1
-  transcriber). If not, back to Step 2.
-- **Brand brain (non-blocking):** marker has `voice_sources` + a `voice_confidence`
-  tier (even `interview`/`none` is a pass — the floor always applies) and a
-  `brand_brain.refresh` choice. Confirm it reflects what they picked in Step 4; never
-  fail onboarding over voice.
-- **teach_mode:** `~/.claude/revxl/teach-mode` exists and reads `beginner` or `off`.
+- **Transcription chain:** the recorded chain satisfies the gate rule (at least
+  one real transcriber). If not, back to Step 2. `yt-dlp` is recorded in
+  `setup.tools.yt_dlp` and is never a pass/fail item: it is harvest-only.
+- **Brand brain (non-blocking):** marker has `voice_sources`, a `voice_confidence`
+  tier (`interview` and `none` both pass) and a `brand_brain.refresh` choice that
+  matches Step 4. Never fail onboarding over voice.
+- **Teach level:** `~/.claude/revxl/teach-level` exists and reads `new`,
+  `learning` or `pro`.
+- **Journey file:** `state/<brand>.json` exists, parses, and its `brand` matches
+  the marker's `active_brand`.
 
 ---
 
 ## Step 8 — Activation
 
-End with the standard **Next moves** block (state-gated — only offer what the
-machine can actually run):
+Hand the client to the front door. Render the E1 block from
+`## Terminal paths`, state-gated: if a prior project with `analysis-data.json`
+already exists on this machine, render the "a prior analysis is already on this
+machine" variant instead. Offer nothing that is not in that section, and nothing
+the machine cannot actually run right now.
 
-> "You're set up. **Next moves**
-> 1. Analyze your Instagram against your competitors — a strategy roadmap +
->    visual dashboards grounded in real reel data. Say: 'analyze my Instagram
->    against my competitors'  ← start here; everything else reads its output.
-> 2. After the analysis: a reel script in YOUR voice off what already wins.
->    Say: 'write a reel script from my analysis'
-> 3. *(If the brand brain was skipped at Step 4b)* Build your brand brain now —
->    scripts get sharper with your real voice. Say: 'build my brand brain'
-> 4. Capture a thought-leader's whole library into a searchable corpus.
->    Say: 'harvest <creator>'s library'"
+Then probe `~/.claude/socialcrawl-superengine/.superengine` and say one line either way: installed means the deep research plays are available on top; absent means it is an optional add from the same marketplace. Wording, the second detection path and how the plays are invoked: [`./references/setup-detail.md`](references/setup-detail.md). Record the result in `setup.socialcrawl_superengine_installed`.
 
-If a prior project with `analysis-data.json` already exists on this machine,
-add: *"You also have an existing analysis — the weekly competitor pulse keeps it
-alive (new winners, refreshed charts). Want it weekly? Say: 'run the weekly
-pulse'."* (Suggested schedule — Step 4c pattern; never set it silently.)
-
-Then check `~/.claude/socialcrawl-superengine/.superengine`: if present, add — *"You also
-have the SocialCrawl Superengine installed: deep research plays (audience voice mining,
-competitor ad recon, AI-visibility audits) are available on top."* If absent, add one
-line — *"Optional: the `socialcrawl-superengine` plugin from the same marketplace adds
-deep research plays (VoC mining, ad recon, audits)."* — and move on.
-Detect the install by EITHER that marker OR a directory matching
-`~/.claude/plugins/cache/*/socialcrawl-superengine/` (an installed-but-never-run copy has no
-marker). When it is installed, the plays are run by invoking its `research-plays` skill by
-name (`socialcrawl-superengine:research-plays`), per `docs/plugin-conventions.md`
-"Cross-plugin coordination".
-
-Sub-mode exits (refresh / reauth / update / show) end the same way: a short
-**Next moves** — 1) back to work (cross-reference or reel-scripter) · 2) run a
-pulse if an analysis exists · 3) "show my setup" anytime.
-
----
-
-## Notes
-
-- Idempotent: safe to re-run; Step 0 routes to sub-modes if already set up.
-- No private infrastructure anywhere — the transcription chain is fully portable
-  (Groq + local Whisper in parallel; `yt-dlp` fetch floor).
-- House pattern: detect → offer-install → wire → write marker → verify → activate.
+Sub-mode exits (refresh / reauth / update / show) end the same way, with the
+sub-mode block (E2) from `## Terminal paths`.

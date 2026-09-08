@@ -9,6 +9,9 @@
 > on any ≥5-credit call and at ~15-credit session-spend boundaries. Treat that as
 > a backstop, not a license to skip the ritual below — an engine without the hook
 > relies on this ritual alone.
+> Deep plays beyond the endpoints table (`socialcrawl-endpoints.md`) ... field
+> search past the table, creator vetting, share of voice, lead finding ... live
+> in socialcrawl-superengine, which ships the same hook.
 
 SocialCrawl calls cost **real money** — the client's own credits. Two rules: never
 spend without the user seeing the cost first, and never spend the client into the

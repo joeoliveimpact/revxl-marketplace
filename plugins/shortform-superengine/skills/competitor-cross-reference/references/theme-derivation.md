@@ -14,8 +14,8 @@ run. (The worked example below is illustrative, not canonical.)
 ## Method (15–20 min per lane)
 
 1. **Start from the client's own pillars, not from imagination.** Best source order:
-   the client's brand brain / VoC profile (business-config pillars, weekly content
-   themes) → their site/offer pages → their top-20 captions by views.
+   the client's brand brain / VoC profile, or a prior run's roadmap section 7
+   (weekly content themes) → their site/offer pages → their top-20 captions by views.
 2. **Mine competitor captions for recurring nouns.** After the reel pull, grep the
    gathered captions for high-frequency topic words — these become theme candidates
    the *field* actually posts about (which is what the gap analysis needs).

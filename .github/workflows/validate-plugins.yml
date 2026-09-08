@@ -4,10 +4,11 @@ name: Validate Plugins
 # (run `python scripts/validate.py` before pushing). Keeping the logic in
 # one committed file means CI and local can never drift.
 #
-# All FIVE sections run here as of 2026-09-01. Before that CI ran only three,
-# so plugin_integrity and readme were local-only ... which meant an error the
-# script was fully capable of raising could never fail a PR. If you add a
-# section to scripts/validate.py, add a job for it here in the same change.
+# All SIX sections run here (five as of 2026-09-01, routing added 2026-09-08).
+# Before that CI ran only three, so plugin_integrity and readme were local-only
+# ... which meant an error the script was fully capable of raising could never
+# fail a PR. If you add a section to scripts/validate.py, add a job for it here
+# in the same change.
 
 on:
   push:
@@ -57,3 +58,10 @@ jobs:
       - name: Install pyyaml
         run: pip install pyyaml
       - run: python3 scripts/validate.py --section readme
+
+  validate-routing:
+    runs-on: ubuntu-latest
+    name: Validate routing (no dead ends, shortform-superengine)
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/validate.py --section routing
