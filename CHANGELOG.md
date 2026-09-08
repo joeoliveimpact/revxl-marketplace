@@ -4,6 +4,24 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.65] ... 2026-09-08
+
+### Changed
+- **workspace-superengine v0.15.1** ... the `brain-nudge` nudge now asks for a
+`Vault: skipped (...)` line, the wording `revxl-vault-search` itself prints. The
+plugins' own trigger points still print `Brain:`, and the hook reads the call
+ledger rather than the line, so either spelling satisfies it.
+- **workspace-superengine v0.15.1** ... the skill map gains the bare frontmatter
+spellings the Skill tool also accepts (`reel-scripter`, `lm-create`,
+`lm-inspired-by`, `lm-revamp`, measured 09.08.26) plus the three shortform skills
+shipping in 0.4.0 and 0.5.0, so no second update is needed when they land.
+
+### Added
+- **workspace-superengine v0.15.1** ... a session-start update notice. It names any
+installed plugin the marketplace clone on the machine has moved past, one line
+each. Its limit: it needs that clone present locally and prints nothing without
+it. Read only, silent on every doubt, Desktop and Code only.
+
 ## [0.1.64] ... 2026-09-07
 
 ### Added

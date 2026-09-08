@@ -2,6 +2,39 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.15.1 ... 2026-09-08
+
+### Added
+
+- **Update notice on session start.** The SessionStart hook compares the version of
+  each loaded plugin with the version the marketplace clone on this machine holds at
+  `plugins/<name>/.claude-plugin/plugin.json`, and adds one line naming each plugin
+  the clone has moved past. It knows two layouts: Claude Desktop, where every
+  installed plugin sits in a sibling `plugin_<id>` directory and all of them can be
+  compared; and the Claude Code cache, which can hold several versions of one plugin
+  without saying which is loaded, so there only workspace-superengine itself is
+  compared. It reads files and writes none. It prints nothing when the clone is
+  absent, the layout is unfamiliar, or any version string is not `N.N.N` ... a false
+  notice is worse than none. Cowork does not load plugin hooks, so this is Desktop
+  and Code only.
+
+### Changed
+
+- **The nudge asks for `Vault: skipped (...)`.** That is the wording
+  `revxl-vault-search` prints. The trigger points inside the content plugins
+  still print `Brain:` today, and either spelling satisfies the hook, which reads
+  `brain-calls.jsonl` and never the printed line.
+- **The skill map carries both spellings.** A belt test on 09.08.26 in a live
+  Desktop session showed the Skill tool passes `<plugin>:<skill-directory>` when
+  invoked that way and also accepts a bare frontmatter name where a skill has one.
+  Four generators do: `reel-scripter`, `lm-create`, `lm-inspired-by`, `lm-revamp`.
+  Each bare spelling now sits beside its qualified twin, so a stamp is written
+  either way.
+- **The three shortform skills shipping in 0.4.0 and 0.5.0 are listed ahead of
+  release** (`content-plan`, `own-content-analysis`, `subject-matter`, both
+  spellings each), so a client does not need a second workspace-superengine update
+  when they arrive.
+
 ## 0.15.0 ... 2026-09-07
 
 ### Added

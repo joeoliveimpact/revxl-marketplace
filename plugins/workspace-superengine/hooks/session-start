@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 # SessionStart hook for workspace-superengine
-# Two jobs:
+# Three jobs:
 #   1. Scaffold existence check — warn when CLAUDE.md is missing, or when
 #      neither .claude/rules/overrides.md nor a legacy root RULES.md exists.
 #   2. Broadcast .claude/workspace.yml (verbosity + environment) as a
 #      system reminder.
+#   3. Update notice: name any installed plugin the marketplace clone on this
+#      machine has moved past. It reads that clone
+#      (~/.claude/plugins/marketplaces/revxl-marketplace), so a machine without
+#      it prints nothing, as does an unfamiliar layout or any version string
+#      that is not N.N.N. A false notice is worse than none. Cowork never loads
+#      plugin hooks, so this is Desktop and Code only.
 #
 # This hook used to also paste the whole agent-optimizer SKILL.md into every
 # session. 0.12.0 moved the override constraints to .claude/rules/overrides.md,
@@ -57,6 +63,94 @@ if [ -f "$workspace_yml" ]; then
     workspace_config="Workspace verbosity: ${verbosity}. Environment: ${environment}. Plugin skills should adapt accordingly."
 fi
 
+# --- Job 3: update notice ---
+# Names any loaded plugin whose version the marketplace clone on this machine has
+# moved past, one line each. It runs inside a subshell with the strict flags off
+# and every path guarded, so it can add a line or add nothing, never fail the
+# hook. Read only: it opens plugin.json files and writes nothing.
+check_plugin_updates() (
+    set +e
+    set +u
+
+    field() {
+        grep -o "\"$2\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" "$1" 2>/dev/null \
+            | head -n 1 | sed 's/.*:[[:space:]]*"//; s/"$//' | tr -d '\r'
+    }
+
+    home="$USERPROFILE"
+    [ -n "$home" ] || home="$HOME"
+    [ -n "$home" ] || return 0
+    home="${home//\\//}"
+    home="${home%/}"
+
+    clone="${home}/.claude/plugins/marketplaces/revxl-marketplace/plugins"
+    [ -d "$clone" ] || return 0
+
+    # The harness sets CLAUDE_PLUGIN_ROOT to this plugin's root; where it is unset
+    # the script's own location says the same thing.
+    root="$CLAUDE_PLUGIN_ROOT"
+    [ -n "$root" ] || root="$PLUGIN_ROOT"
+    [ -n "$root" ] || return 0
+    root="${root//\\//}"
+    root="${root%/}"
+
+    # Two known layouts, told apart by shape. Desktop keeps every installed plugin
+    # in a sibling `plugin_<id>` directory, so all of them can be compared. The
+    # Code CLI cache can hold several versions of one plugin and does not say which
+    # is loaded, so there only this plugin is compared. Anything else: say nothing.
+    parent="${root%/*}"
+    case "${root##*/}" in
+        plugin_*) manifests=("$root"/../plugin_*/.claude-plugin/plugin.json) ;;
+        *)
+            if [ "${parent##*/}" = "workspace-superengine" ]; then
+                manifests=("$root/.claude-plugin/plugin.json")
+            else
+                return 0
+            fi
+            ;;
+    esac
+
+    lines=""
+    for m in "${manifests[@]}"; do
+        [ -f "$m" ] || continue
+        name="$(field "$m" name)"
+        have="$(field "$m" version)"
+        [ -n "$name" ] || continue
+        [[ "$have" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || continue
+
+        want="$(field "${clone}/${name}/.claude-plugin/plugin.json" version)"
+        [[ "$want" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || continue
+
+        IFS=. read -r h1 h2 h3 <<< "$have"
+        IFS=. read -r w1 w2 w3 <<< "$want"
+        h1=$((10#$h1)); h2=$((10#$h2)); h3=$((10#$h3))
+        w1=$((10#$w1)); w2=$((10#$w2)); w3=$((10#$w3))
+
+        newer=0
+        if [ "$w1" -gt "$h1" ]; then
+            newer=1
+        elif [ "$w1" -eq "$h1" ] && [ "$w2" -gt "$h2" ]; then
+            newer=1
+        elif [ "$w1" -eq "$h1" ] && [ "$w2" -eq "$h2" ] && [ "$w3" -gt "$h3" ]; then
+            newer=1
+        fi
+        [ "$newer" -eq 1 ] || continue
+
+        line="\`${name} ${want}\` is available; fully quit Desktop and run the update."
+        if [ -n "$lines" ]; then
+            lines="${lines}
+${line}"
+        else
+            lines="$line"
+        fi
+    done
+
+    [ -n "$lines" ] && printf '%s' "$lines"
+    return 0
+)
+
+update_notice="$(check_plugin_updates 2>/dev/null || true)"
+
 # --- Escape for JSON embedding (bash parameter substitution) ---
 escape_for_json() {
     local s="$1"
@@ -77,6 +171,10 @@ fi
 
 if [ -n "$scaffold_warning" ]; then
     session_context="${session_context}\n\n<scaffold-status>\n$(escape_for_json "$scaffold_warning")\n</scaffold-status>"
+fi
+
+if [ -n "$update_notice" ]; then
+    session_context="${session_context}\n\n<plugin-updates>\n$(escape_for_json "$update_notice")\n</plugin-updates>"
 fi
 
 session_context="${session_context}\n</EXTREMELY_IMPORTANT>"

@@ -4,7 +4,7 @@
 # no RevXL Vault call followed.
 #
 # Subcommands
-#   post-skill  PostToolUse(Skill). If the invoked skill is one of the 30
+#   post-skill  PostToolUse(Skill). If the invoked skill is one of the 33
 #               content-drafting skills, stamp ~/.config/revxl/brain-nudge/<session>.json
 #               with {skill, ts}. Latest generator wins.
 #   pre-write   PreToolUse(Write|Edit). If that stamp exists, the Vault call
@@ -34,10 +34,13 @@ use File::Path qw(make_path);
 
 exit 0 unless $JSON_OK;
 
-# The generating skills, named exactly as the Skill tool names them
-# (<plugin>:<skill-directory>). These are the skills that draft client-facing
-# work and therefore have a Vault trigger point; analysis, setup, teaching and
-# intake skills are deliberately absent.
+# The generating skills, named as the Skill tool passes them:
+# `<plugin>:<skill-directory>` and, where a skill's frontmatter `name:` is bare,
+# that bare name as well, because the tool accepts either spelling. These are the
+# skills that draft client-facing work and therefore have a Vault trigger point;
+# analysis, setup, teaching and intake skills are deliberately absent. The three
+# shortform names shipping in 0.4.0 and 0.5.0 are listed ahead of their release,
+# so a client needs no second update to this plugin when they land.
 my %GENERATOR = map { ($_ => 1) } qw(
     meta-ads-superengine:meta-ads-ad-copy
     meta-ads-superengine:meta-ads-campaign-plan
@@ -47,6 +50,13 @@ my %GENERATOR = map { ($_ => 1) } qw(
     meta-ads-superengine:meta-ads-static-ads
     meta-ads-superengine:meta-ads-video-script
     shortform-superengine:reel-scripter
+    reel-scripter
+    shortform-superengine:content-plan
+    content-plan
+    shortform-superengine:own-content-analysis
+    own-content-analysis
+    shortform-superengine:subject-matter
+    subject-matter
     carousel-superengine:carousel-create
     carousel-superengine:carousel-render
     carousel-superengine:carousel-templates
@@ -60,8 +70,11 @@ my %GENERATOR = map { ($_ => 1) } qw(
     email-sequence-superengine:email-warm-nurture-sequence
     email-sequence-superengine:email-winback-sequence
     lead-magnet-superengine:lm-create
+    lm-create
     lead-magnet-superengine:lm-inspired-by
+    lm-inspired-by
     lead-magnet-superengine:lm-revamp
+    lm-revamp
     profile-optimization-superengine:profile-fb-audit
     profile-optimization-superengine:profile-ig-audit
     offer-architect:build-offer-blueprint
@@ -180,12 +193,12 @@ if (open my $out, '>', $stamp) {
 }
 
 my $skill = (defined $rec->{skill} && !ref($rec->{skill})) ? $rec->{skill} : 'a generating skill';
-# The evidence line keeps the plugins' own wording (`Brain: skipped`): that is what
-# every trigger point on the catalog prints. Only the skill name and this file's
-# prose follow the Vault rename.
+# The nudge asks for the `Vault:` wording that `revxl-vault-search` itself prints.
+# The plugins' own trigger points still print `Brain:` today, and this hook reads the
+# ledger, never the line, so either spelling satisfies it.
 my $msg = "No Vault check since `" . $skill . "` started. Invoke "
         . "`workspace-superengine:revxl-vault-search` before this draft "
-        . "(depth med, the plugin's recipe), or print `Brain: skipped (...)` "
+        . "(depth med, the plugin's recipe), or print `Vault: skipped (...)` "
         . "with the reason.";
 my $json = eval {
     encode_json({

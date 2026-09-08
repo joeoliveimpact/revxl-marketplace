@@ -73,12 +73,13 @@ Built-in override-constraint compliance self-check before returning.
 ## The brain-nudge hook
 
 A two-state safety net for the Vault checks built into the RevXL content plugins.
-State one: one of the 30 content-drafting skills runs (29 generators plus the email
+State one: one of the 33 content-drafting skills runs (32 generators plus the email
 story intake), and the hook notes which, for this session. State two: the next Write or Edit
 arrives and no Vault call has been logged since that skill started, so the hook adds
 one line of context asking for a `revxl-vault-search` call before the draft, or a
-`Brain: skipped (...)` line saying why not (that line keeps the wording every plugin
-trigger point prints). A failed Vault call still counts: the question is whether the
+`Vault: skipped (...)` line saying why not (the plugins' own trigger points still
+print `Brain:`; either satisfies the hook, which reads the ledger, not the line). A
+failed Vault call still counts: the question is whether the
 Vault was checked, not whether it answered.
 
 It speaks once per generator run, never blocks a Write, never returns a permission
@@ -93,6 +94,12 @@ writes on every call.
 **Claude Cowork never loads plugin hooks**, so the nudge runs on Claude Desktop and
 Claude Code only. Nothing is lost on Cowork beyond the reminder: each plugin's own
 Vault trigger points are skill text, which Cowork does load.
+
+**Update notice:** the same plugin's session-start hook compares the version of each
+plugin you have installed with the version the marketplace clone on your machine
+holds, and names any the clone has moved past, one line each, so an out of date
+plugin says so instead of waiting to be noticed. It needs that clone present locally
+and, like the nudge, says nothing at all when it cannot be sure.
 
 ---
 
