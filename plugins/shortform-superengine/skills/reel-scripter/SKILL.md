@@ -128,6 +128,9 @@ modes: `./references/pipeline-detail.md` "Step 0b".
 4-question voice Q&A, noted on the script as interim. Full read rules (`days_since_update`
 and the single refresh offer, `provisional: true`, the Mirror-Language ban):
 `./references/pipeline-detail.md` "Step 0c". No `voc/` renders **no voice guide on disk**.
+A `voc/` over 7 days old gets ONE refresh offer (F7); proceeding without it records
+`voc_refresh:<voc.refreshed_at>` in `declined_offers` (entry shape:
+`../_shared/references/state-schema.md`), which stops the compass re-offering it.
 
 **0d. Vault pull #1, the angle and its doctrine (named trigger point 1 of 2).**
 Check `<project>/brain-pulls/<slug>.md` first: a cached pull younger than **14 days** is
@@ -185,10 +188,9 @@ four verdict branches (WINNER / NEUTRAL, LOSER, UNTESTED / THIN / NONE, thin-n):
 `./references/pipeline-detail.md` "Step 1 field vet".
 
 **Deeper field layer (optional, detect-first).** With socialcrawl-superengine installed
-(marker `~/.claude/socialcrawl-superengine/.superengine`, or a directory matching
-`~/.claude/plugins/cache/*/socialcrawl-superengine/`), `research-plays` widens the angle
-set. Absent, do not fake it: render the F9 refusal in
-`../_shared/references/socialcrawl-endpoints.md` and continue on the analysis.
+(the two-step probe is in `../_shared/references/socialcrawl-endpoints.md`),
+`research-plays` widens the angle set. Absent, do not fake it: render the F9 refusal block described in
+`../_shared/references/journey-map.md` (edge F9) and continue on the analysis.
 
 **Persist the angles not taken.** On the Checkpoint 1 pick, write every other proposed angle
 to `state.angles_unpicked[]` as `{angle, from, opened}`, so "script the next angle" survives
@@ -303,10 +305,8 @@ exactly as at Checkpoint 0, then render **script written (E6)** above.
 
 ## Content plan
 
-The weekly idea pool moved out at 0.4.0 and is now `content-plan`, which builds a
-source-tagged pool from four sources instead of this skill's one. Say: "content plan"
-
-Coming back with an idea, the entry is "script idea N from my content plan": read
+The weekly idea pool is `content-plan`'s, not this skill's
+(`./references/pipeline-detail.md` "Content plan"). Coming back with an idea, the entry is "script idea N from my content plan": read
 `<project>/content-plan-<newest week>.md`, take idea N (with its source tag and angle) as
 the chosen angle, then run from Checkpoint 0 for voice and on to Step 2. Step 1's proposal
 is skipped; the guardrails are not. No plan on disk is a missing prereq (E0).
@@ -342,15 +342,13 @@ is skipped; the guardrails are not. No plan on disk is a missing prereq (E0).
 ## References
 
 Every reference is linked from the step that uses it. Entry points:
-`./references/step3-options.md` (Step 3) · `./references/pipeline-detail.md` (Inputs, Steps
-0b, 0c, 1, 2, 4, 5, Non-Goals) · `./scripting_brief.py` · `./field_vet.py` ·
+`./references/step3-options.md` (Step 3) · `./references/pipeline-detail.md` (every
+other step) · `./scripting_brief.py` · `./field_vet.py` ·
 `../_shared/references/journey-map.md` · `../_shared/contracts/analysis-data.schema.json`
 
 ---
 
 ## Non-Goals
 
-- A content calendar or a batch of finished reels: one script per run; the weekly pool is
-  `content-plan`'s job.
-- Multi-platform, running the analysis, predicting performance, building the voice profile:
-  `./references/pipeline-detail.md` "Non-Goals".
+One script per run. Everything this skill deliberately does not do, in full:
+`./references/pipeline-detail.md` "Non-Goals".

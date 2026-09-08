@@ -63,7 +63,7 @@ registry id in parentheses.
 2. Already set up, and want to see what is missing? Say: "show my setup"
 3. Not sure where you are in the flow? Say: "what's next in shortform"
 
-**Next moves ... a parked run is waiting** (F1)
+**Next moves ... a parked run is waiting** (F1, E22)
 1. Resume at the stored checkpoint, nothing re-pulled or re-charged. Say: "resume my cross-reference"
 2. Start fresh instead. The parked run stays on disk. Say: "competitor cross-reference analysis"
 3. See the whole board first. Say: "what's next in shortform"
@@ -155,8 +155,9 @@ Call SocialCrawl directly. Paths, params, prices and the key ladder live in
 offers and lead magnets into `source/website-*.json`, and synthesize
 `foundation.md` (niche, ICP, core offer, differentiators). Without one: derive
 positioning from the IG bio, any link-in-bio page and the top captions, and
-write `foundation.md` carrying the reduced-confidence notice. Both paths in
-full, plus the views, likes and comments only constraint:
+write `foundation.md` carrying the reduced-confidence notice. No `firecrawl`
+skill installed: skip website intelligence, note it in the roadmap, continue.
+Both paths in full, plus the views, likes and comments only constraint:
 `./references/pipeline-detail.md`.
 
 ---
@@ -373,10 +374,8 @@ deliverable. Everything else: `./references/project-shape.md`.
 
 ## References
 
-Scripts sit beside this file (`analyze.py`, `transcribe_reels.py`,
-`extract_patterns.py`, `select_beatmap_set.py`, `render_visuals.py`); bundled
-and shared reference files are named at the step that needs them. Full index:
-`./references/pipeline-detail.md`.
+Scripts sit beside this file; bundled references are named at the step that
+needs them. Full index: `./references/pipeline-detail.md` "The reference index".
 
 ---
 

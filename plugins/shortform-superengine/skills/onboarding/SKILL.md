@@ -47,13 +47,13 @@ and no idea what to say next. Ids are journey-map rows; the block shape is
 `../_shared/references/routing.md`. Render one of these, never an invented menu.
 
 **Next moves** (E1, setup complete)
-1. Pick the first job and let me route you ... the front door reads your goal and hands you the right skill. Say: "start shortform"  <- start here
-2. Analyze this account against its competitors ... a strategy roadmap plus visual dashboards built on real reel data. Say: "analyze my Instagram against my competitors"
+1. *If `state.goal` is make-a-reel, plan-the-week or read-the-field:* analyze this account against its competitors ... the field read all three of those goals need first. Say: "analyze my Instagram against my competitors"  <- start here
+2. *If `state.goal` is set-up, or not set at all:* let the compass read what setup just wrote and rank the moves. Say: "what's next in shortform"
 3. *If the brand brain was skipped at Step 4b:* capture the client's real voice first, so the scripts sound like them. Say: "build my brand brain"
 4. *If a thought-leader's library is worth capturing:* pull the whole thing into a dated corpus. Say: "harvest <creator>'s library"
 
 **Next moves ... a prior analysis is already on this machine** (E1)
-1. Keep that field read alive week to week ... new winners, refreshed charts, one brief. Say: "make the pulse weekly"
+1. *If `state.pulse.scheduled` is false AND the marker's `competitor_pulse.scheduled` is false:* keep that field read alive week to week ... new winners, refreshed charts, one brief. Say: "make the pulse weekly"
 2. Script off what already wins in that analysis. Say: "write a reel script from my analysis"
 3. Pick the first job and let me route you. Say: "start shortform"
 
@@ -132,10 +132,9 @@ Probe each tier: `yt-dlp --version` (fetch), env `GROQ_API_KEY` (cloud transcrib
 >   the target setup is BOTH, and no reel falls through the cracks. `yt-dlp` is
 >   NOT part of this gate: since 0.4.0 it is harvest-only.**
 
-Why: captions alone can't handle a reel that *has no captions*, so one true
-transcriber is the real floor, and two transcribers mean a Groq outage or an
-offline session still can't stall a run. This chain is also the **only** way this
-plugin ever transcribes: SocialCrawl's `*/transcript` endpoints are banned
+Why one true transcriber is the floor and two is the target:
+[`./references/setup-detail.md`](references/setup-detail.md). This chain is also
+the **only** way this plugin ever transcribes: SocialCrawl's `*/transcript` endpoints are banned
 (10 credits/reel, no advantage). See the "Never" section of
 [`../_shared/references/socialcrawl-endpoints.md`](../_shared/references/socialcrawl-endpoints.md).
 
@@ -160,8 +159,8 @@ Record the resolved chain (which tiers are live) — it goes in the marker so
 ### SocialCrawl — required (bring-your-own-key)
 
 The social-data source. **Each client uses their own key + credits** — never
-yours, never the public's (this is why the key is exposed to the paying client:
-it's the only way they don't draw down someone else's credits).
+yours, never the public's. Why the key is exposed to the paying client:
+[`./references/setup-detail.md`](references/setup-detail.md).
 
 Don't reinvent the key flow. The resolution ladder lives in
 [`../_shared/references/socialcrawl-endpoints.md`](../_shared/references/socialcrawl-endpoints.md)
@@ -190,10 +189,9 @@ Groq is handled in Step 2. Firecrawl and NotebookLM are detect-and-note only: ne
 
 ### Token hygiene (trim connectors you don't need here)
 
-Every MCP connector loaded in a workspace spends tokens on **every** message just
-by being available. This plugin ships none of its own. Offer, in plain words, to
-switch off the connectors this workspace does not need; let the client pick;
-never disable anything without confirming; say that it is reversible. The full
+Offer, in plain words, to switch off the MCP connectors this workspace does not
+need; let the client pick; never disable anything without confirming; say that
+it is reversible. What a loaded connector costs on every message, the full
 script and the reasoning:
 [`./references/setup-detail.md`](references/setup-detail.md).
 

@@ -19,10 +19,15 @@ ERRORS (exit 1, printed as GitHub ::error annotations):
   2. structure   every skills/*/SKILL.md carries `## Prereq (E0)` and
                  `## Terminal paths`, and no block header sits outside that
                  section (the section ends at the next `## ` heading).
-  3. registry    every block cites a ledger id (E0b, E<n>, F<n>) in its header
+  3. registry     every block cites a ledger id (E0b, E<n>, F<n>) in its header
                  line or on the first non-blank line under it; every cited id
                  has a row in journey-map.md; every happy-path and failure row
-                 names a skill that exists.
+                 names a skill that exists; and every happy-path and failure row
+                 is CITED BY a block, in the skill the row comes FROM or in a
+                 skill its "Routes to" cell names (a row whose From cell opens
+                 with "any" is generic: any skill's block may cite it). A
+                 registry row no block renders is a terminal path with no route,
+                 which is the exact defect this gate exists to catch.
   4. endpoints   every anchored SocialCrawl path this plugin names in a .md or
                  .py file has a row in socialcrawl-endpoints.md, and no row
                  names the retired search/reels alias (unbackticked here on
@@ -166,6 +171,11 @@ def collect():
                           "::journey-map.md missing; every routing id is unresolvable" % plugin)
         ledger = _table_ids(jmap)
 
+        # id -> the skills whose blocks may cite it, or None when the row is
+        # generic ("any skill, ..."), which any block may cite. Filled by 3b,
+        # asserted by 3c after every skill's blocks have been read.
+        rows_where = {}
+
         # --- 3b. registry rows must name a skill that exists ------------------
         for label in ("### Happy path", "### Failure edges"):
             block = jmap.split(label, 1)
@@ -186,7 +196,15 @@ def collect():
                 if not word:
                     continue
                 name = word.group(1)
-                if name.lower() in ("any", "a", "an", "the"):
+                generic = name.lower() in ("any", "a", "an", "the")
+                # 3c input. The From skill is the home of the block; a skill the
+                # "Routes to" cell names is the accepted alternative, because a
+                # handoff edge is often written on the receiving side (E7's
+                # citing block lives in reel-scripter, not content-plan).
+                rows_where[m.group(1)] = (
+                    None if generic
+                    else sorted(s for s in skill_names if s in line))
+                if generic:
                     continue  # a generic row ("any skill, prereq missing")
                 if name not in skill_names:
                     errors.append(
@@ -200,11 +218,13 @@ def collect():
             say_haystack.append(_squash(_frontmatter(_lf_text(sk))))
         haystack = " | ".join(say_haystack)
 
+        cited_by_skill = {}        # skill name -> {ids its blocks cite}
         for sk in skills:
             rel = "plugins/%s/%s" % (plugin, sk.relative_to(root).as_posix())
             text = _lf_text(sk)
             size = len(text.encode("utf-8"))
             lines = _lines(text)
+            cited = cited_by_skill.setdefault(sk.parent.name, set())
 
             # 2. structure
             for heading in ("## Prereq (E0)", "## Terminal paths"):
@@ -224,11 +244,23 @@ def collect():
                         "(under byte %d) so the blocks survive a compaction"
                         % (rel, start_b, size, TOP_THIRD_FROM, size // 3))
 
-            for pos, line, fenced in lines:
+            for i0, (pos, line, fenced) in enumerate(lines):
                 if fenced or not RX_HEADER.match(line):
                     continue
                 stats["blocks"] += 1
                 off = _byte_offset(text, pos)
+
+                # 3c input: every id anywhere in this block, header and body.
+                # The body runs to the next block header or the next `## `.
+                j = i0 + 1
+                body = [line]
+                while j < len(lines):
+                    _, l2, f2 = lines[j]
+                    if not f2 and (RX_HEADER.match(l2) or l2.startswith("## ")):
+                        break
+                    body.append(l2)
+                    j += 1
+                cited.update(RX_ID.findall("\n".join(body)))
 
                 # 1. placement of each block
                 if off >= BLOCK_CUT:
@@ -287,6 +319,26 @@ def collect():
                             "::warning file=%s::Say: \"%s\" resolves to no skill "
                             "description and no journey-map roster row"
                             % (rel, tail[:close].strip()))
+
+        # --- 3c. every registry row is rendered by a block --------------------
+        cited_anywhere = set()
+        for ids in cited_by_skill.values():
+            cited_anywhere |= ids
+        for rid, where in sorted(rows_where.items()):
+            if where is None:
+                if rid in cited_anywhere:
+                    continue
+                hint = "no Next-moves block in any skill"
+            else:
+                if any(rid in cited_by_skill.get(s, ()) for s in where):
+                    continue
+                hint = ("no Next-moves block in %s"
+                        % (", ".join(where) if where else "any skill it names"))
+            errors.append(
+                "::error file=plugins/%s/skills/_shared/references/journey-map.md"
+                "::registry row %s is cited by %s; a row whose ending no block "
+                "renders is a terminal path with no route out"
+                % (plugin, rid, hint))
 
         # --- 4. endpoint table closure ---------------------------------------
         table = _lf_text(ep_path) if ep_path.exists() else ""

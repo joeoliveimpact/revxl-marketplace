@@ -15,10 +15,10 @@ input=$(cat)
 # unmistakable invocations. First match wins; exactly one line is printed.
 COMPASS="what'?s next in shortform|shortform next|where am i in shortform"
 START="start shortform|open shortform|shortform start|i'?m lost in shortform"
-ONBOARDING='set up shortform|onboard shortform|shortform setup|(install|configure) the reel plugin|get the shortform superengine ready|finish setting up the content engine'
-REEL_SCRIPTER='write a reel script|script a reel|reel script|reel-scripter|script the next reel|script idea [0-9]+ from my content plan|script that reel|script the top idea'
-CROSS_REFERENCE='competitor cross-reference|cross-reference my client|content gap analysis|build my visual dashboards|regenerate my visuals'
-PULSE='run the weekly pulse|competitor pulse|what changed this week|refresh my competitor analysis|manage my roster|comment pulse|mine the comments on'
+ONBOARDING='set up shortform|onboard shortform|shortform setup|(install|configure) the reel plugin|get the shortform superengine ready|finish setting up the content engine|show my setup'
+REEL_SCRIPTER='write a reel script|script a reel|reel script|reel-scripter|script the next reel|script idea [0-9]+ from my content plan|script that reel|script the top idea|script the top gap|script the top seed|script the next angle'
+CROSS_REFERENCE='competitor cross-reference|cross-reference my client|content gap analysis|build my visual dashboards|regenerate my visuals|resume my cross-reference|analyze my instagram against my competitors'
+PULSE='run the weekly pulse|run the pulse|make the pulse weekly|search the field for|competitor pulse|what changed this week|refresh my competitor analysis|manage my roster|comment pulse|mine the comments on'
 BRAND_BRAIN='capture my voice|build my brand brain|brand brain|mine my calls|set up my voice|refresh my voice guide|update my topics'
 HARVEST='harvest .{0,40}(library|content|videos)|get everything .{0,40} teaches|pull all of .{0,40} content|build a corpus from|refresh our notebook on'
 CONTENT_PLAN='content plan|weekly topic pool|topic pool|idea bank|plan my week|plan the week|what should i post this week'

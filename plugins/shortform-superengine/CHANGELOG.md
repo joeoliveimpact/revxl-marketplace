@@ -23,8 +23,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   losing its routing.
 - **The routing gate.** `scripts/check_routing.py`, wired as `validate.py --section
   routing` and a sixth CI job, fails the build on a block past the compaction cut,
-  a block outside Terminal paths, a block citing no journey-map id, an endpoint no
-  table row names, a stale catalog version prefix, or a wrong README skill count.
+  a block outside Terminal paths, a block citing no journey-map id, a registry
+  edge no block cites, an endpoint no table row names, a stale catalog version
+  prefix, or a wrong README skill count.
 - **`skills/_shared/references/`**: `journey-map.md` (the roster and the edge
   registry, E0 to E24 and F1 to F9), `routing.md` (the block grammar),
   `state-schema.md` (one state file per brand, one writer per key) and

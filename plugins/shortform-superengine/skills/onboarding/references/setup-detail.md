@@ -37,6 +37,10 @@ apart from house punctuation.
 Groq and local Whisper run **in parallel ... first healthy transcript wins**. Install
 BOTH so transcription never stalls on one engine having a bad day.
 
+**Why one is the floor and two is the target.** Captions alone cannot handle a reel
+that *has no captions*, so one true transcriber is the real floor; and two mean a
+Groq outage or an offline session still cannot stall a run.
+
 ## RevXL Vault wiring (Step 3)
 
 Joe's live strategy library, not the brand brain (that is 4b, built locally):
@@ -164,6 +168,10 @@ If they explicitly invoke `/onboarding` or clearly ask to set up, skip the ask.
   and move on ... recommend, never block.
 
 ## The SocialCrawl sign-up walkthrough (Step 3)
+
+**Why the key is exposed to the paying client.** It is the only way they do not
+draw down someone else's credits: each client's own key bills each client's own
+balance. Never your key, never a shared one.
 
 If no key is found, walk them through getting one. Point them at
 [`socialcrawl-setup.md`](socialcrawl-setup.md) ... the

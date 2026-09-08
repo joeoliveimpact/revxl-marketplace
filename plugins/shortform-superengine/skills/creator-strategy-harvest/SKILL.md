@@ -1,6 +1,6 @@
 ---
 name: creator-strategy-harvest
-description: Harvest a creator's full content-strategy library (YouTube channel + playlists + newsletter) into a dated, recency-ruled corpus + framework extraction, ready for a consumer to ingest. Use when the user wants to capture/refresh a thought-leader's frameworks (e.g. Kallaway, heyDominik, Hormozi) for a knowledge base. Triggers include "harvest <creator>'s library", "get everything <creator> teaches", "pull all of <creator>'s content", "build a corpus from <creator>'s videos", "refresh our notebook on <creator>", "refresh the harvest on <creator>", "build a notebook from this harvest".
+description: Harvest a creator's full content-strategy library (YouTube channel + playlists + newsletter) into a dated, recency-ruled corpus + framework extraction, ready for a consumer to ingest. Use when the user wants to capture/refresh a thought-leader's frameworks (e.g. Kallaway, heyDominik, Hormozi) for a knowledge base. Triggers include "harvest <creator>'s library", "get everything <creator> teaches", "pull all of <creator>'s content", "build a corpus from <creator>'s videos", "refresh our notebook on <creator>", "refresh the harvest on <creator>".
 ---
 
 # creator-strategy-harvest
@@ -45,7 +45,7 @@ is `../_shared/references/routing.md`.
 
 **Next moves** (E13, the corpus and its manifest are written)
 1. Turn it into the client's own material ... `subject-matter` reads the corpus and writes a subject brief a reel can be scripted from. Say: "use my own material" (if installed)
-2. Load it into NotebookLM for instant Q&A over the creator's teachings, when the local CLI is on PATH. Say: "build a notebook from this harvest"
+2. Build a NotebookLM notebook from the harvest folder ... instant Q&A over the creator's teachings, when notebooklm-superengine or the local CLI is there. Say: "build a notebook" (if installed)
 3. Harvest another creator while the method is warm. Say: "harvest <creator>'s library"
 4. Re-run this one later for new uploads ... the gap analysis makes refreshes cheap. Say: "refresh the harvest on <creator>"
 
@@ -90,7 +90,7 @@ Parse json3 (event-level join: `''.join` segs within an event, `' '.join` across
 - Shorts: same method (his hooks in practice — keep as a separate set).
 
 ### 4. Newsletter (if any) — firecrawl, not yt-dlp
-A web newsletter isn't video; yt-dlp can't. `firecrawl map "<site>"` → grep `/p/` issue URLs → `firecrawl scrape <url> -o newsletter/<issue>.md` each. Issue number = recency proxy.
+A web newsletter isn't video; yt-dlp can't. `firecrawl map "<site>"` → grep `/p/` issue URLs → `firecrawl scrape <url> -o newsletter/<issue>.md` each. Issue number = recency proxy. No `firecrawl` skill installed: skip the newsletter, note it in the manifest, continue on the video library.
 
 ### 5. Extract frameworks (batched Sonnet subs — cheap models for the cheap work)
 Chunk the corpus (~22 long videos / ~32 newsletter / ~46 shorts per sub) via manifest files. Each sub extracts EVERY framework/hook/retention-device/structure/metric/posting-rule as a dated, bucket-labeled bullet: `- **[Bucket]** — mechanic + specifics/numbers. [src: <title>, <date>]`. Consistent bucket labels (Hook structure, Retention device, Algorithm ranking, Story structure, Virality, Share-rate, Cadence, Content pillars, Scripting, Monetization, Audience). Shorts → a hook **swipe file** (verbatim opening + type + date).
@@ -115,7 +115,7 @@ The corpus and its manifest are the ending. Route from the E13 block in `## Term
 `research/creator-strategy-harvest-<date>/harvest/`: `inventory/`, `gap-report-<date>.md`, `transcripts/`, `newsletter/`, `extracted/` (partials + masters + superseded log + hook swipe), and the manifest (`scripts/build_manifest.py` writes it to the path you name).
 
 ## Reuses
-`yt-dlp` + `ffmpeg` + local `faster_whisper`; `firecrawl-map`/`firecrawl-scrape` skills; `notebooklm-ask` skill (source list/add). Scripts: `scripts/caption_harvest.py`, `scripts/build_manifest.py`.
+`yt-dlp` + `ffmpeg` + local `faster_whisper`; `firecrawl-map`/`firecrawl-scrape` skills; `notebooklm-ask` skill (source list/add). Scripts: `scripts/caption_harvest.py`, `scripts/build_manifest.py`. Only `yt-dlp` is required: no `firecrawl` skill installed means skip website intelligence, note it in the manifest, continue.
 
 ## Non-goals
 Hand-building the knowledge graph (a consumer's job); Whisper-transcribing YouTube when captions exist; treating synthesis docs as source of truth over the dated originals.

@@ -32,6 +32,6 @@ scoreboard, hooks + themes field-vs-client, followers×views map, cadence,
 opportunity map, gap cards, outlier wall), **competitors.html** (per-competitor
 profiles with a picker; `--split` also writes one standalone file per
 competitor for client delivery), **client.html** (client profile + hook mix +
-the written analysis inlined). Self-contained offline HTML — open anywhere,
+the written analysis inlined). Self-contained offline HTML ... open anywhere,
 send anywhere. Brand the pack by dropping
 `<project>/visual-theme.json` `{"brand":"#hex","accent":"#hex","logo_text":"..."}`.

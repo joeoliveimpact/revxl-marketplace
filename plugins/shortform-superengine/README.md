@@ -66,7 +66,8 @@ exits the journey aims at are a scripted reel, a competitor analysis and roadmap
 a weekly content plan, and a read on your own results (through the pulse until
 the dedicated read ships in 0.5.0). `scripts/check_routing.py` runs in CI and
 fails the build when a block goes missing, sits past the point a long file gets
-truncated, or offers a phrase that leads nowhere.
+truncated, or leaves a registry edge that no block cites. A phrase that leads
+nowhere is a warning, not a failure.
 
 ## Requirements
 
@@ -76,8 +77,9 @@ plugin calls, and what each one costs, are listed in
 table ... field search beyond your own roster, creator vetting, share of voice,
 lead finding ... lives in **socialcrawl-superengine**, and this plugin tells you
 so in writing rather than faking it. Live RevXL Vault pulls need
-**workspace-superengine 0.15.1 or later**; without it every skill says so in one
-line and runs on its bundled references.
+**workspace-superengine 0.15.1 or later** (the 0.15.0 caller contract plus the
+0.15.1 skill map); without it every skill says so in one line and runs on its
+bundled references.
 
 Commands:
 

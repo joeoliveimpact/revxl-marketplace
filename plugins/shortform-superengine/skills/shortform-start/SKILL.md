@@ -80,7 +80,7 @@ outside their own roster, creator vetting, share of voice, or lead finding.
 Those live in socialcrawl-superengine. This plugin will not fake them with the
 endpoints it has, because a confident wrong answer about the field costs more
 than the install does.
-1. Install socialcrawl-superengine, then run the play there. Say: "vet this creator" (if installed)  <- start here
+1. Get it installed, then run the play there ... ask me to install socialcrawl-superengine from the RevXL marketplace, then say the phrase. Say: "vet this creator" (if installed)  <- start here
 2. What runs today on this plugin's table: a keyword search across your own roster. Say: "search the field for <keyword>"
 3. Back to the journey. Say: "what's next in shortform"
 
@@ -96,7 +96,7 @@ skill that needs it, and E0 is written there.
 **1. Read the disk. No writes in this step.**
 
 - the marker `~/.claude/shortform-superengine/.superengine`
-- the brand: marker `active_brand`, then marker `brand` (legacy alias, same value), then ask once. Slug convention is brand-brain's: lowercase, spaces to hyphens, punctuation stripped
+- the brand: marker `active_brand`, then marker `brand` (legacy alias, same value), then ask once. Slug convention is brand-brain's: lowercase, alphanumeric only, no separators ("Maria G Fit" -> `mariagfit`)
 - `~/.claude/shortform-superengine/state/<brand>.json`
 - derive, never read from the file: `voc.present` and `voc.refreshed_at` from `~/.claude/revxl/<brand>/voc/` (exists, newest mtime inside); `subject.*` from `~/.claude/revxl/<brand>/subject/` the same way
 - probe 1, socialcrawl-superengine: `~/.claude/socialcrawl-superengine/.superengine` exists, OR a directory matching `~/.claude/plugins/cache/*/socialcrawl-superengine/` exists
@@ -143,6 +143,7 @@ the schema template, filled from the marker:
 - `setup.socialcrawl_superengine_installed` and `setup.ws_superengine_version` from step 1's two probes, seeded at file creation only
 - the marker's `competitor_pulse` block INTO `state.pulse`: `scheduled` -> `scheduled`, `last_run` -> `last_run`, `cadence` -> `day` only when it names a weekday (otherwise null). From here the marker copy is ignored: never re-read, never deleted. **A migrated home is never re-offered the pulse schedule it already accepted**
 - `project_path` from `competitor_pulse.project` when it is set, so the client is not asked for a folder they already gave
+- `analysis` when an `analysis-data.json` is found (look at `competitor_pulse.project` first, then scan for a project directory holding one): `date` = that file's modified time as YYYY-MM-DD, `n_competitors` = the competitor count inside it, `themes_set` false, `resume` null. Seeded at file creation only; `analysis.*` is competitor-cross-reference's from then on. Without the seed the compass reads `analysis` as null on a machine that plainly has one and sends the client back to build it again
 
 Say it in ONE line, render E18, then invoke `shortform-next`.
 

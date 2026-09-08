@@ -99,14 +99,24 @@ call to find out.
 ## State
 
 `~/.claude/shortform-superengine/state/<brand>.json`
-(`../_shared/references/state-schema.md`), `<brand>` from the marker's
-`active_brand`.
+(`../_shared/references/state-schema.md`). Resolve `<brand>` on the same ladder
+competitor-cross-reference Step 0a uses: the marker's `active_brand`, then the
+legacy `brand` alias, then ask once and carry on. Never infer it from a folder
+name, and never run on a brand the client did not name.
 
 **Read at start:** the whole file plus `~/.claude/revxl/teach-level`. Schedule
 state comes from `state.pulse` FIRST. Only when the file has no `pulse` block (an
 un-migrated 0.3.x home) fall back to the marker's `competitor_pulse` block, copy
 it into `state.pulse`, and say so in one line. A home that already accepted a
 schedule is never re-offered one.
+
+When that fallback CREATES the state file, seed `analysis` in the same write from
+the `analysis-data.json` Step 0 just located: `date` = its modified time as
+YYYY-MM-DD, `n_competitors` = the competitor count inside it, `themes_set` false,
+`resume` null. Say that in the same one line. Without the seed the compass reads
+`analysis` as null on a machine that plainly has one and ranks "analyze my
+Instagram against my competitors" first all over again. Seeded at file creation
+only; `analysis.*` stays competitor-cross-reference's (`state-schema.md`).
 
 **Write at end,** owned keys only (rule zero: no invented keys). `pulse.scheduled`,
 `pulse.day`, `pulse.last_run` (local date), `pulse.last_snapshot` (the path under

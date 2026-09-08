@@ -37,13 +37,20 @@ The `(E..)` / `(F..)` line under each header is the ledger citation for
 `check_routing.py`, never printed to the client.
 
 **Next moves**
-(E20) the compass rendered against state. Below is the default shape with real
-phrases; the italic notes are the re-rankings that outrank it. Always 2 to 4
-moves, most likely first, each naming the state fact that makes it the move.
-1. Script the top gap ... the biggest hole your field read found, in your voice. *(#1 when `analysis` is set, under 30 days, and `goal` is make-a-reel)* Say: "script the top gap"  <- start here
-2. Plan the week ... 7 to 15 source-tagged ideas, deduped against what you have already scripted. *(#1 when `goal` is plan-the-week and at least one source exists)* Say: "plan my week"
-3. Keep the field current ... a cheap weekly delta so the analysis never goes stale. *(#1 instead when `analysis.date` is older than 30 days, F6)* Say: "run the weekly pulse"
-4. Capture your voice ... pillars and the language you already own, before any draft. *(#1 instead when `voc.present` is false; offered once per journey, F7)* Say: "capture my voice"
+(E20) the compass rendered against state. These are conditional lines in rank
+order, not a menu: render only the ones whose gate holds, plus any open-loop
+candidate the Sweep found, at most four, renumbered from 1 with `<- start here`
+on the rendered #1, and each naming the state fact that makes it the move. When every move the client came for is
+gated, the highest unmet gate's unblock phrase is #1, because a compass that
+ranks a blocked move has walked them into a wall.
+1. *If the marker is on disk and no state file is:* open the front door, which writes the journey file from the marker (E18) and then comes back here. Say: "start shortform"
+2. *If `analysis` is unset:* build the field baseline the rest of the engine reads ... nothing downstream is actionable until it exists. Say: "analyze my Instagram against my competitors"
+3. *If `analysis.date` is older than 30 days (F6):* keep the field current, a cheap weekly delta, before anything leans on a stale read. Say: "run the weekly pulse"
+4. *If `voc.refreshed_at` is over 7 days old AND `declined_offers` holds no `voc_refresh` entry (F7):* refresh the voice guide once, then proceed on it either way. Say: "refresh my voice guide"
+5. *If `voc.present` is false:* capture your voice ... pillars and the language you already own, before any draft. Say: "capture my voice"
+6. *If `analysis` is set, under 30 days, and `goal` is make-a-reel:* script the top gap, the biggest hole your field read found, in your voice. Say: "script the top gap"
+7. *If `goal` is plan-the-week and at least one source exists:* plan the week, 7 to 15 source-tagged ideas deduped against what you have already scripted. Say: "plan my week"
+8. *If `pulse.scheduled` is false and `analysis` is set:* have the weekly delta land on your desk on your day. Say: "make the pulse weekly"
 
 **Next moves ... nothing on disk**
 (E0) no marker and no state file for this brand. Hardcoded, because there is no
@@ -66,7 +73,7 @@ search outside the roster, creator vetting, share of voice, lead finding) and
 the socialcrawl-superengine marker is absent. The refusal is move 1 and it
 routes: it never becomes a stall, and this plugin never fakes the play with the
 endpoints it has.
-1. Install socialcrawl-superengine, then run the play there. Say: "vet this creator" (if installed)  <- start here
+1. Get it installed, then run the play there ... ask me to install socialcrawl-superengine from the RevXL marketplace, then say the phrase. Say: "vet this creator" (if installed)  <- start here
 2. What runs today on this plugin's table: a keyword search across your own roster. Say: "search the field for <keyword>"
 3. The next move that needs none of it. Say: "plan my week"
 
@@ -91,7 +98,7 @@ the stage line bare at `pro`.
 
 - every entry in `open_loops` (a parked cross-reference, an unscripted plan idea)
 - `analysis.date` older than 30 days -> refresh the field (F6)
-- `voc.refreshed_at` older than 7 days -> a brand-brain refresh, offered once per journey and recorded in `declined_offers` when turned down (F7)
+- `voc.refreshed_at` older than 7 days AND no `voc_refresh:<refreshed_at>` entry in `declined_offers` -> offer a brand-brain refresh (F7). The entry is written by reel-scripter Step 0c or content-plan Step 0 when the client proceeds without refreshing; this skill writes nothing, so it can only read that record, never make it
 - `pulse.scheduled` false while `analysis` is set -> offer the schedule. `pulse.scheduled` true -> **never offer it again**, including on a home migrated from a 0.3.x marker
 - `mode` is `subject-first` and `subject.present` is false -> subject-matter "(if installed)", else switch to `field-first` and say so (F8)
 - gates from the journey map: SETUP, ANALYSIS, VOICE, SUBJECT, DEEP PLAY. A blocked move is never ranked; its unblock route is ranked instead
@@ -132,7 +139,7 @@ Setup and voice are done, your field read is 6 days old, and no pulse is schedul
 **Next moves**
 1. Script the top gap ... the biggest hole your analysis found, written in your voice. Say: "script the top gap"  <- start here
 2. Plan the week around it ... 7 to 15 source-tagged ideas so next week is decided. Say: "plan my week"
-3. Keep the field current ... a cheap weekly delta so this read does not go stale on you. Say: "run the weekly pulse"
+3. Put the weekly delta on your calendar ... your day, so this read never goes stale on you. Say: "make the pulse weekly"
 ```
 
 Persona 3, returning with a pulse scheduled (`analysis.date` 34 days old,

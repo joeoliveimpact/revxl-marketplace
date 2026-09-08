@@ -85,9 +85,10 @@ built-in library"), and keep going.
 A trend deep dive, creator vetting, share of voice or lead finding is beyond
 `../_shared/references/socialcrawl-endpoints.md`, and this plugin will not fake
 one with a shallower call. Probe for the install the way that file says, then:
-1. Install socialcrawl-superengine and ask for the play by name ... it ships the same credit guard this plugin does. Say: "research plays" (if installed)
-2. What I can do today: the fresh pass on the table's own endpoints, `google_news/search` 1cr, `google_trends/explore` 5cr, `reddit/search` 1cr. Say: "refresh next week's plan"
-3. Field search inside the roster runs in the pulse. Say: "search the field for <keyword>"
+1. *If the probe came back empty:* get it installed first ... ask me to install socialcrawl-superengine from the RevXL marketplace, then say the phrase. It ships the same credit guard this plugin does. Say: "vet this creator" (if installed)
+2. *If it is already installed:* hand the creator straight over and come back with the read. Say: "vet this creator" (if installed)
+3. What I can do today: the fresh pass on the table's own endpoints, `google_news/search` 1cr, `google_trends/explore` 5cr, `reddit/search` 1cr. Say: "refresh next week's plan"
+4. Field search inside the roster runs in the pulse. Say: "search the field for <keyword>"
 
 ## Prereq (E0)
 
@@ -115,6 +116,11 @@ Prereqs and trigger phrases live in `journey-map.md`, never hardcoded here.
    neither has them. Write what you resolved into the plan header.
 4. **Slots.** Read `plan.slots`; when state has no cadence, ask once for the
    real 90-day post count and derive the week's slots from it (section 6).
+5. **Voice staleness (F7).** `voc.refreshed_at` over 7 days old and no
+   `voc_refresh` entry in `declined_offers`: offer the brand-brain refresh
+   once. Proceeding without it appends
+   `{"offer": "voc_refresh:<voc.refreshed_at>", "date": "<today>"}` to
+   `declined_offers`, which is what stops the compass offering it again.
 
 ## Step 1 ... FIELD
 
@@ -135,7 +141,10 @@ client's own material outranks a field rewrap. Section 2.
 Only the calls in `references/sources.md` section 3, each with its credit price
 shown to the client, about 10cr for a weekly refresh. Windows: 7 to 14 days for
 timely, 3 to 12 months for evergreen. Trending audio is rationed to at most one
-idea a week and is never the reason for an idea.
+idea a week and is never the reason for an idea. It rides the calls already in
+that table, `google_trends/explore` (5cr) for the term and
+`instagram/search/reels` for the sound itself; the deep audio pass belongs to
+socialcrawl-superengine and this plugin does not fake it.
 
 **Credit guard, absolute** (`../_shared/references/credit-guard.md`): check the
 balance (free), state the estimate, and get an explicit yes BEFORE any call over

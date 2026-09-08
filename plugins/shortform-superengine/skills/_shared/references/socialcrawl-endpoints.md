@@ -71,5 +71,7 @@ creator vetting, share of voice, lead finding, the other 40-odd platforms ...
 lives in socialcrawl-superengine and its `research-plays` skill. When the probe
 comes back empty and a deep play is the natural next move, the compass renders
 the install refusal block (journey-map edge F9): which plays need it, why this
-plugin will not fake them, then the phrase to say once it is installed. A
-refusal that routes, never a stall.
+plugin will not fake them, then the phrase to say once it is installed. The
+client never types a command for any of it: ask me to install
+socialcrawl-superengine from the RevXL marketplace, then say "vet this
+creator". A refusal that routes, never a stall.

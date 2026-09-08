@@ -14,7 +14,7 @@ never deleted, never "cleaned up."
 
 | Path | What |
 |---|---|
-| `~/.claude/shortform-superengine/.superengine` | Install marker (JSON): `version`, `onboarded_at`, `transcription_chain`, `connections`, `voice_sources`, `active_brand` (authoritative), `brand` (legacy alias, same value), `brand_brain`, `tier` |
+| `~/.claude/shortform-superengine/.superengine` | Install marker (JSON): `version`, `onboarded_at`, `transcription_chain`, `connections`, `voice_sources`, `voice_confidence`, `active_brand` (authoritative), `brand` (legacy alias, same value), `brand_brain`, `competitor_pulse`, `tier` |
 | `~/.claude/shortform-superengine/state/<brand>.json` | THIS schema, the per-brand journey state |
 | `<project>/` | The client's project directory: `analysis-data.json`, the roadmap, `visuals/`, `scripts/`, `content-plan-<week>.md`, `brain-pulls/`, `history/`. `project_path` in state points at it |
 | `~/.claude/revxl/<brand>/voc/` | brand-brain's output. **Read-only from this plugin's point of view**: `voc.present` is derived from it |
@@ -23,8 +23,9 @@ never deleted, never "cleaned up."
 | `~/.claude/revxl/teach-level` | The family teach dial. Authority for voice level, not state (`teach-mode.md`) |
 
 `<brand>` = normalized brand slug, **same convention as brand-brain**
-(`~/.claude/revxl/<brand>/voc/`): lowercase, spaces to hyphens, punctuation
-stripped. One client = usually one brand; an agency = N files, fully isolated.
+(`~/.claude/revxl/<brand>/voc/`): lowercase, alphanumeric only, no separators
+("Maria G Fit" -> `mariagfit`). One client = usually one brand; an agency = N
+files, fully isolated.
 
 ## Schema (version 1.0)
 
@@ -146,14 +147,14 @@ One writer per key. A skill not named here does not write that key.
 |---|---|
 | `setup.*` | onboarding only. shortform-start may SEED setup.* when it creates the file (first run, migration) and never overwrites it afterwards |
 | `goal`, `mode` | shortform-start (and any skill on an explicit plain request, which then says so) |
-| `project_path` | onboarding seeds it, competitor-cross-reference confirms or corrects it |
-| `analysis.*` (incl. `analysis.resume`) | competitor-cross-reference only |
+| `project_path` | onboarding seeds it, competitor-cross-reference confirms or corrects it. shortform-start may SEED project_path from the marker's `competitor_pulse.project` when it creates the file (first run, migration) and never overwrites it afterwards |
+| `analysis.*` (incl. `analysis.resume`) | competitor-cross-reference only. shortform-start (the E18 migration) and competitor-pulse (its marker fallback) may SEED analysis.* at file creation, from an `analysis-data.json` already on disk, and neither overwrites it afterwards |
 | `voc.present`, `voc.refreshed_at` | **nobody.** Derived on read from `~/.claude/revxl/<brand>/voc/`. brand-brain writes NOTHING in this file |
 | `subject.*` | subject-matter (0.5.0); `present` derived on read the same way `voc.present` is |
 | `scripts[]`, `angles_unpicked[]` | reel-scripter only |
 | `plan.*` | content-plan only (NOT reel-scripter: the topic-pool mode moved out at 0.4.0) |
 | `own_read.*` | own-content-analysis (0.5.0) |
-| `pulse.*` | competitor-pulse only |
+| `pulse.*` | competitor-pulse only. shortform-start may SEED pulse.* from the marker's `competitor_pulse` block when it creates the file (first run, migration) and never overwrites it afterwards |
 | `teach_level` | every skill (mirror of `~/.claude/revxl/teach-level` at last read; the file is authority) |
 | `completed_skills`, `open_loops`, `declined_offers`, `updated_at` | every skill |
 
@@ -180,6 +181,15 @@ One writer per key. A skill not named here does not write that key.
 |---|---|---|
 | `analysis.date` | 30 days | F6 ... refresh the field via the pulse |
 | `voc.refreshed_at` | 7 days | F7 ... offer a brand-brain refresh, once per journey |
+
+The F7 decline is one `declined_offers` entry,
+`{"offer": "voc_refresh:<the stale voc.refreshed_at>", "date": "YYYY-MM-DD"}`,
+written by whichever skill made the offer (reel-scripter Step 0c, content-plan
+Step 0) when the client proceeds without refreshing. The compass reads it and
+suppresses the F7 line while it is there; the compass writes nothing itself, so
+an offer declined at the compass is only recorded once one of those skills acts
+on it. A later refresh moves `voc.refreshed_at`, so the next stale window gets
+its own entry and its own single offer.
 
 ## Versioning
 

@@ -57,7 +57,7 @@ table. Every phrase belongs to exactly one skill.
 | Skill | Trigger phrases | Prereqs (state) | Produces |
 |---|---|---|---|
 | `competitor-cross-reference` | "analyze my Instagram against my competitors", "competitor cross-reference analysis", "cross-reference my client against competitors", "content gap analysis for an Instagram account", "IG baseline plus competitor audit", "build a content/growth strategy roadmap from competitor data", "analyze why a client's reels underperform vs competitors", "create a client-facing strategy roadmap from Instagram data", "build my visual dashboards", "regenerate my visuals", "open my visuals", "run more seeds", "shrink the set to N", "resume my cross-reference" | `setup` done (marker + SocialCrawl key) | `<project>/analysis-data.json`, the 10-section roadmap, the visual pack; `analysis.*`, `project_path` |
-| `creator-strategy-harvest` | "harvest <creator>'s library", "get everything <creator> teaches", "pull all of <creator>'s content", "build a corpus from <creator>'s videos", "refresh our notebook on <creator>", "refresh the harvest on <creator>", "build a notebook from this harvest" | `yt-dlp` present | a dated, framework-extracted creator corpus + manifest. Writes no state keys |
+| `creator-strategy-harvest` | "harvest <creator>'s library", "get everything <creator> teaches", "pull all of <creator>'s content", "build a corpus from <creator>'s videos", "refresh our notebook on <creator>", "refresh the harvest on <creator>" | `yt-dlp` present | a dated, framework-extracted creator corpus + manifest. Writes no state keys |
 
 ### MAKE
 | Skill | Trigger phrases | Prereqs (state) | Produces |
@@ -159,15 +159,17 @@ Blocks may quote these ONLY behind an *installed* conditional.
 |---|---|---|---|
 | socialcrawl-superengine | `~/.claude/socialcrawl-superengine/.superengine` OR a directory matching `~/.claude/plugins/cache/*/socialcrawl-superengine/` | `research-plays` ... the client-facing phrase is "vet this creator" (if installed) | a deep play beyond `socialcrawl-endpoints.md`. Absent -> F9, never a stall |
 | workspace-superengine | the `revxl-vault-search` skill resolves | `workspace-superengine:revxl-vault-search` | the named Vault trigger points in `vault-api.md`. This is a Skill call the plugin makes, never a phrase quoted to the client. Absent -> F3 |
-| NotebookLM tooling | the local CLI is on PATH | a notebook from a finished harvest | E13 only |
+| notebooklm-superengine | the `notebooklm-build` skill resolves, or the local NotebookLM CLI is on PATH | `notebooklm-build` ... the client-facing phrase is "build a notebook" (if installed) | E13 only, over a finished harvest folder |
 
 ## Maintenance
 
 Adding a skill or an ending: add the roster row and the registry row HERE first,
 then write the skill's inline Next-moves block to match. `scripts/check_routing.py`
-fails the build when a registry row's ending has no block in the named skill, and
-warns when a `Say:` phrase resolves nowhere (phrases marked "(if installed)" are
-exempt). Retired 0.3.4 wording kept as an accepted alias, never as a canonical
+fails the build when a happy-path or failure row's id is cited by no Next-moves
+block in the skill the row comes FROM, or in a skill its "Routes to" cell names
+(a row whose From cell opens with "any" is generic: any skill's block may cite
+it). It warns, and never fails, when a `Say:` phrase resolves nowhere (phrases
+marked "(if installed)" are exempt). Retired 0.3.4 wording kept as an accepted alias, never as a canonical
 phrase: "script idea N from my topic pool" (now "script idea N from my content
 plan"), "make this weekly" (now "make the pulse weekly"), "make the
 charts" (now "build my visual dashboards"), "add/remove/swap a

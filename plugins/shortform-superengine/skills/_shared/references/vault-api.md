@@ -1,4 +1,7 @@
-# RevXL Vault ... the 0.15.0 caller contract
+# RevXL Vault ... the caller contract
+
+Live pulls need **workspace-superengine 0.15.1 or later** (the 0.15.0 caller
+contract plus the 0.15.1 skill map). Older, or absent, is edge F3.
 
 The RevXL Vault is **Joe's live strategy library, not your brand brain**: a
 curated, hybrid-searchable knowledge base Joe updates constantly, so every pull
