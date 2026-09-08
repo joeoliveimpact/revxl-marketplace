@@ -43,7 +43,8 @@ Both endings are written out here, so a finished corpus never sits parked with n
 road out. Ids are rows in `../_shared/references/journey-map.md`; the block shape
 is `../_shared/references/routing.md`.
 
-**Next moves** (E13, the corpus and its manifest are written)
+**Next moves ... the corpus and its manifest are written**
+(E13)
 1. Turn it into the client's own material ... `subject-matter` reads the corpus and writes a subject brief a reel can be scripted from. Say: "use my own material" (if installed)
 2. Build a NotebookLM notebook from the harvest folder ... instant Q&A over the creator's teachings, when notebooklm-superengine or the local CLI is there. Say: "build a notebook" (if installed)
 3. Harvest another creator while the method is warm. Say: "harvest <creator>'s library"

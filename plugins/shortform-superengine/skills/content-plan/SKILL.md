@@ -121,7 +121,7 @@ Prereqs and trigger phrases live in `journey-map.md`, never hardcoded here.
 4. **Slots.** Read `plan.slots`; when state has no cadence, ask once for the
    real 90-day post count and derive the week's slots from it (section 6).
 5. **Voice staleness (F7).** `voc.refreshed_at` over 7 days old and no
-   `voc_refresh` entry in `declined_offers`: offer the brand-brain refresh
+   `voc_refresh:<voc.refreshed_at>` entry in `declined_offers`: offer the brand-brain refresh
    once. Proceeding without it appends
    `{"offer": "voc_refresh:<voc.refreshed_at>", "date": "<today>"}` to
    `declined_offers`, which is what stops the compass offering it again.

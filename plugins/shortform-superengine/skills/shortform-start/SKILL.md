@@ -53,7 +53,7 @@ been written from it. Say the migration in ONE line first ("I found your 0.3.x
 setup and carried it over, including your pulse schedule"), then invoke
 `shortform-next`. This block is the floor if the compass does not resolve.
 1. Pick up where you actually are ... your position and the ranked moves from the state I just wrote. Say: "what's next in shortform"  <- start here
-2. *If `analysis.date` is set and under 30 days:* script the biggest gap your existing analysis already found. Say: "script the top gap"
+2. *If `analysis` is set, `analysis.date` is under 90 days, and the 30-day band does not hold:* script the biggest gap your existing analysis already found. Say: "script the top gap"
 3. *If `analysis` is empty:* build the field baseline the rest of the engine reads. Say: "analyze my Instagram against my competitors"
 
 **Next moves ... returning**
@@ -61,7 +61,7 @@ setup and carried it over, including your pulse schedule"), then invoke
 completed skill, open loops, staleness), then invoke `shortform-next`. This
 block is the floor if the compass does not resolve.
 1. The ranked moves for exactly where you are. Say: "what's next in shortform"  <- start here
-2. *If `analysis.date` and `pulse.last_run` are both over 30 days old (F6), a null `pulse.last_run` counting as over 30:* refresh the field first, because everything downstream reads it. Past 90 days it is a full re-run instead. Say: "run the weekly pulse"
+2. *If `analysis.date` and `pulse.last_run` are both over 30 days old (F6), a null `pulse.last_run` counting as over 30:* refresh the field first, because everything downstream reads it. The 30-day band reads the newer of the two dates; the full re-run at 90 days reads `analysis.date` alone, whatever the pulse did. Say: "run the weekly pulse"
 3. *If an open loop holds a parked cross-reference (F1):* pick it back up at the checkpoint it stopped at, nothing is re-spent. Say: "resume my cross-reference"
 
 **Next moves ... Vault degraded**
@@ -150,9 +150,10 @@ Say it in ONE line, render E18, then invoke `shortform-next`.
 **5. RETURNING (state present).** One line of position, then invoke
 `shortform-next`. The line carries: the stage from the journey map, the last
 entry in `completed_skills`, how many `open_loops` are open, and any staleness
-that holds ... `analysis.date` and `pulse.last_run` both older than 30 days
-(F6, a full re-run past 90), `voc.refreshed_at` older than 7 days (F7),
-`pulse.scheduled` false. Render E19 as the floor.
+that holds ... the 30-day band on the newer of `analysis.date` and
+`pulse.last_run` (F6), the full re-run at 90 days on `analysis.date` alone,
+`voc.refreshed_at` older than 7 days (F7), `pulse.scheduled` false. Render E19
+as the floor.
 
 **6. At any point.** A deep-play request with probe 1 false is F9. Probe 2 false
 is F3, stated once and then carried, never repeated per move.

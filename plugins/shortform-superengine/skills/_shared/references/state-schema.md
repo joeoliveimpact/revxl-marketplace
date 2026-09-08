@@ -59,7 +59,7 @@ files, fully isolated.
 
   // ---- FIELD (owner: competitor-cross-reference) ----
   "analysis": {
-    "date": null,                   // YYYY-MM-DD of the last completed run; stale (F6) only when pulse.last_run is over 30 days too
+    "date": null,                   // YYYY-MM-DD of the last completed run; the 30-day F6 band reads the newer of this and pulse.last_run, the 90-day re-run reads this alone
     "n_competitors": null,
     "themes_set": false,            // true once theme derivation wrote analysis-config.json
     "resume": null                  // {"checkpoint": 2|3, "note": "<one line>", "opened": "YYYY-MM-DD"} or null ... the F1 park pointer
@@ -133,9 +133,11 @@ files, fully isolated.
    brand-brain writes nothing in this file, so there is exactly one answer to
    "does this client have a voice guide": the disk.
 5. **Staleness is computed, never stored.** Compare `analysis.date` and
-   `voc.refreshed_at` against today at read time using the constants below. F6's
-   field freshness is the NEWER of `analysis.date` and `pulse.last_run`; a null
-   `pulse.last_run` counts as over 30 days.
+   `voc.refreshed_at` against today at read time using the constants below. F6
+   has two clauses and they read different dates: the 30-day band reads the
+   NEWER of `analysis.date` and `pulse.last_run` (a null `pulse.last_run` counts
+   as over 30 days), and the 90-day full re-run reads `analysis.date` alone,
+   because a pulse refreshes the field, it never rebuilds the baseline.
 6. **Multi-brand.** Skills operate on the marker's `active_brand`; switching
    brands = switching files, no shared state. A brand name in the client's
    message that does not match `active_brand` STOPS the run and offers the
@@ -150,9 +152,9 @@ One writer per key. A skill not named here does not write that key.
 
 | Key | Writer |
 |---|---|
-| `setup.*` | onboarding only. shortform-start may SEED setup.* when it creates the file (first run, migration) and never overwrites it afterwards |
+| `setup.*` | onboarding only. shortform-start (first run, migration) and competitor-pulse (its marker fallback) may SEED setup.* when either CREATES the file, and neither overwrites it afterwards |
 | `goal`, `mode` | shortform-start (and any skill on an explicit plain request, which then says so) |
-| `project_path` | onboarding seeds it, competitor-cross-reference confirms or corrects it. shortform-start may SEED project_path from the marker's `competitor_pulse.project` when it creates the file (first run, migration) and never overwrites it afterwards |
+| `project_path` | onboarding seeds it, competitor-cross-reference confirms or corrects it. shortform-start (first run, migration) and competitor-pulse (its marker fallback) may SEED project_path from the marker's `competitor_pulse.project` when either CREATES the file, and neither overwrites it afterwards |
 | `analysis.*` (incl. `analysis.resume`) | competitor-cross-reference only. shortform-start (the E18 migration) and competitor-pulse (its marker fallback) may SEED analysis.* at file creation, from an `analysis-data.json` already on disk, and neither overwrites it afterwards |
 | `voc.present`, `voc.refreshed_at` | **nobody.** Derived on read from `~/.claude/revxl/<brand>/voc/`. brand-brain writes NOTHING in this file |
 | `subject.*` | subject-matter (0.5.0); `present` derived on read the same way `voc.present` is |
@@ -186,7 +188,7 @@ One writer per key. A skill not named here does not write that key.
 
 | What | Stale after | Edge |
 |---|---|---|
-| `analysis.date` | 30 days, measured against the newer of `analysis.date` and `pulse.last_run`; full re-run at 90 days | F6 ... the pulse at 30 days, a full cross-reference re-run at 90 |
+| `analysis.date` | 30 days, measured against the newer of `analysis.date` and `pulse.last_run`; full re-run at 90 days, measured against `analysis.date` alone | F6 ... the pulse at 30 days on the newer date, a full cross-reference re-run at 90 on `analysis.date` |
 | `voc.refreshed_at` | 7 days | F7 ... offer a brand-brain refresh, once per journey |
 
 The F7 decline is one `declined_offers` entry,

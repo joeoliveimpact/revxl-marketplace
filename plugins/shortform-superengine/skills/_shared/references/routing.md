@@ -87,6 +87,9 @@ optionally carrying a label after ` ... `:
 **Next moves ... credits short**
 ```
 
+**Ledger id.** The `(E..)` / `(F..)` line under the header is the ledger citation
+`check_routing.py` reads, and it is never printed to the client.
+
 **Phrase.** `Say: "<phrase>"` on one line, straight double quotes, the phrase
 copied verbatim from the journey-map roster. Placeholders go in angle brackets
 (`Say: "add <handle> to my roster"`). A trailing `(if installed)` marks a phrase

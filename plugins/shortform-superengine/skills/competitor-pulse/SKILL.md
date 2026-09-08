@@ -25,7 +25,8 @@ Every ending routes, refusals and failures included. Phrases are verbatim from
 the roster in `../_shared/references/journey-map.md`, grammar from `routing.md`
 beside it, registry id in parentheses.
 
-**Next moves** (E14)
+**Next moves**
+(E14)
 1. Script this week's winner, the top new outlier as the angle. Say: "script that reel"
 2. Open the refreshed pack, the This-week panel is live. Say: "open my visuals"
 3. Roster upkeep: someone quiet, or someone missing? Say: "swap a competitor"
@@ -118,16 +119,27 @@ YYYY-MM-DD, `n_competitors` = the competitor count inside it, `themes_set` false
 Instagram against my competitors" first all over again. Seeded at file creation
 only; `analysis.*` stays competitor-cross-reference's (`state-schema.md`).
 
+That same creation write seeds the rest of the migration list `shortform-start`
+writes at its MIGRATE step: `setup.complete` true (a marker means onboarding
+ran), `setup.keys_present.socialcrawl` from the marker's
+`connections.socialcrawl`, `project_path` from `competitor_pulse.project` when
+it is set, and the marker's `competitor_pulse` block INTO `state.pulse`
+(`scheduled` to `scheduled`, `last_run` to `last_run`, `cadence` to `day` only
+when it names a weekday, otherwise null). Seeded at file creation only and
+never overwritten afterwards. Without it a pulse-first home reports setup as
+not done, and its project path as null, for good.
+
 **Write at end,** owned keys only (rule zero: no invented keys). `pulse.scheduled`,
 `pulse.day`, `pulse.last_run` (local date), `pulse.last_snapshot` (the path under
-`<project>/history/`). Plus the every-skill keys: `updated_at`, a
+`<project>/history/`), the last two written on every completed run, the quiet
+week included. Plus the every-skill keys: `updated_at`, a
 `completed_skills` append, `open_loops` opened or closed, `declined_offers` (a
 declined schedule goes here and is not re-offered), the `teach_level` mirror.
 **From 0.4.0 this skill never writes the `.superengine` marker except one
 write-if-absent**: when the ask-once rung above resolved the brand and the
 marker's `active_brand` is absent or null, write it there with that value, never
-over an existing one. It never writes `analysis.*`: those belong to onboarding
-and competitor-cross-reference.
+over an existing one. It never writes `analysis.*` after the creation seed
+above; the owner is competitor-cross-reference.
 
 ## Credit discipline (non-negotiable)
 
@@ -205,8 +217,11 @@ run used in the brief.
   config if changed.
 - **New reels** = items whose `post.url` is not already in `source/**/reels`
   JSONs, filtered by `published_at` to that window.
-- Zero new reels anywhere → report the quiet week honestly and end on the
-  `empty week` block (E16). Total spend stays the listing cost.
+- Zero new reels anywhere → write `pulse.last_run` (today's local date), and
+  `pulse.last_snapshot` when Step 1 produced a snapshot, THEN report the quiet
+  week honestly and end on the `empty week` block (E16). A quiet week is a
+  completed run: without that write the compass keeps ranking the pulse it just
+  ran. Total spend stays the listing cost.
 
 ## Step 3 — ✋ Checkpoint P2 — winners-only deep legs
 

@@ -42,7 +42,8 @@ Every ending routes, refusals included. Phrases are verbatim from the roster in
 `../_shared/references/journey-map.md`, grammar from `routing.md` beside it,
 registry id in parentheses.
 
-**Next moves** (E3)
+**Next moves**
+(E3)
 1. Script the top gap, in your voice, as the chosen angle. Say: "script the top gap"
 2. See it: `visuals/overview.html`, the reach ladder and the gaps. Say: "build my visual dashboards"
 3. Feed the winning themes into your brand brain, so later scripts lean on them. Say: "add these themes to my brand brain"

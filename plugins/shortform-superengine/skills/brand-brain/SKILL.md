@@ -37,7 +37,8 @@ a finished brain with nowhere to go. Ids are rows in
 `../_shared/references/journey-map.md`; the block shape is
 `../_shared/references/routing.md`.
 
-**Next moves** (E10, a mine or a refresh completed)
+**Next moves ... a mine or a refresh completed**
+(E10)
 1. Script a reel off the freshest topical seed ... I hand the seed text straight to reel-scripter as the angle, not a file path. Say: "script the top seed"
 2. *If no refresh cadence is set:* keep the brain fresh on a schedule (Friday night, Monday morning, a time you pick ... always asked, never silent). Say: "schedule my brain refresh"
 3. Back to what you were doing. The consuming engine picks the fresh brain up on its own.

@@ -49,7 +49,8 @@ Every ending is written out here, so a client is never left with a wired machine
 and no idea what to say next. Ids are journey-map rows; the block shape is
 `../_shared/references/routing.md`. Render one of these, never an invented menu.
 
-**Next moves** (E1, setup complete)
+**Next moves ... setup complete**
+(E1)
 1. *If `state.goal` is make-a-reel, plan-the-week or read-the-field:* analyze this account against its competitors ... the field read all three of those goals need first. Say: "analyze my Instagram against my competitors"  <- start here
 2. *If `state.goal` is set-up, or not set at all:* let the compass read what setup just wrote and rank the moves. Say: "what's next in shortform"
 3. *If the brand brain was skipped at Step 4b:* capture the client's real voice first, so the scripts sound like them. Say: "build my brand brain"

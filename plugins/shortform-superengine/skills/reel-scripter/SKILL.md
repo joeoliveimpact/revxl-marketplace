@@ -87,10 +87,10 @@ The field read comes first.
 
 Contract: `../_shared/references/state-schema.md`. **Read at start** from
 `~/.claude/shortform-superengine/state/<brand>.json`: `active_brand` (marker), `analysis`,
-`voc.present` (derived from the `voc/` directory, never a stored field), `scripts[]`,
-`angles_unpicked[]`, `plan`. **Written here and nowhere else:** `scripts[]`,
-`angles_unpicked[]`, `completed_skills`, `open_loops`, `declined_offers`, `updated_at`.
-`plan` belongs to `content-plan`, read-only here. No invented keys.
+`voc.present` (derived from the `voc/` directory, never a stored field), `mode`,
+`declined_offers`, `scripts[]`, `angles_unpicked[]`, `plan`. **Written here and nowhere
+else:** `scripts[]`, `angles_unpicked[]`, `completed_skills`, `open_loops`, `declined_offers`,
+`updated_at`. `plan` belongs to `content-plan`, read-only here. No invented keys.
 
 ## Overview
 
@@ -125,15 +125,14 @@ This writes `<project_dir>/scripting-brief.md`. Read it: your menu of proven mov
 modes: `./references/pipeline-detail.md` "Step 0b".
 
 **0c. Resolve the voice.** Priority: shared `voc/` at `~/.claude/revxl/<brand>/voc/` FIRST
-(a brain built by any engine lives there), then the project, then the workspace. With no
-`voc/`, **interim capture (degrade)**: 3 to 5 of the client's own top captions, or the
-4-question voice Q&A, noted on the script as interim. Full read rules (`days_since_update`
-and the single refresh offer, `provisional: true`, the Mirror-Language ban):
+(a brain built by any engine lives there), then the project, then the workspace. Full read
+rules (the interim capture degrade when no `voc/` exists, `days_since_update` and the
+single refresh offer, `provisional: true`, the Mirror-Language ban):
 `./references/pipeline-detail.md` "Step 0c". No `voc/` renders **no voice guide on disk**.
-A `voc/` over 7 days old gets ONE refresh offer (F7); proceeding without it records
-`voc_refresh:<voc.refreshed_at>` in `declined_offers` (entry shape:
-`../_shared/references/state-schema.md`), written at once, not at the end, which stops the
-compass re-offering it.
+A `voc/` over 7 days old gets ONE refresh offer (F7), offered only when no
+`voc_refresh:<voc.refreshed_at>` entry is in `declined_offers`; proceeding without it
+records that entry (shape: `../_shared/references/state-schema.md`), written at once, not
+at the end, which stops the compass re-offering it.
 
 **0d. Vault pull #1, the angle and its doctrine (named trigger point 1 of 2).**
 Check `<project>/brain-pulls/<slug>.md` first: a cached pull younger than **14 days** is
