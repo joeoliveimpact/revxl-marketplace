@@ -51,8 +51,8 @@ and no idea what to say next. Ids are journey-map rows; the block shape is
 
 **Next moves ... setup complete**
 (E1)
-1. *If `state.goal` is make-a-reel, plan-the-week or read-the-field:* analyze this account against its competitors ... the field read all three of those goals need first. Say: "analyze my Instagram against my competitors"  <- start here
-2. *If `state.goal` is set-up, or not set at all:* let the compass read what setup just wrote and rank the moves. Say: "what's next in shortform"
+1. *If `state.goal` is make-a-reel, plan-the-week, read-the-field or read-my-results:* analyze this account against its competitors ... the field read all four of those goals need first. Say: "analyze my Instagram against my competitors"  <- start here
+2. Let the compass read what setup just wrote and rank the moves. Say: "what's next in shortform"
 3. *If the brand brain was skipped at Step 4b:* capture the client's real voice first, so the scripts sound like them. Say: "build my brand brain"
 4. *If a thought-leader's library is worth capturing:* pull the whole thing into a dated corpus. Say: "harvest <creator>'s library"
 

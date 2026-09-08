@@ -200,3 +200,15 @@ The client's phrase for it is "content plan".
 - Predicting performance ... craft quality only, never a views/virality forecast.
 - Building the voice profile ... that's the shared voice-matching skill; this consumes `voc/` or
   degrades to interim capture.
+
+## Reference index
+
+Every reference is linked from the step that uses it. The entry points, relative to
+`reel-scripter/`:
+
+- `./references/step3-options.md` ... Step 3
+- `./references/pipeline-detail.md` ... this file, every other step
+- `./scripting_brief.py` ... Step 0b, the brief
+- `./field_vet.py` ... Step 1, the field vet
+- `../_shared/references/journey-map.md` ... the edge ledger and the phrase roster
+- `../_shared/contracts/analysis-data.schema.json` ... the analysis contract

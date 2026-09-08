@@ -137,7 +137,8 @@ files, fully isolated.
    has two clauses and they read different dates: the 30-day band reads the
    NEWER of `analysis.date` and `pulse.last_run` (a null `pulse.last_run` counts
    as over 30 days), and the 90-day full re-run reads `analysis.date` alone,
-   because a pulse refreshes the field, it never rebuilds the baseline.
+   because a pulse refreshes the field, it never rebuilds the baseline. A null
+   `analysis.date` never fires the 30-day band; the unset clause covers it.
 6. **Multi-brand.** Skills operate on the marker's `active_brand`; switching
    brands = switching files, no shared state. A brand name in the client's
    message that does not match `active_brand` STOPS the run and offers the

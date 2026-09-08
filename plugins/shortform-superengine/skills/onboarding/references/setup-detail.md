@@ -223,7 +223,10 @@ one built off month-old topics doesn't. So offer to keep it fresh automatically:
 
 Detect the install by EITHER that marker OR a directory matching
 `~/.claude/plugins/cache/*/socialcrawl-superengine/` (an installed-but-never-run copy has no
-marker). When it is installed, the plays are run by invoking its `research-plays` skill by
+marker). To install it, the client asks Claude to add the RevXL marketplace
+(`joeoliveimpact/revxl-marketplace`) and install `socialcrawl-superengine` from it; Claude
+adds the marketplace and installs the plugin, and the client types nothing.
+When it is installed, the plays are run by invoking its `research-plays` skill by
 name (`socialcrawl-superengine:research-plays`): a cross-plugin play is run by
 invoking the other plugin's skill by its qualified name, never by re-implementing
 it here.

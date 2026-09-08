@@ -39,10 +39,10 @@ beside it, registry id in parentheses.
 3. Run a pulse now to see the field with the new roster. Say: "run the pulse"
 
 **Next moves ... empty week**
-(E16)
-1. Widen the window to 14 days, same listing cost. Say: "run the pulse on 14 days"
+(E16) nothing changed and nothing extra was spent.
+1. Widen the window to 14 days, same per-account listing cost. Say: "run the pulse on 14 days"
 2. Plan the week off the field you have ... 7 to 15 source-tagged ideas. Say: "plan my week"
-3. *If `plan.path` is set:* nothing changed and nothing extra was spent. Script from the ideas you have. Say: "script idea N from my content plan"
+3. *If `plan.path` is set:* Script from the ideas you have. Say: "script idea N from my content plan"
 4. *If `pulse.scheduled` is false:* have the weekly delta land on your day. Say: "make the pulse weekly"
 
 **Next moves ... schedule set**

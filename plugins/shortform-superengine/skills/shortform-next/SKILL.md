@@ -42,22 +42,23 @@ order, not a menu: render only the ones whose gate holds, plus any open-loop
 candidate the Sweep found, at most four, renumbered from 1 with `<- start here`
 on the rendered #1, and each naming the state fact that makes it the move. When every move the client came for is
 gated, the highest unmet gate's unblock phrase is #1, because a compass that
-ranks a blocked move has walked them into a wall. `goal` never gates lines 7 and
-8, it only orders them: make-a-reel puts 7 above 8, plan-the-week reverses it,
-unset leaves 7 first. Floor: if fewer than 2 lines render, append the next-stage
+ranks a blocked move has walked them into a wall. `goal` never gates lines 8 and
+9, it only orders them: make-a-reel puts 8 above 9, plan-the-week reverses it,
+unset leaves 8 first. Floor: if fewer than 2 lines render, append the next-stage
 defaults in this order, "script the top gap", "plan my week", "run the weekly
 pulse", skipping any already rendered or blocked, until 2 are on screen (a
 safety net for a malformed state file; the gates below always render two). The
 same render rule governs the conditional lines in every block below.
 1. *If the marker is on disk and no state file is:* open the front door, which writes the journey file from the marker (E18) and then comes back here. Say: "start shortform"
-2. *If the marker is absent, or `setup.complete` is false:* finish setup first ... the key, the project folder and your brand, about 10 minutes; nothing else can run without them. Say: "set up shortform superengine"
-3. *If `analysis` is unset, or `analysis.date` is over 90 days old (F6):* build or rebuild the field baseline the rest of the engine reads ... unset, nothing downstream is actionable until the baseline exists; over 90 days, the baseline is too old to trust and a pulse cannot rebuild it. A full re-run is priced out loud first at `N x 3` credits for the reel pull. Say: "analyze my Instagram against my competitors"
-4. *If `analysis.date` and `pulse.last_run` are BOTH over 30 days old and `analysis.date` is under 90 (F6), a null `pulse.last_run` counting as over 30:* keep the field current, a cheap weekly delta, before anything leans on a stale read. Say: "run the weekly pulse"
-5. *If `voc.refreshed_at` is over 7 days old AND `declined_offers` holds no `voc_refresh:<voc.refreshed_at>` entry (F7):* refresh the voice guide once, then proceed on it either way. A null `voc.refreshed_at` never fires this line; line 6 covers it. Say: "refresh my voice guide"
-6. *If `voc.present` is false:* capture your voice ... pillars and the language you already own, before any draft. Say: "capture my voice"
-7. *If `analysis` is set, `analysis.date` is under 90 days, and the 30-day band does not hold:* propose the top gaps from your field read and script the one you pick, in your voice. Say: "script the top gap"
-8. *If `analysis` is set, or any other source is (`voc.present`, `subject.present`):* plan the week, 7 to 15 source-tagged ideas deduped against what you have already scripted. Say: "plan my week"
-9. *If `pulse.scheduled` is false and `analysis` is set:* have the weekly delta land on your desk on your day. Say: "make the pulse weekly"
+2. *If `setup.complete` is false:* finish setup first ... the key, the project folder and your brand, about 10 minutes; nothing else can run without them. Say: "set up shortform superengine"
+3. *If the marker is absent and `setup.complete` is true:* your setup marker is gone but the setup itself is intact ... re-running setup rewrites it in about a minute and changes nothing else. Say: "set up shortform superengine"
+4. *If `analysis` is unset, or `analysis.date` is over 90 days old (F6), and the marker is on disk:* build or rebuild the field baseline the rest of the engine reads ... unset, nothing downstream is actionable until the baseline exists; over 90 days, the baseline is too old to trust and a pulse cannot rebuild it. A full re-run is priced out loud first at `N x 3` credits for the reel pull. Say: "analyze my Instagram against my competitors"
+5. *If `analysis.date` and `pulse.last_run` are BOTH over 30 days old and `analysis.date` is under 90 (F6), a null `pulse.last_run` counting as over 30, and the marker is on disk:* keep the field current, a cheap weekly delta, before anything leans on a stale read. A null `analysis.date` never fires the 30-day band; the unset clause covers it. Say: "run the weekly pulse"
+6. *If `voc.refreshed_at` is over 7 days old AND `declined_offers` holds no `voc_refresh:<voc.refreshed_at>` entry (F7):* refresh the voice guide once, then proceed on it either way. A null `voc.refreshed_at` never fires this line; line 7 covers it. Say: "refresh my voice guide"
+7. *If `voc.present` is false:* capture your voice ... pillars and the language you already own, before any draft. Say: "capture my voice"
+8. *If `analysis` is set, `analysis.date` is under 90 days, the 30-day band does not hold, and the marker is on disk:* propose the top gaps from your field read and script the one you pick, in your voice. Say: "script the top gap"
+9. *If `analysis` is set, or any other source is (`voc.present`, `subject.present`):* plan the week, 7 to 15 source-tagged ideas deduped against what you have already scripted. Say: "plan my week"
+10. *If `pulse.scheduled` is false and `analysis` is set:* have the weekly delta land on your desk on your day. Say: "make the pulse weekly"
 
 **Next moves ... nothing on disk**
 (E0) no marker and no state file for this brand. Hardcoded, because there is no
@@ -69,11 +70,16 @@ state to rank from. A missing marker never stalls here.
 (F3) the `revxl-vault-search` skill does not resolve, so workspace-superengine
 is not installed. Say the degrade in one line, "workspace-superengine is
 missing, running on the built-in library", then rank as normal: every move below
-runs without the Vault, so the journey continues.
-1. *If `analysis` is set and the 30-day band does not hold:* the next move on your journey, unchanged ... nothing here needs the Vault. Say: "script the top gap"
-2. Capture your voice ... bundled references only. Say: "capture my voice"
-3. Build or refresh the field baseline ... SocialCrawl only. Say: "analyze my Instagram against my competitors"
-4. Re-rank from state at any point. Say: "what's next in shortform"
+runs without the Vault, so the journey continues. These are the `(E20)` lines,
+and the E20 render rule, its rank, the four-move cap and the floor govern them
+here too.
+1. *If `setup.complete` is false:* finish setup first ... the key, the project folder and your brand, about 10 minutes; nothing else can run without them. Say: "set up shortform superengine"
+2. *If the marker is absent and `setup.complete` is true:* your setup marker is gone but the setup itself is intact ... re-running setup rewrites it in about a minute and changes nothing else. Say: "set up shortform superengine"
+3. *If `analysis` is unset, or `analysis.date` is over 90 days old (F6), and the marker is on disk:* build or refresh the field baseline ... SocialCrawl only, no Vault. A full re-run is priced out loud first at `N x 3` credits for the reel pull. Say: "analyze my Instagram against my competitors"
+4. *If `analysis.date` and `pulse.last_run` are BOTH over 30 days old and `analysis.date` is under 90 (F6), a null `pulse.last_run` counting as over 30, and the marker is on disk:* keep the field current, a cheap weekly delta, before anything leans on a stale read. A null `analysis.date` never fires the 30-day band; the unset clause covers it. Say: "run the weekly pulse"
+5. *If `analysis` is set, `analysis.date` is under 90 days, the 30-day band does not hold, and the marker is on disk:* the next move on your journey, unchanged ... nothing here needs the Vault. Say: "script the top gap"
+6. *If `voc.present` is false:* capture your voice ... pillars and the language you already own, on the bundled references only. Say: "capture my voice"
+7. *If `analysis` is set, or any other source is (`voc.present`, `subject.present`):* plan the week, 7 to 15 source-tagged ideas deduped against what you have already scripted. Say: "plan my week"
 
 **Next moves ... deep play needs socialcrawl-superengine**
 (F9) the highest-ranked move is a play beyond `socialcrawl-endpoints.md` (field
@@ -84,7 +90,6 @@ endpoints it has.
 1. Get it installed, then run the play there ... ask me to install socialcrawl-superengine from the RevXL marketplace, then say the phrase. Say: "vet this creator" (if installed)  <- start here
 2. What runs today on this plugin's table: a keyword search across your own roster. Say: "search the field for <keyword>"
 3. *If any source exists (`analysis`, `voc.present` or `subject.present`):* the next move that needs none of it. Say: "plan my week"
-4. Re-rank from state at any point. Say: "what's next in shortform"
 
 ## Prereq (E0)
 
@@ -97,14 +102,19 @@ never asks the client to go set something up before it will answer.
 **1. Nothing on disk** (no marker and no state file): render the "nothing on
 disk" block and stop.
 
-**2. Position.** Walk the journey graph
+**2. Vault probe.** If state `setup.ws_superengine_version` is null, or the
+`revxl-vault-search` skill does not resolve, render the **Vault degraded**
+block instead of the `(E20)` block; it carries the same gates with the degrade
+line on top.
+
+**3. Position.** Walk the journey graph
 (SETUP > VOICE > FIELD > MAKE > READ > PULSE) against state: which stage is done
 (its keys written), which is current (started, incomplete), which is next. One
 line at `new` ("setup done, voice done, field read 6 days old, you are at MAKE"),
 the stage line bare at `pro`. This walk produces the position LINE only; the
-rank is step 4's.
+rank is step 5's.
 
-**3. Sweep before ranking.** Each of these produces a candidate move:
+**4. Sweep before ranking.** Each of these produces a candidate move:
 
 - every entry in `open_loops` (a parked cross-reference, an unscripted plan idea)
 - `analysis.date` AND `pulse.last_run` both older than 30 days -> refresh the field via the pulse (F6); `analysis.date` over 90 days -> a full cross-reference re-run instead
@@ -113,13 +123,14 @@ rank is step 4's.
 - `mode` is `subject-first` and `subject.present` is false -> subject-matter "(if installed)", else switch to `field-first` and say so (F8)
 - gates from the journey map: SETUP, ANALYSIS, VOICE, SUBJECT, DEEP PLAY. A blocked move is never ranked; its unblock route is ranked instead
 
-**4. Rank.** The `(E20)` block's line order IS the rank: render the lines
-whose gate holds, in the order they are written there. `goal` reorders lines 7
-and 8 only, it never gates them. Open-loop candidates from the Sweep rank
+**5. Rank.** The `(E20)` block's line order IS the rank: render the lines
+whose gate holds, in the order they are written there. `goal` reorders lines 8
+and 9 only, it never gates them. Open-loop candidates from the Sweep rank
 after the last firing gated line, oldest loop first. The four-move cap and the
-floor apply after that.
+floor apply after that, and the cap never drops an open-loop candidate: when it
+binds, the lowest-ranked gated line goes instead.
 
-**5. Guard rails on the render.** #1 must be actionable now, with its prereqs
+**6. Guard rails on the render.** #1 must be actionable now, with its prereqs
 already met in state; if the goal's door is gated, rank the unblock as #1 and
 say why in one plain sentence. A refusal (no marker, socialcrawl-superengine
 absent on a deep play, a missing prereq) is itself move 1, with its reason.

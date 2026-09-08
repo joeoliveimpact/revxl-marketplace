@@ -74,12 +74,14 @@ The field read comes first.
 
 ## Prereq (E0)
 
+- **Brand slug, required, and the first thing resolved.** `active_brand` from
+  `~/.claude/shortform-superengine/.superengine` (legacy `brand`, same value): it picks the
+  state file and the voice directory. Absent: hand off to the compass ... say
+  "what's next in shortform" and it renders the setup line as #1. Step 0a never runs
+  without the slug.
 - **Analysis, required.** `<project>/analysis-data.json` from a finished
   `competitor-cross-reference` run, plus `analysis.date` in state. Without it this skill
   refuses and routes (E9 above); it never improvises a field read.
-- **Brand slug, required.** `active_brand` from
-  `~/.claude/shortform-superengine/.superengine` (legacy `brand`, same value): it picks the
-  state file and the voice directory.
 - **Voice, optional.** `~/.claude/revxl/<brand>/voc/`. Absent, Step 0c captures an interim
   anchor and says so on the script. A reel is never gated on it.
 
@@ -343,10 +345,8 @@ is skipped; the guardrails are not. No plan on disk is a missing prereq (E0).
 
 ## References
 
-Every reference is linked from the step that uses it. Entry points:
-`./references/step3-options.md` (Step 3) · `./references/pipeline-detail.md` (every
-other step) · `./scripting_brief.py` · `./field_vet.py` ·
-`../_shared/references/journey-map.md` · `../_shared/contracts/analysis-data.schema.json`
+Every reference is linked from the step that uses it. The full entry-point index,
+every script included: `./references/pipeline-detail.md` "Reference index".
 
 ---
 

@@ -18,8 +18,8 @@ plugin at format #2.)
   and it reads where you actually are and ranks the two to four moves that make
   sense from there. It writes nothing, so ask it as often as you like.
 - **`onboarding`** ... one-time first-run setup: detects what is on the machine,
-  installs the transcription chain (Groq plus local Whisper, `yt-dlp` as the fetch
-  floor), wires the SocialCrawl key, sets the teach level, writes the setup marker
+  installs the transcription chain (Groq plus local Whisper, `yt-dlp` for the
+  harvest fetch), wires the SocialCrawl key, sets the teach level, writes the setup marker
   and verifies end to end. Run this first.
 
 **Voice**

@@ -57,11 +57,11 @@ setup and carried it over, including your pulse schedule"), then invoke
 3. *If `analysis` is empty:* build the field baseline the rest of the engine reads. Say: "analyze my Instagram against my competitors"
 
 **Next moves ... returning**
-(E19) marker and state both present. One line of position first (stage, last
+(E19) state present, marker either way. One line of position first (stage, last
 completed skill, open loops, staleness), then invoke `shortform-next`. This
 block is the floor if the compass does not resolve.
 1. The ranked moves for exactly where you are. Say: "what's next in shortform"  <- start here
-2. *If the marker is absent:* finish setup before anything else. Say: "set up shortform superengine"
+2. *If the marker is absent:* finish setup; the compass ranks it first. Say: "set up shortform superengine"
 3. *If `analysis.date` and `pulse.last_run` are both over 30 days old (F6), a null `pulse.last_run` counting as over 30:* refresh the field first, because everything downstream reads it. The 30-day band reads the newer of the two dates; the full re-run at 90 days reads `analysis.date` alone, whatever the pulse did. Say: "run the weekly pulse"
 4. *If an open loop holds a parked cross-reference (F1):* pick it back up at the checkpoint it stopped at, nothing is re-spent. Say: "resume my cross-reference"
 
@@ -97,7 +97,7 @@ skill that needs it, and E0 is written there.
 **1. Read the disk. No writes in this step.**
 
 - the marker `~/.claude/shortform-superengine/.superengine`
-- the brand: marker `active_brand`, then marker `brand` (legacy alias, same value), then ask once. Slug convention is brand-brain's: lowercase, alphanumeric only, no separators ("Maria G Fit" -> `mariagfit`)
+- the brand: marker `active_brand`, then marker `brand` (legacy alias, same value), then scan `~/.claude/shortform-superengine/state/*.json` (exactly one file, take its `brand`; several, ask which), then ask once. Slug convention is brand-brain's: lowercase, alphanumeric only, no separators ("Maria G Fit" -> `mariagfit`)
 - `~/.claude/shortform-superengine/state/<brand>.json`
 - derive, never read from the file: `voc.present` and `voc.refreshed_at` from `~/.claude/revxl/<brand>/voc/` (exists, newest mtime inside); `subject.*` from `~/.claude/revxl/<brand>/subject/` the same way
 - probe 1, socialcrawl-superengine: `~/.claude/socialcrawl-superengine/.superengine` exists, OR a directory matching `~/.claude/plugins/cache/*/socialcrawl-superengine/` exists
@@ -122,7 +122,9 @@ phrases, so do not dress them as `Say:` lines):
 - **set up** (`set-up`) ... you just want the engine installed and working
 
 Ask the brand name once (it names the state file). Then write
-`state/<brand>.json` from the schema template with `goal` set, and render E17.
+`state/<brand>.json` from the schema template with `goal` set and step 1's two
+probes recorded in `setup.socialcrawl_superengine_installed` and
+`setup.ws_superengine_version`, seeded at file creation only, and render E17.
 Do NOT write a marker: the marker is onboarding's, and a marker written here
 would claim a setup that has not happened.
 
@@ -132,8 +134,8 @@ Where each goal goes once setup is done, so move 1 can name it:
 |---|---|
 | make-a-reel | no marker: onboarding. Marker but no `analysis` in `field-first`: competitor-cross-reference (F2). Otherwise reel-scripter |
 | plan-the-week | no marker: onboarding. No source at all (`analysis`, `voc.present`, `subject.present` all empty): brand-brain, or competitor-cross-reference if they would rather start from the field. Otherwise content-plan |
-| read-my-results | own-content-analysis "(if installed)". Until 0.5.0 ships it, say so in one line and offer competitor-pulse, which reads the field rather than their own account |
-| read-the-field | no `analysis`: competitor-cross-reference. `analysis` set: competitor-pulse |
+| read-my-results | no marker: onboarding, then own-content-analysis "(if installed)". Until 0.5.0 ships it, say so in one line and offer competitor-pulse, which reads the field rather than their own account |
+| read-the-field | no marker: onboarding, then no `analysis`: competitor-cross-reference. `analysis` set: competitor-pulse |
 | set-up | onboarding |
 
 **4. MIGRATE (marker present, no state file).** Write `state/<brand>.json` from

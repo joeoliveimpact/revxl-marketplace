@@ -42,7 +42,8 @@ standalone). This file is the convention; journey-map is the edge ledger.
    2 to 4 options, most-likely-next first.
 2. **#1 must be immediately actionable now**, its prereqs already met in state.
    Never rank a gated move #1 while its gate is unmet; offer the unblock route
-   instead (edge E0).
+   instead (edge E0). The one carve-out is an install refusal (F9): it is #1 by
+   construction, because its unblock route is the move itself.
 3. **Every option quotes its exact trigger phrase** from the journey-map roster,
    so the client can say it verbatim.
 4. **Teach-aware rendering** (`teach-mode.md`): at `new`, each move carries a

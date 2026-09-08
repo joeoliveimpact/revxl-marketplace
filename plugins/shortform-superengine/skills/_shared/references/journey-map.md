@@ -103,7 +103,7 @@ in 0.3.4's `next-moves.md`.
 ### Happy path
 | ID | From, ending | Routes to |
 |---|---|---|
-| E1 | onboarding, Step 8 activation | goal make-a-reel, plan-the-week or read-the-field -> competitor-cross-reference (primary) - goal set-up or unset -> shortform-next - brand-brain (if skipped at 4b) - creator-strategy-harvest - pulse schedule (only if an analysis exists AND neither state nor marker says scheduled) |
+| E1 | onboarding, Step 8 activation | goal make-a-reel, plan-the-week, read-the-field or read-my-results -> competitor-cross-reference (primary) - shortform-next always, whatever the goal - brand-brain (if skipped at 4b) - creator-strategy-harvest - pulse schedule (only if an analysis exists AND neither state nor marker says scheduled) |
 | E2 | onboarding, sub-mode exits | back to work - shortform-next - "show my setup" |
 | E3 | competitor-cross-reference, roadmap delivered | visual pack - script the top gap (reel-scripter) - feed themes to brand-brain - content-plan - weekly pulse [schedule] |
 | E4 | competitor-cross-reference, stopped at checkpoint 2 (thin set) | run more seeds - park and resume (F1) - proceed thin (explicit) |
@@ -122,7 +122,7 @@ in 0.3.4's `next-moves.md`.
 | E17 | shortform-start, first run (no marker, no state) | the five goals asked as a plain question (make a reel / plan the week / read my results / read the field / set up), then the four-move block whose #1 is the door that goal needs first |
 | E18 | shortform-start, marker present and state absent (migration) | writes `state/<brand>.json` from the marker (incl. the `competitor_pulse` block), sets `active_brand`, says so in one line, then delegates to shortform-next |
 | E19 | shortform-start, returning client | one-line position + open loops, then shortform-next |
-| E20 | shortform-next, compass rendered | the ranked moves themselves. The (E20) block's line order is the rank; `goal` reorders the two MAKE lines only; open-loop candidates rank after the last firing gated line. #1 must be actionable now |
+| E20 | shortform-next, compass rendered | the ranked moves themselves. The (E20) block's line order is the rank; `goal` reorders the two MAKE lines only; open-loop candidates rank after the last firing gated line and are never dropped by the four-move cap, which drops the lowest-ranked gated line instead. #1 must be actionable now |
 | E21 | content-plan, plan written | script idea 1 (reel-scripter, primary) - lean the plan toward a pillar - refresh next week's plan (pulse) - read last week's results (own-content-analysis "(if installed)") |
 | E22 | competitor-cross-reference, resumed from `analysis.resume` | back into the pipeline at the stored checkpoint, then E3 |
 | E23 | competitor-pulse, 14-day window run | the widened brief, then E14's moves |
@@ -157,7 +157,7 @@ Blocks may quote these ONLY behind an *installed* conditional.
 
 | Plugin | Detect | Skill / phrase | When |
 |---|---|---|---|
-| socialcrawl-superengine | `~/.claude/socialcrawl-superengine/.superengine` OR a directory matching `~/.claude/plugins/cache/*/socialcrawl-superengine/` | `research-plays` ... the client-facing phrase is "vet this creator" (if installed) | a deep play beyond `socialcrawl-endpoints.md`. Absent -> F9, never a stall |
+| socialcrawl-superengine | `~/.claude/socialcrawl-superengine/.superengine` OR a directory matching `~/.claude/plugins/cache/*/socialcrawl-superengine/` | `research-plays` ... the client-facing phrase is "vet this creator" (if installed) | a deep play beyond `socialcrawl-endpoints.md`. Absent -> F9, never a stall. To install it the client asks Claude to add the RevXL marketplace `joeoliveimpact/revxl-marketplace` and install the plugin; the client types nothing |
 | workspace-superengine | the `revxl-vault-search` skill resolves | `workspace-superengine:revxl-vault-search` | the named Vault trigger points in `vault-api.md`. This is a Skill call the plugin makes, never a phrase quoted to the client. Absent -> F3 |
 | notebooklm-superengine | the `notebooklm-build` skill resolves, or the local NotebookLM CLI is on PATH | `notebooklm-build` ... the client-facing phrase is "build a notebook" (if installed) | E13 only, over a finished harvest folder |
 
