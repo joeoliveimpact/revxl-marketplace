@@ -49,32 +49,38 @@ registry id in parentheses.
 3. Feed the winning themes into your brand brain, so later scripts lean on them. Say: "add these themes to my brand brain"
 4. *If `pulse.scheduled` is false:* keep this alive week to week, on your day. Say: "make the pulse weekly"
 
-**Next moves ... thin set** (E4)
+**Next moves ... thin set**
+(E4)
 1. Run more seed queries and rebuild the candidate list. Say: "run more seeds"
 2. Park it. Baseline, candidates and the checkpoint are saved. Say: "resume my cross-reference"
 3. Proceed thin anyway. Your explicit call: gaps read shallower with few competitors.
 
-**Next moves ... credits short** (E5)
+**Next moves ... credits short**
+(E5)
 1. Shrink the set to fit the balance, I recompute the cost. Say: "shrink the set to N"
 2. Top up, then pick this run back up where it stopped. Say: "resume my cross-reference"
 3. Park it. Everything pulled so far stays, and is never re-charged.
 
-**Next moves ... no setup yet** (E0)
+**Next moves ... no setup yet**
+(E0)
 1. Run setup first. It is what lets this pull real data at all. Say: "set up shortform superengine"
 2. Already set up, and want to see what is missing? Say: "show my setup"
 3. Not sure where you are in the flow? Say: "what's next in shortform"
 
-**Next moves ... a parked run is waiting** (F1, E22)
+**Next moves ... a parked run is waiting**
+(F1, E22)
 1. Resume at the stored checkpoint, nothing re-pulled or re-charged. Say: "resume my cross-reference"
 2. Start fresh instead. The parked run stays on disk. Say: "competitor cross-reference analysis"
 3. See the whole board first. Say: "what's next in shortform"
 
-**Next moves ... Vault degraded** (F3)
+**Next moves ... Vault degraded**
+(F3)
 1. Keep the roadmap: real field data, only the doctrine check skipped. Say: "build my visual dashboards"
 2. Script the top gap on the bundled frameworks, labelled. Say: "script the top gap"
 3. Install or update workspace-superengine, then re-run the roadmap step.
 
-**Next moves ... visuals only** (E0b)
+**Next moves ... visuals only**
+(E0b)
 1. Script the top gap the charts just made obvious. Say: "script the top gap"
 2. Re-render once the next pulse lands new data. Say: "regenerate my visuals"
 3. Keep the field current so the charts stay true. Say: "run the weekly pulse"

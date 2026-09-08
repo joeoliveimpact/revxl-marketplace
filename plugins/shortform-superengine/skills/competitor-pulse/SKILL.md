@@ -32,58 +32,70 @@ beside it, registry id in parentheses.
 3. Roster upkeep: someone quiet, or someone missing? Say: "swap a competitor"
 4. *If `pulse.scheduled` is false:* have this land on your desk weekly, on your day. Say: "make the pulse weekly"
 
-**Next moves ... roster op done** (E15)
+**Next moves ... roster op done**
+(E15)
 1. Backfill the new competitor's reels now (~3cr) and re-run the analysis. Say: "backfill and re-analyze"
 2. Leave it. Next week's pulse folds them in automatically.
 3. Run a pulse now to see the field with the new roster. Say: "run the pulse"
 
-**Next moves ... empty week** (E16)
+**Next moves ... empty week**
+(E16)
 1. Widen the window to 14 days, same listing cost. Say: "run the pulse on 14 days"
-2. Nothing changed and nothing extra was spent. Script from the ideas you have. Say: "script idea N from my content plan"
-3. Who has gone quiet? The health pass costs nothing. Say: "roster health"
+2. Plan the week off the field you have ... 7 to 15 source-tagged ideas. Say: "plan my week"
+3. *If `plan.path` is set:* nothing changed and nothing extra was spent. Script from the ideas you have. Say: "script idea N from my content plan"
+4. *If `pulse.scheduled` is false:* have the weekly delta land on your day. Say: "make the pulse weekly"
 
-**Next moves ... schedule set** (E0b)
+**Next moves ... schedule set**
+(E0b)
 1. Run the first pulse now, so the schedule starts from fresh data. Say: "run the pulse"
 2. Add a monthly roster pass on top of the weekly winners read: a deeper roster and outlier re-read once a month, no change to the weekly cost. Say: "roster health"
 3. Check the roster is still the right field before the first scheduled run. Say: "manage my roster"
 
-**Next moves ... some accounts failed** (F5)
+**Next moves ... some accounts failed**
+(F5)
 1. Retry just the failed handles, listing legs only. Say: "run the pulse"
 2. If the same handles keep failing, read the roster. Say: "roster health"
 3. Proceed on the partial set, with the coverage caveat stated in the brief.
 
-**Next moves ... no analysis yet** (E0)
+**Next moves ... no analysis yet**
+(E0)
 1. Build the baseline first. The pulse refreshes an analysis, it cannot invent one. Say: "analyze my Instagram against my competitors"
 2. *If you parked one mid-run:* pick it back up. Say: "resume my cross-reference"
 3. Not sure where you are? Say: "what's next in shortform"
 
-**Next moves ... no setup yet** (E0)
+**Next moves ... no setup yet**
+(E0)
 1. Run setup first. It is what lets the pulse pull real data at all. Say: "set up shortform superengine"
 2. See what is installed and what is missing. Say: "show my setup"
 3. Not sure where you are in the flow? Say: "what's next in shortform"
 
-**Next moves ... credits short** (F4)
+**Next moves ... credits short**
+(F4)
 1. Run the listing pass only, skip the deep legs. The brief still lands. Say: "run the pulse"
 2. Top up, then run the full pulse. Say: "run the weekly pulse"
 3. Trim the roster to the accounts that earn their credits. Say: "manage my roster"
 
-**Next moves ... field search done** (E0b)
+**Next moves ... field search done**
+(E0b)
 1. Script the top hit's angle in your voice. Say: "script that reel"
 2. Found a creator worth tracking? Say: "add <handle> to my roster"
 3. Mine what audiences say about it. Say: "comment pulse on <url>"
 
-**Next moves ... comment intel** (E0b)
+**Next moves ... comment intel**
+(E0b)
 1. Script a reel answering the top question, a pre-validated hook. Say: "script the top question"
 2. The intent-clustered version, `prism/audience-questions` at 30cr. Say: "run audience questions"
 3. Mine another scope, another creator or the whole field. Say: "comment pulse on <scope>"
 4. File the patterns as audience VoC, marked third-party, never the client's own voice. Say: "add this to my brand brain"
 
-**Next moves ... 14-day window** (E23)
+**Next moves ... 14-day window**
+(E23)
 1. Script the widened window's top outlier. Say: "script that reel"
 2. Open the refreshed pack. Say: "open my visuals"
 3. Back to the weekly rhythm from here. Say: "make the pulse weekly"
 
-**Next moves ... roster health** (E24)
+**Next moves ... roster health**
+(E24)
 1. Swap the quiet accounts out for live ones. Say: "swap a competitor"
 2. Run the pulse now on the tightened roster. Say: "run the pulse"
 3. Add someone specific you already have in mind. Say: "add <handle> to my roster"
@@ -125,7 +137,7 @@ ran), `setup.keys_present.socialcrawl` from the marker's
 `connections.socialcrawl`, `project_path` from `competitor_pulse.project` when
 it is set, and the marker's `competitor_pulse` block INTO `state.pulse`
 (`scheduled` to `scheduled`, `last_run` to `last_run`, `cadence` to `day` only
-when it names a weekday, otherwise null). Seeded at file creation only and
+when it names a weekday, lowercased, otherwise null). Seeded at file creation only and
 never overwritten afterwards. Without it a pulse-first home reports setup as
 not done, and its project path as null, for good.
 

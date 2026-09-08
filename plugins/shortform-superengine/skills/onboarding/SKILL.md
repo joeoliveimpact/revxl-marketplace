@@ -56,22 +56,26 @@ and no idea what to say next. Ids are journey-map rows; the block shape is
 3. *If the brand brain was skipped at Step 4b:* capture the client's real voice first, so the scripts sound like them. Say: "build my brand brain"
 4. *If a thought-leader's library is worth capturing:* pull the whole thing into a dated corpus. Say: "harvest <creator>'s library"
 
-**Next moves ... a prior analysis is already on this machine** (E1)
+**Next moves ... a prior analysis is already on this machine**
+(E1)
 1. *If `state.pulse.scheduled` is false AND the marker's `competitor_pulse.scheduled` is false:* keep that field read alive week to week ... new winners, refreshed charts, one brief. Say: "make the pulse weekly"
 2. Script off what already wins in that analysis. Say: "write a reel script from my analysis"
 3. Pick the first job and let me route you. Say: "start shortform"
 
-**Next moves ... sub-mode exit** (E2, refresh / reauth / update / show)
+**Next moves ... sub-mode exit**
+(E2, refresh / reauth / update / show)
 1. Back to work ... the compass reads where this brand actually is and ranks what to do next. Say: "what's next in shortform"
 2. Print what is wired on this machine, any time. Say: "show my setup"
 3. Straight back into the field read. Say: "analyze my Instagram against my competitors"
 
-**Next moves ... a runtime is missing** (E0b)
+**Next moves ... a runtime is missing**
+(E0b)
 1. Install Python 3.10+ from python.org, then re-run setup ... the analysis engine and every bundled script run on it. Say: "shortform setup"
 2. *If only Node is missing:* install it (Windows `winget install OpenJS.NodeJS.LTS`, Mac `brew install node`) and re-run ... connectors fail to attach silently without it. Say: "shortform setup"
 3. Capture the voice while you sort the install out ... brand-brain needs no runtime beyond Claude. Say: "build my brand brain"
 
-**Next moves ... no SocialCrawl key yet** (E0b)
+**Next moves ... no SocialCrawl key yet**
+(E0b)
 1. Get the key ... the click-path is in [`./references/socialcrawl-setup.md`](references/socialcrawl-setup.md), 100 free credits, about two minutes. Say: "shortform setup"
 2. Build the brand brain meanwhile ... voice work needs no social data at all. Say: "build my brand brain"
 3. Come back and finish the wiring later. Say: "finish setting up the content engine"

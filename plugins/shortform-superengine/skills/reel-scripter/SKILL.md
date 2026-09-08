@@ -46,7 +46,7 @@ The field read comes first.
 (F7) no voice guide on disk, or one over 7 days old.
 1. Continue on the Step 0c interim anchor; the script is labelled "voice: interim".
 2. *If no `voc/` exists:* capture the voice once; every later script inherits it. Say: "capture my voice"
-3. *If one exists and is over 7 days old:* refresh it, offered once, then proceed on it either way. Say: "refresh my voice guide"
+3. *If one exists, is over 7 days old, and `declined_offers` holds no `voc_refresh:<voc.refreshed_at>` entry:* refresh it, offered once, then proceed on it either way. Say: "refresh my voice guide"
 
 **Next moves ... Vault degraded: no key, or workspace-superengine missing, or the callee errored**
 (F3) the Vault leg is unavailable. The reel still finishes on the bundled references.

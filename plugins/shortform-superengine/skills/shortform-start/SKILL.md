@@ -61,8 +61,9 @@ setup and carried it over, including your pulse schedule"), then invoke
 completed skill, open loops, staleness), then invoke `shortform-next`. This
 block is the floor if the compass does not resolve.
 1. The ranked moves for exactly where you are. Say: "what's next in shortform"  <- start here
-2. *If `analysis.date` and `pulse.last_run` are both over 30 days old (F6), a null `pulse.last_run` counting as over 30:* refresh the field first, because everything downstream reads it. The 30-day band reads the newer of the two dates; the full re-run at 90 days reads `analysis.date` alone, whatever the pulse did. Say: "run the weekly pulse"
-3. *If an open loop holds a parked cross-reference (F1):* pick it back up at the checkpoint it stopped at, nothing is re-spent. Say: "resume my cross-reference"
+2. *If the marker is absent:* finish setup before anything else. Say: "set up shortform superengine"
+3. *If `analysis.date` and `pulse.last_run` are both over 30 days old (F6), a null `pulse.last_run` counting as over 30:* refresh the field first, because everything downstream reads it. The 30-day band reads the newer of the two dates; the full re-run at 90 days reads `analysis.date` alone, whatever the pulse did. Say: "run the weekly pulse"
+4. *If an open loop holds a parked cross-reference (F1):* pick it back up at the checkpoint it stopped at, nothing is re-spent. Say: "resume my cross-reference"
 
 **Next moves ... Vault degraded**
 (F3) the `revxl-vault-search` skill does not resolve, so workspace-superengine
@@ -141,7 +142,7 @@ the schema template, filled from the marker:
 - `brand` = the resolved slug. If the marker's `active_brand` was absent or null, write it into the marker now with that same value. That is the only marker write this skill makes
 - `setup.complete` = true (a marker means onboarding ran), `setup.keys_present.socialcrawl` from `connections.socialcrawl`
 - `setup.socialcrawl_superengine_installed` and `setup.ws_superengine_version` from step 1's two probes, seeded at file creation only
-- the marker's `competitor_pulse` block INTO `state.pulse`: `scheduled` -> `scheduled`, `last_run` -> `last_run`, `cadence` -> `day` only when it names a weekday (otherwise null). From here the marker copy is ignored: never re-read, never deleted. **A migrated home is never re-offered the pulse schedule it already accepted**
+- the marker's `competitor_pulse` block INTO `state.pulse`: `scheduled` -> `scheduled`, `last_run` -> `last_run`, `cadence` -> `day` lowercased, only when it names a weekday (otherwise null). From here the marker copy is ignored: never re-read, never deleted. **A migrated home is never re-offered the pulse schedule it already accepted**
 - `project_path` from `competitor_pulse.project` when it is set, so the client is not asked for a folder they already gave
 - `analysis` when an `analysis-data.json` is found (look at `competitor_pulse.project` first, then scan for a project directory holding one): `date` = that file's modified time as YYYY-MM-DD, `n_competitors` = the competitor count inside it, `themes_set` false, `resume` null. Seeded at file creation only; `analysis.*` is competitor-cross-reference's from then on. Without the seed the compass reads `analysis` as null on a machine that plainly has one and sends the client back to build it again
 

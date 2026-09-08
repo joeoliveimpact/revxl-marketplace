@@ -54,7 +54,8 @@ When `subject-matter` is not installed, say so in one line: the corpus stays
 parked at its path, nothing is lost, and move 1 is the phrase to say once it is
 installed. Never offer to send the corpus anywhere.
 
-**Next moves ... yt-dlp is missing** (E0)
+**Next moves ... yt-dlp is missing**
+(E0)
 1. Install the fetcher, then say it again ... `pip install yt-dlp`, about thirty seconds, and this skill is the only thing in the plugin that needs it. Say: "harvest <creator>'s library"
 2. Let setup install it and check the rest of the chain while it is there. Say: "shortform setup"
 3. Work the field in the meantime ... the competitor analysis needs no yt-dlp at all. Say: "analyze my Instagram against my competitors"

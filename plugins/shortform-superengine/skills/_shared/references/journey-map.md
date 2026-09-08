@@ -118,11 +118,11 @@ in 0.3.4's `next-moves.md`.
 | E13 | creator-strategy-harvest, manifest written | `subject-matter` "(if installed)" as the corpus consumer - NotebookLM (detect-first) - harvest another creator - refresh later. **The 0.3.4 "vault ingest / send Joe the HANDOFF" option is removed (SKLLPLG-78): engines never write to the Vault** |
 | E14 | competitor-pulse, weekly brief | script the week's winner - open my visuals - roster ops - make the pulse weekly [schedule, if unset] - monthly roster pass |
 | E15 | competitor-pulse, roster op done | backfill and re-analyze - defer to the next pulse - run the pulse now |
-| E16 | competitor-pulse, empty week | quiet-week note (no extra spend) - script from the content plan - run the pulse on 14 days (E23) - roster health (E24) |
+| E16 | competitor-pulse, empty week | quiet-week note (no extra spend) - run the pulse on 14 days (E23) - plan my week - script from the content plan [if a plan is on disk] - make the pulse weekly [schedule, if unset] |
 | E17 | shortform-start, first run (no marker, no state) | the five goals asked as a plain question (make a reel / plan the week / read my results / read the field / set up), then the four-move block whose #1 is the door that goal needs first |
 | E18 | shortform-start, marker present and state absent (migration) | writes `state/<brand>.json` from the marker (incl. the `competitor_pulse` block), sets `active_brand`, says so in one line, then delegates to shortform-next |
 | E19 | shortform-start, returning client | one-line position + open loops, then shortform-next |
-| E20 | shortform-next, compass rendered | the ranked moves themselves. Ranking order: `goal`, then position, then open loops and staleness. #1 must be actionable now |
+| E20 | shortform-next, compass rendered | the ranked moves themselves. The (E20) block's line order is the rank; `goal` reorders the two MAKE lines only; open-loop candidates rank after the last firing gated line. #1 must be actionable now |
 | E21 | content-plan, plan written | script idea 1 (reel-scripter, primary) - lean the plan toward a pillar - refresh next week's plan (pulse) - read last week's results (own-content-analysis "(if installed)") |
 | E22 | competitor-cross-reference, resumed from `analysis.resume` | back into the pipeline at the stored checkpoint, then E3 |
 | E23 | competitor-pulse, 14-day window run | the widened brief, then E14's moves |

@@ -43,22 +43,26 @@ a finished brain with nowhere to go. Ids are rows in
 2. *If no refresh cadence is set:* keep the brain fresh on a schedule (Friday night, Monday morning, a time you pick ... always asked, never silent). Say: "schedule my brain refresh"
 3. Back to what you were doing. The consuming engine picks the fresh brain up on its own.
 
-**Next moves ... themes ingested** (E10)
+**Next moves ... themes ingested**
+(E10)
 1. Script a reel off the theme that just landed. Say: "script the top seed"
 2. Hand over more ... another theme list, or another batch of audience lines, appends the same way. Say: "add these themes to my brand brain"
 3. Back to what you were doing.
 
-**Next moves ... refresh declined** (E11)
+**Next moves ... refresh declined**
+(E11)
 1. Carry on with the brain as it stands ... I label its real age, nothing is faked. Say: "what's next in shortform"
 2. A remind-only nudge at the next 7-day mark instead ... it never mines by itself. Say: "schedule my brain refresh"
 3. The lighter option: a top-patterns quick pass, about a minute, instead of the full refresh. Say: "update my topics"
 
-**Next moves ... interview floor** (E12)
+**Next moves ... interview floor**
+(E12)
 1. Wire the recording source now (Fathom, Fireflies) so the next call builds the brain for you, then mine it. Say: "mine my calls"
 2. First real refresh in about a week ... I suggest it, you confirm. Say: "schedule my brain refresh"
 3. Script now on the interim voice ... an honest floor that upgrades itself the moment real sources land. Say: "write a reel script"
 
-**Next moves ... the brain is already fresh** (E0b)
+**Next moves ... the brain is already fresh**
+(E0b)
 1. Back to what you were doing ... nothing to rebuild, the brain is under 7 days old. Say: "what's next in shortform"
 2. Script off the freshest seed already on the shelf. Say: "script the top seed"
 3. Top the topics up anyway if this week moved fast. Say: "update my topics"

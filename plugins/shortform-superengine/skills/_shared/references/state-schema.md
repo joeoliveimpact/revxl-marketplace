@@ -68,7 +68,7 @@ files, fully isolated.
   // ---- VOICE (no writer: derived on read) ----
   "voc": {
     "present": false,               // DERIVED from ~/.claude/revxl/<brand>/voc/ at read time. NEVER written by any skill
-    "refreshed_at": null            // DERIVED: the newest mtime under that directory; older than 7 days = stale (F7)
+    "refreshed_at": null            // DERIVED: the newest mtime under that directory, formatted YYYY-MM-DD, local date; older than 7 days = stale (F7)
   },
 
   // ---- SUBJECT (owner: subject-matter) ---- 0.5.0, present but unwritten until then
@@ -101,7 +101,7 @@ files, fully isolated.
   // ---- PULSE (owner: competitor-pulse) ----
   "pulse": {
     "scheduled": false,
-    "day": null,                    // e.g. "monday"
+    "day": null,                    // lowercase weekday, e.g. "monday"
     "last_run": null,               // YYYY-MM-DD, local date
     "last_snapshot": null           // path under <project>/history/
   },
@@ -152,7 +152,7 @@ One writer per key. A skill not named here does not write that key.
 
 | Key | Writer |
 |---|---|
-| `setup.*` | onboarding only. shortform-start (first run, migration) and competitor-pulse (its marker fallback) may SEED setup.* when either CREATES the file, and neither overwrites it afterwards |
+| `setup.*` | onboarding only. shortform-start (first run, migration) and competitor-pulse (its marker fallback) may SEED setup.* when either CREATES the file, and neither overwrites it afterwards. `socialcrawl_superengine_installed` and `ws_superengine_version` are seeded by onboarding and shortform-start only (competitor-pulse runs no probes); the deep-play gate reads the disk, never these mirrors |
 | `goal`, `mode` | shortform-start (and any skill on an explicit plain request, which then says so) |
 | `project_path` | onboarding seeds it, competitor-cross-reference confirms or corrects it. shortform-start (first run, migration) and competitor-pulse (its marker fallback) may SEED project_path from the marker's `competitor_pulse.project` when either CREATES the file, and neither overwrites it afterwards |
 | `analysis.*` (incl. `analysis.resume`) | competitor-cross-reference only. shortform-start (the E18 migration) and competitor-pulse (its marker fallback) may SEED analysis.* at file creation, from an `analysis-data.json` already on disk, and neither overwrites it afterwards |
@@ -193,6 +193,8 @@ One writer per key. A skill not named here does not write that key.
 
 The F7 decline is one `declined_offers` entry,
 `{"offer": "voc_refresh:<the stale voc.refreshed_at>", "date": "YYYY-MM-DD"}`,
+where the `voc_refresh:` key carries `voc.refreshed_at` in the same YYYY-MM-DD
+local-date form the schema declares above. The entry is
 written by whichever skill made the offer (reel-scripter Step 0c, content-plan
 Step 0) when the client proceeds without refreshing. The compass reads it and
 suppresses the F7 line while it is there; the compass writes nothing itself, so
