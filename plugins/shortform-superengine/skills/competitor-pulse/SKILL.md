@@ -123,8 +123,11 @@ only; `analysis.*` stays competitor-cross-reference's (`state-schema.md`).
 `<project>/history/`). Plus the every-skill keys: `updated_at`, a
 `completed_skills` append, `open_loops` opened or closed, `declined_offers` (a
 declined schedule goes here and is not re-offered), the `teach_level` mirror.
-**From 0.4.0 this skill never writes the `.superengine` marker**, and it never
-writes `analysis.*`: those belong to onboarding and competitor-cross-reference.
+**From 0.4.0 this skill never writes the `.superengine` marker except one
+write-if-absent**: when the ask-once rung above resolved the brand and the
+marker's `active_brand` is absent or null, write it there with that value, never
+over an existing one. It never writes `analysis.*`: those belong to onboarding
+and competitor-cross-reference.
 
 ## Credit discipline (non-negotiable)
 
@@ -154,8 +157,9 @@ Quiet week = 27cr and stops there.
 
 ## Step 0 — Locate + mode
 
-Find the project: the newest directory containing `analysis-data.json` (ask if
-several match). None anywhere: render the `no analysis yet` block from Terminal
+Find the project: the marker's `competitor_pulse.project` FIRST, then the newest
+directory containing `analysis-data.json` (ask if several match), the same order
+`shortform-start` uses at its migration. None anywhere: render the `no analysis yet` block from Terminal
 paths and stop, before any call. No marker: render `no setup yet` and stop.
 Load the roster from `analysis-config.json` / `tiers.json` via the shared
 loader (`_shared/lib/reel_io.load_config`). Read the journey file for `pulse`

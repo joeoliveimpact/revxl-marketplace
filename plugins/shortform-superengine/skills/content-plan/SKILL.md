@@ -33,56 +33,60 @@ in `../_shared/references/journey-map.md`; the grammar is
 most likely first, and drop an option whose gate is unmet rather than ranking it
 first.
 
-**Next moves ... plan written (E21)**
+**Next moves ... plan written**
+(E21) the plan is on disk. Pick the next thing to do with it.
 1. Script the strongest idea now ... it goes into reel-scripter Step 1 as the chosen angle, evidence attached. Say: "script idea N from my content plan"
 2. Tilt the week toward one pillar ... same sources, different balance. Say: "lean the plan toward <pillar>"
 3. Keep the pool fed ... next week rebuilds off the weekly pulse's new winners. Say: "refresh next week's plan"
-4. Read how last week actually performed before you commit to this one (if installed). Say: "read last week's results"
+4. Read how last week actually performed before you commit to this one. Say: "read last week's results" (if installed)
 
-**Next moves ... idea picked (E7)**
+**Next moves ... idea picked**
+(E7) an idea came out of the plan, carrying its source tag and its evidence.
 1. Write it ... reel-scripter takes the idea as the chosen angle with its source tag and evidence, and its Checkpoint 0 voice rules still apply. Say: "script that reel"
 2. Take a different idea instead. Say: "script idea N from my content plan"
 3. Rebalance the week first, then script. Say: "lean the plan toward <pillar>"
 
-**Next moves ... no pick (E8)**
+**Next moves ... no pick**
+(E8) the plan is presented and nothing was picked. The pointer is saved, so
+nothing is lost.
 1. The plan is saved at `<project>/content-plan-<YYYY-Www>.md` and the pointer is in your journey file ... come back to it any time. Say: "script idea N from my content plan"
 2. Have next week's pool rebuilt off the weekly pulse's new winners. Say: "run the weekly pulse"
 3. Re-spread the pool toward the pillar you care about. Say: "rebuild the pool, lean <pillar>"
-4. Read last week's numbers first and plan off what actually worked (if installed). Say: "read last week's results"
+4. Read last week's numbers first and plan off what actually worked. Say: "read last week's results" (if installed)
 
-**Next moves ... no analysis (E0, F2)**
-Say it plainly: there is no field analysis on disk, so the FIELD source has
+**Next moves ... no analysis**
+(E0, F2) Say it plainly: there is no field analysis on disk, so the FIELD source has
 nothing to read. The order exists because ideas picked before the field read are
 guesses about what the niche rewards.
 1. Run the cross-reference first ... it produces `analysis-data.json`, which is this plan's evidence layer. Say: "analyze my Instagram against my competitors"
 2. *If `analysis.resume` is set:* pick the parked run back up at its checkpoint. Say: "resume my cross-reference"
 3. *If `~/.claude/revxl/<brand>/voc/` exists:* build the thinner own-material plan now, labelled "no field source", and add the field ideas when the analysis lands. Say: "plan the week"
 
-**Next moves ... credits short (F4)**
-Name the balance and the estimate. Never spend silently, never promise an
+**Next moves ... credits short**
+(F4) Name the balance and the estimate. Never spend silently, never promise an
 outcome that would zap the balance.
 1. Build the plan from what is already on disk ... the field analysis plus the client's own material, no paid calls, with the FRESH and AUDIENCE lanes labelled as skipped. Say: "plan the week"
 2. Top up, then run the fresh pass on next week's rebuild. Say: "refresh next week's plan"
 3. Park it and pick the cheapest next step instead. Say: "what's next in shortform"
 
-**Next moves ... thin pool (E0b)**
-Fewer than 7 ideas cleared the evidence bar. Say which source came back empty
+**Next moves ... thin pool**
+(E0b) Fewer than 7 ideas cleared the evidence bar. Say which source came back empty
 and what that means. Never pad the count with filler ideas.
 1. Widen and rebuild ... the field window opens to 3 to 12 months for evergreen and the AUDIENCE source comes in on the week's winners (about 5cr per reel, confirmed first). Say: "rebuild the pool, lean <pillar>"
 2. Feed the own-material lane ... brand-brain mines this week's calls into fresh topical seeds. Say: "update my topics"
 3. Refresh the field first ... the pulse brings back this week's new winners. Say: "run the weekly pulse"
 4. Ship the short plan as it stands and write the best one now. Say: "script the top idea"
 
-**Next moves ... Vault degraded (F3)**
-The pool is still written; only the doctrine cross-check degraded. Print
+**Next moves ... Vault degraded**
+(F3) The pool is still written; only the doctrine cross-check degraded. Print
 `Vault: 0 searches, 0 reads | skipped: <reason>` beside the block, plus the one
 line the contract gives ("workspace-superengine is missing, running on the
 built-in library"), and keep going.
 1. Take the plan as written ... the ideas stand on the analysis and the sources; only the doctrine check was skipped. Say: "script idea N from my content plan"
 2. Rebuild the plan once workspace-superengine is installed. Say: "refresh next week's plan"
 
-**Next moves ... deep dive needs socialcrawl-superengine (F9)**
-A trend deep dive, creator vetting, share of voice or lead finding is beyond
+**Next moves ... deep dive needs socialcrawl-superengine**
+(F9) A trend deep dive, creator vetting, share of voice or lead finding is beyond
 `../_shared/references/socialcrawl-endpoints.md`, and this plugin will not fake
 one with a shallower call. Probe for the install the way that file says, then:
 1. *If the probe came back empty:* get it installed first ... ask me to install socialcrawl-superengine from the RevXL marketplace, then say the phrase. It ships the same credit guard this plugin does. Say: "vet this creator" (if installed)

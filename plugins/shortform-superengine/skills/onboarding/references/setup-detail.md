@@ -41,6 +41,11 @@ BOTH so transcription never stalls on one engine having a bad day.
 that *has no captions*, so one true transcriber is the real floor; and two mean a
 Groq outage or an offline session still cannot stall a run.
 
+**Why real transcription and never captions (relocated from `SKILL.md` Step 2 at
+0.4.0).** Real spoken-word transcription is not optional garnish, it is the primary
+text every analysis reads. Without it the engine falls back to post captions, which
+are *not* what the creator says on camera, and the analysis is degraded.
+
 ## RevXL Vault wiring (Step 3)
 
 Joe's live strategy library, not the brand brain (that is 4b, built locally):
@@ -219,8 +224,9 @@ one built off month-old topics doesn't. So offer to keep it fresh automatically:
 Detect the install by EITHER that marker OR a directory matching
 `~/.claude/plugins/cache/*/socialcrawl-superengine/` (an installed-but-never-run copy has no
 marker). When it is installed, the plays are run by invoking its `research-plays` skill by
-name (`socialcrawl-superengine:research-plays`), per `docs/plugin-conventions.md`
-"Cross-plugin coordination".
+name (`socialcrawl-superengine:research-plays`): a cross-plugin play is run by
+invoking the other plugin's skill by its qualified name, never by re-implementing
+it here.
 
 ## House notes
 

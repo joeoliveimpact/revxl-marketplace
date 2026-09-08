@@ -135,7 +135,7 @@ the search endpoint.
 
 ## Step 4b transcribe first
 
-**Transcribe first.** Run the transcription pass BEFORE `analyze.py`. With transcripts on disk (`source/client-transcripts.json` + `source/competitors/transcripts/`), hook and theme diagnosis key on the **spoken track**, roughly 80% of the signal, and the caption-keyed read is emitted as a separate **Caption patterns** section (the packaging and SEO surface, 20% at most), never mixed into the spoken diagnosis. If `analyze.py` already ran caption-only, re-run it after transcription: the md and json upgrade in place. `meta.transcript_coverage` reports how much of the field was covered. Method, engines and the CDN expiry trap: `./references/transcription.md`.
+**Transcribe first.** Run the Transcription step BEFORE analyze.py ... when transcripts exist (`source/client-transcripts.json` + `source/competitors/transcripts/`), hook/theme diagnosis keys on the **spoken track** (what actually retains, ~80% of the signal), and the caption-keyed read is emitted as a separate **Caption patterns** section (packaging/SEO surface, ≤20% ... never mixed into the spoken diagnosis). If analyze.py already ran caption-only, re-run it after transcription ... the md/json upgrade in place. `meta.transcript_coverage` in the JSON reports how much of the field was transcript-covered.
 
 ## The bundled scripts, as the References section listed them
 

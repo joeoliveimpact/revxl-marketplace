@@ -55,6 +55,10 @@ It auto-detects **FULL** mode (spoken transcripts present) vs **CAPTION-ONLY** d
    words do you never use? What's your one CTA?). Note in the final script that voice was
    interim, not the full profile.
 
+Proceeding without the offered refresh records `voc_refresh:<voc.refreshed_at>` in
+`declined_offers` (entry shape: `../../_shared/references/state-schema.md`), written at
+once at Step 0c and not at the end, so an abandoned run still keeps the decline.
+
 ## Step 1 propose ... the angle shape
 
 From `scripting-brief.md`, propose **2 to 3 concrete reel angles**, each = {attack theme ×

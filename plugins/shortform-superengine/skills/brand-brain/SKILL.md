@@ -113,4 +113,4 @@ Offer refreshes at most ONCE per session — never nag on back-to-back builds.
 
 ## Shortform tie-in
 
-reel-scripter reads `voice-guide.md` (registers `written-content` / `spoken-video`) plus `voc-profile.md` and `business-config.md`. `weekly-content-bank.md` has no wired consumer yet — after a mine or refresh, offer to script a reel off the freshest topical seed by handing the seed text to reel-scripter inline (as the angle input), not by pointing at the file.
+reel-scripter reads `voice-guide.md` (registers `written-content` / `spoken-video`) plus `voc-profile.md` and `business-config.md`. `weekly-content-bank.md` is read by `content-plan` as its own-material source ... after a mine or refresh, offer to script a reel off the freshest topical seed by handing the seed text to reel-scripter inline (as the angle input), not by pointing at the file.

@@ -103,7 +103,7 @@ in 0.3.4's `next-moves.md`.
 ### Happy path
 | ID | From, ending | Routes to |
 |---|---|---|
-| E1 | onboarding, Step 8 activation | `shortform-start` (primary, captures the goal) - competitor-cross-reference - brand-brain (if skipped at 4b) - creator-strategy-harvest - pulse schedule (only if an analysis exists) |
+| E1 | onboarding, Step 8 activation | goal make-a-reel, plan-the-week or read-the-field -> competitor-cross-reference (primary) - goal set-up or unset -> shortform-next - brand-brain (if skipped at 4b) - creator-strategy-harvest - pulse schedule (only if an analysis exists AND neither state nor marker says scheduled) |
 | E2 | onboarding, sub-mode exits | back to work - shortform-next - "show my setup" |
 | E3 | competitor-cross-reference, roadmap delivered | visual pack - script the top gap (reel-scripter) - feed themes to brand-brain - content-plan - weekly pulse [schedule] |
 | E4 | competitor-cross-reference, stopped at checkpoint 2 (thin set) | run more seeds - park and resume (F1) - proceed thin (explicit) |
@@ -136,7 +136,7 @@ in 0.3.4's `next-moves.md`.
 | F3 | any Vault trigger point, no key / workspace-superengine missing / the callee reports an error | continue on the bundled references, print `Vault: 0 searches, 0 reads \| skipped: <reason>`, and one line: "workspace-superengine is missing, running on the built-in library". **Never blocks the journey** |
 | F4 | any credit-gated step, SocialCrawl balance short | shrink the set - top up and resume - park it (the parked pointer is `analysis.resume`). Never spend silently |
 | F5 | competitor-pulse, `failed > 0` accounts | a retry pass over the failed handles (primary) - roster health (E24) - proceed on the partial set with the coverage caveat stated |
-| F6 | any skill, `analysis.date` older than 30 days | refresh the field via the pulse as move #1, with the staleness named |
+| F6 | any skill, BOTH `analysis.date` and `pulse.last_run` older than 30 days (a null `pulse.last_run` counts as over 30 days) | 30 to 90 days: refresh the field via the pulse as move #1, with the staleness named. `analysis.date` over 90 days: a full competitor-cross-reference re-run instead, with its `N x 3` credit cost stated |
 | F7 | any voice-consuming skill, `voc.refreshed_at` older than 7 days | offer a brand-brain refresh **once** per journey (`declined_offers`), then proceed on the current voice guide, labelled |
 | F8 | reel-scripter or content-plan in `subject-first`, no subject on disk | `subject-matter` "(if installed)" as move #1, else switch to `field-first` and say so |
 | F9 | a deep play requested and the socialcrawl-superengine marker is absent | the install refusal block as move #1: which plays need it (field search beyond `socialcrawl-endpoints.md`, creator vetting, share of voice, lead finding), why this plugin will not fake them, then the exact phrase to say once it is installed. A refusal that routes, never a stall |
@@ -167,8 +167,9 @@ Adding a skill or an ending: add the roster row and the registry row HERE first,
 then write the skill's inline Next-moves block to match. `scripts/check_routing.py`
 fails the build when a happy-path or failure row's id is cited by no Next-moves
 block in the skill the row comes FROM, or in a skill its "Routes to" cell names
-(a row whose From cell opens with "any" is generic: any skill's block may cite
-it). It warns, and never fails, when a `Say:` phrase resolves nowhere (phrases
+(a row whose From cell opens with "any", "a", "an" or "the" is generic: any
+skill's block may cite it). It warns, and never fails, when a `Say:` phrase
+resolves nowhere (phrases
 marked "(if installed)" are exempt). Retired 0.3.4 wording kept as an accepted alias, never as a canonical
 phrase: "script idea N from my topic pool" (now "script idea N from my content
 plan"), "make this weekly" (now "make the pulse weekly"), "make the

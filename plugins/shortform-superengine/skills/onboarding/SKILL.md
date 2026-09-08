@@ -36,7 +36,10 @@ None. onboarding is the door itself: it is where every other skill's E0 refusal
 sends a client, so it refuses nobody, and it is safe to re-run (Step 0 routes an
 already-onboarded machine into the sub-modes). It is also the first writer on a
 fresh install: read `state/<brand>.json` at entry if it is there, Step 6 creates
-it when it is not. Schema and rule zero:
+it when it is not. With no marker, scan
+`~/.claude/shortform-superengine/state/*.json` before asking: one file, take its
+`brand` and `goal` and say so in a line; several, ask which; none, ask as today.
+Schema and rule zero:
 `../_shared/references/state-schema.md`. The ledger, and every trigger phrase
 quoted below: `../_shared/references/journey-map.md`.
 
@@ -110,9 +113,8 @@ Python missing is the one hard stop: point them at python.org and render the run
 
 ## Step 2 — Transcription options (detect → pick the chain)
 
-This is the heart of setup. **Real spoken-word transcription is not optional garnish —
-it is the primary text every analysis reads.** Without it the engine falls back to post
-captions, which are *not* what the creator says on camera, and the analysis is degraded.
+This is the heart of setup. Why spoken-word transcription, never captions, is the text
+every analysis reads: [`./references/setup-detail.md`](references/setup-detail.md).
 
 The chain in one line: **`yt-dlp`** fetches the media, **Groq**
 (`whisper-large-v3-turbo`) transcribes in the cloud, **local Whisper**
@@ -231,11 +233,10 @@ Record the found sources + overall confidence in the marker (`voice_sources`,
 
 ### 4c — Auto-refresh offer (keep it fresh, hands-off)
 
-A brand brain goes stale: tone drifts, and the **topics** the client's people
-raise change week to week. Offer to keep it fresh automatically ... a scheduled
-task for a Cowork client, a routine or cron for a Code client, and ask which slot
-(*"Friday night, Monday morning, or a time you pick?"*). Target: never more than 6
-to 7 days stale. The reasoning: [`./references/setup-detail.md`](references/setup-detail.md).
+Offer to keep the brain fresh automatically ... a scheduled task for a Cowork
+client, a routine or cron for a Code client, and ask which slot (*"Friday night,
+Monday morning, or a time you pick?"*). Why it goes stale, and the 6-to-7-day
+target: [`./references/setup-detail.md`](references/setup-detail.md).
 
 Capture the choice in the marker (`brand_brain.refresh`). **`brand-brain` is bundled
 in this plugin**, so wire the auto-refresh schedule now — it points at the bundled

@@ -28,38 +28,46 @@ One family-shared dial: `~/.claude/revxl/teach-level` (`new` / `learning` / `pro
 Every ending routes. Edge ids: `../_shared/references/journey-map.md`. Block grammar:
 `../_shared/references/routing.md`.
 
-**Next moves ... script written (E6)**
+**Next moves ... script written**
+(E6) the script is on disk with its evidence line. Pick the next move off it.
 1. *If `angles_unpicked[]` is not empty:* the next Step 1 angle, already vetted. Say: "script the next angle"
 2. *If it is empty:* build the week's plan so the next reel has a source. Say: "content plan"
 3. Refresh the pack so the client sees the field this attacks. Say: "regenerate my visuals"
 4. *If `pulse.scheduled` is false:* next week's winners land here. Say: "run the weekly pulse"
 
-**Next moves ... no analysis at Step 0a (E9, general form F2)**
+**Next moves ... no analysis at Step 0a**
+(E9, F2) no `analysis-data.json` on disk, so there is nothing to script off.
+The field read comes first.
 1. Field analysis first: no `analysis-data.json`, nothing to script off. Say: "analyze my Instagram against my competitors"
 2. *If the marker is missing:* set up first, the analysis needs the key. Say: "set up shortform superengine"
 3. Lost in the order? Say: "what's next in shortform"
 
-**Next moves ... no voice guide on disk (gate VOICE, F7)**
+**Next moves ... voice guide missing or stale (gate VOICE)**
+(F7) no voice guide on disk, or one over 7 days old.
 1. Continue on the Step 0c interim anchor; the script is labelled "voice: interim".
-2. Build the voice guide once; every later script inherits it. Say: "build my brand brain"
-3. *If one exists and is over 7 days old (F7):* refresh it, offered once. Say: "refresh my voice guide"
+2. *If no `voc/` exists:* capture the voice once; every later script inherits it. Say: "capture my voice"
+3. *If one exists and is over 7 days old:* refresh it, offered once, then proceed on it either way. Say: "refresh my voice guide"
 
-**Next moves ... Vault degraded: no key, or workspace-superengine missing, or the callee errored (F3)**
+**Next moves ... Vault degraded: no key, or workspace-superengine missing, or the callee errored**
+(F3) the Vault leg is unavailable. The reel still finishes on the bundled references.
 1. Finish the reel on the bundled `./references/`, printing `Vault: 0 searches, 0 reads | skipped: <reason>`. The Vault never blocks a script.
 2. Retry at the next reel, never twice inside one named step; or install workspace-superengine for the live pulls, then script again. Say: "write a reel script"
 3. Check what else is stale before spending. Say: "what's next in shortform"
 
-**Next moves ... voice not confirmed at Checkpoint 0 (E0b)**
+**Next moves ... voice not confirmed at Checkpoint 0**
+(E0b) the user did not confirm the voice anchor, so nothing is scripted yet.
 1. Capture the voice properly first, once. Say: "build my brand brain"
 2. Redo the interim anchor the other way (top captions, or the Q&A), then re-show Checkpoint 0.
 3. Park the reel and pick it up later. Say: "what's next in shortform"
 
-**Next moves ... an idea picked from the content plan (E7)**
+**Next moves ... an idea picked from the content plan**
+(E7) an idea arrived from `content-plan` as the chosen angle.
 1. Script it: idea N is the angle, the run starts at Checkpoint 0. Say: "script idea N from my content plan"
 2. *If no `content-plan-<week>.md` is on disk (E0):* build the plan first. Say: "content plan"
 3. Prefer a field angle? Step 1 proposes 2 to 3 off the analysis. Say: "write a reel script"
 
-**Next moves ... subject-first requested (F8)**
+**Next moves ... subject-first requested**
+(F8) `mode` is subject-first and no subject material is on disk.
 1. subject-matter ships in 0.5.0; until then field-first. Every claim here traces to `analysis-data.json`, and the brief that satisfies that guardrail is what 0.5.0 adds. Say: "use my own material" (if installed)
 2. Bring the topic inside field-first: Step 1's vet adapts the framing, never vetoes it. Say: "write a reel script"
 3. No analysis yet? That is the real blocker. Say: "analyze my Instagram against my competitors"
@@ -86,18 +94,12 @@ Contract: `../_shared/references/state-schema.md`. **Read at start** from
 
 ## Overview
 
-`reel-scripter` is the **Shortform** format engine. It does not guess what to post —
-it reads what already wins in the client's niche (from a `competitor-cross-reference`
-run) and writes a single reel in the client's own voice off that evidence.
-
-Its three input layers (the analysis, the brief, the voice):
-`./references/pipeline-detail.md` "Inputs".
-
-A **guided, checkpointed** pipeline: pause at each ✋ before spending the next move. One run
-= one reel at `<project>/scripts/<slug>.md`.
-
-> **Definition of done:** a reel the client could film today, in their voice, on a structure
-> the niche has proven. In full: `./references/pipeline-detail.md`.
+`reel-scripter` is the **Shortform** format engine. It never guesses what to post: it reads
+what already wins in the client's niche (from a `competitor-cross-reference` run) and writes
+one reel in the client's own voice off that evidence. A **guided, checkpointed** pipeline,
+one run = one reel at `<project>/scripts/<slug>.md`. The three input layers, the ✋ pause
+rule and the definition of done in full: `./references/pipeline-detail.md`, "Inputs" and
+"Definition of done".
 
 ---
 
@@ -130,7 +132,8 @@ and the single refresh offer, `provisional: true`, the Mirror-Language ban):
 `./references/pipeline-detail.md` "Step 0c". No `voc/` renders **no voice guide on disk**.
 A `voc/` over 7 days old gets ONE refresh offer (F7); proceeding without it records
 `voc_refresh:<voc.refreshed_at>` in `declined_offers` (entry shape:
-`../_shared/references/state-schema.md`), which stops the compass re-offering it.
+`../_shared/references/state-schema.md`), written at once, not at the end, which stops the
+compass re-offering it.
 
 **0d. Vault pull #1, the angle and its doctrine (named trigger point 1 of 2).**
 Check `<project>/brain-pulls/<slug>.md` first: a cached pull younger than **14 days** is
@@ -182,15 +185,15 @@ angle is field-backed; a user-supplied idea is not. Vet it before committing bea
 python ${CLAUDE_PLUGIN_ROOT}/skills/reel-scripter/field_vet.py <project_dir> <keyword> [keyword2 ...]
 ```
 
-Pass the obvious frame word AND its adjacent candidates so a losing frame surfaces its
-winning neighbor. **The idea is never vetoed, only the framing adapts.** The report and the
-four verdict branches (WINNER / NEUTRAL, LOSER, UNTESTED / THIN / NONE, thin-n):
+**The idea is never vetoed, only the framing adapts.** Which keywords to pass, the report
+and the four verdict branches (WINNER / NEUTRAL, LOSER, UNTESTED / THIN / NONE, thin-n):
 `./references/pipeline-detail.md` "Step 1 field vet".
 
 **Deeper field layer (optional, detect-first).** With socialcrawl-superengine installed
 (the two-step probe is in `../_shared/references/socialcrawl-endpoints.md`),
-`research-plays` widens the angle set. Absent, do not fake it: render the F9 refusal block described in
-`../_shared/references/journey-map.md` (edge F9) and continue on the analysis.
+`research-plays` widens the angle set. Absent, do not fake it: hand off to the compass ... say
+"what's next in shortform" and it renders the F9 install refusal (edge F9), then continue on
+the analysis.
 
 **Persist the angles not taken.** On the Checkpoint 1 pick, write every other proposed angle
 to `state.angles_unpicked[]` as `{angle, from, opened}`, so "script the next angle" survives

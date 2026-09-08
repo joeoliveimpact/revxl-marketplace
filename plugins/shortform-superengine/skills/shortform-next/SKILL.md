@@ -42,14 +42,18 @@ order, not a menu: render only the ones whose gate holds, plus any open-loop
 candidate the Sweep found, at most four, renumbered from 1 with `<- start here`
 on the rendered #1, and each naming the state fact that makes it the move. When every move the client came for is
 gated, the highest unmet gate's unblock phrase is #1, because a compass that
-ranks a blocked move has walked them into a wall.
+ranks a blocked move has walked them into a wall. `goal` never gates lines 6 and
+7, it only orders them: make-a-reel puts 6 above 7, plan-the-week reverses it,
+unset leaves 6 first. Floor: if fewer than 2 lines render, append the next-stage
+defaults in this order, "script the top gap", "plan my week", "run the weekly
+pulse", skipping any already rendered, until 2 are on screen.
 1. *If the marker is on disk and no state file is:* open the front door, which writes the journey file from the marker (E18) and then comes back here. Say: "start shortform"
-2. *If `analysis` is unset:* build the field baseline the rest of the engine reads ... nothing downstream is actionable until it exists. Say: "analyze my Instagram against my competitors"
-3. *If `analysis.date` is older than 30 days (F6):* keep the field current, a cheap weekly delta, before anything leans on a stale read. Say: "run the weekly pulse"
+2. *If `analysis` is unset, or `analysis.date` is over 90 days old (F6):* build or rebuild the field baseline the rest of the engine reads ... nothing downstream is actionable until it exists, and a full re-run is priced out loud first at `N x 3` credits for the reel pull. Say: "analyze my Instagram against my competitors"
+3. *If `analysis.date` and `pulse.last_run` are BOTH over 30 days old and `analysis.date` is under 90 (F6), a null `pulse.last_run` counting as over 30:* keep the field current, a cheap weekly delta, before anything leans on a stale read. Say: "run the weekly pulse"
 4. *If `voc.refreshed_at` is over 7 days old AND `declined_offers` holds no `voc_refresh` entry (F7):* refresh the voice guide once, then proceed on it either way. Say: "refresh my voice guide"
 5. *If `voc.present` is false:* capture your voice ... pillars and the language you already own, before any draft. Say: "capture my voice"
-6. *If `analysis` is set, under 30 days, and `goal` is make-a-reel:* script the top gap, the biggest hole your field read found, in your voice. Say: "script the top gap"
-7. *If `goal` is plan-the-week and at least one source exists:* plan the week, 7 to 15 source-tagged ideas deduped against what you have already scripted. Say: "plan my week"
+6. *If `analysis` is set and F6 does not hold:* script the top gap, the biggest hole your field read found, in your voice. Say: "script the top gap"
+7. *If `analysis` is set, or any other source is (`voc.present`, `subject.present`):* plan the week, 7 to 15 source-tagged ideas deduped against what you have already scripted. Say: "plan my week"
 8. *If `pulse.scheduled` is false and `analysis` is set:* have the weekly delta land on your desk on your day. Say: "make the pulse weekly"
 
 **Next moves ... nothing on disk**
@@ -97,7 +101,7 @@ the stage line bare at `pro`.
 **3. Sweep before ranking.** Each of these produces a candidate move:
 
 - every entry in `open_loops` (a parked cross-reference, an unscripted plan idea)
-- `analysis.date` older than 30 days -> refresh the field (F6)
+- `analysis.date` AND `pulse.last_run` both older than 30 days -> refresh the field via the pulse (F6); `analysis.date` over 90 days -> a full cross-reference re-run instead
 - `voc.refreshed_at` older than 7 days AND no `voc_refresh:<refreshed_at>` entry in `declined_offers` -> offer a brand-brain refresh (F7). The entry is written by reel-scripter Step 0c or content-plan Step 0 when the client proceeds without refreshing; this skill writes nothing, so it can only read that record, never make it
 - `pulse.scheduled` false while `analysis` is set -> offer the schedule. `pulse.scheduled` true -> **never offer it again**, including on a home migrated from a 0.3.x marker
 - `mode` is `subject-first` and `subject.present` is false -> subject-matter "(if installed)", else switch to `field-first` and say so (F8)
@@ -131,7 +135,8 @@ Nothing on disk for this brand yet, so you are at the very start.
 ```
 
 Persona 2, returning with an analysis (goal `make-a-reel`, `analysis.date` 6
-days old, `voc.present` true, `pulse.scheduled` false):
+days old, `voc.present` true and `voc.refreshed_at` 2 days old,
+`pulse.scheduled` false):
 
 ```
 Setup and voice are done, your field read is 6 days old, and no pulse is scheduled. You came here to make a reel.
@@ -142,12 +147,12 @@ Setup and voice are done, your field read is 6 days old, and no pulse is schedul
 3. Put the weekly delta on your calendar ... your day, so this read never goes stale on you. Say: "make the pulse weekly"
 ```
 
-Persona 3, returning with a pulse scheduled (`analysis.date` 34 days old,
-`pulse.scheduled` true for Monday, one open loop: a cross-reference parked at
-checkpoint 2):
+Persona 3, returning with a pulse scheduled but never run (`analysis.date` 34
+days old, `pulse.last_run` null, `pulse.scheduled` true for Monday, one open
+loop: a cross-reference parked at checkpoint 2):
 
 ```
-Your field read is 34 days old, which is past the 30-day mark I treat as stale. Your pulse already runs Mondays, so I am not offering to schedule it again. One thing is still open: a cross-reference parked at checkpoint 2.
+Your field read is 34 days old and no pulse has ever run, so both dates are past the 30-day mark I treat as stale. Your pulse already runs Mondays, so I am not offering to schedule it again. One thing is still open: a cross-reference parked at checkpoint 2.
 
 **Next moves**
 1. Run the pulse now ... refreshes the 34-day-old field read before anything downstream leans on it. Say: "run the weekly pulse"  <- start here

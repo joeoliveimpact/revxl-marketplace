@@ -59,7 +59,7 @@ files, fully isolated.
 
   // ---- FIELD (owner: competitor-cross-reference) ----
   "analysis": {
-    "date": null,                   // YYYY-MM-DD of the last completed run; older than 30 days = stale (F6)
+    "date": null,                   // YYYY-MM-DD of the last completed run; stale (F6) only when pulse.last_run is over 30 days too
     "n_competitors": null,
     "themes_set": false,            // true once theme derivation wrote analysis-config.json
     "resume": null                  // {"checkpoint": 2|3, "note": "<one line>", "opened": "YYYY-MM-DD"} or null ... the F1 park pointer
@@ -122,7 +122,10 @@ files, fully isolated.
    `completed_skills` append, and any `open_loops` you opened or closed.
    Exception: read-only skills. shortform-next writes nothing, not even
    updated_at or completed_skills, because the compass may be called many
-   times in one session and must never alter the record it reads.
+   times in one session and must never alter the record it reads. One more
+   exception: the F7 decline entry is written at Step 0c, the moment the client
+   proceeds without the refresh, not at the end, so an abandoned run still keeps
+   the decline.
 3. **Append, never overwrite** arrays (`scripts`, `angles_unpicked`,
    `open_loops`, `declined_offers`, `completed_skills`).
 4. **`voc.present` and `subject.present` are DERIVED on read, never written.**
@@ -130,7 +133,9 @@ files, fully isolated.
    brand-brain writes nothing in this file, so there is exactly one answer to
    "does this client have a voice guide": the disk.
 5. **Staleness is computed, never stored.** Compare `analysis.date` and
-   `voc.refreshed_at` against today at read time using the constants below.
+   `voc.refreshed_at` against today at read time using the constants below. F6's
+   field freshness is the NEWER of `analysis.date` and `pulse.last_run`; a null
+   `pulse.last_run` counts as over 30 days.
 6. **Multi-brand.** Skills operate on the marker's `active_brand`; switching
    brands = switching files, no shared state. A brand name in the client's
    message that does not match `active_brand` STOPS the run and offers the
@@ -162,7 +167,9 @@ One writer per key. A skill not named here does not write that key.
 > (authoritative) and keeps `brand` as a legacy alias holding the same value, so
 > 0.3.4 readers keep working. `shortform-start`'s migration reads `active_brand`,
 > then `brand`, then asks once, and may write `active_brand` when it was absent
-> or null. Those are the only two writers.
+> or null. So may the ask-once rung of any skill that resolves the brand
+> (competitor-cross-reference Step 0a, competitor-pulse State), write-if-absent
+> only, never an overwrite. Those are the only writers.
 > **Migration (first run of shortform-start on a marker-only home):** the
 > marker's `competitor_pulse` scheduling block
 > (`{scheduled, cadence, runtime, project, last_run}`) is copied INTO
@@ -179,7 +186,7 @@ One writer per key. A skill not named here does not write that key.
 
 | What | Stale after | Edge |
 |---|---|---|
-| `analysis.date` | 30 days | F6 ... refresh the field via the pulse |
+| `analysis.date` | 30 days, measured against the newer of `analysis.date` and `pulse.last_run`; full re-run at 90 days | F6 ... the pulse at 30 days, a full cross-reference re-run at 90 |
 | `voc.refreshed_at` | 7 days | F7 ... offer a brand-brain refresh, once per journey |
 
 The F7 decline is one `declined_offers` entry,

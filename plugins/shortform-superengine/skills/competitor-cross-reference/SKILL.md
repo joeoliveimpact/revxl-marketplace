@@ -121,7 +121,9 @@ opened or closed (a park opens one, a resume closes it), `declined_offers`, the
 1. No marker: stop, render the `no setup yet` block. Do not pull, do not ask
    for a handle.
 2. No `active_brand` and no legacy `brand`: ask once, normalize to the slug
-   convention in `../_shared/references/state-schema.md`, carry on.
+   convention in `../_shared/references/state-schema.md`, then write it into the
+   marker's `active_brand`, which was absent. That write-if-absent is this
+   skill's only marker write, never an overwrite.
 3. `analysis.resume` set: name the checkpoint it stopped at, render the
    `a parked run is waiting` block, offer the resume BEFORE a fresh run. On
    resume, re-enter there with the seeds and approved set already on disk
@@ -191,8 +193,9 @@ For each candidate handle, call `instagram/profile` with `handle` (1cr) for the 
 **2d. Deeper recon (optional).** Probe for socialcrawl-superengine as
 `../_shared/references/socialcrawl-endpoints.md` describes (marker first, then
 the plugin cache directory). Installed: offer its `research-plays` skill for
-ad-library recon and a cost-gated share-of-voice one-shot. Absent: mention it
-once and continue. Never block the pipeline, never fake a deep play (edge F9).
+ad-library recon and a cost-gated share-of-voice one-shot. Absent: the compass
+handles it ... say "what's next in shortform" and it renders the F9 install
+refusal, then continue. Never block the pipeline, never fake a deep play (edge F9).
 
 ---
 

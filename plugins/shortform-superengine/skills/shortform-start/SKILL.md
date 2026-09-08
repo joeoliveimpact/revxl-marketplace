@@ -61,7 +61,7 @@ setup and carried it over, including your pulse schedule"), then invoke
 completed skill, open loops, staleness), then invoke `shortform-next`. This
 block is the floor if the compass does not resolve.
 1. The ranked moves for exactly where you are. Say: "what's next in shortform"  <- start here
-2. *If `analysis.date` is older than 30 days (F6):* refresh the field first, because everything downstream reads it. Say: "run the weekly pulse"
+2. *If `analysis.date` and `pulse.last_run` are both over 30 days old (F6), a null `pulse.last_run` counting as over 30:* refresh the field first, because everything downstream reads it. Past 90 days it is a full re-run instead. Say: "run the weekly pulse"
 3. *If an open loop holds a parked cross-reference (F1):* pick it back up at the checkpoint it stopped at, nothing is re-spent. Say: "resume my cross-reference"
 
 **Next moves ... Vault degraded**
@@ -150,8 +150,9 @@ Say it in ONE line, render E18, then invoke `shortform-next`.
 **5. RETURNING (state present).** One line of position, then invoke
 `shortform-next`. The line carries: the stage from the journey map, the last
 entry in `completed_skills`, how many `open_loops` are open, and any staleness
-that holds ... `analysis.date` older than 30 days (F6), `voc.refreshed_at`
-older than 7 days (F7), `pulse.scheduled` false. Render E19 as the floor.
+that holds ... `analysis.date` and `pulse.last_run` both older than 30 days
+(F6, a full re-run past 90), `voc.refreshed_at` older than 7 days (F7),
+`pulse.scheduled` false. Render E19 as the floor.
 
 **6. At any point.** A deep-play request with probe 1 false is F9. Probe 2 false
 is F3, stated once and then carried, never repeated per move.
