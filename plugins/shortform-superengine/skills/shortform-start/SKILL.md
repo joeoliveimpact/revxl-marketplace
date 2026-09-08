@@ -54,7 +54,8 @@ setup and carried it over, including your pulse schedule"), then invoke
 `shortform-next`. This block is the floor if the compass does not resolve.
 1. Pick up where you actually are ... your position and the ranked moves from the state I just wrote. Say: "what's next in shortform"  <- start here
 2. *If `analysis` is set, `analysis.date` is under 90 days, and the 30-day band does not hold:* script the biggest gap your existing analysis already found. Say: "script the top gap"
-3. *If `analysis` is empty:* build the field baseline the rest of the engine reads. Say: "analyze my Instagram against my competitors"
+3. *If `analysis` is empty, or `analysis.date` is 90 days or older:* build or rebuild the field baseline the rest of the engine reads; a rebuild is priced first at `N x 3` credits. Say: "analyze my Instagram against my competitors"
+4. *If `analysis.date` is under 90 days and `analysis.date` and `pulse.last_run` are both over 30 days old, a null `pulse.last_run` counting as over 30:* refresh the field first, a cheap weekly delta. Say: "run the weekly pulse"
 
 **Next moves ... returning**
 (E19) state present, marker either way. One line of position first (stage, last
