@@ -21,7 +21,7 @@ All notable changes to this plugin. Format: [Keep a Changelog](https://keepachan
 ### Changed
 
 - **The nudge asks for `Vault: skipped (...)`.** That is the wording
-  `revxl-vault-search` prints. The 34 trigger points inside the content plugins
+  `revxl-vault-search` prints. The trigger points inside the content plugins
   still print `Brain:` today, and either spelling satisfies the hook, which reads
   `brain-calls.jsonl` and never the printed line.
 - **The skill map carries both spellings.** A belt test on 09.08.26 in a live

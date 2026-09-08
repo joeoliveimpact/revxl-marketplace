@@ -194,7 +194,7 @@ if (open my $out, '>', $stamp) {
 
 my $skill = (defined $rec->{skill} && !ref($rec->{skill})) ? $rec->{skill} : 'a generating skill';
 # The nudge asks for the `Vault:` wording that `revxl-vault-search` itself prints.
-# The 34 plugin trigger points still print `Brain:` today, and this hook reads the
+# The plugins' own trigger points still print `Brain:` today, and this hook reads the
 # ledger, never the line, so either spelling satisfies it.
 my $msg = "No Vault check since `" . $skill . "` started. Invoke "
         . "`workspace-superengine:revxl-vault-search` before this draft "
