@@ -2,7 +2,7 @@
 
 ## Overview
 
-SocialCrawl's `search/reels` endpoint returns reels, not profiles. You derive competitor candidates from the accounts that keep appearing in relevant reel results, then pull real follower counts via the profile endpoint to tier them. This document covers how to build the seed query set that surfaces the right candidates.
+SocialCrawl's `instagram/search/reels` endpoint returns reels, not profiles. You derive competitor candidates from the accounts that keep appearing in relevant reel results, then pull real follower counts via the profile endpoint to tier them. This document covers how to build the seed query set that surfaces the right candidates.
 
 ---
 
@@ -44,7 +44,7 @@ KEEP: individual coaches, practitioners, educators, and creators in the client's
 
 ## Candidate Tiering
 
-SocialCrawl `search/reels` returns view counts, not follower counts. After collecting candidates:
+SocialCrawl `instagram/search/reels` returns view counts, not follower counts. After collecting candidates:
 
 1. Pull each candidate's profile via SocialCrawl to get real follower counts.
 2. Tier relative to the CLIENT's follower count (not absolute thresholds):

@@ -1,4 +1,4 @@
-# Build a vault-handoff manifest: scan harvested transcript md files -> per-file facets JSON.
+# Build the harvest manifest: scan harvested transcript md files -> per-file facets JSON.
 # Usage: python build_manifest.py <harvest_dir> <out.json>
 # Reads the '- key: value' metadata block at the top of each transcript; newsletter files get derived facets.
 import glob, os, re, sys, json

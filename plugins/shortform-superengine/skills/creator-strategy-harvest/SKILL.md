@@ -1,22 +1,69 @@
 ---
 name: creator-strategy-harvest
-description: Harvest a creator's full content-strategy library (YouTube channel + playlists + newsletter) into a dated, recency-ruled, vault-ready corpus + framework extraction. Use when the user wants to capture/refresh a thought-leader's frameworks (e.g. Kallaway, heyDominik, Hormozi) for a knowledge base. Triggers include "harvest X's library", "get everything Y teaches", "pull all of Z's content", "refresh our notebook on <creator>", "build a corpus from <creator>'s videos".
+description: Harvest a creator's full content-strategy library (YouTube channel + playlists + newsletter) into a dated, recency-ruled corpus + framework extraction, ready for a consumer to ingest. Use when the user wants to capture/refresh a thought-leader's frameworks (e.g. Kallaway, heyDominik, Hormozi) for a knowledge base. Triggers include "harvest <creator>'s library", "get everything <creator> teaches", "pull all of <creator>'s content", "build a corpus from <creator>'s videos", "refresh our notebook on <creator>", "refresh the harvest on <creator>", "build a notebook from this harvest".
 ---
 
 # creator-strategy-harvest
 
-Turn a creator's scattered output into a clean, dated, **recency-ruled** corpus + framework extraction, ready to ingest into a knowledge vault. Built on YouTube subtitle tracks — **real spoken-word transcripts** of the videos, fetched in seconds (no Whisper run needed; this is NOT the IG post-caption shortcut). Proven on Kane Kallaway (88 videos + 92 shorts + 64 newsletter issues) + heyDominik.
+Turn a creator's scattered output into a clean, dated, **recency-ruled** corpus + framework extraction, ready for a consumer to ingest. Built on YouTube subtitle tracks ... **real spoken-word transcripts** of the videos, fetched in seconds (no Whisper run needed; this is NOT the IG post-caption shortcut). Proven on Kane Kallaway (88 videos + 92 shorts + 64 newsletter issues) + heyDominik.
 
 ## Teach mode
 
-Read `~/.claude/revxl/teach-mode` if it exists, else default `beginner`. In **beginner**: plain-English-first — explain in plain words, then name the technical term with a one-line gloss on first use, and add a "what this means for you" line where the consequence isn't obvious. In **off**: standard professional voice, no glosses. Convention + adjust rules: `../_shared/references/teach-mode.md` (`/teach-mode off`, or a plain request like "stop explaining the basics", → rewrite that file and confirm).
+Read `~/.claude/revxl/teach-level` (one word: `new`, `learning`, `pro`). If it is
+absent but the legacy `~/.claude/revxl/teach-mode` exists, map `beginner` to `new`
+and `off` to `pro`; if neither exists, `new`. At `new`: plain English first, then
+the technical term with a one-line gloss on first use, plus a "what this means for
+you" line where the consequence is not obvious. At `learning`: plain English with
+the term inline. At `pro`: ordinary professional voice, no scaffolding. Gates,
+refusals and cost warnings render in full at every level. The convention and the
+switch: `../_shared/references/teach-mode.md`.
+
+## Prereq (E0)
+
+One tool: **`yt-dlp` on PATH** (`yt-dlp --version`). It is the only thing this
+skill cannot work around, and since 0.4.0 it is installed for this skill alone:
+onboarding offers `pip install yt-dlp` as a harvest-only tool and never blocks
+setup on it (`setup.tools.yt_dlp` in `../_shared/references/state-schema.md`).
+Missing it is a refusal that routes, never a stall: render the yt-dlp refusal
+block (E0) from `## Terminal paths` below and stop. Do not start the pipeline
+and do not improvise a substitute fetcher.
+
+State: read `~/.claude/shortform-superengine/state/<brand>.json` at entry for the
+brand named in the `.superengine` marker's `active_brand`, and re-read the teach
+level. This skill **owns no state keys** (the journey-map roster says so). At the
+end write only the every-skill keys: append `creator-strategy-harvest` to
+`completed_skills`, refresh `updated_at`, mirror the teach level into
+`teach_level`, and log anything the client declined in `declined_offers`. If this
+machine has no marker there is no brand to key a journey file to: harvest still
+runs (it needs no API key and no analysis) and records nothing.
+
+## Terminal paths
+
+Both endings are written out here, so a finished corpus never sits parked with no
+road out. Ids are rows in `../_shared/references/journey-map.md`; the block shape
+is `../_shared/references/routing.md`.
+
+**Next moves** (E13, the corpus and its manifest are written)
+1. Turn it into the client's own material ... `subject-matter` reads the corpus and writes a subject brief a reel can be scripted from. Say: "use my own material" (if installed)
+2. Load it into NotebookLM for instant Q&A over the creator's teachings, when the local CLI is on PATH. Say: "build a notebook from this harvest"
+3. Harvest another creator while the method is warm. Say: "harvest <creator>'s library"
+4. Re-run this one later for new uploads ... the gap analysis makes refreshes cheap. Say: "refresh the harvest on <creator>"
+
+When `subject-matter` is not installed, say so in one line: the corpus stays
+parked at its path, nothing is lost, and move 1 is the phrase to say once it is
+installed. Never offer to send the corpus anywhere.
+
+**Next moves ... yt-dlp is missing** (E0)
+1. Install the fetcher, then say it again ... `pip install yt-dlp`, about thirty seconds, and this skill is the only thing in the plugin that needs it. Say: "harvest <creator>'s library"
+2. Let setup install it and check the rest of the chain while it is there. Say: "shortform setup"
+3. Work the field in the meantime ... the competitor analysis needs no yt-dlp at all. Say: "analyze my Instagram against my competitors"
 
 ## When to use
 - You want a thought-leader's frameworks captured systematically (not ad-hoc).
 - The source is mostly YouTube (channels/playlists) ± a web newsletter.
 
 ## Core principle (from the user)
-**Newest = source of truth per concept.** Social-media frameworks decay; recency wins. Every item is dated; contradictions resolve to the newest version; older versions are archived (superseded log), not deleted. Knowledge *structuring* (recency, platform, links) is the **vault's** job — this skill produces clean dated INPUT, it does not hand-build a parallel knowledge store.
+**Newest = source of truth per concept.** Social-media frameworks decay; recency wins. Every item is dated; contradictions resolve to the newest version; older versions are archived (superseded log), not deleted. Knowledge *structuring* (recency, platform, links) is the **consumer's** job: this skill produces clean dated INPUT, it does not hand-build a parallel knowledge store.
 
 ## The pipeline
 
@@ -51,28 +98,24 @@ Chunk the corpus (~22 long videos / ~32 newsletter / ~46 shorts per sub) via man
 ### 6. Synthesize recency-ruled masters (Opus sub)
 Fold the extraction partials into: a **canonical master** (concept buckets; newest version wins per bucket; specifics + dates) + a **superseded log** (`⊘ <old> [date] — superseded by <new> [date]`, grouped by bucket). For multi-creator merges, apply **primary-per-topic ownership** (assign each bucket an owner; the owner's current version is canonical; a strong current dissent from another creator is noted, never dropped; flag live conflicts loudly).
 
-### 7. Hand off to the vault (don't hand-build the knowledge store)
-Produce a **manifest** (per-file: path, author, content_type, source_platform, date, url) + a **HANDOFF brief**: corpus location, the recency rule (the vault applies it via date facets + sot_policy), the **advice-platform** note (every file is YouTube but the *advice* spans IG/TikTok/YT — the platform that matters is the advice's; if the vault lacks an `advice_platform` facet, that's a schema gap to fill, not a hand-tag job), what's INPUT (raw transcripts) vs SUMMARY (your synthesis docs — not source of truth). Then the vault graphifies and the downstream rubric is derived by querying it.
+### 7. Write the manifest (the corpus is the deliverable)
+Produce a **manifest** (per-file: path, author, content_type, source_platform, date, url) beside the corpus, so whatever reads it next applies the recency rule itself from the dates. Carry the **advice-platform** note in the manifest header: every file is YouTube, but the *advice* spans IG/TikTok/YT and the platform that matters is the advice's, not the file's. Mark what is INPUT (raw transcripts) and what is SUMMARY (your synthesis docs, never source of truth). Then stop: this skill writes to disk and hands nothing off. Engines never write to the RevXL Vault and this one never mails a brief to anybody (SKLLPLG-78).
 
-**Next moves (the corpus is built — don't leave it parked)**
-1. Ingest it: if the vault/graphify flow is reachable on this machine, point it at the HANDOFF brief. If not: "send Joe the HANDOFF brief + corpus path — his vault ingests it."
-2. Load it into NotebookLM for instant Q&A over the creator's teachings (if the notebooklm-superengine is installed; otherwise a one-line mention). Say: "build a notebook from this harvest"
-3. Harvest another creator while the method's warm. Say: "harvest <creator>'s library"
-4. Re-run later for new uploads — the gap analysis makes refreshes cheap. Say: "refresh the harvest on <creator>"
+The corpus and its manifest are the ending. Route from the E13 block in `## Terminal paths` above.
 
 ## Encoded guardrails
 - **YouTube → captions (yt-dlp), not Whisper.** Whisper only for no-caption sources.
 - CDN/caption URLs are fine fresh; for long audio runs (IG reels) yt-dlp re-resolves expired URLs.
 - cp1252: never `print` non-ascii to a Windows console; write files `encoding='utf-8'`; read CLI output `errors='replace'` (mojibake/surrogates).
 - NotebookLM `source delete` needs `-y`; YouTube `source add` throttles after ~9 rapid adds → fall back to adding the local transcript `.md` as a text source.
-- Recency is the VAULT's job — feed clean dates, don't hand-resolve. Advice-platform is the one facet to verify/add.
+- Recency is the CONSUMER's job: feed clean dates, don't hand-resolve. Advice-platform is the one facet to verify/add.
 - Date everything (MM.DD.YY + each source's own upload date / issue number).
 
 ## Output
-`research/creator-strategy-harvest-<date>/harvest/`: `inventory/`, `gap-report-<date>.md`, `transcripts/`, `newsletter/`, `extracted/` (partials + masters + superseded log + hook swipe), `HANDOFF-*.md` + manifest.
+`research/creator-strategy-harvest-<date>/harvest/`: `inventory/`, `gap-report-<date>.md`, `transcripts/`, `newsletter/`, `extracted/` (partials + masters + superseded log + hook swipe), and the manifest (`scripts/build_manifest.py` writes it to the path you name).
 
 ## Reuses
-`yt-dlp` + `ffmpeg` + local `faster_whisper`; `firecrawl-map`/`firecrawl-scrape` skills; `notebooklm-ask` skill (source list/add); the vault `/graphify` for ingest. Scripts: `scripts/caption_harvest.py`, `scripts/build_manifest.py`.
+`yt-dlp` + `ffmpeg` + local `faster_whisper`; `firecrawl-map`/`firecrawl-scrape` skills; `notebooklm-ask` skill (source list/add). Scripts: `scripts/caption_harvest.py`, `scripts/build_manifest.py`.
 
 ## Non-goals
-Hand-building the knowledge graph (vault's job); Whisper-transcribing YouTube when captions exist; treating synthesis docs as source of truth over the vault.
+Hand-building the knowledge graph (a consumer's job); Whisper-transcribing YouTube when captions exist; treating synthesis docs as source of truth over the dated originals.

@@ -1,41 +1,112 @@
 ---
 name: competitor-cross-reference
 description: >
-  Runs a competitor cross-reference analysis for an Instagram account.
-  Trigger phrases: "competitor cross-reference analysis", "content gap analysis
-  for an Instagram account", "cross-reference my client against competitors",
-  "build a content/growth strategy roadmap from competitor data", "analyze why a
-  client's reels underperform vs competitors", "IG baseline plus competitor
-  audit", "create a client-facing strategy roadmap from Instagram data".
-  Also renders the HTML visual pack: "build my visual dashboards", "regenerate
-  my visuals", "make the charts" (visuals-only mode: if analysis-data.json
-  already exists, jump straight to the render step — no re-pull).
-  IG-only. Produces a 10-section client-facing strategy roadmap grounded in
-  real SocialCrawl reel data and firecrawl website intelligence, plus offline
-  HTML dashboards (overview / competitor profiles / client profile).
+  Runs a competitor cross-reference analysis for an Instagram account and
+  turns it into a client-facing strategy roadmap. Trigger phrases: "analyze
+  my Instagram against my competitors", "competitor cross-reference
+  analysis", "cross-reference my client against competitors", "content gap
+  analysis for an Instagram account", "IG baseline plus competitor audit",
+  "build a content/growth strategy roadmap from competitor data", "analyze
+  why a client's reels underperform vs competitors", "create a client-facing
+  strategy roadmap from Instagram data". Visuals-only mode, rendered straight
+  from an existing analysis-data.json with no re-pull: "build my visual
+  dashboards", "regenerate my visuals", "open my visuals". Mid-run controls:
+  "run more seeds", "shrink the set to N", "resume my cross-reference".
+  IG-only. Produces analysis-data.json (the artefact every other skill reads),
+  a 10-section client-facing strategy roadmap grounded in real SocialCrawl
+  reel data and firecrawl website intelligence, and the offline HTML pack.
 ---
 
 ## Overview
 
-Given a client IG handle (+ optional website), this skill runs a guided,
-checkpointed pipeline: client baseline → competitor discovery → reel gather →
-metrics analysis → 10-section client-facing strategy roadmap. It reuses the
-`socialcrawl` and `firecrawl` skills, the deterministic `./analyze.py` metrics
-engine, and the portable transcription chain (Groq + local Whisper in parallel,
-first wins) for **automatic transcription — spoken transcripts are the primary
-analysis text; a reel's post caption is metadata, not what the creator says.**
-Every recommendation in the final deliverable is evidence-cited (handle +
-metric + reel URL).
+Given a client IG handle (and an optional website): a guided, checkpointed
+pipeline. Client baseline, competitor discovery, reel gather, metrics analysis,
+then a 10-section client-facing roadmap. It calls SocialCrawl through
+`../_shared/references/socialcrawl-endpoints.md`, reuses the `firecrawl` skill
+and the deterministic `./analyze.py` engine, and transcribes automatically: the
+spoken track is the analysis text, the caption is metadata. Every recommendation
+is evidence-cited (handle + metric + reel URL).
 
 ## Teach mode
 
-Read `~/.claude/revxl/teach-mode` if it exists, else default `beginner`. In
-**beginner**: plain-English-first — explain in plain words, then name the
-technical term with a one-line gloss on first use, and add a "what this means for
-you" line where the consequence isn't obvious. In **off**: standard professional
-voice, no glosses. Convention + adjust rules: `../_shared/references/teach-mode.md`
-(`/teach-mode off`, or a plain request like "stop explaining the basics", →
-rewrite that file and confirm).
+One dial, three levels, family shared. Read `~/.claude/revxl/teach-level`
+(`new` / `learning` / `pro`), else the legacy `~/.claude/revxl/teach-mode`,
+else `new`. Snippet and adjust rules, verbatim:
+`../_shared/references/teach-mode.md`. Re-read at every start, mirror to
+`state.teach_level`.
+
+## Terminal paths
+
+Every ending routes, refusals included. Phrases are verbatim from the roster in
+`../_shared/references/journey-map.md`, grammar from `routing.md` beside it,
+registry id in parentheses.
+
+**Next moves** (E3)
+1. Script the top gap, in your voice, as the chosen angle. Say: "script the top gap"
+2. See it: `visuals/overview.html`, the reach ladder and the gaps. Say: "build my visual dashboards"
+3. Feed the winning themes into your brand brain, so later scripts lean on them. Say: "add these themes to my brand brain"
+4. *If `pulse.scheduled` is false:* keep this alive week to week, on your day. Say: "make the pulse weekly"
+
+**Next moves ... thin set** (E4)
+1. Run more seed queries and rebuild the candidate list. Say: "run more seeds"
+2. Park it. Baseline, candidates and the checkpoint are saved. Say: "resume my cross-reference"
+3. Proceed thin anyway. Your explicit call: gaps read shallower with few competitors.
+
+**Next moves ... credits short** (E5)
+1. Shrink the set to fit the balance, I recompute the cost. Say: "shrink the set to N"
+2. Top up, then pick this run back up where it stopped. Say: "resume my cross-reference"
+3. Park it. Everything pulled so far stays, and is never re-charged.
+
+**Next moves ... no setup yet** (E0)
+1. Run setup first. It is what lets this pull real data at all. Say: "set up shortform superengine"
+2. Already set up, and want to see what is missing? Say: "show my setup"
+3. Not sure where you are in the flow? Say: "what's next in shortform"
+
+**Next moves ... a parked run is waiting** (F1)
+1. Resume at the stored checkpoint, nothing re-pulled or re-charged. Say: "resume my cross-reference"
+2. Start fresh instead. The parked run stays on disk. Say: "competitor cross-reference analysis"
+3. See the whole board first. Say: "what's next in shortform"
+
+**Next moves ... Vault degraded** (F3)
+1. Keep the roadmap: real field data, only the doctrine check skipped. Say: "build my visual dashboards"
+2. Script the top gap on the bundled frameworks, labelled. Say: "script the top gap"
+3. Install or update workspace-superengine, then re-run the roadmap step.
+
+**Next moves ... visuals only** (E0b)
+1. Script the top gap the charts just made obvious. Say: "script the top gap"
+2. Re-render once the next pulse lands new data. Say: "regenerate my visuals"
+3. Keep the field current so the charts stay true. Say: "run the weekly pulse"
+
+## Prereq (E0)
+
+The door is `onboarding`. This skill needs the marker
+`~/.claude/shortform-superengine/.superengine` (for `active_brand`) and a
+SocialCrawl key resolving through the ladder in
+`../_shared/references/socialcrawl-endpoints.md`. No marker: the run refuses
+and routes, rendering the `no setup yet` block with "set up shortform
+superengine" as move one. Never start a paid pull to find out. Everything
+downstream is gated on the `analysis` this run writes.
+
+## State
+
+The journey file is `~/.claude/shortform-superengine/state/<brand>.json`
+(`../_shared/references/state-schema.md`). `<brand>` is the marker's
+`active_brand` (legacy alias `brand`).
+
+**Read at start:** the whole file plus `~/.claude/revxl/teach-level`. Act on
+`analysis.resume` (a parked run) and `pulse.scheduled` (never re-offer a
+schedule already accepted).
+
+**Write at end,** owned keys only (rule zero: no invented keys).
+`analysis.date` (today, on a completed run), `analysis.n_competitors`,
+`analysis.themes_set` (true ONLY when the theme-derivation step ran and wrote
+`analysis-config.json`, false when `analyze.py` fell back to built-in themes),
+`analysis.resume`
+(`{"checkpoint": 2 or 3, "note": "<one line>", "opened": "<YYYY-MM-DD>"}` at a
+park exit, null again once the run completes), `project_path`. Plus the
+every-skill keys: `updated_at`, a `completed_skills` append, `open_loops`
+opened or closed (a park opens one, a resume closes it), `declined_offers`, the
+`teach_level` mirror. Nothing else. `voc.*` is derived on read, never written.
 
 ---
 
@@ -43,37 +114,29 @@ rewrite that file and confirm).
 
 ### Step 0 — Intake
 
-Collect from the user:
+**0a. Entry guard, before anything else.** Read the marker
+`~/.claude/shortform-superengine/.superengine` and the journey file.
 
-| Input | Required? | Default |
-|---|---|---|
-| Client IG handle (e.g. `@your.handle`) | Yes | — |
-| Website URL | No | — |
-| Niche hint (e.g. "functional medicine") | No | inferred from IG |
-| Known competitors / creators (seeds) | No | — (used to seed discovery, not the final set) |
-| Target competitor count | No | **~25 (8 large / 9 med / 8 small) — this is a floor, not a cap** |
-| Transcription | No | **on — automatic** (user may explicitly opt out) |
+1. No marker: stop, render the `no setup yet` block. Do not pull, do not ask
+   for a handle.
+2. No `active_brand` and no legacy `brand`: ask once, normalize to the slug
+   convention in `../_shared/references/state-schema.md`, carry on.
+3. `analysis.resume` set: name the checkpoint it stopped at, render the
+   `a parked run is waiting` block, offer the resume BEFORE a fresh run. On
+   resume, re-enter there with the seeds and approved set already on disk
+   (edge E22); clear `analysis.resume` when the run completes.
 
-> **A handful of names is a seed, not the set.** If the user names only 2–3 creators,
-> treat those as *seeds* and expand to ~25 in Step 2 — a 2–3-account comparison is too
-> thin to find real gaps. Only proceed with a smaller set if the user explicitly insists.
+**0b. Intake.** Client IG handle (required), website URL, niche hint, any
+creators they already have in mind, target competitor count (~25 as a floor,
+8 large / 9 med / 8 small), transcription (on by default, opt-out only).
 
-Create the output directory:
+> **A handful of names is a seed, not the set.** Two or three named creators
+> are seeds: expand to the ~25 floor in Step 2. Full intake table and the
+> reasoning: `./references/pipeline-detail.md`.
 
-```
-projects/<YYYY-MM-DD>-<client-slug>-baseline/
-  source/
-    profile.json                      # client profile
-    reels-full.json                   # client reels
-    competitors/
-      profiles/<handle>.json          # one per competitor (follower counts)
-      reels/<handle>.json             # one per competitor (~36 reels)
-  foundation.md    # client positioning doc
-  baseline.md      # client reel metrics summary
-  analysis-data.md # cross-reference metrics output
-  strategy-roadmap.md
-  tiers.json       # competitor set for analyze.py
-```
+Create `projects/<YYYY-MM-DD>-<client-slug>-baseline/` with the `source/` tree
+the pipeline writes into. Layout and per-file owners:
+`./references/project-shape.md`.
 
 ---
 
@@ -81,37 +144,26 @@ projects/<YYYY-MM-DD>-<client-slug>-baseline/
 
 **1a. SocialCrawl profile + reels**
 
-Using the `socialcrawl` skill:
+Call SocialCrawl directly. Paths, params, prices and the key ladder live in
+`../_shared/references/socialcrawl-endpoints.md`:
 
-1. `GET /profile?handle=<handle>` → follower count, bio, link-in-bio URL.
-2. Paginate `GET /profile/reels?handle=<handle>` via `&max_id=<next_cursor>` until ~36 reels collected (or cursor exhausted). Repair any latin1-mojibake captions on ingest (`caption.encode('latin1').decode('utf-8')`). Coerce `published_at` epoch to ISO-8601. Save raw JSON to `source/reels-full.json`.
+1. `instagram/profile` with `handle` (1cr): follower count, bio, link-in-bio URL.
+2. Paginate `instagram/profile/reels` with `handle` (1cr per page) via `&max_id=<next_cursor>` to ~36 reels (or until the cursor is exhausted). Apply the ingest repairs, mojibake and epoch coercion (`./references/guardrails.md`). Save raw JSON to `source/reels-full.json`.
 
-Engagement available from SocialCrawl: **views, likes, comments only**. Do not compute or display saves or shares — they are not in the API response.
-
-**1b. Website (if provided)**
-
-Using the `firecrawl` skill:
-
-1. `firecrawl map <website_url>` → discover all pages.
-2. Scrape key pages: home, about, offers, free lead magnets. Save to `source/website-*.json`.
-3. Synthesize positioning into `foundation.md`: niche, ICP (ideal client profile), core offer, differentiators.
-
-**1b-alt. No website (link-in-bio fallback)**
-
-If no website was provided:
-
-1. Check IG bio for a link-in-bio tool (Linktree, Beacons, etc.) via SocialCrawl `linktree`/`linkbio` if supported.
-2. Derive positioning from: IG bio text, top-performing captions (by views), any link-in-bio page discovered.
-3. Write `foundation.md` with a **reduced-confidence notice**: _"Positioning derived from IG signal only — no website provided. Confidence: moderate. Recommend revisiting after website review."_
+**1b. Positioning.** With a website: `firecrawl map`, scrape home, about,
+offers and lead magnets into `source/website-*.json`, and synthesize
+`foundation.md` (niche, ICP, core offer, differentiators). Without one: derive
+positioning from the IG bio, any link-in-bio page and the top captions, and
+write `foundation.md` carrying the reduced-confidence notice. Both paths in
+full, plus the views, likes and comments only constraint:
+`./references/pipeline-detail.md`.
 
 ---
 
 ### ✋ Checkpoint 1 — Confirm Niche + Positioning
 
-Present to the user:
-- Inferred niche (1-2 sentences)
-- Positioning summary from `foundation.md`
-- ICP hypothesis
+Present the inferred niche, the positioning summary from `foundation.md` and
+the ICP hypothesis (`./references/pipeline-detail.md`).
 
 **Pause. Do not proceed to competitor sourcing until the user confirms or corrects.**
 
@@ -123,65 +175,47 @@ Present to the user:
 
 Follow `./references/niche-seeds.md` to construct broad + niche-specific seed phrases for the confirmed niche. Seeds cover: broad category terms, audience-descriptor terms, methodology/modality terms, and outcome/transformation terms.
 
-**If the user named a few known competitors/creators (Step 0 seeds):** keep them as
-confirmed members of the candidate pool, then *expand around them* — pull each seed
-creator's `GET /profile?handle=<handle>` to read their niche/bio, mine their top
-captions for recurring terms, and feed those terms back as additional search seeds.
-The goal is to reach the ~25 floor, not to stop at the 2–3 they happened to name.
+Competitors the user named in Step 0 stay in the pool and get expanded around,
+never treated as the finished set (`./references/pipeline-detail.md`).
 
 **2b. SocialCrawl reel search**
 
-For each seed, `GET /search/reels?q=<seed>` via the `socialcrawl` skill. Collect the unique creator handles from results → candidate pool. Note: search returns a first-page sample (~10 results per seed) and does not support pagination — breadth comes from running many diverse seeds, not from paginating the search endpoint.
+For each seed, call `instagram/search/reels` with `query=<seed>` (1cr documented, 5cr as the pulse prices the same leg: verify against `credits_used` before looping, `../_shared/references/socialcrawl-endpoints.md`). Collect the unique creator handles into the candidate pool. Search returns a first-page sample of about 10 and does not paginate, so breadth comes from many diverse seeds.
 
 **2c. Profile-tier candidates**
 
-For each candidate handle, `GET /profile?handle=<handle>` → follower count. Save the raw profile JSON to `source/competitors/profiles/<handle>.json`. Categorize relative to client:
+For each candidate handle, call `instagram/profile` with `handle` (1cr) for the follower count. Save the raw profile JSON to `source/competitors/profiles/<handle>.json`. Tier relative to the client: GURU at or above 500k (aspirational reference, not size-comparable, out of the LARGE benchmark), LARGE above 3x, MED 0.5x to 3x, SMALL below 0.5x. Why the GURU split exists: `./references/pipeline-detail.md`.
 
-- **Guru:** ≥ 500k followers (floor adjustable per run) — household-authority accounts kept for aspirational pattern reference but **not size-comparable**. Splitting them out keeps the LARGE benchmark honest; essential when the client is small (a 1.9k-follower client vs a 4.8M account is not a "large competitor," it's a different universe — field-proven 07.12.26).
-- **Large:** > 3× client followers (below the Guru floor)
-- **Medium:** 0.5×–3× client followers
-- **Small:** < 0.5× client followers
-
-**2d. Deeper recon (optional).** If `~/.claude/socialcrawl-superengine/.superengine`
-exists, the SocialCrawl Superengine is installed — offer its deep plays on the shortlist:
-competitor **ad-library recon** (what they run as paid creative) and, for the roadmap's
-competitive framing, a cost-gated **share-of-voice** one-shot. If the marker is absent,
-mention once that the `socialcrawl-superengine` plugin adds these and continue — never
-block the pipeline on it.
-Detect the install by EITHER that marker OR a directory matching
-`~/.claude/plugins/cache/*/socialcrawl-superengine/` (an installed-but-never-run copy has no
-marker). When it is installed, invoke its `research-plays` skill by name
-(`socialcrawl-superengine:research-plays`) for the pull, per `docs/plugin-conventions.md`
-"Cross-plugin coordination".
+**2d. Deeper recon (optional).** Probe for socialcrawl-superengine as
+`../_shared/references/socialcrawl-endpoints.md` describes (marker first, then
+the plugin cache directory). Installed: offer its `research-plays` skill for
+ad-library recon and a cost-gated share-of-voice one-shot. Absent: mention it
+once and continue. Never block the pipeline, never fake a deep play (edge F9).
 
 ---
 
 ### ✋ Checkpoint 2 — Approve Competitor Set
 
-Present the tiered candidate list to the user. Apply relevance filters:
-
-- Drop: hospitals, celebrity accounts, institutions, off-niche accounts, private accounts, accounts with < 10 reels.
-- Flag for human judgment: accounts that look borderline (niche-adjacent but not direct competitors).
-
-Show the filtered set with tier labels. Target: ~25 accounts (8 large / 9 med / 8 small).
-User may swap, add, or remove handles. **If the set is still under ~25** (e.g. only the
-2–3 the user seeded survived filtering), go back to Step 2 and run more seeds before this
-checkpoint — don't present a thin set as final. Proceed under ~25 only if the user
-explicitly chooses to.
+Present the tiered candidate list with tier labels, filtered (drop hospitals,
+celebrities, institutions, off-niche and private accounts, anything under 10
+reels; flag borderline ones for human judgment). Target ~25 (8 large / 9 med /
+8 small); the user may swap, add or remove. Still under ~25: back to Step 2 for
+more seeds rather than present a thin set as final. Filters and reasoning:
+`./references/pipeline-detail.md`.
 
 **Pause. Do not gather reels until the user approves the final set.**
 
 If the user stops here (set too thin, needs better seeds, out of time), never
-leave them hanging — **Next moves**
-1. Run more seed queries and rebuild the candidate list. Say: "run more seeds"
-2. Park it — the baseline + candidates are saved in the project. Say later: "resume my cross-reference"
-3. Proceed with the thin set anyway (your explicit call — gaps read shallower with few competitors).
+leave them hanging: render the `thin set` block from Terminal paths (E4). On
+the park exit, write `analysis.resume` FIRST: checkpoint 2, a one-line note
+naming the seeds already run and the size of the candidate set so far, and
+today's date. The pointer is persisted, never session memory.
 
 ---
 
 ### Step 3 — Gather Competitor Reels
 
-For each approved competitor handle, paginate `GET /profile/reels?handle=<handle>&max_id=<next_cursor>` to collect ~36 reels. Apply the same ingest repairs (mojibake, epoch coercion). Save each to `source/competitors/reels/<handle>.json`.
+For each approved competitor handle, paginate `instagram/profile/reels` with `handle` and `&max_id=<next_cursor>` to collect ~36 reels (1cr per page). Apply the same ingest repairs (mojibake, epoch coercion). Save each to `source/competitors/reels/<handle>.json`.
 
 **Note:** ~36 reels per competitor × N competitors ≈ N×3 SocialCrawl credits.
 
@@ -189,23 +223,20 @@ For each approved competitor handle, paginate `GET /profile/reels?handle=<handle
 
 ### ✋ Checkpoint 3 — Confirm Reel Depth + Credit Cost
 
-First fetch the **live balance** (free, 0 credits) via the `socialcrawl` skill:
-`GET /v1/credits/balance` → `data.balance`. Then report to the user:
-- Number of approved competitors
-- Reels per competitor (default 36)
-- Estimated credit cost: `N × 3` credits
-- **Balance: you have `M` credits left** → after this pull, ≈ `M − (N×3)`
-
-Phrase it plainly: *"This pull is ≈`N×3` credits. You have `M` left, so you'd be at
-≈`M−(N×3)` after. Good to go?"* If the estimate exceeds the balance, say so and offer
-to shrink the set or top up — don't start a pull that will run dry mid-way.
+Fetch the **live balance** first: `GET /v1/credits/balance` reads
+`data.balance` and costs 0 credits; every other price comes from
+`../_shared/references/socialcrawl-endpoints.md`. Report the approved count,
+reels per competitor (36), the estimated cost (`N x 3`) and the after-balance,
+plainly and out loud (`./references/pipeline-detail.md`). Over balance: say so
+and offer to shrink the set or top up. Never start a pull that runs dry
+mid-way.
 
 **Pause. Only begin the big pull after explicit confirmation.**
 
-If the user declines the spend, never dead-end — **Next moves**
-1. Shrink the set to fit the balance (I'll recompute the cost). Say: "shrink the set to N"
-2. Top up credits, then pick this run back up. Say later: "resume my cross-reference"
-3. Park it — everything so far is saved in the project.
+If the user declines the spend, never dead-end: render the `credits short`
+block from Terminal paths (E5). On the park or the top-up exit, write
+`analysis.resume` FIRST: checkpoint 3, a one-line note naming the approved set
+and the priced cost, and today's date.
 
 ---
 
@@ -214,19 +245,18 @@ If the user declines the spend, never dead-end — **Next moves**
 **4a. Write `tiers.json`**
 
 In the project directory, write `tiers.json` mapping each handle to its tier:
+`client`, `client_followers` (required integer), and the UPPERCASE tier keys
+`GURU` (optional), `LARGE`, `MED`, `SMALL` holding bare handles with no `@`, so
+they match the filenames under `source/competitors/profiles/`. Worked example:
+`./references/pipeline-detail.md`.
 
-```json
-{
-  "client": "handle",
-  "client_followers": 110162,
-  "GURU": ["handle0"],
-  "LARGE": ["handle1", "handle2"],
-  "MED": ["handle3"],
-  "SMALL": ["handle4"]
-}
-```
-
-Keys are **UPPERCASE** (`GURU`/`LARGE`/`MED`/`SMALL`). `GURU` is optional — omit the key entirely and the engine runs the identical legacy 3-tier path. `client_followers` is a required integer. All handles are **bare** (no `@` prefix) so they match the profile JSON filenames under `source/competitors/profiles/`.
+**Roster rule, every run.** Exclude any account over **1M followers** from the
+tier set: at that size it is a different universe and it drags the LARGE
+benchmark off true. Between the GURU floor and 1M, keep it in `GURU` as
+reference only. The band the roadmap models on is roughly 10k to 250k. And
+**rank on outlier score**, a reel against its own channel's median, never raw
+views: raw views rank the biggest account, outlier score ranks the best idea.
+Doctrine: the FIELD row of `../_shared/references/vault-api.md`.
 
 **4b. Run `analyze.py`**
 
@@ -234,73 +264,71 @@ Keys are **UPPERCASE** (`GURU`/`LARGE`/`MED`/`SMALL`). `GURU` is optional — om
 python ${CLAUDE_PLUGIN_ROOT}/skills/competitor-cross-reference/analyze.py <project_dir>
 ```
 
-**Transcribe first.** Run the Transcription step BEFORE analyze.py — when transcripts exist (`source/client-transcripts.json` + `source/competitors/transcripts/`), hook/theme diagnosis keys on the **spoken track** (what actually retains, ~80% of the signal), and the caption-keyed read is emitted as a separate **Caption patterns** section (packaging/SEO surface, ≤20% — never mixed into the spoken diagnosis). If analyze.py already ran caption-only, re-run it after transcription — the md/json upgrade in place. `meta.transcript_coverage` in the JSON reports how much of the field was transcript-covered.
+**Transcribe first**, before `analyze.py`: the spoken track carries the
+diagnosis, the caption read is a separate section. A caption-only run can be
+re-run after transcription and upgrades in place. Why, and how:
+`./references/transcription.md`.
 
-The script reads `source/reels-full.json` (client reels), `source/competitors/reels/<handle>.json` (competitor reels), `source/competitors/profiles/<handle>.json` (follower counts), and `tiers.json`, then writes `analysis-data.md` containing:
-
-- Reach efficiency per creator: `median views ÷ followers`
-- Engagement rate: `(likes + comments) ÷ views`
-- Per-creator outlier reels: those scoring ≥ 2.5× the creator's own median views
-- Hook taxonomy counts (question / story / stat / challenge / authority / other)
-- Theme/keyword clusters by tier
-- Posting cadence (reels per week)
-
-Engagement is views + likes + comments **only**. saves and shares are never computed, displayed, or estimated — they are not available from SocialCrawl.
+It reads the client reels, the competitor reels, the profiles and `tiers.json`,
+then writes `analysis-data.md` and `analysis-data.json`: reach efficiency,
+engagement rate, per-creator outliers at 2.5x their own median, hook taxonomy,
+theme clusters by tier, posting cadence. Engagement is views, likes and comments
+**only**; saves and shares are never computed, displayed or estimated. Formulas
+and field list: `./references/pipeline-detail.md`.
 
 **4c. Pattern Matrix (recommended when transcripts exist)**
 
-Once the Transcription step has produced timestamped transcripts, run the two-layer
-pattern matrix — full method + dimension list in `./references/pattern-matrix.md`:
+Once timestamped transcripts exist, run the two-layer pattern matrix (method
+and dimension list: `./references/pattern-matrix.md`):
 
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/skills/competitor-cross-reference/transcribe_reels.py <project_dir>      # if not already done — same day as the pull (CDN expiry)
-python ${CLAUDE_PLUGIN_ROOT}/skills/competitor-cross-reference/extract_patterns.py <project_dir>      # Layer 1: ~30 deterministic dims, winner-vs-loser lift
-python ${CLAUDE_PLUGIN_ROOT}/skills/competitor-cross-reference/select_beatmap_set.py <project_dir>    # Layer 2 picks: N winners + N losers per cluster
+python ${CLAUDE_PLUGIN_ROOT}/skills/competitor-cross-reference/transcribe_reels.py <project_dir>
+python ${CLAUDE_PLUGIN_ROOT}/skills/competitor-cross-reference/extract_patterns.py <project_dir>
+python ${CLAUDE_PLUGIN_ROOT}/skills/competitor-cross-reference/select_beatmap_set.py <project_dir>
 ```
 
-Layer 1 gives corpus-scale statistics (`_pattern_matrix.json` + `_pattern_stats.md`);
-Layer 2 picks a stratified subset (`_beatmap_set.json`) that Claude hand-maps (hook type,
-4 Hook Killers, re-hook devices, payoff, open-loop integrity, why-won/why-lost) into a
-**Reel Beat Blueprint** feeding Step 5 and reel-scripter. Clusters/themes/tools come from
-`analysis-config.json` — niche knowledge lives in the run config, never in these scripts
-(theme construction method: `./references/theme-derivation.md`).
+Transcribe the same day as the pull (CDN expiry). Layer 1 writes corpus-scale
+statistics; Layer 2 picks the stratified subset Claude hand-maps into the Reel
+Beat Blueprint feeding Step 5 and reel-scripter. Clusters and themes come from
+`analysis-config.json`, never from the scripts
+(`./references/theme-derivation.md`, `./references/pipeline-detail.md`).
 
 ---
 
 ### Step 5 — Synthesize Strategy Roadmap
 
-Write `strategy-roadmap.md` using the 10-section structure in `./references/roadmap-template.md`:
+Write `strategy-roadmap.md` on the 10-section structure in
+`./references/roadmap-template.md`, which is the authority on each section's
+shape: executive summary, current state, strengths, weaknesses, competitor
+gaps, opportunity matrix, content strategy, 30-day plan, 90-day roadmap,
+hypotheses.
 
-1. Executive Summary
-2. Current State — client metrics snapshot
-3. Strengths
-4. Weaknesses / Friction Points
-5. Competitor Gaps — what competitors do that the client does not
-6. Opportunity Matrix — prioritized ROI × ease
-7. Content Strategy — pillars, formats, cadence
-8. 30-Day Action Plan
-9. 90-Day Growth Roadmap
-10. Hypotheses to Test
+**Citing evidence:** every recommendation cites at least one data point, `@handle · metric · reel URL`. No claim that is not traceable to `analysis-data.md` or `source/`.
 
-**Citing evidence:** every recommendation must cite at least one data point — format: `@handle · metric · reel URL`. Do not make claims not traceable to `analysis-data.md` or `source/` files.
+**Hook-gap diagnosis:** ground every hook observation in the 4 Hook Killers
+(DELAY, CONFUSION, IRRELEVANCE, DISINTEREST) from
+`../_shared/references/hook-diagnostics.md`, and diagnose *why* a hook type
+under-reaches, not just which one does. That is what makes a recommendation
+concrete instead of generic.
 
-**Hook-gap diagnosis:** ground all hook-performance observations in the 4 Hook Killers framework from `../_shared/references/hook-diagnostics.md`:
-
-- **DELAY** — the payoff or value signal arrives too late; viewer exits before the hook resolves.
-- **CONFUSION** — the hook is ambiguous, jargon-heavy, or requires prior context the viewer lacks.
-- **IRRELEVANCE** — creator-POV framing ("I …") that doesn't signal viewer benefit; question hooks lose on this.
-- **DISINTEREST** — the topic itself does not match what the audience actively cares about.
-
-Diagnose *why* a hook type under-reaches (e.g. client question-hooks lose on IRRELEVANCE = "I" framing with no viewer benefit), not just *which* hook type underperforms. This makes recommendations concrete rather than generic.
+**Vault trigger point (the roadmap).** Before the roadmap is finalized, run the
+one pull this skill is allowed, per `../_shared/references/vault-api.md`: one
+Skill call to `workspace-superengine:revxl-vault-search`, `depth=med`,
+`plugin=shortform-superengine`, `spoke=content-strategy`, the question and the
+three FIELD angles from that file's recipe table. Read the echoed spoke back.
+Print the evidence line either way:
+`Vault: <n> searches, <m> reads | <ok|degraded|skipped: reason>`. Callee
+missing or erroring: continue on the bundled references, say so in one line,
+render the `Vault degraded` block (edge F3). The Vault never blocks the
+roadmap.
 
 ---
 
 ### ✋ Checkpoint 4 — Deliverable Scope + Tone
 
-Before finalizing `strategy-roadmap.md`, surface to the user:
-- Roadmap audience (client-facing vs. internal?)
-- Tone (direct / peer-to-peer / accessible)
-- Any sections to expand, trim, or rename
+Before finalizing `strategy-roadmap.md`, surface the roadmap audience, the tone
+and any sections to expand, trim or rename
+(`./references/pipeline-detail.md`).
 
 **Pause. Finalize only after confirmation.**
 
@@ -308,152 +336,68 @@ Before finalizing `strategy-roadmap.md`, surface to the user:
 
 ## Guardrails
 
-These rules are non-negotiable and must be observed on every run:
-
-**IG list pagination**
-Always paginate via `&max_id=<next_cursor>`. Do NOT use `cursor`, `pagination_token`, or `after` — they silently return page 1 with no error.
-
-**Windows / Python path safety**
-- Git-bash `/tmp` is NOT the same as Python's `/tmp` on Windows. Use relative temp paths or pipe via stdin. Never rely on a shared `/tmp`.
-- All `open()` calls must use `encoding='utf-8'`.
-- Never `print()` non-ASCII strings to the cp1252 Windows console — it will raise `UnicodeEncodeError`. Write to file instead.
-
-**Credit safety — balance + cost + confirm**
-Before any credit-spending batch (the reel pull, advanced/premium endpoints, a universal search), show the user **live balance + estimated cost + the after-balance**, and get explicit confirmation. Pull the balance with the free `GET /v1/credits/balance` call. Never start a multi-credit operation silently or one that would run the balance dry mid-way. Report `credits_remaining` after big steps so the user always knows where they stand.
-
-**SocialCrawl field constraints**
-SocialCrawl drops IG saves and shares. Engagement = views, likes, comments — only those three fields. **Never fabricate, estimate, or display saves or shares.** If a metric is missing from the API response, omit it from all outputs.
-
-**Caption repair**
-Repair latin1-mojibake captions on ingest before any analysis:
-```python
-caption = raw_caption.encode('latin1').decode('utf-8')
-```
-
-**Honest data caveats**
-Flag every estimated or non-real number. Estimated reach, synthetic ratios, or inferred values must be labeled as such in every output. Honest data caveats are a feature, not a weakness.
+Non-negotiable on every run, in full in `./references/guardrails.md`:
+`&max_id` pagination only, Windows and Python path safety, balance plus cost
+plus confirm before any paid batch, saves and shares never fabricated,
+latin1-mojibake caption repair on ingest, an honest caveat on every estimated
+number.
 
 ---
 
-## Transcription (ON by default — automatic)
+## Transcription (ON by default, automatic)
 
-Transcription is **ON by default and runs automatically** — no opt-in, no asking. The
-spoken transcript is the **primary text** the analysis reads. A reel's post caption is
-*metadata* (hashtags, CTA copy, styling) — **it is not what the creator says on camera.
-An analysis built on captions alone is a broken analysis** and must never be presented
-as the real thing. Only skip transcription if the user explicitly opts out.
+**ON by default, automatic.** The spoken transcript is the **primary text** the
+analysis reads; the caption is metadata. A caption-only analysis is a broken
+analysis and is never presented as the real thing. Skip only on an explicit
+opt-out.
 
-**Scope (automatic):** transcribe every reel the analysis deep-reads — all of the
-client's own reels, every outlier, and each competitor's top performers. Offer to
-expand to the full gathered fleet (hundreds of reels — the chain is free, the cost is
-runtime, so warn about time, not credits).
+**Never** call any `*/transcript` endpoint and never add `include=transcript`
+to a paid call: 10 credits per reel for no advantage over the free local chain.
+The `hooks/credit-guard.mjs` PreToolUse hook hard-denies them.
 
-**How:**
-
-1. **Do NOT download, scrape, or "resolve" anything — the direct video URL is already in the pulled data.** Every reel's JSON carries a signed Instagram CDN `.mp4` at `post.content.media_urls`. **Never use `yt-dlp`, `instaloader`, or any IG scraper here** — there is nothing to resolve, and scraping adds bot-detection risk for zero gain.
-2. Extract audio straight off the CDN URL — ffmpeg streams it directly (~3s/reel):
-   `ffmpeg -i "<media_urls>" -vn -ar 16000 -ac 1 <audio.wav>`
-   ⚠️ **CDN URLs are signed and EXPIRE (hours-to-days). Transcribe the same day as the pull; if the pull is older, re-pull that creator's reels first (~3 credits) — never fight a dead link.** A batch of empty-wav failures on an old pull means expired URLs, not a broken pipeline (field-proven 07.12.26: 4-day-old pull failed 20/20, same-day pull 100%).
-3. Transcribe — **launch both engines in parallel; first healthy transcript wins** (use whichever returns first, cancel the other; if only one is installed, run it alone):
-
-   | Engine | Method | Notes |
-   |---|---|---|
-   | Groq cloud | `whisper-large-v3-turbo` via Groq API | Fast; needs `GROQ_API_KEY` in env. Prefer turbo over full `large-v3` — same accuracy on names, ~3x cheaper, and safer with a prompt. |
-
-   **Pass a `prompt` with the niche's proper nouns.** Competitor videos are dense with
-   tool and brand names Whisper has never seen, and it silently substitutes the nearest
-   English phrase ("Kling 01" → "cling a one"). Build the sentence from brand-brain and
-   read `brand-brain/references/transcription-vocabulary.md` first — a prompt written as
-   a bare comma list strips all punctuation from the transcript, and a prompt can drop
-   repeated takes, so compare the output length against an unprompted run.
-   | Local Whisper | `faster-whisper` (local CPU/GPU) | Offline; slower but never fails. |
-
-   **Save per-segment timestamps** (`[{start, end, text}]`), never just the joined text — beat/pattern timing analysis is impossible without them. Batch scale reference: local GPU (faster-whisper `small`, cuda) ≈ 1.5s/reel transcribe + 3s ffmpeg; ~1,000 reels ≈ 40–50 min with ~6 parallel ffmpeg prefetch workers feeding one GPU.
-
-4. **Fallback floor (only when both engines fail for a reel):** use the post
-   caption — and **flag that reel `caption-only` in every output that cites it**.
-   Caption-only is a degrade to be surfaced, never a silent substitute.
-
-**Never** use SocialCrawl `media/transcript` for transcription — it costs 10 credits per reel and provides no advantage over the local transcription chain.
+The chain, the vocabulary prompt, timestamps, the caption-only floor and the
+signed-CDN expiry trap: `./references/transcription.md`.
 
 ---
 
-## Output Directory Shape
+## Output shape
 
-```
-projects/<YYYY-MM-DD>-<client-slug>-baseline/
-├── foundation.md        # client positioning (from website or IG-signal fallback)
-├── baseline.md          # client reel metrics summary
-├── tiers.json           # competitor set (input to analyze.py)
-├── analysis-data.md     # cross-reference metrics (output of analyze.py)
-├── strategy-roadmap.md  # 10-section client-facing deliverable
-└── source/
-    ├── profile.json                     # client profile
-    ├── reels-full.json                  # client reels
-    └── competitors/
-        ├── profiles/<handle>.json       # one per competitor (follower counts)
-        └── reels/<handle>.json          # one per competitor (~36 reels)
-```
-
-Generated on top of this as the project lives: `visuals/` (the HTML pack),
-`history/` + `refresh-log.md` (written by `competitor-pulse`), `brain-pulls/`
-(the RevXL Vault cache written by `reel-scripter` ... the Vault is Joe's live strategy API,
-not your brand brain; the directory keeps its historical name).
+Two primary artefacts: **`analysis-data.json`**, the machine artefact
+`analyze.py` writes beside `analysis-data.md` and the one `competitor-pulse`,
+`reel-scripter`, `content-plan` and `render_visuals.py` all read (the ANALYSIS
+gate checks for it), and **`strategy-roadmap.md`**, the 10-section client-facing
+deliverable. Everything else: `./references/project-shape.md`.
 
 ---
 
 ## References
 
-- `./analyze.py` — deterministic metrics engine; run after `tiers.json` is written
-- `./transcribe_reels.py` — batch transcription off the pulled CDN URLs (no downloading); segments included
-- `./extract_patterns.py` — Layer-1 pattern matrix (~30 dims/reel, winner-vs-loser stats)
-- `./select_beatmap_set.py` — stratified Layer-2 pick (N winners + N losers per cluster)
-- `./references/roadmap-template.md` — 10-section roadmap structure
-- `./references/pattern-matrix.md` — two-layer pattern-matrix method + dimension list
-- `./references/theme-derivation.md` — how to build the per-lane `themes` override (method, not preset)
-- `./references/niche-seeds.md` — seed derivation + relevance-filter heuristics
-- `../_shared/references/hook-diagnostics.md` — 4 Hook Killers diagnostic lens (shared across the core + format engines)
+Scripts sit beside this file (`analyze.py`, `transcribe_reels.py`,
+`extract_patterns.py`, `select_beatmap_set.py`, `render_visuals.py`); bundled
+and shared reference files are named at the step that needs them. Full index:
+`./references/pipeline-detail.md`.
 
 ---
 
 ## Render the visual pack
 
-When the roadmap is delivered (the analysis is also in
-`<project>/analysis-data.json`, the core→format interface), offer the visuals —
-people share what they can SEE:
+When the roadmap is delivered, offer the visuals. People share what they see.
 
 ```bash
 python ${CLAUDE_PLUGIN_ROOT}/skills/competitor-cross-reference/render_visuals.py <project_dir> [--split]
 ```
 
-→ `<project>/visuals/`: **overview.html** (stat cards, reach ladder, tier
-scoreboard, hooks + themes field-vs-client, followers×views map, cadence,
-opportunity map, gap cards, outlier wall), **competitors.html** (per-competitor
-profiles with a picker; `--split` also writes one standalone file per
-competitor for client delivery), **client.html** (client profile + hook mix +
-the written analysis inlined). Self-contained offline HTML — open anywhere,
-send anywhere. Brand the pack by dropping
-`<project>/visual-theme.json` `{"brand":"#hex","accent":"#hex","logo_text":"..."}`.
+Writes `<project>/visuals/`: `overview.html`, `competitors.html`,
+`client.html`, self-contained offline HTML that opens and sends anywhere. Page
+contents, `--split` delivery files and `visual-theme.json` branding:
+`./references/project-shape.md`.
 
-**Visuals-only mode:** if the user just wants charts and `analysis-data.json`
-already exists, run the command above directly — no re-pull, no re-analysis.
+**Visuals-only mode:** charts wanted and `analysis-data.json` already on disk,
+run the command directly. No re-pull, no re-analysis. It ends on the
+`visuals only` block in Terminal paths (E0b).
 
 ## When the roadmap + visuals are delivered
 
-**Next moves**
-1. See it — open `visuals/overview.html`, walk the client through the ladder and the gaps. Say: "build my visual dashboards" (if not rendered yet)
-2. Script the top gap — the #1 gap goes in as the chosen angle, in your voice. Say: "write a reel script from my analysis"
-3. Feed the winning themes into your brand brain so future scripts lean on them. Say: "add these themes to my brand brain"
-4. Keep this analysis alive — the weekly competitor pulse pulls the last 7 days, flags new winners, and refreshes these charts. Want it weekly? I'll set it up — you pick the day. Say: "run the weekly pulse"
-
-(Deeper research legs — audience questions, trend scans, comment mining — live
-in `competitor-pulse`; say "comment pulse" or "search the field for <topic>".)
-
----
-
-## Non-Goals
-
-- Multi-platform (TikTok, YouTube, etc.)
-- Full automation without checkpoints
-- SocialCrawl-based transcription (`media/transcript`)
-- Generative hook-writing frameworks (BUT/THEREFORE, specificity ladder) — those belong in the `reel-scripter` format engine, not this analysis skill
+State the one-line preamble (what was produced, where it was saved), then
+render the E3 block from Terminal paths, bare. Deeper research legs (audience
+questions, trend scans, comment mining) live in `competitor-pulse`.
