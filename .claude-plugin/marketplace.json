@@ -7,7 +7,7 @@
     "email": "joe@engineforimpact.com"
   },
   "metadata": {
-    "version": "0.1.65"
+    "version": "0.1.66"
   },
   "plugins": [
     {
@@ -196,10 +196,10 @@
     },
     {
       "name": "shortform-superengine",
-      "description": "v0.3.4 · Turn competitor research into Instagram reel scripts in your own voice. One guided setup, then by talking to Claude: cross-reference your reels against tiered competitors for a 10-section strategy roadmap, harvest a trusted creator's whole library into a framework corpus, and script reels off what already wins in your niche (Hook to CTA, with craft scoring). Bring-your-own SocialCrawl key (your data, your credits); captions-first transcription with Groq or local Whisper fallback; plain-English teach mode by default. For coaches who want data-driven short-form that still sounds like them.",
+      "description": "v0.4.0 · Turn competitor research, your own voice and this week's signals into Instagram reel scripts that sound like you. Nine skills behind one front door: say \"start shortform\" and it puts you on the right road, say \"what's next in shortform\" any time you are lost, and every ending offers the next move instead of leaving you staring at a finished file. Four exits: a scripted reel with craft screens, a competitor analysis with a 10-section roadmap and an offline visual pack, a weekly content plan built from four sources (the field, your own material, fresh signals, your audience), and a read on your own results through the weekly pulse until the dedicated read ships in 0.5.0. Strategy depth comes from your RevXL Vault through workspace-superengine 0.15.1 when it is installed, and from the bundled references when it is not. Bring-your-own SocialCrawl key (your data, your credits); plain-English teach mode by default. For coaches who want data-driven short-form that still sounds like them.",
       "source": "./plugins/shortform-superengine",
       "category": "marketing",
-      "version": "0.3.4",
+      "version": "0.4.0",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"

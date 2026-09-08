@@ -18,12 +18,12 @@ All calls are `GET` with query parameters and the `x-api-key` header.
 
 | Endpoint | Method + required params | Credits | Used by (skill, step) |
 |---|---|---|---|
+| `credits/balance` | GET, no params | 0 | every credit-gated step, always the first call of a run. Free by design: never skip it to save time |
 | `instagram/profile` | GET, `handle` / `user_id` | 1 | onboarding (key verification) - competitor-cross-reference Step 4a (follower counts for tiering) - competitor-pulse Step 1 (roster profiles) |
 | `instagram/profile/reels` | GET, `handle` / `user_id` | 1 per account | competitor-cross-reference (reel pull) - competitor-pulse Step 2 (the delta window; (N+1) x 1cr for N roster accounts plus the client) |
 | `instagram/profile/reels/full` | GET, `handle` / `user_id` | 5 per upstream page (`limit` 1 to 50 pages server-side) | own-content-analysis (0.5.0), the client's own public signal, about 5cr per 50 reels |
 | `instagram/post/stats` | GET, `url` | 5 per reel | competitor-pulse (share counts on the week's winners) ... loop cost stated before the first call |
 | `instagram/search/reels` | GET, `query` | 1 documented. **competitor-pulse prices its beyond-roster leg at 5cr** ... verify against `credits_used` before looping | competitor-cross-reference Step 4 (niche seed search) - competitor-pulse (beyond-roster field search) |
-| `search/reels` | ... | ... | **Not a SocialCrawl endpoint.** It is the 0.3.4 shorthand still written in `competitor-cross-reference/SKILL.md` and `references/niche-seeds.md`. The real call is `instagram/search/reels`. Listed here so the CI assertion resolves; the retrofit repoints the prose |
 | `search/everywhere` | GET, `query` | 20 | competitor-pulse Tier 2 (12-platform breakout scan) - content-plan FRESH source, offered, never automatic |
 | `prism/comments` | GET, `url` | 1 documented; **about 5 per Instagram reel, live-measured** (native delegation; 1cr applies to non-IG platforms) | competitor-pulse comment mode - content-plan AUDIENCE source on the week's winners |
 | `prism/universal` | GET, params vary by native leg | varies by native leg | competitor-pulse Tier 2 (targeted single-platform sweep). **Not documented in the bundled Prism reference**: price it from `credits_used` on a single call before any loop |
@@ -33,6 +33,9 @@ All calls are `GET` with query parameters and the `x-api-key` header.
 | `google_news/search` | GET, `keyword` | 1 | content-plan FRESH source (timely topics, `time_range` week or month) |
 | `google_trends/explore` | GET, `keywords` (1 to 5, comma separated) | 5 | content-plan FRESH source (is this topic rising or fading) |
 | `reddit/search` | GET, `query` | 1 | content-plan FRESH and AUDIENCE sources (what the niche is actually asking) |
+| `prism/post-stats` | GET | 1 per 100 URLs | no step calls it today. `credit-guard.md` names it as a cheaper path when headroom is thin |
+| `reddit/omni-search` | GET | 1 | no step calls it today. `credit-guard.md` names it as a cheaper path when headroom is thin |
+| `prism/video-intel` | GET | varies | **never called.** `credit-guard.md` names it as the example of a paid call that must never carry `include=transcript` |
 
 ## The key
 

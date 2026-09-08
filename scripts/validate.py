@@ -21,6 +21,11 @@ Checks (mirror the three former CI jobs exactly):
   readme        root README catalog table lists every published plugin at its
                 current version + names the catalog version (main page can't
                 silently fall behind releases)
+  routing       shortform-superengine's no-dead-end contract: every
+                Next-moves block above the compaction cut and inside its
+                Terminal paths section, every block citing a journey-map id,
+                the endpoint table closed, the catalog prefix and both README
+                skill counts (plugins/shortform-superengine/scripts/check_routing.py)
   plugin_integrity
                 mechanical per-plugin checks: ${CLAUDE_PLUGIN_ROOT} paths
                 resolve, reference docs aren't orphaned, no bare sibling
@@ -115,17 +120,10 @@ TOKEN_CEILING_WAIVERS = {
         "8590 est; pre-existing 2026-09-01 baseline, untriaged. SKLLPLG-255",
     "profile-optimization-superengine/profile-ig-audit":
         "7753 est; pre-existing 2026-09-01 baseline, untriaged. SKLLPLG-255",
-    "shortform-superengine/reel-scripter":
-        "7518 est (7159 at the 2026-09-01 baseline; +359 on 2026-09-05 for the dedupe, "
-        "delegation, Vault and status-line prose of 0.3.4). Untriaged. SKLLPLG-255",
     "profile-optimization-superengine/profile-fb-audit":
         "7000 est; pre-existing 2026-09-01 baseline, untriaged. SKLLPLG-255",
-    "shortform-superengine/competitor-cross-reference":
-        "6227 est; pre-existing 2026-09-01 baseline, untriaged. SKLLPLG-255",
     "focus-group-superengine/focus-group-run":
         "5735 est; pre-existing 2026-09-01 baseline, untriaged. SKLLPLG-255",
-    "shortform-superengine/onboarding":
-        "5425 est; pre-existing 2026-09-01 baseline, untriaged. SKLLPLG-255",
 }
 
 # Absolute machine paths that must never ship. Bare "C:\" is deliberately NOT
@@ -474,11 +472,36 @@ def check_plugin_integrity() -> list[str]:
     return errs
 
 
+def check_routing() -> list[str]:
+    """shortform-superengine's routing contract (the no-dead-end gate).
+
+    The checker lives in the plugin, because what it enforces is that plugin's
+    contract and not a house-wide rule. It is imported rather than copied so a
+    direct run and `--section routing` can never give different verdicts.
+    """
+    import importlib.util
+    mod_path = (REPO / "plugins" / "shortform-superengine"
+                / "scripts" / "check_routing.py")
+    if not mod_path.exists():
+        return [f"::error file=scripts/validate.py::routing checker missing: "
+                f"{mod_path.relative_to(REPO).as_posix()}"]
+    spec = importlib.util.spec_from_file_location("check_routing", mod_path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    errs, warns, stats = mod.collect()
+    for w in warns:
+        print(w)
+    if not errs:
+        print(f"OK routing: {mod.summary(stats)}")
+    return errs
+
+
 SECTIONS = {
     "marketplace": check_marketplace,
     "plugins": check_plugins,
     "frontmatter": check_frontmatter,
     "readme": check_readme,
+    "routing": check_routing,
     "plugin_integrity": check_plugin_integrity,
 }
 

@@ -94,7 +94,7 @@ in 0.3.4's `next-moves.md`.
 > **E0b coverage (secondary and non-happy terminals):** a skill's non-#1
 > Next-move options, plus decline / hold / thin-evidence / sub-mode terminals
 > (brand-brain's remind-only nudge, cross-reference's "proceed thin",
-> competitor-pulse's quiet-week note, content-plan's "no pick", any
+> competitor-pulse's quiet-week note, any
 > "back to the caller" exit) all route via **E0b**: compass-ranked moves from
 > current state. They do NOT each get a bespoke edge id. E0b is their registry
 > row. Named cross-skill lateral doors are the exception and are listed on the
@@ -119,7 +119,7 @@ in 0.3.4's `next-moves.md`.
 | E14 | competitor-pulse, weekly brief | script the week's winner - open my visuals - roster ops - make the pulse weekly [schedule, if unset] - monthly roster pass |
 | E15 | competitor-pulse, roster op done | backfill and re-analyze - defer to the next pulse - run the pulse now |
 | E16 | competitor-pulse, empty week | quiet-week note (no extra spend) - script from the content plan - run the pulse on 14 days (E23) - roster health (E24) |
-| E17 | shortform-start, first run (no marker, no state) | the hardcoded 4-option goal block: make a reel - plan the week - read my results - read the field. A fifth line offers set-up when the marker is absent |
+| E17 | shortform-start, first run (no marker, no state) | the five goals asked as a plain question (make a reel / plan the week / read my results / read the field / set up), then the four-move block whose #1 is the door that goal needs first |
 | E18 | shortform-start, marker present and state absent (migration) | writes `state/<brand>.json` from the marker (incl. the `competitor_pulse` block), sets `active_brand`, says so in one line, then delegates to shortform-next |
 | E19 | shortform-start, returning client | one-line position + open loops, then shortform-next |
 | E20 | shortform-next, compass rendered | the ranked moves themselves. Ranking order: `goal`, then position, then open loops and staleness. #1 must be actionable now |
@@ -157,7 +157,7 @@ Blocks may quote these ONLY behind an *installed* conditional.
 
 | Plugin | Detect | Skill / phrase | When |
 |---|---|---|---|
-| socialcrawl-superengine | `~/.claude/socialcrawl-superengine/.superengine` OR a directory matching `~/.claude/plugins/cache/*/socialcrawl-superengine/` | `research-plays` | a deep play beyond `socialcrawl-endpoints.md`. Absent -> F9, never a stall |
+| socialcrawl-superengine | `~/.claude/socialcrawl-superengine/.superengine` OR a directory matching `~/.claude/plugins/cache/*/socialcrawl-superengine/` | `research-plays` ... the client-facing phrase is "vet this creator" (if installed) | a deep play beyond `socialcrawl-endpoints.md`. Absent -> F9, never a stall |
 | workspace-superengine | the `revxl-vault-search` skill resolves | `workspace-superengine:revxl-vault-search` | the named Vault trigger points in `vault-api.md`. This is a Skill call the plugin makes, never a phrase quoted to the client. Absent -> F3 |
 | NotebookLM tooling | the local CLI is on PATH | a notebook from a finished harvest | E13 only |
 
@@ -169,4 +169,6 @@ fails the build when a registry row's ending has no block in the named skill, an
 warns when a `Say:` phrase resolves nowhere (phrases marked "(if installed)" are
 exempt). Retired 0.3.4 wording kept as an accepted alias, never as a canonical
 phrase: "script idea N from my topic pool" (now "script idea N from my content
-plan"), "make this weekly" (now "make the pulse weekly").
+plan"), "make this weekly" (now "make the pulse weekly"), "make the
+charts" (now "build my visual dashboards"), "add/remove/swap a
+competitor" (now "swap a competitor" and "add <handle> to my roster").

@@ -4,6 +4,36 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.66] ... 2026-09-08
+
+### Added
+- **shortform-superengine v0.4.0** ... the no-dead-end release. A front door
+(`start shortform`) and a compass (`what's next in shortform`) that reads the
+journey file and ranks two to four moves from wherever the client actually is;
+a new `content-plan` skill that builds a weekly pool of 7 to 15 source-tagged
+ideas from four sources (the field, the client's own material, fresh signals,
+the audience); a `## Terminal paths` section in the top third of every skill,
+so the routing survives a context compaction instead of falling off the end;
+a sixth CI section, `routing`, that fails the build when a block sits past the
+cut, cites no ledger id, or offers an endpoint the table does not name; a
+hand-owned SocialCrawl endpoints table; and one state file per brand at
+`~/.claude/shortform-superengine/state/<brand>.json` that every skill reads at
+the start and writes at the end.
+
+### Changed
+- **shortform-superengine v0.4.0** ... the bundled `socialcrawl` skill is retired
+to a reference (`skills/_shared/references/socialcrawl-endpoints.md`); deeper
+plays live in socialcrawl-superengine and the plugin refuses them in writing
+rather than faking them. The Topic Pool mode moved out of `reel-scripter` into
+`content-plan`. Vault calls go through the 0.15.0 contract, so this release
+requires workspace-superengine 0.15.1 or later for live Vault pulls and runs on
+the bundled references without it.
+
+### Removed
+- **shortform-superengine v0.4.0** ... the three shortform entries in
+`TOKEN_CEILING_WAIVERS`. All nine SKILL.md files are now under the 20,000-byte
+compaction ceiling on their own.
+
 ## [0.1.65] ... 2026-09-08
 
 ### Changed

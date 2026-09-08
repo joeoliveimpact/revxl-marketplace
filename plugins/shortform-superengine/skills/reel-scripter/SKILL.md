@@ -44,14 +44,10 @@ Every ending routes. Edge ids: `../_shared/references/journey-map.md`. Block gra
 2. Build the voice guide once; every later script inherits it. Say: "build my brand brain"
 3. *If one exists and is over 7 days old (F7):* refresh it, offered once. Say: "refresh my voice guide"
 
-**Next moves ... Vault degraded (F3)**
-1. Finish the reel on the bundled `./references/`; the Vault never blocks a script.
-2. Retry at the next reel, never twice inside one named step. Say: "write a reel script"
+**Next moves ... Vault degraded: no key, or workspace-superengine missing, or the callee errored (F3)**
+1. Finish the reel on the bundled `./references/`, printing `Vault: 0 searches, 0 reads | skipped: <reason>`. The Vault never blocks a script.
+2. Retry at the next reel, never twice inside one named step; or install workspace-superengine for the live pulls, then script again. Say: "write a reel script"
 3. Check what else is stale before spending. Say: "what's next in shortform"
-
-**Next moves ... workspace-superengine missing (F3)**
-1. Continue on the built-in library, printing `Vault: 0 searches, 0 reads | skipped: workspace-superengine missing`.
-2. Install workspace-superengine for the live pulls, then script again. Say: "write a reel script"
 
 **Next moves ... voice not confirmed at Checkpoint 0 (E0b)**
 1. Capture the voice properly first, once. Say: "build my brand brain"

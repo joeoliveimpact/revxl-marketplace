@@ -10,8 +10,9 @@ description: >
   why a client's reels underperform vs competitors", "create a client-facing
   strategy roadmap from Instagram data". Visuals-only mode, rendered straight
   from an existing analysis-data.json with no re-pull: "build my visual
-  dashboards", "regenerate my visuals", "open my visuals". Mid-run controls:
-  "run more seeds", "shrink the set to N", "resume my cross-reference".
+  dashboards", "regenerate my visuals", "open my visuals", "make the charts".
+  Mid-run controls: "run more seeds", "shrink the set to N", "resume my
+  cross-reference".
   IG-only. Produces analysis-data.json (the artefact every other skill reads),
   a 10-section client-facing strategy roadmap grounded in real SocialCrawl
   reel data and firecrawl website intelligence, and the offline HTML pack.

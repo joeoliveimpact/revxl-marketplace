@@ -119,6 +119,9 @@ stripped. One client = usually one brand; an agency = N files, fully isolated.
    the template above when absent) and re-reads `~/.claude/revxl/teach-level`.
 2. **Write at end.** Only your owned keys, plus always: `updated_at`, a
    `completed_skills` append, and any `open_loops` you opened or closed.
+   Exception: read-only skills. shortform-next writes nothing, not even
+   updated_at or completed_skills, because the compass may be called many
+   times in one session and must never alter the record it reads.
 3. **Append, never overwrite** arrays (`scripts`, `angles_unpicked`,
    `open_loops`, `declined_offers`, `completed_skills`).
 4. **`voc.present` and `subject.present` are DERIVED on read, never written.**
@@ -141,7 +144,7 @@ One writer per key. A skill not named here does not write that key.
 
 | Key | Writer |
 |---|---|
-| `setup.*` | onboarding only |
+| `setup.*` | onboarding only. shortform-start may SEED setup.* when it creates the file (first run, migration) and never overwrites it afterwards |
 | `goal`, `mode` | shortform-start (and any skill on an explicit plain request, which then says so) |
 | `project_path` | onboarding seeds it, competitor-cross-reference confirms or corrects it |
 | `analysis.*` (incl. `analysis.resume`) | competitor-cross-reference only |
@@ -165,6 +168,8 @@ One writer per key. A skill not named here does not write that key.
 > `state.pulse` and the marker copy is thereafter **ignored**, never re-read and
 > never deleted. A migrated home is never re-offered the pulse schedule it
 > already accepted.
+> The marker's competitor_pulse.project seeds project_path at creation
+> when it is set; competitor-cross-reference still confirms or corrects it.
 > **`voc_present` in the marker is vestigial** from 0.4.0: onboarding stops
 > writing it, its verify step drops it, and nothing reads it. An existing value
 > is left in place (rule zero) and never trusted; `voc.present` is derived.

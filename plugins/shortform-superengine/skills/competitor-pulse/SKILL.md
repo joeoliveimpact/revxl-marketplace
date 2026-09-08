@@ -1,6 +1,6 @@
 ---
 name: competitor-pulse
-description: The weekly heartbeat on the competitive field. Refreshes the competitor analysis with the last 7 days (14 on request), manages the roster, reads roster health, keyword-searches the field and mines comment patterns. Use for "run the weekly pulse", "run the pulse", "competitor pulse", "what changed this week", "refresh my competitor analysis", "make the pulse weekly", "run the pulse on 14 days", "roster health", "manage my roster", "add <handle> to my roster", "swap a competitor", "backfill and re-analyze", "search the field for <keyword>", "comment pulse", "comment pulse on <url>", "comment pulse on <scope>", "mine the comments on <url>", "what are people saying in <handle>'s comments", "run audience questions". Requires a completed competitor-cross-reference run (analysis-data.json).
+description: The weekly heartbeat on the competitive field. Refreshes the competitor analysis with the last 7 days (14 on request), manages the roster, reads roster health, keyword-searches the field and mines comment patterns. Use for "run the weekly pulse", "run the pulse", "competitor pulse", "what changed this week", "refresh my competitor analysis", "make the pulse weekly", "run the pulse on 14 days", "roster health", "manage my roster", "add <handle> to my roster", "swap a competitor", "backfill and re-analyze", "search the field for <keyword>", "comment pulse", "comment pulse on <url>", "comment pulse on <scope>", "mine the comments on <url>", "what are people saying in <handle>'s comments", "run audience questions", "add/remove/swap a competitor". Requires a completed competitor-cross-reference run (analysis-data.json).
 ---
 
 # competitor-pulse
@@ -65,14 +65,6 @@ beside it, registry id in parentheses.
 1. Run the listing pass only, skip the deep legs. The brief still lands. Say: "run the pulse"
 2. Top up, then run the full pulse. Say: "run the weekly pulse"
 3. Trim the roster to the accounts that earn their credits. Say: "manage my roster"
-
-**Next moves ... Vault degraded** (F3)
-*The pulse makes no Vault call of its own (`../_shared/references/vault-api.md`
-names the trigger points). This block renders when a skill routed to from here
-reports the Vault down, so the road still exists.*
-1. Script the week's winner on the bundled frameworks, labelled. Say: "script that reel"
-2. Read the refreshed pack yourself. Say: "open my visuals"
-3. Roster upkeep needs no Vault at all. Say: "roster health"
 
 **Next moves ... field search done** (E0b)
 1. Script the top hit's angle in your voice. Say: "script that reel"
