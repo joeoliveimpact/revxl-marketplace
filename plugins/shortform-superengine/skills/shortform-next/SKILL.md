@@ -58,7 +58,7 @@ same render rule governs the conditional lines in every block below.
 7. *If `voc.present` is false:* capture your voice ... pillars and the language you already own, before any draft. Say: "capture my voice"
 8. *If `analysis` is set, `analysis.date` is under 90 days, the 30-day band does not hold, and the marker is on disk:* propose the top gaps from your field read and script the one you pick, in your voice. Say: "script the top gap"
 9. *If `analysis` is set, or any other source is (`voc.present`, `subject.present`):* plan the week, 7 to 15 source-tagged ideas deduped against what you have already scripted. Say: "plan my week"
-10. *If `pulse.scheduled` is false and `analysis` is set:* have the weekly delta land on your desk on your day. Say: "make the pulse weekly"
+10. *If `pulse.scheduled` is false and `analysis` is set, and the marker is on disk:* have the weekly delta land on your desk on your day. Say: "make the pulse weekly"
 
 **Next moves ... nothing on disk**
 (E0) no marker and no state file for this brand. Hardcoded, because there is no
@@ -70,16 +70,19 @@ state to rank from. A missing marker never stalls here.
 (F3) the `revxl-vault-search` skill does not resolve, so workspace-superengine
 is not installed. Say the degrade in one line, "workspace-superengine is
 missing, running on the built-in library", then rank as normal: every move below
-runs without the Vault, so the journey continues. These are the `(E20)` lines,
-and the E20 render rule, its rank, the four-move cap and the floor govern them
-here too.
-1. *If `setup.complete` is false:* finish setup first ... the key, the project folder and your brand, about 10 minutes; nothing else can run without them. Say: "set up shortform superengine"
-2. *If the marker is absent and `setup.complete` is true:* your setup marker is gone but the setup itself is intact ... re-running setup rewrites it in about a minute and changes nothing else. Say: "set up shortform superengine"
-3. *If `analysis` is unset, or `analysis.date` is over 90 days old (F6), and the marker is on disk:* build or refresh the field baseline ... SocialCrawl only, no Vault. A full re-run is priced out loud first at `N x 3` credits for the reel pull. Say: "analyze my Instagram against my competitors"
-4. *If `analysis.date` and `pulse.last_run` are BOTH over 30 days old and `analysis.date` is under 90 (F6), a null `pulse.last_run` counting as over 30, and the marker is on disk:* keep the field current, a cheap weekly delta, before anything leans on a stale read. A null `analysis.date` never fires the 30-day band; the unset clause covers it. Say: "run the weekly pulse"
-5. *If `analysis` is set, `analysis.date` is under 90 days, the 30-day band does not hold, and the marker is on disk:* the next move on your journey, unchanged ... nothing here needs the Vault. Say: "script the top gap"
-6. *If `voc.present` is false:* capture your voice ... pillars and the language you already own, on the bundled references only. Say: "capture my voice"
-7. *If `analysis` is set, or any other source is (`voc.present`, `subject.present`):* plan the week, 7 to 15 source-tagged ideas deduped against what you have already scripted. Say: "plan my week"
+runs without the Vault, so the journey continues. These are the `(E20)` lines
+byte for byte, same numbering, so the E20 render rule, its rank, the `goal`
+reorder of lines 8 and 9, the four-move cap and the floor govern them here too.
+1. *If the marker is on disk and no state file is:* open the front door, which writes the journey file from the marker (E18) and then comes back here. Say: "start shortform"
+2. *If `setup.complete` is false:* finish setup first ... the key, the project folder and your brand, about 10 minutes; nothing else can run without them. Say: "set up shortform superengine"
+3. *If the marker is absent and `setup.complete` is true:* your setup marker is gone but the setup itself is intact ... re-running setup rewrites it in about a minute and changes nothing else. Say: "set up shortform superengine"
+4. *If `analysis` is unset, or `analysis.date` is over 90 days old (F6), and the marker is on disk:* build or rebuild the field baseline the rest of the engine reads ... unset, nothing downstream is actionable until the baseline exists; over 90 days, the baseline is too old to trust and a pulse cannot rebuild it. A full re-run is priced out loud first at `N x 3` credits for the reel pull. Say: "analyze my Instagram against my competitors"
+5. *If `analysis.date` and `pulse.last_run` are BOTH over 30 days old and `analysis.date` is under 90 (F6), a null `pulse.last_run` counting as over 30, and the marker is on disk:* keep the field current, a cheap weekly delta, before anything leans on a stale read. A null `analysis.date` never fires the 30-day band; the unset clause covers it. Say: "run the weekly pulse"
+6. *If `voc.refreshed_at` is over 7 days old AND `declined_offers` holds no `voc_refresh:<voc.refreshed_at>` entry (F7):* refresh the voice guide once, then proceed on it either way. A null `voc.refreshed_at` never fires this line; line 7 covers it. Say: "refresh my voice guide"
+7. *If `voc.present` is false:* capture your voice ... pillars and the language you already own, before any draft. Say: "capture my voice"
+8. *If `analysis` is set, `analysis.date` is under 90 days, the 30-day band does not hold, and the marker is on disk:* propose the top gaps from your field read and script the one you pick, in your voice. Say: "script the top gap"
+9. *If `analysis` is set, or any other source is (`voc.present`, `subject.present`):* plan the week, 7 to 15 source-tagged ideas deduped against what you have already scripted. Say: "plan my week"
+10. *If `pulse.scheduled` is false and `analysis` is set, and the marker is on disk:* have the weekly delta land on your desk on your day. Say: "make the pulse weekly"
 
 **Next moves ... deep play needs socialcrawl-superengine**
 (F9) the highest-ranked move is a play beyond `socialcrawl-endpoints.md` (field
@@ -88,8 +91,9 @@ the socialcrawl-superengine marker is absent. The refusal is move 1 and it
 routes: it never becomes a stall, and this plugin never fakes the play with the
 endpoints it has.
 1. Get it installed, then run the play there ... ask me to install socialcrawl-superengine from the RevXL marketplace, then say the phrase. Say: "vet this creator" (if installed)  <- start here
-2. What runs today on this plugin's table: a keyword search across your own roster. Say: "search the field for <keyword>"
+2. *If `analysis` is set and the marker is on disk:* what runs today on this plugin's table: a keyword search across your own roster. Say: "search the field for <keyword>"
 3. *If any source exists (`analysis`, `voc.present` or `subject.present`):* the next move that needs none of it. Say: "plan my week"
+4. *If `voc.present` is false:* capture your voice while the deep play waits ... no keys, no credits, and every later draft sounds like you. Say: "capture my voice"
 
 ## Prereq (E0)
 
@@ -102,10 +106,10 @@ never asks the client to go set something up before it will answer.
 **1. Nothing on disk** (no marker and no state file): render the "nothing on
 disk" block and stop.
 
-**2. Vault probe.** If state `setup.ws_superengine_version` is null, or the
-`revxl-vault-search` skill does not resolve, render the **Vault degraded**
-block instead of the `(E20)` block; it carries the same gates with the degrade
-line on top.
+**2. Vault probe.** If the `revxl-vault-search` skill does not resolve, render
+the **Vault degraded** block instead of the `(E20)` block; it carries the same
+lines with the degrade line on top. A null `setup.ws_superengine_version` means
+never probed, not missing: probe the skill, never infer from the mirror.
 
 **3. Position.** Walk the journey graph
 (SETUP > VOICE > FIELD > MAKE > READ > PULSE) against state: which stage is done

@@ -90,7 +90,7 @@ The field read comes first.
 Contract: `../_shared/references/state-schema.md`. **Read at start** from
 `~/.claude/shortform-superengine/state/<brand>.json`: `active_brand` (marker), `analysis`,
 `voc.present` (derived from the `voc/` directory, never a stored field), `mode`,
-`declined_offers`, `scripts[]`, `angles_unpicked[]`, `plan`. **Written here and nowhere
+`declined_offers`, `scripts[]`, `angles_unpicked[]`, `plan`, `project_path`. **Written here and nowhere
 else:** `scripts[]`, `angles_unpicked[]`, `completed_skills`, `open_loops`, `declined_offers`,
 `updated_at`. `plan` belongs to `content-plan`, read-only here. No invented keys.
 

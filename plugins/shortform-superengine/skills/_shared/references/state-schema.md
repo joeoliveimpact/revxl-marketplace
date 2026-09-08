@@ -169,7 +169,7 @@ One writer per key. A skill not named here does not write that key.
 > **Marker (`.superengine`):** owned by **onboarding**. It writes `active_brand`
 > (authoritative) and keeps `brand` as a legacy alias holding the same value, so
 > 0.3.4 readers keep working. `shortform-start`'s migration reads `active_brand`,
-> then `brand`, then asks once, and may write `active_brand` when it was absent
+> then `brand`, then the state-directory scan, then asks once, and may write `active_brand` when it was absent
 > or null. So may the ask-once rung of any skill that resolves the brand
 > (competitor-cross-reference Step 0a, competitor-pulse State), write-if-absent
 > only, never an overwrite. Those are the only writers.

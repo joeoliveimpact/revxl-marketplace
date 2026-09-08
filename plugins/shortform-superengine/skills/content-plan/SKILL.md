@@ -59,9 +59,10 @@ nothing is lost.
 nothing to read. The order exists because ideas picked before the field read are
 guesses about what the niche rewards.
 1. *If the marker is absent or `setup.complete` is false:* finish setup first ... nothing paid can run without it. Say: "set up shortform superengine"
-2. *If the marker is on disk and setup is complete:* run the cross-reference first ... it produces `analysis-data.json`, which is this plan's evidence layer. Say: "analyze my Instagram against my competitors"
-3. *If `analysis.resume` is set:* pick the parked run back up at its checkpoint. Say: "resume my cross-reference"
+2. *If `analysis.resume` is set:* pick the parked run back up at its checkpoint, nothing re-spent. Say: "resume my cross-reference"
+3. *If the marker is on disk, setup is complete and nothing is parked:* run the cross-reference first ... it produces `analysis-data.json`, which is this plan's evidence layer. Say: "analyze my Instagram against my competitors"
 4. *If `~/.claude/revxl/<brand>/voc/` exists:* build the thinner own-material plan now, labelled "no field source", and add the field ideas when the analysis lands. Say: "plan the week"
+5. Or let the compass rank what this state actually allows. Say: "what's next in shortform"
 
 **Next moves ... credits short**
 (F4) Name the balance and the estimate. Never spend silently, never promise an
@@ -90,7 +91,7 @@ built-in library"), and keep going.
 (F9) A trend deep dive, creator vetting, share of voice or lead finding is beyond
 `../_shared/references/socialcrawl-endpoints.md`, and this plugin will not fake
 one with a shallower call. Probe for the install the way that file says, then:
-1. *If the probe came back empty:* get it installed first ... ask me to install socialcrawl-superengine from the RevXL marketplace, then say the phrase. It ships the same credit guard this plugin does. Say: "vet this creator" (if installed)
+1. Get it installed first ... ask me to install socialcrawl-superengine from the RevXL marketplace, then say the phrase. It ships the same credit guard this plugin does. Say: "vet this creator" (if installed)
 2. What I can do today: the fresh pass on the table's own endpoints, `google_news/search` 1cr, `google_trends/explore` 5cr, `reddit/search` 1cr. Say: "refresh next week's plan"
 3. Field search inside the roster runs in the pulse. Say: "search the field for <keyword>"
 

@@ -103,7 +103,7 @@ in 0.3.4's `next-moves.md`.
 ### Happy path
 | ID | From, ending | Routes to |
 |---|---|---|
-| E1 | onboarding, Step 8 activation | goal make-a-reel, plan-the-week, read-the-field or read-my-results -> competitor-cross-reference (primary) - shortform-next always, whatever the goal - brand-brain (if skipped at 4b) - creator-strategy-harvest - pulse schedule (only if an analysis exists AND neither state nor marker says scheduled) |
+| E1 | onboarding, Step 8 activation | competitor-cross-reference (primary, whatever the goal) - shortform-next always, whatever the goal - brand-brain (if skipped at 4b) - creator-strategy-harvest - pulse schedule (only if an analysis exists AND neither state nor marker says scheduled) |
 | E2 | onboarding, sub-mode exits | back to work - shortform-next - "show my setup" |
 | E3 | competitor-cross-reference, roadmap delivered | visual pack - script the top gap (reel-scripter) - feed themes to brand-brain - content-plan - weekly pulse [schedule] |
 | E4 | competitor-cross-reference, stopped at checkpoint 2 (thin set) | run more seeds - park and resume (F1) - proceed thin (explicit) |

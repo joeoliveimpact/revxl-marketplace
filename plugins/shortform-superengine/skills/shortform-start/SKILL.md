@@ -64,6 +64,7 @@ block is the floor if the compass does not resolve.
 2. *If the marker is absent:* finish setup; the compass ranks it first. Say: "set up shortform superengine"
 3. *If `analysis.date` and `pulse.last_run` are both over 30 days old (F6), a null `pulse.last_run` counting as over 30:* refresh the field first, because everything downstream reads it. The 30-day band reads the newer of the two dates; the full re-run at 90 days reads `analysis.date` alone, whatever the pulse did. Say: "run the weekly pulse"
 4. *If an open loop holds a parked cross-reference (F1):* pick it back up at the checkpoint it stopped at, nothing is re-spent. Say: "resume my cross-reference"
+5. Plan the week off whatever sources you already have ... 7 to 15 ideas, nothing paid. Say: "plan my week"
 
 **Next moves ... Vault degraded**
 (F3) the `revxl-vault-search` skill does not resolve, so workspace-superengine
