@@ -43,7 +43,7 @@ beside it, registry id in parentheses.
 
 **Next moves ... call made**
 (E25) the result is on screen, with `credits_used` and `credits_remaining` named.
-1. Run the play this call was for, in the skill that asked for it. Say: "what's next in shortform"
+1. Back to the journey: the compass ranks the play this call was for. Say: "what's next in shortform"
 2. See what is left before the next paid call, a 0-credit read. Say: "check my SocialCrawl balance"
 3. Price another endpoint before you spend on it. Say: "what does <endpoint> cost"
 
@@ -60,7 +60,7 @@ beside it, registry id in parentheses.
 
 **Next moves ... call failed**
 (F10) the call errored. Retrying is free only as an idempotent replay.
-1. Retry once with the same `Idempotency-Key`, per Idempotent Retries below: a replay returns the original body at 0 credits. The same error twice is not transient.
+1. Retry once, unchanged (a 4xx pre-flight rejection never deducts). The same error twice is not transient: stop retrying.
 2. A 402 is a balance problem, not a call problem. Say: "check my SocialCrawl balance"
 3. Still stuck? Hand it back to the journey rather than burning credits. Say: "what's next in shortform"
 
@@ -68,8 +68,8 @@ beside it, registry id in parentheses.
 
 One door: a SocialCrawl API key, resolved through the ladder in "API Key" below
 (env var, then `~/.config/socialcrawl/api_key`, then ask the user once and save
-it there). No key: refuse, make no call, and route to `onboarding` with the "no
-key" block above as move one. Never a stall, and never a paid call to find out.
+it there). No key after the ask: refuse, make no call, and route to `onboarding`
+with the "no key" block above as move one. Never a stall, never a paid call to find out.
 
 ## API Key
 
