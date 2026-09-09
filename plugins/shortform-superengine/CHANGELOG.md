@@ -4,6 +4,33 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.4.1] ... 2026-09-08
+
+### Added
+- **The bundled `socialcrawl` skill is back.** 0.4.0 removed it and kept only
+  `_shared/references/socialcrawl-endpoints.md`, which is the short list of calls
+  the pipeline itself makes, leaving the engine with no API method and no
+  per-platform reference of its own. The lean core returns exactly as it shipped in
+  0.3.4 (`SKILL.md` plus 12 platform references), retrofitted to the 0.4.0 routing
+  contract: `## Prereq (E0)` names the one door (the API key ladder; no key means
+  refuse, spend nothing, and route to onboarding) and `## Terminal paths` writes
+  four endings ... call made (E25), no key (E0), credits short (F4) and call failed
+  (F10).
+- **Registry rows E25 and F10** in `journey-map.md`, the `socialcrawl` roster row
+  and its phrases ("check my SocialCrawl balance", "resolve this social URL",
+  "batch-check engagement", "what does <endpoint> cost", "socialcrawl"), and the
+  hook branch that nudges the skill on them. The branch is last, so no existing
+  trigger loses precedence.
+
+### Changed
+- **The ruling this release encodes:** the research method, the templates and the
+  guidelines live in shortform-superengine; socialcrawl-superengine, when
+  installed, executes the searches. The skill description, the plugin README and
+  the endpoints table say so.
+- **`check_routing.py` section 4** skips `skills/socialcrawl/`: the bundled lean
+  core IS the endpoint canon, and the endpoints table governs the pipeline's own
+  calls. Every other file still has to name only endpoints the table lists.
+
 ## [0.4.0] ... 2026-09-08
 
 ### Added

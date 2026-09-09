@@ -35,7 +35,7 @@ doctrine behind each handoff, with its note ids, is in `vault-api.md`.
 Skills check prereqs in state and **refuse to skip ahead**, with a plain-English
 why and the correct door (edge E0).
 
-## Skill roster (9 installed)
+## Skill roster (10 installed)
 
 Trigger phrases are canonical: Next-moves blocks quote them verbatim from this
 table. Every phrase belongs to exactly one skill.
@@ -75,9 +75,15 @@ table. Every phrase belongs to exactly one skill.
 |---|---|---|---|
 | `competitor-pulse` | "run the weekly pulse", "run the pulse", "competitor pulse", "what changed this week", "refresh my competitor analysis", "make the pulse weekly", "run the pulse on 14 days", "roster health", "manage my roster", "add <handle> to my roster", "swap a competitor", "backfill and re-analyze", "search the field for <keyword>", "comment pulse", "comment pulse on <url>", "comment pulse on <scope>", "mine the comments on <url>", "what are people saying in <handle>'s comments", "run audience questions" | `analysis` set (a finished cross-reference) | the weekly brief, refreshed charts, `history/` snapshot, comment intel; `pulse.*` |
 
-Retired at 0.4.0: the bundled `socialcrawl` skill and its phrases ("SocialCrawl",
-"social crawl", "social media API"). The endpoints it documented are now
-`socialcrawl-endpoints.md`; everything deeper belongs to socialcrawl-superengine.
+### API
+| Skill | Trigger phrases | Prereqs (state) | Produces |
+|---|---|---|---|
+| `socialcrawl` | "check my SocialCrawl balance", "resolve this social URL", "batch-check engagement", "what does <endpoint> cost", "socialcrawl" | a SocialCrawl API key (env var, else `~/.config/socialcrawl/api_key`) | the raw API response plus `credits_used` and `credits_remaining`. Writes no state keys. Ends on E25 |
+
+The bundled lean core is where the API method, the per-platform references and
+the credit guidelines live. `socialcrawl-endpoints.md` stays the list of calls the
+pipeline itself makes; socialcrawl-superengine, when installed, executes the
+searches.
 
 ## Edge registry
 
@@ -127,6 +133,7 @@ in 0.3.4's `next-moves.md`.
 | E22 | competitor-cross-reference, resumed from `analysis.resume` | back into the pipeline at the stored checkpoint, then E3 |
 | E23 | competitor-pulse, 14-day window run | the widened brief, then E14's moves |
 | E24 | competitor-pulse, roster-health pass | roster ops (add / remove / swap) - run the pulse now - monthly roster pass [schedule] |
+| E25 | socialcrawl, call made | the calling skill's next step, balance, endpoint cost |
 
 ### Failure edges
 | ID | From, condition | Routes to |
@@ -140,6 +147,7 @@ in 0.3.4's `next-moves.md`.
 | F7 | any voice-consuming skill, `voc.refreshed_at` older than 7 days | offer a brand-brain refresh **once** per journey (`declined_offers`), then proceed on the current voice guide, labelled |
 | F8 | reel-scripter or content-plan in `subject-first`, no subject on disk | `subject-matter` "(if installed)" as move #1, else switch to `field-first` and say so |
 | F9 | a deep play requested and the socialcrawl-superengine marker is absent | the install refusal block as move #1: which plays need it (field search beyond `socialcrawl-endpoints.md`, creator vetting, share of voice, lead finding), why this plugin will not fake them, then the exact phrase to say once it is installed. A refusal that routes, never a stall |
+| F10 | socialcrawl, call failed after the idempotent retry | balance check, then the compass |
 
 ## Gates (hard blocks, checked in state)
 

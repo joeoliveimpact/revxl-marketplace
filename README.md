@@ -21,7 +21,7 @@ Each superengine is opinionated about audience, tone, and workflow, so it works 
 
 ## The catalog
 
-17 plugins. Versions are current as of catalog `0.1.66`.
+17 plugins. Versions are current as of catalog `0.1.67`.
 
 ### 📣 Marketing & Content
 
@@ -30,7 +30,7 @@ Each superengine is opinionated about audience, tone, and workflow, so it works 
 | [email-sequence-superengine](plugins/email-sequence-superengine/) | 0.3.0 | Email nurture engine for high-ticket coaches. 8 sequence generators (pre-call, launch, warm, no-show, follow-up, winback, onboarding) in your voice, with story banks and GHL push. 13 skills. |
 | [meta-ads-superengine](plugins/meta-ads-superengine/) | 0.4.0 | Full Meta-ads coaching journey: strategy, breakeven math, creative, launch runbook, daily ops, competitor pulse. 27 skills. **Proprietary license.** |
 | [carousel-superengine](plugins/carousel-superengine/) | 0.5.0 | Voice-matched IG/LinkedIn carousel engine: create, render to finished slides, review, teardown competitor decks. 10 skills. |
-| [shortform-superengine](plugins/shortform-superengine/) | 0.4.0 | Short-form reel engine with one front door and no dead ends: a competitor analysis and 10-section roadmap, a weekly content plan from four sources, craft-screened reel scripts in your voice, and a weekly competitor pulse. **9 skills.** |
+| [shortform-superengine](plugins/shortform-superengine/) | 0.4.1 | Short-form reel engine with one front door and no dead ends: a competitor analysis and 10-section roadmap, a weekly content plan from four sources, craft-screened reel scripts in your voice, and a weekly competitor pulse. **10 skills.** |
 | [editor-superengine](plugins/editor-superengine/) | 0.1.0 | Raw talking-head recording to a finished first cut (waveform-verified boundaries, gap tightening, one render from the raw, a silence budget), then the design-iteration loop for the reel's visuals. Every script ships inside; bundled or bring-your-own Whisper. 3 skills. |
 | [lead-magnet-superengine](plugins/lead-magnet-superengine/) | 0.2.0 | Builds lead magnets three ways: from scratch, from a source, from your existing content. 6 skills + 1 agent. |
 | [profile-optimization-superengine](plugins/profile-optimization-superengine/) | 0.2.0 | Social-profile optimization (bio, pinned content, CTA structure) for coach acquisition. 6 skills. |

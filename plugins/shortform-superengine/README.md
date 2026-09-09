@@ -6,7 +6,7 @@ Instagram reel scripts in their brand voice. One front door, four exits, no dead
 ends. (The shared analysis core is bundled here for now; it splits into its own
 plugin at format #2.)
 
-**9 skills**, grouped by the stage of the journey they serve:
+**10 skills**, grouped by the stage of the journey they serve:
 
 **Start here**
 
@@ -54,6 +54,13 @@ plugin at format #2.)
   changed this week" brief; roster add, remove and swap; field keyword search;
   comment mining. Scheduling is suggested, never silent.
 
+**API**
+
+- **`socialcrawl`** ... the bundled SocialCrawl API core the other skills call:
+  key resolution, the per-platform endpoint references, the cheat codes that
+  change the cost math, and the credit gates. It makes the call and reports what
+  it cost.
+
 ## No dead ends
 
 Every terminal path ... success, decline, empty result, degraded run, refused
@@ -71,8 +78,10 @@ nowhere is a warning, not a failure.
 
 ## Requirements
 
-Bring-your-own SocialCrawl key (your data, your credits); the endpoints this
-plugin calls, and what each one costs, are listed in
+Bring-your-own SocialCrawl key (your data, your credits). The API skill is
+bundled (`skills/socialcrawl/`, with the per-platform endpoint references);
+socialcrawl-superengine, when installed, executes the searches. The calls the
+pipeline itself makes, and what each one costs, are listed in
 `skills/_shared/references/socialcrawl-endpoints.md`. Anything deeper than that
 table ... field search beyond your own roster, creator vetting, share of voice,
 lead finding ... lives in **socialcrawl-superengine**, and this plugin tells you
