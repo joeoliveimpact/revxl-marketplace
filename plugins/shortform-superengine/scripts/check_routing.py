@@ -361,6 +361,9 @@ def collect():
         for f in sorted(list(root.rglob("*.md")) + list(root.rglob("*.py"))):
             if f.name == "CHANGELOG.md":     # a changelog may quote retired history
                 continue
+            # the bundled lean core IS the endpoint canon; the table governs the pipeline's own calls
+            if "skills/socialcrawl/" in f.relative_to(root).as_posix():
+                continue
             body = _lf_text(f)
             for pos, line, fenced in _lines(body):
                 if fenced:

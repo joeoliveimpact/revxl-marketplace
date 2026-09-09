@@ -22,6 +22,7 @@ PULSE='run the weekly pulse|run the pulse|make the pulse weekly|search the field
 BRAND_BRAIN='capture my voice|build my brand brain|brand brain|mine my calls|set up my voice|refresh my voice guide|update my topics'
 HARVEST='harvest .{0,40}(library|content|videos)|get everything .{0,40} teaches|pull all of .{0,40} content|build a corpus from|refresh our notebook on'
 CONTENT_PLAN='content plan|weekly topic pool|topic pool|idea bank|plan my week|plan the week|what should i post this week'
+SOCIALCRAWL='socialcrawl|social crawl|social media api|check my socialcrawl balance'
 
 nudge() {
   echo "[shortform-superengine] This looks like a job for the $1 skill ... invoke it (Skill tool) before doing the work by hand."
@@ -45,6 +46,8 @@ elif echo "$input" | grep -qiE "$HARVEST"; then
   nudge creator-strategy-harvest
 elif echo "$input" | grep -qiE "$CONTENT_PLAN"; then
   nudge content-plan
+elif echo "$input" | grep -qiE "$SOCIALCRAWL"; then
+  nudge socialcrawl
 fi
 
 exit 0

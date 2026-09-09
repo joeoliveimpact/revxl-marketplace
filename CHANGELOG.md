@@ -4,6 +4,17 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.67] ... 2026-09-08
+
+### Fixed
+- **shortform-superengine v0.4.1** ... the bundled `socialcrawl` API skill, dropped
+in 0.4.0, is restored (its `SKILL.md` plus 12 platform references) and retrofitted
+to the routing gate: a `## Prereq (E0)` door on the API key, and four terminal-path
+blocks (call made, no key, credits short, call failed) behind two new registry
+rows, E25 and F10. The ruling it encodes: the research method, the templates and
+the guidelines live in shortform-superengine, and socialcrawl-superengine, when
+installed, executes the searches.
+
 ## [0.1.66] ... 2026-09-08
 
 ### Added
