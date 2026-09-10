@@ -21,7 +21,7 @@ Each superengine is opinionated about audience, tone, and workflow, so it works 
 
 ## The catalog
 
-17 plugins. Versions are current as of catalog `0.1.67`.
+18 plugins. Versions are current as of catalog `0.1.68`.
 
 ### 📣 Marketing & Content
 
@@ -45,6 +45,7 @@ Each superengine is opinionated about audience, tone, and workflow, so it works 
 | [ghl-coach-superengine](plugins/ghl-coach-superengine/) | 0.1.1 | Done-with-you GoHighLevel toolkit: MCP install, tags, pipelines, automations, coach-assistant agent. 8 skills + 2 agents. Requires [GoHighLevel-MCP](https://github.com/mastanley13/GoHighLevel-MCP). |
 | [gokollab-community-superengine](plugins/gokollab-community-superengine/) | 0.1.2 | Community-management engine: member onboarding, 1-on-1 call history, Fathom-powered deep posts. 6 skills. |
 | [offer-architect](plugins/offer-architect/) | 0.3.0 | Build market-validated offers Hormozi-style: intake, market research, value stack, pricing matrix, launch gate audit. 10 skills + 1 agent. |
+| [booking-bandit](plugins/booking-bandit/) | 0.0.1 | Drafts Instagram DM replies in your own voice so more conversations turn into booked calls. Skeleton release: catalog entry and plugin structure only, no drafting logic yet. 1 placeholder skill. |
 
 ### ⚙️ Productivity & Meta
 
