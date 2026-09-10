@@ -4,6 +4,16 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.68] ... 2026-09-09
+
+### Added
+- **booking-bandit v0.0.1** ... first entry in the catalog. A skeleton release only:
+plugin manifest, README, changelog, MIT license and one placeholder `bb-draft` skill,
+published so the plugin is installable and version-tracked before any drafting logic
+exists. Booking Bandit drafts Instagram DM replies in a coach's own voice so more
+conversations turn into booked calls; the drafting agent and the setup, inbox-polling,
+send and tuning skills land in later releases.
+
 ## [0.1.67] ... 2026-09-08
 
 ### Fixed

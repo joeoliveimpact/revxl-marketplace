@@ -7,7 +7,7 @@
     "email": "joe@engineforimpact.com"
   },
   "metadata": {
-    "version": "0.1.67"
+    "version": "0.1.68"
   },
   "plugins": [
     {
@@ -416,6 +416,28 @@
         "campaigns",
         "coaching",
         "superengine"
+      ]
+    },
+    {
+      "name": "booking-bandit",
+      "description": "v0.0.1 · Drafts Instagram DM replies in a coach's own voice, so more conversations turn into booked calls without living in the inbox. Skeleton release: the catalog entry and plugin structure only, with no drafting logic in it yet. The drafting agent that carries the reply rules and DM knowledge base, plus the setup, inbox-polling, send and tuning skills, land in later releases.",
+      "source": "./plugins/booking-bandit",
+      "category": "sales",
+      "version": "0.0.1",
+      "author": {
+        "name": "Joe Olive",
+        "email": "joe@engineforimpact.com"
+      },
+      "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/booking-bandit",
+      "license": "MIT",
+      "keywords": [
+        "instagram",
+        "dm",
+        "booking",
+        "sales",
+        "setter",
+        "coaching",
+        "revxl"
       ]
     }
   ]
