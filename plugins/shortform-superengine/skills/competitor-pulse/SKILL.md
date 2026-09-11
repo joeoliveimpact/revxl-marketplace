@@ -222,10 +222,10 @@ else `../socialcrawl/SKILL.md` and `../socialcrawl/references/instagram.md:126-1
   reel on the page is older than `window_from` or `next_cursor` is absent.
   Pinned reels (old ones shown first) never decide that stop. +1cr a page, say so.
 - One `Idempotency-Key` per handle + window, suffixed per page
-  (`pulse-<handle>-<window_from>-p<n>`; one key reused with other params returns
+  (`pulse-<brand>-<handle>-<window_from>-p<n>`; one key reused with other params returns
   422), so a resumed run replays at 0cr within 24h and never re-bills. A 502/503
   retries once.
-- **Failed handles.** A handle that still fails logs `<date> · probe-failed · @handle · <error> · window from <window_from>` in `refresh-log.md`, then gets one failed-handles-only pass, same keys, before the Step 4 merge; a failure there logs again. Still failing: the brief ends on F5.
+- **Failed handles.** A handle that still fails logs `<date> · probe-failed · @handle · <error> · window from <window_from>` in `refresh-log.md`, then gets one failed-handles-only pass before the Step 4 merge, keys suffixed `-r<attempt>` (`./references/modes.md`); a failure there logs again, a pull logs it as `probe-ok`, with no `<error>`. Still failing: the brief ends on F5.
 - Client `GET /v1/instagram/profile` (1cr) → refresh `client_followers` in the
   config if changed.
 - **New reels** = items whose `post.url` is not already in `source/**/reels`
@@ -277,7 +277,7 @@ python ${CLAUDE_PLUGIN_ROOT}/skills/competitor-cross-reference/render_visuals.py
 ```
 
 Regenerates `visuals/` + writes `visuals/whats-new.json`; archive a copy to
-`history/whats-new-<date>.json`. `<last>` is the snapshot Step 4 took. An
+`history/whats-new-<date>.json`. `<project_dir>` is absolute (`state.project_path`); `<last>` is the snapshot Step 4 took. An
 unreadable `--prev` stops the render (exit 1, nothing written): report it with
 the path, fix the path, re-run this step.
 
@@ -317,7 +317,7 @@ Terminal-paths block it ends on.
 - **Comment pulse**: scope, price, pull, then the two-layer intel doc. Ends on
   the `comment intel` block.
 - **14-day window**: the same pipeline with the window set to 14. Ends on E23.
-- **Failed-only retry**: the F5 retry over the logged failed handles only. Ends on E14, or F5.
+- **Failed-only retry**: the F5 retry over the logged failed handles only. Ends on E14, or F5, or E24 when nothing is logged.
 
 ---
 
@@ -341,8 +341,6 @@ log it in `declined_offers` and do not re-offer this session. Ends on the
 
 ## Notes
 
-- Requires a completed cross-reference project. None on disk: the
-  `no analysis yet` block (E0), never a stall.
 - Never use SocialCrawl `media/transcript` (10cr) — transcription is the free
   local chain, always.
 - Shares data never enters `analysis-data.json` — the metrics engine's

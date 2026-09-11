@@ -10,8 +10,9 @@ weighting the analysis uses (C7): spoken track is the signal, captions are a
 separate packaging read.
 
 Reads:   <project>/source/competitors/transcripts/*.json  [spoken, PRIMARY]
+         <project>/transcripts/<creator>/*.txt            [spoken, PRIMARY; a reel with both kinds counts once, JSON text wins]
          <project>/source/competitors/reels/*.json        [captions, secondary]
-         The client's own reels (client-transcripts.json, reels-full.json) are NOT read: they are not the field.
+         The client's own reels (client-transcripts.json, reels-full.json, transcripts/reels-full/) are NOT read: they are not the field.
          No spoken rows at all = DEGRADED: a banner, and the verdict comes from the caption read, tagged [cap].
 Writes:  nothing — prints an ASCII table + a one-line verdict per keyword.
 
@@ -23,6 +24,8 @@ Stdlib only. Deterministic. utf-8 reads; ASCII-safe stdout.
 """
 import json, glob, os, re, sys, statistics as st
 from collections import defaultdict
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "_shared", "lib"))
+from reel_io import parse_transcript_header  # noqa: E402  the txt-transcript parser analyze.py uses
 
 if len(sys.argv) < 3:
     print("Usage: python field_vet.py <project_dir> <keyword> [keyword2 ...]"); sys.exit(1)
@@ -41,12 +44,25 @@ def _items_of(d):
 
 # ---- spoken track (PRIMARY) ----
 spoken = []  # (text_lower, views, handle)  -- the handle is what makes per-account lift possible
+tx_urls = set()  # urls on the spoken track: a reel with both kinds counts once, JSON text wins
 tpaths = sorted(glob.glob(os.path.join(ROOT, "source", "competitors", "transcripts", "*.json")))
 for p in tpaths:
     hname = os.path.splitext(os.path.basename(p))[0]
     for r in _items_of(J(p)):
         t = (r.get("text") or "").lower(); v = r.get("views") or 0
+        if t and r.get("url"): tx_urls.add(r["url"])
         if t and v: spoken.append((t, v, hname))
+# 0.4.2 (D5): transcripts/<creator>/<shortcode>.txt are spoken rows too, read as analyze.py reads them.
+# NO VOICEOVER or an empty body is no spoken track; reels-full is the client's own folder, not the field.
+for p in sorted(glob.glob(os.path.join(ROOT, "transcripts", "*", "*.txt"))):
+    hname = os.path.basename(os.path.dirname(p))
+    if hname == "reels-full": continue
+    try: raw = open(p, encoding="utf-8").read()
+    except Exception: continue
+    h = parse_transcript_header(raw)
+    if not h["url"] or not h["transcript"] or "NO VOICEOVER" in raw.split("## ", 1)[0] or h["url"] in tx_urls: continue
+    tx_urls.add(h["url"])
+    if h["views"]: spoken.append((h["transcript"].lower(), h["views"], hname))
 
 # ---- caption track (SECONDARY, kept separate per C7) ----
 caption = []
@@ -97,7 +113,7 @@ print(f"FIELD VET  |  project: {os.path.basename(ROOT)}")
 print(f"spoken field median: {SPOKEN_MED:,.0f} views (n={len(spoken)}, {len(SPOKEN_ACCT)} accounts)  |  caption field median: {CAPTION_MED:,.0f} (n={len(caption)}, {len(CAPTION_ACCT)} accounts)")
 print("lift = per-account (each account vs its OWN median, then the median across accounts); 1.00x = neutral")
 if DEGRADED:
-    print("DEGRADED: no spoken rows (no usable transcripts under source/competitors/transcripts/). The verdict below")
+    print("DEGRADED: no spoken rows (no usable competitor transcripts, JSON or txt). The verdict below")
     print("  is the CAPTION read, tagged [cap]: a packaging read, not a topic read. A keyword with little caption")
     print("  data is UNKNOWN here, not new: the tool cannot see the spoken track.")
 print(f"\n{'keyword':16} {'spoken n':>8} {'spoken med':>11} {'lift':>7} {'accts':>5} {'verdict':>8}  |  {'cap n':>5} {'cap med':>9} {'lift':>6} {'accts':>5}")

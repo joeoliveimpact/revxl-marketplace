@@ -139,7 +139,7 @@ whose gate holds, in the order they are written there. `goal` reorders lines 8
 and 9 only, it never gates them. Open-loop candidates from the Sweep rank
 after the last firing gated line, oldest loop first, and the floor applies after
 that.
-Open-loop candidates outrank gated lines for the free slots and are never dropped in favour of a gated line, but at most four moves render: when loops outnumber the free slots, the oldest loops render and the rest are named in the position line.
+Open-loop candidates outrank gated lines for the free slots and are never dropped in favour of a gated line, but at most four moves render: when loops outnumber the free slots, the oldest loops render and the rest are named in the position line. When a blocking unblock line fires (shortform-next guard rail 6), it keeps slot 1, open-loop candidates fill the remaining slots before any other gated line, and still at most four moves render.
 
 **6. Guard rails on the render.** #1 must be actionable now, with its prereqs
 already met in state; if the goal's door is gated, rank the unblock as #1 and

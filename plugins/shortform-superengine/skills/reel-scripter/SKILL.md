@@ -32,7 +32,7 @@ Every ending routes. Edge ids: `../_shared/references/journey-map.md`. Block gra
 (E6) the script is on disk with its evidence line. Pick the next move off it.
 1. *If `angles_unpicked[]` is not empty:* the next Step 1 angle, already vetted. Say: "script the next angle"
 2. *If it is empty:* build the week's plan so the next reel has a source. Say: "content plan"
-3. Let me know when you record and where I can access the raw video(s). Say: "cut this reel" (if installed)
+3. Let me know when you record and where I can access the raw video(s). No editor-superengine? Ask me to install it from the RevXL marketplace first. Say: "cut this reel" (if installed)
 4. *If `pulse.scheduled` is false:* next week's winners land here. Say: "run the weekly pulse"
 
 **Next moves ... no analysis at Step 0a**
@@ -201,7 +201,7 @@ a session boundary. Step 5 removes the one scripted.
 For the chosen hook type, pull the body skeleton from `./references/body-structures.md` and
 the post-hook structure and loop plan from `./references/retention-psychology.md`. Lay out
 this reel's beat list, `Hook, Secondary hook, Body beat 1..n, Proof, CTA`, inside the
-brief's length target. Most winning reels are short; respect it.
+brief's length target.
 
 **Optimize the skeleton BEFORE showing it (mandatory).** A raw beat list is a draft: screen
 it, then present the TIGHTENED version with a one-line why per change. Never hand over an
@@ -291,12 +291,11 @@ Rule: from the hook to the CTA there is never a moment with zero open loops. The
 
 **4c. Flow-check + skeleton integrity.** Read it top to bottom as a viewer, tighten any dead
 beat, then re-read `<slug>.skeleton.md` and confirm the draft matches it **beat-for-beat**:
-print `N beats in, N out, order unchanged`, or name the drift. A change
-the **user** asks for is always allowed: the lock binds voice, not the user.
+print `N beats in, N out, order unchanged`, or name the drift.
 
 **4d. Craft score.** **Hook / Body / CTA / overall (0 to 100)** on the Story Locks rubric
-(`./references/story-locks.md`). Craft only, **never** a performance prediction, and it
-never claims views. State the one highest-leverage fix. Both sub-steps in full:
+(`./references/story-locks.md`).
+State the one highest-leverage fix. Both sub-steps in full:
 `./references/pipeline-detail.md` "Step 4c and 4d".
 
 ### ✋ Checkpoint 4 — Review the scored draft
@@ -326,8 +325,9 @@ exactly as at Checkpoint 0, then render **script written (E6)** above.
 "script idea N from my content plan": idea N of the newest `content-plan-<week>.md` is the
 angle; run Checkpoint 0, then Step 2 (detail: `./references/pipeline-detail.md` "Content
 plan"). No plan on disk is a missing prereq (E0).
-"script that reel": the compass-named `reel-scripter` `open_loops` note is the direction; run
-from Checkpoint 0, keeping that entry (no second one).
+"script that reel": only when the compass's `reel-scripter` loop line offered it, that entry's `open_loops` note is the
+direction; run from Checkpoint 0, keeping that entry (no second one). Off any other block (a pulse
+winner or top hit, a picked plan idea), that block's angle is the direction, never a parked reel.
 
 ---
 

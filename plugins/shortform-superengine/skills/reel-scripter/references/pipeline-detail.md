@@ -1,7 +1,7 @@
 # Pipeline detail ... the prose that moved out of SKILL.md
 
-Moved at 0.4.0 to bring `skills/reel-scripter/SKILL.md` under the 20,000-byte compaction
-ceiling. Nothing here is new, but moved text was lightly edited (em dashes became "...", paths re-pointed to this file): each section is the text that used to
+Moved at 0.4.0 and 0.4.2 to bring `skills/reel-scripter/SKILL.md` under the 20,000-byte compaction
+ceiling; 0.4.2 also adds detail that lives only here. Moved text was lightly edited (em dashes became "...", paths re-pointed to this file): each section is the text that used to
 sit inline at the step named in its heading. `SKILL.md` keeps every step, checkpoint and
 guardrail plus a one-line pointer; this file keeps the detail.
 

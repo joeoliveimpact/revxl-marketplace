@@ -41,7 +41,8 @@ last listing pass.
 4. Recommend, never act. Which to swap out, which to keep, what a replacement
    would need to look like. Roster edits happen in roster mode, on a yes.
 5. Failed pulls: count each handle's `probe-failed` lines in `refresh-log.md`
-   (date, handle, error). No removal recommendation before three failed probes
+   (date, handle, error), only those after its last `probe-ok` line (a recovered
+   handle starts again from zero). No removal recommendation before three failed probes
    across at least two separate runs (two different dates); below that, name the
    count and keep the handle.
 
@@ -117,12 +118,18 @@ block in `SKILL.md` Terminal paths (E23).
 Trigger: "retry the failed handles", the F5 retry. It never runs the full pulse.
 
 1. Read `refresh-log.md`: the handles whose `probe-failed` lines carry the newest
-   run's date, and that run's `window from` date. None logged: say so and end on
+   run's date and whose newest probe line is still `probe-failed` (a later
+   `probe-ok` means it recovered), and that run's `window from` date. None logged: say so and end on
    the `roster health` block (E24).
 2. Balance first, then ✋P1 for those K handles: K × 1cr, plus 1cr per further
    page. Nothing paid runs before this yes.
-3. Step 2's listing for those handles only, on that same window and the same
-   `Idempotency-Key`s. A failure logs another `probe-failed` line.
+3. Step 2's listing for those handles only, on that same window, each key
+   `pulse-<brand>-<handle>-<window_from>-p<n>-r<attempt>`, `<attempt>` being the
+   handle's `probe-failed` lines on that window so far (the in-run pass of Step 2
+   uses the same suffix). A fresh key per attempt: SocialCrawl bills no failed
+   call, and a reused key may replay a stored failure. A failure logs another
+   `probe-failed` line; a pull logs
+   `<date> · probe-ok · @handle · window from <window_from>`.
 4. Steps 4 to 6 as in the pulse, `--window-from` that window. `pulse.last_run`
    is NOT moved (`pulse.last_snapshot` is): moving it would skip days for every
    handle that already pulled. Ends on E14, or F5 while any handle still fails.
