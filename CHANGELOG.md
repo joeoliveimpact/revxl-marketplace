@@ -4,6 +4,18 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.69] ... 2026-09-10
+
+### Fixed
+- **socialcrawl-superengine v0.2.2** ... research no longer defaults to Reddit. The
+search ladder in both `research-plays` and `socialcrawl` had no rung below the
+per-platform search, so Reddit `omni-search` was the first "voice of customer" call
+offered and the Voice-of-Customer play opened on it; Perplexity and Tavily existed only
+as platform-table rows with no routing sentence. Both ladders now start at the free
+built-in WebSearch rung, then `perplexity/research` / `tavily/search` at 1cr flat, then
+the platform rung; the VoC play offers the three ways in before booking Reddit. Wording
+only ... no prices changed, no endpoint added.
+
 ## [0.1.68] ... 2026-09-09
 
 ### Added

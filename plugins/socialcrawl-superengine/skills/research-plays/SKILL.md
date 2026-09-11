@@ -48,9 +48,13 @@ metric in the output.
    (**2–5cr+**, 1cr per internal page with a floor of 2, driven by `max=`) before
    platform-native comment endpoints. Quote the range, never the floor.
 6. **Search cheap-first — climb the ladder, never open at the top.** Any play that searches
-   starts on the cheapest rung that answers the question: `/v1/{platform}/search` (**1cr flat**)
-   when the platform is known · `/v1/reddit/omni-search` (**5–8cr+**, metered: 1cr per search
-   page + 1cr per expanded thread, min 5) for all of Reddit with top comments inline ·
+   starts on the rung that matches **where the answer lives** — Reddit is one rung, never the
+   default: the free built-in WebSearch (**0cr**, no key) when the answer is on the public web ·
+   `/v1/perplexity/research` (**1cr flat**) for a written answer with the pages it cited, or
+   `/v1/tavily/search` (**1cr flat**) for ranked web results · `/v1/{platform}/search`
+   (**1cr flat**) when the platform is known · `/v1/reddit/omni-search` (**5–8cr+**, metered:
+   1cr per search page + 1cr per expanded thread, min 5) for what people say in threads
+   across all of Reddit, top comments inline ·
    `/v1/search/news` (**~7cr**, metered: base fee + 1cr per leg that returns articles) for
    news · `/v1/search/forums` (**10cr flat**) for Reddit + Hacker News + Naver together ·
    `/v1/search/everywhere` (**20cr flat**) only for a true 12-platform sweep. A request that
@@ -67,6 +71,11 @@ metric in the output.
 **When:** building or refreshing a brand brain; hunting pain language, objections, and
 audience vocabulary for a niche.
 
+0. **Offer the ways in before booking Reddit — Reddit is the verbatim option, not the
+   default.** Name the three and let the user pick: `GET /v1/perplexity/research?query=…`
+   (**1cr flat**) for a fast cited summary of the complaints, cheapest but no verbatim
+   quotes; step 1 for verbatim voice from the threads themselves; step 3's big gun for the
+   clustered deep version.
 1. `GET /v1/reddit/omni-search?query=<niche keyword>` (**5–8cr+ each**, metered: 1cr per
    search page + 1cr per successfully-expanded thread, min 5; failed threads refunded) —
    threads across all of Reddit, subreddit attribution, top comments inline. Run 2–4
@@ -185,12 +194,15 @@ Per-play runbooks: **[references/big-guns.md](references/big-guns.md)**.
 | Universal 12-source search | `search/everywhere` | **20** | flat |
 
 > **Before booking the 20cr sweep, climb the search ladder.** Most voice-of-customer questions
-> are answered a rung or two lower — but only the bottom rung is a flat 1cr. The middle rungs
-> are metered, so quote the range:
+> are answered a rung or two lower — the free rung costs nothing, the 1cr rungs are flat, and
+> the middle rungs are metered, so quote the range. Pick the rung by where the answer lives;
+> Reddit is a rung, not the default:
 >
 > | Scope of the question | Endpoint | Credits | What drives it |
 > |----------------------|----------|---------|----------------|
-> | One platform (named or implied) | `/v1/{platform}/search` | **1** | flat — the only genuinely 1cr rung |
+> | Public-web answer (facts, how-to, what a site says) | free built-in WebSearch | **0** | free — no key, no call out |
+> | Written answer with citations · ranked web results | `/v1/perplexity/research` · `/v1/tavily/search` | **1** | flat, each |
+> | One platform (named or implied) | `/v1/{platform}/search` | **1** | flat |
 > | All of Reddit, top comments inline | `/v1/reddit/omni-search` | **5–8+** | 1cr/search page + 1cr/expanded thread, min 5 |
 > | News across the web | `/v1/search/news` | **~7** | base fee + 1cr/leg returning articles |
 > | Discussion sites together (Reddit + Hacker News + Naver) | `/v1/search/forums` | **10** | flat |

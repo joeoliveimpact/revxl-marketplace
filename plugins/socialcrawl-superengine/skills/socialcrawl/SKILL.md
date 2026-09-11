@@ -107,7 +107,7 @@ Five endpoints that change the cost math for everything:
 | `GET /v1/prism/lookup?url=…` | **1** | Universal URL dispatcher — any social/commerce URL → the right detail endpoint's unified response. ⚠️ **Bills 1cr, not 0.** The stored catalog price, the vendor's own `pricing.md`, and `utility/endpoints` all say 0; measured live and uncached, it charges 1 (08.23.26). Still the cheapest way to resolve a pasted URL — just not a free one. |
 | `POST /v1/prism/post-stats` | **1 _per URL_** | Current engagement for up to 100 post URLs in one call (failed URLs refunded). ⚠️ **Metered per successful URL, NOT per call** — 1cr most platforms, **5cr Instagram and LinkedIn**. 100 IG URLs = **500 credits**, not 1. **POST only** — URLs go in a JSON body. |
 | `GET /v1/prism/comments?url=…` | **1 _per page_** | Every comment on a post, replies nested, paginated to completion. ⚠️ **Metered: 1cr per internal page scanned (min 2), driven by `max`, not `limit`.** A deep pull is not 1 credit. An Instagram URL is a flat 5cr instead. Still usually beats the platform-native comments call. |
-| `GET /v1/reddit/omni-search?query=…` | **1 _per page + thread_** | One keyword → threads across all of Reddit with top comments inline. Still the cheapest voice-of-customer entry point, but ⚠️ **metered: 1cr per search page + 1cr per expanded thread (min 5)**; failed threads refunded. |
+| `GET /v1/reddit/omni-search?query=…` | **1 _per page + thread_** | One keyword → threads across all of Reddit with top comments inline. The verbatim voice-of-customer route — one option, not the default (`perplexity/research` at 1cr flat answers many of the same questions as a cited summary) — and ⚠️ **metered: 1cr per search page + 1cr per expanded thread (min 5)**; failed threads refunded. |
 | `GET /v1/prism/handle-audit?handle=…` | **5** | Should you pull this handle? Scores it across platforms and **projects the data volume + credit cost** before you spend. |
 
 ## Platforms
@@ -244,14 +244,18 @@ first rung.
 
 | Your goal | Use this | Credits |
 |-----------|----------|---------|
+| Answer is on the public web (facts, how-to, what a site says) | free built-in WebSearch | 0 |
+| Written answer with citations · ranked web results | `/v1/perplexity/research` · `/v1/tavily/search` | 1 each |
 | Search a platform you already chose | `/v1/{platform}/search` (tiktok, youtube, reddit, github, google, hackernews…) | 1 |
 | One keyword across all of Reddit | `/v1/reddit/omni-search` | **5–8+** ⚠️ metered: 1/search page + 1/expanded thread, min 5 |
 | News across the web | `/v1/search/news` | **~7** ⚠️ metered: base fee + 1/leg returning articles |
 | Fused forum search (Reddit + Hacker News + Naver) | `/v1/search/forums` | 10 |
 | One query across 12 social platforms | `/v1/search/everywhere` | 20 |
 
+If the answer is on the public web rather than on a social platform, start at the free
+WebSearch rung or `perplexity/research` (1cr flat) — Reddit is a rung, not the default.
 If the platform is known, per-platform `search` at 1cr is the answer — twenty times cheaper
-than `everywhere`, and the only flat-1cr rung on this ladder.
+than `everywhere`.
 `search/forums` (10cr) is the middle rung for voice-of-customer questions
 that span discussion sites. Escalate to `/v1/search/everywhere` (20cr) only when you genuinely
 want the cross-platform sweep and would otherwise be fusing a dozen results by hand.
@@ -316,9 +320,13 @@ detail endpoint's unified response — prefer it over per-platform URL parsing.
 4. Present the code without executing
 
 **User wants a search ("what's everyone saying about X", "search across Reddit + Twitter + YouTube + …"):**
-1. **Climb the ladder — start at the bottom rung that answers the question**, not at the top:
-   - One platform named or implied → `/v1/{platform}/search` (**1cr flat** — the only flat
-     rung). All of Reddit → `/v1/reddit/omni-search` (**5–8cr+**, metered: 1cr per search
+1. **Climb the ladder — start at the bottom rung that answers the question**, not at the top.
+   Pick the rung by where the answer lives; Reddit is a rung, not the default:
+   - Public-web question (facts, a site, how-to, "what do people say" with no platform in
+     mind) → free built-in WebSearch (**0cr**), then `/v1/perplexity/research` (**1cr flat**,
+     cited answer) or `/v1/tavily/search` (**1cr flat**, ranked results).
+   - One platform named or implied → `/v1/{platform}/search` (**1cr flat**).
+     All of Reddit → `/v1/reddit/omni-search` (**5–8cr+**, metered: 1cr per search
      page + 1cr per expanded thread, min 5). News → `/v1/search/news` (**~7cr**, metered:
      base fee + 1cr per leg returning articles).
    - Discussion sites collectively (Reddit + Hacker News + Naver) → `/v1/search/forums` (**10cr**).

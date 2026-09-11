@@ -1,5 +1,18 @@
 # Changelog — socialcrawl-superengine
 
+## 0.2.2 - 2026-09-10
+
+### Fixed
+- **Research no longer defaults to Reddit.** The search ladder in both `research-plays` and
+  `socialcrawl` had no rung below `/v1/{platform}/search`, so `reddit/omni-search` was the
+  first voice-of-customer call on offer and the Voice-of-Customer play opened on it.
+  `perplexity/research` and `tavily/*` were listed as platforms but never routed to. Both
+  ladders now open with the free built-in WebSearch rung (0cr, no key), then
+  `perplexity/research` (cited answer) or `tavily/search` (ranked results) at 1cr flat, then
+  the platform rung; the "only 1cr rung" superlatives are gone; the VoC play names the three
+  ways in and lets the user pick before any Reddit call. Reddit is a rung, not the default.
+  Wording only - no prices changed, no endpoints added.
+
 ## 0.2.1 - 2026-08-25
 
 ### Fixed
