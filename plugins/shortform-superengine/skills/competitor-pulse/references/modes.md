@@ -124,9 +124,10 @@ Trigger: "retry the failed handles", the F5 retry. It never runs the full pulse.
 2. Balance first, then ✋P1 for those K handles: K × 1cr, plus 1cr per further
    page. Nothing paid runs before this yes.
 3. Step 2's listing for those handles only, on that same window, each key
-   `pulse-<brand>-<handle>-<window_from>-p<n>-r<attempt>`, `<attempt>` being the
-   handle's `probe-failed` lines on that window so far (the in-run pass of Step 2
-   uses the same suffix). A fresh key per attempt: SocialCrawl bills no failed
+   `pulse-<brand>-<handle>-<window_from>-p<n>-r<local HHMMSS>`, `<local HHMMSS>` being
+   the local time at the moment of the retry (the in-run pass of Step 2 and a
+   502/503 retry are keyed the same way). A fresh key per retry, across passes and
+   runs: SocialCrawl bills no failed
    call, and a reused key may replay a stored failure. A failure logs another
    `probe-failed` line; a pull logs
    `<date> · probe-ok · @handle · window from <window_from>`.
@@ -166,3 +167,12 @@ it is set, and the marker's `competitor_pulse` block INTO `state.pulse`
 when it names a weekday, lowercased, otherwise null). Seeded at file creation only and
 never overwritten afterwards. Without it a pulse-first home reports setup as
 not done, and its project path as null, for good.
+
+## Week prices
+
+Relocated verbatim from `SKILL.md` Credit discipline at 0.4.2 (byte budget).
+
+Price from the loaded roster, N handles: a typical week ≈ **(N+2)cr**, plus 1cr
+per further listing page. Heavy week (6 deep-legged winners with shares +
+comments) ≈ **(N+62)cr** (6 × 5cr shares + 6 × ~5cr comments + listing). Quiet
+week = the listing cost and stops there.

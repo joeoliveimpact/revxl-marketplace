@@ -161,7 +161,7 @@ in 0.3.4's `next-moves.md`.
 
 ## Cross-plugin triggers (external, detect-first, one line when absent)
 
-Blocks may quote these ONLY behind an *installed* conditional.
+Blocks may quote these behind an *installed* conditional, or always render a move that carries its own install clause (ask me to install it from the RevXL marketplace first) and ends with `(if installed)`, as F9 move 1 and E6 move 3 do. A move with no install clause still needs the conditional.
 
 | Plugin | Detect | Skill / phrase | When |
 |---|---|---|---|

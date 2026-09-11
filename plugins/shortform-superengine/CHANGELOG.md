@@ -4,6 +4,74 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.4.2] ... 2026-09-11
+
+### Added
+- **A structure gate at reel-scripter Step 4b.** Checkpoint 2 now writes the
+  locked skeleton to `<project>/scripts/<slug>.skeleton.md`: one numbered line per
+  beat, loops tagged `[open ID]`, `[close ID]` and `[hold ID]` (a beat that deepens
+  a loop already open), plus an optional `visual_loop:` line. `structure_gate.py`
+  fails an early close of the main loop, a flat run of two untagged beats, a dead
+  seam with no loop open, and a main loop that never pays off (the unpaid-loop
+  check, which a declared visual loop does not excuse). Step 4c never starts before
+  exit 0, and Checkpoint 4 shows the gate's `Seams:` line.
+- **The editor-superengine handoff.** The script-written block (E6) offers the next
+  step after recording: "Let me know when you record and where I can access the raw
+  video(s)", `Say: "cut this reel"` (if installed), with a line on installing
+  editor-superengine from the RevXL marketplace first. It replaces the "regenerate
+  my visuals" move.
+- **"retry the failed handles"**, the pulse's failed-handles-only retry: it re-lists
+  only the handles whose newest probe line is still `probe-failed`, on the window
+  they failed, priced at Checkpoint P1, and never moves `pulse.last_run`.
+- **Open loops in the compass.** `shortform-next` (E20 and F3) renders an open loop
+  by its skill: "resume my cross-reference", "script idea N from my content plan"
+  or "script that reel". reel-scripter writes its `open_loops` entry at Checkpoint
+  0, so an abandoned reel reaches the compass, and removes it at Step 5.
+- **Two `check_routing.py` checks.** An id cited anywhere in a block body with no
+  journey-map row is an error, and shortform-next's (E20) and (F3) blocks must
+  carry byte-identical move lines.
+
+### Changed
+- **txt transcripts now count and are diagnosed.** `analyze.py` reads the
+  `transcripts/<creator>/*.txt` files as spoken transcripts: they count toward
+  `transcript_coverage` AND feed the spoken hook and theme diagnosis, so a counted
+  reel is never ranked on its caption. On a project with txt transcripts the hook
+  and theme tables shift; a JSON-only project reads the same as before. A NO
+  VOICEOVER header or an empty body does not count, and a reel with both kinds
+  counts once, its JSON text diagnosed. `field_vet.py` reads the same files.
+- **Schema 1.5, additive only.** `meta.window_reels`, `window_reels_transcribed`,
+  `transcribed_newest_published_at`, `transcribed_median_published_at` and
+  `transcript_sources` (json, txt, both), plus `period_breakouts.window_source`.
+  Nothing is renamed or removed; `render_visuals.py` accepts 1.5.
+- **The pulse window starts at `pulse.last_run`.** `window_from` is the older of
+  the last run and today minus 7 days (14 on request), so a missed week is covered
+  in full and the window is never under 7 days; `analyze.py --window-from` takes
+  it. Listings page on with `max_id` until the window is covered (pinned reels never
+  decide the stop). Each page is keyed `pulse-<brand>-<handle>-<window_from>-p<n>`,
+  so a resumed run replays at 0cr within 24h, and every retry (a 502/503, the
+  failed-handles pass, retry mode) adds a fresh `-r<local HHMMSS>`. A handle
+  that fails logs `probe-failed` in `refresh-log.md`, a
+  later pull logs `probe-ok`, and roster health counts only the failures after a
+  handle's last `probe-ok`.
+- **The weekly brief** takes breakouts from `period_breakouts`, never the all-time
+  leaderboard (the render now labels those rows as the leaderboard), and states
+  this window's transcript coverage, the transcribed sample's recency, the tier
+  balance and the handles that still failed. `whats-new.json` hook moves carry
+  `field_n` and `client_n`.
+
+### Fixed
+- `field_vet.py`: the client's own reels no longer count as the field; with no
+  spoken rows it prints a DEGRADED banner and a `[cap]` caption verdict instead of
+  calling a keyword new; the strongest angle word is the first WINNER; a keyword
+  match ends on a word boundary.
+- `scripting_brief.py`: unranked rows count as neither winners nor flops; the
+  opener-order line is gone from the brief; a DEGRADED analysis carries a warning
+  line; a schema major-version mismatch stops before anything is written.
+- `analyze.py` snapshots the `analysis-data.json` it is about to overwrite into
+  `history/` (local date, never a duplicate). `render_visuals.py` resolves a
+  relative `--prev` against the project and exits 1 on an unreadable one before
+  writing anything.
+
 ## [0.4.1] ... 2026-09-08
 
 ### Added
@@ -89,7 +157,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   results" routes to the weekly pulse, and every block offering them is marked
   "(if installed)".
 - The SKLLPLG-236 reel-scripter repairs and the SKLLPLG-234 competitor-pulse
-  repairs ship in 0.4.1. No Python script in this plugin changed in 0.4.0.
+  repairs ship in 0.4.2. No Python script in this plugin changed in 0.4.0.
 
 ## [0.3.4] — 2026-09-05
 

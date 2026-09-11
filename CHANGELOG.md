@@ -4,6 +4,18 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.69] ... 2026-09-11
+
+### Changed
+- **shortform-superengine v0.4.2** ... reel-scripter gains a structure gate at
+Step 4b (a tagged skeleton written at Checkpoint 2, checked for an early close, a
+flat run, a dead seam and an unpaid main loop) and a handoff to editor-superengine
+once the reel is recorded ("cut this reel"). The weekly pulse opens its window at
+the last run with a 7-day floor, pages with `max_id`, keys every page and retry,
+and adds "retry the failed handles". Behaviour change: txt transcripts now count
+toward coverage and feed the spoken diagnosis, so hook and theme tables shift on
+projects that have them; JSON-only projects are unchanged. Schema 1.5, additive.
+
 ## [0.1.68] ... 2026-09-09
 
 ### Added

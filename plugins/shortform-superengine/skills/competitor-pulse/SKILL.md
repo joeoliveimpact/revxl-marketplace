@@ -159,10 +159,7 @@ it never spends by itself.
 | New-handle verify / backfill | `instagram/profile` / `instagram/profile/reels` | 1cr / ~3cr | roster ops, gated |
 | Transcription | local chain (Groq + Whisper parallel) | 0cr | automatic — runtime cost, not credits |
 
-Price from the loaded roster, N handles: a typical week ≈ **(N+2)cr**, plus 1cr
-per further listing page. Heavy week (6 deep-legged winners with shares +
-comments) ≈ **(N+62)cr** (6 × 5cr shares + 6 × ~5cr comments + listing). Quiet
-week = the listing cost and stops there.
+Week totals (typical, heavy, quiet): `./references/modes.md` "Week prices".
 
 ---
 
@@ -224,8 +221,8 @@ else `../socialcrawl/SKILL.md` and `../socialcrawl/references/instagram.md:126-1
 - One `Idempotency-Key` per handle + window, suffixed per page
   (`pulse-<brand>-<handle>-<window_from>-p<n>`; one key reused with other params returns
   422), so a resumed run replays at 0cr within 24h and never re-bills. A 502/503
-  retries once.
-- **Failed handles.** A handle that still fails logs `<date> · probe-failed · @handle · <error> · window from <window_from>` in `refresh-log.md`, then gets one failed-handles-only pass before the Step 4 merge, keys suffixed `-r<attempt>` (`./references/modes.md`); a failure there logs again, a pull logs it as `probe-ok`, with no `<error>`. Still failing: the brief ends on F5.
+  retries once, key + `-r<local HHMMSS>` taken at the retry.
+- **Failed handles.** A handle that still fails logs `<date> · probe-failed · @handle · <error> · window from <window_from>` in `refresh-log.md`, then gets one failed-handles-only pass before the Step 4 merge, keys suffixed `-r<local HHMMSS>` (`./references/modes.md`); a failure there logs again, a pull logs it as `probe-ok`, with no `<error>`. Still failing: the brief ends on F5. A handle whose newest probe line was `probe-failed` and pulls in the normal listing logs `probe-ok` the same way.
 - Client `GET /v1/instagram/profile` (1cr) → refresh `client_followers` in the
   config if changed.
 - **New reels** = items whose `post.url` is not already in `source/**/reels`
