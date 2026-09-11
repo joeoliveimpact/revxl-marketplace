@@ -169,6 +169,9 @@ label, at each seam, which loop is still OPEN. Fail conditions to fix before Che
 - **Flat run** ... 2+ consecutive beats that are pure declaration with no forward pull. Convert one
   into a question-chain link that opens the next beat.
 
+Rule: from the hook to the CTA there is never a moment with zero open loops. The spanning loop
+(opened at hook or secondary) resolves in the final beat, not before.
+
 ## Step 4c and 4d ... flow-check, skeleton integrity, craft score
 
 **4c. Flow-check + skeleton integrity.** Read the script top to bottom as a viewer: does each

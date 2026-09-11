@@ -279,15 +279,15 @@ assembled wording against the brief's §8 Avoid list and the losing tables (deta
 **4b. Loop integrity (mandatory, before the flow read).** Run the gate on the skeleton file:
 
 ```bash
-py -3.12 "${CLAUDE_PLUGIN_ROOT}/skills/reel-scripter/structure_gate.py" <project>/scripts/<slug>.skeleton.md
+python "${CLAUDE_PLUGIN_ROOT}/skills/reel-scripter/structure_gate.py" <project>/scripts/<slug>.skeleton.md
 ```
 
 Exit 1 fails the step: apply its fix hints (a beat added, cut or moved is the user's call),
 re-tag, re-run. Exit 2: rewrite the file in the Checkpoint 2 shape, re-run. Never go on to 4c
-before exit 0. Doctrine: `./references/pipeline-detail.md` "Step 4b".
+before exit 0, except when the gate cannot run at all (no Python): say so plainly, do the manual
+seam walk in the doctrine, then continue to 4c. Doctrine: `./references/pipeline-detail.md` "Step 4b".
 
-Rule: from the hook to the CTA there is never a moment with zero open loops. The spanning loop
-(opened at hook or secondary) resolves in the final beat, not before. Flag every seam you fixed.
+Flag every seam you fixed.
 
 **4c. Flow-check + skeleton integrity.** Read it top to bottom as a viewer, tighten any dead
 beat, then re-read `<slug>.skeleton.md` and confirm the draft matches it **beat-for-beat**:

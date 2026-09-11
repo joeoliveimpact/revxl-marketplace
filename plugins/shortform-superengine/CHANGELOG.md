@@ -38,7 +38,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   reel is never ranked on its caption. On a project with txt transcripts the hook
   and theme tables shift; a JSON-only project reads the same as before. A NO
   VOICEOVER header or an empty body does not count, and a reel with both kinds
-  counts once, its JSON text diagnosed. `field_vet.py` reads the same files.
+  counts once, its JSON text diagnosed. `field_vet.py` reads the same competitor txt files (never the client's `reels-full`).
 - **Schema 1.5, additive only.** `meta.window_reels`, `window_reels_transcribed`,
   `transcribed_newest_published_at`, `transcribed_median_published_at` and
   `transcript_sources` (json, txt, both), plus `period_breakouts.window_source`.

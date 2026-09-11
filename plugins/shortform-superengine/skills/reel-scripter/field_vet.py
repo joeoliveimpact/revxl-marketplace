@@ -50,7 +50,7 @@ for p in tpaths:
     hname = os.path.splitext(os.path.basename(p))[0]
     for r in _items_of(J(p)):
         t = (r.get("text") or "").lower(); v = r.get("views") or 0
-        if t and r.get("url"): tx_urls.add(r["url"])
+        if t and v and r.get("url"): tx_urls.add(r["url"])
         if t and v: spoken.append((t, v, hname))
 # 0.4.2 (D5): transcripts/<creator>/<shortcode>.txt are spoken rows too, read as analyze.py reads them.
 # NO VOICEOVER or an empty body is no spoken track; reels-full is the client's own folder, not the field.

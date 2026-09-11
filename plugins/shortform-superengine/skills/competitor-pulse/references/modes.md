@@ -119,7 +119,7 @@ Trigger: "retry the failed handles", the F5 retry. It never runs the full pulse.
 
 1. Read `refresh-log.md`: the handles whose `probe-failed` lines carry the newest
    run's date and whose newest probe line is still `probe-failed` (a later
-   `probe-ok` means it recovered), and that run's `window from` date. None logged: say so and end on
+   `probe-ok` means it recovered), and that run's `window from` date. None selected (none logged, or every one recovered): say so and end on
    the `roster health` block (E24).
 2. Balance first, then ✋P1 for those K handles: K × 1cr, plus 1cr per further
    page. Nothing paid runs before this yes.
@@ -128,7 +128,7 @@ Trigger: "retry the failed handles", the F5 retry. It never runs the full pulse.
    the local time at the moment of the retry (the in-run pass of Step 2 and a
    502/503 retry are keyed the same way). A fresh key per retry, across passes and
    runs: SocialCrawl bills no failed
-   call, and a reused key may replay a stored failure. A failure logs another
+   call, and a reused key may replay a stored failure. A 502/503 retry waits at least 1s before retrying (a 503 honours `Retry-After`). A failure logs another
    `probe-failed` line; a pull logs
    `<date> · probe-ok · @handle · window from <window_from>`.
 4. Steps 4 to 6 as in the pulse, `--window-from` that window. `pulse.last_run`

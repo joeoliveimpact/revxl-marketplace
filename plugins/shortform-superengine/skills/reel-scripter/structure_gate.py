@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Structure gate: reel-scripter Step 4b loop integrity, run on the Checkpoint 2 skeleton.
 
-Usage:  py -3.12 structure_gate.py <project>/scripts/<slug>.skeleton.md
+Usage:  python structure_gate.py <project>/scripts/<slug>.skeleton.md
 
 Reads:   the skeleton file named on the command line.
 Writes:  nothing. Prints one line per failure, a Seams line, and a PASS/FAIL line.
@@ -169,7 +169,7 @@ def check_dead_seam(beats):
 
 def main(argv):
     if len(argv) != 2:
-        say("usage: py -3.12 structure_gate.py <project>/scripts/<slug>.skeleton.md")
+        say("usage: python structure_gate.py <project>/scripts/<slug>.skeleton.md")
         return 2
     try:
         with open(argv[1], encoding="utf-8-sig") as f:

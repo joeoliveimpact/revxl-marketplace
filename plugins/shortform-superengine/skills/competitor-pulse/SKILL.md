@@ -55,7 +55,7 @@ beside it, registry id in parentheses.
 (F5)
 1. Retry just the failed handles, listing legs only. Say: "retry the failed handles"
 2. If the same handles keep failing, read the roster. Say: "roster health"
-3. Proceed on the partial set, with the coverage caveat stated in the brief.
+3. Script this week's top reel from `period_breakouts` on the partial set. Say: "script that reel"
 
 **Next moves ... no analysis yet**
 (E0)
@@ -221,7 +221,7 @@ else `../socialcrawl/SKILL.md` and `../socialcrawl/references/instagram.md:126-1
 - One `Idempotency-Key` per handle + window, suffixed per page
   (`pulse-<brand>-<handle>-<window_from>-p<n>`; one key reused with other params returns
   422), so a resumed run replays at 0cr within 24h and never re-bills. A 502/503
-  retries once, key + `-r<local HHMMSS>` taken at the retry.
+  retries once after 1s+, key + `-r<local HHMMSS>` taken at the retry.
 - **Failed handles.** A handle that still fails logs `<date> · probe-failed · @handle · <error> · window from <window_from>` in `refresh-log.md`, then gets one failed-handles-only pass before the Step 4 merge, keys suffixed `-r<local HHMMSS>` (`./references/modes.md`); a failure there logs again, a pull logs it as `probe-ok`, with no `<error>`. Still failing: the brief ends on F5. A handle whose newest probe line was `probe-failed` and pulls in the normal listing logs `probe-ok` the same way.
 - Client `GET /v1/instagram/profile` (1cr) → refresh `client_followers` in the
   config if changed.
@@ -314,7 +314,7 @@ Terminal-paths block it ends on.
 - **Comment pulse**: scope, price, pull, then the two-layer intel doc. Ends on
   the `comment intel` block.
 - **14-day window**: the same pipeline with the window set to 14. Ends on E23.
-- **Failed-only retry**: the F5 retry over the logged failed handles only. Ends on E14, or F5, or E24 when nothing is logged.
+- **Failed-only retry**: the F5 retry. Ends on E14, or F5, or E24 with none selected (none logged, or every one recovered).
 
 ---
 
