@@ -100,7 +100,7 @@ one with a shallower call. Probe for the install the way that file says, then:
 | Needed | Where | Absent |
 |---|---|---|
 | At least one source | analysis, `voc/`, or a subject brief | E0: the no-analysis block above names the door |
-| The field analysis | `<project>/analysis-data.json` + `state.analysis.date` | F2: the no-analysis block. In `field-first` this is the door |
+| The field analysis | `<project>/analysis-data.json` + `state.analysis.date` | F2: the no-analysis block. In `field-first` this is the door, unless Step 0 item 1's own-material exception applies |
 | Setup (marker + SocialCrawl key) | `~/.claude/shortform-superengine/.superengine` | the FRESH lane cannot run: say so, plan on disk sources, and offer the setup line the no-analysis block above carries |
 | Brand voice, OPTIONAL | `~/.claude/revxl/<brand>/voc/` | the plan still runs. Without it there is no own-material lane, so ideas come from the field and the audience only, the plan header says `voice: not captured`, and the client's language enters when an idea is picked and scripted. Offer a brand-brain capture once (F7), then proceed |
 

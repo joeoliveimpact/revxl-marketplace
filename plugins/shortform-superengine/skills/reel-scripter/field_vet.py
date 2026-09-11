@@ -106,7 +106,8 @@ for kw in KEYWORDS:
     sn, sm, smult, sacc, sv = scan(spoken, SPOKEN_ACCT, kw)
     cn, cm, cmult, cacc, cv = scan(caption, CAPTION_ACCT, kw)
     verdicts[kw] = (cv, cmult, cn) if DEGRADED else (sv, smult, sn)
-    print(f"{kw[:16]:16} {sn:>8} {sm:>11,.0f} {smult:>6.2f}x {sacc:>5} {sv:>8}  |  {cn:>5} {cm:>9,.0f} {cmult:>5.2f}x {cacc:>5}")
+    # CK5: DEGRADED, the verdict column shows the same caption verdict the VERDICT section prints
+    print(f"{kw[:16]:16} {sn:>8} {sm:>11,.0f} {smult:>6.2f}x {sacc:>5} {(cv + TAG if DEGRADED else sv):>8}  |  {cn:>5} {cm:>9,.0f} {cmult:>5.2f}x {cacc:>5}")
 
 # recommendation off the SPOKEN read (primary). THREE buckets, deliberately split:
 # - WINNER/NEUTRAL: field-backed, frame on it.

@@ -109,12 +109,12 @@ in 0.3.4's `next-moves.md`.
 ### Happy path
 | ID | From, ending | Routes to |
 |---|---|---|
-| E1 | onboarding, Step 8 activation | competitor-cross-reference (primary, whatever the goal) - shortform-next always, whatever the goal - brand-brain (if skipped at 4b) - creator-strategy-harvest - pulse schedule (only if an analysis exists AND neither state nor marker says scheduled) |
+| E1 | onboarding, Step 8 activation | competitor-cross-reference (primary, whatever the goal) - shortform-next always, whatever the goal - brand-brain (if skipped at 4b) - creator-strategy-harvest - pulse schedule (only if an analysis exists AND neither state nor marker says scheduled) - reel-scripter "write a reel script from my analysis" (a prior analysis on disk) - shortform-start "start shortform" (a prior analysis on disk) |
 | E2 | onboarding, sub-mode exits | back to work - shortform-next - "show my setup" |
 | E3 | competitor-cross-reference, roadmap delivered | visual pack - script the top gap (reel-scripter) - feed themes to brand-brain - content-plan - weekly pulse [schedule] |
 | E4 | competitor-cross-reference, stopped at checkpoint 2 (thin set) | run more seeds - park and resume (F1) - proceed thin (explicit) |
 | E5 | competitor-cross-reference, stopped at checkpoint 3 (credit decline) | shrink the set - top up and resume (F1) - park (F4) |
-| E6 | reel-scripter, script written | script the next angle (from `angles_unpicked[]`) - content-plan - regenerate visuals - weekly pulse [schedule] |
+| E6 | reel-scripter, script written | script the next angle (from `angles_unpicked[]`) - content-plan - first cut of the recorded reel (editor-superengine, if installed; Cross-plugin triggers) - weekly pulse [schedule] |
 | E7 | content-plan, an idea picked from the plan | reel-scripter Step 1 with that idea as the angle (the pick carries its source tag and angle) |
 | E8 | content-plan, plan presented, no pick | saved pointer ("script idea N from my content plan") - weekly refresh via the pulse - lean the plan toward a pillar - script the top idea |
 | E9 | reel-scripter, Step 0a no analysis (field-first) | competitor-cross-reference, as a written block with the reason. This ending's general form across the MAKE skills is F2 |
@@ -128,7 +128,7 @@ in 0.3.4's `next-moves.md`.
 | E17 | shortform-start, first run (no marker, no state) | the five goals asked as a plain question (make a reel / plan the week / read my results / read the field / set up), then the four-move block whose #1 is the door that goal needs first |
 | E18 | shortform-start, marker present and state absent (migration) | writes `state/<brand>.json` from the marker (incl. the `competitor_pulse` block), sets `active_brand`, says so in one line, then delegates to shortform-next |
 | E19 | shortform-start, returning client | one-line position + open loops, then shortform-next |
-| E20 | shortform-next, compass rendered | the ranked moves themselves. The (E20) block's line order is the rank; `goal` reorders the two MAKE lines only; open-loop candidates rank after the last firing gated line and are never dropped by the four-move cap, which drops the lowest-ranked gated line instead. #1 must be actionable now |
+| E20 | shortform-next, compass rendered | the ranked moves themselves. The (E20) block's line order is the rank; `goal` reorders the two MAKE lines only; open-loop candidates rank after the last firing gated line. Open-loop candidates outrank gated lines for the free slots and are never dropped in favour of a gated line, but at most four moves render: when loops outnumber the free slots, the oldest loops render and the rest are named in the position line. Lines 11 to 13 carry the loop phrases by the entry's `skill` (competitor-cross-reference "resume my cross-reference", content-plan "script idea N from my content plan", reel-scripter "script that reel"), one move per entry, oldest first; an entry from any other skill is said in the position line, never ranked. #1 must be actionable now |
 | E21 | content-plan, plan written | script idea 1 (reel-scripter, primary) - lean the plan toward a pillar - refresh next week's plan (pulse) - read last week's results (own-content-analysis "(if installed)") |
 | E22 | competitor-cross-reference, resumed from `analysis.resume` | back into the pipeline at the stored checkpoint, then E3 |
 | E23 | competitor-pulse, 14-day window run | the widened brief, then E14's moves |
@@ -168,6 +168,7 @@ Blocks may quote these ONLY behind an *installed* conditional.
 | socialcrawl-superengine | `~/.claude/socialcrawl-superengine/.superengine` OR a directory matching `~/.claude/plugins/cache/*/socialcrawl-superengine/` | `research-plays` ... the client-facing phrase is "vet this creator" (if installed) | a deep play beyond `socialcrawl-endpoints.md`. Absent -> F9, never a stall. To install it the client asks Claude to add the RevXL marketplace `joeoliveimpact/revxl-marketplace` and install the plugin; the client types nothing |
 | workspace-superengine | the `revxl-vault-search` skill resolves | `workspace-superengine:revxl-vault-search` | the named Vault trigger points in `vault-api.md`. This is a Skill call the plugin makes, never a phrase quoted to the client. Absent -> F3 |
 | notebooklm-superengine | the `notebooklm-build` skill resolves, or the local NotebookLM CLI is on PATH | `notebooklm-build` ... the client-facing phrase is "build a notebook" (if installed) | E13 only, over a finished harvest folder |
+| editor-superengine | the `reel-first-cuts` skill resolves | `reel-first-cuts` ... the client-facing phrase is "cut this reel" (if installed) | E6 only, once the client has recorded the script and says where the raw video is |
 
 ## Maintenance
 

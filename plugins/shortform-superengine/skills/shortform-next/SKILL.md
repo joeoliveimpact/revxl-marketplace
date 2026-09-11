@@ -137,9 +137,9 @@ rank is step 5's.
 **5. Rank.** The `(E20)` block's line order IS the rank: render the lines
 whose gate holds, in the order they are written there. `goal` reorders lines 8
 and 9 only, it never gates them. Open-loop candidates from the Sweep rank
-after the last firing gated line, oldest loop first. The four-move cap and the
-floor apply after that, and the cap never drops an open-loop candidate: when it
-binds, the lowest-ranked gated line goes instead.
+after the last firing gated line, oldest loop first, and the floor applies after
+that.
+Open-loop candidates outrank gated lines for the free slots and are never dropped in favour of a gated line, but at most four moves render: when loops outnumber the free slots, the oldest loops render and the rest are named in the position line.
 
 **6. Guard rails on the render.** #1 must be actionable now, with its prereqs
 already met in state; if the goal's door is gated, rank the unblock as #1 and

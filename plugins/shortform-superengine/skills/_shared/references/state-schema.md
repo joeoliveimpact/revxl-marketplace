@@ -125,7 +125,9 @@ files, fully isolated.
    times in one session and must never alter the record it reads. One more
    exception: the F7 decline entry is written at Step 0c, the moment the client
    proceeds without the refresh, not at the end, so an abandoned run still keeps
-   the decline.
+   the decline. And a second: reel-scripter writes its `open_loops` entry at
+   Checkpoint 0, the moment the client confirms, not at the end, so an abandoned
+   reel still reaches the compass; its Step 5 removes the entry.
 3. **Append, never overwrite** arrays (`scripts`, `angles_unpicked`,
    `open_loops`, `declined_offers`, `completed_skills`).
 4. **`voc.present` and `subject.present` are DERIVED on read, never written.**

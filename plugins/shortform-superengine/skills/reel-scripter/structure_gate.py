@@ -27,13 +27,15 @@ SKELETON FORMAT (Checkpoint 2 writes exactly this shape)
   numbered lines `N. <text>` from that heading to the next heading or the end of the file.
   Numbers run 1, 2, 3 ... in order. Every beat gets a number, the secondary hook and the CTA
   included. One line per beat.
-- Loop tags sit on the beat line: `[open ID ...]` and `[close ID ...]`. An ID is letters,
-  digits, `_` or `-`; several IDs are separated by spaces, commas or `+`; case does not
-  matter. Tags apply in the order written, so `[close L1] [open L3]` hands one loop to the
-  next inside one beat. A beat with no tag holds whatever is open.
+- Loop tags sit on the beat line: `[open ID ...]`, `[close ID ...]` and `[hold ID ...]`. An
+  ID is letters, digits, `_` or `-`; several IDs are separated by spaces, commas or `+`; case
+  does not matter. Tags apply in the order written, so `[close L1] [open L3]` hands one loop
+  to the next inside one beat. `[hold ID]` marks a beat that deepens a loop already open: it
+  opens and closes nothing, but it counts as pull, so it breaks a flat run. A beat with no
+  tag keeps whatever is open and counts as flat: name the loop a beat deepens, or it is flat.
 - Malformed (exit 2): no Beats heading or no beat lines; numbers out of order; a tag on a
-  line that is not a beat; closing a loop that is not open; opening one that already is; a
-  bad or missing ID; no `[open ...]` tag anywhere.
+  line that is not a beat; closing or holding a loop that is not open; opening one that
+  already is; a bad or missing ID; no `[open ...]` tag anywhere.
 - `visual_loop:` is optional, one line anywhere. Omit it when there is no visual loop
   (`none`, `no`, `n/a` and `false` count as omitted; an empty value is malformed). Declaring
   it lets the main loop close early (J3: the visual carries the tension). It changes nothing
@@ -45,10 +47,12 @@ CHECKS (n = number of beats, p = a beat's number)
 1. Early close: the main loop is the first loop opened. Fails when its first close lands at
    beat p with 3*p <= 2*n, before the last third (5 beats: beat 4 or later passes; 6 beats:
    beat 5 or later). Skipped when visual_loop is declared.
-2. Flat run: FLAT_RUN or more consecutive beats with no tag. FLAT_RUN = 2, the doctrine's
-   "2+ consecutive beats" (pipeline-detail.md Step 4b).
+2. Flat run: FLAT_RUN or more consecutive beats with no tag (a `[hold]` tag is a tag).
+   FLAT_RUN = 2, the doctrine's "2+ consecutive beats" (pipeline-detail.md Step 4b).
 3. Dead seam: the seam after beat p (p < n) has no loop open. Seams after the final payoff
    (the last beat that closes any loop) are exempt.
+4. Unpaid main loop: the main loop never closes. Fails whether or not visual_loop is
+   declared (J3 excuses an early close, never a missing one).
 
 Stdlib only. Deterministic. utf-8 reads (a BOM is tolerated); ASCII-safe stdout.
 """
@@ -58,7 +62,7 @@ FLAT_RUN = 2
 BEATS_HEAD = re.compile(r"^[ \t]*#{1,6}[ \t]+beats\b", re.I)
 HEADING = re.compile(r"^[ \t]*#{1,6}[ \t]")
 BEAT = re.compile(r"^[ \t]*(\d+)\.[ \t]+(.*)$")
-TAG = re.compile(r"\[[ \t]*(open|close)(?=[ \t\]])([^\]]*)\]", re.I)
+TAG = re.compile(r"\[[ \t]*(open|close|hold)(?=[ \t\]])([^\]]*)\]", re.I)
 VISUAL = re.compile(r"^[ \t]*visual_loop:[ \t]*(.*?)[ \t]*$", re.I)
 LOOP_ID = re.compile(r"^[A-Za-z0-9_-]+$")
 
@@ -106,9 +110,10 @@ def parse(text):
                 lid = t.upper()
                 if kind == "open" and lid in open_now:
                     raise Malformed(f"line {k + 1}: opens {lid}, which is already open")
-                if kind == "close" and lid not in open_now:
-                    raise Malformed(f"line {k + 1}: closes {lid}, which is not open")
-                (open_now.add if kind == "open" else open_now.discard)(lid)
+                if kind != "open" and lid not in open_now:
+                    raise Malformed(f"line {k + 1}: {kind}s {lid}, which is not open")
+                if kind != "hold":
+                    (open_now.add if kind == "open" else open_now.discard)(lid)
                 events.append((kind, lid))
         label = TAG.sub("", m.group(2)).strip()
         beats.append({"i": want, "label": label[:48], "events": events, "after": sorted(open_now)})
@@ -130,6 +135,16 @@ def check_early_close(beats, visual):
     k = 2 * n // 3 + 1
     return [(p, f"early close: main loop {main} pays off at beat {p} of {n}, before the last third",
              f"hold the {main} payoff until beat {k} or later; if a visual loop carries the reel past it, declare visual_loop:")]
+
+
+def check_main_paid(beats):
+    main = next(lid for b in beats for kind, lid in b["events"] if kind == "open")
+    if any(("close", main) in b["events"] for b in beats):
+        return []
+    p = next(b["i"] for b in beats if ("open", main) in b["events"])
+    k = 2 * len(beats) // 3 + 1
+    return [(p, f"unpaid loop: main loop {main} opens at beat {p} and never closes",
+             f"close {main} on a beat from {k} on, with the payoff it promised")]
 
 
 def check_flat_run(beats):
@@ -167,7 +182,8 @@ def main(argv):
     except Malformed as e:
         say(f"MALFORMED: {e}")
         return 2
-    fails = sorted(check_early_close(beats, visual) + check_flat_run(beats) + check_dead_seam(beats))
+    fails = sorted(check_early_close(beats, visual) + check_main_paid(beats) + check_flat_run(beats)
+                   + check_dead_seam(beats))
     for p, what, fix in fails:
         say(f"FAIL beat {p} ({beats[p - 1]['label']}): {what}. Fix: {fix}.")
     seams = " | ".join(f"{b['i']}-{b['i'] + 1} {'+'.join(b['after']) or 'NONE'}" for b in beats[:-1])

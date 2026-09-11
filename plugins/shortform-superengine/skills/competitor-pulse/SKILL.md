@@ -1,6 +1,6 @@
 ---
 name: competitor-pulse
-description: The weekly heartbeat on the competitive field. Refreshes the competitor analysis with the last 7 days (14 on request), manages the roster, reads roster health, keyword-searches the field and mines comment patterns. Use for "run the weekly pulse", "run the pulse", "competitor pulse", "what changed this week", "refresh my competitor analysis", "make the pulse weekly", "run the pulse on 14 days", "roster health", "manage my roster", "add <handle> to my roster", "swap a competitor", "backfill and re-analyze", "search the field for <keyword>", "comment pulse", "comment pulse on <url>", "comment pulse on <scope>", "mine the comments on <url>", "what are people saying in <handle>'s comments", "run audience questions", "add/remove/swap a competitor". Requires a completed competitor-cross-reference run (analysis-data.json).
+description: The weekly heartbeat on the competitive field. Refreshes the competitor analysis with the last 7 days (14 on request), manages the roster, reads roster health, keyword-searches the field and mines comment patterns. Use for "run the weekly pulse", "run the pulse", "competitor pulse", "what changed this week", "refresh my competitor analysis", "make the pulse weekly", "run the pulse on 14 days", "retry the failed handles", "roster health", "manage my roster", "add <handle> to my roster", "swap a competitor", "backfill and re-analyze", "search the field for <keyword>", "comment pulse", "comment pulse on <url>", "comment pulse on <scope>", "mine the comments on <url>", "what are people saying in <handle>'s comments", "run audience questions", "add/remove/swap a competitor". Requires a completed competitor-cross-reference run (analysis-data.json).
 ---
 
 # competitor-pulse
@@ -27,7 +27,7 @@ beside it, registry id in parentheses.
 
 **Next moves**
 (E14)
-1. Script this week's winner, the top new outlier as the angle. Say: "script that reel"
+1. Script this week's winner, the top reel in `analysis-data.json` `period_breakouts` as the angle. Say: "script that reel"
 2. Open the refreshed pack, the This-week panel is live. Say: "open my visuals"
 3. Roster upkeep: someone quiet, or someone missing? Say: "swap a competitor"
 4. *If `pulse.scheduled` is false:* have this land on your desk weekly, on your day. Say: "make the pulse weekly"
@@ -53,7 +53,7 @@ beside it, registry id in parentheses.
 
 **Next moves ... some accounts failed**
 (F5)
-1. Retry just the failed handles, listing legs only. Say: "run the pulse"
+1. Retry just the failed handles, listing legs only. Say: "retry the failed handles"
 2. If the same handles keep failing, read the roster. Say: "roster health"
 3. Proceed on the partial set, with the coverage caveat stated in the brief.
 
@@ -123,23 +123,9 @@ un-migrated 0.3.x home) fall back to the marker's `competitor_pulse` block, copy
 it into `state.pulse`, and say so in one line. A home that already accepted a
 schedule is never re-offered one.
 
-When that fallback CREATES the state file, seed `analysis` in the same write from
-the `analysis-data.json` Step 0 just located: `date` = its modified time as
-YYYY-MM-DD, `n_competitors` = the competitor count inside it, `themes_set` false,
-`resume` null. Say that in the same one line. Without the seed the compass reads
-`analysis` as null on a machine that plainly has one and ranks "analyze my
-Instagram against my competitors" first all over again. Seeded at file creation
-only; `analysis.*` stays competitor-cross-reference's (`state-schema.md`).
-
-That same creation write seeds the rest of the migration list `shortform-start`
-writes at its MIGRATE step: `setup.complete` true (a marker means onboarding
-ran), `setup.keys_present.socialcrawl` from the marker's
-`connections.socialcrawl`, `project_path` from `competitor_pulse.project` when
-it is set, and the marker's `competitor_pulse` block INTO `state.pulse`
-(`scheduled` to `scheduled`, `last_run` to `last_run`, `cadence` to `day` only
-when it names a weekday, lowercased, otherwise null). Seeded at file creation only and
-never overwritten afterwards. Without it a pulse-first home reports setup as
-not done, and its project path as null, for good.
+That fallback's creation write also seeds `analysis`, `setup.*`, `project_path`
+and `state.pulse`, once, never overwritten: read `./references/modes.md`
+"Marker-fallback seed" before that write.
 
 **Write at end,** owned keys only (rule zero: no invented keys). `pulse.scheduled`,
 `pulse.day`, `pulse.last_run` (local date), `pulse.last_snapshot` (the path under
@@ -173,9 +159,10 @@ it never spends by itself.
 | New-handle verify / backfill | `instagram/profile` / `instagram/profile/reels` | 1cr / ~3cr | roster ops, gated |
 | Transcription | local chain (Groq + Whisper parallel) | 0cr | automatic — runtime cost, not credits |
 
-Typical 25-roster week ≈ **27cr**. Heavy week (6 deep-legged winners with
-shares + comments) ≈ **87cr** (6 × 5cr shares + 6 × ~5cr comments + listing).
-Quiet week = 27cr and stops there.
+Price from the loaded roster, N handles: a typical week ≈ **(N+2)cr**, plus 1cr
+per further listing page. Heavy week (6 deep-legged winners with shares +
+comments) ≈ **(N+62)cr** (6 × 5cr shares + 6 × ~5cr comments + listing). Quiet
+week = the listing cost and stops there.
 
 ---
 
@@ -193,6 +180,7 @@ loader (`_shared/lib/reel_io.load_config`). Read the journey file for `pulse`
 |---|---|---|
 | pulse (default) | "run the weekly pulse", "run the pulse", "what changed this week", "refresh my competitor analysis" | Step 1, 7-day window |
 | 14-day window | "run the pulse on 14 days" | Step 1 with the window set to 14 (`./references/modes.md`) |
+| failed-only retry | "retry the failed handles" | `./references/modes.md`, the failed handles only, never the full pulse |
 | roster ops | "manage my roster", "add <handle> to my roster", "swap a competitor", "backfill and re-analyze" | `./references/modes.md` |
 | roster health | "roster health" | `./references/modes.md`, free, no paid call |
 | field search | "search the field for <keyword>" | `./references/modes.md` |
@@ -201,8 +189,11 @@ loader (`_shared/lib/reel_io.load_config`). Read the journey file for `pulse`
 
 ## Step 1 — Snapshot
 
-Copy the current `analysis-data.json` →
-`history/analysis-data-<YYYY-MM-DD>.json` (create `history/` if absent). Dates
+No hand copy: the script owns the snapshot. Step 4's `analyze.py` copies the
+`analysis-data.json` it is about to overwrite to
+`history/analysis-data-<local date>.json` (a same-day rerun takes `-2`, `-3`; an
+identical snapshot already in `history/` is reused, never duplicated). Until
+Step 4 the live file IS that baseline, so Step 3 reads it. Dates
 live in **filenames only** — the live JSON stays date-free so the deterministic
 render contract holds. This snapshot is what "what changed" diffs against.
 
@@ -210,27 +201,37 @@ render contract holds. This snapshot is what "what changed" diffs against.
 
 Balance first (0cr). Then state plainly:
 
-> "Listing pass = (N roster + client) × 1cr + 1cr client profile ≈ **(N+2)cr**.
+> "Listing pass = (N roster + client) × 1cr + 1cr client profile ≈ **(N+2)cr**,
+> plus 1cr per further page a handle needs to cover the window.
 > Balance M → ≈ M−(N+2) after. Go?"
 
 **Pause.** Nothing paid runs before this yes.
 
 ## Step 2 — Cheap listing pass (1cr legs only)
 
-The window comes from the mode, never from a guess: **7 days by default, 14
-when the client asked for "run the pulse on 14 days"**. Say which window this
-run used in the brief.
+The window is computed, never guessed: `window_from` = the older of
+`pulse.last_run` and today minus 7 days (minus 14 on "run the pulse on 14
+days"), local dates; no `last_run`, today minus 7. The window is never under 7
+days, and a 23-day gap is covered in full. Say the window in the brief.
+
+Execution rules: socialcrawl-superengine's `socialcrawl` skill when installed,
+else `../socialcrawl/SKILL.md` and `../socialcrawl/references/instagram.md:126-131`.
 
 - Client + each roster handle: `GET /v1/instagram/profile/reels?handle=…`
-  **first page only** (~12 reels, 1cr). If EVERY reel on page 1 is younger than
-  the window (high-cadence account), paginate once more via `max_id` (+1cr, say
-  so).
+  (~12 reels, 1cr a page). Page on with `&max_id=<next_cursor>` until the oldest
+  reel on the page is older than `window_from` or `next_cursor` is absent.
+  Pinned reels (old ones shown first) never decide that stop. +1cr a page, say so.
+- One `Idempotency-Key` per handle + window, suffixed per page
+  (`pulse-<handle>-<window_from>-p<n>`; one key reused with other params returns
+  422), so a resumed run replays at 0cr within 24h and never re-bills. A 502/503
+  retries once.
+- **Failed handles.** A handle that still fails logs `<date> · probe-failed · @handle · <error> · window from <window_from>` in `refresh-log.md`, then gets one failed-handles-only pass, same keys, before the Step 4 merge; a failure there logs again. Still failing: the brief ends on F5.
 - Client `GET /v1/instagram/profile` (1cr) → refresh `client_followers` in the
   config if changed.
 - **New reels** = items whose `post.url` is not already in `source/**/reels`
   JSONs, filtered by `published_at` to that window.
-- Zero new reels anywhere → write `pulse.last_run` (today's local date), and
-  `pulse.last_snapshot` when Step 1 produced a snapshot, THEN report the quiet
+- Zero new reels anywhere → write `pulse.last_run` (today's local date), leave
+  `pulse.last_snapshot` as it is (no re-analysis ran), THEN report the quiet
   week honestly and end on the `empty week` block (E16). A quiet week is a
   completed run: without that write the compass keeps ranking the pulse it just
   ran. Total spend stays the listing cost.
@@ -262,29 +263,37 @@ Raw deep-leg responses → `source/winners/<shortcode>-stats.json`.
 - Re-run the engine:
 
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/skills/competitor-cross-reference/analyze.py <project_dir>
+python ${CLAUDE_PLUGIN_ROOT}/skills/competitor-cross-reference/analyze.py <project_dir> --window-from <window_from>
 ```
+
+Transcription model changed since the last run? Take the instrument delta first
+(`./references/modes.md`).
 
 ## Step 5 — Delta + visuals
 
 ```bash
 python ${CLAUDE_PLUGIN_ROOT}/skills/competitor-cross-reference/render_visuals.py <project_dir> \
-       --prev history/analysis-data-<last>.json --stamp "Week of <date>"
+       --prev <project_dir>/history/analysis-data-<last>.json --stamp "Week of <date>"
 ```
 
 Regenerates `visuals/` + writes `visuals/whats-new.json`; archive a copy to
-`history/whats-new-<date>.json`.
+`history/whats-new-<date>.json`. `<last>` is the snapshot Step 4 took. An
+unreadable `--prev` stops the render (exit 1, nothing written): report it with
+the path, fix the path, re-run this step.
 
 ## Step 6 — "What changed this week" brief
 
 Present from `whats-new.json` + the listings just pulled — **every line cited**
 (`@handle · metric · reel URL`):
 
-- **New outliers** (the week's breakouts — each with mult, hook line, link)
-- **Hook movement** (`hook_taxonomy` field/client med-views old → new)
+- **Breakouts** from `analysis-data.json` `period_breakouts` (each with mult, hook line, link), never `whats-new.json` `new_outliers`, which is the all-time top-30 leaderboard
+- **Hook movement** from `whats-new.json` `hook_moves[]`: field and client med-views old → new, each with its `field_n` / `client_n` (`[old, new]`); a client median whose new n is under 5 is marked thin
+- **Coverage** (counts include the client): `meta.window_reels` reels in the window, `meta.window_reels_transcribed` transcribed; transcribed sample newest `meta.transcribed_newest_published_at`, median `meta.transcribed_median_published_at`; corpus `meta.transcript_coverage` beside it
+- **Tier balance**: the loaded roster's count per tier vs the ~8/9/8 target roster mode declares (`./references/modes.md`), drift named
 - **Cadence movement** (+ "posted K this week vs X/wk average" from the listing)
 - **Client movement** (stats + reach-efficiency rank old → new)
 - **Quiet accounts** (nothing new ≥14 days — roster-health candidates)
+- **Failed**: handles still failing after the retry pass, named, with the partial-set caveat
 - **Credits**: used this run / balance remaining
 
 Write `pulse.last_run` and `pulse.last_snapshot` to the journey file, then end
@@ -308,6 +317,7 @@ Terminal-paths block it ends on.
 - **Comment pulse**: scope, price, pull, then the two-layer intel doc. Ends on
   the `comment intel` block.
 - **14-day window**: the same pipeline with the window set to 14. Ends on E23.
+- **Failed-only retry**: the F5 retry over the logged failed handles only. Ends on E14, or F5.
 
 ---
 

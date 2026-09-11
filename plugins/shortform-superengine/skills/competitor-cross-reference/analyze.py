@@ -5,6 +5,9 @@
 # Before overwriting analysis-data.json it snapshots the old file into <project_dir>/history/ (G5).
 import json, glob, os, re, statistics as st, sys
 from collections import defaultdict, Counter
+# 0.4.2: the SAME transcript-file parser reel-scripter's brief uses, so both read one set of txt transcripts
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '_shared', 'lib'))
+from reel_io import parse_transcript_header  # noqa: E402
 
 if len(sys.argv) < 2:
     print('Usage: python analyze.py <project_dir>')
@@ -18,6 +21,17 @@ ROOT = sys.argv[1]
 BASELINE_DAYS = None
 if '--baseline-days' in sys.argv[2:]:
     BASELINE_DAYS = float(sys.argv[sys.argv.index('--baseline-days') + 1])
+# --window-from YYYY-MM-DD (optional, 0.4.2): a LOCAL date that opens period_breakouts' window (the
+# pulse passes the older of pulse.last_run and today minus 7 days). Widened so the window is never
+# shorter than 7 days. Absent = unchanged: the _delta/ pull log, else now minus 7 days.
+WINDOW_FROM = None
+if '--window-from' in sys.argv[2:]:
+    try:
+        from datetime import datetime as _wdt
+        WINDOW_FROM = _wdt.strptime(sys.argv[sys.argv.index('--window-from') + 1], '%Y-%m-%d').timestamp()  # naive = local midnight
+    except (IndexError, ValueError, OSError, OverflowError):
+        print('ERROR: --window-from needs a date written YYYY-MM-DD. Nothing was written.')
+        sys.exit(1)
 def J(p): return json.load(open(p, encoding='utf-8'))
 
 def fix(t):
@@ -109,6 +123,7 @@ def _items_of(d):
     if not isinstance(d, dict): return []
     return d.get('reels') or d.get('items') or (d.get('data') or {}).get('items') or []
 
+TX_JSON, TX_TXT = set(), set()   # 0.4.2: urls holding each transcript kind (meta.transcript_sources)
 def _tx_index():
     idx = {}
     paths = [os.path.join(ROOT, 'source', 'client-transcripts.json')] + \
@@ -120,6 +135,18 @@ def _tx_index():
         for r in _items_of(d):
             if r.get('url') and r.get('text'):
                 idx[r['url']] = fix(r['text'])
+                TX_JSON.add(r['url'])
+    # 0.4.2 (Joe, PR2): the pulse's transcripts/<creator>/<shortcode>.txt files are transcripts too, so
+    # they count toward coverage AND feed the spoken diagnosis (a counted reel is never caption-ranked).
+    # A NO VOICEOVER header or an empty body is no spoken track. A reel with both kinds is one url
+    # entry, counted once, and its JSON text stays the one diagnosed.
+    for p in sorted(glob.glob(os.path.join(ROOT, 'transcripts', '*', '*.txt'))):
+        try: t = open(p, encoding='utf-8').read()
+        except Exception: continue
+        h = parse_transcript_header(t)
+        if not h['url'] or not h['transcript'] or 'NO VOICEOVER' in t.split('## ', 1)[0]: continue
+        TX_TXT.add(h['url'])
+        if not idx.get(h['url']): idx[h['url']] = fix(h['transcript'])
     return idx
 TX = _tx_index()
 
@@ -482,9 +509,12 @@ try:
         ds = sorted(ds)
         if len(ds) >= 2: d = ds[-2]      # the pull before the one that built this corpus
         elif ds:         d = ds[-1]      # only one pull on record -> it opens the window
-        else:            return now_ts - 7 * 86400   # no pull log -> documented 7d default
-        return _dt.fromisoformat(d + 'T00:00:00+00:00').timestamp()
-    _win_from_ts = _window_from_delta(ROOT, _now_ts)
+        else:            return now_ts - 7 * 86400, 'default'   # no pull log -> documented 7d default
+        return _dt.fromisoformat(d + 'T00:00:00+00:00').timestamp(), 'delta'
+    if WINDOW_FROM is not None:   # --window-from beats the pull log; floor: never shorter than 7 days
+        _win_from_ts, _win_src = min(WINDOW_FROM, _now_ts - 7 * 86400), 'flag'
+    else:
+        _win_from_ts, _win_src = _window_from_delta(ROOT, _now_ts)
     _win_from = _iso(_win_from_ts)
 
     # ---- G12 + G16 (0.4.2, additive meta) ----------------------------------
@@ -497,6 +527,7 @@ try:
                if r.get('pub') is not None and _win_from_ts <= r['pub'] <= _now_ts]
     _tx_pubs = sorted(r['pub'] for c in creators.values() for r in c['reels']
                       if r.get('tx') and r.get('pub') is not None)
+    _tx_rs = [r for c in creators.values() for r in c['reels'] if r.get('tx')]   # 0.4.2 transcript_sources
 
     def _creator_obj(c):
         s = c['stats']
@@ -635,7 +666,7 @@ try:
                              'hook_line': _line, 'title': _line, 'url': r['url'], 'src': r_src(r),
                              'published_at': _iso(pub)})
         rows.sort(key=lambda x: (-x['mult'], x['handle'], x['url'] or ''))
-        return {'window_from': _win_from, 'window_to': _gen_at,
+        return {'window_from': _win_from, 'window_to': _gen_at, 'window_source': _win_src,
                 'denominator': 'all_time_median_views_gt0_at_generation',
                 'client_excluded': CLIENT_HANDLE,
                 'n': len(rows), 'creators_skipped_median_le_0': len(skipped),
@@ -671,7 +702,10 @@ try:
                       'window_reels': len(_win_rs),
                       'window_reels_transcribed': sum(1 for r in _win_rs if r.get('tx')),
                       'transcribed_newest_published_at': _iso(_tx_pubs[-1]) if _tx_pubs else None,
-                      'transcribed_median_published_at': _iso(med(_tx_pubs)) if _tx_pubs else None}}
+                      'transcribed_median_published_at': _iso(med(_tx_pubs)) if _tx_pubs else None,
+                      'transcript_sources': {'json': sum(1 for r in _tx_rs if r['url'] in TX_JSON),
+                                             'txt': sum(1 for r in _tx_rs if r['url'] in TX_TXT),
+                                             'both': sum(1 for r in _tx_rs if r['url'] in TX_JSON and r['url'] in TX_TXT)}}}
     # captions bucket (C7, additive): the caption-keyed read, separate from the
     # primary spoken-keyed hook_taxonomy/theme_performance above. Present only
     # when transcripts exist (without them primary IS caption-keyed already).
@@ -695,6 +729,10 @@ try:
     # except meta.schema_version and the added meta.generated_at.
     _data['outliers_full'] = _oj_all              # uncapped all-time >=2.5x FIELD population (client excluded)
     _data['period_breakouts'] = _period_breakouts_block()
+    if _win_src == 'flag':   # the note must not claim the _delta log opened a flag window
+        _data['period_breakouts']['note'] = _data['period_breakouts']['note'].replace(
+            'The window opens at the previous _delta pull.',
+            'The window opens at --window-from (a local date), widened to at least 7 days before window_to.')
     # ---- G5 (R17, 0.4.2): snapshot the file this run is about to overwrite --
     # Script-guaranteed, so "what changed" has a baseline even when analyze.py runs outside
     # the pulse. LOCAL date, like pulse.last_run. Skipped when any history/analysis-data-*.json
@@ -712,10 +750,13 @@ try:
             _day = (_dt.fromisoformat(_clk) if _clk else _dt.now()).strftime('%Y-%m-%d')
             os.makedirs(_hdir, exist_ok=True)
             _snap, _k = os.path.join(_hdir, 'analysis-data-' + _day + '.json'), 1
-            while os.path.exists(_snap):
-                _k += 1
-                _snap = os.path.join(_hdir, 'analysis-data-%s-%d.json' % (_day, _k))
-            open(_snap, 'wb').write(_old)
+            while True:   # CX3: exclusive create, so an overlapping run can never truncate a snapshot
+                try:
+                    with open(_snap, 'xb') as _sf: _sf.write(_old)
+                    break
+                except FileExistsError:
+                    _k += 1
+                    _snap = os.path.join(_hdir, 'analysis-data-%s-%d.json' % (_day, _k))
     open(os.path.join(ROOT, 'analysis-data.json'), 'w', encoding='utf-8').write(
         json.dumps(_data, indent=2, ensure_ascii=False))
 except Exception as _e:

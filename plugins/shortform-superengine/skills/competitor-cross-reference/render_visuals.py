@@ -645,7 +645,6 @@ def main():
     theme = load_theme(root)
     chartjs = load_chartjs()
     out = args.out or os.path.join(root, 'visuals')
-    os.makedirs(out, exist_ok=True)
 
     delta = None
     if args.prev:
@@ -656,6 +655,8 @@ def main():
             print('ERROR: --prev unreadable (%s): %s - nothing rendered.' % (e, prev))
             sys.exit(1)
         delta = compute_delta(data, old)
+    os.makedirs(out, exist_ok=True)   # CK4: after the --prev check, so a failed --prev leaves no empty folder
+    if delta is not None:
         io.open(os.path.join(out, 'whats-new.json'), 'w', encoding='utf-8').write(
             json.dumps(delta, indent=2, ensure_ascii=False))
 

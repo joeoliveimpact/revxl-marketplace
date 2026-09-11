@@ -126,7 +126,7 @@ own dimensions (`step3-options.md` pass 3) and these anchors:
 - **6 or below** ... withheld. Any one of these: a Hook Killer fires (DELAY, CONFUSION,
   IRRELEVANCE, DISINTEREST); a dimension is missing outright (two subjects, no question planted,
   two asks); or it needs two or more swaps. A firing Hook Killer caps the option at 6 however
-  strong the rest is.
+  strong the rest is; if the rewrite still trips a killer, it scores 6 or below.
 - **8** sits between a 7 and a 9; keep **10** for an option you would not change a word of.
 
 > **The one rule to remember: contrast.** "But" introduces conflict; conflict holds attention.
