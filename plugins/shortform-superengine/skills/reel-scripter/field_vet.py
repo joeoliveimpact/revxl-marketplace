@@ -10,7 +10,7 @@ weighting the analysis uses (C7): spoken track is the signal, captions are a
 separate packaging read.
 
 Reads:   <project>/source/competitors/transcripts/*.json  [spoken, PRIMARY]
-         <project>/transcripts/<creator>/*.txt            [spoken, PRIMARY; a reel with both kinds counts once, JSON text wins]
+         <project>/transcripts/<creator>/*.txt            [spoken, PRIMARY; a reel with both kinds counts once, JSON text wins when the JSON row carries views]
          <project>/source/competitors/reels/*.json        [captions, secondary]
          The client's own reels (client-transcripts.json, reels-full.json, transcripts/reels-full/) are NOT read: they are not the field.
          No spoken rows at all = DEGRADED: a banner, and the verdict comes from the caption read, tagged [cap].
@@ -44,7 +44,7 @@ def _items_of(d):
 
 # ---- spoken track (PRIMARY) ----
 spoken = []  # (text_lower, views, handle)  -- the handle is what makes per-account lift possible
-tx_urls = set()  # urls on the spoken track: a reel with both kinds counts once, JSON text wins
+tx_urls = set()  # urls on the spoken track: a reel with both kinds counts once, JSON text wins when the JSON row carries views
 tpaths = sorted(glob.glob(os.path.join(ROOT, "source", "competitors", "transcripts", "*.json")))
 for p in tpaths:
     hname = os.path.splitext(os.path.basename(p))[0]
