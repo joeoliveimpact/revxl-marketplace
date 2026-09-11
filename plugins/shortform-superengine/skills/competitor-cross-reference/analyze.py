@@ -666,7 +666,7 @@ try:
                       'dropped_pinned': DROPPED['pinned'], 'dropped_junk': DROPPED['junk'],
                       'lift_min': {'accounts': LIFT_MIN_ACCOUNTS, 'n': LIFT_MIN_N},
                       'baseline_days': BASELINE_DAYS,
-                      'schema_version': '1.4',
+                      'schema_version': '1.5',
                       'generated_at': _gen_at,
                       'window_reels': len(_win_rs),
                       'window_reels_transcribed': sum(1 for r in _win_rs if r.get('tx')),

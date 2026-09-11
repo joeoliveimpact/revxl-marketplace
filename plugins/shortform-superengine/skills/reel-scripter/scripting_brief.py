@@ -88,9 +88,13 @@ LIFT_WINNER, LIFT_LOSER = 1.2, 0.8
 data = reel_io.load_analysis_json(ROOT)
 meta = data['meta']
 # m3: contract version check, BEFORE anything is written. A MAJOR mismatch is a different
-# contract, so stop. A minor mismatch warns and continues (older files take the pre-1.4
-# fallbacks below; newer keys are ignored). No version at all: cannot tell, warn and continue.
-SCHEMA_EXPECTED = '1.4'
+# contract, so stop. An older or equal minor is compatible and silent (older files take the
+# pre-1.4 fallbacks below); only a NEWER minor warns (its new keys are ignored) (R30).
+# No version at all: cannot tell, warn and continue.
+SCHEMA_EXPECTED = '1.5'
+def _minor(v):
+    try: return int(v.split('.')[1])
+    except (IndexError, ValueError): return None   # unreadable minor: cannot tell, so it warns
 _sv = meta.get('schema_version')
 _svs = str(_sv).encode('ascii', 'replace').decode()
 if _sv is None:
@@ -101,9 +105,9 @@ elif _svs.split('.')[0] != SCHEMA_EXPECTED.split('.')[0]:
           'version of competitor-cross-reference. Re-run the cross-reference with this plugin version, '
           'then run this again. Nothing was written.')
     sys.exit(1)
-elif _svs != SCHEMA_EXPECTED:
-    print(f'WARN: analysis-data.json is schema {_svs}; this script expects {SCHEMA_EXPECTED}. Continuing: '
-          'missing newer fields fall back, unknown fields are ignored.')
+elif _minor(_svs) is None or _minor(_svs) > _minor(SCHEMA_EXPECTED):
+    print(f'WARN: analysis-data.json is schema {_svs}; this script expects {SCHEMA_EXPECTED} or older. Continuing: '
+          'unknown fields are ignored.')
 client = data['client']
 HANDLE = meta.get('client_handle') or client['handle']
 
@@ -162,6 +166,11 @@ FULL = len(rows) > 0
 DEGRADED = FULL and meta.get('degraded') is True
 TX_COV = meta.get('transcript_coverage') or 0
 TX_COV_MIN = meta.get('transcript_coverage_min') or 0.6
+# R23: analyze.py's transcript_coverage counts JSON transcripts only, while this brief mines the txt
+# files first. Coverage under the floor while txt transcripts exist = two different sets; say so.
+TXT_NOTE = ((f'analysis coverage counts JSON transcripts only, so the analysis figure ({TX_COV*100:.1f}%) '
+             f'and the {len(tfiles)} txt transcripts this brief is mining measure different sets.')
+            if tfiles and meta.get('transcript_coverage') is not None and TX_COV < TX_COV_MIN else None)
 field_rows = [r for r in rows if r['creator'] != CLIENT_DIR]
 client_rows = [r for r in rows if r['creator'] == CLIENT_DIR]
 
@@ -232,6 +241,9 @@ if DEGRADED:
       f'spoken transcript for only {TX_COV*100:.1f}% of reels (the floor is {TX_COV_MIN*100:.0f}%); the '
       'rest were read from captions. Treat those rankings as provisional, and re-run the cross-reference '
       'once more transcripts land. Sections 4-6 mine the transcript files directly.')
+if TXT_NOTE:
+    w('')
+    w(f'> COVERAGE NOTE: {TXT_NOTE}')
 
 # ---------------------------------------------------------------------------
 # 1. ATTACK THEMES (ranked gaps)
@@ -798,6 +810,8 @@ brief = {
 if DEGRADED:  # additive keys, present only when analyze.py flagged the run
     brief['meta'].update({'degraded': True, 'transcript_coverage': TX_COV,
                           'transcript_coverage_min': TX_COV_MIN})
+if TXT_NOTE:  # R23, additive key, present only when the two coverage reads disagree
+    brief['meta']['coverage_note'] = TXT_NOTE
 with open(os.path.join(ROOT, 'scripting-brief.json'), 'w', encoding='utf-8') as f:
     json.dump(brief, f, indent=2, ensure_ascii=False)
     f.write('\n')
@@ -813,6 +827,8 @@ print(f'client: @{asc(HANDLE)}  |  mode: {"FULL" if FULL else "CAPTION-ONLY"}')
 if DEGRADED:
     print(f'DEGRADED: analysis transcript coverage {TX_COV*100:.1f}% is under the {TX_COV_MIN*100:.0f}% floor; '
           'Sections 1-3 and 8 rankings are provisional')
+if TXT_NOTE:
+    print(f'COVERAGE NOTE: {TXT_NOTE}')
 if FULL:
     print(f'transcripts: {len(rows)} ({len(field_rows)} field + {len(client_rows)} client)')
 else:

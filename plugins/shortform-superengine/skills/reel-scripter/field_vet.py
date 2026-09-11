@@ -140,4 +140,7 @@ if top:
     print(f"  Strongest angle word{TAG}: '{top}' at {verdicts[top][1]:.2f}x per-account lift.")
 elif untested and not losers and not DEGRADED:
     print("  No proven frame here -> this is a first-mover play; anchor it to a proven hook type to de-risk.")
-print("  Rule: LOSER = has data, underperforms (pivot). UNTESTED = thin/no data (don't kill -- could be new).")
+if DEGRADED:   # R21: no spoken track, so an unknown keyword is UNKNOWN; this line never calls it anything else
+    print("  Rule [cap]: LOSER = caption data, underperforms (pivot). THIN/NONE = UNKNOWN (no spoken track to read it).")
+else:
+    print("  Rule: LOSER = has data, underperforms (pivot). UNTESTED = thin/no data (don't kill -- could be new).")

@@ -1,4 +1,4 @@
-# Competitor Cross-Reference — Hook Diagnostics Reference
+# Hook Diagnostics Reference (shared: competitor-cross-reference and the generation engines)
 
 ## SCOPE NOTE
 
@@ -63,7 +63,7 @@ The "DELAY" window is not the same on every platform. When diagnosing hooks, use
 | Newsletter | Subject line earns the open | Body hook then confirms within first sentence |
 | Carousel (IG / LinkedIn) | Slide 1, ≤9 words | Visual + text together in one glance |
 
-For this skill, the primary format is Reels — the ~2s cliff is the default. Note the platform when analyzing non-Reel hooks.
+For both engines the primary format is Reels, so the ~2s cliff is the default. Note the platform when analyzing or writing non-Reel hooks.
 
 ---
 
