@@ -31,9 +31,9 @@ flag it and ask ... never paper over with invented teaching.
      Use the client's vocabulary; pull verbatim audience pains from `voc-profile.md` where they
      fit (the client's words beat yours).
    - **Secondary hooks ... compute placements FIRST (mandatory), then 3 options per placement.**
-     Read the reel's length target and take the placement COUNT from
-     `./retention-psychology.md` §4's dosage table (30s→1 · 45s→1 to 2 · 60s→2 to 3 ·
-     90s→3 to 4) ... never a single placement for a 60s+ reel. Lay the slots at the drop-off
+     Read the reel's length target and take the placement COUNT from the placement table in
+     `./retention-psychology.md` §4 (read the numbers there; they are not copied here)
+     ... never a single placement for a 60s+ reel. Lay the slots at the drop-off
      points: 12 to 15s is always the strongest slot, then roughly every 15 to 20s through the back
      half. Generate 3 scored options PER SLOT. Scripted content moments, not edit effects;
      every tease sits on value already delivered.
@@ -51,15 +51,21 @@ flag it and ask ... never paper over with invented teaching.
 2. **Screen** every option ... the brief's **§8 Avoid list first** (this niche's losers), then the
    universal tables (`opener-patterns.md` losing openers, `say-this-not-that.md` incl. approach
    losers). A hit disqualifies the option outright; **brand-voice phrasing is not exempt.**
+   When a §8 layer reads "no confident avoid" (or §8 is empty), that layer screens nothing: screen
+   on the universal tables alone, say so once at the gate, and never invent niche losers to fill it.
 3. **Score each surviving option 1 to 10:** hooks on single-subject clarity / single question
    planted / scroll-stop power; secondary hooks on information-gap / narrative fit / value
    balance; body + proof on the Story Locks rubric (`./story-locks.md`); CTA on
    clarity / alignment / friction; storyboards on silent-scroll story / beat reinforcement /
    ≤6-word discipline; caption hook on cut-off curiosity / keyword / complementary
-   angle.
+   angle. Every score is set against the 9 / 7 / 6-or-below anchors in `./story-locks.md`
+   "How this scores".
 4. **Gate:** present only options scoring **≥7**, with scores and a withheld count ("8 generated,
    3 cleared"). Fewer than 2 clear → regenerate once, then show the best available flagged
    "below bar". The bar defaults to 7; the user can move it for the run.
+   Under the cleared options, list every withheld one on its own line with what cut it: its
+   score if it was scored below the bar, or the screen that disqualified it (§8 Avoid, a losing
+   opener, a say-this-not-that loser) if it never reached scoring.
 5. **The user picks** ... by score plus *"which sounds most like something you'd actually say."*
    No auto-alternatives: rewrites happen on request, per option. The pick locks; the next
    section's options are generated **in continuity with everything picked so far**.

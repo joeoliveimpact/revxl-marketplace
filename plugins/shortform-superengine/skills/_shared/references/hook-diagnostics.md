@@ -2,7 +2,7 @@
 
 ## SCOPE NOTE
 
-This skill uses the 4 Hook Killers as a **diagnostic lens** to explain WHY a competitor hook wins or a client hook under-reaches. The goal is analysis, not generation. The generative hook-writing frameworks (BUT/THEREFORE story structure, specificity ladder, hook variant stacking) belong to a future content-creation skill — not this analysis skill. Use what's here to label and explain reach gaps; do not use it to write new hooks.
+Two engines read the 4 Hook Killers, each for its own job. **competitor-cross-reference** uses them as a **diagnostic lens** to explain WHY a competitor hook wins or a client hook under-reaches: label and explain reach gaps, grounded in the data (the "In competitor analysis" notes below serve that job). **Generation engines** (reel-scripter today) use them as a **generation-time check** on the hooks they write: run each drafted hook against the four killers and rewrite any hook that trips one before it is scored or shown. The hook-writing frameworks themselves (hook laws, opener structures, formulas) live in the generating engine's own references, not here.
 
 ---
 
@@ -77,4 +77,4 @@ figures are the measured aggregate; per-niche numbers stay in each client's own 
 
 ---
 
-*Source: artemnovitckii/content-skills viral-hooks skill (MIT). Distilled 2026-06-22 for diagnostic use in competitor-cross-reference skill only.*
+*Source: artemnovitckii/content-skills viral-hooks skill (MIT). Distilled 2026-06-22 for diagnostic use; shared by competitor-cross-reference (analysis) and the generation engines (hook check), per the scope note above.*

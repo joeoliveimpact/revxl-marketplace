@@ -126,7 +126,9 @@ Improving hook hit-rate from 1-in-20 to 1-in-5 changes everything.
 ---
 
 ## Cross-references
-- `opener-patterns.md` — HOOK→PROMISE→MICRO-INTRO structure + per-bucket opener templates.
+- `opener-patterns.md` ... HOOK→PROMISE→MICRO-INTRO structure + per-bucket opener templates.
+  The micro-intro is YouTube only: skip it on IG reels (measured as a negative marker there), so
+  an IG opener runs HOOK→PROMISE, then straight into content.
 - `hook-formulas.md` — the 12 view-validated hook shapes to remix (step 4).
 - `_shared/references/hook-diagnostics.md` — the 4 Hook Killers (the diagnostic layer for the audit).
 - `say-this-not-that.md` — weak→strong line rewrites when a hook fails the audit.

@@ -87,6 +87,23 @@ LIFT_WINNER, LIFT_LOSER = 1.2, 0.8
 # ----------------------------------------------------------------------------
 data = reel_io.load_analysis_json(ROOT)
 meta = data['meta']
+# m3: contract version check, BEFORE anything is written. A MAJOR mismatch is a different
+# contract, so stop. A minor mismatch warns and continues (older files take the pre-1.4
+# fallbacks below; newer keys are ignored). No version at all: cannot tell, warn and continue.
+SCHEMA_EXPECTED = '1.4'
+_sv = meta.get('schema_version')
+_svs = str(_sv).encode('ascii', 'replace').decode()
+if _sv is None:
+    print(f'WARN: analysis-data.json has no schema_version; this script expects {SCHEMA_EXPECTED}. Continuing.')
+elif _svs.split('.')[0] != SCHEMA_EXPECTED.split('.')[0]:
+    print(f'STOP: analysis-data.json is schema {_svs}, but this reel-scripter only reads schema '
+          f'{SCHEMA_EXPECTED.split(".")[0]}.x (built for {SCHEMA_EXPECTED}). The file was made by a different '
+          'version of competitor-cross-reference. Re-run the cross-reference with this plugin version, '
+          'then run this again. Nothing was written.')
+    sys.exit(1)
+elif _svs != SCHEMA_EXPECTED:
+    print(f'WARN: analysis-data.json is schema {_svs}; this script expects {SCHEMA_EXPECTED}. Continuing: '
+          'missing newer fields fall back, unknown fields are ignored.')
 client = data['client']
 HANDLE = meta.get('client_handle') or client['handle']
 
@@ -140,6 +157,11 @@ rows = [parse_reel(f) for f in tfiles]
 if not rows:                 # no txt transcripts -> try the live pipeline's JSON shape
     rows = rows_from_json()
 FULL = len(rows) > 0
+# m5: analyze.py's own coverage read (meta.degraded, schema 1.4+). It grades the analysis behind
+# Sections 1-3 and the Section 8 hook/theme losers. Absent or false: no line, output unchanged.
+DEGRADED = FULL and meta.get('degraded') is True
+TX_COV = meta.get('transcript_coverage') or 0
+TX_COV_MIN = meta.get('transcript_coverage_min') or 0.6
 field_rows = [r for r in rows if r['creator'] != CLIENT_DIR]
 client_rows = [r for r in rows if r['creator'] == CLIENT_DIR]
 
@@ -204,6 +226,12 @@ if not FULL:
       'analysis (Sections 1-3) is fully intact (it reads the analysis JSON). The spoken-craft '
       'sections (4-6) fall back to caption + hook-line mining and are weaker -- harvest reel '
       'transcripts to upgrade them.')
+if DEGRADED:
+    w('')
+    w(f'> DEGRADED: the analysis behind Sections 1-3 and the Section 8 hook and theme losers had a '
+      f'spoken transcript for only {TX_COV*100:.1f}% of reels (the floor is {TX_COV_MIN*100:.0f}%); the '
+      'rest were read from captions. Treat those rankings as provisional, and re-run the cross-reference '
+      'once more transcripts land. Sections 4-6 mine the transcript files directly.')
 
 # ---------------------------------------------------------------------------
 # 1. ATTACK THEMES (ranked gaps)
@@ -400,11 +428,16 @@ if FULL:
         w('No 4-word opening recurred more than once across the best reels (high opener diversity '
           '-- winners do not share a single template phrase).')
     # best vs worst opening vocabulary
+    # C3: explicit three-way split. group None (rank header matched neither best nor worst)
+    # is unranked, so it counts as neither a winner nor a flop and never seeds the Section 8 avoid list.
     bw, ww = Counter(), Counter()
     for r in field_rows:
         if not r['text']:
             continue
-        (bw if r['group'] == 'best' else ww).update(content_words(r['text']))
+        if r['group'] == 'best':
+            bw.update(content_words(r['text']))
+        elif r['group'] == 'worst':
+            ww.update(content_words(r['text']))
     w('')
     jx['openers']['winner_vocab'] = [{'word': x, 'count': c} for x, c in ranked(bw)[:18]]
     jx['openers']['flop_vocab'] = [{'word': x, 'count': c} for x, c in ranked(ww)[:18]]
@@ -446,14 +479,6 @@ else:
             first = reel_io.fix((r['cap'] or '').split('\n')[0])[:90].replace('|', '/')
             jx['openers']['client_first_lines'].append({'views': r['views'], 'line': first})
             w(f"- {fnum(r['views'])}v -- {first}")
-
-w('')
-w('**Opener order (non-negotiable): HOOK -> PROMISE -> MICRO-INTRO.** Open on the hook, then '
-  'promise the payoff ("by the end you will know exactly how to X"), and only THEN introduce '
-  'yourself -- never lead with your name or a greeting. The self-intro is a <=6-second, '
-  'credibility-fused line ("I am X, I have done Y N times") that earns the next 30 seconds; it '
-  'comes AFTER the hook+promise have bought the attention, not before, when it just burns the '
-  'opening on someone the viewer has no reason to care about yet.')
 
 # ---------------------------------------------------------------------------
 # 5. WINNING STRUCTURES
@@ -770,6 +795,9 @@ brief = {
     'current_patterns': jx.get('current_patterns', {}),
     'avoid': jx.get('avoid', {}),
 }
+if DEGRADED:  # additive keys, present only when analyze.py flagged the run
+    brief['meta'].update({'degraded': True, 'transcript_coverage': TX_COV,
+                          'transcript_coverage_min': TX_COV_MIN})
 with open(os.path.join(ROOT, 'scripting-brief.json'), 'w', encoding='utf-8') as f:
     json.dump(brief, f, indent=2, ensure_ascii=False)
     f.write('\n')
@@ -782,6 +810,9 @@ def asc(s):
 
 print('=== REEL SCRIPTING BRIEF ===')
 print(f'client: @{asc(HANDLE)}  |  mode: {"FULL" if FULL else "CAPTION-ONLY"}')
+if DEGRADED:
+    print(f'DEGRADED: analysis transcript coverage {TX_COV*100:.1f}% is under the {TX_COV_MIN*100:.0f}% floor; '
+          'Sections 1-3 and 8 rankings are provisional')
 if FULL:
     print(f'transcripts: {len(rows)} ({len(field_rows)} field + {len(client_rows)} client)')
 else:

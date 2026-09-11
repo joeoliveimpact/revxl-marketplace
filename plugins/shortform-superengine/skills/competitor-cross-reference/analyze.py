@@ -2,6 +2,7 @@
 # Generalized: reads project dir + tiers.json for all config.
 # Usage: python analyze.py <project_dir>
 # Writes <project_dir>/analysis-data.md + prints findings.
+# Before overwriting analysis-data.json it snapshots the old file into <project_dir>/history/ (G5).
 import json, glob, os, re, statistics as st, sys
 from collections import defaultdict, Counter
 
@@ -486,6 +487,17 @@ try:
     _win_from_ts = _window_from_delta(ROOT, _now_ts)
     _win_from = _iso(_win_from_ts)
 
+    # ---- G12 + G16 (0.4.2, additive meta) ----------------------------------
+    # G12: corpus coverage hides whether THIS window's reels carry a spoken track (a big pull
+    # dilutes it). Same window as period_breakouts; client included (the same population as
+    # meta.transcript_coverage); an undated reel is never counted.
+    # G16: transcribe_reels.py picks top-10 + bottom-10 by views per creator, so the corpus %
+    # can never catch up. How RECENT the transcribed picks are is the sample currency.
+    _win_rs = [r for c in creators.values() for r in c['reels']
+               if r.get('pub') is not None and _win_from_ts <= r['pub'] <= _now_ts]
+    _tx_pubs = sorted(r['pub'] for c in creators.values() for r in c['reels']
+                      if r.get('tx') and r.get('pub') is not None)
+
     def _creator_obj(c):
         s = c['stats']
         return {'handle': c['handle'], 'tier': c['tier'], 'lane': c.get('lane'),
@@ -655,7 +667,11 @@ try:
                       'lift_min': {'accounts': LIFT_MIN_ACCOUNTS, 'n': LIFT_MIN_N},
                       'baseline_days': BASELINE_DAYS,
                       'schema_version': '1.4',
-                      'generated_at': _gen_at}}
+                      'generated_at': _gen_at,
+                      'window_reels': len(_win_rs),
+                      'window_reels_transcribed': sum(1 for r in _win_rs if r.get('tx')),
+                      'transcribed_newest_published_at': _iso(_tx_pubs[-1]) if _tx_pubs else None,
+                      'transcribed_median_published_at': _iso(med(_tx_pubs)) if _tx_pubs else None}}
     # captions bucket (C7, additive): the caption-keyed read, separate from the
     # primary spoken-keyed hook_taxonomy/theme_performance above. Present only
     # when transcripts exist (without them primary IS caption-keyed already).
@@ -679,6 +695,27 @@ try:
     # except meta.schema_version and the added meta.generated_at.
     _data['outliers_full'] = _oj_all              # uncapped all-time >=2.5x FIELD population (client excluded)
     _data['period_breakouts'] = _period_breakouts_block()
+    # ---- G5 (R17, 0.4.2): snapshot the file this run is about to overwrite --
+    # Script-guaranteed, so "what changed" has a baseline even when analyze.py runs outside
+    # the pulse. LOCAL date, like pulse.last_run. Skipped when any history/analysis-data-*.json
+    # is already byte-identical (the pulse's Step 1 copy). A same-date name holding DIFFERENT
+    # bytes is never overwritten: the copy takes the next free -2, -3 ... suffix.
+    # SSE_ANALYZE_NOW (ISO-8601 local time with offset) pins the clock, for tests only.
+    # Any failure here lands in the except below, so the old file is kept, never lost.
+    _ad_path = os.path.join(ROOT, 'analysis-data.json')
+    if os.path.isfile(_ad_path):
+        _old = open(_ad_path, 'rb').read()
+        _hdir = os.path.join(ROOT, 'history')
+        if not any(os.path.getsize(p) == len(_old) and open(p, 'rb').read() == _old
+                   for p in glob.glob(os.path.join(_hdir, 'analysis-data-*.json'))):
+            _clk = os.environ.get('SSE_ANALYZE_NOW')
+            _day = (_dt.fromisoformat(_clk) if _clk else _dt.now()).strftime('%Y-%m-%d')
+            os.makedirs(_hdir, exist_ok=True)
+            _snap, _k = os.path.join(_hdir, 'analysis-data-' + _day + '.json'), 1
+            while os.path.exists(_snap):
+                _k += 1
+                _snap = os.path.join(_hdir, 'analysis-data-%s-%d.json' % (_day, _k))
+            open(_snap, 'wb').write(_old)
     open(os.path.join(ROOT, 'analysis-data.json'), 'w', encoding='utf-8').write(
         json.dumps(_data, indent=2, ensure_ascii=False))
 except Exception as _e:

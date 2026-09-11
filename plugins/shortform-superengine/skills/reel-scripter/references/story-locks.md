@@ -110,5 +110,24 @@ Run this as a final sweep over any drafted script. Each maps to a lock above.
 - **CTA score** rewards: one clear ask stated without hedging (see `cta-scaffolds.md`) — "comment X
   *to get*…" beats "maybe let me know your thoughts."
 
+**Two instruments, no conversion.** Step 3 scores each *option* 1 to 10 at the gate; Step 4d
+scores the assembled *draft* 0 to 100 (Hook / Body / CTA / overall). Both read this rubric, but
+they are separate instruments with no conversion between them: a 7 is not a 70, a 70 is not a 7,
+and no option score carries into the draft score.
+
+**Option score anchors (Step 3, 1 to 10; the gate defaults to 7).** Score against the section's
+own dimensions (`step3-options.md` pass 3) and these anchors:
+- **9** ... every dimension lands in full and there is nothing to fix. A 9 hook: one subject and
+  one question a stranger names after a single read, contrast or an open loop in the first line,
+  spoken to "you", zero hedges, no Hook Killer.
+- **7** ... clears the bar. Nothing is missing and no Hook Killer fires, but one dimension is soft
+  and a single swap from the 8 Swaps lifts it. A 7 hook: clear subject and question, but the
+  contrast is only implied, or one hedge word is left to cut.
+- **6 or below** ... withheld. Any one of these: a Hook Killer fires (DELAY, CONFUSION,
+  IRRELEVANCE, DISINTEREST); a dimension is missing outright (two subjects, no question planted,
+  two asks); or it needs two or more swaps. A firing Hook Killer caps the option at 6 however
+  strong the rest is.
+- **8** sits between a 7 and a 9; keep **10** for an option you would not change a word of.
+
 > **The one rule to remember: contrast.** "But" introduces conflict; conflict holds attention.
 > If a script lands nothing else, make sure its haymakers are split A→B.
