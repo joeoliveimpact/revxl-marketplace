@@ -100,7 +100,7 @@ You don't need command names. Triggers match how people actually talk.
 - **Claude Code** (the terminal app). Setup installs software, so it cannot run in Claude Desktop / Cowork.
 - **Python** — setup installs 3.12 via winget (Windows) / Homebrew (Mac) if you don't have ≥3.10.
 - **A Google account** with NotebookLM access.
-- Windows: Microsoft Edge (ships with Windows 10/11). Mac: nothing extra — Playwright Chromium is installed into the isolated environment.
+- Sign-in browser: Google Chrome if installed (Mac and Windows). Otherwise Microsoft Edge on Windows (ships with Windows 10/11), or a bundled Chromium downloaded into the isolated environment as the last resort.
 - Soft pairing: if `workspace-superengine` is installed, its session lifecycle complements this; no hard dependency.
 
 ---
