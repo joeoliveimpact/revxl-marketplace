@@ -6,7 +6,7 @@ Durable record of the failure modes hit while making notebooklm-py work cross-pl
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `playwright install chromium` then browser fails: "side-by-side configuration is incorrect" / SxS activation error / `Dependent Assembly <ver> could not be found` | Playwright's bundled Chromium SxS manifest fails to activate on many Windows machines (recurs across Chromium versions; not a missing VC++ redist) | Don't use bundled Chromium on Windows. Setup signs in through system Google Chrome (`channel="chrome"`), else Edge (`channel="msedge"`, ships on all Win10/11); bundled Chromium is the last resort only. |
+| `playwright install chromium` then browser fails: "side-by-side configuration is incorrect" / SxS activation error / `Dependent Assembly <ver> could not be found` | Playwright's bundled Chromium SxS manifest fails to activate on many Windows machines (recurs across Chromium versions; not a missing VC++ redist) | Don't use bundled Chromium on Windows. Setup signs in through system Google Chrome (`channel="chrome"`), else Edge (`channel="msedge"`, ships on all Win10/11); bundled Chromium is the last resort only. If it hits this error, install Chrome (`winget install -e --id Google.Chrome`), then `/notebooklm-setup reauth`. |
 | Browser launches then exits immediately, exit code 21, `TargetClosedError: ...browser has been closed` | The `--disable-blink-features=AutomationControlled` launch arg crashes current Edge builds | Never pass that arg. Plain `launch_persistent_context` works. |
 | Login script run via background job / `Start-Process -Hidden` exits with no output / exit 21 | PowerShell jobs & windowless processes can't host the GUI browser; output buffers lost | Run the login script **synchronously** in the foreground. It self-detects sign-in and exits on its own. No signal file, no background process. |
 | `auth check` fails: missing `__Secure-1PSIDTS`; "extraction was incomplete" | Login script saved the session before Google set the rotating `*PSIDTS` tokens (they appear a few seconds after sign-in) | Poll for the full set `{SID, __Secure-1PSID, __Secure-1PSIDTS, __Secure-3PSIDTS}` then wait 3s before saving. |
@@ -18,7 +18,7 @@ Durable record of the failure modes hit while making notebooklm-py work cross-pl
 | Symptom | Cause | Fix |
 |---|---|---|
 | `python3` is 3.9 (system default), pip install fails / too old | macOS ships Python < 3.10 | `brew install python@3.12`; build the venv with that interpreter. |
-| `playwright` browser missing | Chromium not installed (only matters when Google Chrome is absent; setup prefers Chrome) | `~/.notebooklm-venv/bin/python -m playwright install chromium` (Mac has no SxS issue; bundled Chromium is fine here; do **not** use the Edge channel). |
+| `playwright` browser missing | Chromium not installed (only matters when Google Chrome is absent; setup prefers Chrome) | Setup runs `~/.notebooklm-venv/bin/python -m playwright install chromium` for you (Mac has no SxS issue; bundled Chromium is fine here; do **not** use the Edge channel). |
 | `~/bin/notebooklm` not found | `~/bin` not on PATH | Append `export PATH="$HOME/bin:$PATH"` to `~/.zshrc` (or `~/.bashrc`), open a new terminal. |
 
 ## Both platforms
@@ -26,6 +26,6 @@ Durable record of the failure modes hit while making notebooklm-py work cross-pl
 | Symptom | Cause | Fix |
 |---|---|---|
 | Was working, now auth errors mid-use (CLI prints `Authentication expired or invalid ... Run 'notebooklm login'`) | Google session expired (`*PSIDTS` rotate/expire) | `/notebooklm-setup reauth` re-runs sign-in only, picks up the new session, no reinstall. Ignore the CLI's `notebooklm login` hint. |
-| `notebooklm login` fails: `BrowserType.launch_persistent_context: Executable doesn't exist at ...ms-playwright\chromium-<n>\...` | The CLI's built-in login launches Playwright's bundled Chromium pinned to the venv's Playwright version, and that exact build is not on disk (seen 09.25.26: Playwright 1.59.0 wanted chromium-1217, the machine had 1234 and 1243) | Never run `notebooklm login` or `playwright install` by hand. `/notebooklm-setup reauth` signs in through system Chrome (or Edge) instead. |
+| `notebooklm login` fails: `BrowserType.launch_persistent_context: Executable doesn't exist at ...ms-playwright\chromium-<n>\...` | The CLI's built-in login launches Playwright's bundled Chromium pinned to the venv's Playwright version, and that exact build is not on disk (seen 09.25.26: Playwright 1.59.0 wanted chromium-1217, the machine had 1234 and 1243) | Never run `notebooklm login` or `playwright install` by hand. `/notebooklm-setup reauth` signs in through system Chrome (Edge on Windows, bundled Chromium as the last resort) instead. |
 | Generation commands hang or fail | NotebookLM rate limit / long job (audio 10–20m, video 15–45m) | Expected. Kick off → `artifact wait` → notify → `download`. Retry later on rate-limit. |
 | Cowork "couldn't reach MCP server" | Out of scope — this plugin is local-only by design | Use NotebookLM in Claude Code (terminal), not Cowork. |

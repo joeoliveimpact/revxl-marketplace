@@ -7,6 +7,7 @@ All notable changes to this plugin. Format: [Keep a Changelog](https://keepachan
 ### Fixed
 
 - **Auth-failure routing.** `notebooklm-ask`, `-build`, `-studio`, `-youtube`, `-transcripts` and `-suggest` now carry an auth-failure guard: when the CLI says `Authentication expired or invalid` or prints its `notebooklm login` hint, Claude never relays that hint or suggests `playwright install`, and runs `/notebooklm-setup reauth` itself (the user only signs in in the browser window). `notebooklm-doctor` reports the same remedy. Observed 09.25.26 on Windows: the relayed `notebooklm login` failed with `Executable doesn't exist at ...ms-playwright\chromium-1217` (venv Playwright 1.59.0; the machine had 1234 and 1243 only).
+- **Reauth now syncs the new sign-in.** `/notebooklm-setup reauth` runs Phase 6 between login and verify, so fresh cookies reach `~/.notebooklm/profiles/default/`, the path the CLI reads. Before, reauth ran Phase 5 then Phase 7 only.
 
 ### Changed
 

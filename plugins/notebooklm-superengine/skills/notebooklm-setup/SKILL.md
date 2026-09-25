@@ -35,7 +35,7 @@ Read `.claude/workspace.yml#environment`.
 | Invocation | Mode | What runs |
 |---|---|---|
 | `/notebooklm-setup` (no args) | **install** | Full Phases 1–8 |
-| `/notebooklm-setup reauth` | **reauth** | Phase 5 (login) → Phase 7 (verify) only |
+| `/notebooklm-setup reauth` | **reauth** | Phase 5 (login) → Phase 6 (sync to profiles path) → Phase 7 (verify) |
 | `/notebooklm-setup update` | **update** | `pip install -U "notebooklm-py[browser]"` in the venv → Phase 7 |
 | `/notebooklm-setup uninstall` | **uninstall** | Confirm, then remove venv, PATH wrapper, `~/.notebooklm`, state marker |
 
@@ -65,7 +65,7 @@ Check each, then present a plain-English checklist of what's present vs. what wi
 
 1. **Python ≥ 3.10:** `python --version` (Win) / `python3 --version` (Mac). Below 3.10 or absent → will install.
 2. **Package manager:** Windows → `winget --version`. Mac → `brew --version`. Absent → flag (Mac: direct user to install Homebrew from brew.sh first and stop; Windows: winget ships with Windows 10/11 — if absent, direct to Microsoft Store "App Installer").
-3. **Sign-in browser:** run the Phase 5 browser probe (checks only, install nothing yet) and report which browser sign-in will use: Google Chrome; on Windows, Microsoft Edge if Chrome is absent; or a bundled Chromium download if neither is found.
+3. **Sign-in browser:** run the Phase 5 browser probe (checks only, install nothing yet) and report which browser sign-in will use: Google Chrome; on Windows, Microsoft Edge if Chrome is absent; or a bundled Chromium download if neither is found. Windows with neither: warn of the SxS risk and offer to install Chrome first with `winget install -e --id Google.Chrome`.
 
 Present like:
 > Here's what I found:
@@ -113,15 +113,15 @@ So `notebooklm` works in any terminal.
 
 ## Phase 5 — Authenticate (self-detecting login, synchronous)
 
-The built-in `notebooklm login` needs interactive terminal input that Claude Code's tools can't provide, and it launches Playwright's bundled Chromium, which fails with `Executable doesn't exist at ...ms-playwright\chromium-<n>` when that exact build is not on disk. Never run it or relay its hint. Use this custom script instead. It opens a real browser, the user signs in, and it **detects success on its own** and exits. No signal files, no background process.
+The built-in `notebooklm login` needs interactive terminal input that Claude Code's tools can't provide, and its pinned bundled Chromium is often missing (`Executable doesn't exist`). Never run it or relay its hint. Use this custom script instead. It opens a real browser, the user signs in, and it **detects success on its own** and exits. No signal files, no background process.
 
 **Pick the sign-in browser first (probe order, stop at the first hit).** This runs in every mode, reauth included:
 
-1. **Google Chrome** (the default on Mac and Windows) → `CHANNEL = "chrome"`.
+1. **Google Chrome** (default, Mac and Windows) → `CHANNEL = "chrome"`.
    - Windows: any of `C:\Program Files\Google\Chrome\Application\chrome.exe`, `C:\Program Files (x86)\Google\Chrome\Application\chrome.exe`, `%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe` exists (PowerShell `Test-Path`).
    - Mac: `/Applications/Google Chrome.app` exists.
 2. **Windows only: Microsoft Edge** → `CHANNEL = "msedge"` if `msedge.exe` exists under `C:\Program Files (x86)\Microsoft\Edge\Application\` or `C:\Program Files\Microsoft\Edge\Application\` (ships with Win10/11).
-3. **Last resort: bundled Chromium** → `CHANNEL = ""`. First run `<PYBIN> -m playwright install chromium` (downloads the build matching the venv's Playwright; a no-op if already present). On Windows, warn that this build can fail with a side-by-side (SxS) activation error; if it does, stop and use `docs/known-issues-windows-mac.md`.
+3. **Last resort: bundled Chromium** → `CHANNEL = ""`. First run `<PYBIN> -m playwright install chromium` unless Phase 3 already ran it (it fetches the venv's matching build). On Windows, warn that this build can fail with a side-by-side (SxS) activation error; if it does, offer to install Chrome with `winget install -e --id Google.Chrome`, then rerun this phase.
 
 Chrome and Edge run on the separate `auth_profile` folder below, never the user's normal profile, and the user's open windows keep running (verified 09.25.26 on Windows with channel `chrome`).
 
