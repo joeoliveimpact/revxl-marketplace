@@ -23,7 +23,7 @@ All calls are `GET` with query parameters and the `x-api-key` header.
 |---|---|---|---|
 | `credits/balance` | GET, no params | 0 | every credit-gated step, always the first call of a run. Free by design: never skip it to save time |
 | `instagram/profile` | GET, `handle` / `user_id` | 1 | onboarding (key verification) - competitor-cross-reference Step 4a (follower counts for tiering) - competitor-pulse Step 1 (roster profiles) |
-| `instagram/profile/reels` | GET, `handle` / `user_id` | 1 per account | competitor-cross-reference (reel pull) - competitor-pulse Step 2 (the delta window; (N+1) x 1cr for N roster accounts plus the client) |
+| `instagram/profile/reels` | GET, `handle` / `user_id` | 1 per page; 2 with `include=stats` (adds `engagement.shares` per reel; keep it on every page, a cursor from a call without it cannot continue; measured 09.23.26) | competitor-cross-reference (competitor reel pull, with `include=stats`) - competitor-pulse Step 2 (the delta window, with `include=stats`; (N+1) x 2cr for N roster accounts plus the client) |
 | `instagram/profile/reels/full` | GET, `handle` / `user_id` | 5 per upstream page (`limit` 1 to 50 pages server-side) | own-content-analysis (0.5.0), the client's own public signal, about 5cr per 50 reels |
 | `instagram/post/stats` | GET, `url` | 5 per reel | competitor-pulse (share counts on the week's winners) ... loop cost stated before the first call |
 | `instagram/search/reels` | GET, `query` | 1 documented. **competitor-pulse prices its beyond-roster leg at 5cr** ... verify against `credits_used` before looping | competitor-cross-reference Step 4 (niche seed search) - competitor-pulse (beyond-roster field search) |

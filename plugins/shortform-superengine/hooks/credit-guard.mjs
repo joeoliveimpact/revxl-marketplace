@@ -189,6 +189,8 @@ try {
       for (const [k, v] of FALLBACK_BIG) if (p.includes(k)) { c = v; break; }
     }
     if (/[?&]deep_scan=true/.test(clean)) c = Math.max(c, 15); // deep-scan variants bill far higher
+    // include=stats on the reel listing bills 1 more a page (measured 09.23.26: 2cr, not the map's 1).
+    if (p === "instagram/profile/reels" && /[?&]include=[^&"'\s]*stats/.test(clean)) c += 1;
     return c;
   }
 

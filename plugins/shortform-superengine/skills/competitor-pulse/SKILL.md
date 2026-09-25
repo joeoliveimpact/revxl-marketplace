@@ -151,7 +151,7 @@ it never spends by itself.
 | Leg | Endpoint | Cost | When |
 |---|---|---|---|
 | Balance | `credits/balance` | 0 | always first |
-| Listing, client + roster | `instagram/profile/reels` p1 (~12 reels) | (N+1) × 1cr | every pulse, after ✋P1 |
+| Listing, client + roster | `instagram/profile/reels` p1 (~12 reels) | (N+1) × 2cr | every pulse, after ✋P1 |
 | Client followers | `instagram/profile` | 1cr | every pulse |
 | Competitor followers | `instagram/profile` × N | N × 1cr | MONTHLY or roster ops only — reach-eff tolerates week-stale denominators (noted in the brief) |
 | Winner shares | `instagram/post/stats` | 5cr/reel | winners only, ✋P2, cap ~6 |
@@ -214,10 +214,10 @@ days, and a 23-day gap is covered in full. Say the window in the brief.
 Execution rules: socialcrawl-superengine's `socialcrawl` skill when installed,
 else `../socialcrawl/SKILL.md` and `../socialcrawl/references/instagram.md:126-131`.
 
-- Client + each roster handle: `GET /v1/instagram/profile/reels?handle=…`
-  (~12 reels, 1cr a page). Page on with `&max_id=<next_cursor>` until the oldest
+- Client + each roster handle: `GET /v1/instagram/profile/reels?handle=…&include=stats`
+  (~12 reels + shares, 2cr a page). Page on with `&max_id=<next_cursor>` until the oldest
   reel on the page is older than `window_from` or `next_cursor` is absent.
-  Pinned reels (old ones shown first) never decide that stop. +1cr a page, say so.
+  Pinned reels (old ones shown first) never decide that stop. +2cr a page, say so.
 - One `Idempotency-Key` per handle + window, suffixed per page
   (`pulse-<brand>-<handle>-<window_from>-p<n>`; one key reused with other params returns
   422), so a resumed run replays at 0cr within 24h and never re-bills. A 502/503
