@@ -126,7 +126,7 @@ try {
   // Returns null when the map knows nothing about the path.
   // Metered endpoints: the stored number is a UNIT price (per URL / item / chunk / page), so
   // the real spend scales with the array or limit the caller sends. prism/post-stats with 100
-  // Instagram URLs is 500 credits, not 1. Quoting the bare number here would be the single
+  // Instagram URLs is 200 credits (2 per URL), not 1; 100 LinkedIn URLs is 500. Quoting the bare number here would be the single
   // most dangerous thing this hook could say.
   const PER_UNIT = (COSTS && COSTS._perUnit) || {};
   function meteredFor(verb, p) {

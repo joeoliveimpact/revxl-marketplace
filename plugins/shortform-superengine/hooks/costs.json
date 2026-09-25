@@ -386,6 +386,11 @@
 "unit": "page of 10 reels",
 "worst": 5
 },
+"GET instagram/profile/reels/full": {
+"note": "limit=50 = 5 pages = 25cr",
+"unit": "page of about 12 reels",
+"worst": 5
+},
 "GET prism/ai-visibility": {
 "note": "defaults runs=8 x 2 engines = 16 probes = 32cr; 20 prompts x 20 runs = 1600cr; use preset= for a flat budget",
 "unit": "probe (prompt x run x engine)",
@@ -427,7 +432,7 @@
 "worst": 5
 },
 "POST prism/post-stats": {
-"note": "1cr most platforms, 5cr Instagram/LinkedIn",
+"note": "1cr most platforms, 2cr Instagram, 5cr LinkedIn; 100 Instagram URLs = 200cr",
 "unit": "successful URL",
 "worst": 5
 },

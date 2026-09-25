@@ -37,7 +37,7 @@
 | /app-reviews | *(none)* | **15** | Cross-store app review intelligence (Google Play + App Store) — translated, clustered, sentiment-scored. |
 | /creator-card | `handle` | **5** | One handle, unified author cards across TikTok, Instagram, YouTube, X (and more). |
 | /handle-audit | `handle` | **5** | Should you pull this handle? One call scores a handle across platforms, ranks the best ones, and projects the data volume + credit cost to pull it. |
-| /post-stats | `urls` | **1** | Up to 100 mixed-platform post URLs → current engagement per URL, failed URLs refunded. |
+| **POST** /post-stats | `urls` | **1 per successful URL** (2 Instagram, 5 LinkedIn) | Up to 100 mixed-platform post URLs → current engagement per URL, failed URLs refunded. |
 | /comment-lookup | `items` | **2** | Re-check up to 25 known comments in one call — per-item results, failed items refunded. |
 
 ### Parameter legend
