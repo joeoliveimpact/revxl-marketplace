@@ -4,6 +4,15 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.69] ... 2026-09-25
+
+### Fixed
+- **notebooklm-superengine v0.5.0** ... auth failures route to `/notebooklm-setup reauth`
+(Claude runs it; the user only signs in) instead of relaying the CLI's `notebooklm login`
+hint, which broke on Windows when Playwright's pinned Chromium build was missing. Setup now
+signs in through Google Chrome by default on Mac and Windows, then Edge on Windows, then
+bundled Chromium as the last resort.
+
 ## [0.1.68] ... 2026-09-09
 
 ### Added
