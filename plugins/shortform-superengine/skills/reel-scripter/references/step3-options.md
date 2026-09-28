@@ -31,11 +31,11 @@ flag it and ask ... never paper over with invented teaching.
      Use the client's vocabulary; pull verbatim audience pains from `voc-profile.md` where they
      fit (the client's words beat yours).
    - **Secondary hooks ... compute placements FIRST (mandatory), then 3 options per placement.**
-     Read the reel's length target and take the placement COUNT from the placement table in
+     Read the reel's length target and take the placement COUNT from the timing rule in
      `./retention-psychology.md` §4 (read the numbers there; they are not copied here)
      ... never a single placement for a 60s+ reel. Lay the slots at the drop-off
-     points: 12 to 15s is always the strongest slot, then roughly every 15 to 20s through the back
-     half. Generate 3 scored options PER SLOT. Scripted content moments, not edit effects;
+     points: the secondary hook right after the opening when it fits, then about one re-hook per
+     30s (none required under ~35s). Generate 3 scored options PER SLOT. Scripted content moments, not edit effects;
      every tease sits on value already delivered.
    - **Body beats + Proof (2 to 3 options per beat)** ... fill the skeleton one idea per beat; run
      the loop mechanics (`retention-psychology.md`: connective question-chain, partial payoffs).

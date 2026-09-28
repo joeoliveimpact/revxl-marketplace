@@ -355,7 +355,7 @@ w('- **CONFUSION** -- needs a re-read. Fix: fewer/simpler words, active voice, o
 w('- **IRRELEVANCE** -- viewer does not feel it is for them (usually "I"-framing). Fix: swap me/my -> you/your; name their pain.')
 w('- **DISINTEREST** -- clear but flat, no open question. Fix: state an A-vs-B contrast ("Most people X. Here is why that is wrong.").')
 w('- **Retention = curiosity sustained.** The #1 killer is closing the curiosity loop too early -- paying off the question before the viewer is invested. Keep at least one open loop running at all times; only resolve it once the next loop is already open.')
-w('- **Re-hook every ~20-30 seconds.** Attention decays even after a great open, so plant a fresh micro-open on a cadence -- a new question, a "but here is the thing", a pattern interrupt -- so the curve never flattens.')
+w('- **Re-hook about every 30 seconds.** Attention decays even after a great open, so plant a fresh micro-open on a cadence -- a new question, a "but here is the thing" -- so the curve never flattens.')
 w('')
 w('On a Reel the attention cliff is ~2 seconds (spoken + visual together) -- the hook must clear all four before then.')
 

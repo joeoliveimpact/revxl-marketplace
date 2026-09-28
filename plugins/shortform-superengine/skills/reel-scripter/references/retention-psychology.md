@@ -66,7 +66,7 @@ anticipate it, the longer they hold. Anticipation paid off with a **non-obvious,
 reveal** is the single most powerful retention move in the corpus.
 
 > **The one rule that keeps this honest:** never stack teases back-to-back with no payoff between
-> them. Each secondary hook must sit on top of value already delivered — the viewer should have
+> them. Each re-hook must sit on top of value already delivered ... the viewer should have
 > *learned something* by that point, not just collected another promise. Empty tease → churn.
 
 **Hold the primary payoff to the END — revealing it early is the #1 retention killer.** The
@@ -81,32 +81,60 @@ distinct final payoff so the end still closes a loop.
 
 ---
 
-## 4. Secondary Hooks — mechanics, placement, dosage
+## 4. The Secondary Hook and Re-hooks ... mechanics, placement, dosage
 
-Secondary hooks are **scripted re-engagement moments** that close one gap while opening the next,
+Re-hooks are **scripted re-engagement moments** that close one gap while opening the next,
 placed at natural retention drop-off points. Think of them as "the beads that keep the momentum" —
 something meaningful lands every second so the viewer never hits a dead spot.
 
-**The hook is a sequence, not a moment.** Top performers layer 4–5 micro re-hooks inside the first
+**The secondary hook is one line: the line right after the opening hook.** Every later one is a
+re-hook. It counts when it deepens the hook, promises a result or opens a second question ("I
+tried this and I literally got 20 responses overnight"). It is a strong default, not a
+requirement: it depends on what the hook actually says, and it quite often fits. Add it when it
+fits; no flag when it is absent.
+
+**The test.** A re-hook tells the viewer something new or better is coming next, so they keep
+watching to get it. Ask: does this line make me want the NEXT part, or is it the point itself?
+Spoken lines only; visual beats (cuts, zooms, props) are outside this check.
+
+**Counts:**
+- The secondary hook (above).
+- A reveal of something new or extra: "There's even...", "You can even...", "my real secret weapon".
+- A result promise: "I tried this and I was blown away by the results."
+- The turn from old to new: "X changes all of that", "it doesn't just do Y anymore".
+- A question that opens a gap the video will close.
+- A statement that points forward: a warning or bold claim that opens a new problem the video then
+  solves, or turns with "but" / "therefore" toward what is next.
+- A hand-off to what comes next. A weak one that does not say what is coming ("here's how to do
+  it") still counts, but is **flagged weak**: rewrite it to name the payoff.
+- A list item that is picked out or ranked: "my favorite is number three".
+
+**Does not count:**
+- A statement that is the point itself: a claim, opinion, fact or warning that ends on itself and
+  is never paid off.
+- The setup before a turn: "the old way took weeks". The turn that follows is the re-hook.
+- A plain list step or instruction: "First, open up ChatGPT", "Number one is surfaces".
+- A sales push or call to action: "you'd be insane not to try it".
+- A question asked to a live room.
+- The opening hook itself.
+
+**The hook is a sequence, not a moment.** Top performers layer 4-5 micro beats inside the first
 ~7 seconds — the primary hook buys the first 2–3 seconds, then small meaningful shifts keep buying
-the next one. The placement table below governs the *big* re-engagement points; this early density
+the next one. The timing rule below governs the *big* re-engagement points; this early density
 governs the open.
 
-**Placement (the 12–15s window is the most critical re-engagement point at every length — put your
-strongest secondary hook there):**
+**Timing (guidance for the writer, never a hard fail):**
 
-| Reel length | Secondary hooks |
-|---|---|
-| 30s | 1 (~12–15s mark) |
-| 45s | 1–2 |
-| 60s | 2–3 |
-| 90s | 3–4 |
+- **Secondary hook by about 10 seconds,** when it fits (above).
+- **Under ~35 seconds: no mid-reel re-hook required.**
+- **Then about one re-hook per 30 seconds:** one in a 35-50 s reel, two in a 70-95 s reel.
+- **Flag the writer at a stretch of 40+ seconds with no spoken re-hook,** only in reels long enough to have one.
 
 **Dosage warning — more is not better.** A million cuts, zooms, effects, and text spam is *noise*,
-not pacing. Layer a *few* deliberate secondary hooks over a consistent rhythm the viewer can
+not pacing. Layer a *few* deliberate re-hooks over a consistent rhythm the viewer can
 intuitively follow. Build a "pacing identity," not chaos.
 
-> **Critical distinction:** a secondary hook is a **scripted content moment** (a verbal or on-screen
+> **Critical distinction:** a re-hook is a **scripted content moment** (a verbal or on-screen
 > line that shifts attention / reveals partial info / opens a new gap) — NOT a visual pattern
 > interrupt (camera cut, zoom, text animation). Those are editing decisions. The script owns the
 > content hooks; the edit owns the visual interrupts. Don't confuse the two.
@@ -136,7 +164,7 @@ The stretch right after hook + problem-identification is where most reels lose t
    (opens a dopamine-driven anticipation loop).
 2. **Hope injection** — a micro-win or perspective shift that gives immediate relief ("this is
    simpler than you think").
-3. **Pattern interrupt every ~15–20s** — a scripted shift that resets attention and forces the brain
+3. **A spoken re-hook about every 30s (§4)** ... a scripted shift that resets attention and forces the brain
    from autopilot (System 1) back to deliberate focus (System 2). Must feel organic, not arbitrary.
 
 Place an **insight moment at the 12–15s mark** — the point where viewers decide to keep watching or
@@ -181,7 +209,7 @@ and pushes wider. Close the primary loop by returning to the opening image with 
 - **Deliver on every loop.** A curiosity gap you open and never pay off reads as clickbait and burns
   trust. Open only loops the body can close.
 - **Value before the next tease** — §3's honesty rule. No empty back-to-back teases.
-- **Secondary hooks are script, not edit** — §4. Don't score editing decisions as content.
+- **Re-hooks are script, not edit** ... §4. Don't score editing decisions as content.
 - **Craft, not promises** — these mechanics raise craft quality; they don't predict views. The
   reel-scripter never forecasts virality (consistent with the rest of the product).
 

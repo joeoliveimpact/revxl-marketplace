@@ -122,8 +122,8 @@ For the chosen hook type, pull the matching body skeleton from
 `./body-structures.md` (organized by hook bucket: question / myth-bust / listicle /
 story / pain-callout / contrarian / statement). Consult `./retention-psychology.md`
 to pick the post-hook structure by intent (Transformation Arc / Myth-Buster / Authority Solution)
-and plan the loops: where the primary loop pays off, secondary-hook count + placement for the
-length (strongest at the 12 to 15s window), and the beat-to-beat question chain. Lay out the beat
+and plan the loops: where the primary loop pays off, the secondary hook and re-hook count + placement
+for the length (about one per 30s; none required under ~35s), and the beat-to-beat question chain. Lay out the beat
 list for THIS reel: `Hook → Secondary hook → Body beat 1..n → Proof → CTA`. Keep it to the length
 target the brief gives (most winning reels are short ... respect it).
 
@@ -179,6 +179,8 @@ beat earn the next? Any dead beat, any place the attention drops ... flag and ti
 confirm the draft matches the Checkpoint-2 skeleton **beat-for-beat** (no beat added / cut /
 reordered, no move softened) ... any drift gets flagged at Checkpoint 4. A change the **user**
 asks for at Checkpoint 4 is always allowed ... the lock binds voice, not the user.
+Re-hook timing (`./retention-psychology.md` §4): flag the writer at a stretch of 40+ s with no spoken re-hook,
+only in reels long enough to have one ... guidance, never a hard fail.
 
 **4d. Craft score.** Score **Hook / Body / CTA / overall (0 to 100)** against the **Story Locks rubric**
 (`./story-locks.md`) ... how many of the 6 Story Locks + 8 Swaps the script lands (contrast,

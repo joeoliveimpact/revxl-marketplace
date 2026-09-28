@@ -66,8 +66,8 @@ worst / costing you" outperform their positive twins.
 **What it is:** A reel isn't one hook — it's a chain of them. Re-flip the attention "hourglass"
 before it empties by opening a fresh micro-loop, led by a contrast word.
 **Swap tactic:** Between beats, insert a re-hook: "but here's the part nobody talks about," "this is
-where it gets weird," "and that's not even the [mechanism]." **Cadence: roughly every 20–30s for
-short-form.** A 4–5 beat reel wants 2–3 loop openers.
+where it gets weird," "and that's not even the [mechanism]." **Cadence: about one every 30s for
+short-form, none required under ~35s:** one in a 35-50s reel, two in a 70-95s reel.
 **Before → After:**
 - ❌ "[Point 1]. [Point 2]. [Point 3]." (flat list, no re-hooks)
 - ✅ "[Point 1]. **But** here's what surprised me — [Point 2]. And **that's** the part that changes [outcome]."
@@ -93,7 +93,7 @@ Run this as a final sweep over any drafted script. Each maps to a lock above.
 | 2 | Kill weak language | `I think→I found`, `might→will`, delete `just/kind of/sort of/maybe/hopefully` | Embedded-Truths |
 | 3 | Use THEIR words | Swap insider jargon for the audience's own phrasing (beats the curse of knowledge) | (clarity) |
 | 4 | Go negative | `don't / stop / avoid / lose / costing you` over the positive version | Negative-Frames |
-| 5 | Hooks throughout | Drop a re-hook every 20–30s ("here's what everyone misses") | Loop-Openers |
+| 5 | Hooks throughout | Drop a re-hook about every 30s ("here's what everyone misses") | Loop-Openers |
 | 6 | More contrast | Add `but / instead / turns out` to introduce conflict | Contrast-Words |
 | 7 | Narrate the doubt | Voice their objection, then answer it | Thought-Narration |
 | 8 | **Second-person default** | Ask every line: **"can this be `you`, not `I/we`?"** Swap teaching / benefit / stakes lines to `you/your`. **Keep first person ONLY for the creator's own proof/testimony** (`I canceled`, `I tested`) — that's what makes it credible. | Viewer-as-Subject |
