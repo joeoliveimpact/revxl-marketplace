@@ -1,0 +1,10 @@
+{
+  "master_commit": "b42c843ee218b8fc36113d05551c777fa47b448c",
+  "copies": {
+    "skills/hook/references/legit-hook.md": "d54e59b88e00ab6f17704a50fe84d0ed12391de85019151d2355117f558a7216",
+    "skills/rehooks/references/legit-rehooks.md": "8c4a36a8bc3c3b1f6fb7f406a526f8ea9840fbf025f9e9304fec2fc97de5aa75",
+    "skills/viral/references/legit-viral.md": "fcdbc295a24920756e60e343d1c71bd36ab7df1a75a2f39943f90e5924739372",
+    "skills/angles/references/legit-angles.md": "47ef532dd5ef212c81da7115d6c5cc52e53ae3b92a366217832ef1f10831b988",
+    "skills/polarize/references/legit-polarize.md": "8b69421d2176a1e2c06786535c382ab4bdbb062cf2fd3a92cc92be36003515d3"
+  }
+}

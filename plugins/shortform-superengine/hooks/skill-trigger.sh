@@ -23,6 +23,15 @@ BRAND_BRAIN='capture my voice|build my brand brain|brand brain|mine my calls|set
 HARVEST='harvest .{0,40}(library|content|videos)|get everything .{0,40} teaches|pull all of .{0,40} content|build a corpus from|refresh our notebook on'
 CONTENT_PLAN='content plan|weekly topic pool|topic pool|idea bank|plan my week|plan the week|what should i post this week'
 SOCIALCRAWL='socialcrawl|social crawl|social media api|check my socialcrawl balance'
+# The five Legit Content Skills. VIRAL and POLARIZE are checked before
+# REEL_SCRIPTER so "punch this up" and "hot take" reach them even when the prompt
+# also says "reel script"; HOOK, REHOOKS and ANGLES come after it, so a full
+# scripting ask still wins.
+HOOK='write me a hook|opening line|first 3 seconds of my reel'
+REHOOKS='add re-?hooks|keep them watching'
+VIRAL='make this more viral|punch this up|more shareable'
+ANGLES='angles on this topic|ways to cover this'
+POLARIZE='hot take|contrarian take|unpopular opinion'
 
 nudge() {
   echo "[shortform-superengine] This looks like a job for the $1 skill ... invoke it (Skill tool) before doing the work by hand."
@@ -34,8 +43,18 @@ elif echo "$input" | grep -qiE "$START"; then
   nudge shortform-start
 elif echo "$input" | grep -qiE "$ONBOARDING"; then
   nudge onboarding
+elif echo "$input" | grep -qiE "$VIRAL"; then
+  nudge viral
+elif echo "$input" | grep -qiE "$POLARIZE"; then
+  nudge polarize
 elif echo "$input" | grep -qiE "$REEL_SCRIPTER"; then
   nudge reel-scripter
+elif echo "$input" | grep -qiE "$HOOK"; then
+  nudge hook
+elif echo "$input" | grep -qiE "$REHOOKS"; then
+  nudge rehooks
+elif echo "$input" | grep -qiE "$ANGLES"; then
+  nudge angles
 elif echo "$input" | grep -qiE "$CROSS_REFERENCE"; then
   nudge competitor-cross-reference
 elif echo "$input" | grep -qiE "$PULSE"; then

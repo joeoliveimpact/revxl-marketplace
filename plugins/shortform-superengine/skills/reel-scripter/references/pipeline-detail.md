@@ -74,6 +74,33 @@ winning hook type × the gap it closes}, with the evidence cited (`@handle · me
 from the analysis). Example shape: *"Myth-bust on [under-served high-value theme] ... the field's
 myth-bust hooks median Nx the client's; closes the [gap] gap."*
 
+**Widen the set with `angles` first.** Before proposing, call the angles skill once:
+
+```
+Skill: shortform-superengine:angles
+args:  topic: <the reel's topic, or the brief's top attack theme>
+       voice: <the voice anchor confirmed at Checkpoint 0>
+       pattern_read: <the newest <project>/reel-build/Pattern Read - *.json, when a Goldmine pull is on disk>
+       used: <the (theme, hook) pairs already scripted>
+```
+
+Its concepts feed the 2 to 3 proposals, each still carrying the brief's evidence. The
+(theme, hook) dedupe rule in `SKILL.md` Step 1 governs: a concept whose pair is already used
+is dropped or named as a deliberate repeat, whatever angles ranked it. **A contrarian angle
+goes through `polarize`** before it is proposed, when the creator holds a stance against a
+common practice:
+
+```
+Skill: shortform-superengine:polarize
+args:  stance: <the belief, in the creator's own words>
+       voice: <the voice anchor confirmed at Checkpoint 0>
+       pattern_read: <the newest <project>/reel-build/Pattern Read - *.json, when a Goldmine pull is on disk>
+       competitors: <the three closest competitors from the analysis>
+```
+
+Its sharpened take becomes the angle line and its evidence list joins the proposal's
+evidence. A "not a take" verdict drops the contrarian frame; the angle is proposed plainly.
+
 ## Step 1 field vet ... the report and the verdict branches
 
 **Custom-idea field vet (mandatory when the user brings their OWN topic).** A brief-derived
@@ -127,6 +154,21 @@ for the length (about one per 30s; none required under ~35s), and the beat-to-be
 list for THIS reel: `Hook → Secondary hook → Body beat 1..n → Proof → CTA`. Keep it to the length
 target the brief gives (most winning reels are short ... respect it).
 
+**Re-hook placement comes from `rehooks`.** With the beat list laid out, call it once for
+the drop-off map and the slots:
+
+```
+Skill: shortform-superengine:rehooks
+args:  script: <the beat list, labels and estimated times, no copy yet>
+       length: <the brief's length target>
+       voice: <the voice anchor confirmed at Checkpoint 0>
+       pattern_read: <the newest <project>/reel-build/Pattern Read - *.json, when a Goldmine pull is on disk>
+```
+
+Take where each secondary hook and re-hook sits into the beat list; no lines yet, copy is
+Step 3's. The placement count still follows `./retention-psychology.md` section 4: where
+the two differ, say so and the user picks at Checkpoint 2.
+
 **Optimize the skeleton BEFORE showing it (mandatory).** A raw beat list is a draft, not the
 skeleton ... screen it against the brief's proven structure the same way Step 3 screens options,
 then present the TIGHTENED version with a one-line why per change. Never hand the user an
@@ -172,6 +214,21 @@ label, at each seam, which loop is still OPEN. Fail conditions to fix before Che
 Rule: from the hook to the CTA there is never a moment with zero open loops. The spanning loop
 (opened at hook or secondary) resolves in the final beat, not before.
 
+**`rehooks` writes the fix for each dead seam.** For every dead seam the gate or the walk
+names, call it once with the whole draft:
+
+```
+Skill: shortform-superengine:rehooks
+args:  script: <the assembled draft>
+       final: yes (the skeleton is locked)
+       dead_seams: <each dead seam, as the two beats it sits between>
+       voice: <the voice anchor confirmed at Checkpoint 0>
+       pattern_read: <the newest <project>/reel-build/Pattern Read - *.json, when a Goldmine pull is on disk>
+```
+
+It returns one re-hook proposal per dead seam, anchored to the exact line it follows. Apply
+the ones the user accepts; a beat added, cut or moved is still the user's call.
+
 ## Step 4c and 4d ... flow-check, skeleton integrity, craft score
 
 **4c. Flow-check + skeleton integrity.** Read the script top to bottom as a viewer: does each
@@ -188,6 +245,20 @@ zero hedges, named framework, negative-frame, loop-openers at cadence, viewer-fr
 honest **craft** read, **not** a performance prediction: it never claims views. State the one
 highest-leverage fix. *(This is the **single** craft score for the script ... the dashboard's Scripting
 Studio displays it, it does not recompute its own.)*
+
+**Optional punch-up with `viral` (4c or 4d).** When the user asks for it, or the 4d fix is
+shareability or relatability, offer one viral pass; it runs only on a yes:
+
+```
+Skill: shortform-superengine:viral
+args:  script: <the assembled draft>
+       final: yes (the skeleton is locked; proposals only, each paired with its exact line)
+       voice: <the voice anchor confirmed at Checkpoint 0>
+       pattern_read: <the newest <project>/reel-build/Pattern Read - *.json, when a Goldmine pull is on disk>
+```
+
+Its proposals, share type and three scores go to Checkpoint 4 beside the craft score. None
+is applied without the user's pick, and none adds, cuts or reorders a beat.
 
 ## Step 5 template ... the script file shape
 

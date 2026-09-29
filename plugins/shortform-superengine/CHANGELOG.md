@@ -4,6 +4,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- **Five Legit Content Skills: hook, rehooks, viral, angles and polarize.** Each
+  ships as a small wrapper SKILL.md (plugin triggers, routing, what reel-scripter
+  hands over) around a byte-identical copy of the public master at
+  `skills/<name>/references/legit-<name>.md`. `scripts/check_legit_sync.py`
+  proves the copies match the master and pins their hashes in
+  `scripts/legit-sync-manifest.json`. reel-scripter calls them from its reference
+  files: angles and polarize at Step 1, rehooks at Step 2 and Step 4b, hook in the
+  Step 3 hook pass (with the top proven hooks from the pull's Pattern Read), and
+  viral as an optional punch-up at Step 4. Journey-map roster, registry rows E26
+  to E30, the trigger hook and the skill counts (15) follow.
+
 ## [0.4.2] ... 2026-09-11
 
 ### Added

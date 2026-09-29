@@ -27,9 +27,26 @@ flag it and ask ... never paper over with invented teaching.
      question; trust anchor on line 2 to 3), the **HOOK → PROMISE** opener structure + bucket
      templates in `./opener-patterns.md` (micro-intro is YT-only ... skip on IG), and
      proven shapes from `./hook-formulas.md`. On IG the hook is the **frame-1
-     on-screen text** ... write it to double as burned-in caption.
+     on-screen text** ... style it apart from the burned-in captions (the hook skill's Written hook).
      Use the client's vocabulary; pull verbatim audience pains from `voc-profile.md` where they
      fit (the client's words beat yours).
+     Generate them through the `hook` skill, once per reel:
+
+     ```
+     Skill: shortform-superengine:hook
+     args:  topic: <the locked angle>
+            body: <the approved skeleton>
+            voice: <the voice anchor confirmed at Checkpoint 0>
+            pattern_read: <the newest <project>/reel-build/Pattern Read - *.json, when a Goldmine pull is on disk>
+            proven_hooks: <the top 3 breakouts by mult, each with its Pattern Read formula
+                          (name and template), its opening line and @handle, mult, URL
+                          from the Goldmine reads packet>
+     ```
+
+     The proven hooks go through its "Adapting a proven hook" section, so each comes back
+     rebuilt for this reel's subject or refused as a bad fit. Its openings count toward the
+     5 to 8 (top up with the laws above) and run the passes below like any other option.
+     With no Goldmine pull on disk, `proven_hooks` is left out.
    - **Secondary hooks ... compute placements FIRST (mandatory), then 3 options per placement.**
      Read the reel's length target and take the placement COUNT from the timing rule in
      `./retention-psychology.md` §4 (read the numbers there; they are not copied here)
