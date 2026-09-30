@@ -4,6 +4,22 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.70] ... 2026-09-30
+
+### Added
+- **higgsfield-superengine v0.1.0** ... first release. Makes Higgsfield image and video
+generation easy just by talking to Claude, through the Higgsfield REST API on the client's
+own API key. 8 skills: setup (hidden key box, screen guard while the key is visible),
+generate, image and video prompting, static ads, UGC video ads, product shots and
+thumbnails. Every paid job is priced first; a spend guard holds jobs to a cap and asks
+before anything over it. Failure reports go to REVXL only when the client says Send.
+Windows-first; the Mac key box is beta and untested.
+- Known in this release: the recorded cost of a job is a ceiling and runs higher than the
+real charge (measured 09.30.26: Flare 1k/low $0.02 against $0.12 recorded; Seedance 2.5
+480p 4 s $0.58 against $0.90, sound on or off). Approval pop-ups need a permission mode
+that can ask: in bypass mode the guard refuses instead. Seedance 2.5 now reaches 1080p on
+the API (Higgsfield docs 09.30.26); the plugin's references still say 720p.
+
 ## [0.1.69] ... 2026-09-25
 
 ### Fixed
