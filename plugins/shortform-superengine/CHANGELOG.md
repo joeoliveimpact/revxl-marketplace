@@ -15,6 +15,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   Step 3 hook pass (with the top proven hooks from the pull's Pattern Read), and
   viral as an optional punch-up at Step 4. Journey-map roster, registry rows E26
   to E30, the trigger hook and the skill counts (15) follow.
+- **The structure gate enforces the calls.** Headless walks showed reel-scripter
+  skipping written call lines (hook 0 of 4, angles and rehooks 1 of 4). The
+  run now carries a `from:` stamp line from angles, rehooks and hook (kept in
+  `reel-build/provenance.md`, see "Stamps are per run" below), each handed back
+  only by that skill's wrapper, and `structure_gate.py` fails
+  Step 4b on a missing or wrong stamp with the Skill call that fixes it.
+  `angle_from:` waives the angles stamp when Step 1's proposal was skipped.
+  A second gate run before Checkpoint 1 (`structure_gate.py --angles` on the
+  saved proposals) makes angles run before the user picks, not after.
+- **Stamps are per run** (SKLLPLG-336). The `from:` lines now go in
+  `<project>/reel-build/provenance.md`, never in the skeleton or the angles file (a stamp in
+  either one fails the gate). The gate clears that file when a reel passes, leaving one
+  `passed:` line for that skeleton, so a second reel cannot pass on the first reel's stamps.
+  Step 1's dedupe skips `*.skeleton.md`.
 
 ## [0.4.2] ... 2026-09-11
 

@@ -43,6 +43,9 @@ flag it and ask ... never paper over with invented teaching.
                           from the Goldmine reads packet>
      ```
 
+     Append the `from: hook` line it returns to `<project>/reel-build/provenance.md`, never to
+     the skeleton file; Step 4b's gate reads it there.
+
      The proven hooks go through its "Adapting a proven hook" section, so each comes back
      rebuilt for this reel's subject or refused as a bad fit. Its openings count toward the
      5 to 8 (top up with the laws above) and run the passes below like any other option.

@@ -50,7 +50,8 @@ Checkpoint 0 and the pull's Pattern Read, plus the script at the stage it is in:
 
 - **Step 2**, the beat list (labels and estimated times, no copy yet): return the
   drop-off map and where each secondary hook and re-hook sits. No lines yet; copy
-  is written at reel-scripter's Step 3.
+  is written at reel-scripter's Step 3. End the return with this line, verbatim, on
+  its own: `from: rehooks re-4263265b` (reel-scripter's Step 4b gate fails without it).
 - **Step 4b**, the draft marked final (the skeleton is locked) with the dead seams
   named: per the copy's frozen-script rule, return one re-hook proposal per dead
   seam, anchored to the exact line it follows, quoted. Never a new beat: a beat

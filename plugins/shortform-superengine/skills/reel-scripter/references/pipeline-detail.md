@@ -84,7 +84,9 @@ args:  topic: <the reel's topic, or the brief's top attack theme>
        used: <the (theme, hook) pairs already scripted>
 ```
 
-Its concepts feed the 2 to 3 proposals, each still carrying the brief's evidence. The
+Its concepts feed the 2 to 3 proposals, each still carrying the brief's evidence, and its
+`from: angles` line is appended to `<project>/reel-build/provenance.md`, never to the proposals
+file or the skeleton (the Checkpoint 1 gate reads it there). The
 (theme, hook) dedupe rule in `SKILL.md` Step 1 governs: a concept whose pair is already used
 is dropped or named as a deliberate repeat, whatever angles ranked it. **A contrarian angle
 goes through `polarize`** before it is proposed, when the creator holds a stance against a
@@ -165,6 +167,9 @@ args:  script: <the beat list, labels and estimated times, no copy yet>
        pattern_read: <the newest <project>/reel-build/Pattern Read - *.json, when a Goldmine pull is on disk>
 ```
 
+Append its `from: rehooks` line to `<project>/reel-build/provenance.md`, never to the skeleton
+file. In the skeleton, replace `visual_loop: none` only when a visual loop carries the tension,
+and tag that loop on its beats too.
 Take where each secondary hook and re-hook sits into the beat list; no lines yet, copy is
 Step 3's. The placement count still follows `./retention-psychology.md` section 4: where
 the two differ, say so and the user picks at Checkpoint 2.
@@ -213,6 +218,18 @@ label, at each seam, which loop is still OPEN. Fail conditions to fix before Che
 
 Rule: from the hook to the CTA there is never a moment with zero open loops. The spanning loop
 (opened at hook or secondary) resolves in the final beat, not before.
+
+**The gate's other exits.** Exit 2: rewrite the file in the Checkpoint 2 shape, re-run ("can't
+open file" = wrong path: fix it). No Python at all: say so and stop; a hand walk cannot check
+stamps.
+
+**Stamps live in `<project>/reel-build/provenance.md`.** Each called skill (angles, rehooks,
+hook) hands back a `from:` line. Append it to that file, verbatim, never to the skeleton or the
+angles file: a `from:` line in either one fails the gate. The gate reads the stamps there and
+clears them on a pass. After a pass the file holds one `passed:` line for that skeleton, so a
+re-run on the same skeleton passes, and the next reel needs its own calls and its own stamps.
+A skeleton changed after it passed needs fresh stamps too. Run the `--angles` check once,
+before Checkpoint 1: on a pass it trims the file to the angles line.
 
 **`rehooks` writes the fix for each dead seam.** For every dead seam the gate or the walk
 names, call it once with the whole draft:

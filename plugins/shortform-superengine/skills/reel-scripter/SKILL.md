@@ -155,7 +155,7 @@ Show: the mode (FULL or caption-only), the top 2 to 3 attack themes, the voice s
 calls: `Vault: <n> searches, <m> reads | <ok|degraded|skipped: reason>`. A cache hit or a
 missing callee is never a reason to drop it. Where Vault doctrine and the brief's local
 stats disagree, the brief says so in one sentence and ranks the doctrine first.
-(SKLLPLG-268) **Pause** until the user confirms the voice and picks a direction. Never
+**Pause** until the user confirms the voice and picks a direction. Never
 script in a voice you have not confirmed; a decline renders **voice not confirmed at
 Checkpoint 0** above. On confirmation write `{skill: "reel-scripter", note: "<the reel's angle>",
 opened: <date>}` to `open_loops` at once, so an abandoned reel reaches the compass.
@@ -164,11 +164,11 @@ opened: <date>}` to `open_loops` at once, so an abandoned reel reaches the compa
 
 ### Step 1 — Pick the move
 
-**Dedupe before proposing.** Read `state.scripts[]` AND `<project>/scripts/*.md`; every
+**Dedupe before proposing.** Read `state.scripts[]` AND `<project>/scripts/*.md` (skip `*.skeleton.md`); every
 approved reel there carries an `Angle: <theme> × <hook type>` line (Step 5 writes it). State
 is the fast path, the files are the truth when they disagree. Exclude used `(theme, hook)`
 pairs unless nothing else remains; a deliberate repeat says so: "you scripted this pairing
-on <date of that file>". (SKLLPLG-201)
+on <date of that file>".
 
 From `scripting-brief.md`, propose **2 to 3 concrete reel angles**, each = {attack theme ×
 winning hook type × the gap it closes}, evidence cited (`@handle · metric · reel URL`).
@@ -181,15 +181,25 @@ angle is field-backed; a user-supplied idea is not. Vet it before committing bea
 python ${CLAUDE_PLUGIN_ROOT}/skills/reel-scripter/field_vet.py <project_dir> <keyword> [keyword2 ...]
 ```
 
-**The idea is never vetoed, only the framing adapts.** Which keywords to pass, the report
-and the four verdict branches (WINNER / NEUTRAL, LOSER, UNTESTED / THIN / NONE, thin-n):
-`./references/pipeline-detail.md` "Step 1 field vet".
+**The idea is never vetoed, only the framing adapts.** Keywords, report and verdict
+branches: `./references/pipeline-detail.md` "Step 1 field vet".
 
 **Deeper field layer (optional, detect-first):** `./references/pipeline-detail.md` "Step 1 deeper field layer".
 
 **Persist the angles not taken.** On the Checkpoint 1 pick, write every other proposed angle
 to `state.angles_unpicked[]` as `{angle, from, opened}`, so "script the next angle" survives
 a session boundary. Step 5 removes the one scripted.
+
+**Stamps.** Append each called skill's `from:` line, verbatim, to
+`<project>/reel-build/provenance.md`, never to the skeleton or the angles file. The gate reads
+it there and clears it on a pass.
+
+**Before Checkpoint 1:** save the proposals to `<project>/reel-build/angles-<date>.md`, then
+run once (again only after a FAIL):
+
+```bash
+python "${CLAUDE_PLUGIN_ROOT}/skills/reel-scripter/structure_gate.py" --angles <that file>
+```
 
 ### ✋ Checkpoint 1 — Pick one angle
 **Pause.** The user picks one angle (or redirects). Everything downstream serves that one move.
@@ -205,9 +215,8 @@ brief's length target.
 
 **Optimize the skeleton BEFORE showing it (mandatory).** A raw beat list is a draft: screen
 it, then present the TIGHTENED version with a one-line why per change. Never hand over an
-un-optimized skeleton. The four screens (one idea not a list, length budget, one loop paid
-late, single lever): `./references/pipeline-detail.md` "Step 2". The user owns Checkpoint 2
-and can override any trim.
+un-optimized skeleton. The four screens: `./references/pipeline-detail.md` "Step 2". The
+user owns Checkpoint 2 and can override any trim.
 
 ### ✋ Checkpoint 2 — Approve the skeleton (then it FREEZES)
 Show the empty beat list (labels only, no copy yet). **Pause** for the user to add/cut/reorder
@@ -226,8 +235,8 @@ visual_loop: none
 5. CTA [close L1, L3]
 ```
 
-`[hold ID]` = the beat deepens a loop already open; an untagged beat is flat. Replace `none`
-only when a visual loop carries the tension (tag it too).
+`[hold ID]` = the beat deepens a loop already open; an untagged beat is flat. No Step 1
+(content plan, parked reel): `angle_from: content-plan` (or `open-loop`, `unpicked`).
 
 ---
 
@@ -241,9 +250,8 @@ filled with invented teaching.
 
 Work **section by section, in order** (Hook, Secondary hook(s), Body beats, Proof, CTA,
 Text-overlay storyboard, Caption hook), running **generate ... screen ... score ... gate ...
-pick** per section; each pick is **✋ Checkpoint 3**. Option counts, hook laws, secondary-hook placement and dosage,
-storyboard rules, screening tables, the 1 to 10 scoring dimensions and the score-7 gate:
-`./references/step3-options.md`. Run them from there; they are not restated here.
+pick** per section; each pick is **✋ Checkpoint 3**. Every rule for these passes:
+`./references/step3-options.md`, run from there.
 
 **Vault pull #2, the hook (named trigger point 2 of 2).** Only when the hook layer is thin
 or stale, and only after Step 2 locked the bucket. Check `<project>/brain-pulls/` first
@@ -256,8 +264,7 @@ args:  depth=med plugin=shortform-superengine spoke=content-strategy
        angles: hook_first_3_seconds; hook_alignment; hook_negative_framing
 ```
 
-Same budget, cache, degrade and evidence line. **Two named steps per reel, 0d and this
-one.** That is the entire Vault spend for a reel.
+Same budget, cache, degrade and evidence line. 0d and this one are a reel's whole Vault spend.
 
 On the picked hook, run the **three-hook alignment check** (`hook-mastery.md`): visual, spoken,
 and text hook must mean the same thing — fix before moving on.
@@ -283,9 +290,8 @@ python "${CLAUDE_PLUGIN_ROOT}/skills/reel-scripter/structure_gate.py" <project>/
 ```
 
 Exit 1 fails the step: apply its fix hints (a beat added, cut or moved is the user's call),
-re-tag, re-run. Exit 2: rewrite the file in the Checkpoint 2 shape, re-run. Never go on to 4c
-before exit 0, except when the gate cannot run at all (no Python): say so plainly, do the manual
-seam walk in the doctrine, then continue to 4c. Doctrine: `./references/pipeline-detail.md` "Step 4b".
+re-tag, re-run. Never go on to 4c before exit 0. Exit 2, "can't open file", no Python, doctrine:
+`./references/pipeline-detail.md` "Step 4b".
 
 Flag every seam you fixed.
 
@@ -341,9 +347,7 @@ winner or top hit, a picked plan idea), that block's angle is the direction, nev
   When degraded to interim voice, say so on the script.
 - **Their substance, never invented.** On a client-supplied topic, teaching-beat content comes
   from the beat-by-beat interview (Step 3) — a beat with no client answer gets flagged, not filled.
-- **Craft, not promises.** The score is craft quality. Never predict views, reach, or virality —
-  the engine measures what already happened, it does not forecast (consistent with the no-score
-  discipline elsewhere in the product).
+- **Craft, not promises.** The score is craft quality. Never predict views, reach, or virality.
 - **Respect the length target.** The brief's length target reflects what the niche's winners do.
   Don't pad.
 - **Honest degrade.** Caption-only mode (no transcripts) can't see spoken structure — say so;
@@ -356,5 +360,5 @@ winner or top hit, a picked plan idea), that block's angle is the direction, nev
 
 ## References and Non-Goals
 
-Every reference is linked from the step that uses it. The index (every script included) and
-the Non-Goals (one script per run): `./references/pipeline-detail.md`.
+Index (every script included) and Non-Goals (one script per run):
+`./references/pipeline-detail.md`; every reference is linked from its step.

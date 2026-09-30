@@ -1,0 +1,752 @@
+{
+  "client": {
+    "handle": "client",
+    "tier": "CLIENT",
+    "lane": null,
+    "followers": 2000,
+    "cadence": 8.75,
+    "stats": {
+      "n": 5,
+      "med_views": 500,
+      "reach_eff": 0.25,
+      "med_er": 0.022,
+      "med_cmt": 1
+    },
+    "hook_mix": {
+      "statement": 5
+    }
+  },
+  "creators": [
+    {
+      "handle": "client",
+      "tier": "CLIENT",
+      "lane": null,
+      "followers": 2000,
+      "cadence": 8.75,
+      "stats": {
+        "n": 5,
+        "med_views": 500,
+        "reach_eff": 0.25,
+        "med_er": 0.022,
+        "med_cmt": 1
+      },
+      "hook_mix": {
+        "statement": 5
+      }
+    },
+    {
+      "handle": "big",
+      "tier": "LARGE",
+      "lane": "?",
+      "followers": 0,
+      "cadence": 7.5833,
+      "stats": {
+        "n": 13,
+        "med_views": 100000,
+        "reach_eff": 0,
+        "med_er": 0.022,
+        "med_cmt": 200
+      },
+      "hook_mix": {
+        "statement": 10,
+        "question": 3
+      }
+    },
+    {
+      "handle": "mid",
+      "tier": "MED",
+      "lane": "?",
+      "followers": 0,
+      "cadence": 7.3889,
+      "stats": {
+        "n": 19,
+        "med_views": 1000,
+        "reach_eff": 0,
+        "med_er": 0.022,
+        "med_cmt": 2
+      },
+      "hook_mix": {
+        "statement": 10,
+        "myth-bust/negation": 3,
+        "contrarian/curiosity": 3,
+        "pain-callout": 3
+      }
+    },
+    {
+      "handle": "small",
+      "tier": "SMALL",
+      "lane": "?",
+      "followers": 0,
+      "cadence": 7.3889,
+      "stats": {
+        "n": 19,
+        "med_views": 800,
+        "reach_eff": 0,
+        "med_er": 0.02125,
+        "med_cmt": 1
+      },
+      "hook_mix": {
+        "statement": 10,
+        "myth-bust/negation": 3,
+        "contrarian/curiosity": 3,
+        "pain-callout": 3
+      }
+    },
+    {
+      "handle": "small2",
+      "tier": "SMALL",
+      "lane": "?",
+      "followers": 0,
+      "cadence": 7.3889,
+      "stats": {
+        "n": 19,
+        "med_views": 780,
+        "reach_eff": 0,
+        "med_er": 0.020513,
+        "med_cmt": 1
+      },
+      "hook_mix": {
+        "statement": 10,
+        "myth-bust/negation": 3,
+        "contrarian/curiosity": 3,
+        "pain-callout": 3
+      }
+    }
+  ],
+  "rollups": {
+    "tiers": [
+      {
+        "group": "CLIENT",
+        "creators": 1,
+        "med_reach_eff": 0.25,
+        "med_er": 0.022,
+        "med_views": 500
+      },
+      {
+        "group": "LARGE",
+        "creators": 1,
+        "med_reach_eff": 0,
+        "med_er": 0.022,
+        "med_views": 100000
+      },
+      {
+        "group": "MED",
+        "creators": 1,
+        "med_reach_eff": 0,
+        "med_er": 0.022,
+        "med_views": 1000
+      },
+      {
+        "group": "SMALL",
+        "creators": 2,
+        "med_reach_eff": 0.0,
+        "med_er": 0.020881,
+        "med_views": 790.0
+      }
+    ]
+  },
+  "hook_taxonomy": [
+    {
+      "hook": "myth-bust/negation",
+      "field_n": 9,
+      "field_med_views": 2400,
+      "client_n": 0,
+      "client_med_views": 0,
+      "field_lift": 3.0,
+      "field_accounts": 3,
+      "read": "ok"
+    },
+    {
+      "hook": "contrarian/curiosity",
+      "field_n": 9,
+      "field_med_views": 1600,
+      "client_n": 0,
+      "client_med_views": 0,
+      "field_lift": 2.0,
+      "field_accounts": 3,
+      "read": "ok"
+    },
+    {
+      "hook": "pain-callout",
+      "field_n": 9,
+      "field_med_views": 1200,
+      "client_n": 0,
+      "client_med_views": 0,
+      "field_lift": 1.5,
+      "field_accounts": 3,
+      "read": "ok"
+    },
+    {
+      "hook": "question",
+      "field_n": 3,
+      "field_med_views": 100000,
+      "client_n": 0,
+      "client_med_views": 0,
+      "field_lift": 1.0,
+      "field_accounts": 1,
+      "read": "thin"
+    },
+    {
+      "hook": "statement",
+      "field_n": 40,
+      "field_med_views": 900.0,
+      "client_n": 5,
+      "client_med_views": 500,
+      "field_lift": 1.0,
+      "field_accounts": 4,
+      "read": "ok"
+    }
+  ],
+  "theme_performance": [
+    {
+      "theme": "gut",
+      "field_reels": 9,
+      "field_med_views": 2400,
+      "client_reels": 0,
+      "client_med_views": 0,
+      "field_lift": 3.0,
+      "field_accounts": 3,
+      "read": "ok"
+    },
+    {
+      "theme": "thyroid",
+      "field_reels": 12,
+      "field_med_views": 1800.0,
+      "client_reels": 0,
+      "client_med_views": 0,
+      "field_lift": 2.0,
+      "field_accounts": 4,
+      "read": "ok"
+    },
+    {
+      "theme": "hormones",
+      "field_reels": 9,
+      "field_med_views": 1200,
+      "client_reels": 0,
+      "client_med_views": 0,
+      "field_lift": 1.5,
+      "field_accounts": 3,
+      "read": "ok"
+    },
+    {
+      "theme": "circadian/light",
+      "field_reels": 40,
+      "field_med_views": 900.0,
+      "client_reels": 5,
+      "client_med_views": 500,
+      "field_lift": 1.0,
+      "field_accounts": 4,
+      "read": "ok"
+    }
+  ],
+  "gaps": [
+    {
+      "theme": "gut",
+      "reason": "absent",
+      "field_med_views": 2400,
+      "field_lift": 3.0,
+      "field_accounts": 3,
+      "read": "ok",
+      "field_reels": 9,
+      "client_reels": 0,
+      "client_med_views": 0,
+      "headline": "Zero reels on gut — the field runs 9 at 2,400 median views.",
+      "why": "Pure whitespace: the field proves demand on gut and the client has posted nothing.",
+      "oppo": 100
+    },
+    {
+      "theme": "thyroid",
+      "reason": "absent",
+      "field_med_views": 1800.0,
+      "field_lift": 2.0,
+      "field_accounts": 4,
+      "read": "ok",
+      "field_reels": 12,
+      "client_reels": 0,
+      "client_med_views": 0,
+      "headline": "Zero reels on thyroid — the field runs 12 at 1,800 median views.",
+      "why": "Pure whitespace: the field proves demand on thyroid and the client has posted nothing.",
+      "oppo": 75
+    },
+    {
+      "theme": "hormones",
+      "reason": "absent",
+      "field_med_views": 1200,
+      "field_lift": 1.5,
+      "field_accounts": 3,
+      "read": "ok",
+      "field_reels": 9,
+      "client_reels": 0,
+      "client_med_views": 0,
+      "headline": "Zero reels on hormones — the field runs 9 at 1,200 median views.",
+      "why": "Pure whitespace: the field proves demand on hormones and the client has posted nothing.",
+      "oppo": 50
+    }
+  ],
+  "outliers": [
+    {
+      "id": "small2012",
+      "mult": 3.0,
+      "outlier": 3.0,
+      "handle": "small2",
+      "creator": "@small2",
+      "tier": "SMALL",
+      "lane": null,
+      "views": 2340,
+      "hook": "myth-bust/negation",
+      "themes": [
+        "gut"
+      ],
+      "hook_line": "Stop eating this for your gut",
+      "title": "Stop eating this for your gut",
+      "url": "https://www.instagram.com/reel/small2012/",
+      "src": "caption"
+    },
+    {
+      "id": "small2011",
+      "mult": 3.0,
+      "outlier": 3.0,
+      "handle": "small2",
+      "creator": "@small2",
+      "tier": "SMALL",
+      "lane": null,
+      "views": 2340,
+      "hook": "myth-bust/negation",
+      "themes": [
+        "gut"
+      ],
+      "hook_line": "Stop eating this for your gut",
+      "title": "Stop eating this for your gut",
+      "url": "https://www.instagram.com/reel/small2011/",
+      "src": "caption"
+    },
+    {
+      "id": "small2010",
+      "mult": 3.0,
+      "outlier": 3.0,
+      "handle": "small2",
+      "creator": "@small2",
+      "tier": "SMALL",
+      "lane": null,
+      "views": 2340,
+      "hook": "myth-bust/negation",
+      "themes": [
+        "gut"
+      ],
+      "hook_line": "Stop eating this for your gut",
+      "title": "Stop eating this for your gut",
+      "url": "https://www.instagram.com/reel/small2010/",
+      "src": "caption"
+    },
+    {
+      "id": "small010",
+      "mult": 3.0,
+      "outlier": 3.0,
+      "handle": "small",
+      "creator": "@small",
+      "tier": "SMALL",
+      "lane": null,
+      "views": 2400,
+      "hook": "myth-bust/negation",
+      "themes": [
+        "gut"
+      ],
+      "hook_line": "Stop eating this for your gut.",
+      "title": "Stop eating this for your gut.",
+      "url": "https://www.instagram.com/reel/small010/",
+      "src": "transcript"
+    },
+    {
+      "id": "small012",
+      "mult": 3.0,
+      "outlier": 3.0,
+      "handle": "small",
+      "creator": "@small",
+      "tier": "SMALL",
+      "lane": null,
+      "views": 2400,
+      "hook": "myth-bust/negation",
+      "themes": [
+        "gut"
+      ],
+      "hook_line": "Stop eating this for your gut",
+      "title": "Stop eating this for your gut",
+      "url": "https://www.instagram.com/reel/small012/",
+      "src": "caption"
+    },
+    {
+      "id": "small011",
+      "mult": 3.0,
+      "outlier": 3.0,
+      "handle": "small",
+      "creator": "@small",
+      "tier": "SMALL",
+      "lane": null,
+      "views": 2400,
+      "hook": "myth-bust/negation",
+      "themes": [
+        "gut"
+      ],
+      "hook_line": "Stop eating this for your gut",
+      "title": "Stop eating this for your gut",
+      "url": "https://www.instagram.com/reel/small011/",
+      "src": "caption"
+    },
+    {
+      "id": "mid012",
+      "mult": 3.0,
+      "outlier": 3.0,
+      "handle": "mid",
+      "creator": "@mid",
+      "tier": "MED",
+      "lane": null,
+      "views": 3000,
+      "hook": "myth-bust/negation",
+      "themes": [
+        "gut"
+      ],
+      "hook_line": "Stop eating this for your gut",
+      "title": "Stop eating this for your gut",
+      "url": "https://www.instagram.com/reel/mid012/",
+      "src": "caption"
+    },
+    {
+      "id": "mid011",
+      "mult": 3.0,
+      "outlier": 3.0,
+      "handle": "mid",
+      "creator": "@mid",
+      "tier": "MED",
+      "lane": null,
+      "views": 3000,
+      "hook": "myth-bust/negation",
+      "themes": [
+        "gut"
+      ],
+      "hook_line": "Stop eating this for your gut",
+      "title": "Stop eating this for your gut",
+      "url": "https://www.instagram.com/reel/mid011/",
+      "src": "caption"
+    },
+    {
+      "id": "mid010",
+      "mult": 3.0,
+      "outlier": 3.0,
+      "handle": "mid",
+      "creator": "@mid",
+      "tier": "MED",
+      "lane": null,
+      "views": 3000,
+      "hook": "myth-bust/negation",
+      "themes": [
+        "gut"
+      ],
+      "hook_line": "Stop eating this for your gut",
+      "title": "Stop eating this for your gut",
+      "url": "https://www.instagram.com/reel/mid010/",
+      "src": "caption"
+    }
+  ],
+  "meta": {
+    "client_handle": "client",
+    "total_reels": 75,
+    "n_competitors": 4,
+    "lane_on": false,
+    "themes": [
+      "thyroid",
+      "nervous-system",
+      "gut",
+      "circadian/light",
+      "minerals/HTMA",
+      "hormones",
+      "metabolism/bloodsugar",
+      "mindset/identity",
+      "cortisol/stress"
+    ],
+    "source": "competitor-cross-reference/analyze.py",
+    "transcript_coverage": 0.0133,
+    "transcript_coverage_min": 0.6,
+    "degraded": true,
+    "dropped_pinned": 2,
+    "dropped_junk": 1,
+    "lift_min": {
+      "accounts": 3,
+      "n": 8
+    },
+    "baseline_days": null,
+    "schema_version": "1.4",
+    "generated_at": "2026-09-05T03:17:11Z"
+  },
+  "captions": {
+    "note": "caption-keyed patterns (packaging surface) -- never mix into the spoken diagnosis",
+    "hook_taxonomy": [
+      {
+        "hook": "myth-bust/negation",
+        "field_n": 9,
+        "field_med_views": 2400,
+        "client_n": 0,
+        "client_med_views": 0,
+        "field_lift": 3.0,
+        "field_accounts": 3,
+        "read": "ok"
+      },
+      {
+        "hook": "contrarian/curiosity",
+        "field_n": 9,
+        "field_med_views": 1600,
+        "client_n": 0,
+        "client_med_views": 0,
+        "field_lift": 2.0,
+        "field_accounts": 3,
+        "read": "ok"
+      },
+      {
+        "hook": "pain-callout",
+        "field_n": 9,
+        "field_med_views": 1200,
+        "client_n": 0,
+        "client_med_views": 0,
+        "field_lift": 1.5,
+        "field_accounts": 3,
+        "read": "ok"
+      },
+      {
+        "hook": "question",
+        "field_n": 3,
+        "field_med_views": 100000,
+        "client_n": 0,
+        "client_med_views": 0,
+        "field_lift": 1.0,
+        "field_accounts": 1,
+        "read": "thin"
+      },
+      {
+        "hook": "statement",
+        "field_n": 40,
+        "field_med_views": 900.0,
+        "client_n": 5,
+        "client_med_views": 500,
+        "field_lift": 1.0,
+        "field_accounts": 4,
+        "read": "ok"
+      }
+    ],
+    "theme_performance": [
+      {
+        "theme": "gut",
+        "field_reels": 9,
+        "field_med_views": 2400,
+        "client_reels": 0,
+        "client_med_views": 0,
+        "field_lift": 3.0,
+        "field_accounts": 3,
+        "read": "ok"
+      },
+      {
+        "theme": "thyroid",
+        "field_reels": 12,
+        "field_med_views": 1800.0,
+        "client_reels": 0,
+        "client_med_views": 0,
+        "field_lift": 2.0,
+        "field_accounts": 4,
+        "read": "ok"
+      },
+      {
+        "theme": "hormones",
+        "field_reels": 9,
+        "field_med_views": 1200,
+        "client_reels": 0,
+        "client_med_views": 0,
+        "field_lift": 1.5,
+        "field_accounts": 3,
+        "read": "ok"
+      },
+      {
+        "theme": "circadian/light",
+        "field_reels": 40,
+        "field_med_views": 900.0,
+        "client_reels": 5,
+        "client_med_views": 500,
+        "field_lift": 1.0,
+        "field_accounts": 4,
+        "read": "ok"
+      }
+    ]
+  },
+  "outliers_full": [
+    {
+      "id": "small2012",
+      "mult": 3.0,
+      "outlier": 3.0,
+      "handle": "small2",
+      "creator": "@small2",
+      "tier": "SMALL",
+      "lane": null,
+      "views": 2340,
+      "hook": "myth-bust/negation",
+      "themes": [
+        "gut"
+      ],
+      "hook_line": "Stop eating this for your gut",
+      "title": "Stop eating this for your gut",
+      "url": "https://www.instagram.com/reel/small2012/",
+      "src": "caption"
+    },
+    {
+      "id": "small2011",
+      "mult": 3.0,
+      "outlier": 3.0,
+      "handle": "small2",
+      "creator": "@small2",
+      "tier": "SMALL",
+      "lane": null,
+      "views": 2340,
+      "hook": "myth-bust/negation",
+      "themes": [
+        "gut"
+      ],
+      "hook_line": "Stop eating this for your gut",
+      "title": "Stop eating this for your gut",
+      "url": "https://www.instagram.com/reel/small2011/",
+      "src": "caption"
+    },
+    {
+      "id": "small2010",
+      "mult": 3.0,
+      "outlier": 3.0,
+      "handle": "small2",
+      "creator": "@small2",
+      "tier": "SMALL",
+      "lane": null,
+      "views": 2340,
+      "hook": "myth-bust/negation",
+      "themes": [
+        "gut"
+      ],
+      "hook_line": "Stop eating this for your gut",
+      "title": "Stop eating this for your gut",
+      "url": "https://www.instagram.com/reel/small2010/",
+      "src": "caption"
+    },
+    {
+      "id": "small010",
+      "mult": 3.0,
+      "outlier": 3.0,
+      "handle": "small",
+      "creator": "@small",
+      "tier": "SMALL",
+      "lane": null,
+      "views": 2400,
+      "hook": "myth-bust/negation",
+      "themes": [
+        "gut"
+      ],
+      "hook_line": "Stop eating this for your gut.",
+      "title": "Stop eating this for your gut.",
+      "url": "https://www.instagram.com/reel/small010/",
+      "src": "transcript"
+    },
+    {
+      "id": "small012",
+      "mult": 3.0,
+      "outlier": 3.0,
+      "handle": "small",
+      "creator": "@small",
+      "tier": "SMALL",
+      "lane": null,
+      "views": 2400,
+      "hook": "myth-bust/negation",
+      "themes": [
+        "gut"
+      ],
+      "hook_line": "Stop eating this for your gut",
+      "title": "Stop eating this for your gut",
+      "url": "https://www.instagram.com/reel/small012/",
+      "src": "caption"
+    },
+    {
+      "id": "small011",
+      "mult": 3.0,
+      "outlier": 3.0,
+      "handle": "small",
+      "creator": "@small",
+      "tier": "SMALL",
+      "lane": null,
+      "views": 2400,
+      "hook": "myth-bust/negation",
+      "themes": [
+        "gut"
+      ],
+      "hook_line": "Stop eating this for your gut",
+      "title": "Stop eating this for your gut",
+      "url": "https://www.instagram.com/reel/small011/",
+      "src": "caption"
+    },
+    {
+      "id": "mid012",
+      "mult": 3.0,
+      "outlier": 3.0,
+      "handle": "mid",
+      "creator": "@mid",
+      "tier": "MED",
+      "lane": null,
+      "views": 3000,
+      "hook": "myth-bust/negation",
+      "themes": [
+        "gut"
+      ],
+      "hook_line": "Stop eating this for your gut",
+      "title": "Stop eating this for your gut",
+      "url": "https://www.instagram.com/reel/mid012/",
+      "src": "caption"
+    },
+    {
+      "id": "mid011",
+      "mult": 3.0,
+      "outlier": 3.0,
+      "handle": "mid",
+      "creator": "@mid",
+      "tier": "MED",
+      "lane": null,
+      "views": 3000,
+      "hook": "myth-bust/negation",
+      "themes": [
+        "gut"
+      ],
+      "hook_line": "Stop eating this for your gut",
+      "title": "Stop eating this for your gut",
+      "url": "https://www.instagram.com/reel/mid011/",
+      "src": "caption"
+    },
+    {
+      "id": "mid010",
+      "mult": 3.0,
+      "outlier": 3.0,
+      "handle": "mid",
+      "creator": "@mid",
+      "tier": "MED",
+      "lane": null,
+      "views": 3000,
+      "hook": "myth-bust/negation",
+      "themes": [
+        "gut"
+      ],
+      "hook_line": "Stop eating this for your gut",
+      "title": "Stop eating this for your gut",
+      "url": "https://www.instagram.com/reel/mid010/",
+      "src": "caption"
+    }
+  ],
+  "period_breakouts": {
+    "window_from": "2026-08-29T03:17:11Z",
+    "window_to": "2026-09-05T03:17:11Z",
+    "denominator": "all_time_median_views_gt0_at_generation",
+    "client_excluded": "client",
+    "n": 0,
+    "creators_skipped_median_le_0": 0,
+    "creators_skipped": [],
+    "note": "Reels PUBLISHED inside [window_from, window_to], scored against each creator's own all-time median views over ALL their reels (zeros included -- the same median `outliers` uses), measured at generation time. A creator whose median is <=0 is SKIPPED, never divided by, which is what guarantees the denominator is >0 (see creators_skipped). Uncapped and transcript-agnostic. This is the \"what broke out this period\" answer; `outliers` is the all-time top-30 hall of fame and `outliers_full` the uncapped all-time field population -- neither can answer it. The window opens at the previous _delta pull. Each history/ snapshot answers for its own day because it carries these literal timestamps, so retroactive per-scan filtering comes free: read the snapshot for that day instead of recomputing a window.",
+    "reels": []
+  }
+}

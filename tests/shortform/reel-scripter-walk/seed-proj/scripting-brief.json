@@ -1,0 +1,179 @@
+{
+  "meta": {
+    "client_handle": "client",
+    "mode": "CAPTION_ONLY",
+    "schema_version": "1.0",
+    "total_reels": 75,
+    "n_competitors": 4
+  },
+  "attack_themes": [
+    {
+      "theme": "gut",
+      "reason": "absent",
+      "field_med_views": 2400,
+      "field_reels": 9,
+      "client_reels": 0,
+      "client_med_views": 0
+    },
+    {
+      "theme": "thyroid",
+      "reason": "absent",
+      "field_med_views": 1800.0,
+      "field_reels": 12,
+      "client_reels": 0,
+      "client_med_views": 0
+    },
+    {
+      "theme": "hormones",
+      "reason": "absent",
+      "field_med_views": 1200,
+      "field_reels": 9,
+      "client_reels": 0,
+      "client_med_views": 0
+    }
+  ],
+  "winning_hooks": [
+    {
+      "hook": "question",
+      "field_med_views": 100000,
+      "field_n": 3,
+      "client_n": 0,
+      "client_med_views": 0,
+      "read": "under-use"
+    },
+    {
+      "hook": "myth-bust/negation",
+      "field_med_views": 2400,
+      "field_n": 9,
+      "client_n": 0,
+      "client_med_views": 0,
+      "read": "under-use"
+    },
+    {
+      "hook": "contrarian/curiosity",
+      "field_med_views": 1600,
+      "field_n": 9,
+      "client_n": 0,
+      "client_med_views": 0,
+      "read": "under-use"
+    },
+    {
+      "hook": "pain-callout",
+      "field_med_views": 1200,
+      "field_n": 9,
+      "client_n": 0,
+      "client_med_views": 0,
+      "read": "deprioritize"
+    },
+    {
+      "hook": "statement",
+      "field_med_views": 900.0,
+      "field_n": 40,
+      "client_n": 5,
+      "client_med_views": 500,
+      "read": "deprioritize"
+    }
+  ],
+  "theme_hook": [
+    {
+      "theme": "gut",
+      "outlier_reels": 9,
+      "top_hook": "myth-bust/negation",
+      "top_hook_count": 9,
+      "top_hook_med_views": 2400
+    }
+  ],
+  "openers": {
+    "mode": "CAPTION_ONLY",
+    "spoken_openings": [
+      {
+        "phrase": "stop eating this for",
+        "count": 9
+      }
+    ],
+    "client_first_lines": [
+      {
+        "views": 500,
+        "line": "Morning sun sets your sleep"
+      },
+      {
+        "views": 500,
+        "line": "Morning sun sets your sleep"
+      },
+      {
+        "views": 500,
+        "line": "Morning sun sets your sleep"
+      },
+      {
+        "views": 500,
+        "line": "Morning sun sets your sleep"
+      },
+      {
+        "views": 500,
+        "line": "Morning sun sets your sleep"
+      }
+    ]
+  },
+  "structures": [
+    {
+      "name": "open -> develop -> CTA (degraded: no transcripts)",
+      "mode": "CAPTION_ONLY",
+      "note": "Structure needs the spoken track; only a light inference from outlier hook-lines is available. Harvest transcripts and re-run in FULL mode.",
+      "outliers_total": 9,
+      "outliers_with_opening_cta": 0
+    }
+  ],
+  "length_target": {
+    "basis": "duration",
+    "client_all_med_sec": 20,
+    "client_all_min_sec": 20,
+    "client_all_max_sec": 20,
+    "client_n": 5,
+    "client_top_med_sec": 20,
+    "note": "No transcripts: spoken-length target unavailable. Use your own top-reel duration as the floor; harvest competitor transcripts for the field target."
+  },
+  "current_patterns": {
+    "client_hook_mix": [
+      {
+        "hook": "statement",
+        "count": 5
+      }
+    ],
+    "client_themes": [
+      {
+        "theme": "circadian/light",
+        "count": 5
+      }
+    ],
+    "gap_note": "Hook: lean into question (100,000 field median views) -- you have only 0. Theme: gut (absent, 2,400 field median views) -- you run 0 vs 9 field."
+  },
+  "avoid": {
+    "mode": "CAPTION_ONLY",
+    "loser_hooks": [
+      {
+        "hook": "pain-callout",
+        "field_med_views": 1200,
+        "field_n": 9,
+        "client_n": 0,
+        "client_med_views": 0,
+        "read": "deprioritize"
+      },
+      {
+        "hook": "statement",
+        "field_med_views": 900.0,
+        "field_n": 40,
+        "client_n": 5,
+        "client_med_views": 500,
+        "read": "deprioritize"
+      }
+    ],
+    "loser_themes": [
+      {
+        "theme": "circadian/light",
+        "field_med_views": 900.0,
+        "field_reels": 40
+      }
+    ],
+    "flop_only_vocab": []
+  }
+}

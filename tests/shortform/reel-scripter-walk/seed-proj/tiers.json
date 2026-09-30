@@ -1,0 +1,14 @@
+{
+ "client": "client",
+ "client_followers": 2000,
+ "LARGE": [
+  "big"
+ ],
+ "MED": [
+  "mid"
+ ],
+ "SMALL": [
+  "small",
+  "small2"
+ ]
+}
