@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "higgsfield-superengine",
+  "description": "Makes Higgsfield image and video generation easy, just by talking to Claude. Standalone: it calls the Higgsfield REST API directly with your own Higgsfield API key, so each client uses and pays for their own account. Image and video prompting best practices are built in, plus guided flows for static ads, UGC video ads, product shots and thumbnails. Estimate first: every paid generation is priced before it runs, and anything over a small safety cap waits for your yes. Windows-first; the Mac key box is beta and untested.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Joe Olive",
+    "email": "joe@engineforimpact.com"
+  },
+  "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/higgsfield-superengine",
+  "license": "MIT",
+  "keywords": [
+    "higgsfield",
+    "image-generation",
+    "video-generation",
+    "prompting",
+    "ads",
+    "ugc",
+    "product-shots",
+    "thumbnails",
+    "coaching",
+    "superengine"
+  ]
+}
