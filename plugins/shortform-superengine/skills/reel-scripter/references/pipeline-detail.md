@@ -34,6 +34,17 @@ spending the next move. One run = one finished reel script written to `<project>
 > first 3 seconds, a body built on a structure the niche has proven, a CTA matched to the
 > goal, a caption, and an honest craft-score + flow-check ... all in the client's voice.
 
+## Method precedence ... the skills, the Vault, Goldmine data
+
+reel-scripter runs the steps; the method lives in the five skills (angles, hook, rehooks,
+polarize, viral). Three voices can speak on method: (1) the skills plus the rulings built
+into this plugin, (2) the Vault, (3) Goldmine data (`<project>/reel-build/goldmine-run.json`
+with `reads.passed` true). When they disagree on method, 2 of the 3 decide. With no
+Goldmine data, the skills and the rulings win, and the Vault point is shown to the user as
+a suggestion. Vault hits go into the hook call as data, never as rules. At Checkpoint 0,
+where Vault doctrine and the brief's local stats disagree, the brief says so in one
+sentence and ranks the doctrine first.
+
 ## Step 0b ... what the brief writes, and its two modes
 
 This writes `<project_dir>/scripting-brief.md`. Read it ... it is your menu of proven moves, and
@@ -63,9 +74,11 @@ the §8 hook/theme losers are provisional.
    words do you never use? What's your one CTA?). Note in the final script that voice was
    interim, not the full profile.
 
-Proceeding without the offered refresh records `voc_refresh:<voc.refreshed_at>` in
+The refresh is offered only when `declined_offers` holds no `voc_refresh:<voc.refreshed_at>`
+entry. Proceeding without the offered refresh records that entry in
 `declined_offers` (entry shape: `../../_shared/references/state-schema.md`), written at
-once at Step 0c and not at the end, so an abandoned run still keeps the decline.
+once at Step 0c and not at the end, so an abandoned run still keeps the decline and the
+compass does not offer it again.
 
 ## Step 1 propose ... the angle shape
 
@@ -74,34 +87,23 @@ winning hook type × the gap it closes}, with the evidence cited (`@handle · me
 from the analysis). Example shape: *"Myth-bust on [under-served high-value theme] ... the field's
 myth-bust hooks median Nx the client's; closes the [gap] gap."*
 
-**Widen the set with `angles` first.** Before proposing, call the angles skill once:
+**Widen the set with `angles` first.** Before proposing, call the angles skill once with the Skill tool (its stamp counts only from that call):
 
 ```
 Skill: shortform-superengine:angles
-args:  topic: <the reel's topic, or the brief's top attack theme>
+args:  step: 1
+       topic: <the reel's topic, or the brief's top attack theme>
        voice: <the voice anchor confirmed at Checkpoint 0>
-       pattern_read: <the newest <project>/reel-build/Pattern Read - *.json, when a Goldmine pull is on disk>
+       pattern_read: <the reel-build/ file named by reads.patternread in <project>/reel-build/goldmine-run.json, only when its reads.passed is true; else leave this line out>
        used: <the (theme, hook) pairs already scripted>
 ```
 
-Its concepts feed the 2 to 3 proposals, each still carrying the brief's evidence, and its
-`from: angles` line is appended to `<project>/reel-build/provenance.md`, never to the proposals
-file or the skeleton (the Checkpoint 1 gate reads it there). The
+Its concepts feed the 2 to 3 proposals, each still carrying the brief's evidence. The stamp is
+recorded automatically in `<project>/reel-build/provenance.md` when you call the skill with the
+Skill tool (the Checkpoint 1 gate reads it there); never write or edit a `from:` line yourself. The
 (theme, hook) dedupe rule in `SKILL.md` Step 1 governs: a concept whose pair is already used
-is dropped or named as a deliberate repeat, whatever angles ranked it. **A contrarian angle
-goes through `polarize`** before it is proposed, when the creator holds a stance against a
-common practice:
-
-```
-Skill: shortform-superengine:polarize
-args:  stance: <the belief, in the creator's own words>
-       voice: <the voice anchor confirmed at Checkpoint 0>
-       pattern_read: <the newest <project>/reel-build/Pattern Read - *.json, when a Goldmine pull is on disk>
-       competitors: <the three closest competitors from the analysis>
-```
-
-Its sharpened take becomes the angle line and its evidence list joins the proposal's
-evidence. A "not a take" verdict drops the contrarian frame; the angle is proposed plainly.
+is dropped or named as a deliberate repeat, whatever angles ranked it. A myth-bust or
+contrarian angle is proposed as it stands; `polarize` runs at Step 2, for its Other side beat.
 
 ## Step 1 field vet ... the report and the verdict branches
 
@@ -148,31 +150,62 @@ the analysis.
 ## Step 2 ... structure to beats, and the four screens
 
 For the chosen hook type, pull the matching body skeleton from
-`./body-structures.md` (organized by hook bucket: question / myth-bust / listicle /
-story / pain-callout / contrarian / statement). Consult `./retention-psychology.md`
-to pick the post-hook structure by intent (Transformation Arc / Myth-Buster / Authority Solution)
-and plan the loops: where the primary loop pays off, the secondary hook and re-hook count + placement
-for the length (about one per 30s; none required under ~35s), and the beat-to-beat question chain. Lay out the beat
-list for THIS reel: `Hook → Secondary hook → Body beat 1..n → Proof → CTA`. Keep it to the length
+`./body-structures.md` (organized by hook bucket: question, numbered/list, myth-bust/negation,
+contrarian/curiosity, pain-callout, personal/story, statement). That bucket is the skeleton's
+`angle_kind:` line. When the reel's goal matters more than its hook shape, its "By intent"
+section gives three shapes by goal; `angle_kind:` stays the hook bucket of the angle picked
+at Checkpoint 1. Lay out the beat
+list for THIS reel: `Hook → Secondary hook → Body beat 1..n → Proof → CTA`, plus the Other
+side beat on a myth-bust or contrarian reel (below). Where the secondary hook and each
+re-hook sit comes from `rehooks`, below. Keep it to the length
 target the brief gives (most winning reels are short ... respect it).
 
-**Re-hook placement comes from `rehooks`.** With the beat list laid out, call it once for
-the drop-off map and the slots:
+**Re-hook placement comes from `rehooks`.** With the beat list laid out, call it once with the Skill tool (its stamp counts only from that call) for
+the drop-off map and the slots. For each slot (the secondary hook, then each mid-reel
+re-hook) it returns where it sits (the beat and the time), the re-hook type and the visual
+change:
 
 ```
 Skill: shortform-superengine:rehooks
-args:  script: <the beat list, labels and estimated times, no copy yet>
+args:  step: 2
+       script: <the beat list, labels and estimated times, no copy yet>
        length: <the brief's length target>
        voice: <the voice anchor confirmed at Checkpoint 0>
-       pattern_read: <the newest <project>/reel-build/Pattern Read - *.json, when a Goldmine pull is on disk>
+       pattern_read: <the reel-build/ file named by reads.patternread in <project>/reel-build/goldmine-run.json, only when its reads.passed is true; else leave this line out>
 ```
 
-Append its `from: rehooks` line to `<project>/reel-build/provenance.md`, never to the skeleton
-file. In the skeleton, replace `visual_loop: none` only when a visual loop carries the tension,
+The stamp is recorded automatically when you call the skill with the Skill tool; never write or edit a `from:` line yourself.
+In the skeleton, replace `visual_loop: none` only when a visual loop carries the tension,
 and tag that loop on its beats too.
-Take where each secondary hook and re-hook sits into the beat list; no lines yet, copy is
-Step 3's. The placement count still follows `./retention-psychology.md` section 4: where
-the two differ, say so and the user picks at Checkpoint 2.
+Take each slot, with its type and its visual, into the beat list. No lines yet: `rehooks`
+writes them at Step 3 (`./step3-options.md`, the secondary-hook pass).
+
+**The Other side beat comes from `polarize`.** When the skeleton's `angle_kind:` is
+`myth-bust/negation` or `contrarian/curiosity`, the beat list carries one beat labelled
+`Other side`, right after the secondary hook and before the turn (Hook, Secondary hook,
+Other side, Turn), tagged `[hold <main loop>]`. It is one line naming what the other camp
+believes or does. It need not be fair: a straw man is fine, a made-up fact is not. It does
+not count against the length budget. Call `polarize` once with the Skill tool (its stamp counts only from that call) for its line; this call is
+required for those two kinds (the Step 4b gate fails without its stamp):
+
+```
+Skill: shortform-superengine:polarize
+args:  step: 2
+       angle: <the locked angle>
+       beats: <the beat list, with the Other side beat in place>
+       stance: <the belief, in the creator's own words, when given>
+       evidence: <the creator's evidence, when given>
+       voice: <the voice anchor confirmed at Checkpoint 0>
+       pattern_read: <the reel-build/ file named by reads.patternread in <project>/reel-build/goldmine-run.json, only when its reads.passed is true; else leave this line out>
+       competitors: <the three closest competitors from the analysis>
+```
+
+It returns the line for the Other side beat, and, when the take holds, the sharpened take
+and its evidence list (they feed the angle line and the body). When it flags the take as
+thin, show the flag at Checkpoint 2; the user decides. Keep the line for Step 3, where it
+fills the Other side beat as it came. The stamp is recorded automatically when you call the
+skill with the Skill tool; never write or edit a `from:` line yourself. An Other side beat on any
+other kind needs this call too.
 
 **Optimize the skeleton BEFORE showing it (mandatory).** A raw beat list is a draft, not the
 skeleton ... screen it against the brief's proven structure the same way Step 3 screens options,
@@ -182,22 +215,44 @@ un-optimized skeleton and wait to be asked. The four screens:
   carries 3+ separate develop/proof beats, collapse them ... a demo that IS the proof is one beat,
   not two; two half-payoffs read weaker than one full one.
 - **Length budget (brief §6).** Beat count must fit the seconds target (~one beat per 8 to 12s of
-  talk). Over budget → merge or cut, never pad to fill.
-- **One loop, paid late (`retention-psychology.md`).** The hook opens the curiosity loop; no beat
-  may resolve it early. The secondary hook DEEPENS the loop, never answers it; the full payoff
-  lands in the last third.
+  talk). Over budget → merge or cut, never pad to fill. The Other side beat is exempt.
+- **One loop, paid late.** The hook opens the curiosity loop; no beat may resolve it early.
+  The secondary hook DEEPENS the loop, never answers it. The full payoff aims for the final
+  beat; anywhere in the last third passes the gate.
 - **Single lever (no second idea).** Kill any beat that introduces a second topic ("…and also
   what it costs") ... that's a different reel. One reel, one lever.
 State what you trimmed and why ("6 → 5: merged demo+receipt ... one payoff, not two"). The user
 still owns Checkpoint 2 and can override any trim (their call beats the data) ... but they approve
 an already-optimized skeleton, not a raw dump.
 
-## Step 4a ... the hook lens in full
+## Step 4a ... the viral pass (every reel), then the hook lens
 
-**4a. Hook lens ... the 4 Hook Killers.** Run the hook through
+**4a. The viral pass, on every reel.** After the Step 3 picks and before the Step 4b gate,
+call `viral` once with the drafted lines. Call it with the Skill tool: its stamp counts only from
+that call, and reading a skill's files for its stamp line is a failed run.
+
+```
+Skill: shortform-superengine:viral
+args:  step: 4a-viral
+       script: <the drafted lines: the Step 3 picks in beat order>
+       final: yes (the skeleton is locked; suggestions only, each paired with its exact line)
+       voice: <the voice anchor confirmed at Checkpoint 0>
+       pattern_read: <the reel-build/ file named by reads.patternread in <project>/reel-build/goldmine-run.json, only when its reads.passed is true; else leave this line out>
+```
+
+It returns suggestions, each paired with the exact line it would replace, plus the share
+type and three scores. Show them; the user picks which apply, and only those are applied.
+None adds, cuts or reorders a beat. A suggestion on a line another skill wrote (hook,
+rehooks, polarize) says so. The stamp is recorded automatically when you call the skill with
+the Skill tool (the Step 4b gate fails without it); never write or edit a `from:` line yourself. The share type and
+the three scores go to Checkpoint 4 beside the craft score.
+
+**Then the hook lens ... the 4 Hook Killers.** Run the hook through
 `../../_shared/references/hook-diagnostics.md`: does it lose on **DELAY** (payoff too late),
 **CONFUSION** (ambiguous/jargon), **IRRELEVANCE** ("I"-framing, no viewer benefit), or
-**DISINTEREST** (topic the audience doesn't care about)? Fix any that fire before scoring.
+**DISINTEREST** (no open question: no A-vs-B tension)? Flag any that fire and show why.
+Never rewrite the hook here: a fix is one more `hook` call carrying what fired
+(`./step3-options.md`, the hook pass).
 Re-scan the full assembled wording (hook, body, CTA, caption, overlays) against the brief's §8 Avoid list
 and the universal losing tables ... line edits and voice phrasing are not exempt. When a §8
 layer reads "no confident avoid", it screens nothing: `./step3-options.md` pass 2, "Screen".
@@ -209,23 +264,25 @@ mechanic is keeping a curiosity loop open at ALL times ... a loop may only resol
 already open and pulling. Walk the beat **seams** (the gap between every pair of adjacent beats) and
 label, at each seam, which loop is still OPEN. Fail conditions to fix before Checkpoint 4:
 - **Dead seam** ... a seam where every loop opened so far is already resolved and no new one is open.
-  The attention drops there. Fix: hold a reveal longer, or plant a connective re-hook at that seam
-  ("but that's not even the part that…", "here's what I didn't expect", "and that's when it got
-  weird") so a loop is live across it.
+  The attention drops there. Fix: hold a reveal longer, or put a re-hook at that seam so a loop
+  is live across it; `rehooks` writes it (below).
 - **Early close** ... the reel's spanning loop pays off before the last third. Hold the payoff later.
 - **Flat run** ... 2+ consecutive beats that are pure declaration with no forward pull. Convert one
   into a question-chain link that opens the next beat.
 
 Rule: from the hook to the CTA there is never a moment with zero open loops. The spanning loop
-(opened at hook or secondary) resolves in the final beat, not before.
+(opened at hook or secondary) aims to resolve in the final beat; a payoff anywhere in the
+last third passes the gate.
 
 **The gate's other exits.** Exit 2: rewrite the file in the Checkpoint 2 shape, re-run ("can't
 open file" = wrong path: fix it). No Python at all: say so and stop; a hand walk cannot check
 stamps.
 
-**Stamps live in `<project>/reel-build/provenance.md`.** Each called skill (angles, rehooks,
-hook) hands back a `from:` line. Append it to that file, verbatim, never to the skeleton or the
-angles file: a `from:` line in either one fails the gate. The gate reads the stamps there and
+**Stamps live in `<project>/reel-build/provenance.md`.** Each called skill (angles, rehooks at
+Step 2 and again at Step 3, hook, polarize when the angle needs it, viral) gets its `from:`
+line recorded there automatically when you call it with the Skill tool; never write or edit a `from:` line yourself. The
+only lines you write to that file are `goldmine:` lines, written by the hook skill's step. A
+`from:` line in the skeleton or the angles file fails the gate. The gate reads the stamps there and
 clears them on a pass. After a pass the file holds one `passed:` line for that skeleton, so a
 re-run on the same skeleton passes, and the next reel needs its own calls and its own stamps.
 A skeleton changed after it passed needs fresh stamps too. Run the `--angles` check once,
@@ -236,11 +293,12 @@ names, call it once with the whole draft:
 
 ```
 Skill: shortform-superengine:rehooks
-args:  script: <the assembled draft>
+args:  step: 4b
+       script: <the assembled draft>
        final: yes (the skeleton is locked)
        dead_seams: <each dead seam, as the two beats it sits between>
        voice: <the voice anchor confirmed at Checkpoint 0>
-       pattern_read: <the newest <project>/reel-build/Pattern Read - *.json, when a Goldmine pull is on disk>
+       pattern_read: <the reel-build/ file named by reads.patternread in <project>/reel-build/goldmine-run.json, only when its reads.passed is true; else leave this line out>
 ```
 
 It returns one re-hook proposal per dead seam, anchored to the exact line it follows. Apply
@@ -249,33 +307,20 @@ the ones the user accepts; a beat added, cut or moved is still the user's call.
 ## Step 4c and 4d ... flow-check, skeleton integrity, craft score
 
 **4c. Flow-check + skeleton integrity.** Read the script top to bottom as a viewer: does each
-beat earn the next? Any dead beat, any place the attention drops ... flag and tighten. Then
+beat earn the next? Any dead beat, any place the attention drops ... flag and tighten (another skill's line: flag it, never rewrite it). Then
 confirm the draft matches the Checkpoint-2 skeleton **beat-for-beat** (no beat added / cut /
 reordered, no move softened) ... any drift gets flagged at Checkpoint 4. A change the **user**
 asks for at Checkpoint 4 is always allowed ... the lock binds voice, not the user.
-Re-hook timing (`./retention-psychology.md` §4): flag the writer at a stretch of 40+ s with no spoken re-hook,
-only in reels long enough to have one ... guidance, never a hard fail.
+Re-hook timing (the `rehooks` rhythm, about one every 30 s at any length): flag a stretch of
+40+ s with no spoken re-hook, only in reels long enough to have one. Guidance, never a hard fail.
 
 **4d. Craft score.** Score **Hook / Body / CTA / overall (0 to 100)** against the **Story Locks rubric**
-(`./story-locks.md`) ... how many of the 6 Story Locks + 8 Swaps the script lands (contrast,
-zero hedges, named framework, negative-frame, loop-openers at cadence, viewer-framing). This is an
+(`./story-locks.md`): how many of the 4 Story Locks + 6 Swaps the script lands (contrast,
+zero hedges, a negative frame where the content calls for it, re-hooks at rehooks' slots,
+viewer-framing). This is an
 honest **craft** read, **not** a performance prediction: it never claims views. State the one
 highest-leverage fix. *(This is the **single** craft score for the script ... the dashboard's Scripting
 Studio displays it, it does not recompute its own.)*
-
-**Optional punch-up with `viral` (4c or 4d).** When the user asks for it, or the 4d fix is
-shareability or relatability, offer one viral pass; it runs only on a yes:
-
-```
-Skill: shortform-superengine:viral
-args:  script: <the assembled draft>
-       final: yes (the skeleton is locked; proposals only, each paired with its exact line)
-       voice: <the voice anchor confirmed at Checkpoint 0>
-       pattern_read: <the newest <project>/reel-build/Pattern Read - *.json, when a Goldmine pull is on disk>
-```
-
-Its proposals, share type and three scores go to Checkpoint 4 beside the craft score. None
-is applied without the user's pick, and none adds, cuts or reorders a beat.
 
 ## Step 5 template ... the script file shape
 
@@ -289,11 +334,13 @@ is applied without the user's pick, and none adds, cuts or reorders a beat.
 ## Script
   Hook:
   Secondary:
+  Other side:  <on myth-bust/negation and contrarian/curiosity reels>
   Body:
   Proof:
   CTA:
 ## Text overlays
-  <beat → on-screen line table; frame-1 = the hook verbatim>
+  <beat, seconds, overlay line, visual cue: one row per 3 to 5 s, one visual cue per row;
+   frame-1 overlay = the on-screen hook, not the spoken hook>
 ## Caption
 ## Craft score
   Hook __/100 · Body __/100 · CTA __/100 · Overall __/100 ... top fix: ...
@@ -312,6 +359,8 @@ the chosen angle. Step 1's proposal is skipped; the guardrails are not.
 
 ## Guardrails
 
+- **Respect the length target.** The brief's length target reflects what the niche's winners do.
+  Don't pad.
 - **Never pay for transcripts.** Harvest spoken transcripts with the local chain
   (Groq + local Whisper in parallel, subtitle track as fallback ... the chain `onboarding`
   installs), **never** SocialCrawl `media/transcript` ... it's a 10-credit premium call
@@ -339,6 +388,7 @@ Every reference is linked from the step that uses it. The entry points, relative
 - `./scripting_brief.py` ... Step 0b, the brief
 - `./field_vet.py` ... Step 1, the field vet
 - `./structure_gate.py` ... Step 4b, the loop gate on the Checkpoint 2 skeleton
+- `../_shared/references/say-this-not-that.md` ... the losing tables, Step 3 screen and Step 4a
 - `../_shared/references/journey-map.md` ... the edge ledger and the phrase roster
 - `../_shared/references/routing.md` ... the Next-moves block grammar
 - `../_shared/references/state-schema.md` ... the state keys read and written

@@ -11,9 +11,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `skills/<name>/references/legit-<name>.md`. `scripts/check_legit_sync.py`
   proves the copies match the master and pins their hashes in
   `scripts/legit-sync-manifest.json`. reel-scripter calls them from its reference
-  files: angles and polarize at Step 1, rehooks at Step 2 and Step 4b, hook in the
-  Step 3 hook pass (with the top proven hooks from the pull's Pattern Read), and
-  viral as an optional punch-up at Step 4. Journey-map roster, registry rows E26
+  files: angles at Step 1, polarize at Step 2 (myth-bust and contrarian reels),
+  rehooks at Steps 2, 3 and 4b, hook in the Step 3 hook pass (with the top proven
+  hooks from the pull's Pattern Read), and viral on every reel at Step 4a.
+  Journey-map roster, registry rows E26
   to E30, the trigger hook and the skill counts (15) follow.
 - **The structure gate enforces the calls.** Headless walks showed reel-scripter
   skipping written call lines (hook 0 of 4, angles and rehooks 1 of 4). The
@@ -29,6 +30,38 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   either one fails the gate). The gate clears that file when a reel passes, leaving one
   `passed:` line for that skeleton, so a second reel cannot pass on the first reel's stamps.
   Step 1's dedupe skips `*.skeleton.md`.
+
+### Changed
+- **reel-scripter is a conductor** (SKLLPLG-359). It runs the steps; the five skills own
+  the method, and reel-scripter keeps no second copy of it. `hook-formulas.md`,
+  `hook-mastery.md`, `opener-patterns.md` and `retention-psychology.md` are deleted;
+  `say-this-not-that.md` moved to `skills/_shared/references/` with the losing-openers
+  table. New calls, each with its own stamp in `reel-build/provenance.md`: rehooks again
+  at Step 3 (`step: 3-lines`, the secondary hook first, the re-hooks after the body and
+  proof picks), polarize at Step 2 for the Other side beat that myth-bust and contrarian
+  skeletons now carry (it replaces the Step 1 polarize call), and viral on every reel at
+  Step 4a (it replaces the optional punch-up; the user picks which suggestions apply).
+  The skeleton needs an `angle_kind:` line. The hook pass shows 3 to 5 openings, all from
+  hook, and asks the Goldmine question only when `reel-build/goldmine-run.json` shows
+  data (a `goldmine:` line records it). Goldmine files are found through that JSON, never
+  by the newest file name. Story Locks drops Locks 1 and 3 and Swaps 1 and 7 (6 swaps
+  now) and may flag, never rewrite, another skill's line. The "follow for Part 2" CTA is
+  gone; "follow for more" stays. The storyboard gets per-beat seconds and a visual cue
+  every 3 to 5 s. pipeline-detail.md gains a method precedence rule (the skills and
+  rulings, the Vault, Goldmine data: 2 of 3 decide).
+- **Stamps are written by a hook, not by the model.** In 2 of 6 walks the model read a
+  wrapper SKILL.md or `rehooks/references/step3-lines.md` for its `from:` line and copied
+  the stamp instead of calling the skill; in 1 of 2 contrarian walks it wrote
+  `goldmine: asked-yes` without asking. No skill file holds a stamp now. A new PostToolUse
+  hook on the Skill tool, `hooks/stamp-on-skill.py`, appends `from: <name> <stamp>` to
+  `<project>/reel-build/provenance.md` when angles, rehooks, hook, polarize or viral is
+  really called (rehooks is written as `rehookslines` on a `step: 3-lines` call, or on a
+  call after its Step 2 stamp). A stamp is the first 12 hex of a sha256 over a salt, the
+  skill name and the project folder, so a stamp from another project or a typed token
+  fails the gate. The hook never blocks: it exits 0 and prints nothing. The Goldmine
+  question moves into the hook skill's reel-scripter Step 3 mode, which asks it, waits for
+  the answer and writes the `goldmine:` line. `structure_gate.py --selftest` uses a
+  throwaway salt; `--selftest-hook` feeds the hook sample input.
 
 ## [0.4.2] ... 2026-09-11
 

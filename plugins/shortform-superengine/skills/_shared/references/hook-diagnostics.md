@@ -2,7 +2,7 @@
 
 ## SCOPE NOTE
 
-Two engines read the 4 Hook Killers, each for its own job. **competitor-cross-reference** uses them as a **diagnostic lens** to explain WHY a competitor hook wins or a client hook under-reaches: label and explain reach gaps, grounded in the data (the "In competitor analysis" notes below serve that job). **Generation engines** (reel-scripter today) use them as a **generation-time check** on the hooks they write: run each drafted hook against the four killers and rewrite any hook that trips one before it is scored or shown. The hook-writing frameworks themselves (hook laws, opener structures, formulas) live in the generating engine's own references, not here.
+Two engines read the 4 Hook Killers, each for its own job. **competitor-cross-reference** uses them as a **diagnostic lens** to explain WHY a competitor hook wins or a client hook under-reaches: label and explain reach gaps, grounded in the data (the "In competitor analysis" notes below serve that job). **Generation engines** use them as a **generation-time check**, and only the engine that writes a hook rewrites one that trips a killer; in this plugin that is the `hook` skill. **reel-scripter** writes no hooks: at its Step 4a it runs the picked hook against the four killers, flags any that fire and shows why, and a fix is one more `hook` call. The hook-writing method (laws, opener shapes, formulas) lives in the `hook` skill (`skills/hook/`), and the universal losing tables live in `./say-this-not-that.md`, not here.
 
 ---
 

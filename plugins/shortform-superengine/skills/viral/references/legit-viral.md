@@ -49,6 +49,12 @@ Missing pieces are worth asking for before you rewrite. If the creator would rat
 1. **Lock the brief.** Write down the core message, the voice and the goal, and confirm them with the creator before you touch a line. Everything later is judged against these three.
 2. **Diagnose line by line.** Label what each line is doing: opening, setup, proof, turn, payoff, call to action, filler. Make no edits in this step. You are looking for lines that do no job and jobs no line does.
 3. **One quality per pass.** A pass is a full read of the script looking for a single thing, in this order: clarity, voice, the "so what", proof, specificity, felt emotion, friction at the call to action. At the end of each pass, re-check the qualities you already passed, since a fix for one often breaks another.
+   In the clarity and voice passes, use these line moves, never at the cost of the creator's own words or a gold phrase:
+   - **Contrast words.** "But", "actually", "instead" and "turns out" split a flat claim into what people think and what is true. One per turn, not one per sentence.
+   - **"You" to teach, "I" for proof.** Speak to the viewer as "you" when teaching. Use "I" for the creator's own story or proof.
+   - **Repeat the key point.** In the body, give the most useful point once tight, then again in plain words with an example or a picture.
+   - **Sixth grade words.** Words a sixth grader knows, active voice, mostly short sentences.
+   - **Fear and shock words.** Do not be afraid of them. When the content earns a scary or shocking word, use it.
 4. **Re-time for speech.** After each pass, read the script at recording pace. Every change lands either in the voiceover or in the on-screen text. Say which, for each change. On-screen hook text is complete and readable at the first frame: two grabbers on screen at 0.0 seconds, not animating in. Later pieces may animate in.
 5. **Name the share type.** A Reel sent by DM and a Reel reposted to a story are two different jobs. A save is not a share: it sends the Reel to nobody. Pick one, say it out loud in the change list, and let it settle the close calls. A story repost plays only the first 10 seconds or so, so if that is the target, the reason to repost has to land inside them.
 6. **Add share triggers, with one main emotion leading.** A share trigger is the reason a viewer passes the Reel on: a genuinely new insight, an emotional story, something they send to look smart or to help a friend, honest vulnerability, or a feeling they have had but never named. There is no cap on share reasons, but one main emotion leads and the rest support it. Then run the send-to test: name who the viewer would send this to. If you cannot name that person, the trigger is not landing yet. An optional share line can say it out loud, such as "send this to the friend who...", where it fits the creator's voice.
@@ -59,13 +65,13 @@ Missing pieces are worth asking for before you rewrite. If the creator would rat
 ## Guardrails
 
 - Never promise something the video does not deliver. A hook the body cannot pay costs trust and follows.
-- No manipulation. No fake urgency, no invented scarcity, no bait.
+- No manipulation through made-up facts: no fake urgency, no invented scarcity.
 - Do not buy saves at the cost of shares. If a change lifts one and kills the other, say so and let the creator choose.
 - Do not copy what went viral for another creator. Their result came with their account, their face and their timing.
 - Never invent evidence. No statistics, client results, studies or quotes the creator did not supply. If a line needs support that is missing, ask for it or mark the claim unsupported. Do not fill the gap.
 - Earnings, client-result and transformation claims appear exactly as the creator supplied them, with the qualifier they supplied. Nothing supplied means you ask.
 - Do not sanitize the creator's word choices. Blunt, funny and crude lines are theirs to keep. Your guardrails limit targets and factual claims, not vocabulary.
-- Audience language is sampled for tone and vocabulary only. Never paste a customer's sentences into the script.
+- Audience language shapes tone and word choice by default. When a phrase from the creator or their audience is gold, strong enough to work as it is, keep it word for word.
 - Do not borrow structure from a template built for a written post or a paid ad. Their metrics, their shapes and their calls to action do not carry over to a spoken Reel.
 - No em dashes and no en dashes in anything you write. Use a comma, a period or a colon.
 

@@ -1,5 +1,5 @@
 {
-  "description": "shortform-superengine hooks. (1) UserPromptSubmit: when the prompt contains one of the skills' trigger phrases, inject one line naming the skill to invoke instead of doing the work by hand. (2) PreToolUse on Bash: SocialCrawl credit guard, cost-gates paid API calls before they spend and hard-blocks the banned transcript endpoints. Both fail-open (any error -> allow / silent).",
+  "description": "shortform-superengine hooks. (1) UserPromptSubmit: when the prompt contains one of the skills' trigger phrases, inject one line naming the skill to invoke instead of doing the work by hand. (2) PreToolUse on Bash: SocialCrawl credit guard, cost-gates paid API calls before they spend and hard-blocks the banned transcript endpoints. (3) PostToolUse on Skill: when the Skill tool calls angles, rehooks, hook, polarize or viral, append that skill's stamp to <project>/reel-build/provenance.md for reel-scripter's gate. All fail-open (any error -> allow / silent).",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -20,6 +20,18 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/credit-guard.mjs\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/stamp-on-skill.py\"",
             "timeout": 10
           }
         ]

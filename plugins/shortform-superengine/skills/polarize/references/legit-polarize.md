@@ -1,6 +1,6 @@
 ---
 name: polarize
-description: Sharpen a stance the creator actually holds into a bold, evidence-backed Reel take with a fair steelman. Use for "hot take", "contrarian", "unpopular opinion".
+description: Sharpen a stance the creator actually holds into a bold, evidence-backed Reel take that names the other side. Use for "hot take", "contrarian", "unpopular opinion".
 license: MIT
 metadata:
   author: Engine For Impact
@@ -9,17 +9,16 @@ metadata:
 
 # Polarize
 
-Sharpen a position the creator genuinely holds into an Instagram Reel take that is bold, defensible and fair to the other side.
+Sharpen a position the creator genuinely holds into an Instagram Reel take that is bold and names the other side. The other side does not have to be stated fairly: controversy is the point.
 
 ## What you return
 
 1. The sharpened take, as a spoken script with the on-screen text marked beside the line it sits under.
 2. A change list. One entry per change: what you changed, why, and what it should do for the viewer.
-3. The steelman line, with its position in the script stated.
-4. The one unhedged claim, marked, framed as the creator's opinion.
-5. The evidence behind every factual statement, listed statement by statement.
-6. The gut-check answers from step 9 of the method.
-7. The one thing to check before recording.
+3. The other-side line, with its position in the script stated.
+4. The evidence behind every factual statement, listed statement by statement.
+5. The gut-check answers from step 9 of the method.
+6. The one thing to check before recording.
 
 On-screen hook text is complete and readable at the first frame: two grabbers on screen at 0.0 seconds, not animating in. Secondary pieces may animate in later.
 
@@ -55,37 +54,36 @@ The frame below is STAND: stake, target, argue, narrow, declare. Each step names
 1. **Stake the belief.** Write the position the creator actually holds, in their words. If you cannot say it in one sentence, they have two positions and should pick one.
 2. **Narrowness test.** Would their three closest competitors refuse to post this? If all three would happily post it, it is a consensus opinion wearing a bold voice. Sharpen it or say it is not a take. Label it an "unpopular opinion" only when it passes this test.
 3. **Target ideas, not people.** Never punch down. Make no claim about a named person's conduct that the creator cannot support. Naming an idea, a method or a widespread piece of advice is fair. Naming a person and asserting what they did is a different kind of risk, and it is the creator's to carry, so do not hand it to them by accident. Calling out another creator by name on purpose is the creator's call, per the edge calls in Guardrails.
-4. **Argue with evidence.** Sourced facts plus the creator's lived or client experience, stated as experience rather than as proof. A demo on camera or an A-versus-B comparison counts as evidence for what it shows. Performance data is optional. Where a claim cannot be proven, soften the claim, never the stance. On sufficiency: lived or client experience stated as experience stands on its own, and every factual claim needs one sourced fact behind it. There is no count beyond that.
-5. **Steelman fairly, and early.** A steelman is the strongest honest version of the other side. It can simply be the common belief, stated fairly. In a 30 to 45 second Reel it is one line, placed after the opening and before the turn, so the loop the opening opened stays open while you concede the point.
-6. **Declare one unhedged claim.** One sentence with no qualifiers, framed as the creator's opinion, then an invitation to real disagreement. One. A script full of unhedged claims reads as noise, and each one is another thing to defend.
-7. **Call to action.** A keyword-comment call such as "comment WORD and I'll send it" is fine. Agreement bait is not: no "agree or disagree?", no asking for a side to be picked for its own sake.
-8. **Not-advice framing for health and money.** Where the topic touches either, frame the take as opinion and experience, not instruction. The creator owns the decision to publish.
-9. **Gut check.** Answer three questions in the output. Does the creator believe it? Could they defend it to an expert in the room? Is it about an idea and not a person, or did the creator choose to name one? A no on any of them goes back to the creator before delivery.
-10. **Measure by saves, shares, comment depth and follows by default.** Say this in the output, so the creator reads the comments for depth rather than volume. If the creator makes comment volume or outrage the goal, that is their call, per the edge calls in Guardrails. Then name the one pre-record check.
+4. **Argue with evidence.** Sourced facts plus the creator's lived or client experience, stated as experience rather than as proof. A demo on camera or an A-versus-B comparison counts as evidence for what it shows. Performance data is optional. Never soften a claim or the stance. If a factual claim has no support, ask for it; never fill the gap with a number or fact the creator did not give. On sufficiency: lived or client experience stated as experience stands on its own, and every factual claim needs one sourced fact behind it. There is no count beyond that.
+5. **Name the other side, early.** The other-side line says what the other camp believes or does. It does not have to be fair. A straw man, the weakest or most extreme version of their view, is allowed, and so is the common belief said plainly. In a 30 to 45 second Reel it is one line, placed after the opening and before the turn, so the loop the opening opened stays open. The other-side line and any straw man in it may push the other camp's stance as far as you like, never the facts: neither carries a number, time, count, study, result or fact the creator did not give. Where the line needs a specific the creator has not given, write a bracketed placeholder, such as [number] or [time], for the creator to fill, and flag it in the change list.
+6. **Declare it, unhedged.** Every claim can go unhedged. No softening, no "I think" padding, and no cap on how many bold claims the script makes. Then invite real disagreement.
+7. **Call to action.** A keyword-comment call such as "comment WORD and I'll send it" is fine. An "agree or disagree?" call is the creator's call, per the edge calls in Guardrails.
+8. **No not-advice line.** On health and money too, do not add "this is not advice" and do not soften the take. On a health claim, say once, in the change list, that a bold health claim can get a Reel limited by the platform. The creator owns the decision to publish.
+9. **Gut check.** Answer three questions in the output. Does the creator believe it? Is every number and fact in it one the creator gave? Is it about an idea and not a person, or did the creator choose to name one? A no on any of them goes back to the creator before delivery.
+10. **Measure by saves, shares, comments and follows.** Say this in the output. A high comment count is a normal goal, as well as comment depth: the argument in the comments is part of the point. Making outrage the main goal is the creator's call, per the edge calls in Guardrails. Then name the one pre-record check.
 
 ## Guardrails
 
 - No evidence supplied means you ask. Never invent a statistic, a study, a client result or a quote.
 - Earnings, client-result and transformation claims appear only as supplied, with the supplied qualifier.
-- No straw men. If the opposing view in the script is weaker than the real one, rewrite it.
-- No "agree or disagree?" calls to action.
-- Edge calls belong to the creator, not to you: an opener like "I might get cancelled for this", calling out a named creator, and comment volume or outrage as the goal. For each, state the trade-off once in the change list, then follow the creator's choice, or the voice they already use if they have not said. The opener can pull attention and can read as bait. A named creator borrows attention and invites a public fight. Chasing volume lifts comments and draws arguers as well as fans. No ban and no taste edit. The claim rules above still hold.
-- No contrarian template without a steelman in it.
+- Straw men are allowed. If the other-side line is weaker than the real view, leave it; do not rewrite it into a fair one. It may exaggerate their stance, never the facts: no number, time, count, study, result or fact the creator did not give, a bracketed placeholder where a specific is missing, and no claim about a named person's conduct.
+- Edge calls belong to the creator, not to you: an opener like "I might get cancelled for this", calling out a named creator, an "agree or disagree?" call to action, and outrage as the main goal. For each, state the trade-off once in the change list, then follow the creator's choice, or the voice they already use if they have not said. The opener can pull attention and can read as bait. A named creator borrows attention and invites a public fight. Chasing outrage lifts comments and draws arguers as well as fans. An "agree or disagree?" call pulls quick comments and can read as bait. No ban and no taste edit. The claim rules above still hold.
+- No contrarian template without an other-side line in it.
 - Do not sanitize the creator's word choices. Blunt, funny and crude lines stay. Your guardrails limit targets and factual claims, not vocabulary.
-- Audience language is sampled for tone only, never pasted in as customer sentences.
+- Audience language shapes tone and word choice by default. When a phrase from the creator or their audience is gold, strong enough to work as it is, keep it word for word.
 - Do not borrow structure from templates built for written posts or paid ads.
 - No em dashes and no en dashes. Use a comma, a period or a colon.
 
 ## Tests before you deliver
 
 - Would three close competitors refuse to post this? If not, it is not narrow enough.
-- Is the steelman the strongest honest version of the other side, or the common belief stated fairly, in one line, after the opening and before the turn?
-- Is there exactly one unhedged claim, and is it framed as opinion?
+- Is the other side named in one line, after the opening and before the turn, and left as sharp as it is, straw man included, with every specific in it one the creator gave or a bracketed placeholder?
+- Are the claims flat, with no hedge and no softening?
 - Does every factual claim have a sourced fact beside it, and is every experience labelled as experience?
 - Is every target an idea rather than a person's conduct, unless the creator chose to name one?
 - Are the three gut-check answers all yes?
-- On health or money, is the not-advice framing present?
-- Is the call to action a keyword comment or a genuine invitation, and not agreement bait?
+- On health or money, is the script free of any not-advice line, and on a health claim, is the platform note in the change list, said once?
+- Is the call to action a keyword comment, a genuine invitation, or an "agree or disagree?" the creator chose?
 - Is the on-screen hook text complete and readable at the first frame: two grabbers on screen at 0.0 seconds, not animating in, with only secondary pieces animating in later?
 - Frozen script: proposals mapped to exact lines, and no rewrite.
 

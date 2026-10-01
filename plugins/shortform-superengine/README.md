@@ -49,14 +49,17 @@ plugin at format #2.)
 - **`angles`** ... turns one topic into genuinely different concepts, each tagged
   with audience, motivation, format and evidence. reel-scripter calls it at Step 1.
 - **`polarize`** ... sharpens a stance the creator actually holds into a bold,
-  evidence-backed take with a fair steelman. reel-scripter calls it for a
-  contrarian angle.
+  evidence-backed take, and writes the Other side line: what the other camp
+  believes. It does not have to be fair (a straw man is fine), but it never makes
+  up facts. reel-scripter calls it at Step 2 for myth-bust and contrarian reels.
 - **`hook`** ... writes Reel openings as genuinely different options, or adapts a
   proven hook to the topic. reel-scripter calls it for the hook pass.
 - **`rehooks`** ... finds where a script loses viewers and writes a re-hook for
-  each drop-off. reel-scripter calls it to place re-hooks and fix dead seams.
+  each drop-off. reel-scripter calls it to place re-hooks (Step 2), write their
+  lines (Step 3) and fix dead seams (Step 4b).
 - **`viral`** ... rewrites a finished script to be more shareable and relatable,
-  keeping its message and voice. reel-scripter offers it as a punch-up.
+  keeping its message and voice. reel-scripter runs it on every reel at Step 4a,
+  and you pick which suggestions to use.
 
   These five are the Legit Content Skills, bundled whole: each skill's method is a
   byte-identical copy of the public master, checked by

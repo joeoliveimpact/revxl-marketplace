@@ -1,19 +1,43 @@
-# reel-scripter walk: rubric (written before any run, 09.28.26)
+# reel-scripter walk: rubric (0.5.0 conductor flow)
 
-Question: does reel-scripter (sf-042 796cc60) actually call the five Legit Content Skills from its reference files?
+Question: does reel-scripter run as a conductor, calling the five Legit Content Skills at their steps, loading each skill's method file before it shows that skill's options, and passing its own gate?
 
-Harness: client-shaped profile (HOME and USERPROFILE = scratch home; live credentials copied at run time), `--plugin-dir` = sf-042 shortform-superengine only, `--strict-mcp-config`, sonnet, bypassPermissions, budget $1.50 per turn (`--max-budget-usd 1.50` on each `claude -p` call in run-mt2.sh). Fixture brand `fixturebrand` (the fixture brand, not the operator's own slug, so a disk-search leak cannot write into a real brand folder); project = `seed-proj/` from this folder, copied into the state folder by reset.sh; voice = the operator's voice files, kept outside the repo, under the fixture brand. No Goldmine Pattern Read on disk anywhere, so hook's adapt mode is NOT exercised (reported as not covered).
+Harness: `run-mt2.sh <name> [gut|contra] [--run2]`. Client-shaped profile (HOME and USERPROFILE = the scratch home under the state folder; the login file is copied in at run time), `--plugin-dir` = this repo's `plugins/shortform-superengine` only, `--strict-mcp-config`, sonnet, bypassPermissions. At most 18 turns; `--max-budget-usd 3.00` per turn; the walk stops once the session's `total_cost_usd` passes `RS_WALK_CAP` (default 8.00). Each answer is picked by `respond.py` from the fixture's answer file, off the last assistant text of the turn before; the responder refuses any answer that carries a phrase the plugin's trigger hook routes to another skill. `reset.sh <fixture>` before each walk, except run 2 of the second-reel walk.
 
-## Validity gates (a run that fails these is not graded)
-- V1 build under test: a run counts only if shortform-superengine loaded from the build under test. Checked from the run log: every `system` / `init` event (one per turn) lists exactly one plugin named `shortform-superengine`, its `path` is the `--plugin-dir` folder run-mt2.sh passes (the sf-042 `plugins/shortform-superengine`) and its `source` is `shortform-superengine@inline`; and no `.claude/plugins/marketplaces/` path appears anywhere in the transcript. A second entry (source `shortform-superengine@synced`) means the account-synced copy loaded too, and the run does not count. `grade.py` prints the first init event's plugin list and the marketplaces count on its two `V1` lines. The number of skills loaded is not a validity signal: the scratch home carries account-synced skills (run7 loaded 509 and was valid).
-- V2 the run got past Checkpoint 1 (an angle was picked). If it stops earlier, the run is INCOMPLETE, not a FAIL.
+Fixtures:
+- **gut**: `seed-proj/` from this folder (synthetic, a myth-bust field), brand `fixturebrand`, answers `answers-gut.txt`. No Goldmine data.
+- **contra**: a named subset of a real analysis, kept in the state folder only (`fixtures/contra-seed`), brand `contrabrand`, answers `fixtures/contra-answers.txt` there. Its `reel-build/goldmine-run.json` shows `reads.passed` true. The opening ask steers to the fixture's topic with no trigger phrase.
 
-## Graded
-- R1 REQUIRED: a Skill tool_use for `shortform-superengine:angles` before Checkpoint 1.
-- R2 REQUIRED: a Skill tool_use for `shortform-superengine:rehooks` at Step 2 (before Checkpoint 2).
-- R3 REQUIRED: a Skill tool_use for `shortform-superengine:hook` at Step 3.
-- R4 CONDITIONAL: `rehooks` again at Step 4b only if the structure gate flagged a dead seam; `polarize` only if a contrarian angle was proposed; `viral` optional at 4c/4d. Report, do not fail.
-- R5 A script file written under the fixture project's `scripts/`.
-- R6 No Write/Edit tool_use outside the scratch tree.
+Grading: `py -3.12 grade.py <log> [--fixture gut|contra] [--run2]`. It prints one PASS or FAIL line per criterion and ends with `VERDICT: PASS` or `VERDICT: FAIL` plus the failed criteria (exit 0 or 1). A criterion whose input is absent (no skeleton, no script, no storyboard, no init event) FAILS with the reason; nothing passes silently. The final skeleton and script are the files under the project's `scripts/` that this transcript wrote (Write, Edit, or a shell redirect naming them); the newest wins.
 
-Falsifiable: if R1, R2 or R3 is missing on a valid run, the "invocations live only in reference files" design fails, and the fix is a pointer in reel-scripter SKILL.md (or a structure-gate check), reversing the 09.28 decision to leave SKILL.md untouched.
+## Criteria (all required; one FAIL fails the walk)
+
+- **V1 build under test.** Every `system` / `init` event lists exactly one `shortform-superengine`, and its `path` is the `--plugin-dir` folder (this repo's plugin); no `.claude/plugins/marketplaces/` path appears in the transcript.
+- **R5 script written.** A finished script under the project's `scripts/`.
+- **C calls placed.** A Skill tool_use for `shortform-superengine:<name>`, placed by its step token. Models paraphrase the template's `step:` line, so the token is parsed tolerantly: `step: X`, `step=X` or `step X`, any case, first match in the args; no match = no token. Accepted:
+  - `angles`: any call (step 1 or none)
+  - `rehooks` Step 2: the first rehooks call, with step `2`, `slots` or none
+  - `polarize`: any call; required when the skeleton's `angle_kind:` is `myth-bust/negation` or `contrarian/curiosity` (no readable skeleton = FAIL, the need cannot be judged)
+  - `rehooks` `3-lines`: a later rehooks call (step token optional) followed by a Read of `rehooks/references/step3-lines.md` before the next assistant text of 300+ characters
+  - `hook`: a call with step `3`, `3-hook` or none, after the rehooks Step-2 call
+  - `viral`: a call whose step starts with `4a`, or none (required on every reel)
+- **N no stamp copied from a file.** A stamp counts only from its Skill call. FAIL, naming the tool call, on any Read of a wrapper `skills/<name>/SKILL.md` (angles, polarize, hook, rehooks, viral), or any Bash, PowerShell or Grep call that targets one of those files or `rehooks/references/step3-lines.md` and searches for `from:`. A plain Read of `step3-lines.md` is the method-file load and is fine. Stamps are now written by the plugin hook `hooks/stamp-on-skill.py` when the Skill tool calls the skill (one stamp per skill per project folder); no skill file holds one, and the model never writes a `from:` line.
+- **O order.** For each required call: the Skill call, then a Read of that skill's `references/legit-<name>.md` (`rehooks/references/step3-lines.md` for `3-lines`), before the first assistant text of 300+ characters after the call (the options shown). One qualifying occurrence per call is enough.
+- **G gate.** `structure_gate.py` on the final skeleton exits 0. The grader re-runs it on a copy of the skeleton, `reel-build/provenance.md` and `goldmine-run.json`; a skeleton that passed during the walk passes again on its `passed:` line.
+- **S Other side.** For `myth-bust/negation` and `contrarian/curiosity`, the skeleton has a beat labelled `Other side`.
+- **V visual cues.** In the final script's storyboard table (the first table with a seconds column and a cue column), the number of cues is at least the summed seconds / 5. A seconds cell is a number or a range (`0-3`, `0:03-0:06`); any cell that cannot be read as one FAILS the criterion. Cues in one cell are counted by separators: `;`, ` + `, ` / `, `->`, `then`, `<br>`; an empty cell or `none` is 0.
+- **D deleted files.** No Read of `hook-formulas.md`, `hook-mastery.md`, `opener-patterns.md`, `retention-psychology.md` or `reel-scripter/references/say-this-not-that.md`.
+- **Q Goldmine question.** contra: the exact question text from `step3-options.md`, the hook pass, appears in assistant text. gut: it never appears.
+- **P no part-2 CTA.** The final script has no "follow for part 2" ask.
+- **R2 second reel** (`--run2` only). Run 2's own log holds its own `angles`, `rehooks` and `hook` Skill calls.
+
+## Controls
+
+- A known-bad log (a pre-conductor run with no `step:` args) must print `VERDICT: FAIL`.
+- A walk counts only if V1 passes. Login check (outside the grader): scratch login file after the walk vs the live one before.
+
+## Not graded here
+
+- Whether a skill's advice was used, only that its file was loaded before its options were shown.
+- Whether the Other side beat was softened in the written script.
+- The answer picks themselves: the responder's rules are regexes over the model's words, so a walk that stalls on a mismatched answer shows up as missing calls, not as a separate criterion.

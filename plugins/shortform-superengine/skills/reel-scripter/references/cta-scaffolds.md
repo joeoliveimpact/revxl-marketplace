@@ -4,7 +4,7 @@ Niche-agnostic CTA patterns, organized by GOAL. Pick the CTA that matches the re
 (see `body-structures.md`) and the creator's objective. Each entry gives the scaffold, when to
 use it, one generic fill-in example, placement, and the one mistake that kills it.
 
-Placeholders: `[keyword]`, `[topic]`, `[outcome]`, `[resource]`, `[someone]`, `[series]`,
+Placeholders: `[keyword]`, `[topic]`, `[outcome]`, `[resource]`, `[someone]`,
 `[offer]`, `[link]`.
 
 > One CTA per reel. Two asks split intent and tank both. State it plainly — the algorithm and
@@ -31,7 +31,7 @@ The reason this CTA beats every other on Instagram is the in-app conversational 
 **When:** dense reference value — steps, lists, checklists, "do this not that." Saves are a strong reach signal and the body must be worth re-watching.
 **Example:** "Save this for the next time you [face the pain]."
 **Placement:** END, after the value is delivered. A light mid-reel nudge ("you'll want to save this part") works when a key list hits.
-**The mistake that kills it:** saying "save this" on a reel with nothing to come back to. If it's a story or a one-time watch, save is the wrong CTA — use share or follow.
+**The mistake that kills it:** saying "save this" on a reel with nothing to come back to. If it's a story or a one-time watch, save is the wrong CTA: use share or follow for more (4).
 
 ## 3. Share-to-someone
 **Scaffold:** "Send this to [someone] who [needs it / is dealing with [pain]]."
@@ -40,12 +40,12 @@ The reason this CTA beats every other on Instagram is the in-app conversational 
 **Placement:** END. Name a *specific* recipient ("the friend who always says [thing]") — vague "share with friends" underperforms a named target.
 **The mistake that kills it:** asking for a share on content that's about the creator, not the viewer's world — there's no one to send it to. Make it about a shared experience first.
 
-## 4. Follow-for-series / part-2
-**Scaffold:** "Follow for **Part [2]** where I show you [next outcome]."
-**When:** the body opens a loop you deliberately don't close — multi-part teaching, a cliffhanger result, a "this is step 1 of 3."
-**Example:** "Follow so you don't miss Part 2 — the [mechanism] that makes this work."
-**Placement:** END, paired with an explicit open loop earlier in the body ("there's a second half to this — I'll cover it next"). The promise must be specific.
-**The mistake that kills it:** "follow for more" with no named payoff. Generic "more" gives no reason to follow *now*. Promise the specific next thing.
+## 4. Follow for more
+**Scaffold:** "Follow for more [topic]."
+**When:** a story, a one-time watch, or a reel whose value is the creator's point of view. It asks for the next reel, not a return to this one.
+**Example:** "Follow for more [topic] that actually [outcome]."
+**Placement:** END, one line, after the payoff.
+**The mistake that kills it:** promising a second part. Every reel stands alone and pays off its own loop, so this reel's loop closes here.
 
 ## 5. Link-in-bio
 **Scaffold:** "Full [resource] is linked in my bio — go grab it."
@@ -67,9 +67,9 @@ The reason this CTA beats every other on Instagram is the in-app conversational 
 | Body type | Best-fit CTA |
 |---|---|
 | Listicle / how-to / steps | Save-for-later · Comment-to-trigger |
-| Myth-bust / contrarian | Comment-to-trigger · Follow-for-part-2 |
+| Myth-bust / contrarian | Comment-to-trigger |
 | Story / personal | Share-to-someone · Follow |
-| Result / transformation | Follow-for-series · Book/DM-me |
+| Result / transformation | Book/DM-me |
 | Deep teaching w/ resource | Comment-to-trigger · Link-in-bio |
 
 ## Universal CTA rules

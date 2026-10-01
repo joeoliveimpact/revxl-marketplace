@@ -757,8 +757,8 @@ else:
       'the flop-vocabulary layer.')
 w('')
 w('Universal losers (throat-clears, greetings, hedges, CTA stacking) live in the reference '
-  "tables (opener-patterns.md / say-this-not-that.md) -- this section is only what THIS field's "
-  'data adds on top.')
+  "tables (the plugin's skills/_shared/references/say-this-not-that.md) -- this section is only "
+  "what THIS field's data adds on top.")
 jx['avoid'] = {
     'mode': 'FULL' if FULL else 'CAPTION_ONLY',
     'loser_hooks': loser_hooks,
