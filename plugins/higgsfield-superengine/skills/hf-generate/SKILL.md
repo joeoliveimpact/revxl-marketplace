@@ -31,13 +31,19 @@ Nothing reaches Higgsfield except `hf_rest.py submit`, after a fresh `estimate` 
 
 ## 1. Pick the model
 
-Read `${CLAUDE_PLUGIN_ROOT}/references/model-picker.md` and follow it (Flare is the default for images). Then read the chosen model's file in `${CLAUDE_PLUGIN_ROOT}/references/models/` for its endpoint and settings, and `${CLAUDE_PLUGIN_ROOT}/references/settings-defaults.md` (always set quality explicitly). Tell the client the pick in one line.
+Read `${CLAUDE_PLUGIN_ROOT}/references/model-picker.md` and follow it (Flare is the default for images). Then read the chosen model's file in `${CLAUDE_PLUGIN_ROOT}/references/models/` for its endpoint, settings and prompt rules, and `${CLAUDE_PLUGIN_ROOT}/references/settings-defaults.md` (always set quality explicitly). Tell the client the pick in one line.
+
+The spend guard checks this: it refuses a submit unless this session has read the chosen model's file with the Read tool. Read it BEFORE writing the prompt, never after.
 
 ## 2. Build the prompt
 
-Use the `higgsfield-superengine:image-prompting` skill for images or `higgsfield-superengine:video-prompting` for video (a use-case skill may have done this already). If the client didn't dictate the prompt, show it briefly and ask "Good to go?"
+Use the `higgsfield-superengine:image-prompting` skill for images or `higgsfield-superengine:video-prompting` for video (a use-case skill may have done this already).
 
-A reference image or video from the client's computer goes up first (free), and its `public_url` goes into the request:
+Then show the client the full prompt text, word for word, in one message: every prompt in the request (one per shot for multi-shot), never a summary or paraphrase, even for a cheap test or a prompt the client dictated. Ask "Good to go?" and wait for their reply. A change means a new prompt: show it again.
+
+The spend guard checks all three: it refuses a submit unless this session loaded a prompting skill (or a use-case skill), the exact prompt text appears in one of Claude's messages, and the client replied after it.
+
+A reference image or video from the client's computer goes up first (free), and its `public_url` goes into the request. For a video, always upload the file itself: the upload records its length, so the job is priced on the real seconds instead of the 30 s maximum.
 
 `& (Get-Content -Raw -Encoding UTF8 higgsfield\.python) "${CLAUDE_PLUGIN_ROOT}/scripts/hf_rest.py" upload "<file path>"`
 
@@ -71,10 +77,10 @@ Then read submit's `class`:
 - `ok`: keep the `request_id`. Go to step 5.
 - `spend_gate_refused` (for example `stamp_expired`: the pop-up took over 60 seconds): refund with reason `not_sent`, then run submit again for a fresh pop-up.
 - `insufficient_credits`: run `balance set 0`, then refund with reason `insufficient_credits`. Tell the client to add funds (Billing, then Add funds, on open.higgsfield.ai), then record the new balance with the `higgsfield-superengine:higgsfield-setup` skill.
-- `"safe_to_resubmit": true` (Higgsfield rejected the request, so no job exists): refund with reason `not_sent`. Fix and retry, or offer a report.
+- `"safe_to_resubmit": true` (Higgsfield rejected the request, so no job exists): refund with reason `rejected` (`not_sent` is refused once a submit used the stamp). Fix and retry, or offer a report.
 - `"safe_to_resubmit": false` (connection or server trouble): do NOT submit again; the job may exist. Tell the client it may still show up on the Higgsfield website, and offer a report.
 
-Ledger commands (`<reason>` is `not_sent`, `insufficient_credits`, `job_nsfw`, `job_failed` or `job_canceled`):
+Ledger commands (`<reason>` is `not_sent`, `rejected`, `insufficient_credits`, `job_nsfw`, `job_failed` or `job_canceled`):
 
 `& (Get-Content -Raw -Encoding UTF8 higgsfield\.python) "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.py" refund <key> --reason <reason>`
 
@@ -96,7 +102,7 @@ Each call waits up to 9 minutes, because one command can't run longer than 10. R
 
 `& (Get-Content -Raw -Encoding UTF8 higgsfield\.python) "${CLAUDE_PLUGIN_ROOT}/scripts/hf_rest.py" download <request_id>`
 
-Files land in `higgsfield/<YYYY-MM-DD>/`. Name each path for the client, and show an image with the Read tool. `download_failed`: run it again (the links stay valid for at least 7 days).
+Files land in `higgsfield/<YYYY-MM-DD>/`. Name each path for the client, and show an image with the Read tool. For a video edit, compare the file with the source (frame rate, length, size; `references/video-edit-recipes.md`) and tell the client any difference before they cut it in. `download_failed`: run it again (the links stay valid for at least 7 days).
 
 Then offer: "Want a variation?" Any new or changed request starts again at step 2.
 
@@ -107,7 +113,7 @@ Tell the client what went wrong in plain words, and whether anything was charged
 1. With the Write tool, put the details in `higgsfield/reports/report-body.md`: what the client asked for, the model and endpoint, the prompt text, the step that failed, and the output's `class`, `message`, `request_id` and `correlation_id`. Never the key.
 2. Draft it. Keep the summary short, in single quotes, with no apostrophes and no script names:
 
-`& (Get-Content -Raw -Encoding UTF8 higgsfield\.python) "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin higgsfield-superengine --plugin-version 0.1.0 --summary 'Video job failed on Seedance' --body-file higgsfield/reports/report-body.md --error-code job_failed`
+`& (Get-Content -Raw -Encoding UTF8 higgsfield\.python) "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin higgsfield-superengine --plugin-version 0.1.1 --summary 'Video job failed on Seedance' --body-file higgsfield/reports/report-body.md --error-code job_failed`
 
 3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
 4. Send, using the path after `DRAFT:`:

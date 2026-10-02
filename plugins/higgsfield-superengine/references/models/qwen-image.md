@@ -8,7 +8,7 @@ Reference-faithful edits without text, and text-to-image with a real negative fi
 
 ## Settings [DOCS 09.25.26]
 - `negative_prompt`: a real field on both.
-- `prompt_extend` and `enable_thinking` default **on**; `enable_thinking` needs `prompt_extend=true`. Set both false to use your prompt as written.
+- `prompt_extend` and `enable_thinking` default **on**; `enable_thinking` needs `prompt_extend=true`. Keep both on by default: the docs describe thinking as a quality feature ("use model reasoning to improve image quality"). Set both false only for exact, pixel-faithful edits where every word of your prompt must stand. [DOCS 10.01.26]
 - `prompt_extend_mode`: direct or agent on text-to-image; direct only on edit.
 - `resolution` 1k/2k (default 1k; 2k square = 1536×1536). `aspect_ratio` 1:1, 2:3, 3:2, 3:4, 4:3, 7:9, 9:7, 9:16, 16:9, 21:9 (default 1:1); no 4:5.
 - `seed` 0–2,147,483,647. About 4,500 tokens of prompt is advisory, not enforced.

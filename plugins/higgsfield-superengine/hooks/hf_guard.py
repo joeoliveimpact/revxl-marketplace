@@ -11,6 +11,8 @@
                      priced and under the cap -> stamp "allow" + allow; over the cap or an ask verdict -> reserve
                      (--force) + stamp "ask" + ask (a real click); nobody to ask (dontAsk, bypassPermissions, or
                      no permission_mode) -> deny + log, nothing reserved or stamped. Anything wrong -> deny.
+                     Real call only: the event's transcript must hold this exact tool call (same tool_use_id and
+                     command) still pending, so a hand-built event piped into `hf_guard.py hook` never stamps.
   deny               api.higgsfield.ai, the higgsfield CLI / SDK, any other way into hf_rest (import, -c, -m,
                      chaining, a script that mentions it), anything touching higgsfield/.spend-guard/ or
                      ~/.config/higgsfield-superengine/, HF_SUPERENGINE_LEDGER_DIR, ad-hoc `import ledger`.
@@ -155,15 +157,29 @@ def read_flag_quiet():
 
 # ---- 4.1 spend guard: files -------------------------------------------------------------------------------------
 
-def guarded_path(p):
-    n = p.replace("\\", "/").lower()
-    return re.search(r"(^|/)\.spend-guard(/|$)", n) or re.search(r"(^|/)\.config/+higgsfield-superengine(/|$)", n)
+def guarded_path(p, cwd=None):
+    """The path as written, normalized (./ and ../ folded), and resolved against the session folder (symlinks
+    followed): any of them inside a guarded folder counts. Codex review 10.01.26: ".config/./higgsfield-superengine"
+    slipped past a check on the raw text."""
+    cands = {p, os.path.normpath(p)} if p else set()
+    try:
+        q = Path(os.path.expanduser(p))
+        if not q.is_absolute():
+            q = (Path(cwd) if isinstance(cwd, str) and cwd else Path.cwd()) / q
+        cands.add(str(q.resolve()))
+    except (OSError, ValueError, RuntimeError):
+        pass
+    for c in cands:
+        n = c.replace("\\", "/").lower()
+        if re.search(r"(^|/)\.spend-guard(/|$)", n) or re.search(r"(^|/)\.config/+higgsfield-superengine(/|$)", n):
+            return True
+    return False
 
 
-def files(ti):
+def files(ti, cwd=None):
     fp = ti.get("file_path")
     fp = fp if isinstance(fp, str) else ""
-    if guarded_path(fp):
+    if guarded_path(fp, cwd):
         return deny("the spend guard's files (higgsfield/.spend-guard/) and the per-user folder "
                     "(~/.config/higgsfield-superengine: ledger, no-look flag) are written only by the plugin's scripts. "
                     "Do not create, edit, move or delete them.")
@@ -237,7 +253,32 @@ def plain(cmd, ps):
     return (toks[0], toks[1:]) if toks else None
 
 
-def shell(cmd, ps, cwd, mode):
+SCRIPT_MAX = 4 * 1024 * 1024
+
+
+def wraps_guard(cmd, ps, cwd):
+    """`python <file>` where the file (any extension, outside this plugin) mentions the submit script, the guard or
+    its files: it could feed the hook a made-up event or race a stamp (Codex review 10.01.26: `python attack.md`)."""
+    p = plain(cmd, ps)
+    if not p:
+        return False
+    try:
+        f = Path(os.path.expanduser(p[0]))
+        f = (f if f.is_absolute() else Path(cwd if isinstance(cwd, str) and cwd else ".") / f).resolve()
+        if f.parent in (SCRIPTS.resolve(), HERE.resolve()):
+            return False  # the plugin's own scripts
+        with open(f, "rb") as h:
+            text = h.read(SCRIPT_MAX).decode("utf-8", "replace").lower()
+    except (OSError, ValueError, RuntimeError):
+        return False
+    return any(m in text for m in ("hf_rest", "hf_guard", "spend-guard")) or \
+        bool(LEDGER_IMPORT.search(text) and "higgsfield" in text)
+
+
+def shell(cmd, ps, cwd, mode, ev=None):
+    if wraps_guard(cmd, ps, cwd):
+        return deny("that script mentions the plugin's submit script, guard or ledger; scripts may not wrap them. "
+                    + PLAIN)
     low = cmd.lower()
     if not any(m in low for m in MARKERS) and not LEDGER_IMPORT.search(cmd):
         return None
@@ -246,7 +287,8 @@ def shell(cmd, ps, cwd, mode):
                     "hf_rest.py (estimate, then submit).")
     if any(m in low for m in SDK) or cli_used(cmd):
         return deny("the higgsfield CLI and SDKs skip the price check and the spend cap. Use the plugin's hf_rest.py.")
-    if "spend-guard" in low or CONFIG_DIR.search(cmd) or GUARD_NAMES.search(low):
+    if "spend-guard" in low or CONFIG_DIR.search(cmd) or GUARD_NAMES.search(low) or \
+            (".config" in low and "higgsfield-superengine" in low):  # ".config/./higgsfield-superengine" and the like
         return deny("the spend guard's files (higgsfield/.spend-guard/) and the per-user folder "
                     "(~/.config/higgsfield-superengine: ledger, no-look flag) are touched only by the plugin's "
                     "scripts. Do not read-modify, move or delete them from a command.")
@@ -263,7 +305,13 @@ def shell(cmd, ps, cwd, mode):
     p = plain(cmd, ps)
     name = re.split(r"[\\/]", p[0])[-1].lower() if p else ""
     if name == "hf_rest.py":
-        return submit(p[0], p[1][1:], cwd, mode) if p[1][:1] == ["submit"] else None
+        if p[1][:1] != ["submit"]:
+            return None
+        if not real_call(ev, cmd):
+            return deny("this submit is not a real pending tool call in this session's transcript (a hand-built "
+                        "hook event, or a script calling the hook). Nothing was stamped or reserved. Run the submit "
+                        "as its own tool call so the client sees the real permission prompt.")
+        return submit(p[0], p[1][1:], cwd, mode, ev)
     if name == "hf_guard.py":
         if p[1] == ["no-look", "off"]:
             if mode not in ATTENDED:
@@ -274,6 +322,147 @@ def shell(cmd, ps, cwd, mode):
                               "and look again.")
         return None
     return deny("hf_rest.py and hf_guard.py may not be imported, wrapped or chained. " + PLAIN)
+
+
+def real_call(ev, cmd):
+    """True only if the event's transcript holds this exact tool call (tool_use_id + command) with no result yet.
+    A hand-built event fed to `hf_guard.py hook` (by a pipe or a runner script) either has no such call, or points at
+    an older call that already has a result. Real events: Claude Code writes the tool_use before PreToolUse fires
+    (checked 10.01.26 with a headless probe hook)."""
+    # ponytail: protects only sessions where this hook runs, and a script Claude writes can still forge a transcript
+    # and call the hook itself (Codex review 10.01.26); shell() refuses scripts that mention the guard. The full fix
+    # is approval held outside the agent's reach (v0.2).
+    rows, tid = transcript(ev), (ev or {}).get("tool_use_id")
+    if rows is None or not (isinstance(tid, str) and tid):
+        return False
+    found = False
+    for o in rows:
+        for c in blocks(o):
+            if c.get("type") == "tool_use" and c.get("id") == tid:
+                found = isinstance(c.get("input"), dict) and c["input"].get("command") == cmd
+            elif c.get("type") == "tool_result" and c.get("tool_use_id") == tid:
+                found = False  # that call already ran (or was refused): not the one pending now
+    return found
+
+
+KEEP_INPUT = ("command", "file_path", "skill")
+
+
+def _compact(o):
+    """One transcript row cut down to what the checks read; big tool results and file contents are dropped."""
+    m = o.get("message")
+    content = m.get("content") if isinstance(m, dict) else None
+    if isinstance(content, str):
+        content = [{"type": "text", "text": content}]
+    keep = []
+    for c in content if isinstance(content, list) else ():
+        if not isinstance(c, dict):
+            continue
+        t = c.get("type")
+        if t == "tool_use":
+            ti = c.get("input") if isinstance(c.get("input"), dict) else {}
+            keep.append({"type": t, "id": c.get("id"), "name": c.get("name"),
+                         "input": {k: ti[k] for k in KEEP_INPUT if k in ti}})
+        elif t == "tool_result":
+            keep.append({"type": t, "tool_use_id": c.get("tool_use_id"), "is_error": bool(c.get("is_error"))})
+        elif t == "text" and isinstance(c.get("text"), str):
+            keep.append({"type": t, "text": c["text"]})
+    return {"type": o.get("type"), "isMeta": bool(o.get("isMeta")), "blocks": keep}
+
+
+def transcript(ev):
+    """The whole transcript, streamed line by line and compacted, or None if it can't be read. (Reading only the
+    tail lost the review steps behind one big tool result: Codex review 10.01.26.)"""
+    tp = (ev or {}).get("transcript_path")
+    if not (isinstance(tp, str) and tp):
+        return None
+    rows = []
+    try:
+        with open(tp, "rb") as f:
+            for line in f:
+                try:
+                    o = json.loads(line)
+                except ValueError:
+                    continue
+                if isinstance(o, dict):
+                    rows.append(_compact(o))
+    except OSError:
+        return None
+    return rows
+
+
+def blocks(o):
+    return o.get("blocks", [])
+
+
+PROMPT_SKILLS = ("image-prompting", "video-prompting", "product-shots", "static-ads", "thumbnails", "ugc-video-ads")
+SKILL_IDS = {f"higgsfield-superengine:{n}" for n in PROMPT_SKILLS}
+MODELS = HERE.parent / "references" / "models"
+
+
+def norm(s):
+    return " ".join(s.split())
+
+
+def same_file(a, b):
+    return os.path.normcase(os.path.normpath(str(a))) == os.path.normcase(os.path.normpath(str(b)))
+
+
+def prompts_in(x):
+    """Every string under a "prompt" key, at any depth (multi-shot bodies carry one per shot)."""
+    if isinstance(x, dict):
+        return [p for k, v in x.items() for p in ([v] if k == "prompt" and isinstance(v, str) else prompts_in(v))]
+    return [p for v in x for p in prompts_in(v)] if isinstance(x, list) else []
+
+
+def reviewed(ev, ep, params):
+    """None when, before this pending call, this plugin's notes file for the model was read, a prompting skill was
+    loaded (both successfully), and the client saw every prompt in the request word for word and answered after it
+    (a request with no prompt: Claude described it and the client answered). Otherwise the reason to refuse.
+    JOI-016 (09.30.26): prompts written without the model notes or the skill, and run unseen, wasted the credits."""
+    rows, tid = transcript(ev) or [], (ev or {}).get("tool_use_id")
+    pos = max((i for i, o in enumerate(rows) for c in blocks(o) if c.get("type") == "tool_use" and c.get("id") == tid),
+              default=None)
+    if pos is None:
+        return "this submit is not in the session transcript."
+    before = rows[:pos]
+    ok = {c.get("tool_use_id") for o in before for c in blocks(o) if c.get("type") == "tool_result"
+          and not c.get("is_error")}
+    uses = [(i, c) for i, o in enumerate(before) if o.get("type") == "assistant" for c in blocks(o)
+            if c.get("type") == "tool_use" and c.get("id") in ok]
+    files = [p for p in MODELS.glob("*.md") if f"`{ep}`" in p.read_text(encoding="utf-8", errors="replace")]
+    reads = [i for i, c in uses if c.get("name") == "Read" and any(
+        same_file(c["input"].get("file_path", ""), p) for p in (files or MODELS.glob("*.md")))]
+    if not reads:
+        return (f"this plugin's notes for the model ({', '.join(p.name for p in files) or 'references/models/'}) were "
+                "not read in this session before this submit. Read the model file first (it holds the prompt rules "
+                "for this model), then submit again.")
+    said = [c.get("text", "") for o in before if o.get("type") == "user" and not o.get("isMeta")
+            for c in blocks(o) if c.get("type") == "text"]
+    if not any(c.get("name") == "Skill" and c["input"].get("skill") in SKILL_IDS | set(PROMPT_SKILLS) for _, c in uses) and \
+            not any(f"/{s}</command-name>" in t for t in said for s in SKILL_IDS):
+        return ("no prompting skill was loaded in this session. Load higgsfield-superengine:image-prompting or "
+                "video-prompting (or the matching use-case skill) and write the prompt with it, then submit again.")
+
+    def replied(after):
+        return any(o.get("type") == "user" and not o.get("isMeta") and any(
+            c.get("type") == "text" and c.get("text", "").strip() for c in blocks(o)) for o in before[after + 1:])
+    want = [norm(p) for p in prompts_in(params) if p.strip()]
+    texts = [i for i, o in enumerate(before) if o.get("type") == "assistant" for c in blocks(o)
+             if c.get("type") == "text" and (all(w in norm(c.get("text", "")) for w in want) if want else
+                                             c.get("text", "").strip())]
+    if want:
+        shown = max(texts, default=None)
+        # ponytail: any real user message after the prompt counts as the reply; it does not judge yes vs no
+        if shown is None or not replied(shown):
+            return ("the client has not seen this exact prompt. Show the full prompt text word for word (not a "
+                    "summary), wait for their reply, then submit again.")
+        return None
+    last = max((i for i in texts if i > max(reads)), default=None)
+    if last is None or not replied(last):
+        return ("this request has no prompt, so describe it to the client (model, inputs, settings) after reading the "
+                "model's notes, wait for their reply, then submit again.")
+    return None
 
 
 def in_plugin(cwd):
@@ -287,7 +476,7 @@ def amt(x):
     return f"{x:.9f}".rstrip("0").rstrip(".")
 
 
-def submit(script, args, cwd, mode):
+def submit(script, args, cwd, mode, ev=None):
     if len(args) != 2:
         return deny("submit takes exactly <endpoint> <body.json>. " + PLAIN)
     if not (isinstance(cwd, str) and os.path.isdir(cwd)):
@@ -326,6 +515,9 @@ def submit(script, args, cwd, mode):
     if not -hf_rest.SKEW <= age <= hf_rest.ESTIMATE_TTL:
         return deny(hf_rest.GATE_REASONS["estimate_stale" if age > 0 else "estimate_clock_skew"])
 
+    why = reviewed(ev, ep, params)
+    if why:
+        return deny(why + " Nothing was stamped or reserved.")
     v = pricing.price_bytes(raw)
     base = {"event": "spend_guard", "endpoint": ep, "estimate_key": key, "permission_mode": mode, "code": v["code"]}
 
@@ -340,11 +532,11 @@ def submit(script, args, cwd, mode):
         except Exception:
             st, ok = hf_rest.guard_file("stamps", key), False
         if not ok:
+            ledger.run(["refund", key, "--reason", "not_sent"])  # before the unlink: a missing stamp reads as spent
             try:
                 st.unlink()
             except OSError:
                 pass
-            ledger.run(["refund", key, "--reason", "not_sent"])
             return finish(deny("the estimate record changed while it was being priced. Run estimate, then submit "
                                "again. Nothing was stamped."), usd=usd)
         return finish(out(decision, reason), usd=usd)
@@ -395,9 +587,9 @@ def hook(raw):
     if BROWSER_RE.match(tool):
         return no_look(tool, mode)
     if tool in ("Write", "Edit"):
-        return files(ti)
+        return files(ti, data.get("cwd"))
     if tool in SHELLS and isinstance(ti.get("command"), str):
-        return shell(ti["command"], tool == "PowerShell", data.get("cwd"), mode)
+        return shell(ti["command"], tool == "PowerShell", data.get("cwd"), mode, data)
     return None
 
 
@@ -487,10 +679,34 @@ def selftest():
         r = subprocess.run([sys.executable, "-B"] + args, cwd=str(cwd), env=e, capture_output=True, timeout=60)
         return r.returncode, r.stdout.decode("utf-8", "replace"), r.stderr.decode("utf-8", "replace")
 
-    def ev(tool, ti, mode="default", cwd=ws, drop_mode=False):
-        d = {"session_id": "selftest", "transcript_path": str(tmp / "t.jsonl"), "cwd": str(cwd),
+    seq = [0]
+
+    def use(tid, tool, ti):
+        return {"type": "assistant", "message": {"role": "assistant", "content": [
+            {"type": "tool_use", "id": tid, "name": tool, "input": ti}]}}
+
+    def said(text, who="assistant"):
+        return {"type": who, "message": {"role": who, "content": [{"type": "text", "text": text}]}}
+
+    # a reviewed job: prompting skill loaded, the model's notes read, every test prompt shown word for word, a reply
+    def result(tid, err=False, text="ok"):
+        return {"type": "user", "message": {"role": "user", "content": [
+            {"type": "tool_result", "tool_use_id": tid, "is_error": err, "content": text}]}}
+
+    shown = said("Here is the exact prompt: a red mug on a table | five-hundred | never estimated. Good to go?")
+    skill_ok = [use("toolu_pre1", "Skill", {"skill": "higgsfield-superengine:image-prompting"}), result("toolu_pre1")]
+    read_ok = [use("toolu_pre2", "Read", {"file_path": str(MODELS / "z-image.md")}), result("toolu_pre2")]
+    prelude = skill_ok + read_ok + [shown, said("yes", "user")]
+
+    def ev(tool, ti, mode="default", cwd=ws, drop_mode=False, lines=None):
+        """A real-shaped event plus its transcript. lines(tid) overrides the transcript (default: this call pending)."""
+        seq[0] += 1
+        tid, tp = f"toolu_selftest{seq[0]:04d}", tmp / f"t{seq[0]}.jsonl"
+        rows = lines(tid) if lines else prelude + [use(tid, tool, ti)]
+        tp.write_text("".join(json.dumps(x) + "\n" for x in rows), encoding="utf-8")
+        d = {"session_id": "selftest", "transcript_path": str(tp), "cwd": str(cwd),
              "permission_mode": mode, "hook_event_name": "PreToolUse", "tool_name": tool, "tool_input": ti,
-             "tool_use_id": "toolu_selftest"}
+             "tool_use_id": tid}
         if drop_mode:
             d.pop("permission_mode")
         return d
@@ -636,7 +852,12 @@ def selftest():
         ent = [x for x in led["entries"] if x["id"] == k]
         check("S17 ask approved (stamp consumed, 1 POST) -> the reservation stays pending after the stamp life",
               c == 0 and len(hits) == n0 + 1 and ent and ent[0]["state"] == "pending", f"{c} {o[:150]} {ent}")
-        ledger("refund", k, "--reason", "not_sent")
+        c, o = ledger("refund", k, "--reason", "not_sent")
+        _, led = ledger("status")
+        check("S18 after a submit used the stamp, 'refund not_sent' is refused (exit 3 stamp_consumed), entry stays",
+              c == 3 and o.get("class") == "stamp_consumed" and
+              [x for x in led["entries"] if x["id"] == k][0]["state"] == "pending", f"{c} {o}")
+        ledger("refund", k, "--reason", "job_failed")
 
         # --- refusals on the submit path ----------------------------------------------------------------------
         b3 = body("b3.json", {"prompt": "never estimated"})
@@ -671,7 +892,7 @@ def selftest():
             os.environ.update(HF_SUPERENGINE_LEDGER_DIR=str(cfg))
             os.environ.pop("HF_SUPERENGINE_DRY_RUN", None)
             hf_rest.write_stamp = racing_write_stamp
-            res = submit(hf, [ep, b1], str(ws), "default")
+            res = submit(hf, [ep, b1], str(ws), "default", ev("Bash", {"command": sub_cmd(ep, b1)}))
         finally:
             hf_rest.write_stamp = real_ws
             os.chdir(old_cwd)
@@ -681,6 +902,97 @@ def selftest():
         check("S15 record changed between pricing and stamping -> deny, stamp removed, reservation refunded",
               res["hookSpecificOutput"]["permissionDecision"] == "deny" and stamp_of(ep, b1)[1] is None and
               not led["entries"], res)
+
+        # --- real call only: a hand-built hook event never stamps (JOI-016, 09.30.26) ---------------------------
+        cmd1 = sub_cmd(ep, b1)
+        pipe = f"echo '<event>' | python \"{me}\" hook"
+
+        def clean():
+            return stamp_of(ep, b1)[1] is None and not ledger("status")[1].get("entries")
+
+        attacks = [
+            ("R1 hand-built event piped into the hook (the newest call is the pipe) -> deny, nothing stamped",
+             lambda tid: [use(tid + "x", "Bash", {"command": pipe})]),
+            ("R2 replays the id of an older real submit that already has a result -> deny, nothing stamped",
+             lambda tid: [use(tid, "Bash", {"command": cmd1}),
+                          {"type": "user", "message": {"role": "user", "content": [
+                              {"type": "tool_result", "tool_use_id": tid, "content": "denied", "is_error": True}]}},
+                          use(tid + "x", "Bash", {"command": pipe})]),
+            ("R3 same id, different command in the transcript -> deny",
+             lambda tid: [use(tid, "Bash", {"command": cmd1 + " --x"})]),
+            ("R4 a transcript with no tool calls (a runner script's) -> deny", lambda tid: []),
+        ]
+        for name, lines in attacks:
+            c, d, r = run(ev("Bash", {"command": cmd1}, lines=lines))
+            check(name, d == "deny" and c == 2 and clean(), f"{d} {r}")
+        e5 = ev("Bash", {"command": cmd1})
+        e5.pop("transcript_path")
+        e6 = ev("Bash", {"command": cmd1})
+        e6["transcript_path"] = str(tmp / "missing.jsonl")
+        check("R5 no transcript_path, or the transcript file is missing -> deny, nothing stamped",
+              run(e5)[1] == "deny" and run(e6)[1] == "deny" and clean())
+        c, d, r = run(ev("Bash", {"command": cmd1}, lines=lambda tid: prelude + [{"type": "assistant", "message": {"content": [
+            {"type": "tool_use", "id": tid, "name": "Bash", "input": {"command": cmd1}},
+            {"type": "tool_use", "id": "toolu_other", "name": "Read", "input": {"file_path": "x"}}]}}]))
+        check("R6 the real call inside a parallel batch (not the last tool_use) -> allow", d == "allow", f"{d} {r}")
+        ledger("refund", key, "--reason", "not_sent")
+        stamp_of(ep, b1)[2].unlink(missing_ok=True)
+
+        # --- reviewed jobs only: model notes read, prompting skill loaded, prompt shown word for word + answered --
+        ask, yes = shown, said("yes", "user")
+        reviews = [
+            ("V1 the model's notes were never read -> deny (names z-image.md)", skill_ok + [ask, yes], "z-image.md"),
+            ("V2 another model's notes were read, not this one's -> deny",
+             skill_ok + [use("toolu_r", "Read", {"file_path": str(MODELS / "kling-3.md")}), result("toolu_r"), ask,
+                         yes], "z-image.md"),
+            ("V3 no prompting skill loaded -> deny", read_ok + [ask, yes], "prompting skill"),
+            ("V4 the prompt was only summarised (not word for word) -> deny",
+             skill_ok + read_ok + [said("I'll render a red mug, OK?"), yes], "exact prompt"),
+            ("V5 the prompt was shown but the client never replied -> deny", skill_ok + read_ok + [yes, ask],
+             "exact prompt"),
+            ("V8 the model-notes Read failed (is_error) -> deny",
+             skill_ok + [use("toolu_f", "Read", {"file_path": str(MODELS / "z-image.md")}),
+                         result("toolu_f", True, "File not found"), ask, yes], "z-image.md"),
+            ("V9 a z-image.md outside this plugin was read -> deny",
+             skill_ok + [use("toolu_x", "Read", {"file_path": str(tmp / "references" / "models" / "z-image.md")}),
+                         result("toolu_x"), ask, yes], "z-image.md"),
+            ("V10 the Skill call failed, or named another plugin's skill -> deny",
+             [use("toolu_s", "Skill", {"skill": "higgsfield-superengine:image-prompting"}),
+              result("toolu_s", True, "Unknown skill"), use("toolu_t", "Skill", {"skill": "x:image-prompting"}),
+              result("toolu_t")] + read_ok + [ask, yes], "prompting skill"),
+        ]
+        for name, rows, word in reviews:
+            c, d, r = run(ev("Bash", {"command": cmd1}, lines=lambda tid, rows=rows: rows + [use(tid, "Bash",
+                                                                                               {"command": cmd1})]))
+            check(name, d == "deny" and word in r and clean(), f"{d} {r}")
+        slash = said("<command-name>/higgsfield-superengine:video-prompting</command-name>", "user")
+        c, d, r = run(ev("Bash", {"command": cmd1}, lines=lambda tid: [slash] + read_ok + [ask, yes,
+                                                                        use(tid, "Bash", {"command": cmd1})]))
+        check("V6 skill loaded by the client's slash command + notes + shown + answered -> allow", d == "allow", r)
+        ledger("refund", key, "--reason", "not_sent")
+        stamp_of(ep, b1)[2].unlink(missing_ok=True)
+        big = result("toolu_big", False, "x" * (9 * 1024 * 1024))
+        c, d, r = run(ev("Bash", {"command": cmd1}, lines=lambda tid: prelude + [use("toolu_big", "Read", {
+            "file_path": "huge.log"}), big, use(tid, "Bash", {"command": cmd1})]))
+        check("V11 a 9 MB tool result between the approval and the submit -> still allow (whole transcript read)",
+              d == "allow", r)
+        ledger("refund", key, "--reason", "not_sent")
+        stamp_of(ep, b1)[2].unlink(missing_ok=True)
+        b4 = body("b4.json", {"resolution": "1k"})  # no prompt (like a Genjutsu motion transfer)
+        estimate(ep, b4)
+        cmd4 = sub_cmd(ep, b4)
+        c, d, r = run(ev("Bash", {"command": cmd4}, lines=lambda tid: skill_ok + read_ok + [use(tid, "Bash", {
+            "command": cmd4})]))
+        no_reply = d == "deny" and "no prompt" in r and stamp_of(ep, b4)[1] is None
+        c, d, r = run(ev("Bash", {"command": cmd4}, lines=lambda tid: skill_ok + read_ok + [
+            said("z-image turbo, 1k, no prompt. OK?"), said("go", "user"), use(tid, "Bash", {"command": cmd4})]))
+        check("V12 a request with no prompt: no description + reply -> deny; described + answered -> allow",
+              no_reply and d == "allow", r)
+        ledger("refund", stamp_of(ep, b4)[0], "--reason", "not_sent")
+        stamp_of(ep, b4)[2].unlink(missing_ok=True)
+        check("V7 prompts_in finds every shot's prompt in a multi-shot body",
+              sorted(prompts_in({"prompt": "c", "multi_prompt": [{"prompt": "a"}, {"prompt": "b"}], "n": 2}))
+              == ["a", "b", "c"])
 
         # --- deny list ------------------------------------------------------------------------------------------
         denies = [
@@ -707,9 +1019,22 @@ def selftest():
                                     "content": "{}"}),
                          ("Edit", {"file_path": str(home / ".config" / "higgsfield-superengine" / "no-look.json"),
                                    "old_string": "on", "new_string": "leaving"}),
-                         ("Write", {"file_path": str(ws / "go.py"), "content": "import hf_rest\nhf_rest.call()"})):
+                         ("Write", {"file_path": str(ws / "go.py"), "content": "import hf_rest\nhf_rest.call()"}),
+                         ("Write", {"file_path": str(home) + "/.config/./higgsfield-superengine/ledger.json",
+                                    "content": "{}"}),
+                         ("Edit", {"file_path": str(ws / "x" / ".." / "higgsfield" / ".spend-guard" / "s.json"),
+                                   "old_string": "a", "new_string": "b"})):
             c, d, r = run(ev(tool, ti))
-            check(f"X {tool} {Path(ti['file_path']).name} -> deny", d == "deny", r)
+            check(f"X {tool} {ti['file_path'][-48:]} -> deny", d == "deny", r)
+        (ws / "attack.md").write_text(f'import sys; sys.path.insert(0, r"{SCRIPTS}"); import hf_rest', encoding="utf-8")
+        (ws / "notes.md").write_text("print('hello')", encoding="utf-8")
+        c, d, r = bash('python attack.md')
+        c2, d2, r2 = bash('py -3 notes.md')
+        check("X `python attack.md` (a script of any extension that mentions hf_rest) -> deny; a plain script -> "
+              "untouched; `python \"<plugin>/scripts/...\"` stays allowed (P below)", d == "deny" and d2 is None,
+              f"{d} {d2}")
+        c, d, r = bash(f'echo x > "{home}/.config/./higgsfield-superengine/no-look.json"')
+        check("X a command touching .config/./higgsfield-superengine -> deny", d == "deny", r)
 
         # --- pass-through ---------------------------------------------------------------------------------------
         passes = [("Bash", "npm test"), ("Bash", "git status && ls -la"), ("PowerShell", "Get-ChildItem"),

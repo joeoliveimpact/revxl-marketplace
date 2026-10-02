@@ -25,6 +25,7 @@ The plugin's default image route. Flare and Sunburst are GPT Image 2.5 per the a
 - Faces and dense text: 2k + `high`; 4k invents skin texture and blotches dense type. [AGREED, §3 #22]
 - Edits: `Change ONLY <X>. Keep <identity, pose, framing, text, background> exactly unchanged.` [AGREED, §3 #6]
 - Every edit repaints the whole frame and placement drifts: one change per pass, measure placement, and pass the prior result as an image (calls are stateless). [SINGLE-SOURCE: A18, A9 (§4 #6)]
+- Up to 16 `image_urls`: with 2 or more, open the prompt with an `IMAGE REFERENCES: image 1 = …; image 2 = …` manifest in upload order and name each by number plus a noun (see image-prompting §4). [SINGLE-SOURCE: B3, official youtube-thumbnail skill]
 - Face lock from a reference works. For skin, pass the real photo as a second reference and say "render skin to match the real photo" on every pass. [SINGLE-SOURCE: A18, A20]
 - Product first, person second. Order barely mattered in the test; follow the docs order anyway. [SINGLE-SOURCE: REST, 1 sample per order, T15]
 - Static ads: structure (layout, zones) from a neutral wireframe as Image 1, never a competitor ad; background, type and accent from the brand guide; "match the product only". A/B it against the `preset_id` path. [SINGLE-SOURCE: D4]

@@ -1,6 +1,6 @@
 # Seedance 2.0 (REST)
 
-The REST pick for 1080p and 4k Seedance. Tags: see the legend in `references/model-picker.md`.
+The REST pick for 4k Seedance (Seedance 2.5 now covers 1080p). Tags: see the legend in `references/model-picker.md`.
 
 ## Endpoints
 - `bytedance/seedance-2.0/text-to-video`
@@ -16,9 +16,10 @@ The REST pick for 1080p and 4k Seedance. Tags: see the legend in `references/mod
 
 ## Prompting rules
 - Use the 8 elements as a checklist, not a keyword template: subject, action, scene, lighting/color, camera, style, (quality goes in the parameter), positive constraints. Or director sections: `Setting: Action: Camera: Style: Audio: Shot 1: … Final shot:`. [SINGLE-SOURCE: A15, B9]
-- After `@ImageN`, always add a noun clarifier: "@Image1 (the dark-haired woman) walks into @Image2 (the living room)". Never put a verb or number straight after the tag. [SINGLE-SOURCE: A15]
+- Reference tokens: write `<<<image_1>>>`, `<<<video_1>>>`, `<<<audio_1>>>` (one-based, the only form the Higgsfield docs define; it worked on Seedance 2.5 REST, T1b). `@ImageN` is untested on 2.0. Never plain "Image N": it morphed between references on 2.5. [DOCS 10.01.26 (Cinema Studio); SINGLE-SOURCE: T1b]
+- After the token, always add a noun clarifier: "<<<image_1>>> (the dark-haired woman) walks into <<<image_2>>> (the living room)". Never put a verb or number straight after the tag. [SINGLE-SOURCE: A15]
 - To anchor identity and motion, pass a character image plus the previously approved shot. [SINGLE-SOURCE: A15]
-- Formulas: "Refer to the [subject] from Image N to generate [scene], keeping [subject] consistent"; "Replace [element] in Video N with [new element], preserving all original motions and camera work"; "Generate content after Video N: …". [SINGLE-SOURCE: B5]
+- Formulas (with the tokens above): "Refer to the [subject] from <<<image_N>>> to generate [scene], keeping [subject] consistent"; "Replace [element] in <<<video_N>>> with [new element], preserving all original motions and camera work"; "Generate content after <<<video_N>>>: …". [SINGLE-SOURCE: B5]
 - Multi-shot in one clip stays consistent because it's one pass. [SINGLE-SOURCE: A15] Label beats `Stage 1/2/3`: bracketed timecodes were blocked as `nsfw` on Seedance 2.5 REST [TESTED, 2 REST samples, T18]; untested on 2.0.
 - Dual-frame archetype: hold on the start frame … match the end frame exactly. Products: a timed SFX list plus a silent tail hold. [SINGLE-SOURCE: C2, C20]
 - UGC recreation: one continuous flow, no Scene 1/2; location first ("INTERIOR kitchen"); face lock stated inline and as a closing rule; body mechanics over vague verbs; `Audio: "line 1" / [sound] / "line 2". Natural room acoustics.`; variants change only the character. [SINGLE-SOURCE: C15]

@@ -17,7 +17,7 @@
 
 ## Cost and asks
 - Priced by the Seedance token formula. `generate_audio` true (the default) asks until the audio cost is measured; set it `false` to be priced silently.
-- Video references are priced as 30 s of input, so those jobs often go over the silent cap and ask.
+- Video references are priced on their real length when the plugin uploaded them (`hf_rest.py upload` records it); otherwise as 30 s of input, so those jobs often go over the silent cap and ask.
 
 ## Known failure modes
 - Sending "auto" for any enum is rejected; leave the field out instead. [DOCS 09.25.26]

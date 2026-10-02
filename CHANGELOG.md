@@ -4,6 +4,37 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.71] ... 2026-10-01
+
+### Fixed
+- **higgsfield-superengine v0.1.1** ... safety and prompting fixes after a client project
+burned credits on unreviewed prompts (JOI-016, 09.30.26).
+- **Spend guard:** a paid job is stamped only when the session's own transcript shows that
+exact submit as the pending tool call. A hand-built hook event or a background script can no
+longer approve spend. The guard also refuses a paid job unless:
+  - the model's notes were read;
+  - a prompting skill was loaded;
+  - the client saw the exact prompt word for word and replied.
+- **Pricing:**
+  - Video edits are priced on the uploaded clip's real length, so a 5.5 s edit shows about
+$6 instead of $30.51.
+  - Seedance 2.5 no longer forces an ask for sound (measured: same price on or off).
+  - The Flare ceilings were brought down toward the measured charges.
+- **Prompting:**
+  - A new recipe for adding objects to live footage, effects on black for compositing, and
+output checks.
+  - Numbered reference manifests, so references stop fusing into one object.
+  - Seedance 2.5 and Genjutsu go up to 1080p.
+  - Seedance 2.0 uses the documented `<<<image_N>>>` tokens.
+  - Qwen, Hailuo and LTX defaults were corrected.
+- **Hardening from an adversarial review:**
+  - Guarded paths are normalized.
+  - The guard refuses scripts that wrap it.
+  - It reads the whole session log, not just the end.
+  - A "never sent" refund is refused after a job really ran.
+- **Known limit:** a deliberately disguised script could still get past the guard. Moving
+approval out of Claude's reach is planned for v0.2.
+
 ## [0.1.70] ... 2026-09-30
 
 ### Added

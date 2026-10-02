@@ -13,7 +13,7 @@ Pick by what the client wants, then load `references/models/<file>.md` for that 
 ## Defaults
 - **Lean popular:** Flare (GPT Image 2.5, what clients call ChatGPT images) for images, Soul for faces and consistent characters, Seedance 2.5 or Kling 3.0 for video. Use another model only for a specialty need: the client explicitly asks for the cheapest option or quick rough drafts, the client names it, motion transfer, 1080p/4k, logo/vector, a negative prompt, pixel-exact edits, or a feature only that model has. [Joe 09.29.26]
 - **Image default: Flare** (`marketing-studio/image/flare`, GPT Image 2.5 per the app catalog). Sunburst is the alternative, but it asks before every run until one real Sunburst charge is measured.
-- **Video default: Seedance 2.5** (720p max on REST). [SINGLE-SOURCE: A1, A13 (§4 #11)]
+- **Video default: Seedance 2.5** (up to 1080p on REST). [SINGLE-SOURCE: A1, A13 (§4 #11)]
 - **Newest version first:** Kling 3.0 (not O3), Wan 3.0 (not Prime), HappyHorse 1.1. Older versions are fallbacks for a failed job or a parameter only the older one has.
 
 ## Image intents
@@ -31,7 +31,7 @@ Pick by what the client wants, then load `references/models/<file>.md` for that 
 ## Video intents
 - Default video, animate an image → Seedance 2.5 (`seedance-2-5.md`).
 - Text-to-video with native audio, up to 30 s → Seedance 2.5; Wan 3.0 (`wan.md`); Cinema Studio 4.0 (`cinema-studio-4.md`).
-- 1080p or 4k → Seedance 2.0 (`seedance-2-0.md`, up to 4k); Kling 3.0 4K (`kling-3.md`); LTX-2.5 Fast (`ltx.md`, up to 4k).
+- 1080p → Seedance 2.5 (`seedance-2-5.md`). 4k → Seedance 2.0 (`seedance-2-0.md`, up to 4k); Kling 3.0 4K (`kling-3.md`); LTX-2.5 Fast (`ltx.md`, up to 4k).
 - Directed multi-shot (UGC cuts, dialogue scenes) → Kling 3.0 or O3 with `multi_prompt` (`kling-3.md`, `kling-o3-omni.md`).
 - Identity from references in video → Seedance 2.5 reference-to-video (30 image refs); Seedance 2.0 ref2v; Kling O3 image-reference; Wan 3.0 ref2v.
 - Genre-directed cinematic film → Cinema Studio 4.0 (enums for genre, lens, movement, palette).

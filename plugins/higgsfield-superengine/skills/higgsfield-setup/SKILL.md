@@ -75,7 +75,7 @@ It prints one JSON line. Read `status`:
 
 `echo api.higgsfield.ai`
 
-This must be **blocked** with a message starting "Blocked by the higgsfield-superengine spend guard". Tell the client: "That block is good news. The plugin's safety guard is on."
+This must be **blocked** with a message starting "Blocked by the higgsfield-superengine spend guard". Tell the client: "That block is good news. The plugin's safety guard is on." Then name the two habits that keep it working: "Keep this plugin turned on for all your folders (install it for your user, not one project), because the guard only protects sessions where it's on. And don't run Higgsfield jobs in the mode that skips permission pop-ups (bypass): there the guard can't ask you, so it refuses anything over your cap."
 
 If it is NOT blocked (it just prints `api.higgsfield.ai`), the guards are not running. Usually Python was just installed and Claude started before it. Say: "Please close Claude completely, open it again in this same folder, and say 'continue Higgsfield setup'." Do not go on to the key while the guards are off: the guard that hides the key from Claude would not work.
 
@@ -144,7 +144,7 @@ Tell the client what went wrong in plain words, then offer: "Want me to send Joe
 1. With the Write tool, put the details in `higgsfield/reports/report-body.md`: what the client was doing, which step failed, the output's `class` and `message`. Never the key.
 2. Draft it (PowerShell tool). Keep the summary short, in single quotes, with no apostrophes and no script names:
 
-`& (Get-Content -Raw -Encoding UTF8 higgsfield\.python) "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin higgsfield-superengine --plugin-version 0.1.0 --summary 'Setup failed at the key check' --body-file higgsfield/reports/report-body.md --error-code invalid_credentials`
+`& (Get-Content -Raw -Encoding UTF8 higgsfield\.python) "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin higgsfield-superengine --plugin-version 0.1.1 --summary 'Setup failed at the key check' --body-file higgsfield/reports/report-body.md --error-code invalid_credentials`
 
 3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
 4. Send, using the path after `DRAFT:`:
