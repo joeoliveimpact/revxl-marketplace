@@ -4,9 +4,9 @@
 
 ---
 
-## Status: in development (v0.1.0)
+## Status: released (v0.1.1)
 
-This version is being built and is not released yet. The plugin folder exists, but the skills, scripts and hooks described below land over the next build steps. Nothing here generates images or videos yet.
+Install it from the REVXL catalog. See CHANGELOG.md for what changed in each version.
 
 ---
 
