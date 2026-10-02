@@ -75,6 +75,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   a Beat cell, and range times back to back from 0:00. A problem exits 2 with the list on
   stderr, so the model fixes the file in the same turn. `structure_gate.py --storyboard
   <script>` runs the same check by hand.
+- **The Goldmine answer is recorded only after the user replies** (SKLLPLG-365). A walk
+  showed the hook skill rewording and bolding the Goldmine question, then writing
+  `goldmine: asked-yes` in the turn it asked. The question now sits in `hook/SKILL.md` and
+  `step3-options.md` as one fenced line to send exactly, defined once in code
+  (`structure_gate.GOLD_Q`) and checked by selftest. A new hook, `hooks/goldmine-answer.py`,
+  writes a `goldmine-asked:` stamp to `reel-build/provenance.md` only when the user replies to
+  a turn holding the question word for word (or answers it through AskUserQuestion), and
+  blocks any `goldmine: asked-` write before that stamp exists and any hand-written stamp.
+  `structure_gate.py` check 9 fails an `asked-yes` or `asked-no` line with no valid stamp
+  above it.
+- **Walk rig** (tests/shortform/reel-scripter-walk): `probe-storyboard.sh` is a one-command
+  live proof that the storyboard hook fires and the model fixes the file (SKLLPLG-367).
 
 ## [0.4.2] ... 2026-09-11
 

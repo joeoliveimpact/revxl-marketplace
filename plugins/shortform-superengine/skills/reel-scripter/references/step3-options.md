@@ -30,12 +30,16 @@ flag it and ask ... never paper over with invented teaching.
      hook). A gold phrase from the coach or their audience goes in word for word.
      **The Goldmine question is asked by the hook skill, not here** (do not ask it twice).
      When `<project>/reel-build/goldmine-run.json` shows `reads.passed` true, the hook skill
-     asks it before it writes any opening, in these words: "Should I double-check
-     hook options against outliers, breakouts, and existing winners from the Content Goldmine
-     dashboard? I'd look for anything that could apply to what we're trying to do with this
-     reel and maximize its engagement, or any ideas that could better the content overall."
-     It waits for the answer and writes the `goldmine:` line in
-     `<project>/reel-build/provenance.md` (`asked-yes`, `asked-no`, or `no-data` when there is
+     asks it before it writes any opening, as its own paragraph, word for word (no bold, no
+     quotes, no change of case):
+
+     ```
+     Should I double-check hook options against outliers, breakouts, and existing winners from the Content Goldmine dashboard? I'd look for anything that could apply to what we're trying to do with this reel and maximize its engagement, or any ideas that could better the content overall.
+     ```
+
+     It ends the turn there. Only after the user replies (a plugin hook then writes
+     `goldmine-asked:` and blocks any earlier write) does it write the `goldmine:` line in
+     `<project>/reel-build/provenance.md` (`asked-yes` or `asked-no`; `no-data` when there is
      no data); the Step 4b gate checks it. Call `hook` once with the Skill tool (its stamp counts only from that call plus a Read of its method file):
 
      ```

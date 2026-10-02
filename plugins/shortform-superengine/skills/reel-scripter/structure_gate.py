@@ -6,7 +6,8 @@ Usage:  python structure_gate.py <project>/scripts/<slug>.skeleton.md
         python structure_gate.py --storyboard <project>/scripts/<slug>.md   (the final script's
                                                     storyboard table only; writes nothing)
         python structure_gate.py --selftest   (the gate cases, a throwaway salt, temp projects)
-        python structure_gate.py --selftest-hook   (hooks/stamp-on-skill.py on sample stdin, temp
+        python structure_gate.py --selftest-hook   (hooks/stamp-on-skill.py, storyboard-on-write.py
+                                                    and goldmine-answer.py on sample stdin, temp
                                                     home and project)
 
 Reads:   the file named on the command line, and the stamps and the goldmine: line in
@@ -112,9 +113,13 @@ ANGLE KIND AND GOLDMINE
    (P-M8a: the Goldmine question is asked at the Step 3 hook pass only when Goldmine data
    exists). `no-data` fails when <project>/reel-build/goldmine-run.json shows reads.passed
    true. A goldmine-run.json that cannot be read as a JSON object counts as no data, and the
-   gate says so. `asked-no` always passes: the gate cannot tell whether the question was
-   asked. Like the stamps, the line is cleared by a pass and not needed again on that
-   skeleton's `passed:` line.
+   gate says so. `asked-yes` and `asked-no` need a valid `goldmine-asked: <stamp("goldmine",
+   project)>` line above them (SKLLPLG-365: a walk wrote asked-yes in the turn that asked,
+   before the user answered). hooks/goldmine-answer.py writes that line only when the user
+   replies to a message holding GOLD_Q as its own line, word for word, and blocks an asked-
+   write before it. An asked- line with no valid goldmine-asked: line, or above it, fails.
+   Like the stamps, these lines are cleared by a pass and not needed again on that skeleton's
+   `passed:` line.
 
 Stdlib only. Deterministic. utf-8 reads (a BOM is tolerated); ASCII-safe stdout.
 """
@@ -140,6 +145,12 @@ SIDE_KINDS = ("myth-bust/negation", "contrarian/curiosity")
 SIDE = re.compile(r"other side\b", re.I)
 GOLD = re.compile(r"^[ \t]*goldmine:[ \t]*(.*?)[ \t]*$", re.I)
 GOLD_OK = ("asked-yes", "asked-no", "no-data")
+ASKED = re.compile(r"^[ \t]*goldmine-asked:[ \t]*(\S+)[ \t]*$", re.I)
+# The Goldmine question, word for word. One definition: hooks/goldmine-answer.py imports it, and
+# --selftest checks that hook/SKILL.md and references/step3-options.md each hold it as one line.
+GOLD_Q = ("Should I double-check hook options against outliers, breakouts, and existing winners from the "
+          "Content Goldmine dashboard? I'd look for anything that could apply to what we're trying to do "
+          "with this reel and maximize its engagement, or any ideas that could better the content overall.")
 # ponytail: SALT sits in this readable file, so the stamp stops copying, not a model that runs
 # Python on purpose. Rotate SALT if stamps ever show up computed by hand.
 SALT = "46a8fef6cc5482af3a22925b94463a0d"
@@ -295,6 +306,12 @@ def goldmine_state(path):
     return isinstance(reads, dict) and reads.get("passed") is True, None
 
 
+def gold_mark(plines, proj):
+    """Index of the first valid `goldmine-asked:` line in provenance.md's lines, else None."""
+    want = stamp("goldmine", proj)
+    return next((k for k, m in enumerate(map(ASKED.match, plines)) if m and m.group(1).lower() == want), None)
+
+
 def fingerprint(text):
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
@@ -347,9 +364,12 @@ def check_provenance(text, prov, proj, angles_only=False, polarize=False, data=F
     if angles_only:
         return fails, good
     gold = [m.group(1).lower() for m in map(GOLD.match, plines) if m]
+    mark = gold_mark(plines, proj)
+    early = [k for k, m in enumerate(map(GOLD.match, plines))
+             if m and m.group(1).lower() in ("asked-yes", "asked-no") and (mark is None or k < mark)]
     ask = ("step3-options.md, the hook pass: when reel-build/goldmine-run.json shows reads.passed "
-           "true, ask the Goldmine question and write goldmine: asked-yes or goldmine: asked-no; "
-           "otherwise write goldmine: no-data")
+           "true, ask the Goldmine question in its exact words and, after the user replies, write "
+           "goldmine: asked-yes or goldmine: asked-no; otherwise write goldmine: no-data")
     if not gold:
         fails.append(f"no goldmine: line in {PROV}. Fix: append one, per {ask}")
     elif any(v not in GOLD_OK for v in gold):
@@ -360,6 +380,16 @@ def check_provenance(text, prov, proj, angles_only=False, polarize=False, data=F
                      f"reads.passed true, so Goldmine data exists. Fix: ask the Goldmine question "
                      f"({ask.split(':')[0]}), then replace the line with goldmine: asked-yes or "
                      f"goldmine: asked-no")
+    elif early and mark is None:
+        fails.append(f"a goldmine: asked- line in {PROV} has no valid goldmine-asked: line above it, so no "
+                     f"reply to the Goldmine question asked word for word was seen. Fix: delete that line, "
+                     f"ask the question exactly as the fenced line in skills/hook/SKILL.md (its own line, no "
+                     f"bold, no quotes), end your turn, and write goldmine: asked-yes or goldmine: asked-no "
+                     f"after the user replies (the plugin hook writes goldmine-asked: when they do)")
+    elif early:
+        fails.append(f"a goldmine: asked- line in {PROV} sits above the goldmine-asked: line, so it was "
+                     f"written before the user answered. Fix: delete that line and keep the one written "
+                     f"after their reply")
     return fails, good
 
 
@@ -565,6 +595,7 @@ def selftest():
     global SALT, STRAY
     a, r, rl, h, p, v = (f"from: {n} @{n}@\n" for n in ("angles", "rehooks", "rehookslines", "hook", "polarize", "viral"))
     g = "goldmine: no-data\n"
+    mk = "goldmine-asked: @goldmine@\n"
     full = a + r + rl + h + v + g
     kind = lambda k: f"angle_kind: {k}\n"
     good = kind("statement") + "visual_loop: none\n" + SELFTEST_BEATS
@@ -625,8 +656,21 @@ def selftest():
          SAME, {"say": "is not asked-yes, asked-no or no-data"}),
         ("nodata-lie: no-data while goldmine-run.json shows reads.passed true", False, good, full, 1, SAME,
          {"gm": gm("true"), "say": "Goldmine data exists"}),
-        ("asked: asked-yes with Goldmine data", False, good, a + r + rl + h + v + "goldmine: asked-yes\n", 0,
-         done(good), {"gm": gm("true")}),
+        ("asked: asked-yes under the goldmine-asked: line, with Goldmine data", False, good,
+         a + r + rl + h + v + mk + "goldmine: asked-yes\n", 0, done(good), {"gm": gm("true")}),
+        ("asked-no: asked-no under the goldmine-asked: line", False, good, a + r + rl + h + v + mk + "goldmine: asked-no\n",
+         0, done(good), {"gm": gm("true")}),
+        ("asked-nomark: asked-yes with no goldmine-asked: line (written before any reply)", False, good,
+         a + r + rl + h + v + "goldmine: asked-yes\n", 1, SAME, {"gm": gm("true"), "say": "no valid goldmine-asked: line"}),
+        ("asked-early: asked-yes above the goldmine-asked: line, asked-no below it", False, good,
+         a + r + rl + h + v + "goldmine: asked-yes\n" + mk + "goldmine: asked-no\n", 1, SAME,
+         {"gm": gm("true"), "say": "written before the user answered"}),
+        ("asked-fakemark: a hand-typed goldmine-asked: token", False, good,
+         a + r + rl + h + v + "goldmine-asked: 0123456789ab\ngoldmine: asked-no\n", 1, SAME,
+         {"gm": gm("true"), "say": "no valid goldmine-asked: line"}),
+        ("asked-otherproj: a goldmine-asked: line made for another project", False, good,
+         a + r + rl + h + v + mk.replace("@", "#") + "goldmine: asked-no\n", 1, SAME,
+         {"gm": gm("true"), "say": "no valid goldmine-asked: line"}),
         ("nodata-ok: no-data, goldmine-run.json shows reads.passed false", False, good, full, 0, done(good),
          {"gm": gm("false")}),
         ("badjson: a malformed goldmine-run.json counts as no data, and says so", False, good, full, 0,
@@ -681,6 +725,11 @@ def selftest():
             tmp.cleanup()
     sb_ok, sb_n = storyboard_selftest()
     ok, n = ok + sb_ok, len(cases) + sb_n
+    for rel in ("../hook/SKILL.md", "references/step3-options.md"):
+        f = Path(__file__).resolve().parent / rel
+        fine = GOLD_Q in (ln.strip() for ln in f.read_text(encoding="utf-8-sig").splitlines())
+        ok, n = ok + fine, n + 1
+        say(f"{'ok ' if fine else 'BAD'} goldq: {rel} holds the Goldmine question word for word, as one line")
     say(f"SELFTEST {'PASS' if ok == n else 'FAIL'}: {ok}/{n}")
     return 0 if ok == n else 1
 
@@ -828,7 +877,8 @@ def selftest_hook():
             say(f"{'ok ' if fine else 'BAD'} {name}: exit {code}, stdout {'empty' if not out else 'NOT empty'}, "
                 f"provenance.md {'as expected' if now == exp else 'NOT as expected'}")
     sb_ok, sb_n = storyboard_hook_selftest()
-    ok, n = ok + sb_ok, len(cases) + sb_n
+    gm_ok, gm_n = goldmine_hook_selftest()
+    ok, n = ok + sb_ok + gm_ok, len(cases) + sb_n + gm_n
     say(f"SELFTEST-HOOK {'PASS' if ok == n else 'FAIL'}: {ok}/{n}")
     return 0 if ok == n else 1
 
@@ -892,6 +942,99 @@ def storyboard_hook_selftest():
             ok += fine
             say(f"{'ok ' if fine else 'BAD'} {name}: exit {r.returncode}, stdout {'empty' if not r.stdout else 'NOT empty'}"
                 f", stderr {'empty' if not err else 'set'}")
+    return ok, len(cases)
+
+
+def goldmine_hook_selftest():
+    """Feed hooks/goldmine-answer.py sample stdin, a fresh temp home and project per case. A reply
+    to a turn holding GOLD_Q as its own line appends the goldmine-asked: line and prints context;
+    a reworded, bolded, lowercased or older question does not. A goldmine: asked- write before
+    that line exits 2 (the walk's same-turn write); after it, exit 0. Stamps are never printed."""
+    import subprocess, tempfile
+    hook = Path(__file__).resolve().parents[2] / "hooks" / "goldmine-answer.py"
+    me = lambda t: {"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": t}]}}
+    you = lambda t: {"type": "user", "message": {"role": "user", "content": t}}
+    tool = [{"type": "assistant", "message": {"content": [{"type": "tool_use", "id": "x", "name": "Skill", "input": {}}]}},
+            {"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": "x", "content": "ok"}]}}]
+    meta = {"type": "user", "isMeta": True, "message": {"content": [{"type": "text", "text": "skill body\n" + GOLD_Q}]}}
+    asks = lambda q: [you("write a reel script"), *tool, meta, me("Before I write openings:\n\n" + q)]
+    ups = lambda tr: ("UserPromptSubmit", {"prompt": "yes"}, tr)
+    auq = lambda q: ("PostToolUse", {"tool_name": "AskUserQuestion",
+                                     "tool_input": {"questions": [{"question": q, "header": "Goldmine", "options": []}]}}, None)
+    pre = lambda tool_name, inp: ("PreToolUse", {"tool_name": tool_name, "tool_input": inp}, None)
+    PROV_AT = "@PROV@"
+    # (name, (event, payload fields, transcript entries or None), marker on disk before, expected exit,
+    #  marker appended, phrase stderr must hold or None for empty). @PROV@ becomes provenance.md's path.
+    cases = [
+        ("reply to the exact question: marker and context", ups(asks(GOLD_Q)), False, 0, True, None),
+        ("reply already logged in the transcript: marker", ups(asks(GOLD_Q) + [you("yes")]), False, 0, True, None),
+        ("curly apostrophes, as the grader allows: marker", ups(asks(GOLD_Q.replace("'", "\u2019"))), False, 0, True,
+         None),
+        ("reworded, the walk's 'what we're doing': no marker",
+         ups(asks(GOLD_Q.replace("what we're trying to do", "what we're doing"))), False, 0, False, None),
+        ("bold-wrapped: no marker", ups(asks(f"**{GOLD_Q}**")), False, 0, False, None),
+        ("lowercased 'should': no marker", ups(asks("s" + GOLD_Q[1:])), False, 0, False, None),
+        ("question one turn back, not in the turn replied to: no marker",
+         ups(asks(GOLD_Q) + [you("hm"), me("Writing the openings now.")]), False, 0, False, None),
+        ("question only in a skill body (isMeta): no marker", ups([you("x"), meta, me("Here are your openings.")]),
+         False, 0, False, None),
+        ("AskUserQuestion with the exact question: marker", auq(GOLD_Q), False, 0, True, None),
+        ("AskUserQuestion reworded: no marker", auq(GOLD_Q.replace("Should I", "should I")), False, 0, False, None),
+        ("Bash append of asked-yes before any reply (the walk's same-turn write): blocked",
+         pre("Bash", {"command": f'echo "goldmine: asked-yes" >> "{PROV_AT}"'}), False, 2, False, "Blocked"),
+        ("Write of asked-no before any reply: blocked",
+         pre("Write", {"file_path": PROV_AT, "content": "goldmine: asked-no\n"}), False, 2, False, GOLD_Q),
+        ("Edit appending asked-no after the goldmine-asked: line: allowed",
+         pre("Edit", {"file_path": PROV_AT, "old_string": "a", "new_string": "a\ngoldmine: asked-no"}), True, 0, False,
+         None),
+        ("Edit deleting an early asked-yes line (old_string only): allowed",
+         pre("Edit", {"file_path": PROV_AT, "old_string": "goldmine: asked-yes\n", "new_string": ""}), False, 0, False,
+         None),
+        ("Bash append of goldmine: no-data: allowed", pre("Bash", {"command": f'echo "goldmine: no-data" >> "{PROV_AT}"'}),
+         False, 0, False, None),
+        ("hand-written goldmine-asked: line: blocked even after a reply",
+         pre("Bash", {"command": f'echo "goldmine-asked: 0123456789ab" >> "{PROV_AT}"'}), True, 2, False,
+         "only the plugin hook writes"),
+        ("garbage stdin: silent", ("raw", "{not json", None), False, 0, False, None),
+    ]
+    ok = 0
+    with tempfile.TemporaryDirectory() as t:
+        for k, (name, (event, fields, tr), marked, want, adds, phrase) in enumerate(cases):
+            proj, home = Path(t) / f"gproj{k}", Path(t) / f"ghome{k}"
+            (proj / "reel-build").mkdir(parents=True)
+            st = home / ".claude" / "shortform-superengine"
+            (st / "state").mkdir(parents=True)
+            (st / ".superengine").write_text(json.dumps({"active_brand": "testbrand"}), encoding="utf-8")
+            (st / "state" / "testbrand.json").write_text(json.dumps({"project_path": str(proj)}), encoding="utf-8")
+            prov = proj / "reel-build" / "provenance.md"
+            mark = f"goldmine-asked: {stamp('goldmine', proj)}\n"
+            was = "from: hook x\n" + (mark if marked else "")
+            prov.write_text(was, encoding="utf-8", newline="\n")
+            if event == "raw":
+                stdin = fields
+            else:
+                d = dict(json.loads(json.dumps(fields).replace(PROV_AT, prov.as_posix())), session_id="t",
+                         hook_event_name=event, cwd=str(t))
+                if tr is not None:
+                    (Path(t) / f"t{k}.jsonl").write_text("".join(json.dumps(e) + "\n" for e in tr), encoding="utf-8")
+                    d["transcript_path"] = str(Path(t) / f"t{k}.jsonl")
+                stdin = json.dumps(d)
+            env = dict(os.environ, HOME=str(home), USERPROFILE=str(home))
+            r = subprocess.run([sys.executable, str(hook)], input=stdin.encode("utf-8"), capture_output=True, env=env,
+                               cwd=str(t), timeout=60)
+            err, out = r.stderr.decode("utf-8", "replace"), r.stdout.decode("utf-8", "replace")
+            now = prov.read_text(encoding="utf-8")
+            try:
+                ctx = json.loads(out)["hookSpecificOutput"]["additionalContext"] if out else ""
+            except (ValueError, KeyError, TypeError):
+                ctx = None
+            fine = (r.returncode == want and now == was + (mark if adds else "")
+                    and (("goldmine: asked-yes" in (ctx or "")) if adds else out == "")
+                    and (not err if phrase is None else phrase in err))
+            ok += fine
+            say(f"{'ok ' if fine else 'BAD'} goldmine hook, {name}: exit {r.returncode}, provenance.md "
+                f"{'as expected' if now == was + (mark if adds else '') else 'NOT as expected'}, "
+                f"stdout {'context' if ctx else 'empty' if not out else 'NOT as expected'}, stderr {'set' if err else 'empty'}")
     return ok, len(cases)
 
 

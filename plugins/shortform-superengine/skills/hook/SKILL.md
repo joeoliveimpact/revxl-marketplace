@@ -51,12 +51,19 @@ confirmed at its Checkpoint 0. Write every opening in that voice.
 **The Goldmine question comes first, in this mode.** Ask it once per reel: if
 `<project>/reel-build/provenance.md` already holds a `goldmine:` line, do not ask again
 or append another; use that answer (a `redo:` call reuses it). Before you write any opening,
-read `<project>/reel-build/goldmine-run.json`. When its `reads.passed` is true, ask
-the user this, in these words: "Should I double-check hook options against
-outliers, breakouts, and existing winners from the Content Goldmine dashboard? I'd
-look for anything that could apply to what we're trying to do with this reel and
-maximize its engagement, or any ideas that could better the content overall." WAIT for the answer. Then append one line to
+read `<project>/reel-build/goldmine-run.json`. When its `reads.passed` is true, send the
+line inside this fence as its own paragraph, copied character for character: no fence,
+no bold, no quotes, no change of case or wording.
+
+```
+Should I double-check hook options against outliers, breakouts, and existing winners from the Content Goldmine dashboard? I'd look for anything that could apply to what we're trying to do with this reel and maximize its engagement, or any ideas that could better the content overall.
+```
+
+Then end your turn and wait for the reply. Write no answer in the turn you ask: when the
+user replies, a plugin hook writes a `goldmine-asked:` line and tells you to record the
+answer, and it blocks any earlier write. Only then append one line to
 `<project>/reel-build/provenance.md`: `goldmine: asked-yes` or `goldmine: asked-no`.
+Never write a `goldmine-asked:` line yourself.
 With no such file, or `reads.passed` not true, do not ask: append `goldmine: no-data`.
 
 Goldmine data comes only through `<project>/reel-build/goldmine-run.json`: when its
