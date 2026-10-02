@@ -77,10 +77,10 @@ Then read submit's `class`:
 - `ok`: keep the `request_id`. Go to step 5.
 - `spend_gate_refused` (for example `stamp_expired`: the pop-up took over 60 seconds): refund with reason `not_sent`, then run submit again for a fresh pop-up.
 - `insufficient_credits`: run `balance set 0`, then refund with reason `insufficient_credits`. Tell the client to add funds (Billing, then Add funds, on open.higgsfield.ai), then record the new balance with the `higgsfield-superengine:higgsfield-setup` skill.
-- `"safe_to_resubmit": true` (Higgsfield rejected the request, so no job exists): refund with reason `not_sent`. Fix and retry, or offer a report.
+- `"safe_to_resubmit": true` (Higgsfield rejected the request, so no job exists): refund with reason `rejected` (`not_sent` is refused once a submit used the stamp). Fix and retry, or offer a report.
 - `"safe_to_resubmit": false` (connection or server trouble): do NOT submit again; the job may exist. Tell the client it may still show up on the Higgsfield website, and offer a report.
 
-Ledger commands (`<reason>` is `not_sent`, `insufficient_credits`, `job_nsfw`, `job_failed` or `job_canceled`):
+Ledger commands (`<reason>` is `not_sent`, `rejected`, `insufficient_credits`, `job_nsfw`, `job_failed` or `job_canceled`):
 
 `& (Get-Content -Raw -Encoding UTF8 higgsfield\.python) "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.py" refund <key> --reason <reason>`
 

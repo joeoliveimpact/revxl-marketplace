@@ -513,6 +513,8 @@ def selftest():
                  30.50784),
                 ("Genjutsu 720p, 3.7 s source -> 4 s x $0.681", "higgsfield/genjutsu/object-swap/v1.0",
                  {"video_url": "v", "image_urls": ["a"]}, 3.7, 2.724),
+                ("Genjutsu 720p, 7.0004 s source -> 8 s, never rounded down to 7 (Codex review)",
+                 "higgsfield/genjutsu/object-swap/v1.0", {"video_url": "v", "image_urls": ["a"]}, 7.0004, 5.448),
                 ("2.5 video-edit, length \"5\" (text, not a number) -> treated as unknown", s25 + "video-edit",
                  {"video_url": "u"}, "5", 30.50784)):
             v = price(ep, {**body, **q}, 200, DESC, input_video_s=secs)

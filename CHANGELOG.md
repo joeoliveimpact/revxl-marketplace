@@ -27,6 +27,13 @@ output checks.
   - Seedance 2.5 and Genjutsu go up to 1080p.
   - Seedance 2.0 uses the documented `<<<image_N>>>` tokens.
   - Qwen, Hailuo and LTX defaults were corrected.
+- **Hardening from an adversarial review:**
+  - Guarded paths are normalized.
+  - The guard refuses scripts that wrap it.
+  - It reads the whole session log, not just the end.
+  - A "never sent" refund is refused after a job really ran.
+- **Known limit:** a deliberately disguised script could still get past the guard. Moving
+approval out of Claude's reach is planned for v0.2.
 
 ## [0.1.70] ... 2026-09-30
 

@@ -738,7 +738,7 @@ def mp4_seconds(data):
                     v1 = data[s2] == 1  # version 1: 64-bit times; timescale at +20, duration at +24 (8 bytes)
                     scale = int.from_bytes(data[s2 + (20 if v1 else 12):s2 + (24 if v1 else 16)], "big")
                     dur = int.from_bytes(data[s2 + 24:s2 + 32] if v1 else data[s2 + 16:s2 + 20], "big")
-                    return round(dur / scale, 3) if scale and 0 < dur / scale <= 3600 else None
+                    return dur / scale if scale and 0 < dur / scale <= 3600 else None  # exact: pricing rounds UP
     return None
 
 
@@ -774,7 +774,7 @@ def input_video_s(params):
         if isinstance(s, bool) or not isinstance(s, (int, float)) or not 0 < s <= 3600:
             return None
         total += s
-    return round(total, 3) if found else None
+    return total if found else None  # never rounded down (Codex review 10.01.26)
 
 
 def cmd_upload(a):
@@ -1366,6 +1366,7 @@ def selftest():
                                                                + scale.to_bytes(4, "big") + d + b"\0" * 80))
         check("U3 mp4_seconds reads mvhd v0 and v1 (3.7 s, 5.5 s); garbage and a missing moov -> None",
               mp4_seconds(mp4(0, 600, 2220)) == 3.7 and mp4_seconds(mp4(1, 1000, 5500)) == 5.5
+              and mp4_seconds(mp4(0, 10000, 70004)) == 7.0004  # exact: pricing rounds up to 8 s
               and mp4_seconds(b"not an mp4") is None and mp4_seconds(box(b"ftyp", b"isom")) is None)
         Path("clip.mp4").write_bytes(mp4(1, 1000, 5500))
         code, j = run("upload", "clip.mp4")

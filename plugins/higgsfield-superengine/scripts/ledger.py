@@ -334,6 +334,14 @@ def _close(args, now, cmd):
         if cmd == "settle":
             e.update(state="settled", actual=e["reserved"] if actual is None else actual, updated_at=now,
                      reason="actual" if actual is not None else "reserved_amount")
+        elif why == "not_sent" and e.get("stamp") and not os.path.exists(e["stamp"]):
+            # submit MOVES the stamp it consumes, so a missing stamp means the job was sent (Codex review 10.01.26:
+            # submit, then "refund not_sent", reset the cap). Use the job's real outcome as the reason instead.
+            if swept:
+                save(d)
+            raise Fail("stamp_consumed", "This job's stamp was used by a submit, so it was sent. Refund it only with "
+                       "its real outcome: rejected (Higgsfield refused the request), insufficient_credits, job_nsfw, "
+                       "job_failed or job_canceled. Nothing was changed.", 3)
         else:
             e.update(state="refunded", actual=0.0, updated_at=now, reason=why)
         save(d)
