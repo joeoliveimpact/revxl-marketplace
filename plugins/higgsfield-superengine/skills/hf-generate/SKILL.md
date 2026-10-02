@@ -43,7 +43,7 @@ Then show the client the full prompt text, word for word, in one message: every 
 
 The spend guard checks all three: it refuses a submit unless this session loaded a prompting skill (or a use-case skill), the exact prompt text appears in one of Claude's messages, and the client replied after it.
 
-A reference image or video from the client's computer goes up first (free), and its `public_url` goes into the request:
+A reference image or video from the client's computer goes up first (free), and its `public_url` goes into the request. For a video, always upload the file itself: the upload records its length, so the job is priced on the real seconds instead of the 30 s maximum.
 
 `& (Get-Content -Raw -Encoding UTF8 higgsfield\.python) "${CLAUDE_PLUGIN_ROOT}/scripts/hf_rest.py" upload "<file path>"`
 

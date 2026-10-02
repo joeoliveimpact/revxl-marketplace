@@ -123,7 +123,15 @@ def seedance_usd(pixels, seconds, rate, multiplier=1):
     return Decimal(tokens) * Decimal(rate) / 1000 * Decimal(multiplier), tokens
 
 
-def _rule_raw(r, p, resp):
+def _input_s(known, mx):
+    """Input video seconds to bill: the uploaded length rounded UP to whole seconds (capped at the table's max), or
+    the max when the length is unknown."""
+    if known is None:
+        return mx, " (input video length unknown: the table's max)"
+    return min(mx, math.ceil(known)), f" (input video {known} s, from upload)"
+
+
+def _rule_raw(r, p, resp, known=None):
     rule = r["rule"]
     if rule == "estimate_usd":  # the live quote for this exact body; list = usd + discount.usd (usd alone = promo)
         if not isinstance(resp, dict) or resp.get("type") != "estimate":
@@ -138,24 +146,25 @@ def _rule_raw(r, p, resp):
         res = p.get("resolution")
         px, rate = _pick(r["pixel_ceiling"], res, "resolution"), _pick(r["rate_per_1k_tokens"], res, "resolution")
         mx = r["max_input_video_s"]
-        inp = mx if _has_video(p) else 0  # input video length is unknown here: the table's max, at 1.0x (Joe)
+        # input video at 1.0x (Joe); its length from the upload record, else the table's max
+        inp, src = _input_s(known, mx) if _has_video(p) else (0, "")
         g = r["generated_s_from"]
         if g == "duration":
             gen = _seconds(p)
         elif str(g).startswith("source_video"):
-            gen = mx  # video-edit: the output is the processed source, at most the table's max
+            gen = max(4, inp)  # video-edit: the output is the processed source (normalized 4..30 s)
         else:
             raise Doubt("table_error", f"unknown generated_s_from {_short(g)}")
         usd, tokens = seedance_usd(px, inp + gen, rate, r["video_input_multiplier_applied"])
         return usd, (f"{res}: {tokens} tokens = ceil({px} px x ({inp} s input video + {gen} s) x 24 / 1024) x "
-                     f"${rate}/1k tokens")
+                     f"${rate}/1k tokens{src}")
     if rule == "per_second":
         res = p.get("resolution")
         rate = _pick(r["usd_per_s"], res, "resolution")
         if r["seconds_from"] == "duration":
             s, how = _seconds(p), ""
         elif str(r["seconds_from"]).startswith("input video"):
-            s, how = r["max_seconds"], " (input video length unknown: the table's max)"
+            s, how = _input_s(known, r["max_seconds"])
         else:
             raise Doubt("table_error", f"unknown seconds_from {_short(r['seconds_from'])}")
         usd, how = rate * s, f"{res}: ${rate}/s x {s} s{how}"
@@ -176,9 +185,9 @@ def _rule_raw(r, p, resp):
     raise Doubt("table_error", f"unknown rule {_short(rule)}")
 
 
-def _rule_usd(r, p, resp):
+def _rule_usd(r, p, resp, known=None):
     """(dollars, how) for the endpoint's table rule, or raise Doubt. Only estimate_usd reads the /estimate answer."""
-    usd, how = _rule_raw(r, p, resp)
+    usd, how = _rule_raw(r, p, resp, known)
     if not (usd.is_finite() and usd > 0 and math.isfinite(float(usd))):
         raise Doubt("bad_param", "the price is not a positive finite number")
     return usd, how
@@ -207,7 +216,7 @@ def _v(ask, usd, shown, basis, code, reason, endpoint):
             "reason": reason[:300], "endpoint": endpoint[:200] if isinstance(endpoint, str) else None}
 
 
-def _verdict(endpoint, params, http, response):
+def _verdict(endpoint, params, http, response, known=None):
     if not isinstance(endpoint, str) or not isinstance(params, dict):
         return _v(True, None, None, "none", "invalid_record", "the record has no usable endpoint or params", endpoint)
     try:
@@ -225,7 +234,7 @@ def _verdict(endpoint, params, http, response):
     p = {**r["defaults"], **params}  # an omitted field is priced at its schema default, never the cheapest tier
     shown, how, doubt = None, "", None
     try:
-        shown, how = _rule_usd(r, p, response if http == 200 else None)
+        shown, how = _rule_usd(r, p, response if http == 200 else None, known)
     except Doubt as d:
         doubt = d
     if r.get("always_ask"):
@@ -256,10 +265,13 @@ def _verdict(endpoint, params, http, response):
     return _v(False, shown, shown, basis, "priced", how, endpoint)
 
 
-def price(endpoint, params, http=200, response=None):
-    """The verdict for one request: endpoint, request body, and the /estimate answer (http 200 + JSON, or a 5xx)."""
+def price(endpoint, params, http=200, response=None, input_video_s=None):
+    """The verdict for one request: endpoint, request body, and the /estimate answer (http 200 + JSON, or a 5xx).
+    input_video_s: the input videos' total length from hf_rest's upload records (None = unknown: the table's max)."""
+    known = input_video_s if isinstance(input_video_s, (int, float, Decimal)) and not isinstance(input_video_s, bool) \
+        and math.isfinite(float(input_video_s)) and 0 < float(input_video_s) <= 3600 else None
     try:
-        return _verdict(endpoint, params, http, response)
+        return _verdict(endpoint, params, http, response, None if known is None else float(known))
     except Exception as e:  # fail closed: a bug or a malformed table entry asks, never allows
         return _v(True, None, None, "none", "internal_error", f"unexpected {type(e).__name__}", endpoint)
 
@@ -270,7 +282,8 @@ def price_record(rec):
             rec.get("kind") != "hf-superengine-estimate":
         return _v(True, None, None, "none", "invalid_record", "not a v1 hf-superengine estimate record",
                   rec.get("endpoint") if isinstance(rec, dict) else None)
-    return price(rec.get("endpoint"), rec.get("params"), rec.get("http"), rec.get("response"))
+    return price(rec.get("endpoint"), rec.get("params"), rec.get("http"), rec.get("response"),
+                 rec.get("input_video_s"))
 
 
 def price_bytes(raw):
@@ -369,18 +382,22 @@ def selftest():
     ASK6 = {"kling-video/motion-control/pro": 12.6, "kling-video/motion-control/std": 12.6,
             "kling-video/v3/motion-control/pro": 12.6, "kling-video/v3/motion-control/std": 12.6,
             "kling-video/o3/video-edit": 6.72, "kling-video/omni/video-edit": 4.2}
-    AUDIO = sorted(e for e in T if e.startswith(("bytedance/seedance", "alibaba/wan-3.0", "higgsfield/cinema-studio")))
+    # Seedance 2.5 left this family in v0.1.1: audio on was measured at the audio-off price (09.30.26)
+    AUDIO = sorted(e for e in T if e.startswith(("bytedance/seedance-2.0", "alibaba/wan-3.0", "higgsfield/cinema-studio")))
+    S25 = sorted(e for e in T if e.startswith("bytedance/seedance-2.5/"))
 
     def t_table():
         check(f"T0 pricing-table.json next to the script: {len(T)} endpoints (82 expected)", len(T) == 82)
         check("T0 always_ask in the table = exactly the 6 Kling endpoints",
               sorted(e for e, r in T.items() if r.get("always_ask")) == sorted(ASK6))
-        check(f"T0 audio-unproven family (Seedance, Cinema Studio, Wan 3.0/Prime): {len(AUDIO)} endpoints (15)",
-              len(AUDIO) == 15 and all(T[e].get("unproven_when") == {"generate_audio": True} for e in AUDIO))
+        check(f"T0 audio-unproven family (Seedance 2.0, Cinema Studio, Wan 3.0/Prime): {len(AUDIO)} endpoints (10); "
+              f"the {len(S25)} Seedance 2.5 endpoints have no unproven_when",
+              len(AUDIO) == 10 and all(T[e].get("unproven_when") == {"generate_audio": True} for e in AUDIO)
+              and len(S25) == 5 and not any("unproven_when" in T[e] for e in S25))
 
     def t_all():
         for body, want_priced, want_ask in (
-                ({}, 59, {"always_ask": 6, "audio_unproven": 15, "not_upper_bound": 1, "unmeasured": 1}),
+                ({}, 64, {"always_ask": 6, "audio_unproven": 10, "not_upper_bound": 1, "unmeasured": 1}),
                 ({"generate_audio": False}, 73, {"always_ask": 6, "not_upper_bound": 2, "unmeasured": 1})):
             vs = {ep: P(ep, body, 200, resp_for(ep)) for ep in T}
             asks = dict(collections.Counter(v["code"] for v in vs.values() if v["ask"]))
@@ -420,8 +437,14 @@ def selftest():
             want = "not_upper_bound" if ep == "alibaba/wan-3.0/reference-to-video" else "priced"
             if v["code"] != want:
                 bad.append(f"{ep} audio off -> {v['code']}")
-        check("U1 15 Seedance/Wan 3.0 endpoints: audio on, omitted, \"false\", 0 or null -> ask audio_unproven; "
-              "false -> priced (Wan 3.0 r2v: not_upper_bound)", not bad, "; ".join(bad[:3]))
+        check("U1 10 Seedance 2.0/Cinema Studio/Wan 3.0 endpoints: audio on, omitted, \"false\", 0 or null -> ask "
+              "audio_unproven; false -> priced (Wan 3.0 r2v: not_upper_bound)", not bad, "; ".join(bad[:3]))
+        same = [ep for ep in S25 for extra in ({"generate_audio": True}, {}, {"generate_audio": False})
+                if P(ep, {"resolution": "480p", "duration": 5, **extra}, 200, DESC)["usd"]
+                != P(ep, {"resolution": "480p", "duration": 5, "generate_audio": False}, 200, DESC)["usd"]
+                or P(ep, {"resolution": "480p", "duration": 5, **extra}, 200, DESC)["ask"]]
+        check("U2 5 Seedance 2.5 endpoints: audio on, omitted or off -> priced, same price (measured 09.30.26)",
+              not same, str(same[:2]))
 
     def t_formula():
         q = {"generate_audio": False}
@@ -479,6 +502,25 @@ def selftest():
             v = P(ep, {**body, **q}, 200, DESC)
             check(f"F2 {label} -> ask bad_param", v["ask"] and v["code"] == "bad_param" and v["usd"] is None,
                   v["code"])
+        for label, ep, body, secs, want in (  # hand-computed; the length comes from hf_rest's upload record
+                ("2.5 video-edit 720p, 5.5 s source -> 6 s in + 6 s out (285,120 tokens)", s25 + "video-edit",
+                 {"video_url": "u"}, 5.5, 6.101568),
+                ("2.5 video-edit 720p, 2 s source -> 2 s in + 4 s out (the 4 s minimum)", s25 + "video-edit",
+                 {"video_url": "u"}, 2.0, 3.050784),
+                ("2.5 video-edit 720p, length unknown -> 30 s + 30 s (the JOI-016 $30.51)", s25 + "video-edit",
+                 {"video_url": "u"}, None, 30.50784),
+                ("2.5 video-edit 720p, 45 s source -> capped at 30 s", s25 + "video-edit", {"video_url": "u"}, 45,
+                 30.50784),
+                ("Genjutsu 720p, 3.7 s source -> 4 s x $0.681", "higgsfield/genjutsu/object-swap/v1.0",
+                 {"video_url": "v", "image_urls": ["a"]}, 3.7, 2.724),
+                ("2.5 video-edit, length \"5\" (text, not a number) -> treated as unknown", s25 + "video-edit",
+                 {"video_url": "u"}, "5", 30.50784)):
+            v = price(ep, {**body, **q}, 200, DESC, input_video_s=secs)
+            check(f"F5 {label} = ${want}", not v["ask"] and abs(v["usd"] - want) < 1e-9, f"{v['code']} {v['usd']}")
+        v = price_record({"v": 1, "kind": "hf-superengine-estimate", "endpoint": s25 + "video-edit",
+                          "params": {"video_url": "u", **q}, "http": 200, "response": DESC, "input_video_s": 5.5})
+        check("F5 an estimate record's input_video_s reaches the price ($6.101568)",
+              not v["ask"] and abs(v["usd"] - 6.101568) < 1e-9, f"{v['code']} {v['usd']}")
         v = P(s25 + "text-to-video", {"resolution": "480p", "duration": 4, **q}, 200, E("0.200"))
         check("F3 Seedance with a fixed-quote answer (not the formula description) -> ask unexpected_response",
               v["ask"] and v["code"] == "unexpected_response", v["code"])
@@ -497,7 +539,7 @@ def selftest():
         jobs = [  # (endpoint, body, /estimate answer, jobs, billed, build_pricing.py's printed pred per job)
             ("z-image/turbo", {"resolution": "1k", "aspect_ratio": "1:1"}, E("0.015"), 6, 6, 0.0150),
             (R2V, {**q, "duration": 4, "image_urls": ["a", "b"]}, DESC, 9, 9, 0.9046),
-            (FL, {"resolution": "2k", "quality": "high", "aspect_ratio": "16:9"}, DESC, 1, 1, 0.3200),
+            (FL, {"resolution": "2k", "quality": "high", "aspect_ratio": "16:9"}, DESC, 1, 1, 0.1700),  # v0.1.1
             (T2V, {**q, "duration": 4}, DESC, 2, 2, 0.9046),
             (T2V, {**q, "duration": 6}, DESC, 3, 1, 1.3570),  # 2 of 3 ended nsfw: not charged
             ("kling-video/v3.0/std/text-to-video", {"duration": 5, "sound": "off", "aspect_ratio": "1:1"},
@@ -522,7 +564,7 @@ def selftest():
             a[0], a[1], a[2] = a[0] + n * v["usd"], a[1] + billed * v["usd"], a[2] + billed * exact
         check("R1 every 09.24 job prices exactly as build_pricing.py's replay (per job, 4 dp)", not bad,
               "; ".join(bad[:2]))
-        want = {"z-image/turbo": (0.09, 0.09, 0.09), R2V: (8.1418, 8.1418, 7.3958), FL: (0.32, 0.32, 0.06),
+        want = {"z-image/turbo": (0.09, 0.09, 0.09), R2V: (8.1418, 8.1418, 7.3958), FL: (0.17, 0.17, 0.06),
                 T2V: (5.8802, 3.1663, 2.8762), "kling-video/v3.0/std/text-to-video": (1.68, 1.68, 1.68),
                 "minimax/h3/text-to-video": (1.3, 1.3, 1.3), "marketing-studio/image": (0.086, 0.086, 0.086),
                 "v1/custom-references": (2.5, 2.5, 2.5), "higgsfield-ai/soul/v2/standard": (0.016, 0.016, 0.016)}
@@ -537,7 +579,8 @@ def selftest():
 
     def t_flare():
         FL, SB = "marketing-studio/image/flare", "marketing-studio/image/sunburst"
-        observed = [({"resolution": "2k", "quality": "high", "aspect_ratio": "16:9"}, 0.06)]  # T2_flare, CSV
+        observed = [({"resolution": "2k", "quality": "high", "aspect_ratio": "16:9"}, 0.06),  # T2_flare, CSV
+                    ({"resolution": "1k", "quality": "low", "aspect_ratio": "1:1"}, 0.02)]  # 7.3 walk, 09.30.26
         for body, actual in observed:
             v = P(FL, {"prompt": "x", **body}, 200, DESC)
             check(f"C1 Flare {body['resolution']}/{body['quality']} ceiling ${v['usd']} >= observed actual "
@@ -546,9 +589,9 @@ def selftest():
                 for qq in ("low", "medium", "high", "xhigh", "max")]
         check(f"C1 all 15 Flare tiers >= every observed actual (lowest ${min(grid)})",
               None not in grid and min(grid) >= max(a for _, a in observed))
-        for label, body, want in (("defaults (2k/high)", {}, 0.32), ("1k/low", {"resolution": "1k",
-                                  "quality": "low"}, 0.12), ("2k/high + 3 image_urls", {"image_urls": ["a"] * 3},
-                                  0.47), ("4k/max + 16 image_urls (the table's worst case)",
+        for label, body, want in (("defaults (2k/high)", {}, 0.17), ("1k/low", {"resolution": "1k",
+                                  "quality": "low"}, 0.08), ("2k/high + 3 image_urls", {"image_urls": ["a"] * 3},
+                                  0.32), ("4k/max + 16 image_urls (the table's worst case)",
                                   {"resolution": "4k", "quality": "max", "image_urls": ["a"] * 16}, 2.02)):
             v, w = P(FL, body, 200, DESC), P(SB, body, 200, DESC)
             check(f"C2 Flare {label} = ${want}; Sunburst asks unmeasured, shows ${want}", not v["ask"]

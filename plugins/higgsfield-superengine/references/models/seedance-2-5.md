@@ -37,8 +37,8 @@ The default video model. REST tops out at 720p; use Seedance 2.0 for 1080p/4k. T
 
 ## Cost and asks
 - Priced by the token formula (resolution × seconds; input-video seconds added; image and audio references free).
-- `generate_audio` true (the default) asks until the audio cost is measured; set it `false` to be priced silently.
-- Jobs with an input video (edit, extend, video references) are priced as 30 s of input, so they often go over the silent cap and ask.
+- Audio on costs the same as audio off (measured 09.30.26), so `generate_audio` doesn't change the price or force an ask.
+- Jobs with an input video (edit, extend, video references) are priced on the clip's real length when the plugin uploaded it (`hf_rest.py upload` records it), rounded up to whole seconds; a video edit bills the source twice (in + out). A video the plugin didn't upload (e.g. an earlier job's URL) is priced as 30 s and often asks: upload the file instead.
 
 ## Known failure modes
 - Bracketed timecodes (`[0-2s] …`) are blocked as `nsfw` on innocent prompts; use Stage labels. [TESTED, 2 REST samples, T18]

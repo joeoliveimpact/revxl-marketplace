@@ -413,10 +413,7 @@
       "image_refs_free": true,
       "audio_refs_free": true,
       "generated_s_basis": "requested duration (billing uses the nominal seconds, not the rendered +1 frame; replay-verified)",
-      "unproven_when": {
-        "generate_audio": true
-      },
-      "note": "upper_bound holds only with generate_audio=false: audio-on cost unmeasured; measured in 7.2 smoke test (schema default generate_audio=true, so an omitted field is the unproven case). Video input: /estimate text 09.26.26 says the token rate is x0.6 when video inputs are present; NOT applied (Joe 09.26.26: keep 1.0x, conservative).",
+      "note": "audio on = audio off: measured 09.30.26 (480p/4s image-to-video, $0.58 charged both ways), so generate_audio no longer forces an ask (v0.1.1). Video input: /estimate text 09.26.26 says the token rate is x0.6 when video inputs are present; NOT applied (Joe 09.26.26: keep 1.0x, conservative). Input video length comes from hf_rest upload records when known (v0.1.1).",
       "rate_per_1k_tokens": {
         "480p": 0.0214,
         "720p": 0.0214,
@@ -449,10 +446,7 @@
       "image_refs_free": true,
       "audio_refs_free": true,
       "generated_s_basis": "requested duration (billing uses the nominal seconds, not the rendered +1 frame; replay-verified)",
-      "unproven_when": {
-        "generate_audio": true
-      },
-      "note": "upper_bound holds only with generate_audio=false: audio-on cost unmeasured; measured in 7.2 smoke test (schema default generate_audio=true, so an omitted field is the unproven case). Video input: /estimate text 09.26.26 says the token rate is x0.6 when video inputs are present; NOT applied (Joe 09.26.26: keep 1.0x, conservative).",
+      "note": "audio on = audio off: measured 09.30.26 (480p/4s image-to-video, $0.58 charged both ways), so generate_audio no longer forces an ask (v0.1.1). Video input: /estimate text 09.26.26 says the token rate is x0.6 when video inputs are present; NOT applied (Joe 09.26.26: keep 1.0x, conservative). Input video length comes from hf_rest upload records when known (v0.1.1).",
       "rate_per_1k_tokens": {
         "480p": 0.0214,
         "720p": 0.0214,
@@ -486,10 +480,7 @@
       "image_refs_free": true,
       "audio_refs_free": true,
       "generated_s_basis": "requested duration (billing uses the nominal seconds, not the rendered +1 frame; replay-verified)",
-      "unproven_when": {
-        "generate_audio": true
-      },
-      "note": "upper_bound holds only with generate_audio=false: audio-on cost unmeasured; measured in 7.2 smoke test (schema default generate_audio=true, so an omitted field is the unproven case). Video input: /estimate text 09.26.26 says the token rate is x0.6 when video inputs are present; NOT applied (Joe 09.26.26: keep 1.0x, conservative).",
+      "note": "audio on = audio off: measured 09.30.26 (480p/4s image-to-video, $0.58 charged both ways), so generate_audio no longer forces an ask (v0.1.1). Video input: /estimate text 09.26.26 says the token rate is x0.6 when video inputs are present; NOT applied (Joe 09.26.26: keep 1.0x, conservative). Input video length comes from hf_rest upload records when known (v0.1.1).",
       "rate_per_1k_tokens": {
         "480p": 0.0214,
         "720p": 0.0214,
@@ -524,10 +515,7 @@
       "image_refs_free": true,
       "audio_refs_free": true,
       "generated_s_basis": "requested duration (billing uses the nominal seconds, not the rendered +1 frame; replay-verified)",
-      "unproven_when": {
-        "generate_audio": true
-      },
-      "note": "upper_bound holds only with generate_audio=false: audio-on cost unmeasured; measured in 7.2 smoke test (schema default generate_audio=true, so an omitted field is the unproven case). Video input: /estimate text 09.26.26 says the token rate is x0.6 when video inputs are present; NOT applied (Joe 09.26.26: keep 1.0x, conservative).",
+      "note": "audio on = audio off: measured 09.30.26 (480p/4s image-to-video, $0.58 charged both ways), so generate_audio no longer forces an ask (v0.1.1). Video input: /estimate text 09.26.26 says the token rate is x0.6 when video inputs are present; NOT applied (Joe 09.26.26: keep 1.0x, conservative). Input video length comes from hf_rest upload records when known (v0.1.1).",
       "rate_per_1k_tokens": {
         "480p": 0.0214,
         "720p": 0.0214,
@@ -559,10 +547,7 @@
       "image_refs_free": true,
       "audio_refs_free": true,
       "generated_s_basis": "requested duration (billing uses the nominal seconds, not the rendered +1 frame; replay-verified)",
-      "unproven_when": {
-        "generate_audio": true
-      },
-      "note": "upper_bound holds only with generate_audio=false: audio-on cost unmeasured; measured in 7.2 smoke test (schema default generate_audio=true, so an omitted field is the unproven case). Video input: /estimate text 09.26.26 says the token rate is x0.6 when video inputs are present; NOT applied (Joe 09.26.26: keep 1.0x, conservative).",
+      "note": "audio on = audio off: measured 09.30.26 (480p/4s image-to-video, $0.58 charged both ways), so generate_audio no longer forces an ask (v0.1.1). Video input: /estimate text 09.26.26 says the token rate is x0.6 when video inputs are present; NOT applied (Joe 09.26.26: keep 1.0x, conservative). Input video length comes from hf_rest upload records when known (v0.1.1).",
       "rate_per_1k_tokens": {
         "480p": 0.0214,
         "720p": 0.0214,
@@ -1181,18 +1166,18 @@
       "rule": "ceiling",
       "usd_per_image": {
         "1k": {
-          "low": 0.1,
-          "medium": 0.1,
-          "high": 0.1,
-          "xhigh": 0.2,
-          "max": 0.2
+          "low": 0.06,
+          "medium": 0.06,
+          "high": 0.06,
+          "xhigh": 0.12,
+          "max": 0.12
         },
         "2k": {
-          "low": 0.3,
-          "medium": 0.3,
-          "high": 0.3,
-          "xhigh": 0.6,
-          "max": 0.6
+          "low": 0.15,
+          "medium": 0.15,
+          "high": 0.15,
+          "xhigh": 0.3,
+          "max": 0.3
         },
         "4k": {
           "low": 0.6,
@@ -1205,7 +1190,7 @@
       "plus_usd_per_image_url": 0.05,
       "plus_usd_text": 0.02,
       "reconcile": "re-read balance after the job",
-      "list_price_basis": "token-metered ($30/1M image output, $8/1M image input, $5/1M text input); only anchor = 1 REST Flare job 2k/high/16:9 (2688x1520) charged $0.06 (CSV); ceiling ~5x that, pixel-scaled",
+      "list_price_basis": "token-metered ($30/1M image output, $8/1M image input, $5/1M text input). Measured REST charges: 2k/high/16:9 $0.06 (09.24 CSV), 1k/low $0.02 (09.30 console Billing). v0.1.1 ceilings: 1k low-high $0.06 (3x the 1k/low charge; at or above the 2k/high charge), 2k low-high $0.15 (2.5x 2k/high), xhigh/max 2x those; 4k unmeasured, unchanged",
       "source": "estimates/defaults.json (description) 09.26.26; analytics-models-2026-09-01-2026-09-26.csv row flare; output/data/hf-tests/T2_flare.png (ffprobe)",
       "confidence": "low",
       "upper_bound": false,
@@ -1222,18 +1207,18 @@
       "rule": "ceiling",
       "usd_per_image": {
         "1k": {
-          "low": 0.1,
-          "medium": 0.1,
-          "high": 0.1,
-          "xhigh": 0.2,
-          "max": 0.2
+          "low": 0.06,
+          "medium": 0.06,
+          "high": 0.06,
+          "xhigh": 0.12,
+          "max": 0.12
         },
         "2k": {
-          "low": 0.3,
-          "medium": 0.3,
-          "high": 0.3,
-          "xhigh": 0.6,
-          "max": 0.6
+          "low": 0.15,
+          "medium": 0.15,
+          "high": 0.15,
+          "xhigh": 0.3,
+          "max": 0.3
         },
         "4k": {
           "low": 0.6,

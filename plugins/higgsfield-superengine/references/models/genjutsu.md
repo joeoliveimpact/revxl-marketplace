@@ -18,7 +18,7 @@ Tags: see the legend in `references/model-picker.md`.
 - Object swap: "Replace [X] with [the item in image 1], preserving all original motion and camera work". [SINGLE-SOURCE: C15, B5]
 
 ## Cost and asks
-- Priced per second of source video. The length isn't known before submit, so it's priced as 30 s and often goes over the silent cap and asks.
+- Priced per second of source video, rounded up. When the plugin uploaded the clip (`hf_rest.py upload` records its length) it's priced on that length; otherwise as 30 s, which often goes over the silent cap and asks.
 
 ## Known failure modes
 - A source video under 4 s, or an object-swap source under 409,600 pixels per frame, is rejected. [DOCS 09.25.26]

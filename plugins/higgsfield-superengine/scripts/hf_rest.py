@@ -509,7 +509,8 @@ def cmd_estimate(a):
         if keep:
             _write_json(rec_path, {"v": 1, "kind": "hf-superengine-estimate", "estimate_key": key, "endpoint": ep,
                                    "params": params, "params_sha256": hashlib.sha256(canon.encode()).hexdigest(),
-                                   "created_at": time.time(), "http": r.status, "response": r.payload})
+                                   "created_at": time.time(), "http": r.status, "response": r.payload,
+                                   "input_video_s": input_video_s(params)})
         elif rec_path.exists():
             rec_path.unlink()  # a failed re-estimate must not leave an older record usable
     except OSError as e:
@@ -716,6 +717,66 @@ def cmd_download(a):
     return 0 if ok else 1
 
 
+def mp4_seconds(data):
+    """An MP4's length in seconds from its moov/mvhd box (stdlib, no ffprobe). None if it can't be read."""
+    def boxes(start, end):
+        i = start
+        while i + 8 <= end:
+            size, typ, hdr = int.from_bytes(data[i:i + 4], "big"), data[i + 4:i + 8], 8
+            if size == 1:
+                size, hdr = int.from_bytes(data[i + 8:i + 16], "big"), 16
+            elif size == 0:
+                size = end - i
+            if size < hdr or i + size > end:
+                return
+            yield typ, i + hdr, i + size
+            i += size
+    for typ, s, e in boxes(0, len(data)):
+        if typ == b"moov":
+            for t2, s2, e2 in boxes(s, e):
+                if t2 == b"mvhd" and e2 - s2 >= 32:
+                    v1 = data[s2] == 1  # version 1: 64-bit times; timescale at +20, duration at +24 (8 bytes)
+                    scale = int.from_bytes(data[s2 + (20 if v1 else 12):s2 + (24 if v1 else 16)], "big")
+                    dur = int.from_bytes(data[s2 + 24:s2 + 32] if v1 else data[s2 + 16:s2 + 20], "big")
+                    return round(dur / scale, 3) if scale and 0 < dur / scale <= 3600 else None
+    return None
+
+
+def upload_file(public_url):
+    return GUARD / "uploads" / f"{hashlib.sha256(public_url.encode('utf-8')).hexdigest()[:32]}.json"
+
+
+def input_video_s(params):
+    """Total seconds of the request's input videos, when every one was uploaded by this plugin (upload records each
+    length). None otherwise: pricing then assumes the table's maximum. A video key holding anything but URL strings
+    also gives None."""
+    found = []
+
+    def walk(x):
+        if isinstance(x, dict):
+            for k, v in x.items():
+                if "video" in str(k).lower() and v not in (None, "", [], {}):
+                    vals = v if isinstance(v, list) else [v]
+                    found.extend(vals if all(isinstance(u, str) for u in vals) else [None])
+                else:
+                    walk(v)
+        elif isinstance(x, list):
+            for v in x:
+                walk(v)
+    walk(params)
+    total = 0.0
+    for u in found:
+        try:
+            rec = json.loads(upload_file(u).read_text(encoding="utf-8")) if isinstance(u, str) else None
+        except (OSError, ValueError):
+            rec = None
+        s = rec.get("seconds") if isinstance(rec, dict) and rec.get("public_url") == u else None
+        if isinstance(s, bool) or not isinstance(s, (int, float)) or not 0 < s <= 3600:
+            return None
+        total += s
+    return round(total, 3) if found else None
+
+
 def cmd_upload(a):
     path = Path(a.file)
     ctype = UPLOAD_TYPES.get(path.suffix.lower())
@@ -745,8 +806,15 @@ def cmd_upload(a):
     except (OSError, http.client.HTTPException) as e:
         err_name = type(e).__name__
     ok = put is not None and 200 <= put < 300
+    secs = mp4_seconds(data) if ok and ctype == "video/mp4" else None
+    if secs:  # the price check reads this to price a video edit on its real length, not the 30 s maximum
+        try:
+            _write_json(upload_file(pub), {"v": 1, "kind": "hf-superengine-upload", "public_url": pub,
+                                           "seconds": secs, "created_at": time.time()})
+        except OSError:
+            secs = None  # no record: pricing falls back to the maximum length
     out = {"ok": ok, "command": "upload", "class": "ok" if ok else "upload_failed", "put_http": put,
-           "content_type": ctype, "public_url": pub if ok else None,
+           "content_type": ctype, "public_url": pub if ok else None, "video_seconds": secs,
            "message": "Uploaded." if ok else f"The file upload failed ({err_name or put}). Try again."}
     err = _log({"event": "upload", "file": path.name, "content_type": ctype, "put_http": put, "public_url": pub})
     if err:
@@ -1287,6 +1355,27 @@ def selftest():
         Path("notes.txt").write_text("x", encoding="utf-8")
         code, j = run("upload", "notes.txt")
         check("U2 unsupported file type -> bad_input, exit 2", code == 2 and j.get("class") == "bad_input")
+
+        def box(t, payload):
+            return (8 + len(payload)).to_bytes(4, "big") + t + payload
+
+        def mp4(version, scale, dur):  # ftyp + moov/mvhd; version 1 = 64-bit times and duration
+            times = b"\0" * (16 if version else 8)
+            d = dur.to_bytes(8 if version else 4, "big")
+            return box(b"ftyp", b"isom\0\0\0\0") + box(b"moov", box(b"mvhd", bytes([version, 0, 0, 0]) + times
+                                                               + scale.to_bytes(4, "big") + d + b"\0" * 80))
+        check("U3 mp4_seconds reads mvhd v0 and v1 (3.7 s, 5.5 s); garbage and a missing moov -> None",
+              mp4_seconds(mp4(0, 600, 2220)) == 3.7 and mp4_seconds(mp4(1, 1000, 5500)) == 5.5
+              and mp4_seconds(b"not an mp4") is None and mp4_seconds(box(b"ftyp", b"isom")) is None)
+        Path("clip.mp4").write_bytes(mp4(1, 1000, 5500))
+        code, j = run("upload", "clip.mp4")
+        url = j.get("public_url")
+        check("U4 mp4 upload records its length (video_seconds 5.5) in the guard folder; a request using it -> "
+              "input_video_s 5.5; an unknown URL or a non-URL video value -> None (pricing then uses the max)",
+              code == 0 and j.get("video_seconds") == 5.5 and upload_file(url).exists()
+              and input_video_s({"video_url": url}) == 5.5 and input_video_s({"prompt": "x"}) is None
+              and input_video_s({"video_url": url, "video_urls": ["https://other.test/v.mp4"]}) is None
+              and input_video_s({"video": {"url": url}}) is None)
 
         # ---- DRY_RUN
         run("estimate", EP, A)
