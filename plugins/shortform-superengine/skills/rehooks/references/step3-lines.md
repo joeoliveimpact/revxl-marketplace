@@ -33,4 +33,4 @@ To regenerate, reel-scripter makes one more rehooks call with `step: 3-lines`, t
 slot, and what cut the first options. reel-scripter never writes these lines itself.
 When `redo:` is present, return a fresh set that avoids what it names.
 
-Your stamp is recorded automatically when this skill is called; do not write a from: line.
+Your stamp is recorded automatically once this skill is called and you then Read this file (step3-lines.md); do not write a from: line.

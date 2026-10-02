@@ -186,7 +186,7 @@ branches: `./references/pipeline-detail.md` "Step 1 field vet".
 to `state.angles_unpicked[]` as `{angle, from, opened}`, so "script the next angle" survives
 a session boundary. Step 5 removes the one scripted.
 
-**Stamps.** A Skill tool call records the skill's stamp; never write or edit a `from:` line.
+**Stamps.** A Skill call, then a Read of its method file, records the stamp; never write or edit a `from:` line.
 In `<project>/reel-build/provenance.md` you write only `goldmine:` (the hook skill's step).
 The gate clears it on a pass.
 

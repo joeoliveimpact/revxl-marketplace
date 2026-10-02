@@ -54,7 +54,7 @@ scores. Never rewrite a line silently. Many lines came from another skill (the
 opening from hook, the secondary hook and re-hooks from rehooks, the Other side line
 from polarize): a suggestion on one of those says so. Never add, cut or reorder a
 beat. reel-scripter shows the suggestions and the user picks which apply. With
-nothing worth suggesting, say so. Your stamp is recorded automatically when this skill is called; do not write a from: line. The
+nothing worth suggesting, say so. Your stamp is recorded automatically once this skill is called and you then Read ./references/legit-viral.md; do not write a from: line. The
 call names its step in the args:
 
 ```

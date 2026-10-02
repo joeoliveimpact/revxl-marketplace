@@ -62,6 +62,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   question moves into the hook skill's reel-scripter Step 3 mode, which asks it, waits for
   the answer and writes the `goldmine:` line. `structure_gate.py --selftest` uses a
   throwaway salt; `--selftest-hook` feeds the hook sample input.
+- **A stamp now needs the Skill call followed by a Read of the method file** (SKLLPLG-361).
+  The stamp hook also runs on Read: a Skill call only opens a slot for that session, and the
+  stamp is written when the model then Reads that skill's `references/legit-<name>.md`
+  (`rehooks/references/step3-lines.md` for rehookslines) inside this plugin. A call with no
+  Read, a Read before the call, or a Read in another session writes no stamp.
+- **The final script's storyboard is checked on every write** (SKLLPLG-361). A new hook,
+  `hooks/storyboard-on-write.py`, runs on Write, Edit and MultiEdit of
+  `<project>/scripts/<slug>.md` (never the skeleton) and calls
+  `structure_gate.storyboard_problems()`: a pipe table with a seconds and a cue column, each
+  row over 0 and at most 5 s with exactly one visual cue, every `## Script` section named in
+  a Beat cell, and range times back to back from 0:00. A problem exits 2 with the list on
+  stderr, so the model fixes the file in the same turn. `structure_gate.py --storyboard
+  <script>` runs the same check by hand.
 
 ## [0.4.2] ... 2026-09-11
 

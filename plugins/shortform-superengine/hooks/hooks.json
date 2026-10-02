@@ -1,5 +1,5 @@
 {
-  "description": "shortform-superengine hooks. (1) UserPromptSubmit: when the prompt contains one of the skills' trigger phrases, inject one line naming the skill to invoke instead of doing the work by hand. (2) PreToolUse on Bash: SocialCrawl credit guard, cost-gates paid API calls before they spend and hard-blocks the banned transcript endpoints. (3) PostToolUse on Skill: when the Skill tool calls angles, rehooks, hook, polarize or viral, append that skill's stamp to <project>/reel-build/provenance.md for reel-scripter's gate. All fail-open (any error -> allow / silent).",
+  "description": "shortform-superengine hooks. (1) UserPromptSubmit: when the prompt contains one of the skills' trigger phrases, inject one line naming the skill to invoke instead of doing the work by hand. (2) PreToolUse on Bash: SocialCrawl credit guard, cost-gates paid API calls before they spend and hard-blocks the banned transcript endpoints. (3) PostToolUse on Skill and Read: a Skill call of angles, rehooks, hook, polarize or viral opens a slot for that session; a later Read of that skill's method file (references/legit-<name>.md, or rehooks' step3-lines.md in Step-3 mode) in the same session appends the stamp to <project>/reel-build/provenance.md for reel-scripter's gate. (4) PostToolUse on Write, Edit and MultiEdit: when reel-scripter's final script <project>/scripts/<slug>.md (never *.skeleton.md) is written, check its storyboard table and, on a problem, exit 2 with the problems on stderr so the model fixes the file. All fail-open (any error -> allow / silent).",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -27,11 +27,21 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Skill",
+        "matcher": "Skill|Read",
         "hooks": [
           {
             "type": "command",
             "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/stamp-on-skill.py\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/storyboard-on-write.py\"",
             "timeout": 10
           }
         ]

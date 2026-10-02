@@ -67,7 +67,7 @@ never found by picking the newest file name. The proven hooks, with their number
 hook" section one at a time: check the proof, keep the skeleton and the trigger, swap
 in this reel's subject, refuse a bad fit. After a no, or with no Goldmine data passed,
 write from the grid as usual. Return the openings; reel-scripter's passes screen, score and gate
-them. Your stamp is recorded automatically when this skill is called; do not write a from: line. The call names its step in the args:
+them. Your stamp is recorded automatically once this skill is called and you then Read ./references/legit-hook.md; do not write a from: line. The call names its step in the args:
 
 ```
 Skill: shortform-superengine:hook

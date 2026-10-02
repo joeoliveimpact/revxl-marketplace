@@ -87,7 +87,7 @@ winning hook type × the gap it closes}, with the evidence cited (`@handle · me
 from the analysis). Example shape: *"Myth-bust on [under-served high-value theme] ... the field's
 myth-bust hooks median Nx the client's; closes the [gap] gap."*
 
-**Widen the set with `angles` first.** Before proposing, call the angles skill once with the Skill tool (its stamp counts only from that call):
+**Widen the set with `angles` first.** Before proposing, call the angles skill once with the Skill tool (its stamp counts only from that call plus a Read of its method file):
 
 ```
 Skill: shortform-superengine:angles
@@ -100,7 +100,7 @@ args:  step: 1
 
 Its concepts feed the 2 to 3 proposals, each still carrying the brief's evidence. The stamp is
 recorded automatically in `<project>/reel-build/provenance.md` when you call the skill with the
-Skill tool (the Checkpoint 1 gate reads it there); never write or edit a `from:` line yourself. The
+Skill tool and then Read its method file (the Checkpoint 1 gate reads it there); never write or edit a `from:` line yourself. The
 (theme, hook) dedupe rule in `SKILL.md` Step 1 governs: a concept whose pair is already used
 is dropped or named as a deliberate repeat, whatever angles ranked it. A myth-bust or
 contrarian angle is proposed as it stands; `polarize` runs at Step 2, for its Other side beat.
@@ -160,7 +160,7 @@ side beat on a myth-bust or contrarian reel (below). Where the secondary hook an
 re-hook sit comes from `rehooks`, below. Keep it to the length
 target the brief gives (most winning reels are short ... respect it).
 
-**Re-hook placement comes from `rehooks`.** With the beat list laid out, call it once with the Skill tool (its stamp counts only from that call) for
+**Re-hook placement comes from `rehooks`.** With the beat list laid out, call it once with the Skill tool (its stamp counts only from that call plus a Read of its method file) for
 the drop-off map and the slots. For each slot (the secondary hook, then each mid-reel
 re-hook) it returns where it sits (the beat and the time), the re-hook type and the visual
 change:
@@ -174,7 +174,7 @@ args:  step: 2
        pattern_read: <the reel-build/ file named by reads.patternread in <project>/reel-build/goldmine-run.json, only when its reads.passed is true; else leave this line out>
 ```
 
-The stamp is recorded automatically when you call the skill with the Skill tool; never write or edit a `from:` line yourself.
+The stamp is recorded automatically when you call the skill with the Skill tool and then Read its method file; never write or edit a `from:` line yourself.
 In the skeleton, replace `visual_loop: none` only when a visual loop carries the tension,
 and tag that loop on its beats too.
 Take each slot, with its type and its visual, into the beat list. No lines yet: `rehooks`
@@ -185,7 +185,7 @@ writes them at Step 3 (`./step3-options.md`, the secondary-hook pass).
 `Other side`, right after the secondary hook and before the turn (Hook, Secondary hook,
 Other side, Turn), tagged `[hold <main loop>]`. It is one line naming what the other camp
 believes or does. It need not be fair: a straw man is fine, a made-up fact is not. It does
-not count against the length budget. Call `polarize` once with the Skill tool (its stamp counts only from that call) for its line; this call is
+not count against the length budget. Call `polarize` once with the Skill tool (its stamp counts only from that call plus a Read of its method file) for its line; this call is
 required for those two kinds (the Step 4b gate fails without its stamp):
 
 ```
@@ -204,7 +204,7 @@ It returns the line for the Other side beat, and, when the take holds, the sharp
 and its evidence list (they feed the angle line and the body). When it flags the take as
 thin, show the flag at Checkpoint 2; the user decides. Keep the line for Step 3, where it
 fills the Other side beat as it came. The stamp is recorded automatically when you call the
-skill with the Skill tool; never write or edit a `from:` line yourself. An Other side beat on any
+skill with the Skill tool and then Read its method file; never write or edit a `from:` line yourself. An Other side beat on any
 other kind needs this call too.
 
 **Optimize the skeleton BEFORE showing it (mandatory).** A raw beat list is a draft, not the
@@ -229,7 +229,7 @@ an already-optimized skeleton, not a raw dump.
 
 **4a. The viral pass, on every reel.** After the Step 3 picks and before the Step 4b gate,
 call `viral` once with the drafted lines. Call it with the Skill tool: its stamp counts only from
-that call, and reading a skill's files for its stamp line is a failed run.
+that call plus a Read of its method file, and reading a skill's files for its stamp line is a failed run.
 
 ```
 Skill: shortform-superengine:viral
@@ -244,7 +244,7 @@ It returns suggestions, each paired with the exact line it would replace, plus t
 type and three scores. Show them; the user picks which apply, and only those are applied.
 None adds, cuts or reorders a beat. A suggestion on a line another skill wrote (hook,
 rehooks, polarize) says so. The stamp is recorded automatically when you call the skill with
-the Skill tool (the Step 4b gate fails without it); never write or edit a `from:` line yourself. The share type and
+the Skill tool and then Read its method file (the Step 4b gate fails without it); never write or edit a `from:` line yourself. The share type and
 the three scores go to Checkpoint 4 beside the craft score.
 
 **Then the hook lens ... the 4 Hook Killers.** Run the hook through
@@ -280,7 +280,7 @@ stamps.
 
 **Stamps live in `<project>/reel-build/provenance.md`.** Each called skill (angles, rehooks at
 Step 2 and again at Step 3, hook, polarize when the angle needs it, viral) gets its `from:`
-line recorded there automatically when you call it with the Skill tool; never write or edit a `from:` line yourself. The
+line recorded there automatically when you call it with the Skill tool and then Read its method file; never write or edit a `from:` line yourself. The
 only lines you write to that file are `goldmine:` lines, written by the hook skill's step. A
 `from:` line in the skeleton or the angles file fails the gate. The gate reads the stamps there and
 clears them on a pass. After a pass the file holds one `passed:` line for that skeleton, so a
@@ -339,8 +339,9 @@ Studio displays it, it does not recompute its own.)*
   Proof:
   CTA:
 ## Text overlays
-  <beat, seconds, overlay line, visual cue: one row per 3 to 5 s, one visual cue per row;
-   frame-1 overlay = the on-screen hook, not the spoken hook>
+  | Beat | Seconds | Overlay | Visual cue |
+  <one row per 3 to 5 s, one visual cue per row; every script section gets a row; times run
+   back to back from 0:00; frame-1 overlay = the on-screen hook, not the spoken hook>
 ## Caption
 ## Craft score
   Hook __/100 · Body __/100 · CTA __/100 · Overall __/100 ... top fix: ...

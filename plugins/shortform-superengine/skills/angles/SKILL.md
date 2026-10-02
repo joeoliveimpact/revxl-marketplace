@@ -51,7 +51,7 @@ the voice anchor confirmed at its Checkpoint 0, the pull's Pattern Read and the
 (theme, hook) pairs already scripted. **reel-scripter's (theme, hook) dedupe rule
 governs** when it is the caller: a concept whose pair is already used is dropped
 there, or named as a deliberate repeat, whatever this skill's own distinctness test
-says. Return the concepts; reel-scripter picks the 2 to 3 it proposes. Your stamp is recorded automatically when this skill is called; do not write a from: line. The call names its
+says. Return the concepts; reel-scripter picks the 2 to 3 it proposes. Your stamp is recorded automatically once this skill is called and you then Read ./references/legit-angles.md; do not write a from: line. The call names its
 step in the args:
 
 ```

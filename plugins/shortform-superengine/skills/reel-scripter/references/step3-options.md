@@ -36,7 +36,7 @@ flag it and ask ... never paper over with invented teaching.
      reel and maximize its engagement, or any ideas that could better the content overall."
      It waits for the answer and writes the `goldmine:` line in
      `<project>/reel-build/provenance.md` (`asked-yes`, `asked-no`, or `no-data` when there is
-     no data); the Step 4b gate checks it. Call `hook` once with the Skill tool (its stamp counts only from that call):
+     no data); the Step 4b gate checks it. Call `hook` once with the Skill tool (its stamp counts only from that call plus a Read of its method file):
 
      ```
      Skill: shortform-superengine:hook
@@ -55,7 +55,7 @@ flag it and ask ... never paper over with invented teaching.
 
      With no Goldmine data, leave `pattern_read` and `proven_hooks` out. Vault pull #2
      hits, when there are any, ride in the `topic:` line as data, never as rules. The stamp is
-     recorded automatically when you call the skill with the Skill tool; never write or edit a `from:` line yourself. The
+     recorded automatically when you call the skill with the Skill tool and then Read its method file; never write or edit a `from:` line yourself. The
      only lines you write to `<project>/reel-build/provenance.md` are `goldmine:` lines, written
      by the hook skill's step.
 
@@ -66,7 +66,7 @@ flag it and ask ... never paper over with invented teaching.
    - **Secondary hook and re-hooks (the secondary-hook pass): 3 options per slot, all from
      `rehooks`; none written here.** The slots (where each sits, its type and its visual) came
      from `rehooks` at Step 2 and are locked in the skeleton. Call `rehooks` in its Step-3
-     mode, with the Skill tool (its stamp counts only from that call): the secondary hook FIRST, right after the hook pick; the mid-reel re-hooks in a
+     mode, with the Skill tool (its stamp counts only from that call plus a Read of its method file): the secondary hook FIRST, right after the hook pick; the mid-reel re-hooks in a
      second call, after the body and proof picks, so each one sits on value the viewer just got.
 
      ```
@@ -82,7 +82,7 @@ flag it and ask ... never paper over with invented teaching.
      ```
 
      Each slot comes back with 3 options: a spoken line, its on-screen text and its visual
-     change. The stamp is recorded automatically when you call the skill with the Skill tool
+     change. The stamp is recorded automatically when you call the skill with the Skill tool and then Read its method file
      (Step 4b's gate fails without it); never write or edit a `from:` line yourself. A short reel with
      no slot still makes the call. To regenerate, make one more `rehooks` call with
      `step: 3-lines`, the same slot and what cut the first options.

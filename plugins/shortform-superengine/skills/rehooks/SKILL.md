@@ -51,7 +51,7 @@ Each call names its step in the args:
 - **Step 2** (`step: 2`), the beat list (labels and estimated times, no copy yet):
   return the drop-off map and, for each slot, where it sits (the beat and the time),
   the re-hook type by name and the visual change. A slot is the secondary hook or a
-  mid-reel re-hook. No lines yet: they come from Step-3 mode, below. Your stamp is recorded automatically when this skill is called; do not write a from: line.
+  mid-reel re-hook. No lines yet: they come from Step-3 mode, below. Your stamp is recorded automatically once this skill is called and you then Read ./references/legit-rehooks.md; do not write a from: line.
 
   ```
   Skill: shortform-superengine:rehooks

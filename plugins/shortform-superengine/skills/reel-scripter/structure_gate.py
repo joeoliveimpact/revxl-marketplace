@@ -3,6 +3,8 @@
 
 Usage:  python structure_gate.py <project>/scripts/<slug>.skeleton.md
         python structure_gate.py --angles <project>/reel-build/angles-<date>.md
+        python structure_gate.py --storyboard <project>/scripts/<slug>.md   (the final script's
+                                                    storyboard table only; writes nothing)
         python structure_gate.py --selftest   (the gate cases, a throwaway salt, temp projects)
         python structure_gate.py --selftest-hook   (hooks/stamp-on-skill.py on sample stdin, temp
                                                     home and project)
@@ -82,12 +84,13 @@ PROVENANCE (SKLLPLG-336: prose call lines were skipped in 4 of 4 walks; a gate i
    stamp sits in rehooks' references/step3-lines.md, read only in that mode, so the Step 2
    call never shows it), hook (Step 3), viral (Step 4a, every reel) and polarize (Step 2;
    required only when check 8 names it). The plugin hook hooks/stamp-on-skill.py writes each
-   stamp when the Skill tool really calls that skill (rehooks becomes rehookslines on a
-   `step: 3-lines` call, or on a call with no step token after a valid rehooks line); the
-   model never writes one.
+   stamp only when the Skill tool really calls that skill and the model then Reads its method
+   file, references/legit-<name>.md (step3-lines.md for rehookslines), in the same session
+   (rehooks becomes rehookslines on a `step: 3-lines` call, or on a call with no step token
+   after a valid rehooks line); the model never writes one.
    A stamp is stamp(name, project): the first 12 hex of sha256(SALT|name|project folder), so
    a stamp from another project, or a token typed by hand, fails. A missing file, or a missing
-   or wrong stamp, fails with the Skill call that makes it. The angles stamp is not required when the skeleton's
+   or wrong stamp, fails with the Skill call and method-file Read that make it. The angles stamp is not required when the skeleton's
    `angle_from: content-plan` (or `open-loop`, `unpicked`) says Step 1's proposal was skipped.
    A `from:` stamp line (any of the six names) inside the skeleton or the angles file fails: stamps written into a
    skeleton stay on disk, and the next reel could copy them without calling the skills.
@@ -306,7 +309,7 @@ def check_provenance(text, prov, proj, angles_only=False, polarize=False, data=F
     if any(m and m.group(1).lower() in WHERE for m in map(STRAY.match, lines)):
         fails.append(f"a from: stamp line is in this file; stamps do not belong in this file; they "
                      f"go in {PROV}. Fix: delete every from: line here. Each skill's from: line is "
-                     f"recorded in {PROV} automatically when that skill is called")
+                     f"recorded in {PROV} automatically when that skill is called and its method file is then Read")
     passes = [m.group(1).lower() for m in map(PASSED.match, plines) if m]
     if not angles_only and fingerprint(text) in passes:
         return fails, good
@@ -336,9 +339,11 @@ def check_provenance(text, prov, proj, angles_only=False, polarize=False, data=F
             who, call = "rehooks skill in Step-3 mode", "rehooks in Step-3 mode (args step: 3-lines)"
         if name == "polarize":
             who += " (this reel's angle_kind or its Other side beat needs it)"
+        method = ("skills/rehooks/references/step3-lines.md" if name == "rehookslines"
+                  else f"skills/{name}/references/legit-{name}.md")
         fails.append(f"{what}, so the {who} was not called for this reel. Fix: call Skill "
-                     f"shortform-superengine:{call} ({where}); the stamp is recorded automatically "
-                     f"when the skill is called")
+                     f"shortform-superengine:{call} ({where}), THEN Read {method}; the stamp is "
+                     f"recorded only when that Read follows the call")
     if angles_only:
         return fails, good
     gold = [m.group(1).lower() for m in map(GOLD.match, plines) if m]
@@ -366,6 +371,122 @@ def write_prov(path, line):
         say(f"UNWRITABLE: {path}: {e}")
         return 2
     return 0
+
+
+# Storyboard check on the final script (SKLLPLG-361), run by hooks/storyboard-on-write.py on every
+# write. sb_num, sb_seconds, sb_cues and sb_table copy grade.py's num, seconds, cues and storyboard
+# (tests/shortform/reel-scripter-walk/grade.py, criterion V), so gate and grader read one table.
+MAX_ROW = 5
+SCRIPT_HEAD = re.compile(r"^[ \t]*#{1,6}[ \t]+script\b", re.I)
+SECTION = re.compile(r"^[ \t]*(hook|secondary|other side|body|proof|cta)[ \t]*:", re.I)
+
+
+def sb_num(tok):
+    m = re.fullmatch(r"(?:(\d+):)?(\d+(?:\.\d+)?)", tok)
+    return None if not m else float(m.group(2)) + 60 * float(m.group(1) or 0)
+
+
+def sb_seconds(cell):
+    """(start, end) for a range, (None, span) for one number, None when unreadable. end - start,
+    or span, is what grade.py's seconds() returns."""
+    c = re.sub(r"(?i)\s*(sec(ond)?s?|s)\b", "", cell.replace("~", "").replace("\u2248", "")).strip()
+    m = re.fullmatch(r"(\d[\d:.]*)\s*(?:-|\u2013|\u2014|to)\s*(\d[\d:.]*)", c)
+    if m and sb_num(m.group(1)) is not None and sb_num(m.group(2)) is not None:
+        return sb_num(m.group(1)), sb_num(m.group(2))
+    n = sb_num(c)
+    return None if n is None else (None, n)
+
+
+def sb_cues(cell):
+    c = cell.strip()
+    if re.fullmatch(r"(?i)(none|n/a|-+|\u2014|)", c):
+        return 0
+    return len([p for p in re.split(r"(?i);|\s\+\s|<br\s*/?>|\s/\s|->|\u2192|\bthen\b", c) if p.strip(" ,.")])
+
+
+def sb_table(text):
+    """(head, seconds col, cue col, beat col, body rows) of the first table grade.py would pick."""
+    rows = [[x.strip() for x in l.strip().strip("|").split("|")] for l in text.splitlines() if l.strip().startswith("|")]
+    for k, head in enumerate(rows):
+        sc = next((i for i, h in enumerate(head) if re.search(r"(?i)sec|time|dur", h)), None)
+        cc = next((i for i, h in enumerate(head) if re.search(r"(?i)cue", h)), None)
+        if cc is None:
+            cc = next((i for i, h in enumerate(head) if re.search(r"(?i)visual", h)), None)
+        if sc is None or cc is None:
+            continue
+        bc = next((i for i, h in enumerate(head) if re.search(r"(?i)beat", h)), 0)
+        body = []
+        for r in rows[k + 1:]:
+            if len(r) != len(head):
+                break
+            if all(re.fullmatch(r":?-+:?", x) for x in r if x):
+                continue
+            body.append(r)
+        return head, sc, cc, bc, body
+    return None
+
+
+def storyboard_problems(text):
+    """Problems with the final script's storyboard table; empty = pass. Each row: a readable
+    seconds cell spanning more than 0 and at most MAX_ROW s, exactly one visual cue. Every
+    section label under `## Script` (Hook:, Secondary:, Other side:, Body:, Proof:, CTA:) named
+    in some beat cell. When every seconds cell is a range: back to back from 0:00 (0.5 s slack)."""
+    sb = sb_table(text)
+    if not sb:
+        return ["no storyboard table: no pipe table with a seconds column and a visual cue column"]
+    head, sc, cc, bc, body = sb
+    if not body:
+        return ["the storyboard table has no rows"]
+    probs, spans = [], []
+    for i, r in enumerate(body, 1):
+        at = f"row {i} ({r[bc]}, {r[sc]})"
+        s = sb_seconds(r[sc])
+        spans.append(s)
+        span = None if s is None else s[1] if s[0] is None else s[1] - s[0]
+        if span is None:
+            probs.append(f"{at}: the seconds cell cannot be read; write a range like 0:04-0:08")
+        elif not 0 < span <= MAX_ROW:
+            probs.append(f"{at}: runs {span:g} s; a row runs more than 0 and at most {MAX_ROW} s, so split it")
+        n = sb_cues(r[cc])
+        if n != 1:
+            probs.append(f"{at}: {n} visual cues in '{r[cc]}'; give the row exactly one")
+    lines = text.splitlines()
+    start = next((k for k, ln in enumerate(lines) if SCRIPT_HEAD.match(ln)), None)
+    if start is not None:
+        end = next((k for k in range(start + 1, len(lines)) if HEADING.match(lines[k])), len(lines))
+        found = {}
+        for ln in lines[start + 1:end]:
+            m = SECTION.match(ln)
+            if m:
+                found.setdefault(m.group(1).lower(), m.group(1))
+        missing = [v for k, v in found.items() if not any(k in r[bc].lower() for r in body)]
+        if missing:
+            probs.append(f"script sections with no storyboard row: {', '.join(missing)}; add a row whose "
+                         f"Beat cell names each")
+    if all(s and s[0] is not None for s in spans):
+        prev = 0.0
+        for i, (s, r) in enumerate(zip(spans, body), 1):
+            if abs(s[0] - prev) > 0.5:
+                probs.append(f"row 1 ({r[bc]}, {r[sc]}): the first row starts at 0:00" if i == 1 else
+                             f"row {i} ({r[bc]}, {r[sc]}) does not start where row {i - 1} ends "
+                             f"({body[i - 2][sc]}); make the times run back to back")
+                break
+            prev = s[1]
+    return probs
+
+
+def storyboard_main(path):
+    try:
+        with open(path, encoding="utf-8-sig") as f:
+            text = f.read()
+    except (OSError, UnicodeDecodeError) as e:
+        say(f"UNREADABLE: {path}: {e}")
+        return 2
+    probs = storyboard_problems(text)
+    for p in probs:
+        say(f"FAIL storyboard: {p}.")
+    say(f"{'FAIL' if probs else 'PASS'}: storyboard, {len(probs)} problem(s).")
+    return 1 if probs else 0
 
 
 def main(argv):
@@ -558,36 +679,124 @@ def selftest():
         SALT, STRAY = real, real_stray
         if tmp:
             tmp.cleanup()
-    say(f"SELFTEST {'PASS' if ok == len(cases) else 'FAIL'}: {ok}/{len(cases)}")
-    return 0 if ok == len(cases) else 1
+    sb_ok, sb_n = storyboard_selftest()
+    ok, n = ok + sb_ok, len(cases) + sb_n
+    say(f"SELFTEST {'PASS' if ok == n else 'FAIL'}: {ok}/{n}")
+    return 0 if ok == n else 1
+
+
+def storyboard_selftest():
+    """storyboard_problems() on synthetic text. (name, text, None for a pass, or a phrase the one
+    problem found must hold: a failing case must trip its own rule and nothing else)."""
+    head = "## Text overlays\n| Beat | Seconds | Overlay | Visual cue |\n|---|---|---|---|\n"
+    sec = "## Script\nHook: a\nSecondary: b\nCTA: c\n"
+    tb = lambda *rows, script=sec: script + head + "".join(f"| {b} | {s} | x | {c} |\n" for b, s, c in rows)
+    mmss = lambda t: f"{t // 60}:{t % 60:02d}"
+    beat = lambda i: "Hook" if i == 0 else "Secondary" if i == 1 else "CTA"
+    dash = ("-", " to ", "\u2013")
+    good = [("Hook (frame 1)", "0-4", "Close-up"), ("Secondary hook", "4-8", "Cut to kitchen"), ("CTA", "8-12", "Hold")]
+    cases = [
+        ("sb-valid: a good table passes", tb(*good), None),
+        ("sb-list: a plain aligned list, no pipes", sec + "## Text overlays\n0:00  Hook  \"X\"  close-up\n"
+         "0:04  CTA  \"Y\"  hold\n", "no storyboard table"),
+        ("sb-long: a 0:00-0:08 row", tb(("Hook", "0:00-0:08", "Close-up"), ("Secondary", "0:08-0:12", "Cut"),
+                                        ("CTA", "0:12-0:16", "Hold")), "runs 8 s"),
+        ("sb-twocues: 'close-up; cut to kitchen' is two cues", tb(good[0], ("Secondary", "4-8",
+                                                                  "close-up; cut to kitchen"), good[2]), "2 visual cues"),
+        ("sb-comma: 'Hold, slow push-in' is one cue", tb(good[0], ("Secondary", "4-8", "Hold, slow push-in"), good[2]),
+         None),
+        ("sb-nocue: an empty cue cell", tb(good[0], good[1], ("CTA", "8-12", "")), "0 visual cues"),
+        ("sb-mmss: m:ss ranges past a minute, with -, to and an en dash", tb(
+            *[(beat(i), f"{mmss(4 * i)}{dash[i % 3]}{mmss(4 * i + 4)}", "Cut") for i in range(16)]),
+         None),
+        ("sb-gap: 0:04 then 0:06", tb(("Hook", "0:00-0:04", "Cut"), ("Secondary", "0:06-0:10", "Cut"),
+                                      ("CTA", "0:10-0:14", "Hold")), "does not start where row 1 ends"),
+        ("sb-start: the first row starts at 0:02", tb(("Hook", "0:02-0:06", "Cut"), ("Secondary", "0:06-0:10", "Cut"),
+                                                      ("CTA", "0:10-0:14", "Hold")), "the first row starts at 0:00"),
+        ("sb-nocta: no CTA row while the script has CTA:", tb(good[0], good[1]), "no storyboard row: CTA"),
+        ("sb-span: a span-only cell ('4') skips the back-to-back check", tb(
+            ("Hook", "0:02-0:06", "Cut"), ("Secondary", "4", "Cut"), ("CTA", "4", "Hold")), None),
+        ("sb-noscript: no ## Script section skips the section check", tb(good[0], script="CTA: c\n"), None),
+    ]
+    ok = 0
+    for name, text, want in cases:
+        probs = storyboard_problems(text)
+        fine = not probs if want is None else len(probs) == 1 and want in probs[0]
+        ok += fine
+        say(f"{'ok ' if fine else 'BAD'} {name}: {len(probs)} problem(s){': ' + ' | '.join(probs) if probs else ''}")
+    return ok, len(cases)
 
 
 def selftest_hook():
     """Feed hooks/stamp-on-skill.py sample PostToolUse stdin in a temp home and project. Each case
-    checks exit 0, empty stdout, and the lines provenance.md gains. Stamps are computed here at
-    run time for temp folders and never printed."""
+    checks exit 0, empty stdout, no stamp-hook.log, and the lines provenance.md gains. A Skill
+    call alone opens a slot; the stamp comes from a later Read of the method file in the same
+    session. Stamps are computed here at run time for temp folders and never printed."""
     import subprocess, tempfile
     hook = Path(__file__).resolve().parents[2] / "hooks" / "stamp-on-skill.py"
-    call = lambda skill, args="": json.dumps({"session_id": "t", "hook_event_name": "PostToolUse",
-                                               "tool_name": "Skill", "tool_input": {"skill": skill, "args": args},
-                                               "tool_response": "ok"})
+    root = hook.parent.parent
+
+    def payload(tool, inp, sid):
+        d = {"hook_event_name": "PostToolUse", "tool_name": tool, "tool_input": inp, "tool_response": "ok"}
+        if sid is not None:
+            d["session_id"] = sid
+        return json.dumps(d)
+
+    call = lambda skill, args="", sid="t": payload("Skill", {"skill": skill, "args": args}, sid)
+    rd = lambda path, sid="t": payload("Read", {"file_path": str(path)}, sid)
     sf = "shortform-superengine:"
+    legit = lambda n: (root / "skills" / n / "references" / f"legit-{n}.md").as_posix()
+    lines3 = (root / "skills" / "rehooks" / "references" / "step3-lines.md").as_posix()
+    ang_win = legit("angles").replace("/", "\\")
     # (name, fresh project, stdin, no marker so the cwd decides, skill names of the expected new lines)
+    # stdin is one payload, or a list of payloads run as separate hook runs in order (one home and
+    # project for all); the expected lines are what the whole list adds. A fresh project starts
+    # with an empty reel-build/, so a no-stamp case cannot pass just because that folder is missing.
+    # A case that is not fresh runs on the project, provenance.md and stamp-pending.json the case
+    # above left, so a call and its Read are two cases in a row.
     cases = [
-        ("angles: one from: angles line", True, call(sf + "angles", "step: 1"), False, ["angles"]),
-        ("rehooks first call: from: rehooks", False, call(sf + "rehooks", "step: 2\nscript: x"), False, ["rehooks"]),
-        ("rehooks again, no step token, after a valid rehooks line: rehookslines", False,
-         call(sf + "rehooks", "slots: secondary hook"), False, ["rehookslines"]),
-        ("rehooks step: 4b after a valid rehooks line: rehooks, not rehookslines", False,
-         call(sf + "rehooks", "step: 4b\nslots: x"), False, ["rehooks"]),
-        ("rehooks step: 2, fresh project: rehooks", True, call(sf + "rehooks", "step: 2"), False, ["rehooks"]),
-        ("rehooks step: 2 again, after a valid rehooks line: rehooks", False, call(sf + "rehooks", "step: 2"),
-         False, ["rehooks"]),
-        ("rehooks 3-lines by step token, no rehooks line yet: rehookslines", True,
-         call(sf + "rehooks", "Step=3-Lines\nslots: x"), False, ["rehookslines"]),
+        ("(a) angles call, no Read: no stamp", True, call(sf + "angles", "step: 1"), False, []),
+        ("(b) then Read of the plugin's legit-angles.md, backslash form: angles", False, rd(ang_win), False,
+         ["angles"]),
+        ("(e) second Read of legit-angles.md, no new call: no stamp", False, rd(legit("angles")), False, []),
+        ("(c) Read with no prior call, fresh project: no stamp", True, rd(legit("angles")), False, []),
+        ("(d) Read, then Skill (wrong order): no stamp", True, [rd(legit("angles")), call(sf + "angles")], False,
+         []),
+        ("(f) angles call in session A: no stamp", True, call(sf + "angles", sid="A"), False, []),
+        ("(f) Read in session B: no stamp", False, rd(legit("angles"), sid="B"), False, []),
+        ("(f) control: Read in session A: angles", False, rd(legit("angles"), sid="A"), False, ["angles"]),
+        ("(i) angles call before an outside Read: no stamp", True, call(sf + "angles"), False, []),
+        ("(i) Read of a legit-angles.md outside the plugin root: no stamp", False,
+         rd(Path(tempfile.gettempdir()) / "x" / "plugins" / "shortform-superengine" / "skills" / "angles"
+            / "references" / "legit-angles.md"), False, []),
+        ("(i) control: Read of the plugin's own legit-angles.md: angles", False, rd(legit("angles")), False,
+         ["angles"]),
+        ("(h) rehooks step: 2 call: no stamp", True, call(sf + "rehooks", "step: 2\nscript: x"), False, []),
+        ("(h) then Read legit-rehooks.md: rehooks", False, rd(legit("rehooks")), False, ["rehooks"]),
+        ("rehooks again, no step token, after a valid rehooks line: no stamp yet", False,
+         call(sf + "rehooks", "slots: secondary hook"), False, []),
+        ("then Read step3-lines.md: rehookslines", False, rd(lines3), False, ["rehookslines"]),
+        ("rehooks step: 4b after a valid rehooks line: no stamp yet", False,
+         call(sf + "rehooks", "step: 4b\nslots: x"), False, []),
+        ("then Read legit-rehooks.md: rehooks, not rehookslines", False, rd(legit("rehooks")), False, ["rehooks"]),
+        ("rehooks step: 2 again, after a valid rehooks line: no stamp yet", False, call(sf + "rehooks", "step: 2"),
+         False, []),
+        ("then Read legit-rehooks.md: rehooks", False, rd(legit("rehooks")), False, ["rehooks"]),
+        ("(g) rehooks 3-lines by step token, fresh project: no stamp yet", True,
+         call(sf + "rehooks", "Step=3-Lines\nslots: x"), False, []),
+        ("(g) Read legit-rehooks.md in the rehookslines slot: no stamp", False, rd(legit("rehooks")), False, []),
+        ("(g) Read step3-lines.md: rehookslines", False, rd(lines3), False, ["rehookslines"]),
+        ("(j) hook call: no stamp", True, call(sf + "hook", "step: 3-hook"), False, []),
+        ("(j) then Read legit-hook.md: hook", False, rd(legit("hook")), False, ["hook"]),
+        ("(j) polarize call: no stamp", False, call(sf + "polarize", "step: 2"), False, []),
+        ("(j) then Read legit-polarize.md: polarize", False, rd(legit("polarize")), False, ["polarize"]),
+        ("(j) viral call, no session_id: no stamp", False, call(sf + "viral", "step: 4a", sid=None), False, []),
+        ("(j) then Read legit-viral.md, no session_id: viral", False, rd(legit("viral"), sid=None), False,
+         ["viral"]),
         ("non-shortform skill: no write", True, call("other-plugin:hook", "step: 3-hook"), False, []),
         ("malformed stdin: no write", True, "{not json", False, []),
-        ("no marker, cwd holds analysis-data.json: angles", True, call(sf + "angles"), True, ["angles"]),
+        ("no marker, cwd holds analysis-data.json: angles call, no stamp yet", True, call(sf + "angles"), True, []),
+        ("no marker, then Read legit-angles.md: angles", False, rd(legit("angles")), True, ["angles"]),
     ]
     ok = 0
     with tempfile.TemporaryDirectory() as t:
@@ -595,7 +804,7 @@ def selftest_hook():
         for k, (name, fresh, stdin, cwd_mode, want) in enumerate(cases):
             if fresh or proj is None:
                 proj = Path(t) / f"proj{k}"
-                proj.mkdir()
+                (proj / "reel-build").mkdir(parents=True)
                 (proj / "analysis-data.json").write_text("{}", encoding="utf-8")
             home = Path(t) / f"home{k}"
             if not cwd_mode:
@@ -608,18 +817,85 @@ def selftest_hook():
             prov = proj / "reel-build" / "provenance.md"
             was = prov.read_text(encoding="utf-8") if prov.exists() else ""
             env = dict(os.environ, HOME=str(home), USERPROFILE=str(home))
-            r = subprocess.run([sys.executable, str(hook)], input=stdin.encode("utf-8"), capture_output=True,
-                               env=env, cwd=str(proj if cwd_mode else t), timeout=60)
+            rs = [subprocess.run([sys.executable, str(hook)], input=s.encode("utf-8"), capture_output=True,
+                                 env=env, cwd=str(proj if cwd_mode else t), timeout=60)
+                  for s in ([stdin] if isinstance(stdin, str) else stdin)]
+            code, out = max(r.returncode for r in rs), b"".join(r.stdout for r in rs)
             now = prov.read_text(encoding="utf-8") if prov.exists() else ""
             exp = was + "".join(f"from: {n} {stamp(n, proj)}\n" for n in want)
-            fine = r.returncode == 0 and not r.stdout and now == exp
+            fine = code == 0 and not out and now == exp and not (proj / "reel-build" / "stamp-hook.log").exists()
             ok += fine
-            say(f"{'ok ' if fine else 'BAD'} {name}: exit {r.returncode}, stdout {'empty' if not r.stdout else 'NOT empty'}, "
+            say(f"{'ok ' if fine else 'BAD'} {name}: exit {code}, stdout {'empty' if not out else 'NOT empty'}, "
                 f"provenance.md {'as expected' if now == exp else 'NOT as expected'}")
-    say(f"SELFTEST-HOOK {'PASS' if ok == len(cases) else 'FAIL'}: {ok}/{len(cases)}")
-    return 0 if ok == len(cases) else 1
+    sb_ok, sb_n = storyboard_hook_selftest()
+    ok, n = ok + sb_ok, len(cases) + sb_n
+    say(f"SELFTEST-HOOK {'PASS' if ok == n else 'FAIL'}: {ok}/{n}")
+    return 0 if ok == n else 1
+
+
+def storyboard_hook_selftest():
+    """Feed hooks/storyboard-on-write.py PostToolUse stdin with every key the real one carries.
+    A bad final script must exit 2 with the problems on stderr; every other case exits 0 with
+    stdout and stderr empty. Stdout must stay empty in every case."""
+    import subprocess, tempfile
+    hook = Path(__file__).resolve().parents[2] / "hooks" / "storyboard-on-write.py"
+    good = ("## Script\nHook: a\nCTA: b\n## Text overlays\n| Beat | Seconds | Overlay | Visual cue |\n|---|---|---|---|\n"
+            "| Hook | 0:00-0:04 | x | Close-up |\n| CTA | 0:04-0:08 | x | Hold |\n")
+    bad = good.replace("0:04-0:08", "0:04-0:12")
+    with tempfile.TemporaryDirectory() as t:
+        t = Path(t)
+        files = {}
+        for key, folder, marker, text in (("bad", "proj", "a", bad), ("good", "proj", "a", good),
+                                          ("skel", "proj", "a", bad), ("rb", "rbproj", "r", bad),
+                                          ("loose", "loose", None, bad)):
+            f = t / folder / "scripts" / ("x.skeleton.md" if key == "skel" else f"{key}.md")
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_text(text, encoding="utf-8")
+            if marker == "a":
+                (t / folder / "analysis-data.json").write_text("{}", encoding="utf-8")
+            elif marker == "r":
+                (t / folder / "reel-build").mkdir(exist_ok=True)
+            files[key] = f
+
+        def pl(tool, key, posix=False):
+            f = files[key]
+            path = f.as_posix() if posix else str(f).replace("/", "\\")
+            edit = {"old_string": "x", "new_string": "x", "replace_all": False}
+            inp = ({"file_path": path, "content": f.read_text(encoding="utf-8")} if tool == "Write" else
+                   dict(edit, file_path=path) if tool == "Edit" else {"file_path": path, "edits": [edit]})
+            return json.dumps({"session_id": "t", "transcript_path": str(t / "t.jsonl"), "cwd": str(t),
+                               "permission_mode": "default", "hook_event_name": "PostToolUse", "tool_name": tool,
+                               "tool_input": inp, "tool_response": {"filePath": path}, "tool_use_id": "toolu_t",
+                               "prompt_id": "p", "effort": "medium", "duration_ms": 1})
+
+        # (name, stdin, expected exit, phrase stderr must hold; None = stderr empty)
+        cases = [
+            ("bad final script, Write, backslash path: exit 2", pl("Write", "bad"), 2,
+             "Storyboard check failed for bad.md:"),
+            ("bad final script, Write, forward-slash path: exit 2", pl("Write", "bad", True), 2, "runs 8 s"),
+            ("bad final script, Edit: exit 2 with the required shape", pl("Edit", "bad"), 2,
+             "| Beat | Seconds | Overlay | Visual cue |"),
+            ("bad final script, MultiEdit: exit 2", pl("MultiEdit", "bad"), 2, "bad.md"),
+            ("bad final script, project marked by reel-build/ only: exit 2", pl("Write", "rb"), 2, "rb.md"),
+            ("good final script: silent", pl("Write", "good"), 0, None),
+            ("bad *.skeleton.md: silent", pl("Write", "skel"), 0, None),
+            ("bad .md in scripts/, parent has no analysis-data.json or reel-build/: silent", pl("Write", "loose"), 0,
+             None),
+            ("garbage stdin: silent", "{not json", 0, None),
+        ]
+        ok = 0
+        for name, stdin, want, phrase in cases:
+            r = subprocess.run([sys.executable, str(hook)], input=stdin.encode("utf-8"), capture_output=True,
+                               env=dict(os.environ), cwd=str(t), timeout=60)
+            err = r.stderr.decode("utf-8", "replace")
+            fine = r.returncode == want and not r.stdout and (not err if phrase is None else phrase in err)
+            ok += fine
+            say(f"{'ok ' if fine else 'BAD'} {name}: exit {r.returncode}, stdout {'empty' if not r.stdout else 'NOT empty'}"
+                f", stderr {'empty' if not err else 'set'}")
+    return ok, len(cases)
 
 
 if __name__ == "__main__":
     sys.exit(selftest() if sys.argv[1:] == ["--selftest"] else selftest_hook() if sys.argv[1:] == ["--selftest-hook"]
+             else storyboard_main(sys.argv[2]) if len(sys.argv) == 3 and sys.argv[1] == "--storyboard"
              else main(sys.argv))

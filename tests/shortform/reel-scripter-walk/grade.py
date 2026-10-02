@@ -118,7 +118,8 @@ def written(skeleton):
             if re.search(r">|\btee\b|Set-Content|Out-File", cmd):
                 names.update(Path(norm(t)).name for t in re.findall(r"[^\s'\"<>|;]+\.md", cmd))
     files = [p for p in (PROJ / "scripts").glob("*.md")
-             if p.name.lower() in names and p.name.endswith(".skeleton.md") == skeleton]
+             if p.name.lower() in names and p.name.endswith(".skeleton.md") == skeleton
+             and not p.name.endswith(".draft.md")]
     return max(files, key=lambda p: p.stat().st_mtime) if files else None
 
 

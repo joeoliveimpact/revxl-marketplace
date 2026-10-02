@@ -61,7 +61,7 @@ competitors from the analysis, plus the creator's belief and evidence when it ha
 - When the take holds, also return the sharpened take and the evidence list;
   reel-scripter uses them for the angle and the body.
 
-Your stamp is recorded automatically when this skill is called; do not write a from: line. The call names its step in the args:
+Your stamp is recorded automatically once this skill is called and you then Read ./references/legit-polarize.md; do not write a from: line. The call names its step in the args:
 
 ```
 Skill: shortform-superengine:polarize
