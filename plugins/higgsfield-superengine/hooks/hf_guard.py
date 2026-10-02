@@ -11,6 +11,8 @@
                      priced and under the cap -> stamp "allow" + allow; over the cap or an ask verdict -> reserve
                      (--force) + stamp "ask" + ask (a real click); nobody to ask (dontAsk, bypassPermissions, or
                      no permission_mode) -> deny + log, nothing reserved or stamped. Anything wrong -> deny.
+                     Real call only: the event's transcript must hold this exact tool call (same tool_use_id and
+                     command) still pending, so a hand-built event piped into `hf_guard.py hook` never stamps.
   deny               api.higgsfield.ai, the higgsfield CLI / SDK, any other way into hf_rest (import, -c, -m,
                      chaining, a script that mentions it), anything touching higgsfield/.spend-guard/ or
                      ~/.config/higgsfield-superengine/, HF_SUPERENGINE_LEDGER_DIR, ad-hoc `import ledger`.
@@ -237,7 +239,7 @@ def plain(cmd, ps):
     return (toks[0], toks[1:]) if toks else None
 
 
-def shell(cmd, ps, cwd, mode):
+def shell(cmd, ps, cwd, mode, ev=None):
     low = cmd.lower()
     if not any(m in low for m in MARKERS) and not LEDGER_IMPORT.search(cmd):
         return None
@@ -263,7 +265,13 @@ def shell(cmd, ps, cwd, mode):
     p = plain(cmd, ps)
     name = re.split(r"[\\/]", p[0])[-1].lower() if p else ""
     if name == "hf_rest.py":
-        return submit(p[0], p[1][1:], cwd, mode) if p[1][:1] == ["submit"] else None
+        if p[1][:1] != ["submit"]:
+            return None
+        if not real_call(ev, cmd):
+            return deny("this submit is not a real pending tool call in this session's transcript (a hand-built "
+                        "hook event, or a script calling the hook). Nothing was stamped or reserved. Run the submit "
+                        "as its own tool call so the client sees the real permission prompt.")
+        return submit(p[0], p[1][1:], cwd, mode)
     if name == "hf_guard.py":
         if p[1] == ["no-look", "off"]:
             if mode not in ATTENDED:
@@ -274,6 +282,43 @@ def shell(cmd, ps, cwd, mode):
                               "and look again.")
         return None
     return deny("hf_rest.py and hf_guard.py may not be imported, wrapped or chained. " + PLAIN)
+
+
+TRANSCRIPT_TAIL = 8 * 1024 * 1024  # bytes read from the end of the transcript; the pending call is near the end
+
+
+def real_call(ev, cmd):
+    """True only if the event's transcript holds this exact tool call (tool_use_id + command) with no result yet.
+    A hand-built event fed to `hf_guard.py hook` (by a pipe or a runner script) either has no such call, or points at
+    an older call that already has a result. Real events: Claude Code writes the tool_use before PreToolUse fires
+    (checked 10.01.26 with a headless probe hook)."""
+    # ponytail: protects only sessions where this hook runs; with the plugin disabled nothing guards the scripts
+    tp, tid = (ev or {}).get("transcript_path"), (ev or {}).get("tool_use_id")
+    if not (isinstance(tp, str) and tp and isinstance(tid, str) and tid):
+        return False
+    try:
+        with open(tp, "rb") as f:
+            f.seek(0, 2)
+            f.seek(max(0, f.tell() - TRANSCRIPT_TAIL))
+            lines = f.read().splitlines()
+    except OSError:
+        return False
+    found = False
+    for line in lines:
+        try:
+            o = json.loads(line)
+        except ValueError:
+            continue
+        m = o.get("message") if isinstance(o, dict) else None
+        content = m.get("content") if isinstance(m, dict) else None
+        for c in content if isinstance(content, list) else ():
+            if not isinstance(c, dict):
+                continue
+            if c.get("type") == "tool_use" and c.get("id") == tid:
+                found = isinstance(c.get("input"), dict) and c["input"].get("command") == cmd
+            elif c.get("type") == "tool_result" and c.get("tool_use_id") == tid:
+                found = False  # that call already ran (or was refused): not the one pending now
+    return found
 
 
 def in_plugin(cwd):
@@ -397,7 +442,7 @@ def hook(raw):
     if tool in ("Write", "Edit"):
         return files(ti)
     if tool in SHELLS and isinstance(ti.get("command"), str):
-        return shell(ti["command"], tool == "PowerShell", data.get("cwd"), mode)
+        return shell(ti["command"], tool == "PowerShell", data.get("cwd"), mode, data)
     return None
 
 
@@ -487,10 +532,21 @@ def selftest():
         r = subprocess.run([sys.executable, "-B"] + args, cwd=str(cwd), env=e, capture_output=True, timeout=60)
         return r.returncode, r.stdout.decode("utf-8", "replace"), r.stderr.decode("utf-8", "replace")
 
-    def ev(tool, ti, mode="default", cwd=ws, drop_mode=False):
-        d = {"session_id": "selftest", "transcript_path": str(tmp / "t.jsonl"), "cwd": str(cwd),
+    seq = [0]
+
+    def use(tid, tool, ti):
+        return {"type": "assistant", "message": {"role": "assistant", "content": [
+            {"type": "tool_use", "id": tid, "name": tool, "input": ti}]}}
+
+    def ev(tool, ti, mode="default", cwd=ws, drop_mode=False, lines=None):
+        """A real-shaped event plus its transcript. lines(tid) overrides the transcript (default: this call pending)."""
+        seq[0] += 1
+        tid, tp = f"toolu_selftest{seq[0]:04d}", tmp / f"t{seq[0]}.jsonl"
+        rows = lines(tid) if lines else [use(tid, tool, ti)]
+        tp.write_text("".join(json.dumps(x) + "\n" for x in rows), encoding="utf-8")
+        d = {"session_id": "selftest", "transcript_path": str(tp), "cwd": str(cwd),
              "permission_mode": mode, "hook_event_name": "PreToolUse", "tool_name": tool, "tool_input": ti,
-             "tool_use_id": "toolu_selftest"}
+             "tool_use_id": tid}
         if drop_mode:
             d.pop("permission_mode")
         return d
@@ -681,6 +737,41 @@ def selftest():
         check("S15 record changed between pricing and stamping -> deny, stamp removed, reservation refunded",
               res["hookSpecificOutput"]["permissionDecision"] == "deny" and stamp_of(ep, b1)[1] is None and
               not led["entries"], res)
+
+        # --- real call only: a hand-built hook event never stamps (JOI-016, 09.30.26) ---------------------------
+        cmd1 = sub_cmd(ep, b1)
+        pipe = f"echo '<event>' | python \"{me}\" hook"
+
+        def clean():
+            return stamp_of(ep, b1)[1] is None and not ledger("status")[1].get("entries")
+
+        attacks = [
+            ("R1 hand-built event piped into the hook (the newest call is the pipe) -> deny, nothing stamped",
+             lambda tid: [use(tid + "x", "Bash", {"command": pipe})]),
+            ("R2 replays the id of an older real submit that already has a result -> deny, nothing stamped",
+             lambda tid: [use(tid, "Bash", {"command": cmd1}),
+                          {"type": "user", "message": {"role": "user", "content": [
+                              {"type": "tool_result", "tool_use_id": tid, "content": "denied", "is_error": True}]}},
+                          use(tid + "x", "Bash", {"command": pipe})]),
+            ("R3 same id, different command in the transcript -> deny",
+             lambda tid: [use(tid, "Bash", {"command": cmd1 + " --x"})]),
+            ("R4 a transcript with no tool calls (a runner script's) -> deny", lambda tid: []),
+        ]
+        for name, lines in attacks:
+            c, d, r = run(ev("Bash", {"command": cmd1}, lines=lines))
+            check(name, d == "deny" and c == 2 and clean(), f"{d} {r}")
+        e5 = ev("Bash", {"command": cmd1})
+        e5.pop("transcript_path")
+        e6 = ev("Bash", {"command": cmd1})
+        e6["transcript_path"] = str(tmp / "missing.jsonl")
+        check("R5 no transcript_path, or the transcript file is missing -> deny, nothing stamped",
+              run(e5)[1] == "deny" and run(e6)[1] == "deny" and clean())
+        c, d, r = run(ev("Bash", {"command": cmd1}, lines=lambda tid: [{"type": "assistant", "message": {"content": [
+            {"type": "tool_use", "id": tid, "name": "Bash", "input": {"command": cmd1}},
+            {"type": "tool_use", "id": "toolu_other", "name": "Read", "input": {"file_path": "x"}}]}}]))
+        check("R6 the real call inside a parallel batch (not the last tool_use) -> allow", d == "allow", f"{d} {r}")
+        ledger("refund", key, "--reason", "not_sent")
+        stamp_of(ep, b1)[2].unlink(missing_ok=True)
 
         # --- deny list ------------------------------------------------------------------------------------------
         denies = [
