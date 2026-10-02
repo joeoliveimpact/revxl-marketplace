@@ -271,7 +271,7 @@ def shell(cmd, ps, cwd, mode, ev=None):
             return deny("this submit is not a real pending tool call in this session's transcript (a hand-built "
                         "hook event, or a script calling the hook). Nothing was stamped or reserved. Run the submit "
                         "as its own tool call so the client sees the real permission prompt.")
-        return submit(p[0], p[1][1:], cwd, mode)
+        return submit(p[0], p[1][1:], cwd, mode, ev)
     if name == "hf_guard.py":
         if p[1] == ["no-look", "off"]:
             if mode not in ATTENDED:
@@ -293,32 +293,101 @@ def real_call(ev, cmd):
     an older call that already has a result. Real events: Claude Code writes the tool_use before PreToolUse fires
     (checked 10.01.26 with a headless probe hook)."""
     # ponytail: protects only sessions where this hook runs; with the plugin disabled nothing guards the scripts
-    tp, tid = (ev or {}).get("transcript_path"), (ev or {}).get("tool_use_id")
-    if not (isinstance(tp, str) and tp and isinstance(tid, str) and tid):
+    rows, tid = transcript(ev), (ev or {}).get("tool_use_id")
+    if rows is None or not (isinstance(tid, str) and tid):
         return False
+    found = False
+    for o in rows:
+        for c in blocks(o):
+            if c.get("type") == "tool_use" and c.get("id") == tid:
+                found = isinstance(c.get("input"), dict) and c["input"].get("command") == cmd
+            elif c.get("type") == "tool_result" and c.get("tool_use_id") == tid:
+                found = False  # that call already ran (or was refused): not the one pending now
+    return found
+
+
+def transcript(ev):
+    """The parsed rows at the end of the event's transcript, or None if it can't be read."""
+    tp = (ev or {}).get("transcript_path")
+    if not (isinstance(tp, str) and tp):
+        return None
     try:
         with open(tp, "rb") as f:
             f.seek(0, 2)
             f.seek(max(0, f.tell() - TRANSCRIPT_TAIL))
             lines = f.read().splitlines()
     except OSError:
-        return False
-    found = False
+        return None
+    rows = []
     for line in lines:
         try:
             o = json.loads(line)
         except ValueError:
             continue
-        m = o.get("message") if isinstance(o, dict) else None
-        content = m.get("content") if isinstance(m, dict) else None
-        for c in content if isinstance(content, list) else ():
-            if not isinstance(c, dict):
-                continue
-            if c.get("type") == "tool_use" and c.get("id") == tid:
-                found = isinstance(c.get("input"), dict) and c["input"].get("command") == cmd
-            elif c.get("type") == "tool_result" and c.get("tool_use_id") == tid:
-                found = False  # that call already ran (or was refused): not the one pending now
-    return found
+        if isinstance(o, dict):
+            rows.append(o)
+    return rows
+
+
+def blocks(o):
+    m = o.get("message")
+    content = m.get("content") if isinstance(m, dict) else None
+    if isinstance(content, str):
+        return [{"type": "text", "text": content}]
+    return [c for c in content if isinstance(c, dict)] if isinstance(content, list) else []
+
+
+PROMPT_SKILLS = ("image-prompting", "video-prompting", "product-shots", "static-ads", "thumbnails", "ugc-video-ads")
+MODELS = HERE.parent / "references" / "models"
+
+
+def norm(s):
+    return " ".join(s.split())
+
+
+def prompts_in(x):
+    """Every string under a "prompt" key, at any depth (multi-shot bodies carry one per shot)."""
+    if isinstance(x, dict):
+        return [p for k, v in x.items() for p in ([v] if k == "prompt" and isinstance(v, str) else prompts_in(v))]
+    return [p for v in x for p in prompts_in(v)] if isinstance(x, list) else []
+
+
+def reviewed(ev, ep, params):
+    """None when, before this pending call, the model's notes were read, a prompting skill was loaded, and the client
+    saw every prompt in the request word for word and answered after it. Otherwise the reason to refuse.
+    JOI-016 (09.30.26): prompts written without the model notes or the skill, and run unseen, wasted the credits."""
+    rows, tid = transcript(ev) or [], (ev or {}).get("tool_use_id")
+    pos = max((i for i, o in enumerate(rows) for c in blocks(o) if c.get("type") == "tool_use" and c.get("id") == tid),
+              default=None)
+    if pos is None:
+        return "this submit is not in the session transcript."
+    before = rows[:pos]
+    files = [p.name for p in MODELS.glob("*.md") if f"`{ep}`" in p.read_text(encoding="utf-8", errors="replace")]
+    uses = [c for o in before if o.get("type") == "assistant" for c in blocks(o) if c.get("type") == "tool_use"]
+    read = [str(c.get("input", {}).get("file_path", "")).replace("\\", "/") for c in uses if c.get("name") == "Read"]
+    if not any("references/models/" in f and (not files or f.rsplit("/", 1)[-1] in files) for f in read):
+        return (f"the model's notes ({', '.join(files) or 'references/models/'}) were not read in this session before "
+                "this submit. Read the model file first (it holds the prompt rules for this model), then submit again.")
+    said = [c.get("text", "") for o in before if o.get("type") == "user" and not o.get("isMeta")
+            for c in blocks(o) if c.get("type") == "text"]
+    skill = [str(c.get("input", {}).get("skill", "")) for c in uses if c.get("name") == "Skill"]
+    if not any(s.endswith(n) for s in skill for n in PROMPT_SKILLS) and \
+            not any(f"{n}</command-name>" in t for t in said for n in PROMPT_SKILLS):
+        return ("no prompting skill was loaded in this session. Load higgsfield-superengine:image-prompting or "
+                "video-prompting (or the matching use-case skill) and write the prompt with it, then submit again.")
+    want = [norm(p) for p in prompts_in(params) if p.strip()]
+    if not want:
+        return None
+    shown = max((i for i, o in enumerate(before) if o.get("type") == "assistant" for c in blocks(o)
+                 if c.get("type") == "text" and all(w in norm(c.get("text", "")) for w in want)), default=None)
+    # ponytail: any real user message after the prompt counts as the reply; it does not judge yes vs no
+    answered = shown is not None and any(
+        o.get("type") == "user" and not o.get("isMeta") and any(c.get("type") == "text" and c.get("text", "").strip()
+                                                                for c in blocks(o)) for o in before[shown + 1:])
+    if not answered:
+        return ("the client has not seen this exact prompt. Show the full prompt text word for word (not a summary), "
+                "wait for their reply, then submit again.")
+    return None
 
 
 def in_plugin(cwd):
@@ -332,7 +401,7 @@ def amt(x):
     return f"{x:.9f}".rstrip("0").rstrip(".")
 
 
-def submit(script, args, cwd, mode):
+def submit(script, args, cwd, mode, ev=None):
     if len(args) != 2:
         return deny("submit takes exactly <endpoint> <body.json>. " + PLAIN)
     if not (isinstance(cwd, str) and os.path.isdir(cwd)):
@@ -371,6 +440,9 @@ def submit(script, args, cwd, mode):
     if not -hf_rest.SKEW <= age <= hf_rest.ESTIMATE_TTL:
         return deny(hf_rest.GATE_REASONS["estimate_stale" if age > 0 else "estimate_clock_skew"])
 
+    why = reviewed(ev, ep, params)
+    if why:
+        return deny(why + " Nothing was stamped or reserved.")
     v = pricing.price_bytes(raw)
     base = {"event": "spend_guard", "endpoint": ep, "estimate_key": key, "permission_mode": mode, "code": v["code"]}
 
@@ -538,11 +610,19 @@ def selftest():
         return {"type": "assistant", "message": {"role": "assistant", "content": [
             {"type": "tool_use", "id": tid, "name": tool, "input": ti}]}}
 
+    def said(text, who="assistant"):
+        return {"type": who, "message": {"role": who, "content": [{"type": "text", "text": text}]}}
+
+    # a reviewed job: prompting skill loaded, the model's notes read, every test prompt shown word for word, a reply
+    shown = said("Here is the exact prompt: a red mug on a table | five-hundred | never estimated. Good to go?")
+    prelude = [use("toolu_pre1", "Skill", {"skill": "higgsfield-superengine:image-prompting"}),
+               use("toolu_pre2", "Read", {"file_path": str(MODELS / "z-image.md")}), shown, said("yes", "user")]
+
     def ev(tool, ti, mode="default", cwd=ws, drop_mode=False, lines=None):
         """A real-shaped event plus its transcript. lines(tid) overrides the transcript (default: this call pending)."""
         seq[0] += 1
         tid, tp = f"toolu_selftest{seq[0]:04d}", tmp / f"t{seq[0]}.jsonl"
-        rows = lines(tid) if lines else [use(tid, tool, ti)]
+        rows = lines(tid) if lines else prelude + [use(tid, tool, ti)]
         tp.write_text("".join(json.dumps(x) + "\n" for x in rows), encoding="utf-8")
         d = {"session_id": "selftest", "transcript_path": str(tp), "cwd": str(cwd),
              "permission_mode": mode, "hook_event_name": "PreToolUse", "tool_name": tool, "tool_input": ti,
@@ -727,7 +807,7 @@ def selftest():
             os.environ.update(HF_SUPERENGINE_LEDGER_DIR=str(cfg))
             os.environ.pop("HF_SUPERENGINE_DRY_RUN", None)
             hf_rest.write_stamp = racing_write_stamp
-            res = submit(hf, [ep, b1], str(ws), "default")
+            res = submit(hf, [ep, b1], str(ws), "default", ev("Bash", {"command": sub_cmd(ep, b1)}))
         finally:
             hf_rest.write_stamp = real_ws
             os.chdir(old_cwd)
@@ -766,12 +846,37 @@ def selftest():
         e6["transcript_path"] = str(tmp / "missing.jsonl")
         check("R5 no transcript_path, or the transcript file is missing -> deny, nothing stamped",
               run(e5)[1] == "deny" and run(e6)[1] == "deny" and clean())
-        c, d, r = run(ev("Bash", {"command": cmd1}, lines=lambda tid: [{"type": "assistant", "message": {"content": [
+        c, d, r = run(ev("Bash", {"command": cmd1}, lines=lambda tid: prelude + [{"type": "assistant", "message": {"content": [
             {"type": "tool_use", "id": tid, "name": "Bash", "input": {"command": cmd1}},
             {"type": "tool_use", "id": "toolu_other", "name": "Read", "input": {"file_path": "x"}}]}}]))
         check("R6 the real call inside a parallel batch (not the last tool_use) -> allow", d == "allow", f"{d} {r}")
         ledger("refund", key, "--reason", "not_sent")
         stamp_of(ep, b1)[2].unlink(missing_ok=True)
+
+        # --- reviewed jobs only: model notes read, prompting skill loaded, prompt shown word for word + answered --
+        skill, read_ok, ask, yes = prelude
+        reviews = [
+            ("V1 the model's notes were never read -> deny (names z-image.md)", [skill, ask, yes], "z-image.md"),
+            ("V2 another model's notes were read, not this one's -> deny",
+             [skill, use("toolu_r", "Read", {"file_path": str(MODELS / "kling-3.md")}), ask, yes], "z-image.md"),
+            ("V3 no prompting skill loaded -> deny", [read_ok, ask, yes], "prompting skill"),
+            ("V4 the prompt was only summarised (not word for word) -> deny",
+             [skill, read_ok, said("I'll render a red mug, OK?"), yes], "exact prompt"),
+            ("V5 the prompt was shown but the client never replied -> deny", [skill, read_ok, yes, ask], "exact prompt"),
+        ]
+        for name, rows, word in reviews:
+            c, d, r = run(ev("Bash", {"command": cmd1}, lines=lambda tid, rows=rows: rows + [use(tid, "Bash",
+                                                                                               {"command": cmd1})]))
+            check(name, d == "deny" and word in r and clean(), f"{d} {r}")
+        slash = said("<command-name>/higgsfield-superengine:video-prompting</command-name>", "user")
+        c, d, r = run(ev("Bash", {"command": cmd1}, lines=lambda tid: [slash, read_ok, ask, yes,
+                                                                        use(tid, "Bash", {"command": cmd1})]))
+        check("V6 skill loaded by the client's slash command + notes + shown + answered -> allow", d == "allow", r)
+        ledger("refund", key, "--reason", "not_sent")
+        stamp_of(ep, b1)[2].unlink(missing_ok=True)
+        check("V7 prompts_in finds every shot's prompt in a multi-shot body",
+              sorted(prompts_in({"prompt": "c", "multi_prompt": [{"prompt": "a"}, {"prompt": "b"}], "n": 2}))
+              == ["a", "b", "c"])
 
         # --- deny list ------------------------------------------------------------------------------------------
         denies = [
