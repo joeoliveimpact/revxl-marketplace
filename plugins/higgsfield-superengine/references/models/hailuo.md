@@ -9,7 +9,7 @@
 ## Settings [DOCS 09.25.26]
 - Fixed 768P output; there is no `resolution` field.
 - `duration` 6 or 10 (default 6).
-- `prompt_optimizer` default **on**: it rewrites your prompt. Set it false to send your prompt as written.
+- `prompt_optimizer` default **on**: it rewrites your prompt. Set it false for any prompt written with video-prompting, or it rewrites the direction you built; leave it on only for a short, loose prompt. [DOCS 10.01.26]
 - Image-to-video: `image_url` required.
 - No audio, aspect or seed field. Whether it outputs audio is untested.
 

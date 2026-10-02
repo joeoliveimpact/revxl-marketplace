@@ -1,6 +1,6 @@
 # Seedance 2.5 (REST)
 
-The default video model. REST tops out at 720p; use Seedance 2.0 for 1080p/4k. Tags: see the legend in `references/model-picker.md`.
+The default video model. REST goes up to 1080p (DOCS 10.01.26); use Seedance 2.0 only for 4k. Tags: see the legend in `references/model-picker.md`.
 
 ## Endpoints
 - `bytedance/seedance-2.5/text-to-video`
@@ -11,7 +11,7 @@ The default video model. REST tops out at 720p; use Seedance 2.0 for 1080p/4k. T
 
 ## Settings [DOCS 09.25.26]
 - `duration` 4–30 s (default 5). Video-edit takes no `duration`: it follows the source (normalized to at least 4 s).
-- `resolution` 480p/720p (default 720p). `bitrate_mode` standard/high (default high). `generate_audio` default true. Text-to-video also has `output_format` mp4/mov.
+- `resolution` 480p/720p/1080p on all 5 endpoints (default 720p; 1080p costs about 2.5x 720p, so use it for the final, not drafts; an edit is never sharper than its source). `bitrate_mode` standard/high (default high). `generate_audio` default true. Text-to-video also has `output_format` mp4/mov.
 - `aspect_ratio` (text-to-video, reference-to-video): 16:9, 4:3, 1:1, 3:4, 9:16, 21:9 (default 16:9). Image-to-video has none: framing follows `image_url`, so crop the start frame to the target ratio first. Edit/extend follow the source video.
 - Image-to-video: `image_url` required, `end_image_url` optional, prompt optional.
 - Reference-to-video: at least one non-empty array; up to 30 images, 10 videos, 10 audio, 50 items total; video and audio are each normalized to 30 s total. Audio-only references are allowed.

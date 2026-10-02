@@ -9,7 +9,7 @@ Fast/Pro video with a camera enum; Fast goes up to 4k. Tags: see the legend in `
 ## Settings [DOCS 09.25.26]
 - `prompt` ≤5,000 chars. `duration` 6, 8 or 10 only (default 6).
 - Pro: `resolution` 720p/1080p, `fps` 24/25/50. Fast: 720p/1080p/2k/4k, 24/25/48/50 fps. Defaults 720p, 25 fps.
-- `aspect_ratio` 16:9 or 9:16 only (default 16:9). `generate_audio` default true.
+- `aspect_ratio` 16:9 or 9:16 only (default 16:9). It sets the output shape even in image-to-video, so set it to match the start image or a vertical still comes out 16:9. [DOCS 10.01.26] `generate_audio` default true.
 - `camera_movement`: dolly_in, dolly_out, dolly_left, dolly_right, jib_up, jib_down, static, focus_shift.
 - Image-to-video: `image_url` (first frame) plus optional `end_image_url`.
 

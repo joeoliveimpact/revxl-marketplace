@@ -54,6 +54,7 @@ Hold TESTED and DOCS as hard facts, AGREED as firm defaults, SINGLE-SOURCE as st
 ## 4. References
 
 - Give each reference **one narrow job**: what it controls and what it must not. Put the main subject first. List unused references as controlling nothing. [AGREED §3#2]
+- **Two or more references:** the first line of the prompt is a manifest in upload order, `IMAGE REFERENCES: image 1 = <what it is, what it controls>; image 2 = …`, and the body names each one by number plus a noun ("the cube from image 1"). Without it, Flare and Kling guessed and fused references into one object. [SINGLE-SOURCE: B3, official youtube-thumbnail skill; 1 client sample 10.01.26]
 - **Reference attached:** describe the action and the deliberate changes, not the identity. [AGREED §3#31] Things a reference can't lock (material, outfit rules) still get words. **No reference:** describe it fully, and repeat that description word for word every time. [SINGLE-SOURCE: D12, C3 (§4#7)]
 - Real faces: a face reference holds identity. For skin, add the real photo as a **second** reference and write "render skin to match the real photo" on every pass that touches the person. [SINGLE-SOURCE: A18, A20 (§4#5); SINGLE-SOURCE, field notes §5.2]
 - Style references: attach the client's own with a style-donor line ("Take only the visual render style and color grading. Never use the characters, inscriptions…"). Someone else's image (a competitor's ad or thumbnail): describe its style in words; don't attach it. [SINGLE-SOURCE: A6, A7, D4 (§4#36)]

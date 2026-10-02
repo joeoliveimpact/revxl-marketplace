@@ -25,10 +25,10 @@ Z-Image 800 chars · Ideogram 2,048 · Kling 2,500 top-level + 512 per shot (Kli
 - **Soul V2 / Cinema / Soul:** `resolution` 720p/1080p [720p], `aspect_ratio` [1:1; Soul 4:3], `batch_size` 1 or 4 [1], `seed`.
 - **Recraft V4.1:** resolution is fixed per endpoint (1k standard/utility, 2k pro); set `aspect_ratio` [1:1] and `output_format` [jpg].
 - **Ideogram 4.0:** `aspect_ratio` always [1:1, even with an input image]; `rendering_speed` [DEFAULT].
-- **Qwen Image 3:** `resolution` [1k]; `prompt_extend` + `enable_thinking` [both on; set both false to use your prompt as written].
+- **Qwen Image 3:** `resolution` [1k]; `prompt_extend` + `enable_thinking` [both on: a quality feature; both false only for exact, pixel-faithful edits].
 - **Grok Image 2.0:** `quality` low/medium [medium], `resolution` [1k], `aspect_ratio` [auto].
 - **Z-Image Turbo:** `resolution` [1k], `aspect_ratio` [1:1], `prompt_extend` [off].
-- **Seedance 2.5:** `resolution` [720p] (480p preview, then the hero [SINGLE-SOURCE: C17, A8]), `duration` [5], `generate_audio` [true], `aspect_ratio` on t2v/ref2v [16:9].
+- **Seedance 2.5:** `resolution` 480p/720p/1080p [720p] (480p preview, then the hero [SINGLE-SOURCE: C17, A8]; 1080p for finals), `duration` [5], `generate_audio` [true], `aspect_ratio` on t2v/ref2v [16:9].
 - **Seedance 2.0:** `resolution` 480p–4k [720p], `duration` 4–15 [5], `generate_audio` [true].
 - **Kling 3.0:** tier: validate on std, finish on pro or 4k [SINGLE-SOURCE: B3, C3]; `sound` [on], `duration` [5], `aspect_ratio` on t2v [16:9], `cfg_scale` [0.5]. Turbo: `resolution` [720p].
 - **Kling O3 / Omni:** `mode` [pro on most; std on O3 image-reference], `sound` on O3 [off], `duration`.
@@ -36,9 +36,9 @@ Z-Image 800 chars · Ideogram 2,048 · Kling 2,500 top-level + 512 per shot (Kli
 - **Cinema Studio 4.0:** `resolution` [720p], `duration` [5], `generate_audio` [true]; omit enums you want it to choose.
 - **Wan 3.0 / Prime:** `resolution` [1080p], `generate_audio` [true], `aspect_ratio` [adaptive], `enable_thinking` [false]. Wan 2.6/2.7: `resolution` [720p], `prompt_extend` [false].
 - **MiniMax H3:** resolution fixed "2K"; `duration` 5–15 [5]; `aspect_ratio` [auto].
-- **LTX-2.5:** `resolution` [720p], `fps` [25], `duration` 6/8/10 [6], `generate_audio` [true].
+- **LTX-2.5:** `aspect_ratio` [match the start image: it overrides the image's shape], `resolution` [720p], `fps` [25], `duration` 6/8/10 [6], `generate_audio` [true].
 - **PixVerse V6:** `resolution` [720p], `duration` [5], `generate_audio` [true].
-- **Hailuo 2.3:** fixed 768P; `duration` 6/10 [6]; `prompt_optimizer` [on].
+- **Hailuo 2.3:** fixed 768P; `duration` 6/10 [6]; `prompt_optimizer` [false for a prompt written with video-prompting; true only for a short, loose prompt].
 - **HappyHorse:** `resolution` [1.1: 1080p; 1.0: 720p], `duration` [5].
 - **Grok Video 1.5:** `resolution` [480p; references allow 480p/720p only], `duration` [5].
-- **Genjutsu:** `resolution` 480p/720p [720p].
+- **Genjutsu:** `resolution` 480p/720p/1080p [720p].

@@ -75,7 +75,7 @@ It prints one JSON line. Read `status`:
 
 `echo api.higgsfield.ai`
 
-This must be **blocked** with a message starting "Blocked by the higgsfield-superengine spend guard". Tell the client: "That block is good news. The plugin's safety guard is on."
+This must be **blocked** with a message starting "Blocked by the higgsfield-superengine spend guard". Tell the client: "That block is good news. The plugin's safety guard is on." Then name the two habits that keep it working: "Keep this plugin turned on for all your folders (install it for your user, not one project), because the guard only protects sessions where it's on. And don't run Higgsfield jobs in the mode that skips permission pop-ups (bypass): there the guard can't ask you, so it refuses anything over your cap."
 
 If it is NOT blocked (it just prints `api.higgsfield.ai`), the guards are not running. Usually Python was just installed and Claude started before it. Say: "Please close Claude completely, open it again in this same folder, and say 'continue Higgsfield setup'." Do not go on to the key while the guards are off: the guard that hides the key from Claude would not work.
 

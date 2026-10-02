@@ -102,7 +102,7 @@ Each call waits up to 9 minutes, because one command can't run longer than 10. R
 
 `& (Get-Content -Raw -Encoding UTF8 higgsfield\.python) "${CLAUDE_PLUGIN_ROOT}/scripts/hf_rest.py" download <request_id>`
 
-Files land in `higgsfield/<YYYY-MM-DD>/`. Name each path for the client, and show an image with the Read tool. `download_failed`: run it again (the links stay valid for at least 7 days).
+Files land in `higgsfield/<YYYY-MM-DD>/`. Name each path for the client, and show an image with the Read tool. For a video edit, compare the file with the source (frame rate, length, size; `references/video-edit-recipes.md`) and tell the client any difference before they cut it in. `download_failed`: run it again (the links stay valid for at least 7 days).
 
 Then offer: "Want a variation?" Any new or changed request starts again at step 2.
 

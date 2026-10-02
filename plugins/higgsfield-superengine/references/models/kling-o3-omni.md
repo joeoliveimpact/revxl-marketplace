@@ -17,7 +17,9 @@ Frame bridges, image references, video references and video edits on Kling. Not 
 - Video-edit: exactly one source in `video_urls` (O3 3–15.5 s, Omni 3–10 s, ≤200 MB); no `duration` (it follows the source). Video-reference: exactly one video.
 
 ## Prompting rules
-- Write prompts as for Kling 3.0 (`kling-3.md`). [SINGLE-SOURCE: playbook §5.26, reasoning only]
+- Generation (frames, image or video reference): write prompts as for Kling 3.0 (`kling-3.md`). [SINGLE-SOURCE: playbook §5.26, reasoning only]
+- References: no token syntax is documented for O3/Omni. With 2 or more images, open with a manifest (`IMAGE REFERENCES: image 1 = …; image 2 = …`) and name each by number plus a noun every time. Plain "image 1 / image 2" with no manifest fused two images into one object. [SINGLE-SOURCE: 1 client sample, video-edit 4k, 10.01.26]
+- Video-edit is untested for restyles: restyling a motion sketch with 2 image references froze the sketch's motion completely (1 sample, 10.01.26). Describe appearance only; don't re-script motion the source video already carries; no negatives; validate on std or pro before 4k. See `references/video-edit-recipes.md`.
 - Edits: describe only the change; on later rounds add "keep everything else exactly the same". [SINGLE-SOURCE: A17, A14]
 - Edit chains lose quality: at about round 4, regenerate fresh from a description of the current version. [SINGLE-SOURCE: A17]
 - No source covers O3/Omni video-reference or video-edit specifically (playbook §8 gap).
