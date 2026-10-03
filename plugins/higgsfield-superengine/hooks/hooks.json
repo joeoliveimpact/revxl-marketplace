@@ -1,5 +1,5 @@
 {
-  "description": "higgsfield-superengine guards (Python, run directly: py -3). (1) Spend guard on Bash/PowerShell/Monitor/Write/Edit: a paid hf_rest submit is priced and checked against the spend cap, then stamped (allow) or asked (a real click); raw api.higgsfield.ai calls, the higgsfield CLI/SDK, other ways into hf_rest and edits to the guard's files are denied; everything else passes untouched. Fails closed on Higgsfield commands. (2) No-look guard on browser/screen tools while an API key may be on screen. The routing hint (route_hint, in this folder) is built but not registered until Jev passes testing.",
+  "description": "higgsfield-superengine guards (Python: py -3 on Windows; hooks/hf-guard.sh on Mac/Linux, which finds Python itself. Each entry passes --only-on, so exactly one guard decides per OS). (1) Spend guard on Bash/PowerShell/Monitor/Write/Edit: a paid hf_rest submit is priced and checked against the spend cap, then stamped (allow) or asked (a real click); raw api.higgsfield.ai calls, the higgsfield CLI/SDK, other ways into hf_rest and edits to the guard's files are denied; everything else passes untouched. Fails closed on Higgsfield commands. (2) No-look guard on browser/screen tools while an API key may be on screen. The routing hint (route_hint, in this folder) is built but not registered until Jev passes testing.",
   "hooks": {
     "PreToolUse": [
       {
@@ -8,7 +8,13 @@
           {
             "type": "command",
             "command": "py",
-            "args": ["-3", "-B", "${CLAUDE_PLUGIN_ROOT}/hooks/hf_guard.py", "hook"],
+            "args": ["-3", "-B", "${CLAUDE_PLUGIN_ROOT}/hooks/hf_guard.py", "hook", "--only-on", "win32"],
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "sh",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/hf-guard.sh"],
             "timeout": 30
           }
         ]
@@ -19,7 +25,13 @@
           {
             "type": "command",
             "command": "py",
-            "args": ["-3", "-B", "${CLAUDE_PLUGIN_ROOT}/hooks/hf_guard.py", "hook"],
+            "args": ["-3", "-B", "${CLAUDE_PLUGIN_ROOT}/hooks/hf_guard.py", "hook", "--only-on", "win32"],
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "sh",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/hf-guard.sh"],
             "timeout": 10
           }
         ]

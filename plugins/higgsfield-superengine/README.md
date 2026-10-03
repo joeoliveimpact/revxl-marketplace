@@ -1,10 +1,10 @@
 # higgsfield-superengine
 
-> Higgsfield image and video generation, driven by Claude. Your own Higgsfield key, prompting best practices built in, and a price check before anything spends. Windows-first.
+> Higgsfield image and video generation, driven by Claude. Your own Higgsfield key, prompting best practices built in, and a price check before anything spends. Windows and Mac.
 
 ---
 
-## Status: released (v0.1.2)
+## Status: released (v0.1.3)
 
 Install it from the REVXL catalog. See CHANGELOG.md for what changed in each version.
 
@@ -33,8 +33,8 @@ Higgsfield can make great images and videos, but getting good results means know
 
 | Platform | Status |
 |----------|--------|
-| Windows | Primary target |
-| Mac | Key box is beta and untested |
+| Windows | Supported |
+| Mac | Supported since v0.1.3: setup installs its own Python (no admin password); the key is kept in the Keychain |
 
 ---
 

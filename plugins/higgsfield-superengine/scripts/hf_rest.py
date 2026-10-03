@@ -1183,10 +1183,11 @@ def selftest():
             codes = [c for c, _ in got]
             tally.update(r for c, r in got if c != 0)
             per_round.append(posts(SUB) - n0)
-            bad_rounds += not (per_round[-1] == 1 and codes.count(0) == 1 and codes.count(3) == len(codes) - 1
-                               and any(r == "stamp_reused" for _, r in got))
+            bad_rounds += not (per_round[-1] == 1 and codes.count(0) == 1 and codes.count(3) == len(codes) - 1)
+        # a real collision (stamp_reused) must show up, but not in every round: on Linux/macOS the scheduler often
+        # lets the winner move the stamp before the others look, so they see no_stamp (also a refusal, no POST)
         check(f"G14 race: 8 processes released together on one valid stamp, 10 rounds -> exactly 1 POST per round "
-              f"{per_round}; the others refused {dict(tally)}", bad_rounds == 0)
+              f"{per_round}; the others refused {dict(tally)}", bad_rounds == 0 and tally["stamp_reused"] > 0)
         rb = bodyfile("held.json", {"prompt": "held open"})
         run("estimate", EP, rb)
         p = stamp(EP, rb)

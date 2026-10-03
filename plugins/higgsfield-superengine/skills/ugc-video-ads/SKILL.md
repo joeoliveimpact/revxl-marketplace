@@ -17,7 +17,7 @@ Tags follow video-prompting's legend (TESTED / DOCS hard; AGREED firm defaults; 
 
 ## 0. Connection check (free)
 
-Before the questions, look for the file `higgsfield\.python` in the workspace folder (setup writes it). Missing: run `higgsfield-superengine:higgsfield-setup` first, then come back here with the request intact. Present: go ahead; hf-generate re-checks the key before anything spends. Nothing is spent here.
+Before the questions, look for the file `higgsfield/.python` in the workspace folder (setup writes it). Missing: run `higgsfield-superengine:higgsfield-setup` first, then come back here with the request intact. Present: go ahead; hf-generate re-checks the key before anything spends. Nothing is spent here.
 
 ## 1. Ask (4 questions at most, labeled options, skip what's known) [AGREED §3#5]
 

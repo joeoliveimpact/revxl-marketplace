@@ -27,7 +27,7 @@ Nothing reaches Higgsfield except `hf_rest.py submit`, after a fresh `estimate` 
 - Plain English for a busy coach. Gloss each term once, e.g. "estimate (a free price quote)".
 - Money decisions come from each command's JSON `class` field. Never guess. Never re-run a submit whose output says `"safe_to_resubmit": false`.
 - `<key>` below = the `estimate_key` that step 3 prints (the job's ID in the spend ledger). `<endpoint>` = the model's endpoint from its model file.
-- **Mac (beta, untested):** use the Bash tool and replace `& (Get-Content -Raw -Encoding UTF8 higgsfield\.python)` with `python3`. Paid submits are refused on a Mac for now (the spend guard runs only on Windows): say so, and stop after step 3.
+- **Mac:** use the Bash tool wherever a step says PowerShell tool, and start each Python command with `"$(cat higgsfield/.python)"` instead of `& (Get-Content -Raw -Encoding UTF8 higgsfield\.python)`. Everything else is the same, including the spend guard and its pop-ups.
 
 ## 1. Pick the model
 
@@ -113,7 +113,7 @@ Tell the client what went wrong in plain words, and whether anything was charged
 1. With the Write tool, put the details in `higgsfield/reports/report-body.md`: what the client asked for, the model and endpoint, the prompt text, the step that failed, and the output's `class`, `message`, `request_id` and `correlation_id`. Never the key.
 2. Draft it. Keep the summary short, in single quotes, with no apostrophes and no script names:
 
-`& (Get-Content -Raw -Encoding UTF8 higgsfield\.python) "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin higgsfield-superengine --plugin-version 0.1.2 --summary 'Video job failed on Seedance' --body-file higgsfield/reports/report-body.md --error-code job_failed`
+`& (Get-Content -Raw -Encoding UTF8 higgsfield\.python) "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin higgsfield-superengine --plugin-version 0.1.3 --summary 'Video job failed on Seedance' --body-file higgsfield/reports/report-body.md --error-code job_failed`
 
 3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
 4. Send, using the path after `DRAFT:`:
