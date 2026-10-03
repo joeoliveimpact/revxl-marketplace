@@ -46,18 +46,23 @@ Read `./references/legit-angles.md` in full and follow it exactly, from What you
 return to Close. Where this wrapper and the copy seem to differ on method, the copy
 wins, except where the reel-scripter hand-off below narrows what to return.
 
-**When reel-scripter calls it** (Step 1, before it proposes), it passes the topic,
-the voice anchor confirmed at its Checkpoint 0, the pull's Pattern Read and the
-(theme, hook) pairs already scripted. **reel-scripter's (theme, hook) dedupe rule
-governs** when it is the caller: a concept whose pair is already used is dropped
+**When reel-scripter calls it** (Step 1, before it proposes, on every reel), it passes the topic,
+the voice anchor confirmed at its Checkpoint 0, the pull's Pattern Read, the
+(theme, hook) pairs already scripted, and `candidates`: what the client brought (their
+own idea or thought, leftover angles they did not pick last time, a content-plan idea,
+an open loop). Return each candidate first, shaped like your other concepts, as option
+1 (then 2 ...), beside the fresh concepts, for reel-scripter to keep in its proposal; the client picks.
+Candidates are kept, never deduped away. **reel-scripter's (theme, hook) dedupe rule
+governs** the fresh concepts when it is the caller: a fresh concept whose pair is already used is dropped
 there, or named as a deliberate repeat, whatever this skill's own distinctness test
-says. Return the concepts; reel-scripter picks the 2 to 3 it proposes. Your stamp is recorded automatically once this skill is called and you then Read ./references/legit-angles.md; do not write a from: line. The call names its
+says. Return the concepts; reel-scripter picks the 2 to 3 fresh ones it proposes beside the candidates. Your stamp is recorded automatically once this skill is called and you then Read ./references/legit-angles.md; do not write a from: line. The call names its
 step in the args:
 
 ```
 Skill: shortform-superengine:angles
 args:  step: 1
        topic: <the reel's topic, or the brief's top attack theme>
+       candidates: <what the client brought, one per line: their idea or thought, each angles_unpicked[] leftover, a content-plan idea, an open-loop note; leave this line out when there is none>
        voice: <the voice anchor confirmed at Checkpoint 0>
        pattern_read: <the reel-build/ file named by reads.patternread in <project>/reel-build/goldmine-run.json, only when its reads.passed is true; else leave this line out>
        used: <the (theme, hook) pairs already scripted>

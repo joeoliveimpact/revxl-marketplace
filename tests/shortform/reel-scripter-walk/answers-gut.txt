@@ -9,7 +9,7 @@ double.check hook options against outliers ==> Yes, check them.
 Checkpoint 4 ==> Looks good, finish it.
 \bviral\b.{0,400}\bsuggestion|\bsuggestion.{0,400}\bviral\b ==> Use your top two suggestions.
 Checkpoint 3 ==> Go with your top-scored option.
-Checkpoint 2|approve the skeleton|skeleton.{0,80}approv ==> Approved, lock it.
+Checkpoint 2|approve the skeleton|skeleton.{0,80}approv[^.\n]{0,80}\? ==> Approved, lock it.
 Checkpoint 1|pick one angle|which angle ==> Option 1.
 Checkpoint 0|voice anchor|confirm.{0,60}voice|voice.{0,60}confirm ==> Yes, that voice is right. Go ahead.
 # The voice question: whether to use the voice guide / voice on file as-is, or a voice that does

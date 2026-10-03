@@ -44,7 +44,7 @@ registry id in parentheses.
 
 **Next moves**
 (E3)
-1. Script the top gap, in your voice, as the chosen angle. Say: "script the top gap"
+1. Script the top gap, in your voice, as option 1 at reel-scripter's Step 1. Say: "script the top gap"
 2. See it: `visuals/overview.html`, the reach ladder and the gaps. Say: "build my visual dashboards"
 3. Feed the winning themes into your brand brain, so later scripts lean on them. Say: "add these themes to my brand brain"
 4. *If `pulse.scheduled` is false:* keep this alive week to week, on your day. Say: "make the pulse weekly"

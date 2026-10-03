@@ -92,7 +92,8 @@ PROVENANCE (SKLLPLG-336: prose call lines were skipped in 4 of 4 walks; a gate i
    A stamp is stamp(name, project): the first 12 hex of sha256(SALT|name|project folder), so
    a stamp from another project, or a token typed by hand, fails. A missing file, or a missing
    or wrong stamp, fails with the Skill call and method-file Read that make it. The angles stamp is not required when the skeleton's
-   `angle_from: content-plan` (or `open-loop`, `unpicked`) says Step 1's proposal was skipped.
+   `angle_from: content-plan` (or `open-loop`, `unpicked`) names where the picked angle came
+   from (Step 1 still runs; that idea is its option 1).
    A `from:` stamp line (any of the six names) inside the skeleton or the angles file fails: stamps written into a
    skeleton stay on disk, and the next reel could copy them without calling the skills.
 6. Stamps are per run. When a skeleton passes every check, the gate replaces provenance.md
@@ -777,16 +778,19 @@ def storyboard_selftest():
 
 
 def selftest_hook():
-    """Feed hooks/stamp-on-skill.py sample PostToolUse stdin in a temp home and project. Each case
-    checks exit 0, empty stdout, no stamp-hook.log, and the lines provenance.md gains. A Skill
-    call alone opens a slot; the stamp comes from a later Read of the method file in the same
-    session. Stamps are computed here at run time for temp folders and never printed."""
+    """Feed hooks/stamp-on-skill.py sample PostToolUse, PreToolUse and UserPromptSubmit stdin in a
+    temp home and project. Each case checks the exit code of every run (0, or the case's own code
+    for its last run), stderr (empty, or the case's phrase on its last run), empty stdout, no
+    stamp-hook.log, the lines provenance.md gains, any stamp-pending.json keys the case names, and
+    an empty reel-build/ when the case says so.
+    A Skill call alone opens a slot; the stamp comes from a later Read of the method file in the
+    same session. Stamps are computed here at run time for temp folders and never printed."""
     import subprocess, tempfile
     hook = Path(__file__).resolve().parents[2] / "hooks" / "stamp-on-skill.py"
     root = hook.parent.parent
 
-    def payload(tool, inp, sid):
-        d = {"hook_event_name": "PostToolUse", "tool_name": tool, "tool_input": inp, "tool_response": "ok"}
+    def payload(tool, inp, sid, event="PostToolUse"):
+        d = {"hook_event_name": event, "tool_name": tool, "tool_input": inp, "tool_response": "ok"}
         if sid is not None:
             d["session_id"] = sid
         return json.dumps(d)
@@ -797,7 +801,23 @@ def selftest_hook():
     legit = lambda n: (root / "skills" / n / "references" / f"legit-{n}.md").as_posix()
     lines3 = (root / "skills" / "rehooks" / "references" / "step3-lines.md").as_posix()
     ang_win = legit("angles").replace("/", "\\")
-    # (name, fresh project, stdin, no marker so the cwd decides, skill names of the expected new lines)
+    # The order check (SKLLPLG-362, 366): ups is one user turn, pre the PreToolUse of a Skill call,
+    # run a whole sub-skill call (pre, the call, the Read of its method file).
+    pre = lambda skill, args="", sid="t": payload("Skill", {"skill": skill, "args": args}, sid, "PreToolUse")
+    up = lambda sid: json.dumps({"hook_event_name": "UserPromptSubmit", "session_id": sid, "prompt": "next"})
+    ups = up("t")
+    ask = payload("AskUserQuestion", {"questions": [{"question": "Which angle?"}]}, "t")
+    run = lambda n, args, method: [pre(sf + n, args), call(sf + n, args), rd(method)]
+    first = [ups, pre(sf + "reel-scripter")]
+    ang = [ups] + run("angles", "step: 1", legit("angles"))
+    step2 = [ups] + run("polarize", "step: 2", legit("polarize")) + run("rehooks", "step: 2", legit("rehooks"))
+    hk = [ups, ups] + run("hook", "step: 3-hook", legit("hook"))
+    l3 = [ups] + run("rehooks", "step: 3-lines", lines3)
+    reel = first + ang + step2 + hk + l3 + l3 + [ups] + run("viral", "step: 4a", legit("viral"))
+    # (name, fresh project, stdin, no marker so the cwd decides, skill names of the expected new lines
+    #  [, {"exit": code of the last run, "err": phrase its stderr must hold, "prov": provenance.md
+    #  text before the case, fresh or not (as the gate's pass rewrites it), "state": stamp-pending.json
+    #  keys after, "empty": reel-build/ holds no file after}])
     # stdin is one payload, or a list of payloads run as separate hook runs in order (one home and
     # project for all); the expected lines are what the whole list adds. A fresh project starts
     # with an empty reel-build/, so a no-stamp case cannot pass just because that folder is missing.
@@ -846,15 +866,64 @@ def selftest_hook():
         ("malformed stdin: no write", True, "{not json", False, []),
         ("no marker, cwd holds analysis-data.json: angles call, no stamp yet", True, call(sf + "angles"), True, []),
         ("no marker, then Read legit-angles.md: angles", False, rd(legit("angles")), True, ["angles"]),
+        ("order: second reel, provenance.md holds only a passed: line, rehooks with no angles call: blocked",
+         True, first + [ups, ups, pre(sf + "rehooks", "place rehook slots, skeleton: Hook")], False, [],
+         {"exit": 2, "err": "Call Skill shortform-superengine:angles", "prov": "passed: 0123456789abcdef\n"}),
+        ("order: a hand-typed angles line does not count: blocked", True, [ups, pre(sf + "rehooks", "step: 2")], False,
+         [], {"exit": 2, "err": "Step 1 has not run", "prov": "from: angles 0123456789ab\n"}),
+        ("order: angles, then rehooks in the same turn: blocked at Checkpoint 1", True,
+         first + ang + [pre(sf + "rehooks", "step: 2")], False, ["angles"], {"exit": 2, "err": "Checkpoint 1"}),
+        ("order: contra2 replay, rehooks 3-lines then viral in one turn: blocked at Checkpoint 3", True,
+         first + ang + step2 + hk + l3 + [pre(sf + "viral", "step: 4a")], False,
+         ["angles", "polarize", "rehooks", "hook", "rehookslines"], {"exit": 2, "err": "crossing Checkpoint 3"}),
+        ("order: the first reel, every step in its own turn: allowed", True, reel, False,
+         ["angles", "polarize", "rehooks", "hook", "rehookslines", "rehookslines", "viral"],
+         {"state": {"turn": 7, "top": 5, "at": 7}}),
+        ("order: then a hook call in viral's turn (backward): allowed, top stays 5", False,
+         run("hook", "step: 3-hook", legit("hook")), False, ["hook"], {"state": {"turn": 7, "top": 5, "at": 7}}),
+        ("order: then the gate's pass leaves only passed:, rehooks 4b in viral's turn: top resets to 5, allowed (a fix call)",
+         False, [pre(sf + "rehooks", "step: 4b")], False, [],
+         {"exit": 0, "state": {"top": 5}, "prov": "passed: 0123456789abcdef\n"}),
+        ("order (M2a): same session, passed: only, a second reel's rehooks step 2 with no new angles call: blocked",
+         False, [ups, pre(sf + "rehooks", "step: 2")], False, [],
+         {"exit": 2, "err": "Step 1 has not run", "prov": "passed: 0123456789abcdef\n"}),
+        ("order: passed: only, reel-scripter again, then rehooks 4b a turn later: allowed, a fix call", False,
+         [ups, pre(sf + "reel-scripter"), ups, pre(sf + "rehooks", "step: 4b")], False, [],
+         {"prov": "passed: 0123456789abcdef\n"}),
+        ("order (M2c): passed: only, angles call and Read, then rehooks step 2 a turn later: allowed", False,
+         [ups] + run("angles", "step: 1", legit("angles")) + [ups] + run("rehooks", "step: 2", legit("rehooks")),
+         False, ["angles", "rehooks"], {"prov": "passed: 0123456789abcdef\n"}),
+        ("order: a new session, passed: only, reel-scripter then rehooks step 2: blocked, angles", False,
+         [json.dumps({"hook_event_name": "UserPromptSubmit", "session_id": "u", "prompt": "next"}),
+          payload("Skill", {"skill": sf + "reel-scripter", "args": ""}, "u", "PreToolUse"),
+          json.dumps({"hook_event_name": "UserPromptSubmit", "session_id": "u", "prompt": "next"}),
+          payload("Skill", {"skill": sf + "rehooks", "args": "step: 2"}, "u", "PreToolUse")], False, [],
+         {"exit": 2, "err": "Call Skill shortform-superengine:angles", "prov": "passed: 0123456789abcdef\n"}),
+        ("order (M2b): a new session, passed: only, a hook call (Checkpoint 4 fix): allowed", False,
+         [up("w"), pre(sf + "hook", "step: 3-hook", "w"), call(sf + "hook", "step: 3-hook", "w"),
+          rd(legit("hook"), "w")], False, ["hook"], {"prov": "passed: 0123456789abcdef\n"}),
+        ("order: garbage stdin exits 0 and is no turn; angles in reel-scripter's turn: blocked at Checkpoint 0",
+         True, first + ["{not json", pre(sf + "angles", "step: 1")], False, [],
+         {"exit": 2, "err": "crossing Checkpoint 0"}),
+        ("order (M1): a prompt in session b leaves session t's state alone; rehooks step 2 a turn later: allowed",
+         True, first + ang + [up("b"), ups] + run("rehooks", "step: 2", legit("rehooks")), False,
+         ["angles", "rehooks"], {"state": {"session": "t", "turn": 2, "top": 2, "at": 2}}),
+        ("order (M1): a prompt from a session with no state: no file", True, [up("b")], False, [], {"empty": True}),
+        ("order (M3): angles, an AskUserQuestion answer, then polarize: allowed", True,
+         first + [ups] + run("angles", "step: 1", legit("angles")) + [ask] + run("polarize", "step: 2", legit("polarize")),
+         False, ["angles", "polarize"], {"state": {"turn": 2, "top": 2, "at": 2}}),
     ]
     ok = 0
     with tempfile.TemporaryDirectory() as t:
         proj = None
-        for k, (name, fresh, stdin, cwd_mode, want) in enumerate(cases):
+        for k, (name, fresh, stdin, cwd_mode, want, *x) in enumerate(cases):
+            x = x[0] if x else {}
             if fresh or proj is None:
                 proj = Path(t) / f"proj{k}"
                 (proj / "reel-build").mkdir(parents=True)
                 (proj / "analysis-data.json").write_text("{}", encoding="utf-8")
+            if "prov" in x:
+                (proj / "reel-build" / "provenance.md").write_text(x["prov"], encoding="utf-8", newline="\n")
             home = Path(t) / f"home{k}"
             if not cwd_mode:
                 st = home / ".claude" / "shortform-superengine"
@@ -869,13 +938,23 @@ def selftest_hook():
             rs = [subprocess.run([sys.executable, str(hook)], input=s.encode("utf-8"), capture_output=True,
                                  env=env, cwd=str(proj if cwd_mode else t), timeout=60)
                   for s in ([stdin] if isinstance(stdin, str) else stdin)]
-            code, out = max(r.returncode for r in rs), b"".join(r.stdout for r in rs)
+            codes, out = [r.returncode for r in rs], b"".join(r.stdout for r in rs)
+            errs = [r.stderr.decode("utf-8", "replace") for r in rs]
             now = prov.read_text(encoding="utf-8") if prov.exists() else ""
             exp = was + "".join(f"from: {n} {stamp(n, proj)}\n" for n in want)
-            fine = code == 0 and not out and now == exp and not (proj / "reel-build" / "stamp-hook.log").exists()
+            pend = proj / "reel-build" / "stamp-pending.json"
+            st = json.loads(pend.read_text(encoding="utf-8")) if pend.exists() else {}
+            err_ok = not any(errs[:-1]) and (x["err"] in errs[-1] if "err" in x else not errs[-1])
+            st_ok = all(st.get(key) == v for key, v in x.get("state", {}).items())
+            st_ok = st_ok and not (x.get("empty") and any((proj / "reel-build").iterdir()))
+            fine = (codes == [0] * (len(rs) - 1) + [x.get("exit", 0)] and err_ok and st_ok and not out and now == exp
+                    and not (proj / "reel-build" / "stamp-hook.log").exists())
             ok += fine
-            say(f"{'ok ' if fine else 'BAD'} {name}: exit {code}, stdout {'empty' if not out else 'NOT empty'}, "
-                f"provenance.md {'as expected' if now == exp else 'NOT as expected'}")
+            say(f"{'ok ' if fine else 'BAD'} {name}: exit {codes[-1]}, expected {x.get('exit', 0)}"
+                f"{'' if codes[:-1] == [0] * (len(rs) - 1) else ', an earlier run NOT 0'}, stderr "
+                f"{'as expected' if err_ok else 'NOT as expected'}, stdout {'empty' if not out else 'NOT empty'}, "
+                f"provenance.md {'as expected' if now == exp else 'NOT as expected'}"
+                f"{'' if st_ok else ', stamp-pending.json or reel-build/ NOT as expected'}")
     sb_ok, sb_n = storyboard_hook_selftest()
     gm_ok, gm_n = goldmine_hook_selftest()
     ok, n = ok + sb_ok + gm_ok, len(cases) + sb_n + gm_n

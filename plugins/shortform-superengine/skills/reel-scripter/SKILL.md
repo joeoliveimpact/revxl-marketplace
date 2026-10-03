@@ -30,7 +30,7 @@ Every ending routes. Edge ids: `../_shared/references/journey-map.md`. Block gra
 
 **Next moves ... script written**
 (E6) the script is on disk with its evidence line. Pick the next move off it.
-1. *If `angles_unpicked[]` is not empty:* the next Step 1 angle, already vetted. Say: "script the next angle"
+1. *If `angles_unpicked[]` is not empty:* a leftover angle, option 1 at Step 1. Say: "script the next angle"
 2. *If it is empty:* build the week's plan so the next reel has a source. Say: "content plan"
 3. Let me know when you record and where I can access the raw video(s). No editor-superengine? Ask me to install it from the RevXL marketplace first. Say: "cut this reel" (if installed)
 4. *If `pulse.scheduled` is false:* next week's winners land here. Say: "run the weekly pulse"
@@ -61,8 +61,8 @@ The field read comes first.
 3. Park the reel and pick it up later. Say: "what's next in shortform"
 
 **Next moves ... an idea picked from the content plan**
-(E7) an idea arrived from `content-plan` as the chosen angle.
-1. Script it: idea N is the angle, the run starts at Checkpoint 0. Say: "script idea N from my content plan"
+(E7) an idea arrived from `content-plan`.
+1. Script it: idea N is option 1 at Step 1, after Checkpoint 0. Say: "script idea N from my content plan"
 2. *If no `content-plan-<week>.md` is on disk (E0):* build the plan first. Say: "content plan"
 3. Prefer a field angle? Step 1 proposes 2 to 3 off the analysis. Say: "write a reel script"
 
@@ -166,9 +166,11 @@ is the fast path, the files are the truth when they disagree. Exclude used `(the
 pairs unless nothing else remains; a deliberate repeat says so: "you scripted this pairing
 on <date of that file>".
 
-From `scripting-brief.md`, propose **2 to 3 concrete reel angles**, each = {attack theme ×
+**Step 1 always runs: call `angles` first** (args, then the `--angles` check:
+`./references/pipeline-detail.md` "Step 1 propose"). What the client brings (their idea, an `angles_unpicked[]` leftover, a plan idea, an
+open loop) goes in as option 1 beside fresh ones; the client picks. From `scripting-brief.md`,
+propose **2 to 3 concrete reel angles**, each = {attack theme ×
 winning hook type × the gap it closes}, evidence cited (`@handle · metric · reel URL`).
-Example shape: `./references/pipeline-detail.md` "Step 1 propose".
 
 **Custom-idea field vet (mandatory when the user brings their OWN topic).** A brief-derived
 angle is field-backed; a user-supplied idea is not. Vet it before committing beats:
@@ -183,19 +185,12 @@ branches: `./references/pipeline-detail.md` "Step 1 field vet".
 **Deeper field layer (optional, detect-first):** `./references/pipeline-detail.md` "Step 1 deeper field layer".
 
 **Persist the angles not taken.** On the Checkpoint 1 pick, write every other proposed angle
-to `state.angles_unpicked[]` as `{angle, from, opened}`, so "script the next angle" survives
-a session boundary. Step 5 removes the one scripted.
+to `state.angles_unpicked[]` as `{angle, from, opened}`, so a later Step 1 can offer them.
+Step 5 removes the one scripted.
 
 **Stamps.** A Skill call, then a Read of its method file, records the stamp; never write or edit a `from:` line.
 In `<project>/reel-build/provenance.md` you write only `goldmine:` (the hook skill's step).
 The gate clears it on a pass.
-
-**Before Checkpoint 1:** save the proposals to `<project>/reel-build/angles-<date>.md`, then
-run once (again only after a FAIL):
-
-```bash
-python "${CLAUDE_PLUGIN_ROOT}/skills/reel-scripter/structure_gate.py" --angles <that file>
-```
 
 ### ✋ Checkpoint 1 — Pick one angle
 **Pause.** The user picks one angle (or redirects). Everything downstream serves that one move.
@@ -232,8 +227,7 @@ visual_loop: none
 5. CTA [close L1, L3]
 ```
 
-`[hold ID]` = the beat deepens a loop already open; an untagged beat is flat. No Step 1
-(content plan, parked reel): `angle_from: content-plan` (or `open-loop`, `unpicked`).
+`[hold ID]` = the beat deepens a loop already open; an untagged beat is flat.
 `angle_kind:` (required), a `body-structures.md` bucket: question, numbered/list,
 myth-bust/negation, contrarian/curiosity, pain-callout, personal/story, statement.
 Myth-bust and contrarian add `Other side [hold L1]` after the secondary hook.
@@ -330,8 +324,8 @@ exactly as at Checkpoint 0, then render **script written (E6)** above.
 
 ## Content plan
 
-"script idea N from my content plan": idea N of the newest `content-plan-<week>.md` is the
-angle; run Checkpoint 0, then Step 2 (detail: `./references/pipeline-detail.md` "Content
+"script idea N from my content plan": idea N of the newest `content-plan-<week>.md` is
+option 1; run Checkpoint 0, then Step 1 (detail: `./references/pipeline-detail.md` "Content
 plan"). No plan on disk is a missing prereq (E0).
 "script that reel": only when the compass's `reel-scripter` loop line offered it, that entry's `open_loops` note is the
 direction; run from Checkpoint 0, keeping that entry (no second one). Off any other block (a pulse

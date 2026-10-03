@@ -61,9 +61,16 @@ ev = [json.loads(l) for l in raw.splitlines() if l.strip().startswith("{")]
 inits = [e for e in ev if e.get("type") == "system" and e.get("subtype") == "init"]
 res = next((e for e in reversed(ev) if e.get("type") == "result"), {})
 
-# One flat, ordered list of what happened: ("skill", name, step), ("read", path), ("text", text), ("tool", name, input).
-seq = []
+# One flat, ordered list of what happened: ("skill", name, step, turn, blocked), ("read", path), ("text", text),
+# ("tool", name, input). turn: the result events before it (one per user turn). blocked: its tool_result is an
+# error (a plugin hook stopped it), so it never ran and counts as no call.
+errored = {c.get("tool_use_id") for e in ev if e.get("type") == "user"
+           and isinstance(e.get("message", {}).get("content"), list) for c in e["message"]["content"]
+           if isinstance(c, dict) and c.get("type") == "tool_result" and c.get("is_error")}
+seq, turn = [], 0
 for e in ev:
+    if e.get("type") == "result":
+        turn += 1
     if e.get("type") != "assistant":
         continue
     for c in e.get("message", {}).get("content", []):
@@ -73,7 +80,8 @@ for e in ev:
                 a = inp.get("args", "")
                 a = a if isinstance(a, str) else json.dumps(a)
                 m = re.search(r"(?i)\bstep(?:[ \t]*[:=][ \t]*|[ \t]+)([0-9A-Za-z][\w.-]*)", a)
-                seq.append(("skill", inp.get("skill") or inp.get("command") or "", m.group(1).lower() if m else None))
+                seq.append(("skill", inp.get("skill") or inp.get("command") or "", m.group(1).lower().rstrip(".") if m else None,
+                            turn, c.get("id") in errored))
             elif name == "Read":
                 seq.append(("read", inp.get("file_path", "")))
             else:
@@ -140,7 +148,7 @@ side_kind = kind in gate.SIDE_KINDS
 
 # Required calls, placed by skill name + a step token parsed from the args (step: X, step=X or
 # step X, any case; None = no token). Models paraphrase the template's step line, so this is tolerant.
-calls = [(k, s[1][len(SF):], s[2]) for k, s in enumerate(seq) if s[0] == "skill" and s[1].startswith(SF)]
+calls = [(k, s[1][len(SF):], s[2]) for k, s in enumerate(seq) if s[0] == "skill" and s[1].startswith(SF) and not s[4]]
 REQ = [("angles", "1"), ("rehooks", "2"), ("rehooks", "3-lines"), ("hook", "3-hook"), ("viral", "4a-viral")]
 if side_kind:
     REQ.insert(2, ("polarize", "2"))
@@ -164,8 +172,10 @@ def method_read(k, folder, fname):
 
 
 rh2 = [k for k, st in of("rehooks")[:1] if st in (None, "2", "slots")]
+first_use = min((k for k, n, _ in calls if n in ("rehooks", "polarize", "hook", "viral")), default=len(seq))
 PLACE = {
-    ("angles", "1"): ([k for k, _ in of("angles")], "any call"),
+    ("angles", "1"): ([k for k, _ in of("angles") if k < first_use],
+                      f"a call before the first rehooks, polarize, hook or viral call (item {first_use})"),
     ("polarize", "2"): ([k for k, _ in of("polarize")], "any call"),
     ("rehooks", "2"): (rh2, "the first rehooks call, step 2, slots or none"),
     ("hook", "3-hook"): ([k for k, st in of("hook") if st in (None, "3", "3-hook") and rh2 and k > rh2[0]],
@@ -218,6 +228,25 @@ for k, s in enumerate(seq):
             copied.append(f"item {k} {s[1]} {json.dumps(inp)[:200]}")
 crit("N no stamp copied from a file", not copied, "; ".join(copied) if copied else
      "no Read of a wrapper SKILL.md; no search for 'from:' in one or in step3-lines.md")
+
+# K: checkpoints hold. Steps as hooks/stamp-on-skill.py maps them. A call above the highest step reached,
+# in the same user turn as the last call at that step, crossed a checkpoint without the user.
+# ponytail: "an earlier rehooks call" stands in for the hook's valid-rehooks-stamp test on a rehooks call
+# with no step token; read provenance history if the two ever disagree.
+STEPS = {"reel-scripter": 0, "angles": 1, "rehooks": 2, "polarize": 2, "hook": 3, "viral": 5}
+top, at, rehooked, crossed = 0, None, False, []
+for k, n, st in calls:
+    st, s = st and st.rstrip("."), STEPS.get(n)
+    if n == "rehooks":
+        s = 4 if st in ("3", "3-lines") or (st is None and rehooked) else 5 if st and st.startswith("4") else 2
+        rehooked = True
+    if s is None:
+        continue
+    if s > top and at == seq[k][3]:
+        crossed.append(f"item {k} {n} (step {s}) in turn {seq[k][3]} crosses Checkpoint {min(top, 3)}")
+    if s <= 1 or s >= top:
+        top, at = s, seq[k][3]
+crit("K checkpoints hold", not crossed, "; ".join(crossed) if crossed else "no step rose inside one user turn")
 
 # Gate: (a) the transcript ran the gate on the final skeleton and its last verdict line is PASS
 # (shell lines after it, like `EXIT:0`, are not gate output), and (b) the real project's
@@ -352,6 +381,7 @@ if run2:
 
 print("Skill calls (item in the call/Read/text sequence, skill, step):", [(k, n, st) for k, n, st in calls])
 print("Other Skill calls:", [s[1] for s in seq if s[0] == "skill" and not s[1].startswith(SF)])
+print("Blocked Skill calls (item, skill, turn):", [(k, s[1], s[3]) for k, s in enumerate(seq) if s[0] == "skill" and s[4]])
 prov = PROJ / "reel-build" / "provenance.md"
 print("provenance.md:", prov.read_text("utf-8-sig").splitlines() if prov.exists() else "missing")
 print(f"result: subtype={res.get('subtype')} turns={res.get('num_turns')} cost=${res.get('total_cost_usd')} is_error={res.get('is_error')}")

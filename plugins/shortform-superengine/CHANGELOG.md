@@ -87,6 +87,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   above it.
 - **Walk rig** (tests/shortform/reel-scripter-walk): `probe-storyboard.sh` is a one-command
   live proof that the storyboard hook fires and the model fixes the file (SKLLPLG-367).
+- **Checkpoints hold and Step 1 always runs** (SKLLPLG-362, SKLLPLG-366). Walks skipped Step 1
+  and, on a second reel, ran every sub-skill call in one turn and picked the options themselves,
+  because the gate checked that each call happened, never when. `hooks/stamp-on-skill.py` now
+  also runs on UserPromptSubmit and on PostToolUse AskUserQuestion (it counts the user's turns,
+  only for the session that owns the reel) and on PreToolUse Skill. It blocks (exit 2, the
+  reason shown to the model) a Step 2 or later sub-skill call when `reel-build/provenance.md`
+  holds no valid angles stamp, and a call that moves to a later step in the same user turn as
+  the last call at the furthest step reached (a checkpoint crossed without the user). Going
+  back a step is allowed. After the gate passes, Step 3 or later calls are fix calls allowed in
+  any session, and a Step 2 call starts a new reel that needs a fresh angles call. Step 1 is
+  never skipped: what the client brings (their own idea, leftover unpicked angles, a
+  content-plan idea, an open loop) goes into the angles call as `candidates` and comes back as
+  option 1 beside fresh options. The `--angles` instruction moved from SKILL.md to
+  pipeline-detail.md "Step 1 propose". Walk grader: angles must come before the first rehooks,
+  polarize, hook or viral call; new criterion K "checkpoints hold"; calls a hook blocked count
+  as no call; a step token's trailing period is ignored. The walk's simulated client approves
+  the skeleton only when asked a question.
 
 ## [0.4.2] ... 2026-09-11
 

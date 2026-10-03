@@ -87,12 +87,13 @@ winning hook type × the gap it closes}, with the evidence cited (`@handle · me
 from the analysis). Example shape: *"Myth-bust on [under-served high-value theme] ... the field's
 myth-bust hooks median Nx the client's; closes the [gap] gap."*
 
-**Widen the set with `angles` first.** Before proposing, call the angles skill once with the Skill tool (its stamp counts only from that call plus a Read of its method file):
+**Widen the set with `angles` first, every reel.** Before proposing, call the angles skill once with the Skill tool (its stamp counts only from that call plus a Read of its method file). Step 1 is never skipped: whatever the client brings (their own idea or thought, the leftover angles in `state.angles_unpicked[]`, a content-plan idea, an open loop) goes in as `candidates`, and comes back as option 1 (then 2 ...) beside fresh options. On a plain "write a reel script" with leftovers on file, pass them: the client picks a leftover, a fresh angle, or both to weigh. A plugin hook blocks any Step 2 or later sub-skill call until this call and its Read have run for this reel.
 
 ```
 Skill: shortform-superengine:angles
 args:  step: 1
        topic: <the reel's topic, or the brief's top attack theme>
+       candidates: <what the client brought, one per line: their idea or thought, each angles_unpicked[] leftover, a content-plan idea, an open-loop note; leave this line out when there is none>
        voice: <the voice anchor confirmed at Checkpoint 0>
        pattern_read: <the reel-build/ file named by reads.patternread in <project>/reel-build/goldmine-run.json, only when its reads.passed is true; else leave this line out>
        used: <the (theme, hook) pairs already scripted>
@@ -104,6 +105,13 @@ Skill tool and then Read its method file (the Checkpoint 1 gate reads it there);
 (theme, hook) dedupe rule in `SKILL.md` Step 1 governs: a concept whose pair is already used
 is dropped or named as a deliberate repeat, whatever angles ranked it. A myth-bust or
 contrarian angle is proposed as it stands; `polarize` runs at Step 2, for its Other side beat.
+
+**Before Checkpoint 1:** save the proposals to `<project>/reel-build/angles-<date>.md`, then
+run once (again only after a FAIL):
+
+```bash
+python "${CLAUDE_PLUGIN_ROOT}/skills/reel-scripter/structure_gate.py" --angles <that file>
+```
 
 ## Step 1 field vet ... the report and the verdict branches
 
@@ -356,7 +364,8 @@ which builds a source-tagged pool from four sources instead of this skill's one.
 The client's phrase for it is "content plan". It is `content-plan`'s pool, not this skill's.
 Coming back with an idea ("script idea N from my content plan"), read
 `<project>/content-plan-<newest week>.md` and take idea N, with its source tag and angle, as
-the chosen angle. Step 1's proposal is skipped; the guardrails are not.
+option 1 at Step 1 (passed to `angles` as a candidate), beside fresh options; the client picks.
+Step 1 is never skipped, and neither are the guardrails.
 
 ## Guardrails
 

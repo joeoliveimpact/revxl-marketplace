@@ -11,7 +11,7 @@ description: >
   "lean the plan toward <pillar>", "rebuild the pool, lean <pillar>",
   "refresh next week's plan".
   Writes <project>/content-plan-<YYYY-Www>.md and state.plan, and hands a picked
-  idea to reel-scripter as the chosen angle. Shortform MAKE stage: it plans the
+  idea to reel-scripter as option 1 at its Step 1. Shortform MAKE stage: it plans the
   week that reel-scripter then writes.
 ---
 
@@ -35,14 +35,14 @@ first.
 
 **Next moves ... plan written**
 (E21) the plan is on disk. Pick the next thing to do with it.
-1. Script the strongest idea now ... it goes into reel-scripter Step 1 as the chosen angle, evidence attached. Say: "script idea N from my content plan"
+1. Script the strongest idea now ... it goes into reel-scripter Step 1 as option 1 beside fresh angles, evidence attached. Say: "script idea N from my content plan"
 2. Tilt the week toward one pillar ... same sources, different balance. Say: "lean the plan toward <pillar>"
 3. Keep the pool fed ... next week rebuilds off the weekly pulse's new winners. Say: "refresh next week's plan"
 4. Read how last week actually performed before you commit to this one. Say: "read last week's results" (if installed)
 
 **Next moves ... idea picked**
 (E7) an idea came out of the plan, carrying its source tag and its evidence.
-1. Write it ... reel-scripter takes the idea as the chosen angle with its source tag and evidence, and its Checkpoint 0 voice rules still apply. Say: "script that reel"
+1. Write it ... reel-scripter takes the idea into Step 1 as option 1, with its source tag and evidence, and its Checkpoint 0 voice rules still apply. Say: "script that reel"
 2. Take a different idea instead. Say: "script idea N from my content plan"
 3. Rebalance the week first, then script. Say: "lean the plan toward <pillar>"
 
