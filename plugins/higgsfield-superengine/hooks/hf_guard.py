@@ -2,6 +2,8 @@
 """hf_guard.py - the PreToolUse hooks of the higgsfield-superengine plugin. Standard library only, Python 3.9+.
 
   hf_guard.py hook                      the hook (hooks.json): one PreToolUse JSON on stdin -> a decision or nothing
+  hf_guard.py hook --only-on win32|posix   the same, but silent (exit 0) on the other OS: hooks.json starts it
+                                        with py on Windows and through hf-guard.sh on Mac/Linux
   hf_guard.py no-look on|off|status     the no-look flag (higgsfield-setup). "off" is the client's confirmation:
                                         the hook turns that command into a real click ("ask")
   hf_guard.py --selftest                offline checks: real hook processes fed real-shaped hook JSON
@@ -615,6 +617,10 @@ def run_hook():
 def main(argv):
     if argv == ["hook"]:
         return run_hook()
+    if argv[:2] == ["hook", "--only-on"] and len(argv) == 3 and argv[2] in ("win32", "posix"):
+        # hooks.json starts the guard twice (py on Windows, sh on Mac/Linux); exactly one of them decides
+        here = "win32" if sys.platform == "win32" else "posix"
+        return run_hook() if argv[2] == here else 0
     if argv[:1] == ["no-look"]:
         return cmd_no_look(argv[1:])
     if argv == ["--selftest"]:
@@ -713,9 +719,9 @@ def selftest():
 
     shapes_ok = []
 
-    def run(event, proc_cwd=tmp, extra=None):
+    def run(event, proc_cwd=tmp, extra=None, args=("hook",)):
         e = dict(env, **(extra or {}))
-        r = subprocess.run([sys.executable, "-B", me, "hook"], input=json.dumps(event).encode(), cwd=str(proc_cwd),
+        r = subprocess.run([sys.executable, "-B", me, *args], input=json.dumps(event).encode(), cwd=str(proc_cwd),
                            env=e, capture_output=True, timeout=60)
         text = r.stdout.decode("utf-8", "replace").strip()
         if not text:
@@ -1098,6 +1104,14 @@ def selftest():
         (cfg / "no-look.json").unlink()
 
         # --- plumbing -------------------------------------------------------------------------------------------
+        here, other = ("win32", "posix") if sys.platform == "win32" else ("posix", "win32")
+        probe = ev("Bash", {"command": "echo api.higgsfield.ai", "description": "x"})
+        check(f"O1 hook --only-on {here} (this OS) decides like plain hook: the raw-API echo is denied",
+              run(probe, args=("hook", "--only-on", here))[:2] == (2, "deny") == run(probe)[:2])
+        r_other = subprocess.run([sys.executable, "-B", me, "hook", "--only-on", other], input=json.dumps(probe)
+                                 .encode(), cwd=str(tmp), env=env, capture_output=True, timeout=60)
+        check(f"O2 hook --only-on {other} (the other OS) is silent: exit 0, no output, so one guard decides per OS",
+              r_other.returncode == 0 and not r_other.stdout.strip() and not r_other.stderr.strip())
         check("H every decision carried hookEventName + permissionDecisionReason (and deny <=> exit 2): "
               f"{len(shapes_ok)} decisions", shapes_ok and all(shapes_ok))
         hj = json.loads((HERE / "hooks.json").read_text(encoding="utf-8"))
@@ -1113,8 +1127,13 @@ def selftest():
               "timeout 30 > the 10 s ledger lock; UserPromptSubmit NOT registered (4.3 off)",
               all(fires(t) for t in ("Bash", "PowerShell", "Monitor", "Write", "Edit", batch[0], shot[0], cu[0],
                                      chrome[0], prev[0], "mcp__computer-use__computer_batch")) and not fires("Read")
-              and all(h.get("args", [None])[-1] == "hook" and "${CLAUDE_PLUGIN_ROOT}/hooks/hf_guard.py" in h["args"]
-                      for h in cmds) and pre[0]["hooks"][0]["timeout"] >= 30 and "UserPromptSubmit" not in hj["hooks"])
+              and all(sorted((h["command"], tuple(h["args"])) for h in g["hooks"]) == sorted([
+                  ("py", ("-3", "-B", "${CLAUDE_PLUGIN_ROOT}/hooks/hf_guard.py", "hook", "--only-on", "win32")),
+                  ("sh", ("${CLAUDE_PLUGIN_ROOT}/hooks/hf-guard.sh",))]) for g in pre)
+              and all(h["timeout"] >= 30 for h in pre[0]["hooks"]) and "UserPromptSubmit" not in hj["hooks"])
+        launcher = (HERE / "hf-guard.sh").read_text(encoding="utf-8")
+        check("H hf-guard.sh starts hf_guard.py with hook --only-on posix and stands down unless Darwin/Linux",
+              'hook --only-on posix' in launcher and "Darwin|Linux" in launcher)
         check("H no __pycache__ created in the plugin", pycache_before == ((SCRIPTS / "__pycache__").exists(),
                                                                            (HERE / "__pycache__").exists()))
     finally:

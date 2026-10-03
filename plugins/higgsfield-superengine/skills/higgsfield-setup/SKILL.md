@@ -1,6 +1,6 @@
 ---
 name: higgsfield-setup
-description: Use this skill the first time a coach or client wants to make images or videos with Higgsfield through Claude, or when their Higgsfield connection stops working. Trigger phrases include "set up Higgsfield", "connect my Higgsfield account", "add my Higgsfield key", "Higgsfield setup", "my Higgsfield key is not working", "I topped up Higgsfield", "update my Higgsfield balance". Finds Python, walks the client through the Higgsfield website (sign in, add funds, create the key) while Claude keeps its eyes off the key, saves the key in a masked box, checks it with a free call and records the balance. Windows-first; Mac is beta and untested.
+description: Use this skill the first time a coach or client wants to make images or videos with Higgsfield through Claude, or when their Higgsfield connection stops working. Trigger phrases include "set up Higgsfield", "connect my Higgsfield account", "add my Higgsfield key", "Higgsfield setup", "my Higgsfield key is not working", "I topped up Higgsfield", "update my Higgsfield balance". Finds Python, walks the client through the Higgsfield website (sign in, add funds, create the key) while Claude keeps its eyes off the key, saves the key in a masked box, checks it with a free call and records the balance. Windows and Mac.
 ---
 
 # Higgsfield setup (one time, about 10 minutes)
@@ -8,7 +8,7 @@ description: Use this skill the first time a coach or client wants to make image
 ## Output contract (what the client ends up with)
 
 - Python found, and its location recorded in `higgsfield\.python` in the workspace folder.
-- Their Higgsfield API key saved in their Windows user settings by the key box. The key never appears in the chat, in a workspace file, or on Claude's screen.
+- Their Higgsfield API key saved by the key box (Windows user settings, or the Mac Keychain). The key never appears in the chat, in a workspace file, or on Claude's screen.
 - A free key check that printed `AUTH OK`.
 - Their balance recorded in the spend ledger, so the safety cap is right.
 - One closing message in plain English: "You're set up. Your balance is $X. Jobs up to $Y run after a price check; anything bigger asks you first." Then offer a first image.
@@ -36,15 +36,29 @@ description: Use this skill the first time a coach or client wants to make image
 - The default tool timeout is 2 minutes. Where a step gives a timeout, set it on the tool call.
 - Never ask for the key in chat. If the client pastes it into the chat anyway, do not repeat or store it: have them delete that key on the API keys page (the "..." menu, then Delete) and make a new one in step 7.
 
-## Mac (beta, untested)
+## Mac
 
-Say once: "Mac support is beta and untested, so some steps may not work yet." Use the Bash tool, skip steps 2-4, and follow the rest with these changes:
-- Python: `python3 --version` (needs 3.9 or newer). Missing: the client installs it from python.org, then restarts Claude.
-- In step 7 the key box is: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/hf-key-box.py"` (result word `saved`, `cancelled`, `invalid` or `error`).
-- The screen guard does not run on a Mac. While the key is on screen, do not take screenshots, read the page, or use browser tools at all. Skip the `no-look` commands.
-- Check: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/hf_rest.py" check`
-- Balance: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/ledger.py" balance set 12.50`
-- Tell the client: paid generation is refused on a Mac for now, because the spend guard runs only on Windows.
+Same steps as Windows below, with these translations everywhere:
+- Use the **Bash tool** wherever a step says PowerShell tool.
+- Start every Python command with `"$(cat higgsfield/.python)"` instead of `& (Get-Content -Raw -Encoding UTF8 higgsfield\.python)`. The rest of the command stays the same, for example step 8: `"$(cat higgsfield/.python)" "${CLAUDE_PLUGIN_ROOT}/scripts/hf_rest.py" check`
+- Re-invoke guard: `test -f higgsfield/.python && echo yes` instead of `Test-Path`.
+- Keyboard: Cmd+V, not Ctrl+V. "Close Claude completely" means Claude menu, then Quit Claude (Cmd+Q), not just the window.
+
+The steps that differ:
+- **Step 2:** skip it (Windows only).
+- **Step 3, find Python** (Bash tool, timeout 600000 ms). Say first: "Checking for Python. If it's missing and you have Homebrew, I'll install it with that. A box from Apple may ask to install developer tools: that's fine, click Install." Then run:
+
+`sh "${CLAUDE_PLUGIN_ROOT}/scripts/find-python.sh"`
+
+  It prints one JSON line. `ok`: Python is recorded in `higgsfield/.python`; go on. `no_python`:
+  - If a box from Apple appeared asking to install developer tools: the client clicks Install and waits for it to finish (it brings a Python with it), then run this step again.
+  - Otherwise: ask the client to install Python 3.12 from python.org (the macOS installer, double-click and follow it), quit and reopen Claude, and ask for Higgsfield setup again. With `"brew": true`, Homebrew's install was already tried; offer a failure report.
+- **Step 4:** the same `echo api.higgsfield.ai` check in the Bash tool, the same habits. Not blocked: quit Claude completely (Cmd+Q), open it again in this folder, and say "continue Higgsfield setup".
+- **Step 7c, the key box** (Bash tool, timeout 360000 ms). Say: "A small box will pop up. Click inside it, press Cmd+V, then OK. It hides what you paste."
+
+`"$(cat higgsfield/.python)" "${CLAUDE_PLUGIN_ROOT}/scripts/hf-key-box.py"`
+
+  It prints one word, read as in step 7c: `saved`, `invalid`, `cancelled`, or `error` (the Mac Keychain did not keep the key: try once more, then offer a failure report). The key is kept in the client's Mac Keychain, not in a file. If macOS asks whether to allow access to the Keychain, the client decides; say it is the plugin reading its own saved key.
 
 ## Windows steps
 
@@ -144,7 +158,7 @@ Tell the client what went wrong in plain words, then offer: "Want me to send Joe
 1. With the Write tool, put the details in `higgsfield/reports/report-body.md`: what the client was doing, which step failed, the output's `class` and `message`. Never the key.
 2. Draft it (PowerShell tool). Keep the summary short, in single quotes, with no apostrophes and no script names:
 
-`& (Get-Content -Raw -Encoding UTF8 higgsfield\.python) "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin higgsfield-superengine --plugin-version 0.1.1 --summary 'Setup failed at the key check' --body-file higgsfield/reports/report-body.md --error-code invalid_credentials`
+`& (Get-Content -Raw -Encoding UTF8 higgsfield\.python) "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin higgsfield-superengine --plugin-version 0.1.3 --summary 'Setup failed at the key check' --body-file higgsfield/reports/report-body.md --error-code invalid_credentials`
 
 3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
 4. Send, using the path after `DRAFT:`:

@@ -4,6 +4,14 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.73] ... 2026-10-02
+
+### Added
+- **higgsfield-superengine v0.1.3** ... works on a Mac.
+- **The safety guards run on a Mac.** Before, the plugin started its spend guard with a Windows-only command, so on a Mac every paid job was refused and the screen guard was off. Now a small Mac launcher starts the same guard, and only one guard ever decides on each computer.
+- **Setup finds Python on a Mac** the same way the other REVXL plugins do (a version check; Homebrew installs it if missing). The key is kept in the Mac Keychain.
+- **The skills have a full Mac path**, not a "beta, stop after the price" note.
+
 ## [0.1.72] ... 2026-10-02
 
 ### Fixed
