@@ -1,5 +1,5 @@
-# Self-check for the CTA rule. Run: python test_goldmine_build.py (prints OK or fails loudly).
-# Cases come from the 08.28 hand review of 3,405 captions.
+# Self-check for the CTA rule and the runner steps. Run: python test_goldmine_build.py (prints OK or fails loudly).
+# Cases come from a hand-reviewed caption set.
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from goldmine_build import detect_cta
@@ -18,6 +18,14 @@ CASES = [
     ('Dm me "Closer" for the link', (False, None, None)),             # dm is not an anchor
     ("Comment AI and I'll send it", (False, None, None)),             # stop word, known miss
     ("", (False, None, None)),
+    ("Type “pure focus” if you believe it starts in the morning.",
+     (True, "pure focus", "quoted_weak")),                            # no-payoff ask, labelled weak
+    ("Type AMEN if you agree", (True, "AMEN", "bare_caps_weak")),      # no-payoff ask, labelled weak
+    ("Type POSTER LAYOUT and it builds the page", (False, None, None)),  # tool instruction
+    ('Type "YES" below and I will send it', (True, "YES", "quoted")),  # type + comment context
+    ("Comment the word starter below and I will send the guide",
+     (True, "starter", "named_word")),                                # named word, any case
+    ("Comment AMEN if you agree", (True, "AMEN", "bare_caps")),        # bait: a CTA here, lm_none in the reads
 ]
 
 bad = [(c, want, detect_cta(c)) for c, want in CASES if detect_cta(c) != want]
@@ -25,3 +33,301 @@ for c, want, got in bad:
     print("FAIL %r: want %s, got %s" % (c, want, got))
 assert not bad, "%d CTA cases failed" % len(bad)
 print("OK %d CTA cases" % len(CASES))
+
+# ---------------------------------------------------------------- runner steps, on invented fixtures
+# No network: api_key and api_get are replaced, and any call other than the free balance check or
+# a faked comments page fails the run.
+import contextlib, glob, io, json, shutil, subprocess, tempfile
+import goldmine_build as gb
+
+CALLS = []
+
+
+def fake_get(path, params, key, timeout=300):
+    CALLS.append(path)
+    if path == "credits/balance":
+        return 200, {"data": {"balance": 100000}}
+    if path == "prism/comments":
+        return 200, {"success": True, "credits_used": 5, "data": {"comments": [], "completed": True}}
+    raise AssertionError("unexpected API call: " + path)
+
+
+gb.api_get = fake_get
+gb.api_key = lambda: "sc_fixture_key"
+gb.time.sleep = lambda s: None
+
+
+def make(specs):
+    """specs: (handle, shortcode, mult, caption). Every spec is a breakout in the window."""
+    d = tempfile.mkdtemp(prefix="goldmine_test_")
+    by_h = {}
+    for h, sc, mult, cap in specs:
+        by_h.setdefault(h, []).append({"post": {
+            "url": "https://www.instagram.com/reel/%s/" % sc, "content": {"text": cap},
+            "engagement": {"views": int(1000 * mult), "comments": 10}}})
+    os.makedirs(os.path.join(d, "source", "competitors", "reels"))
+    for h, items in by_h.items():
+        with open(os.path.join(d, "source", "competitors", "reels", h + ".json"), "w", encoding="utf-8") as f:
+            json.dump({"handle": h, "reels": items}, f)
+    with open(os.path.join(d, "analysis-data.json"), "w", encoding="utf-8") as f:
+        json.dump({"meta": {"generated_at": "2000-01-01T00:00:00Z", "themes": ["growth"]},
+                   "period_breakouts": {"window_from": "2000-01-01", "window_to": "2000-01-31", "reels": [
+                       {"id": sc, "url": "https://www.instagram.com/reel/%s/" % sc, "handle": h,
+                        "views": int(1000 * mult), "mult": mult, "tier": "small", "hook": "statement",
+                        "themes": ["growth"], "hook_line": "Opening line of " + sc,
+                        "published_at": "2000-01-10T00:00:00Z"} for h, sc, mult, cap in specs]}}, f)
+    return d
+
+
+def run(step, d, **opts):
+    buf, code = io.StringIO(), None
+    with contextlib.redirect_stdout(buf):
+        try:
+            gb.STEPS[step](gb.Project(d), {k.replace("_", "-"): v for k, v in opts.items()})
+        except SystemExit as e:
+            code = e.code
+    return buf.getvalue(), code
+
+
+def next_line(out):
+    return [l for l in out.splitlines() if l.startswith("NEXT:")][0]
+
+
+def rjson(d, name):
+    with open(os.path.join(d, "reel-build", name), encoding="utf-8") as f:
+        return json.load(f)
+
+
+def wjson(d, name, obj):
+    with open(os.path.join(d, "reel-build", name), "w", encoding="utf-8") as f:
+        json.dump(obj, f)
+
+
+temps = []
+
+# 1. Ask always, under the budget: 3 missing comment pages = 15 credits, still an ask.
+d = make([("alpha_coach", "AAA001", 9.0, "x"), ("alpha_coach", "AAA002", 5.0, "x"),
+          ("beta_coach", "BBB001", 4.0, "x")]); temps.append(d)
+out, code = run("plan", d)
+nl = next_line(out)
+assert code is None, out
+assert nl.startswith("NEXT: ASK the user") and "15 SocialCrawl credits" in nl and "spend 15 credits" in nl, nl
+assert "fetch --approved 15" in nl and "over the" not in nl, nl
+assert "no ask" not in out and "tell" not in out, out
+assert CALLS == ["credits/balance"], CALLS
+
+# 2. Ask always, over the budget: 130 missing pages = 650 credits, the ask names the budget.
+specs = [("alpha_coach" if i % 2 else "beta_coach", "CCC%03d" % i, 2.5 + i / 100.0, "x") for i in range(130)]
+d = make(specs); temps.append(d)
+out, code = run("plan", d)
+nl = next_line(out)
+assert "650 SocialCrawl credits" in nl and "over the 600 credit per-pull budget" in nl, nl
+assert "spend 650 credits" in nl and "fetch --approved 650" in nl, nl
+
+# 3. --top-per-creator on plan prices the capped set, and the fetch it names takes the same cap.
+out, code = run("plan", d, top_per_creator="3")
+nl = next_line(out)
+assert "for 6 breakout reels costs 30 SocialCrawl credits" in nl and "over the" not in nl, nl
+assert "0 have, 6 to fetch (top 3 per creator)" in out, out          # skipped reels are not "have"
+assert nl.endswith("fetch --approved 30 --top-per-creator 3"), nl
+assert json.load(open(os.path.join(d, "reel-build", "goldmine-run.json")))["plan"]["top_per_creator"] == 3
+want = ["CCC%03d" % i for i in (124, 125, 126, 127, 128, 129)]  # top 3 by mult, each creator
+del CALLS[:]
+out, code = run("fetch", d, approved="30", top_per_creator="3")
+assert CALLS == ["prism/comments"] * 6, CALLS
+got = sorted(os.path.basename(p)[:-5] for p in glob.glob(os.path.join(d, "source", "comments", "*.json")))
+assert got == sorted(want), (got, want)
+out, code = run("plan", d, top_per_creator="x")
+assert code == 2 and "whole number" in out, out
+out, code = run("fetch", d, approved="abc")
+assert code == 2 and out.startswith("ERROR: --approved needs a whole number"), out
+
+# 3b. fetch with no flag fetches exactly what plan priced (plan's saved top_per_creator).
+d = make([("alpha_coach", "HHH%d" % i, 2.6 + i, "x") for i in range(4)] +
+         [("beta_coach", "III%d" % i, 2.6 + i, "x") for i in range(4)]); temps.append(d)
+out, code = run("plan", d, top_per_creator="2")
+assert next_line(out).endswith("fetch --approved 20 --top-per-creator 2"), out
+del CALLS[:]
+out, code = run("fetch", d, approved="20")
+assert CALLS == ["prism/comments"] * 4 and "(top 2 per creator)" in out, (CALLS, out)
+got = sorted(os.path.basename(p)[:-5] for p in glob.glob(os.path.join(d, "source", "comments", "*.json")))
+assert got == ["HHH2", "HHH3", "III2", "III3"], got
+# an explicit flag that differs from plan's saved value wins
+d = make([("alpha_coach", "HHH%d" % i, 2.6 + i, "x") for i in range(4)] +
+         [("beta_coach", "III%d" % i, 2.6 + i, "x") for i in range(4)]); temps.append(d)
+run("plan", d, top_per_creator="2")
+del CALLS[:]
+out, code = run("fetch", d, approved="20", top_per_creator="1")
+got = sorted(os.path.basename(p)[:-5] for p in glob.glob(os.path.join(d, "source", "comments", "*.json")))
+assert CALLS == ["prism/comments"] * 2 and got == ["HHH3", "III3"], (CALLS, got)
+
+# 3c. The cap holds when the API does not report credits_used (missing, or not a number).
+for used in (None, "n/a"):
+    d = make([("alpha_coach", "JJJ%d" % i, 3.0 + i, "x") for i in range(5)]); temps.append(d)
+    run("plan", d)
+    gb.api_get = lambda path, params, key, timeout=300, used=used: (
+        CALLS.append(path) or (200, dict({"success": True, "data": {"comments": [], "completed": True}},
+                                         **({} if used is None else {"credits_used": used}))))
+    del CALLS[:]
+    out, code = run("fetch", d, approved="10")
+    gb.api_get = fake_get
+    assert CALLS == ["prism/comments"] * 2, (used, CALLS)
+    assert "STOP: the next call would pass the approved 10 credits (spent 10)." in out, out
+    assert all(json.load(open(p))["_fetch"].get("credits_estimated") is True
+               for p in glob.glob(os.path.join(d, "source", "comments", "*.json"))), used
+
+# 3d. A reported credits_used of 0 cannot lift the cap: approved // 5 calls at most. A reported
+#     number also writes no credits_estimated key.
+d = make([("alpha_coach", "KKK%d" % i, 3.0 + i, "x") for i in range(5)]); temps.append(d)
+run("plan", d)
+gb.api_get = lambda path, params, key, timeout=300: (CALLS.append(path) or (200, {
+    "success": True, "credits_used": 0, "data": {"comments": [], "completed": True}}))
+del CALLS[:]
+out, code = run("fetch", d, approved="10")
+gb.api_get = fake_get
+assert CALLS == ["prism/comments"] * 2, CALLS
+assert "STOP: the next call would pass the 2 calls the approved 10 credits allow (5 each)." in out, out
+files = glob.glob(os.path.join(d, "source", "comments", "*.json"))
+assert len(files) == 2 and not any("credits_estimated" in json.load(open(p))["_fetch"] for p in files), files
+
+# 4. Zero breakouts: one plain message and a clean exit from every step, never a traceback.
+d = make([]); temps.append(d)
+out, code = run("plan", d)
+assert code is None and out.strip() == gb.NO_BREAKOUTS, out
+for step in ("compute", "reads", "check-reads", "transcribe"):
+    out, code = run(step, d)
+    assert code == 0 and out.strip() == gb.NO_BREAKOUTS, (step, code, out)
+env = {k: v for k, v in os.environ.items() if k != "SOCIALCRAWL_API_KEY"}  # compute is free; no key needed
+p = subprocess.run([sys.executable, gb.__file__, "compute", d], capture_output=True, text=True, timeout=120, env=env)
+assert p.returncode == 0 and "Traceback" not in p.stdout + p.stderr and "nothing to build" in p.stdout, p
+
+# 5. reads pre-fills the mechanical fields; check-reads enforces the reads rules and, on a pass,
+#    writes the 3-row Proven Hooks file. Two real asks, two bait asks, one plain reel.
+d = make([("alpha_coach", "DDD001", 9.0, 'Comment "GUIDE" and I will send it'),
+          ("alpha_coach", "DDD002", 7.0, "Comment AMEN if you agree"),
+          ("beta_coach", "EEE001", 8.0, "Three habits that changed my mornings"),
+          ("beta_coach", "EEE002", 3.0, "Type “pure focus” if you believe it"),
+          ("beta_coach", "EEE003", 2.6, "Comment the word starter below and I will send the checklist")])
+temps.append(d)
+for step in ("plan", "compute", "reads"):
+    out, code = run(step, d)
+    assert code is None, (step, out)
+assert "Pre-filled with the mechanical fields" in out, out
+st = json.load(open(os.path.join(d, "reel-build", "goldmine-run.json")))
+names = st["reads"]["expected"]
+pop = rjson(d, st["compute"]["popularity"])["corpus"]
+assert (pop["cta_reels"], pop["weak_cta_reels"]) == (4, 1), pop     # the "pure focus" ask is weak
+packet = rjson(d, st["reads"]["packet"])
+prows = {r["shortcode"]: r for r in packet["reels"]}
+cta = sorted(sc for sc, r in prows.items() if r["is_cta"])
+assert cta == ["DDD001", "DDD002", "EEE002", "EEE003"], cta
+paps = rjson(d, names["paps"])
+assert sorted(r["shortcode"] for r in paps["paps"]) == cta and paps["non_cta"] == ["EEE001"]
+assert paps["corpus"] == {"breakouts_total": 5, "cta_breakouts": 4, "non_cta_breakouts": 1}
+for r in paps["paps"]:
+    for k in ("shortcode", "handle", "url", "mult", "views", "duration_seconds", "trigger_word",
+              "trigger_detection_rule", "popularity_rank"):
+        assert r[k] == prows[r["shortcode"]][k], (k, r)
+    assert all(r[k] is None for k in ("topic", "problem", "agitation", "promise", "solution_delivery",
+                                      "source_surface", "note")), r
+assert set(rjson(d, names["topicmap"])["reels"]) == set(prows)
+prf = rjson(d, names["patternread"])["reels"]
+assert prf["DDD001"] == {"formula": None, "lm_type": None, "magnet": None} and prf["EEE001"] == {"formula": None}
+out, code = run("check-reads", d)
+assert code == 1 and "check-reads: FAIL" in out, out            # the pre-fill alone never passes
+out, code = run("reads", d)
+assert "Pre-filled" not in out                                   # a file that exists is left alone
+
+
+PRISTINE = {}
+
+
+def good():
+    """Write a passing set of reads, always rebuilt from the untouched pre-fill."""
+    base = PRISTINE.setdefault(d, {k: json.dumps(rjson(d, names[k])) for k in names})
+    for k in names:
+        wjson(d, names[k], json.loads(base[k]))
+    p = rjson(d, names["paps"])
+    for r in p["paps"]:
+        r.update(topic="Morning habits", source_surface=["caption"])
+        if r["shortcode"] in ("DDD001", "EEE003"):
+            r.update(promise="A morning checklist.", solution_delivery="A free checklist sent by DM.")
+        else:
+            r.update(note="engagement ask: no offer")
+    wjson(d, names["paps"], p)
+    tm = rjson(d, names["topicmap"])
+    tm["topics"] = [{"id": "t01", "name": "Morning habits", "theme": "growth", "summary": "Mornings."}]
+    tm["reels"] = {sc: {"topic": "t01", "angle": "How mornings go"} for sc in tm["reels"]}
+    wjson(d, names["topicmap"], tm)
+    pr = rjson(d, names["patternread"])
+    pr["formulas"] = [{"id": "f_list", "name": "List open", "template": "[N] things that...", "summary": "A list."}]
+    pr["lm_types"] = [{"id": "lm_check", "name": "Checklist", "summary": "A checklist."},
+                      {"id": "lm_none", "name": "Engagement ask", "summary": "A comment ask with no offer."}]
+    pr["threads"] = [{"id": "th_am", "name": "Mornings", "topics": ["t01"], "summary": "Mornings."}]
+    for sc, v in pr["reels"].items():
+        v["formula"] = "f_list"
+        if sc in ("DDD001", "EEE003"):
+            v.update(lm_type="lm_check", magnet="Morning checklist")
+        elif sc in ("DDD002", "EEE002"):
+            v.update(lm_type="lm_none", magnet="engagement ask")
+    wjson(d, names["patternread"], pr)
+    return p, tm, pr
+
+
+def check(expect_fail=None):
+    out, code = run("check-reads", d)
+    if expect_fail:
+        assert code == 1 and expect_fail in out, out
+    else:
+        assert code is None and "check-reads: PASS" in out, out
+    return out
+
+
+good(); check()                                                  # bait rows pass as lm_none
+st = json.load(open(os.path.join(d, "reel-build", "goldmine-run.json")))
+assert st["reads"]["passed"] is True
+ph = rjson(d, st["reads"]["proven_hooks"])
+assert st["reads"]["proven_hooks"] == st["reads"]["packet"].replace("Goldmine Reads Packet", "Proven Hooks")
+assert [h["shortcode"] for h in ph["hooks"]] == ["DDD001", "EEE001", "DDD002"], ph   # top 3 by mult
+assert ph["hooks"][0]["opening_line"] == "Opening line of DDD001" and ph["hooks"][0]["handle"] == "alpha_coach"
+assert ph["hooks"][0]["formula"] == {"id": "f_list", "name": "List open", "template": "[N] things that..."}
+assert ph["packet"] == st["reads"]["packet"] and ph["patternread"] == names["patternread"]
+
+# bait with a made-up type and magnet: its null promise is no longer allowed
+p, tm, pr = good(); pr["reels"]["DDD002"].update(lm_type="lm_check", magnet="Prayer guide")
+wjson(d, names["patternread"], pr); check("row DDD002 needs promise and solution_delivery")
+# lm_none must be labelled, never given an invented magnet
+p, tm, pr = good(); pr["reels"]["EEE002"]["magnet"] = "Free focus guide"
+wjson(d, names["patternread"], pr); check("never invent a lead magnet")
+# a pre-filled row left without its topic
+p, tm, pr = good(); p["paps"][0]["topic"] = None
+wjson(d, names["paps"], p); check("needs a topic and a source_surface")
+# stale row: a PAPS row for a breakout that is not a CTA
+p, tm, pr = good(); p["paps"].append(dict(p["paps"][0], shortcode="EEE001"))
+wjson(d, names["paps"], p); check("rows for breakouts that are not CTAs: ['EEE001']")
+# stale file: a newer PAPS in reel-build/ is what the dashboard would read
+good(); newer = "Lead Magnet PAPS - 5 - 12.31.99.json"
+wjson(d, newer, rjson(d, names["paps"])); check("which is %s, not this run's" % newer)
+os.remove(os.path.join(d, "reel-build", newer))
+# lm_types: required when CTA rows exist
+p, tm, pr = good(); pr["lm_types"] = []
+for v in pr["reels"].values():
+    v.pop("lm_type", None)
+wjson(d, names["patternread"], pr); check("lm_types is empty")
+good(); check()
+
+# 6. lm_types: not required when the pull has no CTA rows.
+d = make([("alpha_coach", "FFF001", 6.0, "Three habits"), ("beta_coach", "GGG001", 4.0, "Two habits")])
+temps.append(d)
+for step in ("plan", "compute", "reads"):
+    run(step, d)
+names = json.load(open(os.path.join(d, "reel-build", "goldmine-run.json")))["reads"]["expected"]
+p, tm, pr = good()
+assert pr["lm_types"] and not p["paps"]
+pr["lm_types"] = []
+wjson(d, names["patternread"], pr); check()
+
+for t in temps:
+    shutil.rmtree(t, ignore_errors=True)
+print("OK runner steps: ask always (under and over budget), top-per-creator, zero breakouts, "
+      "reads pre-fill, bait as lm_none, stale PAPS row and file, lm_types rule, proven hooks")

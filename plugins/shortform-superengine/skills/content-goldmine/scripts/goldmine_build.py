@@ -1,25 +1,32 @@
 #!/usr/bin/env python3
 """Content Goldmine runner: turns a finished competitor pull into every input the
-Content Goldmine Dashboard needs. Replaces the 08.28 one-off scripts.
+Content Goldmine Dashboard needs. Replaces the earlier one-off scripts.
 
 Usage:  python goldmine_build.py <step> <project_dir> [options]
 
 Steps, in order. Every step is resume-safe: re-running never pays twice.
-  plan                    FREE. Freezes this pull's breakouts into a dated Breakout Manifest,
+  plan [--top-per-creator K]
+                          FREE. Freezes this pull's breakouts into a dated Breakout Manifest,
                           counts what is missing (comments, transcripts, shares), prints the
-                          credit estimate against the per-pull budget and the fetch command.
-  fetch --approved N      PAID. One comments page (prism/comments, 5 cr) per breakout that has
-                          none yet. Hard-stops before spend would pass N. The credit guard hook
-                          reads N: silent at or under the budget, one ask above.
+                          credit price (capped to the top K breakouts per creator when K is
+                          given) and a NEXT line that always asks the user, with that price,
+                          before the paid fetch, whatever the credit count.
+  fetch --approved N [--top-per-creator K]
+                          PAID. Only after the user said yes to plan's ask. One comments page
+                          (prism/comments, 5 cr) per breakout that has none yet (the same top K
+                          per creator). Hard-stops before spend would pass N.
   transcribe              FREE. Breakouts with no transcript, through the plugin's own engine
                           (faster-whisper small, GPU if present, else CPU). Merges into the
                           per-creator transcript files, never overwriting a good record.
   compute                 FREE. Lead-magnet popularity metric (CTA rule + comment-rate benchmark)
                           and the comment retrieval rate.
   reads                   FREE. Writes the reads packet Claude uses for PAPS, Topic Map and
-                          Pattern Read (shapes: ../references/reads.md).
+                          Pattern Read, and pre-fills those three files with every mechanical
+                          field, so Claude writes only the judgement fields (shapes:
+                          ../references/reads.md). A file that already exists is left alone.
   check-reads             FREE. Validates those three files against the breakouts; records them
-                          as this run's inputs only when all pass.
+                          as this run's inputs only when all pass, then writes the 3-row
+                          Proven Hooks file.
 
 Reads:   <project>/analysis-data.json (period_breakouts, meta)
          <project>/source/competitors/reels/*.json          (the pull; the corpus)
@@ -30,15 +37,19 @@ Writes:  <project>/reel-build/goldmine-run.json  (this run's state: which files 
          <project>/reel-build/Lead Magnet Popularity - Metric - <date>.json
          <project>/reel-build/Comment Retrieval - Rate - <date>.json
          <project>/reel-build/Goldmine Reads Packet - <n> - <date>.json
+         <project>/reel-build/Proven Hooks - <n> - <date>.json  (named in goldmine-run.json reads.proven_hooks)
          <project>/source/comments/<sc>.json, source/competitors/transcripts/<handle>.json
 """
 import datetime, glob, json, os, re, shutil, statistics, subprocess, sys, tempfile, time
 import urllib.error, urllib.parse, urllib.request
 
-BUDGET = 600          # goldmine per-pull credit budget (Joe 09.23.26); mirrored in hooks/credit-guard.mjs
+BUDGET = 600          # goldmine per-pull credit budget; mirrored in hooks/credit-guard.mjs
 COMMENT_CR = 5        # prism/comments, one page, per breakout
 MIN_BASELINE_N = 3    # non-CTA reels with a rate needed before a creator median is trusted
 BASE = "https://www.socialcrawl.dev/v1/"
+NO_BREAKOUTS = ("No breakout reels in this pull's window, so there is nothing to build yet. A breakout "
+                "is a reel that beat its creator's usual views by a wide margin, and none did in this "
+                "window. Run the competitor pull again later, then run plan again.")
 
 
 # ---------------------------------------------------------------- helpers
@@ -115,6 +126,9 @@ class Project:
 
     def manifest(self):
         name = self.state.get("manifest")
+        if not name and (self.state.get("plan") or {}).get("breakouts") == 0:
+            print(NO_BREAKOUTS)
+            sys.exit(0)
         if not name or not os.path.isfile(os.path.join(self.rb, name)):
             die("no Breakout Manifest for this run. Run the plan step first.")
         return jload(os.path.join(self.rb, name))
@@ -173,7 +187,7 @@ def api_get(path, params, key, timeout=300):
         return 0, {"_exc": repr(e)}
 
 
-# ---------------------------------------------------------------- CTA rule (08.28 cta_rule.py, verbatim logic)
+# ---------------------------------------------------------------- CTA rule (the earlier cta_rule.py, verbatim logic)
 # A "trigger-comment CTA" asks the viewer to leave a specific TRIGGER WORD as a comment in
 # exchange for a lead magnet. Not a generic engagement ask ("comment below").
 # "dm" is deliberately NOT an anchor: a DM-routed trigger cannot move a comment rate.
@@ -189,6 +203,16 @@ RE_BARE_BELOW = re.compile(ANCHOR + r"[\s:,\-2014]*\b([A-Za-z][A-Za-z0-9]{1,24})
                            re.IGNORECASE)
 RE_BARE_WORD = re.compile(ANCHOR + r"[\s:,\-2014]*\b([A-Za-z][A-Za-z0-9]{1,24})\b\s+(?:for|to|and|if|&)\b",
                           re.IGNORECASE)
+# "comment the word callout below": an explicitly named word is a trigger in any case (the bare
+# rules allow no "the word" filler before a lowercase token).
+RE_NAMED_WORD = re.compile(ANCHOR + r"\s+(?:the\s+)?(?:key\s*)?words?\s*[:\-]?\s*[\"'‘’“”«»]?([A-Za-z][A-Za-z0-9]{1,24})\b")
+# "Type X and it generates..." is an instruction to type into a tool, not a comment ask. A "type"
+# anchor only counts when its sentence points at the comments or a send.
+RE_TYPE_ANCHOR = re.compile(r"(?i)^typ")
+RE_COMMENT_CTX = re.compile(r"(?i)\bbelow\b|\bcomments?\b|👇|\bi'?ll\b|\bi will\b|\bsend you\b|\bdm you\b|\bin the replies\b")
+# "Type 'X' if you believe..." is a comment ask with no payoff: counted, labelled weak (the rule
+# name gets a "_weak" suffix).
+RE_IF_YOU = re.compile(r"(?i)\bif\s+(?:you|u)\b")
 RE_PAYOFF = re.compile(
     r"\b(send|sending|get|getting|grab|link|links|guide|guides|template|templates|prompt|"
     r"prompts|access|dm|breakdown|playbook|walkthrough|setup|steps|blueprint|checklist|"
@@ -220,14 +244,30 @@ def detect_cta(caption):
     """Return (is_cta, trigger_token, rule_name). First matching rule wins."""
     if not caption:
         return False, None, None
+
+    def comment_ask(m):
+        # "" = a comment ask, "_weak" = a no-payoff "type X if you..." ask, None = not an ask.
+        if not RE_TYPE_ANCHOR.match(m.group(0)):
+            return ""
+        a = max(caption.rfind(x, 0, m.start()) for x in ".!?\n") + 1
+        z = [i for i in (caption.find(x, m.end()) for x in ".!?\n") if i >= 0]
+        sent = caption[a:min(z) if z else len(caption)]
+        return "" if RE_COMMENT_CTX.search(sent) else "_weak" if RE_IF_YOU.search(sent) else None
+
+    for m in RE_NAMED_WORD.finditer(caption):
+        k = comment_ask(m)
+        if _tok_ok(m.group(1)) and k is not None:
+            return True, m.group(1).strip(), "named_word" + k
     for rx, name in ((RE_QUOTED, "quoted"), (RE_BOLD, "bold"),
                      (RE_BARE_CAPS, "bare_caps"), (RE_BARE_BELOW, "bare_below")):
         for m in rx.finditer(caption):
-            if _tok_ok(m.group(1), quoted=name in ("quoted", "bold")):
-                return True, m.group(1).strip(), name
+            k = comment_ask(m)
+            if _tok_ok(m.group(1), quoted=name in ("quoted", "bold")) and k is not None:
+                return True, m.group(1).strip(), name + k
     for m in RE_BARE_WORD.finditer(caption):
-        if _tok_ok(m.group(1)) and RE_PAYOFF.search(caption):
-            return True, m.group(1).strip(), "bare_word_payoff"
+        k = comment_ask(m)
+        if _tok_ok(m.group(1)) and RE_PAYOFF.search(caption) and k is not None:
+            return True, m.group(1).strip(), "bare_word_payoff" + k
     return False, None, None
 
 
@@ -241,6 +281,27 @@ def comments_status(prj, sc):
     except Exception:
         return "missing"  # corrupt: refetch
     return "have" if (fx.get("completed") or (fx.get("pages") or 0) >= 1) else "missing"
+
+
+def per_creator_arg(args):
+    v = args.get("top-per-creator")
+    if v is None:
+        return None
+    if not str(v).isdigit():
+        die("--top-per-creator needs a whole number, for example 3.")
+    return int(v)
+
+
+def top_per_creator(breakouts, n):
+    """URLs of the top n breakouts per creator by multiplier, ties on shortcode. Without it a
+    credit cap spends everything on the highest-multiplier creators."""
+    ranked = sorted(breakouts, key=lambda b: (-(b.get("mult") or 0), sc_of(b["url"]) or ""))
+    keep, per = set(), {}
+    for b in ranked:
+        if per.get(b["handle"], 0) < n:
+            per[b["handle"]] = per.get(b["handle"], 0) + 1
+            keep.add(b["url"])
+    return keep
 
 
 def shares_of(prj, corpus, sc):
@@ -259,12 +320,13 @@ def shares_of(prj, corpus, sc):
 
 
 def step_plan(prj, args):
+    cap_n = per_creator_arg(args)
     ad = jload(prj.j("analysis-data.json"))
     pb = ad.get("period_breakouts") or {}
     src_at = (ad.get("meta") or {}).get("generated_at")
     reels = pb.get("reels") or []
     if not reels:
-        print("No breakouts in this pull's window (period_breakouts is empty). Nothing to build.")
+        print(NO_BREAKOUTS)
         prj.state.update({"manifest": None, "source_generated_at": src_at, "plan": {"breakouts": 0}})
         prj.save_state()
         return
@@ -296,9 +358,13 @@ def step_plan(prj, args):
     tx = prj.transcript_index()
 
     need_comments, need_tx, no_media, share_src = [], [], [], {"pull": 0, "stats_file": 0, None: 0}
+    keep = top_per_creator(man["breakouts"], cap_n) if cap_n is not None else None
+    have = 0
     for b in man["breakouts"]:
         sc = sc_of(b["url"])
-        if comments_status(prj, sc) == "missing":
+        status = comments_status(prj, sc)
+        have += status == "have"
+        if status == "missing" and (keep is None or b["url"] in keep):
             need_comments.append(sc)
         if tx.get(sc, ("missing",))[0] != "done":
             (need_tx if media_url(corpus, sc) else no_media).append(sc)
@@ -312,9 +378,10 @@ def step_plan(prj, args):
         if st == 200:
             balance = (env.get("data") or env).get("balance", (env.get("data") or env).get("credits_remaining"))
     plan = {
-        "breakouts": man["count"], "comments_have": man["count"] - len(need_comments),
+        "breakouts": man["count"], "comments_have": have,
         "comments_missing": len(need_comments), "estimate_credits": est, "budget": BUDGET,
         "over_budget": est > BUDGET, "balance": balance, "api_key_found": bool(key),
+        "top_per_creator": cap_n,
         "transcripts_missing": len(need_tx), "transcripts_no_media": no_media,
         "shares_from_pull": share_src["pull"], "shares_from_stats_files": share_src["stats_file"],
         "shares_missing": share_src[None],
@@ -324,8 +391,9 @@ def step_plan(prj, args):
 
     print("Breakout Manifest : %s (%d breakouts, window %s to %s)"
           % (name, man["count"], man["window"]["from"], man["window"]["to"]))
-    print("Comments          : %d have, %d missing -> estimate %d credits (budget %d)"
-          % (plan["comments_have"], len(need_comments), est, BUDGET))
+    print("Comments          : %d have, %d to fetch%s -> price %d credits (budget %d)"
+          % (plan["comments_have"], len(need_comments),
+             " (top %d per creator)" % cap_n if cap_n is not None else "", est, BUDGET))
     if balance is not None:
         print("Balance           : %s credits" % balance)
     print("Transcripts       : %d missing%s" % (len(need_tx),
@@ -340,8 +408,13 @@ def step_plan(prj, args):
     elif balance is not None and balance < est:
         print("NEXT: balance %s is below the %d credit estimate. Top up or skip comments." % (balance, est))
     else:
-        print("NEXT: %s the user, then run: fetch --approved %d"
-              % ("ASK (over the %d credit budget)" % BUDGET if est > BUDGET else "no ask needed, within budget; tell", est))
+        # Always ask, whatever the count: the paid fetch runs only after the user's yes.
+        print('NEXT: ASK the user and wait for a yes before any paid call, in these words: "Getting '
+              'the comments for %d breakout reel%s costs %d SocialCrawl credits (%d each).%s Shall I '
+              'spend %d credits?" Only after a yes, run: fetch --approved %d%s'
+              % (len(need_comments), "" if len(need_comments) == 1 else "s", est, COMMENT_CR,
+                 " That is over the %d credit per-pull budget." % BUDGET if est > BUDGET else "",
+                 est, est, " --top-per-creator %d" % cap_n if cap_n is not None else ""))
 
 
 def media_url(corpus, sc):
@@ -355,6 +428,8 @@ def media_url(corpus, sc):
 def step_fetch(prj, args):
     if args.get("approved") is None:
         die("fetch needs --approved <credits> (the plan step prints the number).")
+    if not str(args["approved"]).isdigit():
+        die("--approved needs a whole number of credits, for example 30 (the plan step prints it).")
     cap = int(args["approved"])
     key = api_key()
     if not key:
@@ -362,23 +437,39 @@ def step_fetch(prj, args):
     man = prj.manifest()
     os.makedirs(prj.j("source", "comments"), exist_ok=True)
     todo = [b for b in man["breakouts"] if comments_status(prj, sc_of(b["url"])) == "missing"]
+    cap_n = per_creator_arg(args)
+    if cap_n is None:  # no flag: fetch exactly what plan priced
+        cap_n = (prj.state.get("plan") or {}).get("top_per_creator")
+    if cap_n is not None:
+        keep = top_per_creator(man["breakouts"], cap_n)
+        todo = [b for b in todo if b["url"] in keep]
     spent, done, failures, remaining = 0, 0, [], None
-    print("fetch: %d breakouts need comments, cap %d credits" % (len(todo), cap))
+    max_calls, calls = cap // COMMENT_CR, 0  # hard ceiling: holds even if the API reports 0 credits
+    print("fetch: %d breakouts need comments%s, cap %d credits"
+          % (len(todo), " (top %d per creator)" % cap_n if cap_n is not None else "", cap))
     for i, b in enumerate(todo, 1):
         if spent + COMMENT_CR > cap:
             print("STOP: the next call would pass the approved %d credits (spent %d)." % (cap, spent))
             break
+        if calls >= max_calls:
+            print("STOP: the next call would pass the %d calls the approved %d credits allow (%d each)."
+                  % (max_calls, cap, COMMENT_CR))
+            break
         sc = sc_of(b["url"])
         status, env = api_get("prism/comments", {"url": b["url"]}, key)
-        if status != 200 or not env.get("success"):
+        calls += 1
+        if (status != 200 or not env.get("success")) and calls < max_calls:
             time.sleep(5)
             status, env = api_get("prism/comments", {"url": b["url"]}, key)
+            calls += 1
         if status != 200 or not env.get("success"):
             failures.append({"shortcode": sc, "http": status, "error": str(env)[:300]})
             print("  %02d %s FAIL http=%s" % (i, sc, status))
             continue
         d = env.get("data") or {}
-        cu = env.get("credits_used") or 0
+        cu, cu_est = env.get("credits_used"), False
+        if isinstance(cu, bool) or not isinstance(cu, (int, float)):
+            cu, cu_est = COMMENT_CR, True  # not reported: count plan's per-call price, so the cap still holds
         spent += cu
         remaining = env.get("credits_remaining", remaining)
         comments = d.get("comments") or []
@@ -389,6 +480,8 @@ def step_fetch(prj, args):
                          "pages": 1, "page_credits": [cu], "credits_total": cu,
                          "completed": bool(d.get("completed")), "next_cursor": d.get("next_cursor"),
                          "by": "content-goldmine"}
+        if cu_est:
+            doc["_fetch"]["credits_estimated"] = True
         jsave(prj.j("source", "comments", sc + ".json"), doc)
         done += 1
         print("  %02d %s %s %dcr comments=%d" % (i, sc, b["handle"], cu, len(comments)))
@@ -480,7 +573,7 @@ def step_compute(prj, args):
     corpus = prj.corpus()
     n, d8 = man["count"], today()
 
-    # Popularity metric (08.28 popularity_metric.py). comment_rate = comments / views from the
+    # Popularity metric (the earlier popularity_metric.py). comment_rate = comments / views from the
     # pull's own metadata; retrieved comment TEXT never feeds it.
     reels = []
     for sc, c in corpus.items():
@@ -551,6 +644,7 @@ def step_compute(prj, args):
                    "min_baseline_n": MIN_BASELINE_N},
         "corpus": {"reels_total": len(reels), "creators": len(creators),
                    "cta_reels": sum(1 for r in reels if r["is_cta"]),
+                   "weak_cta_reels": sum(1 for r in reels if (r["cta_rule"] or "").endswith("_weak")),
                    "non_cta_reels": sum(1 for r in reels if not r["is_cta"]),
                    "reels_without_rate": sum(1 for r in reels if r["comment_rate"] is None),
                    "creators_without_usable_baseline": sorted(
@@ -562,7 +656,7 @@ def step_compute(prj, args):
                                    key=lambda r: -r["benchmark_x"])[:50],
     })
 
-    # Comment retrieval rate (08.28 retrieval_rate.py): comments fetched / the reel's count.
+    # Comment retrieval rate (the earlier retrieval_rate.py): comments fetched / the reel's count.
     rows = []
     for b in man["breakouts"]:
         sc = sc_of(b["url"])
@@ -660,11 +754,41 @@ def step_reads(prj, args):
                         "patternread": "Pattern Read - %d - %s.json" % (n, d8)},
            "reels": rows}
     jsave(os.path.join(prj.rb, name), out)
+    # Pre-fill the three reads with every mechanical field, so Claude writes only the judgement
+    # fields (the nulls and empty lists). A file that already exists is never overwritten.
+    mech = ("shortcode", "handle", "url", "mult", "views", "duration_seconds", "trigger_word",
+            "trigger_detection_rule")
+    stubs = {
+        "paps": {"generated_at": now_utc(), "window": man["window"],
+                 "corpus": {"breakouts_total": n, "cta_breakouts": cta_n, "non_cta_breakouts": n - cta_n},
+                 "paps": [dict({k: r[k] for k in mech}, topic=None, problem=None, agitation=None,
+                               promise=None, solution_delivery=None, source_surface=None,
+                               popularity_rank=r["popularity_rank"], note=None)
+                          for r in rows if r["is_cta"]],
+                 "non_cta": [r["shortcode"] for r in rows if not r["is_cta"]]},
+        "topicmap": {"schema": "goldmine-topic-map/1", "pull": {"manifest": prj.state["manifest"], "n": n},
+                     "read": None, "no_theme_label": "(no engine theme)", "topics": [],
+                     "reels": {r["shortcode"]: {"topic": None, "angle": None} for r in rows}},
+        "patternread": {"schema": "goldmine-pattern-read/1",
+                        "pull": {"manifest": prj.state["manifest"], "n": n, "cta_n": cta_n},
+                        "read": None, "formulas": [], "lm_types": [], "threads": [],
+                        "reels": {r["shortcode"]: ({"formula": None, "lm_type": None, "magnet": None}
+                                                   if r["is_cta"] else {"formula": None}) for r in rows}},
+    }
+    made = []
+    for k, d in stubs.items():
+        path = os.path.join(prj.rb, out["write_to"][k])
+        if not os.path.isfile(path):
+            jsave(path, d)
+            made.append(out["write_to"][k])
     prj.state["reads"] = {"packet": name, "expected": out["write_to"], "passed": False}
     prj.save_state()
     print("reads packet: %s (%d breakouts, %d CTA, %d without transcript)"
           % (name, n, cta_n, sum(1 for r in rows if not r["transcript"])))
     print("Write, into reel-build/: " + ", ".join(out["write_to"].values()))
+    if made:
+        print("Pre-filled with the mechanical fields: %s. Fill in only the null and empty fields."
+              % ", ".join(made))
 
 
 def step_check_reads(prj, args):
@@ -704,6 +828,7 @@ def step_check_reads(prj, args):
         return out
 
     paps = load("paps")
+    no_offer = []
     if paps is not None:
         got = set()
         for i, r in enumerate(paps.get("paps") or []):
@@ -711,13 +836,21 @@ def step_check_reads(prj, args):
                                 "agitation", "promise", "solution_delivery", "source_surface") if f not in r]
             if miss:
                 errs.append("paps: row %d (%s) lacks %s" % (i, r.get("shortcode"), ", ".join(miss)))
+            if not r.get("topic") or not r.get("source_surface"):
+                errs.append("paps: row %s needs a topic and a source_surface" % r.get("shortcode"))
             if not r.get("solution_delivery") or not r.get("promise"):
-                errs.append("paps: row %s needs promise and solution_delivery (never null)" % r.get("shortcode"))
+                no_offer.append(r.get("shortcode"))  # allowed only for an engagement ask (lm_none)
             got.add(r.get("shortcode"))
         if got - want:
             errs.append("paps: rows not in the manifest: %s" % sorted(got - want)[:10])
         if cta - got:
             errs.append("paps: CTA breakouts with no row: %s" % sorted(cta - got)[:10])
+        if (got & want) - cta:
+            errs.append("paps: rows for breakouts that are not CTAs: %s" % sorted((got & want) - cta)[:10])
+        top = newest(glob.glob(os.path.join(prj.rb, "Lead Magnet PAPS - * - *.json")))
+        if top != exp["paps"]:
+            errs.append("paps: the dashboard reads the newest Lead Magnet PAPS file in reel-build/, "
+                        "which is %s, not this run's %s" % (top, exp["paps"]))
         c = paps.get("corpus") or {}
         if (c.get("breakouts_total"), c.get("cta_breakouts")) != (len(want), len(cta)):
             errs.append("paps: corpus must be {breakouts_total: %d, cta_breakouts: %d, non_cta_breakouts: %d}"
@@ -750,7 +883,8 @@ def step_check_reads(prj, args):
     if pr is not None:
         if pr.get("schema") != "goldmine-pattern-read/1":
             errs.append("patternread: schema must be goldmine-pattern-read/1")
-        f_ids, lm_ids = ids(pr, "formulas", "patternread"), ids(pr, "lm_types", "patternread")
+        f_ids = ids(pr, "formulas", "patternread")
+        lm_ids = ids(pr, "lm_types", "patternread") if (cta or pr.get("lm_types")) else set()
         ids(pr, "threads", "patternread")
         seen = {}
         for th in pr.get("threads") or []:
@@ -774,6 +908,14 @@ def step_check_reads(prj, args):
                 errs.append("patternread: row %s needs a known formula id" % sc)
             if sc in cta and (v.get("lm_type") not in lm_ids or not v.get("magnet")):
                 errs.append("patternread: CTA row %s needs a known lm_type and a magnet" % sc)
+            if v.get("lm_type") == "lm_none" and v.get("magnet") != "engagement ask":
+                errs.append('patternread: row %s is lm_none, so its magnet is "engagement ask" '
+                            "(never invent a lead magnet)" % sc)
+    pr_reels = (pr or {}).get("reels") or {}
+    for sc in no_offer:
+        if (pr_reels.get(sc) or {}).get("lm_type") != "lm_none":
+            errs.append("paps: row %s needs promise and solution_delivery (never null), unless it is an "
+                        "engagement ask with no offer: lm_type lm_none in the Pattern Read" % sc)
 
     if errs:
         print("check-reads: FAIL (%d)" % len(errs))
@@ -782,10 +924,33 @@ def step_check_reads(prj, args):
         rd["passed"] = False
         prj.save_state()
         sys.exit(1)
+    # Proven hooks: the top 3 breakouts by multiplier (ties on shortcode), each with its opening
+    # line and its Pattern Read formula. Shape: ../references/reads.md, "Proven Hooks".
+    fm = {f["id"]: f for f in pr["formulas"]}
+    lines = {sc_of(b["url"]): b.get("hook_line") for b in man["breakouts"]}
+    top3 = sorted(packet["reels"], key=lambda r: (-(r.get("mult") or 0), r["shortcode"] or ""))[:3]
+    ph = rd["packet"].replace("Goldmine Reads Packet", "Proven Hooks", 1)
+    jsave(os.path.join(prj.rb, ph), {
+        "schema": "goldmine-proven-hooks/1", "generated_at": now_utc(),
+        "packet": rd["packet"], "patternread": exp["patternread"],
+        "hooks": [{"shortcode": r["shortcode"], "handle": r["handle"], "url": r["url"], "mult": r["mult"],
+                   "views": r["views"], "opening_line": lines.get(r["shortcode"]),
+                   "formula": {k: fm[pr["reels"][r["shortcode"]]["formula"]].get(k)
+                               for k in ("id", "name", "template")}} for r in top3]})
     rd.update(passed=True, paps=exp["paps"], topicmap=exp["topicmap"], patternread=exp["patternread"],
-              checked_at=now_utc())
+              proven_hooks=ph, checked_at=now_utc())
     prj.save_state()
     print("check-reads: PASS (%d breakouts, %d CTA). Recorded as this run's reads." % (len(want), len(cta)))
+    print("Proven hooks: %s (%d rows)" % (ph, len(top3)))
+
+
+def newest(paths):
+    """Base name of the newest reel-build file by the MM.DD.YY in its name, then by name: the same
+    pick the dashboard assembler makes, so a plain sort's '- 9 -' over '- 12 -' never decides."""
+    def key(p):
+        m = re.findall(r"(\d\d)\.(\d\d)\.(\d\d)", os.path.basename(p))
+        return ((m[-1][2], m[-1][0], m[-1][1]) if m else ("", "", ""), os.path.basename(p))
+    return os.path.basename(sorted(paths, key=key)[-1]) if paths else None
 
 
 # ---------------------------------------------------------------- main
