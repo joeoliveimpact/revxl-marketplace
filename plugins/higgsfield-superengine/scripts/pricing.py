@@ -146,7 +146,7 @@ def _rule_raw(r, p, resp, known=None):
         res = p.get("resolution")
         px, rate = _pick(r["pixel_ceiling"], res, "resolution"), _pick(r["rate_per_1k_tokens"], res, "resolution")
         mx = r["max_input_video_s"]
-        # input video at 1.0x (Joe); its length from the upload record, else the table's max
+        # input video at the table's video_input_multiplier_applied; its length from the upload record, else the max
         inp, src = _input_s(known, mx) if _has_video(p) else (0, "")
         g = r["generated_s_from"]
         if g == "duration":
@@ -463,7 +463,7 @@ def selftest():
              {"resolution": "480p", "duration": 4, "image_urls": ["a"], "audio_urls": ["b"], "video_urls": []},
              0.9046422),
             ("2.5 video-edit 480p: 30 s source + 30 s output", s25 + "video-edit",
-             {"resolution": "480p", "video_url": "https://x/v.mp4"}, 13.569633),
+             {"resolution": "480p", "video_url": "https://x/v.mp4"}, 8.1417798),
             ("2.5 video-extend 480p 5 s: 30 s input + 5 s", s25 + "video-extend",
              {"resolution": "480p", "duration": 5, "video_url": "https://x/v.mp4"}, 7.9156246),
             ("2.0 t2v 4k 5 s at $0.008", s20 + "text-to-video", {"resolution": "4k", "duration": 5}, 8.5536),
@@ -504,25 +504,25 @@ def selftest():
                   v["code"])
         for label, ep, body, secs, want in (  # hand-computed; the length comes from hf_rest's upload record
                 ("2.5 video-edit 720p, 5.5 s source -> 6 s in + 6 s out (285,120 tokens)", s25 + "video-edit",
-                 {"video_url": "u"}, 5.5, 6.101568),
+                 {"video_url": "u"}, 5.5, 3.6609408),
                 ("2.5 video-edit 720p, 2 s source -> 2 s in + 4 s out (the 4 s minimum)", s25 + "video-edit",
-                 {"video_url": "u"}, 2.0, 3.050784),
-                ("2.5 video-edit 720p, length unknown -> 30 s + 30 s (the JOI-016 $30.51)", s25 + "video-edit",
-                 {"video_url": "u"}, None, 30.50784),
+                 {"video_url": "u"}, 2.0, 1.8304704),
+                ("2.5 video-edit 720p, length unknown -> 30 s + 30 s (was the JOI-016 $30.51; x0.6 since v0.1.2)", s25 + "video-edit",
+                 {"video_url": "u"}, None, 18.304704),
                 ("2.5 video-edit 720p, 45 s source -> capped at 30 s", s25 + "video-edit", {"video_url": "u"}, 45,
-                 30.50784),
+                 18.304704),
                 ("Genjutsu 720p, 3.7 s source -> 4 s x $0.681", "higgsfield/genjutsu/object-swap/v1.0",
                  {"video_url": "v", "image_urls": ["a"]}, 3.7, 2.724),
                 ("Genjutsu 720p, 7.0004 s source -> 8 s, never rounded down to 7 (Codex review)",
                  "higgsfield/genjutsu/object-swap/v1.0", {"video_url": "v", "image_urls": ["a"]}, 7.0004, 5.448),
                 ("2.5 video-edit, length \"5\" (text, not a number) -> treated as unknown", s25 + "video-edit",
-                 {"video_url": "u"}, "5", 30.50784)):
+                 {"video_url": "u"}, "5", 18.304704)):
             v = price(ep, {**body, **q}, 200, DESC, input_video_s=secs)
             check(f"F5 {label} = ${want}", not v["ask"] and abs(v["usd"] - want) < 1e-9, f"{v['code']} {v['usd']}")
         v = price_record({"v": 1, "kind": "hf-superengine-estimate", "endpoint": s25 + "video-edit",
                           "params": {"video_url": "u", **q}, "http": 200, "response": DESC, "input_video_s": 5.5})
-        check("F5 an estimate record's input_video_s reaches the price ($6.101568)",
-              not v["ask"] and abs(v["usd"] - 6.101568) < 1e-9, f"{v['code']} {v['usd']}")
+        check("F5 an estimate record's input_video_s reaches the price ($3.6609408)",
+              not v["ask"] and abs(v["usd"] - 3.6609408) < 1e-9, f"{v['code']} {v['usd']}")
         v = P(s25 + "text-to-video", {"resolution": "480p", "duration": 4, **q}, 200, E("0.200"))
         check("F3 Seedance with a fixed-quote answer (not the formula description) -> ask unexpected_response",
               v["ask"] and v["code"] == "unexpected_response", v["code"])
