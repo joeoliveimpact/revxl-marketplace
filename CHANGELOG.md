@@ -4,17 +4,76 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.1.69] ... 2026-09-11
+## [0.1.73] ... 2026-10-02
 
-### Changed
-- **shortform-superengine v0.4.2** ... reel-scripter gains a structure gate at
-Step 4b (a tagged skeleton written at Checkpoint 2, checked for an early close, a
-flat run, a dead seam and an unpaid main loop) and a handoff to editor-superengine
-once the reel is recorded ("cut this reel"). The weekly pulse opens its window at
-the last run with a 7-day floor, pages with `max_id`, keys every page and retry,
-and adds "retry the failed handles". Behaviour change: txt transcripts now count
-toward coverage and feed the spoken diagnosis, so hook and theme tables shift on
-projects that have them; JSON-only projects are unchanged. Schema 1.5, additive.
+### Added
+- **higgsfield-superengine v0.1.3** ... works on a Mac.
+- **The safety guards run on a Mac.** Before, the plugin started its spend guard with a Windows-only command, so on a Mac every paid job was refused and the screen guard was off. Now a small Mac launcher starts the same guard, and only one guard ever decides on each computer.
+- **Setup finds Python on a Mac** the same way the other REVXL plugins do (a version check; Homebrew installs it if missing). The key is kept in the Mac Keychain.
+- **The skills have a full Mac path**, not a "beta, stop after the price" note.
+
+## [0.1.72] ... 2026-10-02
+
+### Fixed
+- **higgsfield-superengine v0.1.2** ... two fixes from the v0.1.1 live walk.
+- **The price quote now says when a pop-up is coming.** A job over the client's spend cap used to show "no OK needed" in the quote, then asked anyway at submit. The quote now checks the cap too.
+- **Video edits are priced at Higgsfield's real rate.** Seedance 2.5 edits use the 0.6x video-input token rate, confirmed against real billing, so a 5.5 s edit shows about $3.66 instead of $6.10.
+
+## [0.1.71] ... 2026-10-01
+
+### Fixed
+- **higgsfield-superengine v0.1.1** ... safety and prompting fixes after a client project
+burned credits on unreviewed prompts (JOI-016, 09.30.26).
+- **Spend guard:** a paid job is stamped only when the session's own transcript shows that
+exact submit as the pending tool call. A hand-built hook event or a background script can no
+longer approve spend. The guard also refuses a paid job unless:
+  - the model's notes were read;
+  - a prompting skill was loaded;
+  - the client saw the exact prompt word for word and replied.
+- **Pricing:**
+  - Video edits are priced on the uploaded clip's real length, so a 5.5 s edit shows about
+$6 instead of $30.51.
+  - Seedance 2.5 no longer forces an ask for sound (measured: same price on or off).
+  - The Flare ceilings were brought down toward the measured charges.
+- **Prompting:**
+  - A new recipe for adding objects to live footage, effects on black for compositing, and
+output checks.
+  - Numbered reference manifests, so references stop fusing into one object.
+  - Seedance 2.5 and Genjutsu go up to 1080p.
+  - Seedance 2.0 uses the documented `<<<image_N>>>` tokens.
+  - Qwen, Hailuo and LTX defaults were corrected.
+- **Hardening from an adversarial review:**
+  - Guarded paths are normalized.
+  - The guard refuses scripts that wrap it.
+  - It reads the whole session log, not just the end.
+  - A "never sent" refund is refused after a job really ran.
+- **Known limit:** a deliberately disguised script could still get past the guard. Moving
+approval out of Claude's reach is planned for v0.2.
+
+## [0.1.70] ... 2026-09-30
+
+### Added
+- **higgsfield-superengine v0.1.0** ... first release. Makes Higgsfield image and video
+generation easy just by talking to Claude, through the Higgsfield REST API on the client's
+own API key. 8 skills: setup (hidden key box, screen guard while the key is visible),
+generate, image and video prompting, static ads, UGC video ads, product shots and
+thumbnails. Every paid job is priced first; a spend guard holds jobs to a cap and asks
+before anything over it. Failure reports go to REVXL only when the client says Send.
+Windows-first; the Mac key box is beta and untested.
+- Known in this release: the recorded cost of a job is a ceiling and runs higher than the
+real charge (measured 09.30.26: Flare 1k/low $0.02 against $0.12 recorded; Seedance 2.5
+480p 4 s $0.58 against $0.90, sound on or off). Approval pop-ups need a permission mode
+that can ask: in bypass mode the guard refuses instead. Seedance 2.5 now reaches 1080p on
+the API (Higgsfield docs 09.30.26); the plugin's references still say 720p.
+
+## [0.1.69] ... 2026-09-25
+
+### Fixed
+- **notebooklm-superengine v0.5.0** ... auth failures route to `/notebooklm-setup reauth`
+(Claude runs it; the user only signs in) instead of relaying the CLI's `notebooklm login`
+hint, which broke on Windows when Playwright's pinned Chromium build was missing. Setup now
+signs in through Google Chrome by default on Mac and Windows, then Edge on Windows, then
+bundled Chromium as the last resort.
 
 ## [0.1.68] ... 2026-09-09
 

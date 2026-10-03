@@ -1,0 +1,1553 @@
+{
+  "meta": {
+    "captured": "09.26.26",
+    "currency": "USD",
+    "price_basis": "LIST (pre-promo). /estimate 'usd' is promo; list = usd + discount.usd",
+    "defaults_rule": "merge 'defaults' (09.25 docs schema) under the request body before pricing: an omitted field is priced at its schema default",
+    "unproven_when_rule": "if every key/value in 'unproven_when' matches the merged body, treat upper_bound as false for that request",
+    "pickable_count": 82,
+    "rule_count": 82,
+    "not_guaranteed_upper_bound": [
+      "alibaba/wan-3.0/reference-to-video",
+      "kling-video/motion-control/pro",
+      "kling-video/motion-control/std",
+      "kling-video/o3/video-edit",
+      "kling-video/omni/video-edit",
+      "kling-video/v3/motion-control/pro",
+      "kling-video/v3/motion-control/std",
+      "marketing-studio/image/flare",
+      "marketing-studio/image/sunburst",
+      "minimax/h3/reference-to-video"
+    ],
+    "not_guaranteed_when_generate_audio_true": [
+      "alibaba/wan-3.0-prime/image-to-video",
+      "alibaba/wan-3.0-prime/reference-to-video",
+      "alibaba/wan-3.0-prime/text-to-video",
+      "alibaba/wan-3.0/image-to-video",
+      "alibaba/wan-3.0/text-to-video",
+      "bytedance/seedance-2.0/image-to-video",
+      "bytedance/seedance-2.0/reference-to-video",
+      "bytedance/seedance-2.0/text-to-video",
+      "bytedance/seedance-2.5/image-to-video",
+      "bytedance/seedance-2.5/reference-to-video",
+      "bytedance/seedance-2.5/text-to-video",
+      "bytedance/seedance-2.5/video-edit",
+      "bytedance/seedance-2.5/video-extend",
+      "higgsfield/cinema-studio/4.0"
+    ],
+    "always_ask": [
+      "kling-video/motion-control/pro",
+      "kling-video/motion-control/std",
+      "kling-video/o3/video-edit",
+      "kling-video/omni/video-edit",
+      "kling-video/v3/motion-control/pro",
+      "kling-video/v3/motion-control/std"
+    ]
+  },
+  "endpoints": {
+    "alibaba/happy-horse/image-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/alibaba/happy-horse/image-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.490, discount 30.00% -> list $0.7 for body in estimates/defaults.json",
+      "source": "POST /estimate/alibaba/happy-horse/image-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "720p"
+      }
+    },
+    "alibaba/happy-horse/reference-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/alibaba/happy-horse/reference-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.490, discount 30.00% -> list $0.7 for body in estimates/defaults.json",
+      "source": "POST /estimate/alibaba/happy-horse/reference-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "720p"
+      }
+    },
+    "alibaba/happy-horse/text-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/alibaba/happy-horse/text-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.490, discount 30.00% -> list $0.7 for body in estimates/defaults.json",
+      "source": "POST /estimate/alibaba/happy-horse/text-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "720p",
+        "aspect_ratio": "16:9"
+      }
+    },
+    "alibaba/happy-horse/v1.1/image-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/alibaba/happy-horse/v1.1/image-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.630, discount 30.00% -> list $0.9 for body in estimates/defaults.json",
+      "source": "POST /estimate/alibaba/happy-horse/v1.1/image-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "1080p"
+      }
+    },
+    "alibaba/happy-horse/v1.1/reference-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/alibaba/happy-horse/v1.1/reference-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.630, discount 30.00% -> list $0.9 for body in estimates/defaults.json",
+      "source": "POST /estimate/alibaba/happy-horse/v1.1/reference-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "1080p"
+      }
+    },
+    "alibaba/happy-horse/v1.1/text-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/alibaba/happy-horse/v1.1/text-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.630, discount 30.00% -> list $0.9 for body in estimates/defaults.json",
+      "source": "POST /estimate/alibaba/happy-horse/v1.1/text-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "1080p",
+        "aspect_ratio": "16:9"
+      }
+    },
+    "alibaba/qwen-image-3/edit": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/alibaba/qwen-image-3/edit",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.040, discount None% -> list $0.04 for body in estimates/defaults.json",
+      "source": "POST /estimate/alibaba/qwen-image-3/edit (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "resolution": "1k",
+        "aspect_ratio": "1:1",
+        "prompt_extend": true,
+        "enable_thinking": true,
+        "prompt_extend_mode": "direct"
+      }
+    },
+    "alibaba/qwen-image-3/text-to-image": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/alibaba/qwen-image-3/text-to-image",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.040, discount None% -> list $0.04 for body in estimates/defaults.json",
+      "source": "POST /estimate/alibaba/qwen-image-3/text-to-image (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "resolution": "1k",
+        "aspect_ratio": "1:1",
+        "prompt_extend": true,
+        "enable_thinking": true,
+        "prompt_extend_mode": "direct"
+      }
+    },
+    "alibaba/wan-3.0-prime/image-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/alibaba/wan-3.0-prime/image-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.980, discount 30.00% -> list $1.4 for body in estimates/defaults.json",
+      "source": "POST /estimate/alibaba/wan-3.0-prime/image-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "1080p",
+        "aspect_ratio": "adaptive",
+        "generate_audio": true,
+        "enable_thinking": false
+      },
+      "unproven_when": {
+        "generate_audio": true
+      },
+      "note": "audio-on cost unproven: sibling Wan 3.0 Prime showed no audio price difference on /estimate (09.26.26, t2v + i2v, estimates/wan30_prime_audio.json: $1.40 list both ways) but no real audio-on charge has been measured."
+    },
+    "alibaba/wan-3.0-prime/reference-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/alibaba/wan-3.0-prime/reference-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.980, discount 30.00% -> list $1.4 for body in estimates/defaults.json",
+      "source": "POST /estimate/alibaba/wan-3.0-prime/reference-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "1080p",
+        "aspect_ratio": "adaptive",
+        "generate_audio": true,
+        "enable_thinking": false
+      },
+      "unproven_when": {
+        "generate_audio": true
+      },
+      "note": "audio-on cost unproven: sibling Wan 3.0 Prime showed no audio price difference on /estimate (09.26.26, t2v + i2v, estimates/wan30_prime_audio.json: $1.40 list both ways) but no real audio-on charge has been measured."
+    },
+    "alibaba/wan-3.0-prime/text-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/alibaba/wan-3.0-prime/text-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.980, discount 30.00% -> list $1.4 for body in estimates/defaults.json",
+      "source": "POST /estimate/alibaba/wan-3.0-prime/text-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "1080p",
+        "aspect_ratio": "adaptive",
+        "generate_audio": true,
+        "enable_thinking": false
+      },
+      "unproven_when": {
+        "generate_audio": true
+      },
+      "note": "audio-on cost unproven: sibling Wan 3.0 Prime showed no audio price difference on /estimate (09.26.26, t2v + i2v, estimates/wan30_prime_audio.json: $1.40 list both ways) but no real audio-on charge has been measured."
+    },
+    "alibaba/wan-3.0/image-to-video": {
+      "rule": "per_second",
+      "usd_per_s": {
+        "480p": 0.05,
+        "720p": 0.1,
+        "1080p": 0.2
+      },
+      "seconds_from": "duration",
+      "list_price_basis": "published per-second list rate by resolution",
+      "source": "/estimate description, estimates/defaults.json + retries.json, captured 09.26.26 (rates before discount)",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "1080p",
+        "aspect_ratio": "adaptive",
+        "generate_audio": true,
+        "enable_thinking": false
+      },
+      "unproven_when": {
+        "generate_audio": true
+      },
+      "note": "audio-on cost unproven: sibling Wan 3.0 Prime showed no audio price difference on /estimate (09.26.26, t2v + i2v, estimates/wan30_prime_audio.json: $1.40 list both ways) but no real audio-on charge has been measured. enable_thinking (default false) is an unpriced option: the published per-second rate doesn't mention it."
+    },
+    "alibaba/wan-3.0/reference-to-video": {
+      "rule": "per_second",
+      "usd_per_s": {
+        "480p": 0.05,
+        "720p": 0.1,
+        "1080p": 0.2
+      },
+      "seconds_from": "duration",
+      "list_price_basis": "published per-second list rate by resolution",
+      "source": "/estimate description, estimates/defaults.json + retries.json, captured 09.26.26 (rates before discount)",
+      "confidence": "medium",
+      "upper_bound": false,
+      "note": "reference videos (1-30 s, <=30 s total, docs usage notes) may be billed on top of generated seconds: unknown, like MiniMax H3 r2v; document/web-page refs auto-enable thinking, cost also unknown; audio-on cost unproven: sibling Wan 3.0 Prime showed no audio price difference on /estimate (09.26.26, t2v + i2v, estimates/wan30_prime_audio.json: $1.40 list both ways) but no real audio-on charge has been measured.",
+      "defaults": {
+        "duration": 5,
+        "resolution": "1080p",
+        "aspect_ratio": "adaptive",
+        "generate_audio": true,
+        "enable_thinking": false
+      },
+      "unproven_when": {
+        "generate_audio": true
+      }
+    },
+    "alibaba/wan-3.0/text-to-video": {
+      "rule": "per_second",
+      "usd_per_s": {
+        "480p": 0.05,
+        "720p": 0.1,
+        "1080p": 0.2
+      },
+      "seconds_from": "duration",
+      "list_price_basis": "published per-second list rate by resolution",
+      "source": "/estimate description, estimates/defaults.json + retries.json, captured 09.26.26 (rates before discount)",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "1080p",
+        "aspect_ratio": "adaptive",
+        "generate_audio": true,
+        "enable_thinking": false
+      },
+      "unproven_when": {
+        "generate_audio": true
+      },
+      "note": "audio-on cost unproven: sibling Wan 3.0 Prime showed no audio price difference on /estimate (09.26.26, t2v + i2v, estimates/wan30_prime_audio.json: $1.40 list both ways) but no real audio-on charge has been measured. enable_thinking (default false) is an unpriced option: the published per-second rate doesn't mention it."
+    },
+    "bytedance/seedance-2.0/image-to-video": {
+      "rule": "seedance_formula",
+      "tokens": "ceil(pixel_ceiling[res] * (input_video_s + generated_s) * 24 / 1024)",
+      "usd": "tokens / 1000 * rate_per_1k_tokens[res] * video_input_multiplier_applied",
+      "pixel_ceiling": {
+        "480p": 450912,
+        "720p": 1013760,
+        "1080p": 2280960,
+        "4k": 9123840
+      },
+      "video_input_multiplier_applied": 1.0,
+      "image_refs_free": true,
+      "audio_refs_free": true,
+      "generated_s_basis": "requested duration (billing uses the nominal seconds, not the rendered +1 frame; replay-verified)",
+      "unproven_when": {
+        "generate_audio": true
+      },
+      "note": "upper_bound holds only with generate_audio=false: audio-on cost unmeasured; measured in 7.2 smoke test (schema default generate_audio=true, so an omitted field is the unproven case). Video input: /estimate text 09.26.26 says the token rate is x0.6 when video inputs are present; NOT applied (Joe 09.26.26: keep 1.0x, conservative).",
+      "rate_per_1k_tokens": {
+        "480p": 0.014,
+        "720p": 0.014,
+        "1080p": 0.014,
+        "4k": 0.008
+      },
+      "max_input_video_s": 0,
+      "generated_s_from": "duration",
+      "list_price_basis": "published token rate, list",
+      "source": "/estimate description, estimates/defaults.json + retries.json, captured 09.26.26 ('Rates shown are before any applicable customer discount')",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "720p",
+        "generate_audio": true
+      }
+    },
+    "bytedance/seedance-2.0/reference-to-video": {
+      "rule": "seedance_formula",
+      "tokens": "ceil(pixel_ceiling[res] * (input_video_s + generated_s) * 24 / 1024)",
+      "usd": "tokens / 1000 * rate_per_1k_tokens[res] * video_input_multiplier_applied",
+      "pixel_ceiling": {
+        "480p": 450912,
+        "720p": 1013760,
+        "1080p": 2280960,
+        "4k": 9123840
+      },
+      "video_input_multiplier_applied": 1.0,
+      "image_refs_free": true,
+      "audio_refs_free": true,
+      "generated_s_basis": "requested duration (billing uses the nominal seconds, not the rendered +1 frame; replay-verified)",
+      "unproven_when": {
+        "generate_audio": true
+      },
+      "note": "upper_bound holds only with generate_audio=false: audio-on cost unmeasured; measured in 7.2 smoke test (schema default generate_audio=true, so an omitted field is the unproven case). Video input: /estimate text 09.26.26 says the token rate is x0.6 when video inputs are present; NOT applied (Joe 09.26.26: keep 1.0x, conservative).",
+      "rate_per_1k_tokens": {
+        "480p": 0.014,
+        "720p": 0.014,
+        "1080p": 0.014,
+        "4k": 0.008
+      },
+      "max_input_video_s": 45,
+      "generated_s_from": "duration",
+      "list_price_basis": "published token rate, list; up to 3 video refs trimmed to 15 s each (catalog notes)",
+      "source": "/estimate description, estimates/defaults.json + retries.json, captured 09.26.26 ('Rates shown are before any applicable customer discount')",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "720p",
+        "aspect_ratio": "16:9",
+        "generate_audio": true
+      }
+    },
+    "bytedance/seedance-2.0/text-to-video": {
+      "rule": "seedance_formula",
+      "tokens": "ceil(pixel_ceiling[res] * (input_video_s + generated_s) * 24 / 1024)",
+      "usd": "tokens / 1000 * rate_per_1k_tokens[res] * video_input_multiplier_applied",
+      "pixel_ceiling": {
+        "480p": 450912,
+        "720p": 1013760,
+        "1080p": 2280960,
+        "4k": 9123840
+      },
+      "video_input_multiplier_applied": 1.0,
+      "image_refs_free": true,
+      "audio_refs_free": true,
+      "generated_s_basis": "requested duration (billing uses the nominal seconds, not the rendered +1 frame; replay-verified)",
+      "unproven_when": {
+        "generate_audio": true
+      },
+      "note": "upper_bound holds only with generate_audio=false: audio-on cost unmeasured; measured in 7.2 smoke test (schema default generate_audio=true, so an omitted field is the unproven case). Video input: /estimate text 09.26.26 says the token rate is x0.6 when video inputs are present; NOT applied (Joe 09.26.26: keep 1.0x, conservative).",
+      "rate_per_1k_tokens": {
+        "480p": 0.014,
+        "720p": 0.014,
+        "1080p": 0.014,
+        "4k": 0.008
+      },
+      "max_input_video_s": 0,
+      "generated_s_from": "duration",
+      "list_price_basis": "published token rate, list (4K rate is lower per token)",
+      "source": "/estimate description, estimates/defaults.json + retries.json, captured 09.26.26 ('Rates shown are before any applicable customer discount')",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "720p",
+        "aspect_ratio": "16:9",
+        "generate_audio": true
+      }
+    },
+    "bytedance/seedance-2.5/image-to-video": {
+      "rule": "seedance_formula",
+      "tokens": "ceil(pixel_ceiling[res] * (input_video_s + generated_s) * 24 / 1024)",
+      "usd": "tokens / 1000 * rate_per_1k_tokens[res] * video_input_multiplier_applied",
+      "pixel_ceiling": {
+        "480p": 450912,
+        "720p": 1013760,
+        "1080p": 2280960,
+        "4k": 9123840
+      },
+      "video_input_multiplier_applied": 1.0,
+      "image_refs_free": true,
+      "audio_refs_free": true,
+      "generated_s_basis": "requested duration (billing uses the nominal seconds, not the rendered +1 frame; replay-verified)",
+      "note": "audio on = audio off: measured 09.30.26 (480p/4s image-to-video, $0.58 charged both ways), so generate_audio no longer forces an ask (v0.1.1). Video input: /estimate text 09.26.26 says the token rate is x0.6 when video inputs are present; NOT applied (Joe 09.26.26: keep 1.0x, conservative). Input video length comes from hf_rest upload records when known (v0.1.1).",
+      "rate_per_1k_tokens": {
+        "480p": 0.0214,
+        "720p": 0.0214,
+        "1080p": 0.0234
+      },
+      "max_input_video_s": 0,
+      "generated_s_from": "duration",
+      "list_price_basis": "published token rate, list; output framing follows image_url",
+      "source": "/estimate description, estimates/defaults.json + retries.json, captured 09.26.26 ('Rates shown are before any applicable customer discount')",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "720p",
+        "bitrate_mode": "high",
+        "generate_audio": true
+      }
+    },
+    "bytedance/seedance-2.5/reference-to-video": {
+      "rule": "seedance_formula",
+      "tokens": "ceil(pixel_ceiling[res] * (input_video_s + generated_s) * 24 / 1024)",
+      "usd": "tokens / 1000 * rate_per_1k_tokens[res] * video_input_multiplier_applied",
+      "pixel_ceiling": {
+        "480p": 450912,
+        "720p": 1013760,
+        "1080p": 2280960,
+        "4k": 9123840
+      },
+      "video_input_multiplier_applied": 1.0,
+      "image_refs_free": true,
+      "audio_refs_free": true,
+      "generated_s_basis": "requested duration (billing uses the nominal seconds, not the rendered +1 frame; replay-verified)",
+      "note": "audio on = audio off: measured 09.30.26 (480p/4s image-to-video, $0.58 charged both ways), so generate_audio no longer forces an ask (v0.1.1). Video input: /estimate text 09.26.26 says the token rate is x0.6 when video inputs are present; NOT applied (Joe 09.26.26: keep 1.0x, conservative). Input video length comes from hf_rest upload records when known (v0.1.1).",
+      "rate_per_1k_tokens": {
+        "480p": 0.0214,
+        "720p": 0.0214,
+        "1080p": 0.0234
+      },
+      "max_input_video_s": 30,
+      "generated_s_from": "duration",
+      "list_price_basis": "published token rate, list; video refs normalized to <=30 s total (docs)",
+      "source": "/estimate description, estimates/defaults.json + retries.json, captured 09.26.26 ('Rates shown are before any applicable customer discount')",
+      "confidence": "high",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "720p",
+        "aspect_ratio": "16:9",
+        "bitrate_mode": "high",
+        "generate_audio": true
+      }
+    },
+    "bytedance/seedance-2.5/text-to-video": {
+      "rule": "seedance_formula",
+      "tokens": "ceil(pixel_ceiling[res] * (input_video_s + generated_s) * 24 / 1024)",
+      "usd": "tokens / 1000 * rate_per_1k_tokens[res] * video_input_multiplier_applied",
+      "pixel_ceiling": {
+        "480p": 450912,
+        "720p": 1013760,
+        "1080p": 2280960,
+        "4k": 9123840
+      },
+      "video_input_multiplier_applied": 1.0,
+      "image_refs_free": true,
+      "audio_refs_free": true,
+      "generated_s_basis": "requested duration (billing uses the nominal seconds, not the rendered +1 frame; replay-verified)",
+      "note": "audio on = audio off: measured 09.30.26 (480p/4s image-to-video, $0.58 charged both ways), so generate_audio no longer forces an ask (v0.1.1). Video input: /estimate text 09.26.26 says the token rate is x0.6 when video inputs are present; NOT applied (Joe 09.26.26: keep 1.0x, conservative). Input video length comes from hf_rest upload records when known (v0.1.1).",
+      "rate_per_1k_tokens": {
+        "480p": 0.0214,
+        "720p": 0.0214,
+        "1080p": 0.0234
+      },
+      "max_input_video_s": 0,
+      "generated_s_from": "duration",
+      "list_price_basis": "published token rate, list",
+      "source": "/estimate description, estimates/defaults.json + retries.json, captured 09.26.26 ('Rates shown are before any applicable customer discount')",
+      "confidence": "high",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "720p",
+        "aspect_ratio": "16:9",
+        "bitrate_mode": "high",
+        "output_format": "mp4",
+        "generate_audio": true
+      }
+    },
+    "bytedance/seedance-2.5/video-edit": {
+      "rule": "seedance_formula",
+      "tokens": "ceil(pixel_ceiling[res] * (input_video_s + generated_s) * 24 / 1024)",
+      "usd": "tokens / 1000 * rate_per_1k_tokens[res] * video_input_multiplier_applied",
+      "pixel_ceiling": {
+        "480p": 450912,
+        "720p": 1013760,
+        "1080p": 2280960,
+        "4k": 9123840
+      },
+      "video_input_multiplier_applied": 0.6,
+      "image_refs_free": true,
+      "audio_refs_free": true,
+      "generated_s_basis": "requested duration (billing uses the nominal seconds, not the rendered +1 frame; replay-verified)",
+      "note": "audio on = audio off: measured 09.30.26 (480p/4s image-to-video, $0.58 charged both ways), so generate_audio no longer forces an ask (v0.1.1). Video input x0.6 applied (v0.1.2): the /estimate text says the token rate is x0.6 when video inputs are present, and billing confirms it: three 720p REST edits on 09.30.26 (5.2 s, 5.0 s, 4.0 s sources) billed $2.19, $2.14, $1.76 = x0.6 list x0.7 (the 30% sale then live); x1.0 would have been ~$3.70 for the first. Supersedes Joe's 09.26.26 keep-1.0x. Input video length comes from hf_rest upload records when known (v0.1.1).",
+      "rate_per_1k_tokens": {
+        "480p": 0.0214,
+        "720p": 0.0214,
+        "1080p": 0.0234
+      },
+      "max_input_video_s": 30,
+      "generated_s_from": "source_video (normalized 4..30 s)",
+      "list_price_basis": "published token rate, list; billable = input + generated, output length = processed source (docs L14702+)",
+      "source": "/estimate description, estimates/defaults.json + retries.json, captured 09.26.26 ('Rates shown are before any applicable customer discount')",
+      "confidence": "high",
+      "upper_bound": true,
+      "defaults": {
+        "resolution": "720p",
+        "bitrate_mode": "high",
+        "generate_audio": true
+      }
+    },
+    "bytedance/seedance-2.5/video-extend": {
+      "rule": "seedance_formula",
+      "tokens": "ceil(pixel_ceiling[res] * (input_video_s + generated_s) * 24 / 1024)",
+      "usd": "tokens / 1000 * rate_per_1k_tokens[res] * video_input_multiplier_applied",
+      "pixel_ceiling": {
+        "480p": 450912,
+        "720p": 1013760,
+        "1080p": 2280960,
+        "4k": 9123840
+      },
+      "video_input_multiplier_applied": 1.0,
+      "image_refs_free": true,
+      "audio_refs_free": true,
+      "generated_s_basis": "requested duration (billing uses the nominal seconds, not the rendered +1 frame; replay-verified)",
+      "note": "audio on = audio off: measured 09.30.26 (480p/4s image-to-video, $0.58 charged both ways), so generate_audio no longer forces an ask (v0.1.1). Video input: /estimate text 09.26.26 says the token rate is x0.6 when video inputs are present; NOT applied (Joe 09.26.26: keep 1.0x, conservative). Input video length comes from hf_rest upload records when known (v0.1.1).",
+      "rate_per_1k_tokens": {
+        "480p": 0.0214,
+        "720p": 0.0214,
+        "1080p": 0.0234
+      },
+      "max_input_video_s": 30,
+      "generated_s_from": "duration",
+      "list_price_basis": "published token rate, list; billable = input + generated (docs L14924+)",
+      "source": "/estimate description, estimates/defaults.json + retries.json, captured 09.26.26 ('Rates shown are before any applicable customer discount')",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "720p",
+        "bitrate_mode": "high",
+        "generate_audio": true
+      }
+    },
+    "higgsfield-ai/soul/cinema": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/higgsfield-ai/soul/cinema",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.004, discount None% -> list $0.004 for body in estimates/defaults.json",
+      "source": "POST /estimate/higgsfield-ai/soul/cinema (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "aspect_ratio": "1:1",
+        "enhance_prompt": false,
+        "resolution": "720p",
+        "custom_reference_id": null,
+        "custom_reference_strength": 1.0,
+        "batch_size": 1
+      }
+    },
+    "higgsfield-ai/soul/standard": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/higgsfield-ai/soul/standard",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.094, discount None% -> list $0.094 for body in estimates/defaults.json",
+      "source": "POST /estimate/higgsfield-ai/soul/standard (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "aspect_ratio": "4:3",
+        "enhance_prompt": false,
+        "style_id": "464ea177-8d40-4940-8d9d-b438bab269c7",
+        "style_strength": 1.0,
+        "resolution": "720p",
+        "seed": null,
+        "custom_reference_id": null,
+        "custom_reference_strength": 1.0,
+        "image_reference_url": null,
+        "batch_size": 1
+      }
+    },
+    "higgsfield-ai/soul/v2/standard": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/higgsfield-ai/soul/v2/standard",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.004, discount None% -> list $0.004 for body in estimates/defaults.json",
+      "source": "POST /estimate/higgsfield-ai/soul/v2/standard (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "high",
+      "upper_bound": true,
+      "defaults": {
+        "aspect_ratio": "1:1",
+        "resolution": "720p",
+        "enhance_prompt": false,
+        "custom_reference_id": null,
+        "custom_reference_strength": 1.0,
+        "style_id": "3db34ab5-3439-4317-9e03-08dc30852e69",
+        "style_strength": 1.0,
+        "batch_size": 1
+      }
+    },
+    "higgsfield/cinema-studio/4.0": {
+      "rule": "seedance_formula",
+      "tokens": "ceil(pixel_ceiling[res] * (input_video_s + generated_s) * 24 / 1024)",
+      "usd": "tokens / 1000 * rate_per_1k_tokens[res] * video_input_multiplier_applied",
+      "pixel_ceiling": {
+        "480p": 450912,
+        "720p": 1013760,
+        "1080p": 2280960,
+        "4k": 9123840
+      },
+      "video_input_multiplier_applied": 1.0,
+      "image_refs_free": true,
+      "audio_refs_free": true,
+      "generated_s_basis": "requested duration (billing uses the nominal seconds, not the rendered +1 frame; replay-verified)",
+      "unproven_when": {
+        "generate_audio": true
+      },
+      "note": "upper_bound holds only with generate_audio=false: audio-on cost unmeasured; measured in 7.2 smoke test (schema default generate_audio=true, so an omitted field is the unproven case). Video input: /estimate text 09.26.26 says the token rate is x0.6 when video inputs are present; NOT applied (Joe 09.26.26: keep 1.0x, conservative).",
+      "rate_per_1k_tokens": {
+        "480p": 0.0214,
+        "720p": 0.0214
+      },
+      "max_input_video_s": 30,
+      "generated_s_from": "duration",
+      "list_price_basis": "published token rate, list; video refs normalized to <=30 s total (catalog notes)",
+      "source": "/estimate description, estimates/defaults.json + retries.json, captured 09.26.26 ('Rates shown are before any applicable customer discount')",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "720p",
+        "aspect_ratio": "16:9",
+        "generate_audio": true
+      }
+    },
+    "higgsfield/genjutsu/motion-transfer/v1.0": {
+      "rule": "per_second",
+      "usd_per_s": {
+        "480p": 0.318,
+        "720p": 0.681,
+        "1080p": 1.632
+      },
+      "seconds_from": "input video, ceil to whole s, max 30",
+      "max_seconds": 30,
+      "list_price_basis": "published per INPUT-second list rate; matches pricing page Genjutsu list $0.318/s",
+      "source": "/estimate description, estimates/defaults.json + retries.json, captured 09.26.26 (rates before discount); Pricing Page - Captured 09.26.26.md",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "prompt": "",
+        "resolution": "720p"
+      }
+    },
+    "higgsfield/genjutsu/object-swap/v1.0": {
+      "rule": "per_second",
+      "usd_per_s": {
+        "480p": 0.318,
+        "720p": 0.681,
+        "1080p": 1.632
+      },
+      "seconds_from": "input video, ceil to whole s, max 30",
+      "max_seconds": 30,
+      "list_price_basis": "published per INPUT-second list rate; matches pricing page Genjutsu list $0.318/s",
+      "source": "/estimate description, estimates/defaults.json + retries.json, captured 09.26.26 (rates before discount); Pricing Page - Captured 09.26.26.md",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "prompt": "",
+        "resolution": "720p"
+      }
+    },
+    "ideogram/v4.0": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/ideogram/v4.0",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.060, discount None% -> list $0.06 for body in estimates/defaults.json",
+      "source": "POST /estimate/ideogram/v4.0 (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "aspect_ratio": "1:1",
+        "rendering_speed": "DEFAULT"
+      }
+    },
+    "kling-video/motion-control/pro": {
+      "rule": "ceiling",
+      "usd_per_s": 0.42,
+      "seconds_from": "input video, ceil to whole s",
+      "max_seconds": 30,
+      "list_price_basis": "no published price: /estimate returns HTTP 500 for every body tried 09.26.26 (estimates/defaults.json, retries.json, retries2.json); ceiling = highest Kling list rate seen ($0.42/s, v3.0 4k via /estimate) x input seconds",
+      "source": "estimates/*.json 09.26.26; catalog notes (source-video length limits)",
+      "confidence": "low",
+      "upper_bound": false,
+      "always_ask": true,
+      "note": "price unknown: never run silently; show 'price unknown, rough ceiling $X' and ask (Joe 09.26.26). Ceiling is for display only.",
+      "defaults": {
+        "prompt": "",
+        "keep_original_sound": "yes",
+        "character_orientation": "video"
+      }
+    },
+    "kling-video/motion-control/std": {
+      "rule": "ceiling",
+      "usd_per_s": 0.42,
+      "seconds_from": "input video, ceil to whole s",
+      "max_seconds": 30,
+      "list_price_basis": "no published price: /estimate returns HTTP 500 for every body tried 09.26.26 (estimates/defaults.json, retries.json, retries2.json); ceiling = highest Kling list rate seen ($0.42/s, v3.0 4k via /estimate) x input seconds",
+      "source": "estimates/*.json 09.26.26; catalog notes (source-video length limits)",
+      "confidence": "low",
+      "upper_bound": false,
+      "always_ask": true,
+      "note": "price unknown: never run silently; show 'price unknown, rough ceiling $X' and ask (Joe 09.26.26). Ceiling is for display only.",
+      "defaults": {
+        "prompt": "",
+        "keep_original_sound": "yes",
+        "character_orientation": "video"
+      }
+    },
+    "kling-video/o3/first-last-frame": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/kling-video/o3/first-last-frame",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.308, discount 45.00% -> list $0.56 for body in estimates/retries.json",
+      "source": "POST /estimate/kling-video/o3/first-last-frame (free), estimates/retries.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "mode": "pro",
+        "sound": "off",
+        "duration": 5,
+        "multi_shots": false
+      }
+    },
+    "kling-video/o3/image-reference": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/kling-video/o3/image-reference",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.231, discount 45.00% -> list $0.42 for body in estimates/defaults.json",
+      "source": "POST /estimate/kling-video/o3/image-reference (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "mode": "std",
+        "sound": "off",
+        "duration": 5,
+        "shot_type": "customize",
+        "multi_shots": false
+      }
+    },
+    "kling-video/o3/video-edit": {
+      "rule": "ceiling",
+      "usd_per_s": 0.42,
+      "seconds_from": "input video, ceil to whole s",
+      "max_seconds": 16,
+      "list_price_basis": "no published price: /estimate returns HTTP 500 for every body tried 09.26.26 (estimates/defaults.json, retries.json, retries2.json); ceiling = highest Kling list rate seen ($0.42/s, v3.0 4k via /estimate) x input seconds",
+      "source": "estimates/*.json 09.26.26; catalog notes (source-video length limits)",
+      "confidence": "low",
+      "upper_bound": false,
+      "always_ask": true,
+      "note": "price unknown: never run silently; show 'price unknown, rough ceiling $X' and ask (Joe 09.26.26). Ceiling is for display only. mode='4k' may bill input + output seconds (~2x this ceiling); covered by always_ask.",
+      "defaults": {
+        "mode": "pro"
+      }
+    },
+    "kling-video/o3/video-reference": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/kling-video/o3/video-reference",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.462, discount 45.00% -> list $0.84 for body in estimates/defaults.json",
+      "source": "POST /estimate/kling-video/o3/video-reference (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "mode": "pro",
+        "duration": 5
+      }
+    },
+    "kling-video/omni/first-last-frame": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/kling-video/omni/first-last-frame",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.308, discount 45.00% -> list $0.56 for body in estimates/defaults.json",
+      "source": "POST /estimate/kling-video/omni/first-last-frame (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "mode": "pro",
+        "duration": 5,
+        "aspect_ratio": "16:9"
+      }
+    },
+    "kling-video/omni/image-reference": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/kling-video/omni/image-reference",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.308, discount 45.00% -> list $0.56 for body in estimates/defaults.json",
+      "source": "POST /estimate/kling-video/omni/image-reference (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "mode": "pro",
+        "duration": 5,
+        "aspect_ratio": "16:9"
+      }
+    },
+    "kling-video/omni/video-edit": {
+      "rule": "ceiling",
+      "usd_per_s": 0.42,
+      "seconds_from": "input video, ceil to whole s",
+      "max_seconds": 10,
+      "list_price_basis": "no published price: /estimate returns HTTP 500 for every body tried 09.26.26 (estimates/defaults.json, retries.json, retries2.json); ceiling = highest Kling list rate seen ($0.42/s, v3.0 4k via /estimate) x input seconds",
+      "source": "estimates/*.json 09.26.26; catalog notes (source-video length limits)",
+      "confidence": "low",
+      "upper_bound": false,
+      "always_ask": true,
+      "note": "price unknown: never run silently; show 'price unknown, rough ceiling $X' and ask (Joe 09.26.26). Ceiling is for display only.",
+      "defaults": {
+        "mode": "pro"
+      }
+    },
+    "kling-video/omni/video-reference": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/kling-video/omni/video-reference",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.462, discount 45.00% -> list $0.84 for body in estimates/defaults.json",
+      "source": "POST /estimate/kling-video/omni/video-reference (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "mode": "pro",
+        "duration": 5,
+        "aspect_ratio": "16:9"
+      }
+    },
+    "kling-video/v2.5-turbo/pro/image-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/kling-video/v2.5-turbo/pro/image-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.193, discount 45.00% -> list $0.351 for body in estimates/defaults.json",
+      "source": "POST /estimate/kling-video/v2.5-turbo/pro/image-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "cfg_scale": 0.5,
+        "negative_prompt": ""
+      }
+    },
+    "kling-video/v2.5-turbo/pro/text-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/kling-video/v2.5-turbo/pro/text-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.193, discount 45.00% -> list $0.351 for body in estimates/defaults.json",
+      "source": "POST /estimate/kling-video/v2.5-turbo/pro/text-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "cfg_scale": 0.5,
+        "negative_prompt": ""
+      }
+    },
+    "kling-video/v2.5-turbo/standard/image-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/kling-video/v2.5-turbo/standard/image-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.116, discount 45.00% -> list $0.211 for body in estimates/defaults.json",
+      "source": "POST /estimate/kling-video/v2.5-turbo/standard/image-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "cfg_scale": 0.5,
+        "negative_prompt": ""
+      }
+    },
+    "kling-video/v2.6/pro/image-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/kling-video/v2.6/pro/image-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.385, discount 45.00% -> list $0.7 for body in estimates/defaults.json",
+      "source": "POST /estimate/kling-video/v2.6/pro/image-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "sound": "on",
+        "duration": 5,
+        "cfg_scale": 0.5
+      }
+    },
+    "kling-video/v2.6/pro/text-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/kling-video/v2.6/pro/text-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.385, discount 45.00% -> list $0.7 for body in estimates/defaults.json",
+      "source": "POST /estimate/kling-video/v2.6/pro/text-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "sound": "on",
+        "duration": 5,
+        "cfg_scale": 0.5,
+        "aspect_ratio": "16:9"
+      }
+    },
+    "kling-video/v3.0-turbo/image-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/kling-video/v3.0-turbo/image-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.308, discount 45.00% -> list $0.56 for body in estimates/defaults.json",
+      "source": "POST /estimate/kling-video/v3.0-turbo/image-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "720p"
+      }
+    },
+    "kling-video/v3.0-turbo/text-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/kling-video/v3.0-turbo/text-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.308, discount 45.00% -> list $0.56 for body in estimates/defaults.json",
+      "source": "POST /estimate/kling-video/v3.0-turbo/text-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "720p",
+        "aspect_ratio": "16:9"
+      }
+    },
+    "kling-video/v3.0/4k/image-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/kling-video/v3.0/4k/image-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 1.155, discount 45.00% -> list $2.1 for body in estimates/defaults.json",
+      "source": "POST /estimate/kling-video/v3.0/4k/image-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "sound": "on",
+        "duration": 5,
+        "cfg_scale": 0.5,
+        "multi_shots": false
+      }
+    },
+    "kling-video/v3.0/4k/text-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/kling-video/v3.0/4k/text-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 1.155, discount 45.00% -> list $2.1 for body in estimates/defaults.json",
+      "source": "POST /estimate/kling-video/v3.0/4k/text-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "sound": "on",
+        "duration": 5,
+        "cfg_scale": 0.5,
+        "multi_shots": false,
+        "aspect_ratio": "16:9"
+      }
+    },
+    "kling-video/v3.0/pro/image-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/kling-video/v3.0/pro/image-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.462, discount 45.00% -> list $0.84 for body in estimates/defaults.json",
+      "source": "POST /estimate/kling-video/v3.0/pro/image-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "sound": "on",
+        "duration": 5,
+        "cfg_scale": 0.5,
+        "multi_shots": false
+      }
+    },
+    "kling-video/v3.0/pro/text-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/kling-video/v3.0/pro/text-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.462, discount 45.00% -> list $0.84 for body in estimates/defaults.json",
+      "source": "POST /estimate/kling-video/v3.0/pro/text-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "sound": "on",
+        "duration": 5,
+        "cfg_scale": 0.5,
+        "multi_shots": false,
+        "aspect_ratio": "16:9"
+      }
+    },
+    "kling-video/v3.0/std/image-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/kling-video/v3.0/std/image-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.347, discount 45.00% -> list $0.631 for body in estimates/defaults.json",
+      "source": "POST /estimate/kling-video/v3.0/std/image-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "sound": "on",
+        "duration": 5,
+        "cfg_scale": 0.5,
+        "multi_shots": false
+      }
+    },
+    "kling-video/v3.0/std/text-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/kling-video/v3.0/std/text-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.347, discount 45.00% -> list $0.631 for body in estimates/defaults.json",
+      "source": "POST /estimate/kling-video/v3.0/std/text-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "high",
+      "upper_bound": true,
+      "defaults": {
+        "sound": "on",
+        "duration": 5,
+        "cfg_scale": 0.5,
+        "multi_shots": false,
+        "aspect_ratio": "16:9"
+      }
+    },
+    "kling-video/v3/motion-control/pro": {
+      "rule": "ceiling",
+      "usd_per_s": 0.42,
+      "seconds_from": "input video, ceil to whole s",
+      "max_seconds": 30,
+      "list_price_basis": "no published price: /estimate returns HTTP 500 for every body tried 09.26.26 (estimates/defaults.json, retries.json, retries2.json); ceiling = highest Kling list rate seen ($0.42/s, v3.0 4k via /estimate) x input seconds",
+      "source": "estimates/*.json 09.26.26; catalog notes (source-video length limits)",
+      "confidence": "low",
+      "upper_bound": false,
+      "always_ask": true,
+      "note": "price unknown: never run silently; show 'price unknown, rough ceiling $X' and ask (Joe 09.26.26). Ceiling is for display only.",
+      "defaults": {
+        "prompt": "",
+        "keep_original_sound": "yes",
+        "character_orientation": "video"
+      }
+    },
+    "kling-video/v3/motion-control/std": {
+      "rule": "ceiling",
+      "usd_per_s": 0.42,
+      "seconds_from": "input video, ceil to whole s",
+      "max_seconds": 30,
+      "list_price_basis": "no published price: /estimate returns HTTP 500 for every body tried 09.26.26 (estimates/defaults.json, retries.json, retries2.json); ceiling = highest Kling list rate seen ($0.42/s, v3.0 4k via /estimate) x input seconds",
+      "source": "estimates/*.json 09.26.26; catalog notes (source-video length limits)",
+      "confidence": "low",
+      "upper_bound": false,
+      "always_ask": true,
+      "note": "price unknown: never run silently; show 'price unknown, rough ceiling $X' and ask (Joe 09.26.26). Ceiling is for display only.",
+      "defaults": {
+        "prompt": "",
+        "keep_original_sound": "yes",
+        "character_orientation": "video"
+      }
+    },
+    "lightricks/ltx-2.5/image-to-video/fast": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/lightricks/ltx-2.5/image-to-video/fast",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.540, discount None% -> list $0.54 for body in estimates/defaults.json",
+      "source": "POST /estimate/lightricks/ltx-2.5/image-to-video/fast (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "fps": 25,
+        "duration": 6,
+        "resolution": "720p",
+        "aspect_ratio": "16:9",
+        "generate_audio": true
+      }
+    },
+    "lightricks/ltx-2.5/image-to-video/pro": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/lightricks/ltx-2.5/image-to-video/pro",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.720, discount None% -> list $0.72 for body in estimates/defaults.json",
+      "source": "POST /estimate/lightricks/ltx-2.5/image-to-video/pro (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "fps": 25,
+        "duration": 6,
+        "resolution": "720p",
+        "aspect_ratio": "16:9",
+        "generate_audio": true
+      }
+    },
+    "lightricks/ltx-2.5/text-to-video/fast": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/lightricks/ltx-2.5/text-to-video/fast",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.540, discount None% -> list $0.54 for body in estimates/defaults.json",
+      "source": "POST /estimate/lightricks/ltx-2.5/text-to-video/fast (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "fps": 25,
+        "duration": 6,
+        "resolution": "720p",
+        "aspect_ratio": "16:9",
+        "generate_audio": true
+      }
+    },
+    "lightricks/ltx-2.5/text-to-video/pro": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/lightricks/ltx-2.5/text-to-video/pro",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.720, discount None% -> list $0.72 for body in estimates/defaults.json",
+      "source": "POST /estimate/lightricks/ltx-2.5/text-to-video/pro (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "fps": 25,
+        "duration": 6,
+        "resolution": "720p",
+        "aspect_ratio": "16:9",
+        "generate_audio": true
+      }
+    },
+    "marketing-studio/image": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/marketing-studio/image",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.439, discount None% -> list $0.439 for body in estimates/defaults.json",
+      "source": "POST /estimate/marketing-studio/image (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "high",
+      "upper_bound": true,
+      "defaults": {
+        "quality": "high",
+        "moderation": "auto",
+        "resolution": "2k",
+        "aspect_ratio": "auto",
+        "enhance_prompt": false
+      }
+    },
+    "marketing-studio/image/flare": {
+      "rule": "ceiling",
+      "usd_per_image": {
+        "1k": {
+          "low": 0.06,
+          "medium": 0.06,
+          "high": 0.06,
+          "xhigh": 0.12,
+          "max": 0.12
+        },
+        "2k": {
+          "low": 0.15,
+          "medium": 0.15,
+          "high": 0.15,
+          "xhigh": 0.3,
+          "max": 0.3
+        },
+        "4k": {
+          "low": 0.6,
+          "medium": 0.6,
+          "high": 0.6,
+          "xhigh": 1.2,
+          "max": 1.2
+        }
+      },
+      "plus_usd_per_image_url": 0.05,
+      "plus_usd_text": 0.02,
+      "reconcile": "re-read balance after the job",
+      "list_price_basis": "token-metered ($30/1M image output, $8/1M image input, $5/1M text input). Measured REST charges: 2k/high/16:9 $0.06 (09.24 CSV), 1k/low $0.02 (09.30 console Billing). v0.1.1 ceilings: 1k low-high $0.06 (3x the 1k/low charge; at or above the 2k/high charge), 2k low-high $0.15 (2.5x 2k/high), xhigh/max 2x those; 4k unmeasured, unchanged",
+      "source": "estimates/defaults.json (description) 09.26.26; analytics-models-2026-09-01-2026-09-26.csv row flare; output/data/hf-tests/T2_flare.png (ffprobe)",
+      "confidence": "low",
+      "upper_bound": false,
+      "note": "gaps: text OUTPUT tokens ($10/1M) are not in the ceiling (the $0.02 allowance only covers text input); enhance_prompt=true adds a prompt rewrite whose token cost is unmeasured",
+      "defaults": {
+        "quality": "high",
+        "moderation": "auto",
+        "resolution": "2k",
+        "aspect_ratio": "auto",
+        "enhance_prompt": false
+      }
+    },
+    "marketing-studio/image/sunburst": {
+      "rule": "ceiling",
+      "usd_per_image": {
+        "1k": {
+          "low": 0.06,
+          "medium": 0.06,
+          "high": 0.06,
+          "xhigh": 0.12,
+          "max": 0.12
+        },
+        "2k": {
+          "low": 0.15,
+          "medium": 0.15,
+          "high": 0.15,
+          "xhigh": 0.3,
+          "max": 0.3
+        },
+        "4k": {
+          "low": 0.6,
+          "medium": 0.6,
+          "high": 0.6,
+          "xhigh": 1.2,
+          "max": 1.2
+        }
+      },
+      "plus_usd_per_image_url": 0.05,
+      "plus_usd_text": 0.02,
+      "reconcile": "re-read balance after the job",
+      "list_price_basis": "token-metered ($30/1M image output, $8/1M image input, $5/1M text input); only anchor = 1 REST Flare job 2k/high/16:9 (2688x1520) charged $0.06 (CSV); ceiling ~5x that, pixel-scaled",
+      "source": "estimates/defaults.json (description) 09.26.26; analytics-models-2026-09-01-2026-09-26.csv row flare; output/data/hf-tests/T2_flare.png (ffprobe)",
+      "confidence": "low",
+      "upper_bound": false,
+      "note": "gaps: text OUTPUT tokens ($10/1M) are not in the ceiling (the $0.02 allowance only covers text input); enhance_prompt=true adds a prompt rewrite whose token cost is unmeasured",
+      "defaults": {
+        "quality": "high",
+        "moderation": "auto",
+        "resolution": "2k",
+        "aspect_ratio": "auto",
+        "enhance_prompt": false
+      }
+    },
+    "minimax/h3/image-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/minimax/h3/image-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.455, discount 30.00% -> list $0.65 for body in estimates/defaults.json",
+      "source": "POST /estimate/minimax/h3/image-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "2K",
+        "aspect_ratio": "auto",
+        "aigc_watermark": false
+      }
+    },
+    "minimax/h3/reference-to-video": {
+      "rule": "per_second",
+      "usd_per_s": {
+        "2K": 0.13
+      },
+      "seconds_from": "duration",
+      "extra_usd_per_image_ref_over_5": 0.08,
+      "list_price_basis": "published: $0.13/s + $0.08 per reference image beyond 5; video/audio ref cost NOT stated",
+      "source": "/estimate description, estimates/defaults.json + retries.json, captured 09.26.26 (rates before discount)",
+      "confidence": "medium",
+      "upper_bound": false,
+      "defaults": {
+        "duration": 5,
+        "resolution": "2K",
+        "aspect_ratio": "auto",
+        "aigc_watermark": false
+      }
+    },
+    "minimax/h3/text-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/minimax/h3/text-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.455, discount 30.00% -> list $0.65 for body in estimates/defaults.json",
+      "source": "POST /estimate/minimax/h3/text-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "high",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "2K",
+        "aspect_ratio": "auto",
+        "aigc_watermark": false
+      }
+    },
+    "minimax/hailuo-2.3/standard/image-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/minimax/hailuo-2.3/standard/image-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.070, discount 75.00% -> list $0.28 for body in estimates/defaults.json",
+      "source": "POST /estimate/minimax/hailuo-2.3/standard/image-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 6,
+        "prompt_optimizer": true
+      }
+    },
+    "minimax/hailuo-2.3/standard/text-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/minimax/hailuo-2.3/standard/text-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.070, discount 75.00% -> list $0.28 for body in estimates/defaults.json",
+      "source": "POST /estimate/minimax/hailuo-2.3/standard/text-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 6,
+        "prompt_optimizer": true
+      }
+    },
+    "pixverse/v6/image-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/pixverse/v6/image-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.255, discount 15.00% -> list $0.3 for body in estimates/defaults.json",
+      "source": "POST /estimate/pixverse/v6/image-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "720p",
+        "generate_audio": true
+      }
+    },
+    "pixverse/v6/text-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/pixverse/v6/text-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.255, discount 15.00% -> list $0.3 for body in estimates/defaults.json",
+      "source": "POST /estimate/pixverse/v6/text-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "720p",
+        "aspect_ratio": "16:9",
+        "generate_audio": true
+      }
+    },
+    "recraft/v4.1/pro/text-to-image": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/recraft/v4.1/pro/text-to-image",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.210, discount None% -> list $0.21 for body in estimates/defaults.json",
+      "source": "POST /estimate/recraft/v4.1/pro/text-to-image (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "resolution": "2k",
+        "aspect_ratio": "1:1",
+        "output_format": "jpg"
+      }
+    },
+    "recraft/v4.1/text-to-image": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/recraft/v4.1/text-to-image",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.035, discount None% -> list $0.035 for body in estimates/defaults.json",
+      "source": "POST /estimate/recraft/v4.1/text-to-image (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "resolution": "1k",
+        "aspect_ratio": "1:1",
+        "output_format": "jpg"
+      }
+    },
+    "recraft/v4.1/utility/pro/text-to-image": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/recraft/v4.1/utility/pro/text-to-image",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.210, discount None% -> list $0.21 for body in estimates/defaults.json",
+      "source": "POST /estimate/recraft/v4.1/utility/pro/text-to-image (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "resolution": "2k",
+        "aspect_ratio": "1:1",
+        "output_format": "jpg"
+      }
+    },
+    "recraft/v4.1/utility/text-to-image": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/recraft/v4.1/utility/text-to-image",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.035, discount None% -> list $0.035 for body in estimates/defaults.json",
+      "source": "POST /estimate/recraft/v4.1/utility/text-to-image (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "resolution": "1k",
+        "aspect_ratio": "1:1",
+        "output_format": "jpg"
+      }
+    },
+    "v1/custom-references": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/soul-id",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate/soul-id; probe 09.26.26: 40 credits = $2.50, discount null. NOTE the submit path (/v1/custom-references) differs from the estimate path (docs catalog ID soul-id, L16339); /estimate/v1/custom-references returns 404 model_not_found",
+      "source": "estimates/soul_training.json + estimates/replay.json (404), captured 09.26.26; docs L16337-16339",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "model_version": "v1"
+      }
+    },
+    "wan/v2.6/image-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/wan/v2.6/image-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.250, discount 50.00% -> list $0.5 for body in estimates/defaults.json",
+      "source": "POST /estimate/wan/v2.6/image-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "720p",
+        "multi_shots": false,
+        "prompt_extend": false,
+        "negative_prompt": ""
+      }
+    },
+    "wan/v2.6/reference-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/wan/v2.6/reference-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.250, discount 50.00% -> list $0.5 for body in estimates/defaults.json",
+      "source": "POST /estimate/wan/v2.6/reference-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "720p",
+        "aspect_ratio": "16:9"
+      }
+    },
+    "wan/v2.6/text-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/wan/v2.6/text-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.250, discount 50.00% -> list $0.5 for body in estimates/defaults.json",
+      "source": "POST /estimate/wan/v2.6/text-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "720p",
+        "multi_shots": false,
+        "prompt_extend": false
+      }
+    },
+    "wan/v2.7/image-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/wan/v2.7/image-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.250, discount 50.00% -> list $0.5 for body in estimates/defaults.json",
+      "source": "POST /estimate/wan/v2.7/image-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "720p",
+        "prompt_extend": false,
+        "negative_prompt": ""
+      }
+    },
+    "wan/v2.7/reference-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/wan/v2.7/reference-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.250, discount 50.00% -> list $0.5 for body in estimates/retries.json",
+      "source": "POST /estimate/wan/v2.7/reference-to-video (free), estimates/retries.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "720p",
+        "aspect_ratio": "16:9",
+        "prompt_extend": false,
+        "negative_prompt": ""
+      }
+    },
+    "wan/v2.7/text-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/wan/v2.7/text-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.250, discount 50.00% -> list $0.5 for body in estimates/defaults.json",
+      "source": "POST /estimate/wan/v2.7/text-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "720p",
+        "aspect_ratio": "16:9",
+        "prompt_extend": false,
+        "negative_prompt": ""
+      }
+    },
+    "xai/grok-imagine-image-2.0": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/xai/grok-imagine-image-2.0",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.060, discount None% -> list $0.06 for body in estimates/defaults.json",
+      "source": "POST /estimate/xai/grok-imagine-image-2.0 (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "quality": "medium",
+        "resolution": "1k",
+        "aspect_ratio": "auto"
+      }
+    },
+    "xai/grok-imagine-video/v1.5/reference-to-video": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/xai/grok-imagine-video/v1.5/reference-to-video",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.400, discount None% -> list $0.4 for body in estimates/defaults.json",
+      "source": "POST /estimate/xai/grok-imagine-video/v1.5/reference-to-video (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "medium",
+      "upper_bound": true,
+      "defaults": {
+        "duration": 5,
+        "resolution": "480p",
+        "aspect_ratio": "auto"
+      }
+    },
+    "z-image/turbo": {
+      "rule": "estimate_usd",
+      "estimate_path": "/estimate/z-image/turbo",
+      "list_usd_from": "usd + discount.usd (discount may be null)",
+      "list_price_basis": "live /estimate at submit time; probe 09.26.26: usd 0.015, discount None% -> list $0.015 for body in estimates/defaults.json",
+      "source": "POST /estimate/z-image/turbo (free), estimates/defaults.json, captured 09.26.26; docs L90-112 'estimate is the authoritative amount'",
+      "confidence": "high",
+      "upper_bound": true,
+      "defaults": {
+        "resolution": "1k",
+        "aspect_ratio": "1:1",
+        "prompt_extend": false
+      }
+    }
+  }
+}

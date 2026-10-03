@@ -2,6 +2,17 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.5.0 ... 2026-09-25
+
+### Fixed
+
+- **Auth-failure routing.** `notebooklm-ask`, `-build`, `-studio`, `-youtube`, `-transcripts` and `-suggest` now carry an auth-failure guard: when the CLI says `Authentication expired or invalid` or prints its `notebooklm login` hint, Claude never relays that hint or suggests `playwright install`, and runs `/notebooklm-setup reauth` itself (the user only signs in in the browser window). `notebooklm-doctor` reports the same remedy. Observed 09.25.26 on Windows: the relayed `notebooklm login` failed with `Executable doesn't exist at ...ms-playwright\chromium-1217` (venv Playwright 1.59.0; the machine had 1234 and 1243 only).
+- **Reauth now syncs the new sign-in.** `/notebooklm-setup reauth` runs Phase 6 between login and verify, so fresh cookies reach `~/.notebooklm/profiles/default/`, the path the CLI reads. Before, reauth ran Phase 5 then Phase 7 only.
+
+### Changed
+
+- **Chrome is the default sign-in browser on Mac and Windows.** `notebooklm-setup` Phase 5 probes in order: Google Chrome (`channel="chrome"`), then on Windows Microsoft Edge (`channel="msedge"`), then bundled Chromium via `<venv python> -m playwright install chromium` as the last resort (Windows SxS risk noted). Phase 2 reports which browser will be used; Phase 3 on Mac installs bundled Chromium only when Chrome is absent. All guardrails stay: no `--disable-blink-features=AutomationControlled`, full cookie set including `__Secure-1PSIDTS` / `__Secure-3PSIDTS`, the separate `auth_profile`, kill only automation processes referencing `.notebooklm`. Verified 09.25.26 on Windows: the `chrome` channel launched system Chrome with a persistent context on its own profile folder; no process touched the real Chrome profile.
+
 ## 0.4.0 — 2026-05-17
 
 ### Added

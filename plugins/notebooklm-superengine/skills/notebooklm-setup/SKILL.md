@@ -35,7 +35,7 @@ Read `.claude/workspace.yml#environment`.
 | Invocation | Mode | What runs |
 |---|---|---|
 | `/notebooklm-setup` (no args) | **install** | Full Phases 1–8 |
-| `/notebooklm-setup reauth` | **reauth** | Phase 5 (login) → Phase 7 (verify) only |
+| `/notebooklm-setup reauth` | **reauth** | Phase 5 (login) → Phase 6 (sync to profiles path) → Phase 7 (verify) |
 | `/notebooklm-setup update` | **update** | `pip install -U "notebooklm-py[browser]"` in the venv → Phase 7 |
 | `/notebooklm-setup uninstall` | **uninstall** | Confirm, then remove venv, PATH wrapper, `~/.notebooklm`, state marker |
 
@@ -65,15 +65,13 @@ Check each, then present a plain-English checklist of what's present vs. what wi
 
 1. **Python ≥ 3.10:** `python --version` (Win) / `python3 --version` (Mac). Below 3.10 or absent → will install.
 2. **Package manager:** Windows → `winget --version`. Mac → `brew --version`. Absent → flag (Mac: direct user to install Homebrew from brew.sh first and stop; Windows: winget ships with Windows 10/11 — if absent, direct to Microsoft Store "App Installer").
-3. **Browser channel:**
-   - Windows: confirm Edge exists at `C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe` or `C:\Program Files\Microsoft\Edge\Application\msedge.exe`. (Always present on Win10/11.)
-   - Mac: Playwright Chromium will be installed in Phase 3 (no system browser needed).
+3. **Sign-in browser:** run the Phase 5 browser probe (checks only, install nothing yet) and report which browser sign-in will use: Google Chrome; on Windows, Microsoft Edge if Chrome is absent; or a bundled Chromium download if neither is found. Windows with neither: warn of the SxS risk and offer to install Chrome first with `winget install -e --id Google.Chrome`.
 
 Present like:
 > Here's what I found:
 > - Python 3.12 ✓ (already good)
 > - winget ✓
-> - Microsoft Edge ✓
+> - Google Chrome ✓ (used once, for the Google sign-in)
 > I'll create an isolated environment and install the NotebookLM tool into it. Nothing touches your system Python or your normal browser. Ready?
 
 ## Phase 3 — Install (OS-branched, narrate each step)
@@ -82,13 +80,13 @@ Present like:
 1. If Python < 3.10/absent: `winget install -e --id Python.Python.3.12` (narrate; tell user a new terminal may be needed afterward).
 2. `python -m venv "%USERPROFILE%\.notebooklm-venv"`
 3. `& "%USERPROFILE%\.notebooklm-venv\Scripts\python.exe" -m pip install --upgrade pip "notebooklm-py[browser]"`
-4. **Do NOT run `playwright install chromium`** — Playwright's bundled Chromium fails with a side-by-side (SxS) activation error on many Windows machines. We use the system Edge channel instead (Phase 5).
+4. **Do NOT run `playwright install chromium`.** Playwright's bundled Chromium fails with a side-by-side (SxS) activation error on many Windows machines. We use system Chrome (or Edge) instead; Phase 5 downloads bundled Chromium only when the probe finds neither.
 
 **Mac:**
 1. If Python < 3.10/absent: `brew install python@3.12`
 2. `python3 -m venv ~/.notebooklm-venv`
 3. `~/.notebooklm-venv/bin/python -m pip install --upgrade pip "notebooklm-py[browser]"`
-4. `~/.notebooklm-venv/bin/python -m playwright install chromium`
+4. Only if Google Chrome is absent (`/Applications/Google Chrome.app` missing): `~/.notebooklm-venv/bin/python -m playwright install chromium`. With Chrome present, skip it; Phase 5 signs in through Chrome.
 
 ## Phase 4 — PATH wrapper
 
@@ -115,7 +113,17 @@ So `notebooklm` works in any terminal.
 
 ## Phase 5 — Authenticate (self-detecting login, synchronous)
 
-The built-in `notebooklm login` needs interactive terminal input that Claude Code's tools can't provide. Use this custom script instead. It opens a real browser, the user signs in, and it **detects success on its own** and exits — no signal files, no background process.
+The built-in `notebooklm login` needs interactive terminal input that Claude Code's tools can't provide, and its pinned bundled Chromium is often missing (`Executable doesn't exist`). Never run it or relay its hint. Use this custom script instead. It opens a real browser, the user signs in, and it **detects success on its own** and exits. No signal files, no background process.
+
+**Pick the sign-in browser first (probe order, stop at the first hit).** This runs in every mode, reauth included:
+
+1. **Google Chrome** (default, Mac and Windows) → `CHANNEL = "chrome"`.
+   - Windows: any of `C:\Program Files\Google\Chrome\Application\chrome.exe`, `C:\Program Files (x86)\Google\Chrome\Application\chrome.exe`, `%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe` exists (PowerShell `Test-Path`).
+   - Mac: `/Applications/Google Chrome.app` exists.
+2. **Windows only: Microsoft Edge** → `CHANNEL = "msedge"` if `msedge.exe` exists under `C:\Program Files (x86)\Microsoft\Edge\Application\` or `C:\Program Files\Microsoft\Edge\Application\` (ships with Win10/11).
+3. **Last resort: bundled Chromium** → `CHANNEL = ""`. First run `<PYBIN> -m playwright install chromium` unless Phase 3 already ran it (it fetches the venv's matching build). On Windows, warn that this build can fail with a side-by-side (SxS) activation error; if it does, offer to install Chrome with `winget install -e --id Google.Chrome`, then rerun this phase.
+
+Chrome and Edge run on the separate `auth_profile` folder below, never the user's normal profile, and the user's open windows keep running (verified 09.25.26 on Windows with channel `chrome`).
 
 Write this to a temp file (`%TEMP%\nlm_login.py` on Windows, `/tmp/nlm_login.py` on Mac):
 
@@ -127,7 +135,7 @@ from playwright.sync_api import sync_playwright
 STORAGE_PATH = Path.home() / ".notebooklm" / "storage_state.json"
 PROFILE_PATH = Path.home() / ".notebooklm" / "auth_profile"
 TIMEOUT_SECONDS = 280
-CHANNEL = "__CHANNEL__"  # "msedge" on Windows; "" on Mac (omit channel)
+CHANNEL = "__CHANNEL__"  # probe result: "chrome", "msedge", or "" (bundled Chromium)
 
 STORAGE_PATH.parent.mkdir(parents=True, exist_ok=True)
 print("Opening a browser for Google sign-in...", flush=True)
@@ -162,10 +170,10 @@ with sync_playwright() as p:
 print(f"Saved to {STORAGE_PATH}", flush=True)
 ```
 
-Substitute `__CHANNEL__`: `msedge` on Windows, empty string on Mac.
+Substitute `__CHANNEL__` with the probe result: `chrome`, `msedge`, or an empty string.
 
 **Critical guardrails — do not deviate:**
-- **Never** add `args=["--disable-blink-features=AutomationControlled"]`. It crashes Edge instantly (exit code 21) on current builds.
+- **Never** add `args=["--disable-blink-features=AutomationControlled"]`. It crashes Edge instantly (exit code 21) on current builds; do not add it for Chrome either.
 - **Never** use a bash signal-file / background-process pattern. The script is synchronous and self-detecting.
 - Wait for the **full** cookie set including `__Secure-1PSIDTS` and `__Secure-3PSIDTS`, not just `SID` — those rotate in a few seconds *after* sign-in; saving early produces an invalid session.
 - Before running, delete a stale `~/.notebooklm/auth_profile` only if no browser process is locking it; if locked, kill only the automation browser processes whose command line references `.notebooklm` (never the user's normal browser).

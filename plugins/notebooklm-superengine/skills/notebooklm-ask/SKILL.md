@@ -26,6 +26,7 @@ If explicitly invoked, skip the suggestion.
 1. `.claude/workspace.yml#environment` `cowork` → "Asking a notebook needs Claude Code (the terminal app). Open this workspace there." Stop.
 2. `~/.notebooklm/.superengine` missing → "NotebookLM isn't set up — run `/notebooklm-setup` first." Stop.
 3. Set `NB`: Win `%USERPROFILE%\.notebooklm-venv\Scripts\notebooklm.exe` / Mac `~/.notebooklm-venv/bin/notebooklm`.
+4. **Auth-failure guard (applies to every `<NB>` call in this skill).** If any output contains `Authentication expired or invalid` or `notebooklm login`: stop that step. Never relay or run the CLI's `notebooklm login` hint and never suggest `playwright install` (both launch a browser build that may not exist on this machine). Say: "Your NotebookLM sign-in expired. I'll reconnect it now; a browser window opens and you just sign in to Google." Then run `/notebooklm-setup reauth` yourself (the user only signs in in that window), and retry the failed step once it verifies.
 
 ## Phase 1 — Resolve the target notebook (Intent Clarification)
 

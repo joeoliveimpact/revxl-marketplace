@@ -46,6 +46,8 @@ Read `.claude/workspace.yml#environment`. **`cowork`** → Bash unavailable; say
 
 Run checks 5 and 6 with a 60s timeout each. Treat a timeout as fail with remedy "retry once; if it times out again, `/notebooklm-setup reauth`".
 
+**Auth-failure wording.** If check 5 or 6 output contains `Authentication expired or invalid` or `notebooklm login`, the remedy is `/notebooklm-setup reauth` (offer to run it for them after this report; they only sign in in the browser window). Never relay the CLI's `notebooklm login` hint and never suggest `playwright install`.
+
 ## Report
 
 Print a compact table: check, ✓/✗, and for any ✗ the one-line remedy. Then a single bottom-line:
