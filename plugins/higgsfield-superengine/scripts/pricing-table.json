@@ -511,11 +511,11 @@
         "1080p": 2280960,
         "4k": 9123840
       },
-      "video_input_multiplier_applied": 1.0,
+      "video_input_multiplier_applied": 0.6,
       "image_refs_free": true,
       "audio_refs_free": true,
       "generated_s_basis": "requested duration (billing uses the nominal seconds, not the rendered +1 frame; replay-verified)",
-      "note": "audio on = audio off: measured 09.30.26 (480p/4s image-to-video, $0.58 charged both ways), so generate_audio no longer forces an ask (v0.1.1). Video input: /estimate text 09.26.26 says the token rate is x0.6 when video inputs are present; NOT applied (Joe 09.26.26: keep 1.0x, conservative). Input video length comes from hf_rest upload records when known (v0.1.1).",
+      "note": "audio on = audio off: measured 09.30.26 (480p/4s image-to-video, $0.58 charged both ways), so generate_audio no longer forces an ask (v0.1.1). Video input x0.6 applied (v0.1.2): the /estimate text says the token rate is x0.6 when video inputs are present, and billing confirms it: three 720p REST edits on 09.30.26 (5.2 s, 5.0 s, 4.0 s sources) billed $2.19, $2.14, $1.76 = x0.6 list x0.7 (the 30% sale then live); x1.0 would have been ~$3.70 for the first. Supersedes Joe's 09.26.26 keep-1.0x. Input video length comes from hf_rest upload records when known (v0.1.1).",
       "rate_per_1k_tokens": {
         "480p": 0.0214,
         "720p": 0.0214,
@@ -525,7 +525,7 @@
       "generated_s_from": "source_video (normalized 4..30 s)",
       "list_price_basis": "published token rate, list; billable = input + generated, output length = processed source (docs L14702+)",
       "source": "/estimate description, estimates/defaults.json + retries.json, captured 09.26.26 ('Rates shown are before any applicable customer discount')",
-      "confidence": "medium",
+      "confidence": "high",
       "upper_bound": true,
       "defaults": {
         "resolution": "720p",

@@ -4,7 +4,7 @@
 
 ---
 
-## Status: released (v0.1.1)
+## Status: released (v0.1.2)
 
 Install it from the REVXL catalog. See CHANGELOG.md for what changed in each version.
 
