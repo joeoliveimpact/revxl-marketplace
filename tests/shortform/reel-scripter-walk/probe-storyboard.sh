@@ -5,13 +5,16 @@
 # (a) the first Write landed the defect, (b) a later Write/Edit/MultiEdit of the same file (the prompt allows a change only
 # when a tool or hook reports a problem, and nothing else names the defect), (c) zero storyboard_problems on disk. Exit 0 PASS, 1 FAIL, 2 refused.
 # State lives outside the repo: <state> = RS_PROBE_STATE, default $HOME/rs-walk-state/probe367 (home/, proj/, probe.jsonl).
-# Invocation shape mirrors run-mt2.sh: scratch HOME/USERPROFILE with the login file copied in (deleted on exit), CLAUDE*/ANTHROPIC*
-# unset, CLAUDE_PLUGIN_ROOT set, MSYS path conversion left on, synced shortform copies moved aside. usage: bash probe-storyboard.sh
+# Invocation shape mirrors run-mt2.sh: scratch HOME/USERPROFILE with no login file, CLAUDE*/ANTHROPIC* unset, then the walk-only
+# token (RS_WALK_TOKEN, default $HOME/.config/rs-walk/walk-token) passed as CLAUDE_CODE_OAUTH_TOKEN, CLAUDE_PLUGIN_ROOT set,
+# MSYS path conversion left on, synced shortform copies moved aside. Never reads ~/.claude/.credentials.json (SKLLPLG-369). usage: bash probe-storyboard.sh
 S="$(cygpath -m "${RS_PROBE_STATE:-$HOME/rs-walk-state/probe367}")"; H="$S/home"; P="$S/proj"; LOG="$S/probe.jsonl"
 R="$(cygpath -m "$(cd "$(dirname "$0")/../../.." && pwd)")/plugins/shortform-superengine"
 F="$P/scripts/probe-water.md"
 [ -d "$R" ] || { echo "refuse: no plugin at $R"; exit 2; }
-[ -f "$HOME/.claude/.credentials.json" ] || { echo "refuse: no login file in $HOME/.claude"; exit 2; }
+TF="${RS_WALK_TOKEN:-$HOME/.config/rs-walk/walk-token}"
+WT="$({ tr -d ' \r\n' < "$TF"; } 2>/dev/null)"
+case "$WT" in sk-ant-oat*) ;; *) echo "refuse: no walk token in $TF (run claude setup-token, save it there)"; exit 2;; esac
 rm -rf "$P" && mkdir -p "$P/scripts" "$P/reel-build" "$H/.claude" "$S/synced-aside" || exit 2
 echo '{}' > "$P/analysis-data.json"
 FIX="$(cat <<'EOF'
@@ -35,11 +38,10 @@ BEGIN
 $FIX
 END"
 unset MSYS_NO_PATHCONV MSYS2_ARG_CONV_EXCL
-trap 'rm -f "$H/.claude/.credentials.json"' EXIT
-cp "$HOME/.claude/.credentials.json" "$H/.claude/.credentials.json" || exit 2
+rm -f "$H/.claude/.credentials.json"
 export HOME="$H" USERPROFILE="$(cygpath -w "$H")"
 for v in $(env | grep -o -E "^(CLAUDE[A-Z_]*|ANTHROPIC[A-Z_]*)"); do unset "$v"; done
-export CLAUDE_PLUGIN_ROOT="$R"
+export CLAUDE_PLUGIN_ROOT="$R" CLAUDE_CODE_OAUTH_TOKEN="$WT"
 for p in "$H"/.claude/plugins/synced/*/shortform-superengine; do [ -d "$p" ] && { rm -rf "$S/synced-aside/sf"; mv "$p" "$S/synced-aside/sf"; echo "moved synced shortform aside"; }; done
 cd "$P" || exit 2
 claude -p "$MSG" --plugin-dir "$R" --model sonnet --max-budget-usd 1.00 --output-format stream-json --verbose --strict-mcp-config --permission-mode bypassPermissions > "$LOG" 2> "$LOG.err"
