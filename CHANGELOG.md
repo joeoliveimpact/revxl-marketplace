@@ -4,6 +4,13 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.72] ... 2026-10-02
+
+### Fixed
+- **higgsfield-superengine v0.1.2** ... two fixes from the v0.1.1 live walk.
+- **The price quote now says when a pop-up is coming.** A job over the client's spend cap used to show "no OK needed" in the quote, then asked anyway at submit. The quote now checks the cap too.
+- **Video edits are priced at Higgsfield's real rate.** Seedance 2.5 edits use the 0.6x video-input token rate, confirmed against real billing, so a 5.5 s edit shows about $3.66 instead of $6.10.
+
 ## [0.1.71] ... 2026-10-01
 
 ### Fixed

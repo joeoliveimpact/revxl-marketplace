@@ -2,6 +2,13 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.1.2 — 2026-10-02
+
+### Fixed
+
+- Estimate output: `price.ask` now includes the spend cap (the ledger's check, which reserves nothing), so a job over the cap shows `ask: true` / `over_cap` and hf-generate warns the client about the pop-up. Previously it showed `ask: false`. The hook still decides at submit. The hf_rest selftest now uses a temp ledger; new G16.
+- Pricing: Seedance 2.5 video-edit uses the x0.6 video-input token rate. Confirmed by billing for three 720p REST edits on 09.30.26 (x0.6 list, x0.7 sale). A 5.5 s edit is now quoted $3.66 (was $6.10); the list price stays the upper bound.
+
 ## 0.1.1 — 2026-10-01
 
 ### Fixed
