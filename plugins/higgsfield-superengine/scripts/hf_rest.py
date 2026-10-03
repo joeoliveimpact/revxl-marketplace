@@ -486,8 +486,9 @@ def cmd_check(a):
 
 
 def _price(rec_path):
-    """pricing.py's verdict on the record just written: the same price_bytes call the spend-guard hook makes on
-    those bytes (the hook then adds the cap). Shown to the client only; any failure here shows as an ask."""
+    """pricing.py's verdict on the record just written (the same price_bytes call the spend-guard hook makes on
+    those bytes), plus the ledger's read-only cap check, so ask=True means the hook will ask. Shown to the client
+    only; the hook decides again at submit. Any failure here shows as an ask."""
     try:
         sys.dont_write_bytecode = True  # importing pricing must not leave __pycache__ in the plugin
         import pricing  # same folder (sys.path[0] when run as a script)
@@ -495,6 +496,18 @@ def _price(rec_path):
     except Exception as e:
         v = {"ask": True, "usd": None, "display_usd": None, "code": "internal_error",
              "reason": f"could not price the record ({type(e).__name__})"}
+    if not v.get("ask") and v.get("usd") is not None:  # the cap half of the hook's decision (reserves nothing)
+        try:
+            import ledger
+            code, o = ledger.run(["check", f"{float(v['usd']):.9f}".rstrip("0").rstrip(".")])
+        except Exception as e:
+            code, o = 1, {"class": "internal_error", "message": type(e).__name__}
+        if code == 3 and o.get("class") == "over_cap":
+            v = dict(v, ask=True, code="over_cap", reason=f"over the silent cap: ${o.get('spent_24h')} spent in "
+                                                     f"24 h, cap ${o.get('cap_usd')}")
+        elif code != 0:
+            v = dict(v, ask=True, code="ledger_unavailable",
+                     reason=f"the spend ledger could not be checked ({o.get('class')})")
     return {k: v.get(k) for k in ("usd", "display_usd", "ask", "code", "reason")}
 
 
@@ -868,9 +881,10 @@ def selftest():
     me = os.path.abspath(__file__)  # the race's processes load this same file (before chdir; a mutant tests itself)
     fid, fsec = "5e1f7e57-0b1d-4c0d-8e1f-7e575e1f7e57", hashlib.sha256(b"hf_rest selftest key").hexdigest()
     gid, gsec = "0e9a7e57-0b1d-4c0d-8e1f-7e575e1f0000", hashlib.sha256(b"hf_rest selftest registry").hexdigest()
-    names = ("HF_API_KEY_ID", "HF_API_KEY_SECRET", DRY_ENV, BASE_ENV, "NO_PROXY", "no_proxy")
+    names = ("HF_API_KEY_ID", "HF_API_KEY_SECRET", DRY_ENV, BASE_ENV, "NO_PROXY", "no_proxy", "HF_SUPERENGINE_LEDGER_DIR")
     saved = ({n: os.environ.get(n) for n in names}, os.getcwd(), _registry_creds, _clock, _sleep)
     tmp = Path(tempfile.mkdtemp(prefix="hf-rest-selftest-"))
+    os.environ["HF_SUPERENGINE_LEDGER_DIR"] = str(tmp / "ledger")  # estimate's cap check: never the real ledger
     state = {"hits": [], "status": {}, "registry": False, "reg_calls": 0}
     errors = {  # name -> (http, json body, text body); used for POST /estimate/err/<name> and POST /sub/<name>
         "401": (401, {"detail": "Invalid credentials"}, None),
@@ -1223,6 +1237,14 @@ def selftest():
         check("G15 estimate prints pricing.py's verdict on its record (the hook's call): z-image/turbo $0.094, ask false",
               code == 0 and want["code"] == "priced" and want["usd"] == 0.094 and want["ask"] is False
               and j.get("price") == {k: want[k] for k in ("usd", "display_usd", "ask", "code", "reason")})
+        import ledger  # G16: over the cap, the printed price says ask (the hook will), in the hook's words
+        ledger.run(["balance", "set", "0.2"])  # cap $0.05 < $0.094
+        code, j = run("estimate", "z-image/turbo", A)
+        pr = j.get("price") or {}
+        check("G16 estimate over the silent cap -> price ask true, code over_cap, same usd",
+              code == 0 and pr.get("ask") is True and pr.get("code") == "over_cap" and pr.get("usd") == 0.094
+              and "cap $0.05" in (pr.get("reason") or ""))
+        ledger.run(["balance", "set", "100"])
 
         # ---- redirects
         for name in ("302", "307"):
