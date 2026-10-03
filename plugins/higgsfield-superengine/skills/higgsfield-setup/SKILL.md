@@ -46,11 +46,13 @@ Same steps as Windows below, with these translations everywhere:
 
 The steps that differ:
 - **Step 2:** skip it (Windows only).
-- **Step 3, find Python** (Bash tool, timeout 600000 ms). Say the same line first ("no admin password"), then run:
+- **Step 3, find Python** (Bash tool, timeout 600000 ms). Say first: "Checking for Python. If it's missing and you have Homebrew, I'll install it with that. A box from Apple may ask to install developer tools: that's fine, click Install." Then run:
 
 `sh "${CLAUDE_PLUGIN_ROOT}/scripts/find-python.sh"`
 
-  It prints one JSON line. `ok`: Python is recorded in `higgsfield/.python`; go on. `not_found` or `no_curl`: the automatic install didn't work. Ask the client to install Python 3.12 from python.org (the macOS installer), quit and reopen Claude, and ask for Higgsfield setup again. Offer a failure report. Never run `python3` bare on a Mac: if Apple's developer tools are missing, it opens an install pop-up.
+  It prints one JSON line. `ok`: Python is recorded in `higgsfield/.python`; go on. `no_python`:
+  - If a box from Apple appeared asking to install developer tools: the client clicks Install and waits for it to finish (it brings a Python with it), then run this step again.
+  - Otherwise: ask the client to install Python 3.12 from python.org (the macOS installer, double-click and follow it), quit and reopen Claude, and ask for Higgsfield setup again. With `"brew": true`, Homebrew's install was already tried; offer a failure report.
 - **Step 4:** the same `echo api.higgsfield.ai` check in the Bash tool, the same habits. Not blocked: quit Claude completely (Cmd+Q), open it again in this folder, and say "continue Higgsfield setup".
 - **Step 7c, the key box** (Bash tool, timeout 360000 ms). Say: "A small box will pop up. Click inside it, press Cmd+V, then OK. It hides what you paste."
 

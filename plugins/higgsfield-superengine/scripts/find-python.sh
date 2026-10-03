@@ -1,70 +1,35 @@
 #!/bin/sh
-# find-python.sh - find a Python >= 3.9 for higgsfield-superengine on Mac/Linux; install one per-user if there is none.
-# The Mac twin of find-python.ps1, with the same contract. Looks in the same fixed places as hooks/hf-guard.sh, so the
-# guard and the skills use the same kind of Python:
-#   the uv-managed Python (~/.local/share/uv/python), python.org, Homebrew, /usr/local, and /usr/bin/python3 only
-#   when Apple's developer tools are installed (otherwise that file opens an install pop-up).
-# None found -> unattended per-user install, no admin password: uv (astral.sh) into ~/.local/bin, then
-#   uv python install 3.12   (into ~/.local/share/uv/python)
-# Run it from the client's workspace folder. On success it writes the interpreter's full path (one line, UTF-8, no
-# newline) to higgsfield/.python and prints one JSON line, exit 0:
-#   {"status": "ok", "via": "uv", "version": "3.12.11", "python": "/Users/.../bin/python3", "tried": [...]}
+# find-python.sh - find a Python >= 3.9 for higgsfield-superengine on Mac/Linux. The Mac twin of find-python.ps1.
+# Same approach as the other REVXL plugins (notebooklm-superengine, course-crawler): a version check, and if Python is
+# missing or too old, Homebrew installs it (brew install python@3.12). No Homebrew: status no_python, and the setup
+# skill points the client to python.org. On a Mac without Apple's developer tools, the python3 check can open Apple's
+# "install developer tools" box: installing from it gives a usable Python 3.9, then run this again.
+# Checks python3 on PATH, then Homebrew, python.org and /usr/local (an app opened from the Dock has a short PATH).
+# Run it from the client's workspace folder. On success it writes the interpreter's full path (no newline) to
+# higgsfield/.python and prints one JSON line, exit 0:
+#   {"status": "ok", "version": "3.12.11", "python": "/opt/homebrew/bin/python3"}
+# Otherwise one JSON line, exit 1: {"status": "no_python", "brew": true|false}
 # Use it as:  Bash  "$(cat higgsfield/.python)" script.py
-# Otherwise one JSON line, exit 1: status not_found (the install did not give a usable Python), no_curl, or dry_run.
-# Launch:  sh find-python.sh [--dry-run]     --dry-run never installs; reports what it would run.
-tried=""
-add() { tried="$tried$1
-"; }
-probe() {  # $1 label, $2 path -> sets found_py and returns 0 if it is a usable Python >= 3.9
-  if [ ! -x "$2" ]; then return 1; fi
-  if "$2" -c 'import sys; sys.exit(sys.version_info < (3, 9))' 2>/dev/null; then
-    found_py=$2; found_via=$1; add "$1: ok"; return 0
-  fi
-  add "$1: older than 3.9 or did not run"; return 1
-}
 find_py() {
-  for p in "$HOME"/.local/share/uv/python/cpython-3.*/bin/python3; do probe uv "$p" && return 0; done
-  for p in /Library/Frameworks/Python.framework/Versions/3.*/bin/python3; do probe python.org "$p" && return 0; done
-  probe homebrew /opt/homebrew/bin/python3 && return 0
-  probe usr-local /usr/local/bin/python3 && return 0
-  if [ "$(uname -s)" = Linux ] || xcode-select -p >/dev/null 2>&1; then
-    probe system /usr/bin/python3 && return 0
-  else
-    add "system: skipped (Apple developer tools not installed; it would open an install pop-up)"
-  fi
-  return 1
+  for py in "$(command -v python3 2>/dev/null)" /opt/homebrew/bin/python3 /usr/local/bin/python3 \
+            /Library/Frameworks/Python.framework/Versions/3.*/bin/python3; do
+    [ -n "$py" ] && [ -x "$py" ] || continue
+    if "$py" -c 'import sys; sys.exit(sys.version_info < (3, 9))' 2>/dev/null; then
+      "$py" -c 'import json, os, sys
+os.makedirs("higgsfield", exist_ok=True)
+with open(os.path.join("higgsfield", ".python"), "w", encoding="utf-8", newline="") as f:
+    f.write(sys.executable)
+print(json.dumps({"status": "ok", "version": "%d.%d.%d" % sys.version_info[:3], "python": sys.executable}))'
+      exit 0
+    fi
+  done
 }
-result() {  # $1 status, $2 exit code; JSON is written by Python when there is one
-  if [ -n "$found_py" ]; then
-    TRIED="$tried" "$found_py" -c 'import json, os, sys
-st, via, py = sys.argv[1:4]
-v = "%d.%d.%d" % sys.version_info[:3]
-if st == "ok":
-    os.makedirs("higgsfield", exist_ok=True)
-    with open(os.path.join("higgsfield", ".python"), "w", encoding="utf-8", newline="") as f:
-        f.write(py)
-print(json.dumps({"status": st, "via": via, "version": v, "python": py,
-                  "tried": [t for t in os.environ["TRIED"].split("\n") if t]}))' "$1" "$found_via" "$found_py"
-  else
-    printf '{"status": "%s", "tried": "%s"}\n' "$1" "$(printf '%s' "$tried" | tr '\n"' '; ')"
+find_py
+for brew in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+  if [ -x "$brew" ]; then
+    "$brew" install python@3.12 >/dev/null 2>&1
+    find_py
+    echo '{"status": "no_python", "brew": true}'; exit 1
   fi
-  exit "$2"
-}
-found_py=""
-if find_py; then result ok 0; fi
-uv="$HOME/.local/bin/uv"
-if [ "$1" = "--dry-run" ]; then
-  add "would run: curl -LsSf https://astral.sh/uv/install.sh | UV_NO_MODIFY_PATH=1 sh, then $uv python install 3.12"
-  result dry_run 1
-fi
-if [ ! -x "$uv" ]; then
-  if ! command -v curl >/dev/null 2>&1; then add "curl: not found"; result no_curl 1; fi
-  curl -LsSf https://astral.sh/uv/install.sh | UV_NO_MODIFY_PATH=1 sh >/dev/null 2>&1 || add "uv install: failed"
-fi
-if [ -x "$uv" ]; then
-  "$uv" python install 3.12 >/dev/null 2>&1 || add "uv python install 3.12: failed"
-else
-  add "uv: not installed"
-fi
-if find_py; then result ok 0; fi
-result not_found 1
+done
+echo '{"status": "no_python", "brew": false}'; exit 1

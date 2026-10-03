@@ -7,7 +7,7 @@ All notable changes to this plugin. Format: [Keep a Changelog](https://keepachan
 ### Added
 
 - Mac support. The spend guard and the no-look guard now run on a Mac: hooks.json adds `sh hooks/hf-guard.sh` beside the Windows `py -3` entry, and `hf_guard.py hook --only-on win32|posix` makes exactly one of them decide per OS (Windows machines with Git can run `sh` too). The launcher finds Python in fixed places, never via PATH, and never runs Apple's `/usr/bin/python3` without the developer tools (no install pop-up). No Python: the plugin's money paths are blocked, setup is not.
-- `scripts/find-python.sh`: the Mac twin of find-python.ps1. If there is no Python 3.9+, installs uv and Python 3.12 into the home folder, no admin password, and records it in `higgsfield/.python`.
+- `scripts/find-python.sh`: the Mac twin of find-python.ps1, same approach as the other REVXL plugins: a version check, then `brew install python@3.12` if Homebrew is there, else the client installs from python.org (or from Apple's developer-tools box). Records the interpreter in `higgsfield/.python`.
 - higgsfield-setup and hf-generate: a full Mac path (Bash tool, `"$(cat higgsfield/.python)"`, Cmd+V, Keychain key box), replacing the "beta, stop after the quote" note.
 
 ### Fixed

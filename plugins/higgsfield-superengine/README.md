@@ -34,7 +34,7 @@ Higgsfield can make great images and videos, but getting good results means know
 | Platform | Status |
 |----------|--------|
 | Windows | Supported |
-| Mac | Supported since v0.1.3: setup installs its own Python (no admin password); the key is kept in the Keychain |
+| Mac | Supported since v0.1.3: Python 3.9+ (found by setup; Homebrew installs it if missing); the key is kept in the Keychain |
 
 ---
 
