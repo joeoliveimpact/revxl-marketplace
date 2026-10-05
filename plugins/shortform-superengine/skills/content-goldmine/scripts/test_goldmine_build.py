@@ -327,6 +327,144 @@ assert pr["lm_types"] and not p["paps"]
 pr["lm_types"] = []
 wjson(d, names["patternread"], pr); check()
 
+# 7. dashboard: the pinned tarball is verified before anything in it runs. No network: the download
+#    is replaced by a local fake tarball, curl itself is stubbed, and every case gets an empty cache.
+import tarfile
+TOP = "content-goldmine-dashboard-" + gb.DASH_TAG.lstrip("v")
+FAKE = b'import sys\na = sys.argv\nopen(a[a.index("--out") + 1], "w").write(open(a[a.index("--extras") + 1]).read())\n'
+
+
+def tarball(path, comment=gb.DASH_SHA, names=(TOP + "/goldmine_dashboard.py",)):
+    with tarfile.open(path, "w:gz", format=tarfile.PAX_FORMAT, pax_headers={"comment": comment}) as tf:
+        for n in names:
+            ti = tarfile.TarInfo(n)
+            ti.size = len(FAKE)
+            tf.addfile(ti, io.BytesIO(FAKE))
+
+
+real_download, real_run, real_which = gb.download, gb.subprocess.run, gb.shutil.which
+
+
+def dash(proj=None, **kw):
+    cache = tempfile.mkdtemp(prefix="goldmine_cache_"); temps.append(cache)
+    gb.dash_cache = lambda tag: cache
+    gb.download = lambda url, dest: tarball(dest, **kw)
+    out, code = run("dashboard", proj or d)
+    return out, code, cache
+
+
+out, code, cache = dash()                                        # verify passes: built, saved, NEXT publish
+assert code is None and "Dashboard saved: " in out and "references/publish.md" in next_line(out), out
+html = out.split("Dashboard saved: ")[1].splitlines()[0]
+man = rjson(d, json.load(open(os.path.join(d, "reel-build", "goldmine-run.json")))["manifest"])
+assert json.load(open(html)) == {"comments_since": man["generated_at"][:10]}, html
+assert os.path.dirname(html) == os.path.join(d, "visuals")
+gb.download = lambda url, dest: (_ for _ in ()).throw(AssertionError("re-downloaded"))
+out, code = run("dashboard", d)                                  # a verified cache is reused
+assert code is None and "Dashboard saved" in out, out
+out, code, cache = dash(comment="0" * 40)                        # SHA mismatch
+assert code == 6 and "commit stamp" in out and not os.path.isdir(os.path.join(cache, TOP)), out
+out, code, cache = dash(names=(TOP + "/goldmine_dashboard.py", "other-folder/x.py"))  # two top folders
+assert code == 7 and "laid out" in out and not os.path.isdir(os.path.join(cache, TOP)), out
+out, code, cache = dash(names=(TOP + "/goldmine_dashboard.py", TOP + "/../escaped.py"))  # path traversal
+assert code == 7 and not os.path.exists(os.path.join(cache, "escaped.py")), out
+gb.download = real_download                                      # offline: curl runs and fails
+gb.subprocess.run = lambda *a, **k: subprocess.CompletedProcess(a, 6, b"", b"Could not resolve host")
+cache = tempfile.mkdtemp(prefix="goldmine_cache_"); temps.append(cache)
+gb.dash_cache = lambda tag: cache
+out, code = run("dashboard", d)
+assert code == 5 and "no internet connection" in out and "Traceback" not in out, out
+gb.shutil.which = lambda name: None                               # curl missing
+out, code = run("dashboard", d)
+assert code == 4 and "curl is not installed" in out, out
+gb.subprocess.run, gb.shutil.which = real_run, real_which
+z = make([]); temps.append(z)                                    # zero breakouts: the plain message
+run("plan", z)
+out, code, cache = dash(proj=z)
+assert code == 0 and out.strip() == gb.NO_BREAKOUTS, out
+print("OK dashboard: verify pass, cache reuse, SHA mismatch, two top folders, path traversal, "
+      "offline, curl missing, zero breakouts")
+
+# 8. Guards the cases above do not reach: no dashboard before check-reads, a reads resume on a
+#    later day, link members, a failing assembler, a corrupt tarball, a curl timeout or OSError.
+d = make([("alpha_coach", "LLL001", 6.0, "Three habits"), ("beta_coach", "MMM001", 4.0, "Two habits")])
+temps.append(d)
+for step in ("plan", "compute", "reads"):
+    run(step, d)
+rb = os.path.join(d, "reel-build")
+names = json.load(open(os.path.join(rb, "goldmine-run.json")))["reads"]["expected"]
+out, code, cache = dash()                                        # reads not passed: refused, nothing built
+assert code == 2 and "reads have not passed" in out, out
+assert os.listdir(cache) == [] and not os.path.exists(os.path.join(d, "visuals")), out
+good()                                                           # resume on a later day keeps the filled files
+st = json.load(open(os.path.join(rb, "goldmine-run.json")))["reads"]
+filled = {k: open(os.path.join(rb, names[k]), "rb").read() for k in names}
+listing, real_today = sorted(os.listdir(rb)), gb.today
+gb.today = lambda: "12.31.99"
+out, code = run("reads", d)
+gb.today = real_today
+st2 = json.load(open(os.path.join(rb, "goldmine-run.json")))["reads"]
+assert code is None and (st2["packet"], st2["expected"]) == (st["packet"], names), st2
+assert sorted(os.listdir(rb)) == listing and not glob.glob(os.path.join(rb, "*12.31.99*")), os.listdir(rb)
+assert all(open(os.path.join(rb, names[k]), "rb").read() == filled[k] for k in names)
+check()
+
+
+def link_tarball(dest, kind):
+    """The dashboard plus a link to it inside the same folder, so only the files-and-folders rule
+    stops it (the "data" extract filter lets an inside link through)."""
+    with tarfile.open(dest, "w:gz", format=tarfile.PAX_FORMAT, pax_headers={"comment": gb.DASH_SHA}) as tf:
+        ti = tarfile.TarInfo(TOP + "/goldmine_dashboard.py")
+        ti.size = len(FAKE)
+        tf.addfile(ti, io.BytesIO(FAKE))
+        ti = tarfile.TarInfo(TOP + "/link.py")
+        ti.type = kind
+        ti.linkname = "goldmine_dashboard.py" if kind == tarfile.SYMTYPE else TOP + "/goldmine_dashboard.py"
+        tf.addfile(ti)
+
+
+def empty_cache():
+    cache = tempfile.mkdtemp(prefix="goldmine_cache_"); temps.append(cache)
+    gb.dash_cache = lambda tag: cache
+    return cache
+
+
+for kind in (tarfile.SYMTYPE, tarfile.LNKTYPE):                  # a symlink, then a hardlink member
+    cache = empty_cache()
+    gb.download = lambda url, dest, kind=kind: link_tarball(dest, kind)
+    out, code = run("dashboard", d)
+    assert code == 7 and "laid out" in out and os.listdir(cache) == [], (kind, out)
+out, code, cache = dash()                                        # the assembler fails: exit 8, log kept
+assert code is None, out
+with open(os.path.join(cache, TOP, "goldmine_dashboard.py"), "w") as f:  # writes the page, then fails
+    f.write('import sys\na = sys.argv\nopen(a[a.index("--out") + 1], "w").write("x")\n'
+            'print("ERROR: boom")\nsys.exit(1)\n')
+os.remove(os.path.join(rb, "dashboard-build.log"))
+out, code = run("dashboard", d)
+assert code == 8 and [l for l in out.splitlines() if l.startswith("ERROR:")] == [out.strip()], out
+assert ": boom." in out and "Dashboard saved" not in out, out
+assert "ERROR: boom" in open(os.path.join(rb, "dashboard-build.log"), encoding="utf-8").read()
+
+
+def bad_gzip(url, dest):
+    with open(dest, "wb") as f:
+        f.write(b"not a gzip file")
+
+
+cache = empty_cache()                                            # corrupt tarball
+gb.download = bad_gzip
+out, code = run("dashboard", d)
+assert code == 7 and "laid out" in out and "Traceback" not in out and os.listdir(cache) == [], out
+gb.download, gb.shutil.which = real_download, lambda name: "curl"   # curl times out, or cannot start
+for exc in (subprocess.TimeoutExpired("curl", 300), OSError("curl could not start")):
+    cache = empty_cache()
+    gb.subprocess.run = lambda *a, exc=exc, **k: (_ for _ in ()).throw(exc)
+    out, code = run("dashboard", d)
+    assert code == 5 and out.startswith("ERROR: Could not download") and os.listdir(cache) == [], (exc, out)
+gb.subprocess.run, gb.shutil.which = real_run, real_which
+print("OK guards: no dashboard before check-reads, reads resume on a later day, symlink and hardlink "
+      "members, assembler failure, corrupt tarball, curl timeout and OSError")
+
 for t in temps:
     shutil.rmtree(t, ignore_errors=True)
 print("OK runner steps: ask always (under and over budget), top-per-creator, zero breakouts, "

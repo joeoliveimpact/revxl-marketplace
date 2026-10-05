@@ -6,7 +6,7 @@ Instagram reel scripts in their brand voice. One front door, four exits, no dead
 ends. (The shared analysis core is bundled here for now; it splits into its own
 plugin at format #2.)
 
-**15 skills**, grouped by the stage of the journey they serve:
+**16 skills**, grouped by the stage of the journey they serve:
 
 **Start here**
 
@@ -37,6 +37,11 @@ plugin at format #2.)
 - **`creator-strategy-harvest`** ... harvests a trusted creator's full library
   (YouTube plus newsletter) into a dated, recency-ruled, framework-extracted
   corpus, from real subtitle tracks rather than paid transcription.
+- **`content-goldmine`** ... say "run the goldmine" after a competitor pull and it
+  builds the Content Goldmine: what broke out in your field, with the hooks, topics
+  and lead magnets behind it, saved as a page and published as a private Artifact.
+  The only paid part (comments) is asked first, with its price. Once its reads
+  pass, reel-scripter offers to check its hooks against it.
 
 **Make**
 

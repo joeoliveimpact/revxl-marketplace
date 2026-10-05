@@ -27,6 +27,9 @@ Steps, in order. Every step is resume-safe: re-running never pays twice.
   check-reads             FREE. Validates those three files against the breakouts; records them
                           as this run's inputs only when all pass, then writes the 3-row
                           Proven Hooks file.
+  dashboard               FREE. Downloads the pinned Content Goldmine Dashboard (curl), checks its
+                          commit stamp, unpacks it into the cache, and builds the page from this
+                          run's files into <project>/visuals/. Only after check-reads passed.
 
 Reads:   <project>/analysis-data.json (period_breakouts, meta)
          <project>/source/competitors/reels/*.json          (the pull; the corpus)
@@ -39,8 +42,9 @@ Writes:  <project>/reel-build/goldmine-run.json  (this run's state: which files 
          <project>/reel-build/Goldmine Reads Packet - <n> - <date>.json
          <project>/reel-build/Proven Hooks - <n> - <date>.json  (named in goldmine-run.json reads.proven_hooks)
          <project>/source/comments/<sc>.json, source/competitors/transcripts/<handle>.json
+         <project>/visuals/Content Goldmine Dashboard - <date>.html, reel-build/dashboard-build.log
 """
-import datetime, glob, json, os, re, shutil, statistics, subprocess, sys, tempfile, time
+import datetime, glob, json, os, re, shutil, statistics, subprocess, sys, tarfile, tempfile, time
 import urllib.error, urllib.parse, urllib.request
 
 BUDGET = 600          # goldmine per-pull credit budget; mirrored in hooks/credit-guard.mjs
@@ -753,6 +757,10 @@ def step_reads(prj, args):
                         "topicmap": "Topic Map - %d - %s.json" % (n, d8),
                         "patternread": "Pattern Read - %d - %s.json" % (n, d8)},
            "reels": rows}
+    # Resume (plan kept this pull's reads entry): keep its names, so a later day never points the run
+    # at new blank files. A new pull has no entry (plan drops it) and gets today's names.
+    prev = prj.state.get("reads") or {}
+    name, out["write_to"] = prev.get("packet") or name, prev.get("expected") or out["write_to"]
     jsave(os.path.join(prj.rb, name), out)
     # Pre-fill the three reads with every mechanical field, so Claude writes only the judgement
     # fields (the nulls and empty lists). A file that already exists is never overwritten.
@@ -953,9 +961,104 @@ def newest(paths):
     return os.path.basename(sorted(paths, key=key)[-1]) if paths else None
 
 
+# ---------------------------------------------------------------- dashboard
+# The page and its assembler come from the public repo at a pinned tag, never bundled.
+DASH_TAG = "v0.2.0"  # pinned with its commit (the tarball's pax comment); bump both together
+DASH_SHA = "1ebffe267b023bb573d993881d5e2d70c5b6b077"
+DASH_URL = "https://github.com/joeoliveimpact/content-goldmine-dashboard/archive/refs/tags/%s.tar.gz"
+OFFLINE = ("Could not download the dashboard: no internet connection, or GitHub did not answer. "
+           "Everything built so far is saved. Check the connection, then run the dashboard step again.")
+LAYOUT = ("The downloaded dashboard is not laid out the way the pinned version is, so it was not used. "
+          "Nothing was changed. Tell the plugin's maintainer.")
+
+
+def dash_cache(tag):
+    return os.path.join(os.path.expanduser("~"), ".cache", "shortform-superengine", "goldmine-dashboard", tag)
+
+
+def download(url, dest):
+    """curl, never Python HTTPS: python.org's macOS builds ship without certificates."""
+    if not shutil.which("curl"):
+        die("curl is not installed, so the dashboard cannot be downloaded. Install curl, then run "
+            "the dashboard step again.", 4)
+    try:
+        p = subprocess.run(["curl", "-fsSL", "--retry", "2", "-o", dest, url], capture_output=True, timeout=300)
+    except (subprocess.TimeoutExpired, OSError):
+        die(OFFLINE, 5)
+    if p.returncode != 0 or not os.path.isfile(dest):
+        die(OFFLINE, 5)
+
+
+def fetch_dashboard():
+    """The pinned dashboard, verified and unpacked in the cache. Returns its folder."""
+    cache, top = dash_cache(DASH_TAG), "content-goldmine-dashboard-" + DASH_TAG.lstrip("v")
+    root = os.path.join(cache, top)
+    if os.path.isfile(os.path.join(root, "goldmine_dashboard.py")):
+        return root  # verified when it was unpacked
+    os.makedirs(cache, exist_ok=True)
+    tmp = tempfile.mkdtemp(prefix="unpack-", dir=cache)
+    try:
+        tgz = os.path.join(tmp, "dashboard.tar.gz")
+        download(DASH_URL % DASH_TAG, tgz)
+        try:
+            with tarfile.open(tgz, "r:gz") as tf:
+                members = tf.getmembers()
+                if tf.pax_headers.get("comment") != DASH_SHA:
+                    die("The downloaded dashboard is not the pinned version (its commit stamp does not "
+                        "match), so it was not used. Nothing was changed. Tell the plugin's maintainer.", 6)
+                # exactly one top folder, the pinned one; no absolute path, no "..", only files and folders
+                bad = [m.name for m in members
+                       if m.name.split("/")[0] != top or ".." in m.name.replace("\\", "/").split("/")
+                       or os.path.isabs(m.name) or ":" in m.name or not (m.isfile() or m.isdir())]
+                if bad or not members:
+                    die(LAYOUT, 7)
+                tf.extractall(tmp, **({"filter": "data"} if hasattr(tarfile, "data_filter") else {}))
+        except (tarfile.TarError, OSError, EOFError):
+            die(LAYOUT, 7)
+        if os.path.isdir(root):
+            shutil.rmtree(root)  # a half-unpacked folder from an interrupted run
+        os.replace(os.path.join(tmp, top), root)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return root
+
+
+def step_dashboard(prj, args):
+    man = prj.manifest()
+    if not (prj.state.get("reads") or {}).get("passed"):
+        die("the reads have not passed check-reads, and the dashboard is only built from reads that "
+            "passed. Finish the reads, run check-reads, then run the dashboard step.")
+    root = fetch_dashboard()
+    out = prj.j("visuals", "Content Goldmine Dashboard - %s.html" % today())
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    extras = os.path.join(prj.rb, "dashboard-extras.json")
+    # Comment Mining counts only comments fetched for this pull: the manifest's UTC freeze day is the cut.
+    jsave(extras, {"comments_since": (man.get("generated_at") or "")[:10]})
+    log = os.path.join(prj.rb, "dashboard-build.log")
+    try:
+        p = subprocess.run([sys.executable, os.path.join(root, "goldmine_dashboard.py"), "--project", prj.p,
+                            "--workspace", prj.p, "--out", out, "--extras", extras],
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600)
+        code, text = p.returncode, (p.stdout or "") + (p.stderr or "")
+    except (subprocess.TimeoutExpired, OSError) as e:
+        code, text = -1, repr(e)
+    with open(log, "w", encoding="utf-8") as f:
+        f.write(text)
+    if code != 0 or not os.path.isfile(out):
+        err = [l[6:].strip() for l in text.splitlines() if l.startswith("ERROR:")]
+        die("The dashboard could not be built%s. Everything else is saved; the full output is in "
+            "reel-build/dashboard-build.log." % ((": " + err[-1]) if err else ""), 8)
+    prj.state["dashboard"] = {"at": now_utc(), "html": out, "tag": DASH_TAG}
+    prj.save_state()
+    print("Dashboard saved: " + out)
+    print("NEXT: publish this saved file as an Artifact per references/publish.md and store the link "
+          "under goldmine.* in state. If publishing fails, give the client this path instead.")
+
+
 # ---------------------------------------------------------------- main
 STEPS = {"plan": step_plan, "fetch": step_fetch, "transcribe": step_transcribe,
-         "compute": step_compute, "reads": step_reads, "check-reads": step_check_reads}
+         "compute": step_compute, "reads": step_reads, "check-reads": step_check_reads,
+         "dashboard": step_dashboard}
 
 if __name__ == "__main__":
     if len(sys.argv) < 3 or sys.argv[1] not in STEPS:

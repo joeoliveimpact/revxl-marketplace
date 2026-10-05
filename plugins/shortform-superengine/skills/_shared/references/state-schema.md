@@ -106,6 +106,14 @@ files, fully isolated.
     "last_snapshot": null           // path under <project>/history/
   },
 
+  // ---- GOLDMINE (owner: content-goldmine) ----
+  "goldmine": {
+    "last_run": null,               // YYYY-MM-DD, local date, of the last dashboard build
+    "dashboard_html": null,         // the saved page under <project>/visuals/, the copy that cannot get lost
+    "dashboard_url": null,          // the Artifact link; a later pull updates this same Artifact
+    "dashboard_tag": null           // the content-goldmine-dashboard version the page was built from, e.g. "v0.2.0"
+  },
+
   // ---- every skill ----
   "completed_skills": [],           // append the skill name on every completed run
   "open_loops": [],                 // [{"skill", "note", "opened"}] ... unfinished business the compass surfaces
@@ -165,6 +173,7 @@ One writer per key. A skill not named here does not write that key.
 | `plan.*` | content-plan only (NOT reel-scripter: the topic-pool mode moved out at 0.4.0) |
 | `own_read.*` | own-content-analysis (later release) |
 | `pulse.*` | competitor-pulse only. shortform-start may SEED pulse.* from the marker's `competitor_pulse` block when it creates the file (first run, migration) and never overwrites it afterwards |
+| `goldmine.*` | content-goldmine only |
 | `teach_level` | every skill (mirror of `~/.claude/revxl/teach-level` at last read; the file is authority) |
 | `completed_skills`, `open_loops`, `declined_offers`, `updated_at` | every skill |
 
