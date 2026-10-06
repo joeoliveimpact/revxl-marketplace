@@ -14,6 +14,19 @@ if len(sys.argv) < 2:
     sys.exit(1)
 
 ROOT = sys.argv[1]
+# Long folders on Windows: the same gate as the Goldmine runner (goldmine_build.Project). Past 150
+# characters the project path takes the \\?\ form, so Windows' 260-character limit never applies; a
+# \\?\ path is read literally, so a file opened below is joined from path parts, never with forward
+# slashes (glob splits its own pattern, so a glob may keep them).
+# A network (UNC) folder has no such form here.
+if os.name == 'nt' and len(os.path.abspath(ROOT)) > 150 and not ROOT.startswith('\\\\?\\'):
+    ROOT = os.path.abspath(ROOT)
+    if ROOT.startswith('\\\\'):
+        print('ERROR: This project is in a network folder with a long path (%d characters), where '
+              'analyze.py cannot reach files past the 260 characters Windows allows. Nothing was '
+              "written. Tell the plugin's maintainer." % len(ROOT))
+        sys.exit(10)
+    ROOT = '\\\\?\\' + ROOT
 # --baseline-days N (optional, SKLLPLG-260): the per-account denominator behind field_lift becomes
 # that account's median over reels published in its last N days instead of all-time. All-time
 # medians surface old viral hits (measured 09.03.26 in trend_recut.py). Default None = all-time,
@@ -69,7 +82,7 @@ CLIENT_LANE = cfg.get('client_lane')
 TITLE = cfg.get('title', '# @' + CLIENT_HANDLE + ' - Cross-Reference Analysis Data (evidence appendix)')
 
 def followers(handle):
-    try: return J(os.path.join(ROOT, f'source/competitors/profiles/{handle}.json'))['data']['author'].get('followers') or 0
+    try: return J(os.path.join(ROOT, 'source', 'competitors', 'profiles', f'{handle}.json'))['data']['author'].get('followers') or 0
     except Exception: return 0
 
 # ---- hook taxonomy (heuristic on caption line 1) ----
@@ -212,7 +225,7 @@ def reels_of(path):
 # ---- load everyone ----
 creators = {}  # handle -> dict
 client = dict(handle=CLIENT_HANDLE, tier='CLIENT', lane=CLIENT_LANE, followers=CLIENT_FOLLOWERS,
-              reels=reels_of(os.path.join(ROOT, 'source/reels-full.json')))
+              reels=reels_of(os.path.join(ROOT, 'source', 'reels-full.json')))
 creators[CLIENT_HANDLE] = client
 for f in glob.glob(os.path.join(ROOT, 'source/competitors/reels/*.json')):
     h = os.path.basename(f)[:-5]
