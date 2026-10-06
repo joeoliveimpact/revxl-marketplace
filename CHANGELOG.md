@@ -4,7 +4,7 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.1.74] ... 2026-10-03
+## [0.1.75] ... 2026-10-06
 
 ### Changed
 - **shortform-superengine v0.5.0** ... the five Legit Content Skills (hook, rehooks,
@@ -19,6 +19,14 @@ structure gate, the "cut this reel" handoff to editor-superengine, and the weekl
 fixes (a 7-day floor, full paging, "retry the failed handles"). Behaviour change from
 0.4.2: txt transcripts now count toward coverage, so hook and theme tables shift on
 projects that have them.
+
+## [0.1.74] ... 2026-10-05
+
+### Fixed
+- **higgsfield-superengine v0.1.4** ... a lighter safety guard, so it works on a Mac.
+- **Paid jobs run on a Mac again.** The guard refused every job on Mac's Claude desktop app, because it looked for the job in Claude's session record a split second before the app wrote it there. That check is gone. Nothing was ever charged; jobs simply couldn't run.
+- **The guard keeps only what protects your money:** every job is priced first, anything over the safety cap asks for your OK, and Claude can't go around the plugin to Higgsfield directly. It now also asks (instead of refusing) when Claude's app is in its "bypass" mode.
+- **No more screen guard.** It got stuck on during a Mac setup. Setup now simply tells Claude not to look at the screen while your API key is showing.
 
 ## [0.1.73] ... 2026-10-02
 

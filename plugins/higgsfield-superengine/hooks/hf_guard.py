@@ -1,30 +1,26 @@
 #!/usr/bin/env python3
-"""hf_guard.py - the PreToolUse hooks of the higgsfield-superengine plugin. Standard library only, Python 3.9+.
+"""hf_guard.py - the PreToolUse hook of the higgsfield-superengine plugin. Standard library only, Python 3.9+.
 
   hf_guard.py hook                      the hook (hooks.json): one PreToolUse JSON on stdin -> a decision or nothing
   hf_guard.py hook --only-on win32|posix   the same, but silent (exit 0) on the other OS: hooks.json starts it
                                         with py on Windows and through hf-guard.sh on Mac/Linux
-  hf_guard.py no-look on|off|status     the no-look flag (higgsfield-setup). "off" is the client's confirmation:
-                                        the hook turns that command into a real click ("ask")
   hf_guard.py --selftest                offline checks: real hook processes fed real-shaped hook JSON
 
-4.1 Spend guard (Bash, PowerShell, Monitor, Write, Edit). Commands that do not touch Higgsfield pass untouched.
+Spend guard (Bash, PowerShell, Monitor, Write, Edit). Commands that do not touch Higgsfield pass untouched.
   hf_rest.py submit  estimate record matches + fresh -> pricing.py -> ledger.py reserve -> stamp (CONTRACT v1):
                      priced and under the cap -> stamp "allow" + allow; over the cap or an ask verdict -> reserve
-                     (--force) + stamp "ask" + ask (a real click); nobody to ask (dontAsk, bypassPermissions, or
-                     no permission_mode) -> deny + log, nothing reserved or stamped. Anything wrong -> deny.
-                     Real call only: the event's transcript must hold this exact tool call (same tool_use_id and
-                     command) still pending, so a hand-built event piped into `hf_guard.py hook` never stamps.
+                     (--force) + stamp "ask" + ask (a real click; bypassPermissions honors a hook's ask, proven
+                     10.05.26); dontAsk (nobody can be asked) -> deny + log, nothing reserved or stamped.
+                     Anything wrong -> deny.
   deny               api.higgsfield.ai, the higgsfield CLI / SDK, any other way into hf_rest (import, -c, -m,
                      chaining, a script that mentions it), anything touching higgsfield/.spend-guard/ or
                      ~/.config/higgsfield-superengine/, HF_SUPERENGINE_LEDGER_DIR, ad-hoc `import ledger`.
-4.2 No-look guard (Claude_Browser, computer-use, claude-in-chrome, Claude_Preview tools), flag = no-look.json in
-  the per-user folder (ledger.ledger_dir()): "on" < 10 min -> deny every tool; "on" older -> ask (deny when nobody
-  is watching); "leaving" (after the confirmed "off") -> only navigate passes, and it clears the flag.
+v0.1.4 (Mac report 10.05.26) removed the transcript checks (real call, prompt shown: they raced the transcript
+write on Mac Desktop) and the no-look screen guard. Showing the prompt first is a skill instruction now.
 Every decision carries hookEventName + permissionDecisionReason. A deny also exits 2 (blocks even if the JSON were
-dropped). Internal error: deny if the call touches Higgsfield (or is a browser tool), else pass.
+dropped). Internal error: deny if the call touches Higgsfield, else pass.
 """
-import hashlib, json, os, re, secrets, sys, time
+import hashlib, json, os, re, sys, time
 from pathlib import Path
 
 sys.dont_write_bytecode = True  # importing hf_rest/pricing/ledger must not leave __pycache__ in the plugin
@@ -32,10 +28,6 @@ os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
 
 HERE = Path(__file__).resolve().parent
 SCRIPTS = HERE.parent / "scripts"
-ATTENDED = {"default", "acceptEdits", "plan", "auto"}  # someone can answer an "ask"
-NO_LOOK_TTL = 600  # seconds a fresh flag blocks outright; after that every look asks
-BROWSER_RE = re.compile(r"^mcp__(Claude_Browser|computer[-_]use|claude-in-chrome|Claude_Preview)__")
-NAVIGATE = {"mcp__Claude_Browser__navigate", "mcp__claude-in-chrome__navigate"}  # text-only result, no screenshot
 SHELLS = {"Bash", "PowerShell", "Monitor"}
 MARKERS = ("higgsfield", "hf_rest", "spend-guard", "hf_superengine", "hf_guard")
 LEDGER_IMPORT = re.compile(r"\b(import|from)\s+ledger\b|import_module\(\s*['\"]ledger")
@@ -67,96 +59,6 @@ def deny(reason):
     return out("deny", SPEND + reason)
 
 
-def cfg_dir():
-    """Same folder as ledger.ledger_dir(): the per-user plugin folder (the selftest checks they agree)."""
-    return Path(os.environ.get("HF_SUPERENGINE_LEDGER_DIR") or os.path.expanduser("~/.config/higgsfield-superengine"))
-
-
-def flag_path():
-    return cfg_dir() / "no-look.json"
-
-
-# ---- 4.2 no-look ------------------------------------------------------------------------------------------------
-
-def read_flag():
-    """None = no flag. Raises on an unreadable or malformed flag (the caller denies)."""
-    try:
-        raw = flag_path().read_bytes()
-    except FileNotFoundError:
-        return None
-    f = json.loads(raw.decode("utf-8"))
-    if not (isinstance(f, dict) and f.get("state") in ("on", "leaving") and isinstance(f.get("set_at"), (int, float))
-            and not isinstance(f.get("set_at"), bool)):
-        raise ValueError("malformed no-look flag")
-    return f
-
-
-def write_flag(state):
-    p = flag_path()
-    p.parent.mkdir(parents=True, exist_ok=True)
-    tmp = p.with_name(f"{p.name}.{secrets.token_hex(3)}.tmp")
-    tmp.write_bytes(json.dumps({"v": 1, "kind": "hf-superengine-no-look", "state": state,
-                                "set_at": time.time()}).encode())
-    os.replace(tmp, p)
-
-
-def no_look(tool, mode):
-    try:
-        f = read_flag()
-    except Exception:
-        return out("deny", "No-look guard: the no-look flag is unreadable, so the screen is treated as showing an "
-                           "API key. Ask the client to confirm the key is off screen, then run hf_guard.py no-look off.")
-    if f is None:
-        return None
-    age = time.time() - f["set_at"]
-    if f["state"] == "leaving":
-        if tool in NAVIGATE:
-            flag_path().unlink()
-            return None  # navigating away (text-only result) completes the client's "off"
-        return out("deny", "No-look guard: the client confirmed the key is off screen. Navigate the browser away from "
-                           "the key page first (the navigate tool on its own); that clears the flag.")
-    if age <= NO_LOOK_TTL:
-        return out("deny", "No-look guard: an API key may be on screen (setup no-look window, "
-                           f"{int(age)} s old). Do not look at the screen or page. Wait until the client says the "
-                           "key is saved and off screen, then run hf_guard.py no-look off.")
-    if mode not in ATTENDED:
-        return out("deny", "No-look guard: the no-look window expired without the client's confirmation, and nobody "
-                           "can be asked in this permission mode. Do not look at the screen.")
-    return out("ask", "higgsfield-superengine no-look check: the setup no-look window expired without confirmation. "
-                      "Is the API key off the screen? Allow lets Claude look at the browser/screen this once.")
-
-
-def cmd_no_look(argv):
-    if argv not in (["on"], ["off"], ["status"]):
-        print(json.dumps({"ok": False, "class": "usage", "message": "usage: hf_guard.py no-look on|off|status"}))
-        return 2
-    try:
-        if argv == ["on"]:
-            write_flag("on")
-        elif argv == ["off"] and read_flag_quiet() is not None:
-            write_flag("leaving")
-        f = read_flag_quiet()
-    except OSError as e:
-        print(json.dumps({"ok": False, "class": "local_io_error", "message": type(e).__name__}))
-        return 1
-    state = "clear" if f is None else ("expired" if f["state"] == "on" and time.time() - f["set_at"] > NO_LOOK_TTL
-                                       else f["state"])
-    msg = {"on": "No-look is ON: every browser/screen tool is blocked. Clear it only after the client confirms.",
-           "expired": "No-look expired: every browser/screen tool asks first. Run no-look off after the client "
-                      "confirms.",
-           "leaving": "Client confirmed. Navigate the browser away from the key page (navigate tool); that clears it.",
-           "clear": "No-look is off."}[state]
-    print(json.dumps({"ok": True, "command": "no-look", "state": state, "message": msg}))
-    return 0
-
-
-def read_flag_quiet():
-    try:
-        return read_flag()
-    except (ValueError, UnicodeDecodeError):
-        return {"state": "on", "set_at": 0}  # malformed: treated as an expired "on"; "off" overwrites it
-
-
 # ---- 4.1 spend guard: files -------------------------------------------------------------------------------------
 
 def guarded_path(p, cwd=None):
@@ -183,7 +85,7 @@ def files(ti, cwd=None):
     fp = fp if isinstance(fp, str) else ""
     if guarded_path(fp, cwd):
         return deny("the spend guard's files (higgsfield/.spend-guard/) and the per-user folder "
-                    "(~/.config/higgsfield-superengine: ledger, no-look flag) are written only by the plugin's scripts. "
+                    "(~/.config/higgsfield-superengine: the ledger) are written only by the plugin's scripts. "
                     "Do not create, edit, move or delete them.")
     text = "\n".join(v for v in (ti.get("content"), ti.get("new_string")) if isinstance(v, str))
     if not fp.lower().endswith(".md") and ("hf_rest" in text or (LEDGER_IMPORT.search(text) and "higgsfield" in
@@ -292,7 +194,7 @@ def shell(cmd, ps, cwd, mode, ev=None):
     if "spend-guard" in low or CONFIG_DIR.search(cmd) or GUARD_NAMES.search(low) or \
             (".config" in low and "higgsfield-superengine" in low):  # ".config/./higgsfield-superengine" and the like
         return deny("the spend guard's files (higgsfield/.spend-guard/) and the per-user folder "
-                    "(~/.config/higgsfield-superengine: ledger, no-look flag) are touched only by the plugin's "
+                    "(~/.config/higgsfield-superengine: the ledger) are touched only by the plugin's "
                     "scripts. Do not read-modify, move or delete them from a command.")
     if "hf_superengine_ledger_dir" in low:
         return deny("HF_SUPERENGINE_LEDGER_DIR cannot be set from a command (it would point the spend ledger at an "
@@ -309,162 +211,10 @@ def shell(cmd, ps, cwd, mode, ev=None):
     if name == "hf_rest.py":
         if p[1][:1] != ["submit"]:
             return None
-        if not real_call(ev, cmd):
-            return deny("this submit is not a real pending tool call in this session's transcript (a hand-built "
-                        "hook event, or a script calling the hook). Nothing was stamped or reserved. Run the submit "
-                        "as its own tool call so the client sees the real permission prompt.")
         return submit(p[0], p[1][1:], cwd, mode, ev)
     if name == "hf_guard.py":
-        if p[1] == ["no-look", "off"]:
-            if mode not in ATTENDED:
-                return deny("no-look off needs the client's confirmation, and nobody can be asked in this permission "
-                            "mode. The flag stays; it asks before every look once it expires.")
-            return out("ask", "higgsfield-superengine no-look check: has the client finished with the API key, and "
-                              "is it off the screen (dialog closed)? Allow = yes, Claude may navigate the browser away "
-                              "and look again.")
         return None
     return deny("hf_rest.py and hf_guard.py may not be imported, wrapped or chained. " + PLAIN)
-
-
-def real_call(ev, cmd):
-    """True only if the event's transcript holds this exact tool call (tool_use_id + command) with no result yet.
-    A hand-built event fed to `hf_guard.py hook` (by a pipe or a runner script) either has no such call, or points at
-    an older call that already has a result. Real events: Claude Code writes the tool_use before PreToolUse fires
-    (checked 10.01.26 with a headless probe hook)."""
-    # ponytail: protects only sessions where this hook runs, and a script Claude writes can still forge a transcript
-    # and call the hook itself (Codex review 10.01.26); shell() refuses scripts that mention the guard. The full fix
-    # is approval held outside the agent's reach (v0.2).
-    rows, tid = transcript(ev), (ev or {}).get("tool_use_id")
-    if rows is None or not (isinstance(tid, str) and tid):
-        return False
-    found = False
-    for o in rows:
-        for c in blocks(o):
-            if c.get("type") == "tool_use" and c.get("id") == tid:
-                found = isinstance(c.get("input"), dict) and c["input"].get("command") == cmd
-            elif c.get("type") == "tool_result" and c.get("tool_use_id") == tid:
-                found = False  # that call already ran (or was refused): not the one pending now
-    return found
-
-
-KEEP_INPUT = ("command", "file_path", "skill")
-
-
-def _compact(o):
-    """One transcript row cut down to what the checks read; big tool results and file contents are dropped."""
-    m = o.get("message")
-    content = m.get("content") if isinstance(m, dict) else None
-    if isinstance(content, str):
-        content = [{"type": "text", "text": content}]
-    keep = []
-    for c in content if isinstance(content, list) else ():
-        if not isinstance(c, dict):
-            continue
-        t = c.get("type")
-        if t == "tool_use":
-            ti = c.get("input") if isinstance(c.get("input"), dict) else {}
-            keep.append({"type": t, "id": c.get("id"), "name": c.get("name"),
-                         "input": {k: ti[k] for k in KEEP_INPUT if k in ti}})
-        elif t == "tool_result":
-            keep.append({"type": t, "tool_use_id": c.get("tool_use_id"), "is_error": bool(c.get("is_error"))})
-        elif t == "text" and isinstance(c.get("text"), str):
-            keep.append({"type": t, "text": c["text"]})
-    return {"type": o.get("type"), "isMeta": bool(o.get("isMeta")), "blocks": keep}
-
-
-def transcript(ev):
-    """The whole transcript, streamed line by line and compacted, or None if it can't be read. (Reading only the
-    tail lost the review steps behind one big tool result: Codex review 10.01.26.)"""
-    tp = (ev or {}).get("transcript_path")
-    if not (isinstance(tp, str) and tp):
-        return None
-    rows = []
-    try:
-        with open(tp, "rb") as f:
-            for line in f:
-                try:
-                    o = json.loads(line)
-                except ValueError:
-                    continue
-                if isinstance(o, dict):
-                    rows.append(_compact(o))
-    except OSError:
-        return None
-    return rows
-
-
-def blocks(o):
-    return o.get("blocks", [])
-
-
-PROMPT_SKILLS = ("image-prompting", "video-prompting", "product-shots", "static-ads", "thumbnails", "ugc-video-ads")
-SKILL_IDS = {f"higgsfield-superengine:{n}" for n in PROMPT_SKILLS}
-MODELS = HERE.parent / "references" / "models"
-
-
-def norm(s):
-    return " ".join(s.split())
-
-
-def same_file(a, b):
-    return os.path.normcase(os.path.normpath(str(a))) == os.path.normcase(os.path.normpath(str(b)))
-
-
-def prompts_in(x):
-    """Every string under a "prompt" key, at any depth (multi-shot bodies carry one per shot)."""
-    if isinstance(x, dict):
-        return [p for k, v in x.items() for p in ([v] if k == "prompt" and isinstance(v, str) else prompts_in(v))]
-    return [p for v in x for p in prompts_in(v)] if isinstance(x, list) else []
-
-
-def reviewed(ev, ep, params):
-    """None when, before this pending call, this plugin's notes file for the model was read, a prompting skill was
-    loaded (both successfully), and the client saw every prompt in the request word for word and answered after it
-    (a request with no prompt: Claude described it and the client answered). Otherwise the reason to refuse.
-    JOI-016 (09.30.26): prompts written without the model notes or the skill, and run unseen, wasted the credits."""
-    rows, tid = transcript(ev) or [], (ev or {}).get("tool_use_id")
-    pos = max((i for i, o in enumerate(rows) for c in blocks(o) if c.get("type") == "tool_use" and c.get("id") == tid),
-              default=None)
-    if pos is None:
-        return "this submit is not in the session transcript."
-    before = rows[:pos]
-    ok = {c.get("tool_use_id") for o in before for c in blocks(o) if c.get("type") == "tool_result"
-          and not c.get("is_error")}
-    uses = [(i, c) for i, o in enumerate(before) if o.get("type") == "assistant" for c in blocks(o)
-            if c.get("type") == "tool_use" and c.get("id") in ok]
-    files = [p for p in MODELS.glob("*.md") if f"`{ep}`" in p.read_text(encoding="utf-8", errors="replace")]
-    reads = [i for i, c in uses if c.get("name") == "Read" and any(
-        same_file(c["input"].get("file_path", ""), p) for p in (files or MODELS.glob("*.md")))]
-    if not reads:
-        return (f"this plugin's notes for the model ({', '.join(p.name for p in files) or 'references/models/'}) were "
-                "not read in this session before this submit. Read the model file first (it holds the prompt rules "
-                "for this model), then submit again.")
-    said = [c.get("text", "") for o in before if o.get("type") == "user" and not o.get("isMeta")
-            for c in blocks(o) if c.get("type") == "text"]
-    if not any(c.get("name") == "Skill" and c["input"].get("skill") in SKILL_IDS | set(PROMPT_SKILLS) for _, c in uses) and \
-            not any(f"/{s}</command-name>" in t for t in said for s in SKILL_IDS):
-        return ("no prompting skill was loaded in this session. Load higgsfield-superengine:image-prompting or "
-                "video-prompting (or the matching use-case skill) and write the prompt with it, then submit again.")
-
-    def replied(after):
-        return any(o.get("type") == "user" and not o.get("isMeta") and any(
-            c.get("type") == "text" and c.get("text", "").strip() for c in blocks(o)) for o in before[after + 1:])
-    want = [norm(p) for p in prompts_in(params) if p.strip()]
-    texts = [i for i, o in enumerate(before) if o.get("type") == "assistant" for c in blocks(o)
-             if c.get("type") == "text" and (all(w in norm(c.get("text", "")) for w in want) if want else
-                                             c.get("text", "").strip())]
-    if want:
-        shown = max(texts, default=None)
-        # ponytail: any real user message after the prompt counts as the reply; it does not judge yes vs no
-        if shown is None or not replied(shown):
-            return ("the client has not seen this exact prompt. Show the full prompt text word for word (not a "
-                    "summary), wait for their reply, then submit again.")
-        return None
-    last = max((i for i in texts if i > max(reads)), default=None)
-    if last is None or not replied(last):
-        return ("this request has no prompt, so describe it to the client (model, inputs, settings) after reading the "
-                "model's notes, wait for their reply, then submit again.")
-    return None
 
 
 def in_plugin(cwd):
@@ -517,9 +267,6 @@ def submit(script, args, cwd, mode, ev=None):
     if not -hf_rest.SKEW <= age <= hf_rest.ESTIMATE_TTL:
         return deny(hf_rest.GATE_REASONS["estimate_stale" if age > 0 else "estimate_clock_skew"])
 
-    why = reviewed(ev, ep, params)
-    if why:
-        return deny(why + " Nothing was stamped or reserved.")
     v = pricing.price_bytes(raw)
     base = {"event": "spend_guard", "endpoint": ep, "estimate_key": key, "permission_mode": mode, "code": v["code"]}
 
@@ -566,7 +313,7 @@ def submit(script, args, cwd, mode, ev=None):
                f"({o.get('cap_basis')})")
     else:
         why = v["reason"]
-    if mode not in ATTENDED:
+    if mode == "dontAsk":  # every other mode shows the ask (bypassPermissions too: it honors a hook's ask)
         return finish(deny(f"{ep} costs {price} and needs the client's click ({why}), but nobody can be asked in "
                            f"permission mode {mode!r}. Nothing was sent, stamped or reserved."))
     code, o = ledger.run(["reserve", amt(fig) if fig is not None else "unknown", "--id", key, "--force"] + held)
@@ -586,8 +333,6 @@ def hook(raw):
     mode = data.get("permission_mode")
     if not isinstance(tool, str):
         return None
-    if BROWSER_RE.match(tool):
-        return no_look(tool, mode)
     if tool in ("Write", "Edit"):
         return files(ti, data.get("cwd"))
     if tool in SHELLS and isinstance(ti.get("command"), str):
@@ -599,10 +344,10 @@ def run_hook():
     raw = sys.stdin.buffer.read().decode("utf-8", "replace")
     try:
         result = hook(raw)
-    except Exception as e:  # fail closed only where Higgsfield (or the screen) is involved
+    except Exception as e:  # fail closed only where Higgsfield is involved
         low = raw.lower()
         result = None
-        if any(m in low for m in MARKERS) or re.search(r'"tool_name"\s*:\s*"' + BROWSER_RE.pattern[1:], raw):
+        if any(m in low for m in MARKERS):
             result = deny(f"internal error in the hook ({type(e).__name__}), so this call is refused to be safe. "
                           "Nothing was stamped.")
     if result is None:
@@ -621,8 +366,10 @@ def main(argv):
         # hooks.json starts the guard twice (py on Windows, sh on Mac/Linux); exactly one of them decides
         here = "win32" if sys.platform == "win32" else "posix"
         return run_hook() if argv[2] == here else 0
-    if argv[:1] == ["no-look"]:
-        return cmd_no_look(argv[1:])
+    if argv[:1] == ["no-look"]:  # removed in 0.1.4; a no-op so an older setup step does not error
+        print(json.dumps({"ok": True, "command": "no-look", "state": "clear",
+                          "message": "The no-look guard was removed in 0.1.4; nothing to do."}))
+        return 0
     if argv == ["--selftest"]:
         return selftest()
     print(__doc__)
@@ -633,7 +380,7 @@ def main(argv):
 
 def selftest():
     """Offline. Temp workspace + temp per-user folder; hook processes get real-shaped JSON on stdin; hf_rest talks to a
-    local mock that counts requests. Never the real API, key, ledger or no-look flag."""
+    local mock that counts requests. Never the real API, key or ledger."""
     import shutil, subprocess, tempfile, threading
     from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -687,32 +434,15 @@ def selftest():
 
     seq = [0]
 
-    def use(tid, tool, ti):
-        return {"type": "assistant", "message": {"role": "assistant", "content": [
-            {"type": "tool_use", "id": tid, "name": tool, "input": ti}]}}
-
-    def said(text, who="assistant"):
-        return {"type": who, "message": {"role": who, "content": [{"type": "text", "text": text}]}}
-
-    # a reviewed job: prompting skill loaded, the model's notes read, every test prompt shown word for word, a reply
-    def result(tid, err=False, text="ok"):
-        return {"type": "user", "message": {"role": "user", "content": [
-            {"type": "tool_result", "tool_use_id": tid, "is_error": err, "content": text}]}}
-
-    shown = said("Here is the exact prompt: a red mug on a table | five-hundred | never estimated. Good to go?")
-    skill_ok = [use("toolu_pre1", "Skill", {"skill": "higgsfield-superengine:image-prompting"}), result("toolu_pre1")]
-    read_ok = [use("toolu_pre2", "Read", {"file_path": str(MODELS / "z-image.md")}), result("toolu_pre2")]
-    prelude = skill_ok + read_ok + [shown, said("yes", "user")]
-
-    def ev(tool, ti, mode="default", cwd=ws, drop_mode=False, lines=None):
-        """A real-shaped event plus its transcript. lines(tid) overrides the transcript (default: this call pending)."""
+    def ev(tool, ti, mode="default", cwd=ws, drop_mode=False):
+        """A real-shaped event. Its transcript is empty on purpose: on Mac Desktop the tool_use row lands after
+        PreToolUse fires (report 10.05.26), and the guard must not depend on it."""
         seq[0] += 1
-        tid, tp = f"toolu_selftest{seq[0]:04d}", tmp / f"t{seq[0]}.jsonl"
-        rows = lines(tid) if lines else prelude + [use(tid, tool, ti)]
-        tp.write_text("".join(json.dumps(x) + "\n" for x in rows), encoding="utf-8")
+        tp = tmp / "transcript.jsonl"
+        tp.touch()
         d = {"session_id": "selftest", "transcript_path": str(tp), "cwd": str(cwd),
              "permission_mode": mode, "hook_event_name": "PreToolUse", "tool_name": tool, "tool_input": ti,
-             "tool_use_id": tid}
+             "tool_use_id": f"toolu_selftest{seq[0]:04d}"}
         if drop_mode:
             d.pop("permission_mode")
         return d
@@ -806,15 +536,22 @@ def selftest():
               f"{d} {r} {ent}")
         ledger("refund", key, "--reason", "not_sent")
         stp.unlink()
-        for mode, drop in (("dontAsk", False), ("bypassPermissions", False), ("default", True)):
+        for mode, drop in (("bypassPermissions", False), ("default", True)):
             c, d, r = bash(sub_cmd(ep, b1), mode=mode, drop_mode=drop)
-            _, led = ledger("status")
-            log = (ws / "higgsfield" / time.strftime("%Y-%m-%d") / "log.jsonl").read_text(encoding="utf-8")
-            logged = [x for x in map(json.loads, log.splitlines()) if x.get("event") == "spend_guard" and
-                      x.get("decision") == "deny" and x.get("permission_mode") == (None if drop else mode)]
-            check(f"S6 over the cap, permission_mode {'missing' if drop else mode} -> deny, no stamp, nothing "
-                  "reserved, deny logged", d == "deny" and c == 2 and stamp_of(ep, b1)[1] is None and
-                  not led["entries"] and logged, f"{d} {r}")
+            key, st, stp = stamp_of(ep, b1)
+            check(f"S6 over the cap, permission_mode {'missing' if drop else mode} -> ask (a real click; bypass "
+                  "honors a hook's ask), stamp 'ask'", d == "ask" and c == 0 and st and st["decision"] == "ask",
+                  f"{d} {r}")
+            ledger("refund", key, "--reason", "not_sent")
+            stp.unlink()
+        c, d, r = bash(sub_cmd(ep, b1), mode="dontAsk")
+        _, led = ledger("status")
+        log = (ws / "higgsfield" / time.strftime("%Y-%m-%d") / "log.jsonl").read_text(encoding="utf-8")
+        logged = [x for x in map(json.loads, log.splitlines()) if x.get("event") == "spend_guard" and
+                  x.get("decision") == "deny" and x.get("permission_mode") == "dontAsk"]
+        check("S6 over the cap, permission_mode dontAsk (nobody can be asked) -> deny, no stamp, nothing reserved, "
+              "deny logged", d == "deny" and c == 2 and stamp_of(ep, b1)[1] is None and not led["entries"] and logged,
+              f"{d} {r}")
         ledger("balance", "set", "100")
 
         # --- an ask verdict (5xx estimate: unpriced) -> ask + reserve unknown ($5) ---------------------------------
@@ -909,96 +646,18 @@ def selftest():
               res["hookSpecificOutput"]["permissionDecision"] == "deny" and stamp_of(ep, b1)[1] is None and
               not led["entries"], res)
 
-        # --- real call only: a hand-built hook event never stamps (JOI-016, 09.30.26) ---------------------------
-        cmd1 = sub_cmd(ep, b1)
-        pipe = f"echo '<event>' | python \"{me}\" hook"
-
-        def clean():
-            return stamp_of(ep, b1)[1] is None and not ledger("status")[1].get("entries")
-
-        attacks = [
-            ("R1 hand-built event piped into the hook (the newest call is the pipe) -> deny, nothing stamped",
-             lambda tid: [use(tid + "x", "Bash", {"command": pipe})]),
-            ("R2 replays the id of an older real submit that already has a result -> deny, nothing stamped",
-             lambda tid: [use(tid, "Bash", {"command": cmd1}),
-                          {"type": "user", "message": {"role": "user", "content": [
-                              {"type": "tool_result", "tool_use_id": tid, "content": "denied", "is_error": True}]}},
-                          use(tid + "x", "Bash", {"command": pipe})]),
-            ("R3 same id, different command in the transcript -> deny",
-             lambda tid: [use(tid, "Bash", {"command": cmd1 + " --x"})]),
-            ("R4 a transcript with no tool calls (a runner script's) -> deny", lambda tid: []),
-        ]
-        for name, lines in attacks:
-            c, d, r = run(ev("Bash", {"command": cmd1}, lines=lines))
-            check(name, d == "deny" and c == 2 and clean(), f"{d} {r}")
-        e5 = ev("Bash", {"command": cmd1})
-        e5.pop("transcript_path")
-        e6 = ev("Bash", {"command": cmd1})
-        e6["transcript_path"] = str(tmp / "missing.jsonl")
-        check("R5 no transcript_path, or the transcript file is missing -> deny, nothing stamped",
-              run(e5)[1] == "deny" and run(e6)[1] == "deny" and clean())
-        c, d, r = run(ev("Bash", {"command": cmd1}, lines=lambda tid: prelude + [{"type": "assistant", "message": {"content": [
-            {"type": "tool_use", "id": tid, "name": "Bash", "input": {"command": cmd1}},
-            {"type": "tool_use", "id": "toolu_other", "name": "Read", "input": {"file_path": "x"}}]}}]))
-        check("R6 the real call inside a parallel batch (not the last tool_use) -> allow", d == "allow", f"{d} {r}")
-        ledger("refund", key, "--reason", "not_sent")
+        # --- Mac Desktop race (report 10.05.26): no transcript row for the submit is fine -------------------------
+        c, d, r = bash(sub_cmd(ep, b1))
+        k_m = stamp_of(ep, b1)[0]
+        ledger("refund", k_m, "--reason", "not_sent")
         stamp_of(ep, b1)[2].unlink(missing_ok=True)
-
-        # --- reviewed jobs only: model notes read, prompting skill loaded, prompt shown word for word + answered --
-        ask, yes = shown, said("yes", "user")
-        reviews = [
-            ("V1 the model's notes were never read -> deny (names z-image.md)", skill_ok + [ask, yes], "z-image.md"),
-            ("V2 another model's notes were read, not this one's -> deny",
-             skill_ok + [use("toolu_r", "Read", {"file_path": str(MODELS / "kling-3.md")}), result("toolu_r"), ask,
-                         yes], "z-image.md"),
-            ("V3 no prompting skill loaded -> deny", read_ok + [ask, yes], "prompting skill"),
-            ("V4 the prompt was only summarised (not word for word) -> deny",
-             skill_ok + read_ok + [said("I'll render a red mug, OK?"), yes], "exact prompt"),
-            ("V5 the prompt was shown but the client never replied -> deny", skill_ok + read_ok + [yes, ask],
-             "exact prompt"),
-            ("V8 the model-notes Read failed (is_error) -> deny",
-             skill_ok + [use("toolu_f", "Read", {"file_path": str(MODELS / "z-image.md")}),
-                         result("toolu_f", True, "File not found"), ask, yes], "z-image.md"),
-            ("V9 a z-image.md outside this plugin was read -> deny",
-             skill_ok + [use("toolu_x", "Read", {"file_path": str(tmp / "references" / "models" / "z-image.md")}),
-                         result("toolu_x"), ask, yes], "z-image.md"),
-            ("V10 the Skill call failed, or named another plugin's skill -> deny",
-             [use("toolu_s", "Skill", {"skill": "higgsfield-superengine:image-prompting"}),
-              result("toolu_s", True, "Unknown skill"), use("toolu_t", "Skill", {"skill": "x:image-prompting"}),
-              result("toolu_t")] + read_ok + [ask, yes], "prompting skill"),
-        ]
-        for name, rows, word in reviews:
-            c, d, r = run(ev("Bash", {"command": cmd1}, lines=lambda tid, rows=rows: rows + [use(tid, "Bash",
-                                                                                               {"command": cmd1})]))
-            check(name, d == "deny" and word in r and clean(), f"{d} {r}")
-        slash = said("<command-name>/higgsfield-superengine:video-prompting</command-name>", "user")
-        c, d, r = run(ev("Bash", {"command": cmd1}, lines=lambda tid: [slash] + read_ok + [ask, yes,
-                                                                        use(tid, "Bash", {"command": cmd1})]))
-        check("V6 skill loaded by the client's slash command + notes + shown + answered -> allow", d == "allow", r)
-        ledger("refund", key, "--reason", "not_sent")
+        e_none = ev("Bash", {"command": sub_cmd(ep, b1)})
+        e_none.pop("transcript_path")
+        c2, d2, r2 = run(e_none)
+        ledger("refund", k_m, "--reason", "not_sent")
         stamp_of(ep, b1)[2].unlink(missing_ok=True)
-        big = result("toolu_big", False, "x" * (9 * 1024 * 1024))
-        c, d, r = run(ev("Bash", {"command": cmd1}, lines=lambda tid: prelude + [use("toolu_big", "Read", {
-            "file_path": "huge.log"}), big, use(tid, "Bash", {"command": cmd1})]))
-        check("V11 a 9 MB tool result between the approval and the submit -> still allow (whole transcript read)",
-              d == "allow", r)
-        ledger("refund", key, "--reason", "not_sent")
-        stamp_of(ep, b1)[2].unlink(missing_ok=True)
-        b4 = body("b4.json", {"resolution": "1k"})  # no prompt (like a Genjutsu motion transfer)
-        estimate(ep, b4)
-        cmd4 = sub_cmd(ep, b4)
-        c, d, r = run(ev("Bash", {"command": cmd4}, lines=lambda tid: skill_ok + read_ok + [use(tid, "Bash", {
-            "command": cmd4})]))
-        no_reply = d == "deny" and "no prompt" in r and stamp_of(ep, b4)[1] is None
-        c, d, r = run(ev("Bash", {"command": cmd4}, lines=lambda tid: skill_ok + read_ok + [
-            said("z-image turbo, 1k, no prompt. OK?"), said("go", "user"), use(tid, "Bash", {"command": cmd4})]))
-        check("V12 a request with no prompt: no description + reply -> deny; described + answered -> allow",
-              no_reply and d == "allow", r)
-        ledger("refund", stamp_of(ep, b4)[0], "--reason", "not_sent")
-        stamp_of(ep, b4)[2].unlink(missing_ok=True)
-        check("V7 prompts_in finds every shot's prompt in a multi-shot body",
-              sorted(prompts_in({"prompt": "c", "multi_prompt": [{"prompt": "a"}, {"prompt": "b"}], "n": 2}))
-              == ["a", "b", "c"])
+        check("M1 the transcript has no row for this submit yet (Mac race), or no transcript_path -> allow under "
+              "the cap", d == "allow" and d2 == "allow", f"{d} {r} | {d2} {r2}")
 
         # --- deny list ------------------------------------------------------------------------------------------
         denies = [
@@ -1053,6 +712,7 @@ def selftest():
             check(f"P {tool}: {cmd[:60]!r} -> untouched (no output, exit 0)", d is None and c == 0, f"{c} {d} {r}")
         for tool, ti in (("Write", {"file_path": str(ws / "notes.md"), "content": "run hf_rest.py estimate"}),
                          ("Read", {"file_path": str(ws / "b1.json")}), ("Monitor", {"ws": {"url": "wss://x.test"}}),
+                         ("mcp__Claude_Browser__computer", {"action": "screenshot"}),
                          ("mcp__memory__create_entities", {})):
             c, d, r = run(ev(tool, ti))
             check(f"P {tool} -> untouched", d is None and c == 0, f"{c} {d} {r}")
@@ -1062,46 +722,6 @@ def selftest():
                             b'"curl api.higgsfield.ai"', cwd=str(tmp), env=env, capture_output=True, timeout=60)
         check("F unparsable hook input that mentions Higgsfield -> deny (fail closed), exit 2",
               r2.returncode == 2 and b'"deny"' in r2.stdout)
-
-        # --- 4.2 no-look ----------------------------------------------------------------------------------------
-        batch = ("mcp__Claude_Browser__browser_batch", {"actions": [{"name": "navigate", "input": {"url": "x"}},
-                                                                   {"name": "computer", "input": {"action": "screenshot"}}]})
-        shot = ("mcp__Claude_Browser__computer", {"action": "screenshot"})
-        cu = ("mcp__computer-use__screenshot", {})
-        chrome = ("mcp__claude-in-chrome__computer", {"action": "screenshot"})
-        prev = ("mcp__Claude_Preview__preview_screenshot", {})
-        nav = ("mcp__Claude_Browser__navigate", {"url": "about:blank"})
-        c, d, r = run(ev(*shot))
-        check("N0 no flag -> browser screenshot untouched", d is None and c == 0)
-        c, o, e = py([me, "no-look", "on"])
-        check("N1 no-look on -> state on, flag in the per-user folder (= ledger.ledger_dir())",
-              json.loads(o)["state"] == "on" and (cfg / "no-look.json").exists() and
-              py(["-c", f"import sys; sys.path.insert(0, r'{SCRIPTS}'); import ledger; print(ledger.ledger_dir())"])[1]
-              .strip() == str(cfg))
-        for t in (batch, shot, cu, chrome, prev, nav):
-            c, d, r = run(ev(*t))
-            check(f"N2 fresh flag: {t[0]} -> deny", d == "deny" and c == 2, f"{d} {r}")
-        for t in (("Read", {"file_path": str(ws / "b1.json")}), ("mcp__memory__create_entities", {})):
-            c, d, r = run(ev(*t))
-            check(f"N3 fresh flag: unrelated tool {t[0]} -> not blocked", d is None and c == 0)
-        check("N4 Bash 'hf_guard.py no-look off' -> ask (the client's click); in dontAsk -> deny",
-              bash(f'python "{me}" no-look off')[1] == "ask" and
-              bash(f'python "{me}" no-look off', mode="dontAsk")[1] == "deny")
-        check("N5 no-look on / status commands -> untouched",
-              bash(f'python "{me}" no-look on')[1] is None and bash(f'python "{me}" no-look status')[1] is None)
-        f = json.loads((cfg / "no-look.json").read_text())
-        f["set_at"] -= NO_LOOK_TTL + 5
-        (cfg / "no-look.json").write_text(json.dumps(f))
-        check("N6 expired flag -> ask before looking; nobody to ask (bypassPermissions) -> deny",
-              run(ev(*shot))[1] == "ask" and run(ev(*batch, mode="bypassPermissions"))[1] == "deny")
-        c, o, e = py([me, "no-look", "off"])
-        check("N7 no-look off -> leaving: screenshot still denied, navigate passes and clears the flag",
-              json.loads(o)["state"] == "leaving" and run(ev(*shot))[1] == "deny" and run(ev(*nav))[1] is None
-              and not (cfg / "no-look.json").exists() and run(ev(*batch))[1] is None)
-        (cfg / "no-look.json").write_text("{broken")
-        check("N8 unreadable flag -> deny (fail closed); no-look off repairs it",
-              run(ev(*cu))[1] == "deny" and json.loads(py([me, "no-look", "off"])[1])["state"] == "leaving")
-        (cfg / "no-look.json").unlink()
 
         # --- plumbing -------------------------------------------------------------------------------------------
         here, other = ("win32", "posix") if sys.platform == "win32" else ("posix", "win32")
@@ -1123,10 +743,10 @@ def selftest():
             return any(m(name) if callable(m) else m.search(name) for m in m_all)
 
         cmds = [h for g in pre for h in g["hooks"]]
-        check("H hooks.json: guard fires for Bash/PowerShell/Monitor/Write/Edit + every browser tool, not for Read; "
-              "timeout 30 > the 10 s ledger lock; UserPromptSubmit NOT registered (4.3 off)",
-              all(fires(t) for t in ("Bash", "PowerShell", "Monitor", "Write", "Edit", batch[0], shot[0], cu[0],
-                                     chrome[0], prev[0], "mcp__computer-use__computer_batch")) and not fires("Read")
+        check("H hooks.json: guard fires for Bash/PowerShell/Monitor/Write/Edit, not for Read or browser/screen "
+              "tools (no-look removed in 0.1.4); timeout 30 > the 10 s ledger lock; UserPromptSubmit NOT registered",
+              all(fires(t) for t in ("Bash", "PowerShell", "Monitor", "Write", "Edit")) and not fires("Read")
+              and not fires("mcp__Claude_Browser__computer") and not fires("mcp__computer-use__screenshot")
               and all(sorted((h["command"], tuple(h["args"])) for h in g["hooks"]) == sorted([
                   ("py", ("-3", "-B", "${CLAUDE_PLUGIN_ROOT}/hooks/hf_guard.py", "hook", "--only-on", "win32")),
                   ("sh", ("${CLAUDE_PLUGIN_ROOT}/hooks/hf-guard.sh",))]) for g in pre)

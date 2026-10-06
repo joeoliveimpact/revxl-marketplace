@@ -33,7 +33,7 @@ Nothing reaches Higgsfield except `hf_rest.py submit`, after a fresh `estimate` 
 
 Read `${CLAUDE_PLUGIN_ROOT}/references/model-picker.md` and follow it (Flare is the default for images). Then read the chosen model's file in `${CLAUDE_PLUGIN_ROOT}/references/models/` for its endpoint, settings and prompt rules, and `${CLAUDE_PLUGIN_ROOT}/references/settings-defaults.md` (always set quality explicitly). Tell the client the pick in one line.
 
-The spend guard checks this: it refuses a submit unless this session has read the chosen model's file with the Read tool. Read it BEFORE writing the prompt, never after.
+Read it BEFORE writing the prompt, never after: it holds the prompt rules for this model.
 
 ## 2. Build the prompt
 
@@ -41,7 +41,7 @@ Use the `higgsfield-superengine:image-prompting` skill for images or `higgsfield
 
 Then show the client the full prompt text, word for word, in one message: every prompt in the request (one per shot for multi-shot), never a summary or paraphrase, even for a cheap test or a prompt the client dictated. Ask "Good to go?" and wait for their reply. A change means a new prompt: show it again.
 
-The spend guard checks all three: it refuses a submit unless this session loaded a prompting skill (or a use-case skill), the exact prompt text appears in one of Claude's messages, and the client replied after it.
+Never skip these three (model notes read, prompting skill loaded, full prompt shown and answered), even when nothing would stop the submit: prompts run unseen are how credits get wasted (JOI-016).
 
 A reference image or video from the client's computer goes up first (free), and its `public_url` goes into the request. For a video, always upload the file itself: the upload records its length, so the job is priced on the real seconds instead of the 30 s maximum.
 

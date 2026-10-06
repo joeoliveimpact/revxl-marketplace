@@ -2,7 +2,7 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.5.0] ... 2026-10-03
+## [0.5.0] ... 2026-10-06
 
 ### Added
 - **Five Legit Content Skills: hook, rehooks, viral, angles and polarize.** Each
