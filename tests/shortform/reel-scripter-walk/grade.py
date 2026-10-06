@@ -132,8 +132,11 @@ def written(skeleton):
 
 
 skel, script = written(True), written(False)
-crit("R5 script written", script is not None,
-     f"{script}" if script else f"no script file under {PROJ / 'scripts'} was written in this transcript")
+# A script the plugin's placeholder rule flags (the hooks' rule, structure_gate.placeholder_problems) is a draft.
+held = gate.placeholder_problems(script.read_text("utf-8-sig")) if script else []
+crit("R5 script written", script is not None and not held,
+     f"no script file under {PROJ / 'scripts'} was written in this transcript" if script is None else
+     f"{script} still holds placeholders, so it is a draft: {', '.join(held)}" if held else f"{script}")
 
 kind, beats = None, None
 if skel is None:
@@ -248,10 +251,12 @@ for k, n, st in calls:
         top, at = s, seq[k][3]
 crit("K checkpoints hold", not crossed, "; ".join(crossed) if crossed else "no step rose inside one user turn")
 
-# Gate: (a) the transcript ran the gate on the final skeleton and its last verdict line is PASS
-# (shell lines after it, like `EXIT:0`, are not gate output), and (b) the real project's
-# provenance.md holds `passed:` with the gate's fingerprint of that skeleton's text. Nothing is
-# re-run: stamps are per project, so a copy cannot pass.
+# Gate, from the transcript alone: the last gate run on the final skeleton ends in a PASS line (shell
+# lines after it, like `EXIT:0`, are not gate output), and nothing writes the skeleton after that run
+# (Write, Edit or MultiEdit on it, or a shell command naming it that written() counts as a write).
+# provenance.md is not read: it is per project, so a later reel's pass rewrites it, and a grade read
+# from it would depend on when grading ran. Nothing is re-run: stamps are per project, so a copy
+# cannot pass.
 if skel is None:
     crit("G gate passes", False, kind_why)
 else:
@@ -263,28 +268,28 @@ else:
                 t = c.get("content")
                 outs[c.get("tool_use_id")] = t if isinstance(t, str) else "\n".join(
                     x.get("text", "") for x in t or [] if isinstance(x, dict))
-    verdicts = []  # the last gate verdict line of each run on the final skeleton
+    sk, runs, last, after = skel.name.lower(), 0, None, []  # after: writes of the skeleton after the last run
     for e in ev:
         for c in e.get("message", {}).get("content", []) if e.get("type") == "assistant" else []:
-            cmd = str((c.get("input") or {}).get("command", "")) if c.get("type") == "tool_use" else ""
-            if ("structure_gate" in cmd and skel.name.lower() in cmd.lower() and "--angles" not in cmd
-                    and c.get("name") in ("Bash", "PowerShell")):
+            if c.get("type") != "tool_use":
+                continue
+            inp = c.get("input") or {}
+            cmd = str(inp.get("command", ""))
+            shell = c.get("name") in ("Bash", "PowerShell")
+            if shell and "structure_gate" in cmd and sk in cmd.lower() and "--angles" not in cmd:
                 v = [l.strip() for l in outs.get(c.get("id"), "").splitlines()
                      if l.strip().startswith(("PASS", "FAIL", "MALFORMED", "UNREADABLE", "UNWRITABLE"))]
-                verdicts.append(v[-1] if v else "no result")
-    ran = any(v.startswith("PASS") for v in verdicts)
-    prov_g = PROJ / "reel-build" / "provenance.md"
-    plines = prov_g.read_text("utf-8-sig").splitlines() if prov_g.exists() else None
-    fp = gate.fingerprint(skel.read_text("utf-8-sig"))
-    stamped = plines is not None and any(m and m.group(1).lower() == fp for m in map(gate.PASSED.match, plines))
-    why = []
-    if not ran:
-        why.append(f"no gate run on {skel.name} in the transcript ended in a PASS line (last verdict lines: {verdicts or 'no run'})")
-    if not stamped:
-        why.append(f"{prov_g} is missing" if plines is None else
-                   f"{prov_g} holds no passed: line for this skeleton's text")
-    crit("G gate passes", ran and stamped, f"{skel.name}: " + ("; ".join(why) if why else
-         f"a gate run ended in PASS ({len(verdicts)} run(s)), and provenance.md holds its passed: line"))
+                runs, last, after = runs + 1, v[-1] if v else "no result", []
+            elif (c.get("name") in ("Write", "Edit", "MultiEdit") and c.get("id") not in errored
+                  and Path(norm(inp.get("file_path", ""))).name == sk
+                  or shell and sk in cmd.lower() and re.search(r">|\btee\b|Set-Content|Out-File", cmd)):
+                after.append(f"{c.get('name')} {c.get('id')}")
+    passed = last is not None and last.startswith("PASS") and not after
+    why = (f"no gate run on {skel.name} in the transcript" if last is None else
+           f"the last gate run on {skel.name} ended in {last!r}, not a PASS line" if not last.startswith("PASS") else
+           f"the skeleton was written after its last gate run ({', '.join(after)})")
+    crit("G gate passes", passed, f"{skel.name}: " + (f"the last of {runs} gate run(s) ended in PASS, and nothing "
+         f"wrote the skeleton after it" if passed else why))
 
 # Other side beat, for myth-bust/negation and contrarian/curiosity.
 if kind_why:

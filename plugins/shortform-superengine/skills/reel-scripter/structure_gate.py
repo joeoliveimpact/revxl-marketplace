@@ -506,6 +506,37 @@ def storyboard_problems(text):
     return probs
 
 
+# Placeholder rule on the final script (SKLLPLG-370), the one definition: hooks/storyboard-on-write.py runs
+# it on every write route (Write, Edit, MultiEdit, Bash, PowerShell), and the walk rig's run-mt2.sh and
+# grade.py import it. A final script still holding a part the client has to give is a draft (walks 050-reel2
+# and 050-contra saved one at the final path). Measured 10.06.26 before choosing it: no hit on any finished
+# walk script, the seed project or any shortform skill doc; a hit on all 8 unfinished final-script writes in
+# the walk logs that mark gaps in capitals, [your ...] or [placeholder ...]. Ceiling: a lowercase
+# placeholder ([actual culprit], 3 past scripts) is missed, since a lowercase rule also hit [vault] and
+# [re-hook] in finished ones.
+PH_CUES = r"(?:B-?ROLL|SFX|PAUSE|BEAT|CUT|MUSIC|VO|V/O)\b"
+PH_TOKEN = re.compile(r"\[[ \t]*(?:(?!" + PH_CUES + r")[A-Z][A-Z0-9'\u2019 _/&.-]*[A-Z0-9][ \t]*(?::|\](?!\())"
+                      r"|(?i:your|needs your input|placeholder)\b[^\]\n]*\])")
+PH_LINES = ((re.compile(r"(?im)^[ \t>*_#-]*status[ \t*_]*:[ \t*_]*draft\b"), "a STATUS: DRAFT line"),
+            (re.compile(r"\bINCOMPLETE\b"), "INCOMPLETE"),
+            (re.compile(r"(?m)^[ \t>*_-]*OPEN[ \t*_]*:"), "an OPEN: note"))
+
+
+def placeholder_problems(text):
+    """What still marks the final script unfinished, each once; empty = finished. An all-caps bracket
+    token ([KEYWORD], [YOUR LIST], [THE MISSING PIECE], [NEEDS YOUR INPUT: ...]), a [your ...] or
+    [placeholder ...] token in any case, a STATUS: DRAFT line, INCOMPLETE in capitals, or a line starting OPEN:. Not counted: a stage
+    cue ([B-ROLL], [SFX: whoosh], [PAUSE], [CUT TO ...]), a one-letter [X], an all-caps markdown link
+    [TEXT](url), lowercase tags like [open L1]."""
+    found = []
+    for m in PH_TOKEN.finditer(text):
+        t = m.group(0) if m.group(0).endswith("]") else m.group(0) + " ...]"
+        t = t if len(t) <= 40 else t[:35].rstrip() + " ...]"
+        if t not in found:
+            found.append(t)
+    return found + [what for rx, what in PH_LINES if rx.search(text)]
+
+
 def storyboard_main(path):
     try:
         with open(path, encoding="utf-8-sig") as f:
@@ -725,7 +756,8 @@ def selftest():
         if tmp:
             tmp.cleanup()
     sb_ok, sb_n = storyboard_selftest()
-    ok, n = ok + sb_ok, len(cases) + sb_n
+    ph_ok, ph_n = placeholder_selftest()
+    ok, n = ok + sb_ok + ph_ok, len(cases) + sb_n + ph_n
     for rel in ("../hook/SKILL.md", "references/step3-options.md"):
         f = Path(__file__).resolve().parent / rel
         fine = GOLD_Q in (ln.strip() for ln in f.read_text(encoding="utf-8-sig").splitlines())
@@ -774,6 +806,41 @@ def storyboard_selftest():
         fine = not probs if want is None else len(probs) == 1 and want in probs[0]
         ok += fine
         say(f"{'ok ' if fine else 'BAD'} {name}: {len(probs)} problem(s){': ' + ' | '.join(probs) if probs else ''}")
+    return ok, len(cases)
+
+
+def placeholder_selftest():
+    """placeholder_problems() on synthetic text: (name, text, the one thing it must find, or None for
+    no hit). Hits are the walks' own placeholders (050-reel2, 050-contra, 369b-gut, s8)."""
+    cases = [
+        ("ph-needs: [NEEDS YOUR INPUT]", "Beats 3, 4 and 5 are marked [NEEDS YOUR INPUT].", "[NEEDS YOUR INPUT]"),
+        ("ph-needs-colon: [NEEDS YOUR INPUT: ...]", "Body: [NEEDS YOUR INPUT: what they tried, in their words]",
+         "[NEEDS YOUR INPUT: ...]"),
+        ("ph-keyword: [KEYWORD]", "CTA: Comment [KEYWORD] and I'll send it.", "[KEYWORD]"),
+        ("ph-list: [YOUR LIST]", "| Mirror | 0:08 to 0:11 | [YOUR LIST] | cut to counter |", "[YOUR LIST]"),
+        ("ph-piece: [THE MISSING PIECE]", "| Bridge | 0:11 to 0:14 | [THE MISSING PIECE] | wider shot |",
+         "[THE MISSING PIECE]"),
+        ("ph-your: [your real result here], any case", "Proof: [your real result here]", "[your real result here]"),
+        ("ph-your-dash: [YOUR ANSWER -- ...]", "Body: [YOUR ANSWER -- eating too fast]", "[YOUR ANSWER -- eating too fast]"),
+        ("ph-word: [PLACEHOLDER, a dash, lowercase] (walk s8b-reel2)", "Proof: [PLACEHOLDER \u2014 the real test name]",
+         "[PLACEHOLDER \u2014 the real test name]"),
+        ("ph-status: a STATUS: DRAFT line", "> STATUS: DRAFT. Fill the beats before recording.", "a STATUS: DRAFT line"),
+        ("ph-incomplete: INCOMPLETE", "# Gut myth (INCOMPLETE)", "INCOMPLETE"),
+        ("ph-open: an OPEN: note", "  CTA: Comment PACK and I'll send it.\n  OPEN: the keyword is the client's call.",
+         "an OPEN: note"),
+        ("ph-cues: [B-ROLL], [B-ROLL: kitchen], [SFX: whoosh], [PAUSE], [CUT TO KITCHEN]: no hit",
+         "| Hook | 0-3 | x | [B-ROLL] |\n| CTA | 3-6 | x | [B-ROLL: kitchen] [SFX: whoosh] [PAUSE] [CUT TO KITCHEN] |", None),
+        ("ph-tags: loop tags [open L1] [close L1, L2]: no hit", "1. Hook [open L1]\n2. CTA [close L1, L2]", None),
+        ("ph-link: an all-caps link and a one-letter [X]: no hit", "[DM ME](https://example.com) for [X] more", None),
+        ("ph-prose: Open gaps:, Status: approved, lowercase incomplete, OPENING: no hit",
+         "Open gaps: none.\nStatus: approved\nAn incomplete routine.\nOPENING line: a question", None),
+    ]
+    ok = 0
+    for name, text, want in cases:
+        got = placeholder_problems(text)
+        fine = not got if want is None else got == [want]
+        ok += fine
+        say(f"{'ok ' if fine else 'BAD'} {name}: {got or 'no hit'}")
     return ok, len(cases)
 
 
@@ -1025,12 +1092,16 @@ def selftest_hook():
 def storyboard_hook_selftest():
     """Feed hooks/storyboard-on-write.py PostToolUse stdin with every key the real one carries.
     A bad final script must exit 2 with the problems on stderr; every other case exits 0 with
-    stdout and stderr empty. Stdout must stay empty in every case."""
+    stdout and stderr empty. Stdout must stay empty in every case. Terminal cases (SKLLPLG-370) run
+    PreToolUse Bash|PowerShell, write the case's files as the command would, then PostToolUse, in a
+    temp home; the Pre must be silent, record a snapshot only inside a project, and leave none behind."""
     import subprocess, tempfile
     hook = Path(__file__).resolve().parents[2] / "hooks" / "storyboard-on-write.py"
     good = ("## Script\nHook: a\nCTA: b\n## Text overlays\n| Beat | Seconds | Overlay | Visual cue |\n|---|---|---|---|\n"
             "| Hook | 0:00-0:04 | x | Close-up |\n| CTA | 0:04-0:08 | x | Hold |\n")
     bad = good.replace("0:04-0:08", "0:04-0:12")
+    ph = good.replace("CTA: b\n", "CTA: Comment [KEYWORD] for the guide\n")
+    ph2 = "> STATUS: DRAFT. Beats 3, 4 and 5 are marked [NEEDS YOUR INPUT].\n" + good
     with tempfile.TemporaryDirectory() as t:
         t = Path(t)
         files = {}
@@ -1057,15 +1128,18 @@ def storyboard_hook_selftest():
                 (t / folder / "reel-build" / "provenance.md").write_text(f"passed: {fingerprint(sk)}\n", encoding="utf-8")
         (t / "fin" / "scripts" / "old.md").write_text(bad.replace("## Text overlays\n", ""), encoding="utf-8")
         (t / "proj" / "scripts" / "notes.md").write_text(bad.replace("## Text overlays\n", ""), encoding="utf-8")
+        (t / "proj" / "scripts" / "ph.md").write_text(ph, encoding="utf-8")
+        files["ph"] = t / "proj" / "scripts" / "ph.md"
         files.update(fin=t / "fin" / "scripts" / "r.md", finok=t / "finok" / "scripts" / "r.md",
                      old=t / "fin" / "scripts" / "old.md", draft=t / "fin" / "scripts" / "r.draft.md",
                      notes=t / "proj" / "scripts" / "notes.md")
 
-        def pl(tool, key, posix=False, event="PostToolUse"):
+        def pl(tool, key, posix=False, event="PostToolUse", content=None):
             f = files[key]
             path = f.as_posix() if posix else str(f).replace("/", "\\")
             edit = {"old_string": "x", "new_string": "x", "replace_all": False}
-            inp = ({"file_path": path, "content": f.read_text(encoding="utf-8") if f.exists() else good} if tool == "Write" else
+            content = content if content is not None else f.read_text(encoding="utf-8") if f.exists() else good
+            inp = ({"file_path": path, "content": content} if tool == "Write" else
                    dict(edit, file_path=path) if tool == "Edit" else {"file_path": path, "edits": [edit]})
             return json.dumps({"session_id": "t", "transcript_path": str(t / "t.jsonl"), "cwd": str(t),
                                "permission_mode": "default", "hook_event_name": event, "tool_name": tool,
@@ -1098,6 +1172,19 @@ def storyboard_hook_selftest():
              pl("Write", "old"), 2, "Storyboard check failed for old.md:"),
             ("370 Post: client notes in scripts/, no skeleton, no Text overlays heading: silent", pl("Write", "notes"),
              0, None),
+            ("370 Pre Write, new final script with [KEYWORD], skeleton passed: blocked, routed to the draft",
+             pl("Write", "finok", event="PreToolUse", content=ph), 2, "Save it as scripts/r.draft.md instead"),
+            ("370 Pre Write, the walk 050-reel2 draft (STATUS: DRAFT, [NEEDS YOUR INPUT]): blocked",
+             pl("Write", "finok", event="PreToolUse", content=ph2), 2, "[NEEDS YOUR INPUT], a STATUS: DRAFT line"),
+            ("370 Pre Write over an existing final script, with [KEYWORD]: blocked",
+             pl("Write", "old", event="PreToolUse", content=ph), 2, "Not saved: scripts/old.md is the final script"),
+            ("370 Pre Write of a .draft.md with [KEYWORD]: allowed", pl("Write", "draft", event="PreToolUse", content=ph),
+             0, None),
+            ("370 Pre Write of client notes with an OPEN: line: allowed",
+             pl("Write", "notes", event="PreToolUse", content="OPEN: ask about the launch date\n"), 0, None),
+            ("370 Post Edit leaving [KEYWORD] in a final script: exit 2, move it to the draft", pl("Edit", "ph"), 2,
+             "Move it to scripts/ph.draft.md now"),
+            ("370 Post MultiEdit leaving [KEYWORD] in a final script: exit 2", pl("MultiEdit", "ph"), 2, "[KEYWORD]"),
         ]
         ok = 0
         for name, stdin, want, phrase in cases:
@@ -1108,7 +1195,69 @@ def storyboard_hook_selftest():
             ok += fine
             say(f"{'ok ' if fine else 'BAD'} {name}: exit {r.returncode}, stdout {'empty' if not r.stdout else 'NOT empty'}"
                 f", stderr {'empty' if not err else 'set'}")
-    return ok, len(cases)
+
+        # SKLLPLG-370 terminal route. (name, tool, skeleton passed (None: no project at all), r.md before or None,
+        # {path under the folder: text} the command writes, expected Post exit, phrase stderr must hold; None = empty)
+        home = t / "home"
+        store = home / ".claude" / "shortform-superengine" / "script-snap"
+        env = dict(os.environ, HOME=str(home), USERPROFILE=str(home))
+        term = [
+            ("Bash creates a final script with [KEYWORD], skeleton passed: exit 2, move it to the draft", "Bash", True,
+             None, {"scripts/r.md": ph}, 2, "Move it to scripts/r.draft.md now"),
+            ("Bash changes a final script, leaving [KEYWORD]: exit 2", "Bash", True, good, {"scripts/r.md": ph}, 2,
+             "[KEYWORD]"),
+            ("PowerShell changes a final script, leaving [KEYWORD]: exit 2", "PowerShell", True, good,
+             {"scripts/r.md": ph}, 2, "[KEYWORD]"),
+            ("Bash creates a final script before the skeleton's passed: line: exit 2, move it to the draft", "Bash",
+             False, None, {"scripts/r.md": good}, 2, "has no matching passed: line"),
+            ("Bash rewrites an existing final script, skeleton not passed: silent (older reels stay editable)", "Bash",
+             False, good, {"scripts/r.md": good + "\n"}, 0, None),
+            ("Bash creates a good final script, skeleton passed: silent", "Bash", True, None, {"scripts/r.md": good}, 0,
+             None),
+            ("Bash creates a final script with a bad storyboard: exit 2", "Bash", True, None, {"scripts/r.md": bad}, 2,
+             "Storyboard check failed for r.md:"),
+            ("Bash not touching scripts/ (an unfinished final script already there): silent", "Bash", False, ph,
+             {"reel-build/notes.txt": "x"}, 0, None),
+            ("Bash writes a draft and a skeleton with placeholders: silent", "Bash", False, None,
+             {"scripts/r.draft.md": ph, "scripts/n.skeleton.md": ph}, 0, None),
+            ("Bash outside a project: silent, nothing recorded", "Bash", None, None, {"scripts/r.md": ph}, 0, None),
+        ]
+        for k, (name, tool, passed, before, writes, want, phrase) in enumerate(term):
+            p = t / f"term{k}"
+            (p / "scripts").mkdir(parents=True)
+            if passed is not None:
+                (p / "analysis-data.json").write_text("{}", encoding="utf-8")
+                (p / "reel-build").mkdir()
+                (p / "scripts" / "r.skeleton.md").write_text(sk, encoding="utf-8")
+                if passed:
+                    (p / "reel-build" / "provenance.md").write_text(f"passed: {fingerprint(sk)}\n", encoding="utf-8")
+            if before is not None:
+                (p / "scripts" / "r.md").write_text(before, encoding="utf-8")
+            snap = store / f"toolu_term{k}.json"
+
+            def run(event):
+                d = {"session_id": "t", "transcript_path": str(t / "t.jsonl"), "cwd": str(p), "permission_mode": "default",
+                     "hook_event_name": event, "tool_name": tool,
+                     "tool_input": {"command": "python - <<'E'\nopen('scripts/r.md', 'w').write(s)\nE", "description": "x"},
+                     "tool_use_id": f"toolu_term{k}"}
+                if event == "PostToolUse":
+                    d.update(tool_response={"stdout": "", "stderr": "", "interrupted": False}, duration_ms=1)
+                return subprocess.run([sys.executable, str(hook)], input=json.dumps(d).encode("utf-8"),
+                                      capture_output=True, env=env, cwd=str(p), timeout=60)
+            r0 = run("PreToolUse")
+            recorded = snap.is_file()
+            for rel, text in writes.items():
+                (p / rel).write_text(text, encoding="utf-8")
+            r = run("PostToolUse")
+            err = r.stderr.decode("utf-8", "replace")
+            pre_ok = r0.returncode == 0 and not r0.stdout and not r0.stderr and recorded == (passed is not None)
+            fine = (pre_ok and r.returncode == want and not r.stdout and (not err if phrase is None else phrase in err)
+                    and not snap.exists())
+            ok += fine
+            say(f"{'ok ' if fine else 'BAD'} 370 terminal, {name}: Pre {'silent' if pre_ok else 'NOT as expected'}, "
+                f"Post exit {r.returncode}, stdout {'empty' if not r.stdout else 'NOT empty'}, stderr "
+                f"{'empty' if not err else 'set'}, snapshot {'left behind' if snap.exists() else 'gone'}")
+    return ok, len(cases) + len(term)
 
 
 def goldmine_hook_selftest():

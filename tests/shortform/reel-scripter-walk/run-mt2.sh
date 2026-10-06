@@ -25,7 +25,9 @@ MSG="$(PYTHONIOENCODING=utf-8 py -3.12 "$D/respond.py" "$ANSF" --open)" || { ech
 mkdir -p "$L"
 ls "$L/$N"-t*.jsonl >/dev/null 2>&1 && { echo "refuse: $N exists"; exit 2; }
 # One line per finished script: "<name> <sha256 of its content>", so a changed file is a new line.
-finished() { for f in "$P/scripts/"*.md; do [ -f "$f" ] || continue; case "${f##*/}" in *skeleton*|*.draft.md) continue;; esac; grep -q INCOMPLETE "$f" && continue; echo "${f##*/} $(sha256sum < "$f" | cut -d' ' -f1)"; done | sort; }
+# Not finished: a file the plugin's placeholder rule flags (structure_gate.placeholder_problems, the rule the hooks use).
+unfinished() { PYTHONIOENCODING=utf-8 py -3.12 -B -c 'import sys; sys.path.insert(0, sys.argv[1]); import structure_gate as g; sys.exit(not g.placeholder_problems(open(sys.argv[2], encoding="utf-8-sig").read()))' "$R/skills/reel-scripter" "$1"; }
+finished() { for f in "$P/scripts/"*.md; do [ -f "$f" ] || continue; case "${f##*/}" in *skeleton*|*.draft.md) continue;; esac; unfinished "$f" && continue; echo "${f##*/} $(sha256sum < "$f" | cut -d' ' -f1)"; done | sort; }
 START=""; [ -n "$RUN2" ] && START="$(finished)"
 unset MSYS_NO_PATHCONV MSYS2_ARG_CONV_EXCL
 TF="${RS_WALK_TOKEN:-$HOME/.config/rs-walk/walk-token}"
