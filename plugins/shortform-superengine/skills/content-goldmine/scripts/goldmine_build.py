@@ -130,7 +130,10 @@ class Project:
 
     def manifest(self):
         name = self.state.get("manifest")
-        if not name and (self.state.get("plan") or {}).get("breakouts") == 0:
+        # No manifest and nothing broke out. A zero first run saves no run file (step_plan), so the
+        # analysis is checked too.
+        if not name and ((self.state.get("plan") or {}).get("breakouts") == 0
+                         or not (jload(self.j("analysis-data.json")).get("period_breakouts") or {}).get("reels")):
             print(NO_BREAKOUTS)
             sys.exit(0)
         if not name or not os.path.isfile(os.path.join(self.rb, name)):
@@ -197,15 +200,15 @@ def api_get(path, params, key, timeout=300):
 # "dm" is deliberately NOT an anchor: a DM-routed trigger cannot move a comment rate.
 ANCHOR = r"(?i:comment|drop|type|reply)(?i:s|ed|ing)?"
 # Non-greedy filler: greedy filler swallowed the real trigger ("Comment MIKA for AI" -> "AI").
-FILLER = r"(?:[ \t]+[^\s\"'‘’“”«»\n]{1,8}){0,2}?[\s:,\-2014]*"
+FILLER = r"(?:[ \t]+[^\s\"'‘’“”«»\n]{1,8}){0,2}?[\s:,\-\u2014]*"
 OPENQ = CLOSEQ = "\"'‘’“”«»"
 RE_QUOTED = re.compile(
     ANCHOR + FILLER + r"[" + OPENQ + r"]\s*([^\"'‘’“”«»\n]{1,30}?)\s*[" + CLOSEQ + r"]")
 RE_BOLD = re.compile(ANCHOR + FILLER + r"\*\*\s*([^*\n]{1,30}?)\s*\*\*")
 RE_BARE_CAPS = re.compile(ANCHOR + FILLER + r"\b([A-Z][A-Z0-9]{1,24}(?:\s+[A-Z][A-Z0-9]{1,24})?)\b")
-RE_BARE_BELOW = re.compile(ANCHOR + r"[\s:,\-2014]*\b([A-Za-z][A-Za-z0-9]{1,24})\b\s+below",
+RE_BARE_BELOW = re.compile(ANCHOR + r"[\s:,\-\u2014]*\b([A-Za-z][A-Za-z0-9]{1,24})\b\s+below",
                            re.IGNORECASE)
-RE_BARE_WORD = re.compile(ANCHOR + r"[\s:,\-2014]*\b([A-Za-z][A-Za-z0-9]{1,24})\b\s+(?:for|to|and|if|&)\b",
+RE_BARE_WORD = re.compile(ANCHOR + r"[\s:,\-\u2014]*\b([A-Za-z][A-Za-z0-9]{1,24})\b\s+(?:for|to|and|if|&)\b",
                           re.IGNORECASE)
 # "comment the word callout below": an explicitly named word is a trigger in any case (the bare
 # rules allow no "the word" filler before a lowercase token).
@@ -331,8 +334,11 @@ def step_plan(prj, args):
     reels = pb.get("reels") or []
     if not reels:
         print(NO_BREAKOUTS)
-        prj.state.update({"manifest": None, "source_generated_at": src_at, "plan": {"breakouts": 0}})
-        prj.save_state()
+        # A first run saves nothing, so the next run is still a first run and opens the 30-day window.
+        # After a Goldmine, the run file keeps its passed reads.
+        if os.path.isfile(prj.state_path):
+            prj.state.update({"manifest": None, "source_generated_at": src_at, "plan": {"breakouts": 0}})
+            prj.save_state()
         return
 
     # Freeze the breakout set once per analyze run. Later steps read the manifest, never the
@@ -508,7 +514,10 @@ def step_transcribe(prj, args):
     todo = [b for b in man["breakouts"]
             if tx.get(sc_of(b["url"]), ("missing",))[0] != "done" and media_url(corpus, sc_of(b["url"]))]
     if not todo:
-        print("transcribe: every breakout with media already has a transcript.")
+        gap = sum(1 for b in man["breakouts"] if tx.get(sc_of(b["url"]), ("missing",))[0] != "done")
+        print("transcribe: nothing to transcribe. The %d breakout%s with no transcript ha%s no media link, so the "
+              "reads will use the captions." % ((gap,) + (("", "s") if gap == 1 else ("s", "ve")))
+              if gap else "transcribe: every breakout with media already has a transcript.")
         prj.state["transcribe"] = {"at": now_utc(), "attempted": 0}
         prj.save_state()
         return
@@ -963,17 +972,29 @@ def newest(paths):
 
 # ---------------------------------------------------------------- dashboard
 # The page and its assembler come from the public repo at a pinned tag, never bundled.
-DASH_TAG = "v0.2.0"  # pinned with its commit (the tarball's pax comment); bump both together
-DASH_SHA = "1ebffe267b023bb573d993881d5e2d70c5b6b077"
+DASH_TAG = "v0.2.1"  # pinned with its commit (the tarball's pax comment); bump both together
+DASH_SHA = "c33bf49cdc9348161c2c65dcc12559543d0fe27e"
 DASH_URL = "https://github.com/joeoliveimpact/content-goldmine-dashboard/archive/refs/tags/%s.tar.gz"
 OFFLINE = ("Could not download the dashboard: no internet connection, or GitHub did not answer. "
            "Everything built so far is saved. Check the connection, then run the dashboard step again.")
 LAYOUT = ("The downloaded dashboard is not laid out the way the pinned version is, so it was not used. "
           "Nothing was changed. Tell the plugin's maintainer.")
+LONG_PATH = ("The dashboard downloaded, but Windows could not open it because its folder path is too long "
+             "(%d characters; Windows stops at 260). Everything built so far is saved. Running the step again "
+             "fails the same way, so tell the plugin's maintainer.")
+NOT_LANDED = ("The dashboard download did not land: it finished, but no file was saved. Everything built so far "
+              "is saved. Run the dashboard step again later.")
 
 
 def dash_cache(tag):
     return os.path.join(os.path.expanduser("~"), ".cache", "shortform-superengine", "goldmine-dashboard", tag)
+
+
+def long_ok(path):
+    r"""Windows: the \\?\ form of the full path, which Python can open past 260 characters. A network
+    (UNC) path, and any other system, gets the path back as it is."""
+    p = os.path.abspath(path)
+    return "\\\\?\\" + p if os.name == "nt" and not p.startswith("\\\\") else path
 
 
 def download(url, dest):
@@ -985,13 +1006,23 @@ def download(url, dest):
         p = subprocess.run(["curl", "-fsSL", "--retry", "2", "-o", dest, url], capture_output=True, timeout=300)
     except (subprocess.TimeoutExpired, OSError):
         die(OFFLINE, 5)
-    if p.returncode != 0 or not os.path.isfile(dest):
+    if p.returncode != 0:
         die(OFFLINE, 5)
+    if not os.path.isfile(dest):
+        n = len(os.path.abspath(dest))
+        if os.name == "nt" and n >= 260 and not dest.startswith("\\\\?\\"):
+            die(LONG_PATH % n, 9)  # curl saved it where plain Python cannot look
+        die(NOT_LANDED, 5)
 
 
 def fetch_dashboard():
     """The pinned dashboard, verified and unpacked in the cache. Returns its folder."""
     cache, top = dash_cache(DASH_TAG), "content-goldmine-dashboard-" + DASH_TAG.lstrip("v")
+    if len(os.path.abspath(cache)) > 150:
+        # ponytail: a fixed margin for the deepest file the unpack and the build touch under the cache
+        # (about 90 characters today); measure the tarball if it nests deeper. Past it, every path in
+        # here takes the \\?\ form, so Windows' 260-character limit never applies.
+        cache = long_ok(cache)
     root = os.path.join(cache, top)
     if os.path.isfile(os.path.join(root, "goldmine_dashboard.py")):
         return root  # verified when it was unpacked
@@ -1012,6 +1043,9 @@ def fetch_dashboard():
                        or os.path.isabs(m.name) or ":" in m.name or not (m.isfile() or m.isdir())]
                 if bad or not members:
                     die(LAYOUT, 7)
+                if tmp.startswith("\\\\?\\"):  # a \\?\ path is read literally: give tarfile native separators
+                    for m in members:
+                        m.name = m.name.replace("/", "\\")
                 tf.extractall(tmp, **({"filter": "data"} if hasattr(tarfile, "data_filter") else {}))
         except (tarfile.TarError, OSError, EOFError):
             die(LAYOUT, 7)
@@ -1020,6 +1054,9 @@ def fetch_dashboard():
         os.replace(os.path.join(tmp, top), root)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+        if os.path.isdir(tmp):
+            print("NOTE: could not remove the temporary folder %s. Nothing in it is needed; it is safe to "
+                  "delete." % tmp)
     return root
 
 
@@ -1038,7 +1075,8 @@ def step_dashboard(prj, args):
     try:
         p = subprocess.run([sys.executable, os.path.join(root, "goldmine_dashboard.py"), "--project", prj.p,
                             "--workspace", prj.p, "--out", out, "--extras", extras],
-                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600)
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600,
+                           env=dict(os.environ, PYTHONPATH=root) if root.startswith("\\\\?\\") else None)
         code, text = p.returncode, (p.stdout or "") + (p.stderr or "")
     except (subprocess.TimeoutExpired, OSError) as e:
         code, text = -1, repr(e)

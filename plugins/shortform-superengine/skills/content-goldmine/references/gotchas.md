@@ -10,10 +10,11 @@ client does not need.
 | Exit | What happened | Tell the client | Then |
 |---|---|---|---|
 | 4 | curl is not installed | The dashboard download needs a small tool called curl, and it is missing on this computer. | Offer to install it (macOS and recent Windows include it, so this is rare), then run the dashboard step again. |
-| 5 | Offline, or GitHub did not answer | I could not download the dashboard just now. Everything else is saved. | Stop on the **stopped before the dashboard** block. The next "run the goldmine" lands straight on the dashboard step; nothing is redone or re-paid. |
+| 5 | Offline, GitHub did not answer, or the download saved no file | I could not download the dashboard just now. Everything else is saved. | Stop on the **stopped before the dashboard** block. The next "run the goldmine" lands straight on the dashboard step; nothing is redone or re-paid. |
 | 6 | The download's commit stamp is not the pinned one | The dashboard download did not match the version this plugin trusts, so I did not use it. | Do not retry around it and never unpack it by hand. Stop on the same block and say the plugin's maintainer needs to know. |
 | 7 | The download is not laid out as expected (not one top folder, or an unsafe file path) | Same as 6. | Same as 6. |
 | 8 | The page could not be built | The dashboard could not be built from this run's files. | Read `reel-build/dashboard-build.log` yourself. A `required shared block missing` line means a runner file is gone: re-run compute, then check-reads, then the dashboard step. Anything else: stop on the same block and name the cause plainly. |
+| 9 | The download landed in a folder path over 260 characters that the runner could not reach. Rare: the runner handles long paths itself, so this is a network home folder or a plugin gap | I could not open the dashboard download: the folder it saves into has a longer path than Windows allows. Everything else is saved. | Do not retry, and change nothing on the computer. Stop on the **stopped before the dashboard** block and say the plugin's maintainer needs to know. |
 | 2 | check-reads has not passed | (Nothing; this is yours to fix.) | Finish the reads and run check-reads until PASS, then the dashboard step. |
 
 The pinned version is downloaded once and kept in

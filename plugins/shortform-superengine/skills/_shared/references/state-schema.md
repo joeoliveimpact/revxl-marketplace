@@ -111,7 +111,7 @@ files, fully isolated.
     "last_run": null,               // YYYY-MM-DD, local date, of the last dashboard build
     "dashboard_html": null,         // the saved page under <project>/visuals/, the copy that cannot get lost
     "dashboard_url": null,          // the Artifact link; a later pull updates this same Artifact
-    "dashboard_tag": null           // the content-goldmine-dashboard version the page was built from, e.g. "v0.2.0"
+    "dashboard_tag": null           // the content-goldmine-dashboard version the page was built from, e.g. "v0.2.1"
   },
 
   // ---- every skill ----

@@ -11,6 +11,9 @@ CASES = [
     ("Comment **HQ** below", (True, "HQ", "bold")),
     ("Comment MIKA for AI tools", (True, "MIKA", "bare_caps")),        # non-greedy filler
     ("Comment — GUIDE for the link", (True, "GUIDE", "bare_caps")),
+    ("Comment\u2014GUIDE", (True, "GUIDE", "bare_caps")),               # em dash, no spaces
+    ("Comment\u2014Bottleneck below", (True, "Bottleneck", "bare_below")),             # em dash, bare_below
+    ("Comment\u2014Cowork for my free starter guide", (True, "Cowork", "bare_word_payoff")),  # em dash, bare_word
     ("Comment Bottleneck below and I'll send it", (True, "Bottleneck", "bare_below")),
     ("Comment Cowork for my free starter guide", (True, "Cowork", "bare_word_payoff")),
     ("Comment Cowork for fun", (False, None, None)),                  # no payoff word
@@ -200,6 +203,52 @@ for step in ("compute", "reads", "check-reads", "transcribe"):
 env = {k: v for k, v in os.environ.items() if k != "SOCIALCRAWL_API_KEY"}  # compute is free; no key needed
 p = subprocess.run([sys.executable, gb.__file__, "compute", d], capture_output=True, text=True, timeout=120, env=env)
 assert p.returncode == 0 and "Traceback" not in p.stdout + p.stderr and "nothing to build" in p.stdout, p
+
+# 4b. A zero first run leaves no goldmine-run.json, so the next run is still a first run (the 30-day
+#     window). Once that window finds breakouts, plan freezes them as usual.
+d = make([("alpha_coach", "NNN001", 5.0, "x")]); temps.append(d)
+ap = os.path.join(d, "analysis-data.json")
+full = json.load(open(ap))
+with open(ap, "w", encoding="utf-8") as f:
+    json.dump(dict(full, period_breakouts=dict(full["period_breakouts"], reels=[])), f)
+out, code = run("plan", d)
+assert code is None and out.strip() == gb.NO_BREAKOUTS, out
+assert not os.path.exists(os.path.join(d, "reel-build", "goldmine-run.json")), os.listdir(os.path.join(d, "reel-build"))
+with open(ap, "w", encoding="utf-8") as f:
+    json.dump(full, f)
+out, code = run("plan", d)
+assert next_line(out).startswith("NEXT: ASK the user") and rjson(d, "goldmine-run.json")["manifest"], out
+
+# 4c. transcribe with no media links: nothing to transcribe, and the reads use the captions.
+d = make([("alpha_coach", "OOO001", 5.0, "x"), ("beta_coach", "PPP001", 4.0, "x")]); temps.append(d)
+run("plan", d)
+out, code = run("transcribe", d)
+assert code is None and out.strip() == ("transcribe: nothing to transcribe. The 2 breakouts with no transcript "
+                                        "have no media link, so the reads will use the captions."), out
+
+# 4d. transcribe counts only the breakouts with no transcript: 2 of 3, then 1 (singular), then none.
+d = make([("alpha_coach", "QQQ001", 5.0, "x"), ("alpha_coach", "QQQ002", 4.0, "x"),
+          ("alpha_coach", "QQQ003", 3.0, "x")]); temps.append(d)
+run("plan", d)
+tdir = os.path.join(d, "source", "competitors", "transcripts")
+os.makedirs(tdir)
+
+
+def transcribed(*scs):
+    with open(os.path.join(tdir, "alpha_coach.json"), "w", encoding="utf-8") as f:
+        json.dump({"handle": "alpha_coach", "reels": [{"url": "https://www.instagram.com/reel/%s/" % sc,
+                                                       "text": "Spoken words"} for sc in scs]}, f)
+    return run("transcribe", d)[0].strip()
+
+
+out = transcribed("QQQ001")
+assert out == ("transcribe: nothing to transcribe. The 2 breakouts with no transcript have no media link, so the "
+               "reads will use the captions."), out
+out = transcribed("QQQ001", "QQQ002")
+assert out == ("transcribe: nothing to transcribe. The 1 breakout with no transcript has no media link, so the "
+               "reads will use the captions."), out
+out = transcribed("QQQ001", "QQQ002", "QQQ003")
+assert out == "transcribe: every breakout with media already has a transcript.", out
 
 # 5. reads pre-fills the mechanical fields; check-reads enforces the reads rules and, on a pass,
 #    writes the 3-row Proven Hooks file. Two real asks, two bait asks, one plain reel.
@@ -462,8 +511,95 @@ for exc in (subprocess.TimeoutExpired("curl", 300), OSError("curl could not star
     out, code = run("dashboard", d)
     assert code == 5 and out.startswith("ERROR: Could not download") and os.listdir(cache) == [], (exc, out)
 gb.subprocess.run, gb.shutil.which = real_run, real_which
+# curl finishes but saves no file, on a short path: "did not land", exit 5, never Windows or a long path.
+cache = empty_cache()
+gb.subprocess.run, gb.shutil.which = (lambda cmd, **k: subprocess.CompletedProcess(cmd, 0, b"", b"")), (lambda n: "curl")
+out, code = run("dashboard", d)
+gb.subprocess.run, gb.shutil.which = real_run, real_which
+assert code == 5 and out.startswith("ERROR: The dashboard download did not land") and "Windows" not in out, out
+assert os.listdir(cache) == [], os.listdir(cache)
+# A cache past 260 characters on Windows just works: the fetch takes the \\?\ form, and the build finds
+# its sibling module. Runs where Windows blocks long paths (a probe checks); the cache is sized so the
+# download's own path runs past 260 (unpack-* 244, the download 261).
+cache = empty_cache()
+probe, real_long = os.path.join(cache, "p" * 250), False
+if os.name == "nt":
+    open(gb.long_ok(probe), "w").close()
+    real_long = not os.path.isfile(probe)
+    os.remove(gb.long_ok(probe))
+real_long_ok = gb.long_ok
+
+
+def long_cache():
+    c = empty_cache()
+    c = os.path.join(c, "c" * (227 - len(c)))                   # 228 characters
+    os.makedirs(c)
+    gb.dash_cache = lambda tag: c
+    return c
+
+
+def fake_curl(cmd, **k):                                         # curl itself writes long paths fine
+    if cmd[0] != "curl":
+        return real_run(cmd, **k)
+    with tarfile.open(real_long_ok(cmd[cmd.index("-o") + 1]), "w:gz", format=tarfile.PAX_FORMAT,
+                      pax_headers={"comment": gb.DASH_SHA}) as tf:
+        for n, body in ((TOP, None), (TOP + "/goldmine_dashboard.py", b"import sibling\n" + FAKE),
+                        (TOP + "/sibling.py", b""), (TOP + "/vendor", None), (TOP + "/vendor/x.js", b"x")):
+            ti = tarfile.TarInfo(n)                              # folders as members, as a real tarball has
+            if body is None:
+                ti.type = tarfile.DIRTYPE
+                tf.addfile(ti)
+                continue
+            ti.size = len(body)
+            tf.addfile(ti, io.BytesIO(body))
+    return subprocess.CompletedProcess(cmd, 0, b"", b"")
+
+
+if real_long:
+    cache = long_cache()
+    gb.subprocess.run, gb.shutil.which = fake_curl, lambda name: "curl"
+    out, code = run("dashboard", d)
+    assert code is None and "Dashboard saved: " in out and "NOTE:" not in out, out
+    assert os.path.isfile(real_long_ok(os.path.join(cache, TOP, "vendor", "x.js"))), os.listdir(cache)
+    assert not glob.glob(os.path.join(cache, "unpack-*")), os.listdir(cache)
+    gb.download = lambda url, dest: (_ for _ in ()).throw(AssertionError("re-downloaded"))
+    out, code = run("dashboard", d)                              # the long cache is reused
+    gb.download = real_download
+    assert code is None and "Dashboard saved: " in out, out
+    shutil.rmtree(real_long_ok(cache))                           # too deep for the plain cleanup at the end
+    # Without the \\?\ form (a network home folder, or a tarball deeper than the margin): exit 9, only then.
+    cache = long_cache()
+    gb.long_ok = lambda p: p
+    out, code = run("dashboard", d)
+    gb.long_ok = real_long_ok
+    assert code == 9 and out.startswith("ERROR: The dashboard downloaded, but Windows could not open it"), out
+    assert "maintainer" in out and "long paths" not in out and "NOTE: could not remove" in out, out
+    shutil.rmtree(real_long_ok(cache))                           # the plain cleanup could not reach it, as its NOTE says
+    gb.subprocess.run, gb.shutil.which = real_run, real_which
+cache = empty_cache()                                            # a cleanup that cannot remove the folder says so
+gb.shutil.rmtree, real_rmtree, gb.download = (lambda *a, **k: None), gb.shutil.rmtree, bad_gzip
+out, code = run("dashboard", d)
+gb.shutil.rmtree, gb.download = real_rmtree, real_download
+assert code == 7 and "NOTE: could not remove the temporary folder" in out, out
 print("OK guards: no dashboard before check-reads, reads resume on a later day, symlink and hardlink "
       "members, assembler failure, corrupt tarball, curl timeout and OSError")
+
+# 9. Zero breakouts after a Goldmine: the run file stays, with its passed reads and Proven Hooks.
+ap = os.path.join(d, "analysis-data.json")
+ad = json.load(open(ap))
+ad["meta"]["generated_at"], ad["period_breakouts"]["reels"] = "2000-02-01T00:00:00Z", []
+with open(ap, "w", encoding="utf-8") as f:
+    json.dump(ad, f)
+before = rjson(d, "goldmine-run.json")["reads"]
+out, code = run("plan", d)
+st = rjson(d, "goldmine-run.json")
+assert code is None and out.strip() == gb.NO_BREAKOUTS, out
+assert before["passed"] is True and st["reads"] == before and os.path.isfile(os.path.join(rb, before["proven_hooks"])), st
+assert (st["manifest"], st["plan"]) == (None, {"breakouts": 0}), st
+out, code = run("compute", d)
+assert code == 0 and out.strip() == gb.NO_BREAKOUTS, out
+print("OK fixes: zero first run keeps the 30-day window, zero after a Goldmine keeps its reads, transcribe "
+      "with no media, long download path, a cleanup that cannot remove its folder, em dash CTA")
 
 for t in temps:
     shutil.rmtree(t, ignore_errors=True)

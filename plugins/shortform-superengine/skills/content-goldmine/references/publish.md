@@ -16,13 +16,16 @@ Artifact
   title:        Content Goldmine
   icon:         chart
   description:  What broke out in your field this pull: the reels, their hooks, topics and lead magnets.
-  capabilities: {"db": {"rules": [{"path": "bank", "read": "admin", "write": "admin"}]}}
+  capabilities: {"db": {"rules": [{"path": "bank", "read": "admin", "write": "admin"}, {"path": "roster", "read": "admin", "write": "admin"}, {"path": "replies", "read": "admin", "write": "admin"}]}}
 ```
 
 - `title` is a fallback only: the page carries its own `<title>`.
 - `db` is the runtime capability the page's Brainstorm Bank asks for
   (`window.claude.use('db')` in the page), and `bank` is the collection it saves into,
-  one document per saved item. The rule keeps the Bank to the owner.
+  one document per saved item. The page also saves roster requests into `roster` and
+  reply drafts into `replies`. The rules open the Bank, roster requests and reply drafts
+  to the client and anyone they share the dashboard with as an Editor, and hide them
+  from Viewers and Contributors.
 - The Artifact starts private. Sharing it is the client's call.
 
 Store the link the tool returns as `goldmine.dashboard_url` in state, then give it to
