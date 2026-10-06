@@ -142,9 +142,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `[insert stat]`, `[TBD]`, `[TODO]`, `{{keyword}}`), is a short `[YOUR ...]` slot, or is a scaffold slot
   reel-scripter's references teach (`[outcome]`, `[resource]`); a `STATUS: DRAFT` line and an
   `INCOMPLETE` marker count too. Stage directions such as `[CTA]`, `[HOOK]`, `[ON SCREEN: ...]` and
-  `[FRAME 0: ...]` never count. Measured before shipping it: no hit on 22 such stage directions, Joe's 13
+  `[FRAME 0: ...]` do not count, but one that starts with a placeholder word does
+  (`[ADD ZOOM]`, `[STAT: 73%]`: a known limit). Measured before shipping it: no hit on 22 such stage directions, Joe's 13
   real scripts and his teleprompter scripts, any finished walk script or the seed project, and every
-  unfinished walk script is still caught. Ceiling: a gap written as free text (`[THE MISSING PIECE]`,
+  unfinished walk script with a bracketed placeholder word is still caught. Ceiling: a gap written as free text (`[THE MISSING PIECE]`,
   `[FOOD]`) is not caught, and an `OPEN:` note is not counted.
 - **A script written from the terminal gets the same checks** (SKLLPLG-370). A walk wrote the final
   script with a Bash python heredoc, so no Write or Edit check ran. Now a Bash or PowerShell call made
