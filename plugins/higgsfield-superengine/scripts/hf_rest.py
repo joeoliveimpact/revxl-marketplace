@@ -499,12 +499,19 @@ def _price(rec_path):
     if not v.get("ask") and v.get("usd") is not None:  # the cap half of the hook's decision (reserves nothing)
         try:
             import ledger
-            code, o = ledger.run(["check", f"{float(v['usd']):.9f}".rstrip("0").rstrip(".")])
+            sid = os.environ.get("CLAUDE_CODE_SESSION_ID", "")
+            args = ["check", f"{float(v['usd']):.9f}".rstrip("0").rstrip(".")]
+            if ledger.ID_RE.fullmatch(sid):
+                args += ["--session", sid]
+            code, o = ledger.run(args)
         except Exception as e:
             code, o = 1, {"class": "internal_error", "message": type(e).__name__}
         if code == 3 and o.get("class") == "over_cap":
-            v = dict(v, ask=True, code="over_cap", reason=f"over the silent cap: ${o.get('spent_24h')} spent in "
-                                                     f"24 h, cap ${o.get('cap_usd')}")
+            if o.get("session_cap_basis") == "session":  # the same figures as the guard's cap_words
+                where, spent, cap = "this chat's cap", o.get("session_spent"), o.get("session_cap")
+            else:
+                where, spent, cap = "the 24 h limit", o.get("spent_24h"), o.get("cap_usd")
+            v = dict(v, ask=True, code="over_cap", reason=f"over {where}: ${spent} spent, cap ${cap}")
         elif code != 0:
             v = dict(v, ask=True, code="ledger_unavailable",
                      reason=f"the spend ledger could not be checked ({o.get('class')})")
@@ -881,10 +888,12 @@ def selftest():
     me = os.path.abspath(__file__)  # the race's processes load this same file (before chdir; a mutant tests itself)
     fid, fsec = "5e1f7e57-0b1d-4c0d-8e1f-7e575e1f7e57", hashlib.sha256(b"hf_rest selftest key").hexdigest()
     gid, gsec = "0e9a7e57-0b1d-4c0d-8e1f-7e575e1f0000", hashlib.sha256(b"hf_rest selftest registry").hexdigest()
-    names = ("HF_API_KEY_ID", "HF_API_KEY_SECRET", DRY_ENV, BASE_ENV, "NO_PROXY", "no_proxy", "HF_SUPERENGINE_LEDGER_DIR")
+    names = ("HF_API_KEY_ID", "HF_API_KEY_SECRET", DRY_ENV, BASE_ENV, "NO_PROXY", "no_proxy", "HF_SUPERENGINE_LEDGER_DIR",
+             "CLAUDE_CODE_SESSION_ID")
     saved = ({n: os.environ.get(n) for n in names}, os.getcwd(), _registry_creds, _clock, _sleep)
     tmp = Path(tempfile.mkdtemp(prefix="hf-rest-selftest-"))
     os.environ["HF_SUPERENGINE_LEDGER_DIR"] = str(tmp / "ledger")  # estimate's cap check: never the real ledger
+    os.environ.pop("CLAUDE_CODE_SESSION_ID", None)  # the quote's chat: never the chat this selftest runs in
     state = {"hits": [], "status": {}, "registry": False, "reg_calls": 0}
     errors = {  # name -> (http, json body, text body); used for POST /estimate/err/<name> and POST /sub/<name>
         "401": (401, {"detail": "Invalid credentials"}, None),
@@ -1245,6 +1254,14 @@ def selftest():
         check("G16 estimate over the silent cap -> price ask true, code over_cap, same usd",
               code == 0 and pr.get("ask") is True and pr.get("code") == "over_cap" and pr.get("usd") == 0.094
               and "cap $0.05" in (pr.get("reason") or ""))
+        ledger.run(["balance", "set", "100"])
+        ledger.run(["balance", "set", "0.2"])  # 24 h cap $0.05 < the $0.094 quote
+        ledger.run(["session-cap", "set", "g17-session", "20"])
+        os.environ["CLAUDE_CODE_SESSION_ID"] = "g17-session"
+        code, j = run("estimate", "z-image/turbo", A)
+        os.environ.pop("CLAUDE_CODE_SESSION_ID", None)
+        check("G17 estimate in a chat whose picked cap is $20 -> price ask false (the chat cap, not the 24 h rule)",
+              code == 0 and j.get("price", {}).get("ask") is False)
         ledger.run(["balance", "set", "100"])
 
         # ---- redirects

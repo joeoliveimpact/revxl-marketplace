@@ -8,7 +8,8 @@
 
 Spend guard (Bash, PowerShell, Monitor, Write, Edit). Commands that do not touch Higgsfield pass untouched.
   hf_rest.py submit  estimate record matches + fresh -> pricing.py -> ledger.py reserve -> stamp (CONTRACT v1):
-                     priced and under the cap -> stamp "allow" + allow; over the cap or an ask verdict -> reserve
+                     priced and under the chat's picked cap (ledger session-cap), else the 24 h cap rule ->
+                     stamp "allow" + allow; over the cap or an ask verdict -> reserve
                      (--force) + stamp "ask" + ask (a real click; bypassPermissions honors a hook's ask, proven
                      10.05.26); dontAsk (nobody can be asked) -> deny + log, nothing reserved or stamped.
                      Anything wrong -> deny.
@@ -88,8 +89,8 @@ def files(ti, cwd=None):
                     "(~/.config/higgsfield-superengine: the ledger) are written only by the plugin's scripts. "
                     "Do not create, edit, move or delete them.")
     text = "\n".join(v for v in (ti.get("content"), ti.get("new_string")) if isinstance(v, str))
-    if not fp.lower().endswith(".md") and ("hf_rest" in text or (LEDGER_IMPORT.search(text) and "higgsfield" in
-                                                                  text.lower())):
+    if not fp.lower().endswith(".md") and ("hf_rest" in text or "session-cap" in text or
+                                           (LEDGER_IMPORT.search(text) and "higgsfield" in text.lower())):
         return deny("a file (other than .md) that mentions hf_rest, or imports the plugin's ledger, cannot be "
                     "written: code that wraps them would skip the spend gate. " + PLAIN)
     return None
@@ -176,10 +177,14 @@ def wraps_guard(cmd, ps, cwd):
     except (OSError, ValueError, RuntimeError):
         return False
     return any(m in text for m in ("hf_rest", "hf_guard", "spend-guard")) or \
-        bool(LEDGER_IMPORT.search(text) and "higgsfield" in text)
+        bool(LEDGER_IMPORT.search(text) and "higgsfield" in text) or bool(CONFIG_DIR.search(text)) or \
+        bool(re.search(r"session-cap", text, re.I))
 
 
 def shell(cmd, ps, cwd, mode, ev=None):
+    if re.search(r"session-cap", cmd, re.I):
+        return deny("only the Higgsfield band (the client's own buttons above the prompt) sets the session spending "
+                    "cap. Ask the client to pick it there; never set it from a command.")
     if wraps_guard(cmd, ps, cwd):
         return deny("that script mentions the plugin's submit script, guard or ledger; scripts may not wrap them. "
                     + PLAIN)
@@ -226,6 +231,13 @@ def in_plugin(cwd):
 
 def amt(x):
     return f"{x:.9f}".rstrip("0").rstrip(".")
+
+
+def cap_words(o):
+    """(where, spent, cap) as the client sees them: the chat's picked cap, else the 24 h limit."""
+    if o.get("session_cap_basis") == "session":
+        return "this chat's cap", o.get("session_spent"), o.get("session_cap")
+    return "the 24 h limit", o.get("spent_24h"), o.get("cap_usd")
 
 
 def submit(script, args, cwd, mode, ev=None):
@@ -299,18 +311,21 @@ def submit(script, args, cwd, mode, ev=None):
         return finish(deny(f"the spend ledger could not be checked ({o.get('class')}: {o.get('message')}). Nothing "
                            "was stamped or reserved."))
 
-    fig = v["display_usd"]
     held = ["--stamp", os.path.abspath(hf_rest.guard_file("stamps", key))]  # the ledger releases it if never spent
+    sid = (ev or {}).get("session_id")
+    held += ["--session", sid if isinstance(sid, str) and ledger.ID_RE.fullmatch(sid) else "no-session"]
+    fig = v["display_usd"]
     price = f"about ${fig:.4f}".rstrip("0").rstrip(".") if fig is not None else "an unknown amount"
     if not v["ask"]:
         code, o = ledger.run(["reserve", amt(v["usd"]), "--id", key] + held)
         if code == 0:
-            return stamp("allow", f"Higgsfield spend check: ${v['usd']} fits under the silent cap (24 h spend "
-                                  f"${o.get('spent_24h')} of ${o.get('cap_usd')}). Reserved; stamp written.", v["usd"])
+            where, spent, cap = cap_words(o)
+            return stamp("allow", f"Higgsfield spend check: ${v['usd']} fits under {where} (spent ${spent} of "
+                                  f"${cap}). Reserved; stamp written.", v["usd"])
         if not (code == 3 and o.get("class") == "over_cap"):
             return ledger_trouble(o)
-        why = (f"over the silent cap: ${o.get('spent_24h')} already spent in 24 h, cap ${o.get('cap_usd')} "
-               f"({o.get('cap_basis')})")
+        where, spent, cap = cap_words(o)
+        why = f"over {where}: ${spent} spent, cap ${cap}"
     else:
         why = v["reason"]
     if mode == "dontAsk":  # every other mode shows the ask (bypassPermissions too: it honors a hook's ask)
@@ -658,6 +673,53 @@ def selftest():
         stamp_of(ep, b1)[2].unlink(missing_ok=True)
         check("M1 the transcript has no row for this submit yet (Mac race), or no transcript_path -> allow under "
               "the cap", d == "allow" and d2 == "allow", f"{d} {r} | {d2} {r2}")
+
+        # --- per-chat caps (v0.1.5) ------------------------------------------------------------------------------
+        c, d, r = bash(sub_cmd(ep, b1))
+        key_s = stamp_of(ep, b1)[0]
+        ent = [x for x in ledger("status", "--session", "selftest")[1]["session_entries"] if x["id"] == key_s]
+        check("GS1 the reservation carries the hook event's session_id", d == "allow" and ent, f"{d} {r} {ent}")
+        ledger("refund", key_s, "--reason", "not_sent")
+        stamp_of(ep, b1)[2].unlink(missing_ok=True)
+        c, d, r = bash(sub_cmd(ep, b1))
+        basis = ledger("status", "--session", "selftest")[1].get("session_cap_basis", "")
+        check("GS2 no cap picked for this chat -> the 24 h rule decides: allow, quoting 'the 24 h limit'",
+              d == "allow" and "the 24 h limit" in r and basis.startswith("default_"), f"{d} {r} {basis}")
+        ledger("refund", key_s, "--reason", "not_sent")
+        stamp_of(ep, b1)[2].unlink(missing_ok=True)
+        ledger("session-cap", "set", "selftest", "10")
+        c, d, r = bash(sub_cmd(ep, b1))
+        check("GS3 this chat picked $10 -> allow, quoting 'this chat's cap'", d == "allow" and "this chat's cap" in r,
+              f"{d} {r}")
+        ledger("refund", key_s, "--reason", "not_sent")
+        stamp_of(ep, b1)[2].unlink(missing_ok=True)
+        e_other = ev("Bash", {"command": sub_cmd(ep, b1)})
+        e_other["session_id"] = "other-session"
+        c, d, r = run(e_other)
+        _, so = ledger("status", "--session", "other-session")
+        check("GS3 another chat (no pick) stays on the 24 h limit: the first chat's cap is not its cap, and its "
+              "reservation is tagged other-session", d == "allow" and "the 24 h limit" in r and
+              so.get("session_cap_set") is False and [x for x in so.get("session_entries", []) if x["id"] == key_s],
+              f"{d} {r} {so}")
+        ledger("refund", key_s, "--reason", "not_sent")
+        stamp_of(ep, b1)[2].unlink(missing_ok=True)
+        for tool, cmd in (("Bash", f'python "{SCRIPTS}/ledger.py" session-cap set selftest 999'),
+                          ("PowerShell", f'& python "{SCRIPTS}\\ledger.py" session-cap set selftest 999'),
+                          ("Bash", 'python C:/tmp/ledger.py session-cap set selftest 999')):
+            c, d, r = run(ev(tool, {"command": cmd}))
+            check(f"GS4 {tool}: {cmd[-48:]!r} -> deny (only the band sets caps)",
+                  d == "deny" and "only the Higgsfield band" in r, r)
+        (ws / "bump.py").write_text("import subprocess; subprocess.run(['python','ledger.py','session-cap','set','x','999'])",
+                                    encoding="utf-8")
+        check("GS5 `python bump.py` (a script Claude wrote that runs session-cap) -> deny",
+              bash("python bump.py")[1] == "deny")
+        for name in ("bump.ps1", "bump.sh"):
+            c, d, r = run(ev("Write", {"file_path": str(ws / name), "content": "python ledger.py session-cap set x 999"}))
+            check(f"GS5 writing {name} that runs session-cap -> deny (a .ps1/.sh run is not parsed: caught at write)",
+                  d == "deny", f"{d} {r}")
+        (ws / "bump.py").write_text("import json,os\np=os.path.expanduser('~/.config/higgsfield-superengine/ledger.json')",
+                                    encoding="utf-8")
+        check("GS5 a script that names the per-user ledger folder -> deny", bash("python bump.py")[1] == "deny")
 
         # --- deny list ------------------------------------------------------------------------------------------
         denies = [
