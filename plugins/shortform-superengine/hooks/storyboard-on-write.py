@@ -10,8 +10,10 @@ in walk 369b-gut the model, rightly refusing to invent health claims, saved an I
 at the final path before Step 4a and the gate; the next reel then resumed it. The block routes it
 to <slug>.draft.md and tells the model to say in plain words what the client still has to give.
 An existing final script (already written once) and a script with no skeleton are never blocked,
-so older reels stay editable after a newer reel's pass rewrites provenance.md. Ceiling: a final
-script deleted and written again needs its skeleton's passed: line again.
+so older reels stay editable after a newer reel's pass rewrites provenance.md. An Edit or MultiEdit
+that creates the final script (its first old_string is empty, which Claude Code refuses on a file
+with content) gets the same rule in PostToolUse, after it lands. Ceiling: a final script deleted and
+written again needs its skeleton's passed: line again.
 
 PostToolUse(Write|Edit|MultiEdit), storyboard (SKLLPLG-361): check the storyboard table every time
 the final script is written and hand failures back so the model fixes the file. Acts only on a
@@ -32,8 +34,10 @@ Terminal route (SKLLPLG-370): walk 050-gut wrote the final script with a Bash py
 Write or Edit hook saw it. The command is never parsed; the file is checked. PreToolUse(Bash|
 PowerShell) records size and mtime of every final script in the project's scripts/ (the project as
 hooks/stamp-on-skill.py finds it; none = silent, nothing recorded) in
-~/.claude/shortform-superengine/script-snap/<tool_use_id>.json. PostToolUse(Bash|PowerShell) reads and
-deletes that file and checks each final script the call created or changed: a new one gets the
+~/.claude/shortform-superengine/script-snap/<tool_use_id>.json. PostToolUse(Bash|PowerShell), and
+PostToolUseFailure(Bash|PowerShell) for a command that exits non-zero (CLI 2.1.287 fires that one
+instead), start through hooks/script-post.sh, which skips Python when the call left no snapshot; this
+reads and deletes that file and checks each final script the call created or changed: a new one gets the
 not-final rule above, then each gets the placeholder rule and the storyboard check, with the same exit
 2 and a message saying what to move or fix. Ceilings: only the active project's scripts/ is watched; a
 snapshot older than a day is pruned, so a call running longer goes unchecked; no snapshot (its Pre did
@@ -151,7 +155,10 @@ def main():
                 return 0
             msg = check(fp, str(data["tool_input"].get("content") or ""), not fp.exists(), True)
         else:
-            msg = check(fp, fp.read_text(encoding="utf-8-sig"), False, False)
+            inp = data["tool_input"]
+            first = (inp.get("edits") or [{}])[0] if data.get("tool_name") == "MultiEdit" else inp
+            new = data.get("tool_name") in ("Edit", "MultiEdit") and first.get("old_string") == ""
+            msg = check(fp, fp.read_text(encoding="utf-8-sig"), new, False)
     if not msg:
         return 0
     sys.stderr.buffer.write((msg + "\n").encode("utf-8"))

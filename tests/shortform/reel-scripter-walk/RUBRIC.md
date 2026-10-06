@@ -13,7 +13,7 @@ Grading: `py -3.12 grade.py <log> [--fixture gut|contra] [--run2]`. It prints on
 ## Criteria (all required; one FAIL fails the walk)
 
 - **V1 build under test.** Every `system` / `init` event lists exactly one `shortform-superengine`, and its `path` is the `--plugin-dir` folder (this repo's plugin); no `.claude/plugins/marketplaces/` path appears in the transcript.
-- **R5 script written.** A finished script under the project's `scripts/`. A script the plugin's placeholder rule flags (`structure_gate.py` `placeholder_problems()`, the rule the hooks use: an all-caps bracket token such as `[KEYWORD]` or `[NEEDS YOUR INPUT]`, a `[your ...]` token, a `STATUS: DRAFT` line, `INCOMPLETE`, an `OPEN:` note) is a draft and FAILS, naming what it still holds.
+- **R5 script written.** A finished script under the project's `scripts/`. A script the plugin's placeholder rule flags (`structure_gate.py` `placeholder_problems()`, the rule the hooks use: a bracket that starts with a placeholder word such as `[KEYWORD]`, `[NEEDS YOUR INPUT]` or `[TBD]`, a short `[YOUR ...]` slot, a reel-scripter scaffold slot such as `[outcome]`, a `STATUS: DRAFT` line, an `INCOMPLETE` marker) is a draft and FAILS, naming what it still holds.
 - **C calls placed.** A Skill tool_use for `shortform-superengine:<name>`, placed by its step token. Models paraphrase the template's `step:` line, so the token is parsed tolerantly: `step: X`, `step=X` or `step X`, any case, first match in the args; no match = no token. Accepted:
   - `angles`: a call (any step token) before the first `rehooks`, `polarize`, `hook` or `viral` call
   - `rehooks` Step 2: the first rehooks call, with step `2`, `slots` or none

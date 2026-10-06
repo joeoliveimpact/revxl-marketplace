@@ -509,29 +509,58 @@ def storyboard_problems(text):
 # Placeholder rule on the final script (SKLLPLG-370), the one definition: hooks/storyboard-on-write.py runs
 # it on every write route (Write, Edit, MultiEdit, Bash, PowerShell), and the walk rig's run-mt2.sh and
 # grade.py import it. A final script still holding a part the client has to give is a draft (walks 050-reel2
-# and 050-contra saved one at the final path). Measured 10.06.26 before choosing it: no hit on any finished
-# walk script, the seed project or any shortform skill doc; a hit on all 8 unfinished final-script writes in
-# the walk logs that mark gaps in capitals, [your ...] or [placeholder ...]. Ceiling: a lowercase
-# placeholder ([actual culprit], 3 past scripts) is missed, since a lowercase rule also hit [vault] and
-# [re-hook] in finished ones.
-PH_CUES = r"(?:B-?ROLL|SFX|PAUSE|BEAT|CUT|MUSIC|VO|V/O)\b"
-PH_TOKEN = re.compile(r"\[[ \t]*(?:(?!" + PH_CUES + r")[A-Z][A-Z0-9'\u2019 _/&.-]*[A-Z0-9][ \t]*(?::|\](?!\())"
-                      r"|(?i:your|needs your input|placeholder)\b[^\]\n]*\])")
-PH_LINES = ((re.compile(r"(?im)^[ \t>*_#-]*status[ \t*_]*:[ \t*_]*draft\b"), "a STATUS: DRAFT line"),
-            (re.compile(r"\bINCOMPLETE\b"), "INCOMPLETE"),
-            (re.compile(r"(?m)^[ \t>*_-]*OPEN[ \t*_]*:"), "an OPEN: note"))
+# and 050-contra saved one at the final path). Precision first (10.06.26): a false block on a finished
+# script costs more than a miss, so it is a vocabulary rule, not a shape rule (all-caps brackets also hit
+# stage directions such as [CTA], [HOOK], [ON SCREEN: ...], [FRAME 0: ...] in Joe's own scripts). A bracket
+# [...], {{...}} or <...> counts when its text starts with a placeholder word (PH_WORD, any case), is
+# [name], is a short [your ...] slot (PH_YOUR), or is a scaffold slot reel-scripter's references teach,
+# exactly as written there (PH_SCAFFOLD; lowercase, since [Belief] and [the fix] stand in finished
+# scripts). Plus a STATUS: DRAFT line (STATUS in capitals: Joe's front matter says status: draft) and an
+# INCOMPLETE marker (its own line, a Status: line, or (INCOMPLETE); not the word in an overlay sentence).
+# Measured 10.06.26: no hit on the checker's 22 stage directions, Joe's 13 scripts and his teleprompter
+# scripts, any finished walk script or the seed project; every known-bad walk script is still caught.
+# Ceiling: a gap written as free text ([THE MISSING PIECE], [FOOD], [NEEDS YOU: ...], [actual culprit]) is
+# missed, and an OPEN: note is not counted (a beat labelled OPEN: with a question hook reads the same).
+PH_BRACKET = re.compile(r"\[([^\[\]\n]*)\](?!\()|\{\{([^{}\n]*)\}\}|<([^<>\n]*)>")
+PH_WORD = re.compile(r"(?i)(?:needs[ \t]+your[ \t]+input|insert|add|fill|tbd|tbc|todo|tk|placeholder|keyword|stat)\b")
+PH_YOUR = re.compile(r"(?i)your(?:[ \t]+[\w'\u2019-]+){0,2}[ \t]*(?:$|[,:/(]|--|\u2014|\u2013)|your\b.*\bhere$")
+# Every lowercase slot in references/body-structures.md, cta-scaffolds.md, story-locks.md and
+# pipeline-detail.md. Left out: [quick] (a pacing note), [hold <main loop>] (a loop tag scripts carry),
+# [cap] (field_vet's verdict tag).
+PH_SCAFFOLD = frozenset((
+    "pain", "outcome", "mechanism", "timeframe", "claim", "proof", "number", "item", "stakes", "turn", "lesson",
+    "question", "why it matters / what's at risk", "the direct answer", "mechanism / steps", "what most assume",
+    "the truth", "example / result", "promise N items", "tie items to outcome", "N things, save the best",
+    "the strongest, slow down", "claim is wrong", "what the other camp believes", "the flaw", "the correction",
+    "evidence / result", "scapegoat", "the scapegoat they blame", "fix", "subject", "what everyone does instead",
+    "reason it's ignored", "the actual insight", "what it means for them", "belief", "why they believe it",
+    "the opposite", "name the pain", "why it persists / cost of staying", "the new way to see it",
+    "the fix / first step", "you've tried X, Y, Z", "the thing that changed", "the transferable takeaway",
+    "before-state", "what forced the change", "what I did", "the cause", "what to do", "steps",
+    "keyword", "topic", "resource", "someone", "offer", "link", "trigger moment", "face the pain", "person",
+    "thing", "audience", "right action", "common action", "under-served high-value theme", "gap"))
+PH_LINES = ((re.compile(r"(?m)^[ \t>*_#-]*STATUS[ \t*_]*:[ \t*_]*(?i:draft)\b"), "a STATUS: DRAFT line"),
+            (re.compile(r"(?m)^[ \t>*_#-]*(?:(?i:status)[ \t*_]*:[ \t*_]*INCOMPLETE\b|INCOMPLETE[ \t*_.!\r]*$)"
+                        r"|\(INCOMPLETE\)"), "INCOMPLETE"))
 
 
 def placeholder_problems(text):
-    """What still marks the final script unfinished, each once; empty = finished. An all-caps bracket
-    token ([KEYWORD], [YOUR LIST], [THE MISSING PIECE], [NEEDS YOUR INPUT: ...]), a [your ...] or
-    [placeholder ...] token in any case, a STATUS: DRAFT line, INCOMPLETE in capitals, or a line starting OPEN:. Not counted: a stage
-    cue ([B-ROLL], [SFX: whoosh], [PAUSE], [CUT TO ...]), a one-letter [X], an all-caps markdown link
-    [TEXT](url), lowercase tags like [open L1]."""
+    """What still marks the final script unfinished, each once; empty = finished. A bracket ([...],
+    {{...}}, <...>) whose text starts with insert, add, fill, needs your input, tbd, tbc, todo, tk,
+    placeholder, keyword or stat (any case), is [name], is a [your ...] slot of up to three words or one
+    ending in here ([YOUR LIST], [your real result here], [YOUR ANSWER -- ...]), or is a reel-scripter
+    scaffold slot as written ([outcome], [resource]); a STATUS: DRAFT line; an INCOMPLETE marker. Not
+    counted: stage directions ([CTA], [B-ROLL], [ON SCREEN: ...]), [your gut will thank you], a markdown
+    link [Add me](url), [Belief], free-text gaps ([THE MISSING PIECE]), an OPEN: line."""
     found = []
-    for m in PH_TOKEN.finditer(text):
-        t = m.group(0) if m.group(0).endswith("]") else m.group(0) + " ...]"
-        t = t if len(t) <= 40 else t[:35].rstrip() + " ...]"
+    for m in PH_BRACKET.finditer(text):
+        s = next(g for g in m.groups() if g is not None).strip()
+        o = "{{" if m.group(2) is not None else m.group(0)[0]
+        if not (s in PH_SCAFFOLD or PH_WORD.match(s) or PH_YOUR.match(s) or o == "[" and s.lower() == "name"):
+            continue
+        c = {"[": "]", "{{": "}}", "<": ">"}[o]
+        t = f"{o}{s.split(':')[0].rstrip()}: ...{c}" if ":" in s else m.group(0)
+        t = t if len(t) <= 40 else t[:35].rstrip() + " ..." + c
         if t not in found:
             found.append(t)
     return found + [what for rx, what in PH_LINES if rx.search(text)]
@@ -818,22 +847,49 @@ def placeholder_selftest():
          "[NEEDS YOUR INPUT: ...]"),
         ("ph-keyword: [KEYWORD]", "CTA: Comment [KEYWORD] and I'll send it.", "[KEYWORD]"),
         ("ph-list: [YOUR LIST]", "| Mirror | 0:08 to 0:11 | [YOUR LIST] | cut to counter |", "[YOUR LIST]"),
-        ("ph-piece: [THE MISSING PIECE]", "| Bridge | 0:11 to 0:14 | [THE MISSING PIECE] | wider shot |",
-         "[THE MISSING PIECE]"),
+        ("ph-ceiling: [THE MISSING PIECE], a free-text gap, is missed", "| Bridge | 0:11 to 0:14 | [THE MISSING PIECE] |",
+         None),
         ("ph-your: [your real result here], any case", "Proof: [your real result here]", "[your real result here]"),
         ("ph-your-dash: [YOUR ANSWER -- ...]", "Body: [YOUR ANSWER -- eating too fast]", "[YOUR ANSWER -- eating too fast]"),
         ("ph-word: [PLACEHOLDER, a dash, lowercase] (walk s8b-reel2)", "Proof: [PLACEHOLDER \u2014 the real test name]",
          "[PLACEHOLDER \u2014 the real test name]"),
         ("ph-status: a STATUS: DRAFT line", "> STATUS: DRAFT. Fill the beats before recording.", "a STATUS: DRAFT line"),
-        ("ph-incomplete: INCOMPLETE", "# Gut myth (INCOMPLETE)", "INCOMPLETE"),
-        ("ph-open: an OPEN: note", "  CTA: Comment PACK and I'll send it.\n  OPEN: the keyword is the client's call.",
-         "an OPEN: note"),
+        ("ph-incomplete: (INCOMPLETE)", "# Gut myth (INCOMPLETE)", "INCOMPLETE"),
+        ("ph-incomplete-status: **Status: INCOMPLETE.** (walk 369b-gut)", "**Status: INCOMPLETE.** Beats 4 to 6 are open.",
+         "INCOMPLETE"),
+        ("ph-incomplete-line: INCOMPLETE on its own line", "Beats:\n> **INCOMPLETE**\n", "INCOMPLETE"),
+        ("ph-open: an OPEN: line is not counted", "  CTA: Comment PACK and I'll send it.\n  OPEN: the keyword is the client's call.",
+         None),
         ("ph-cues: [B-ROLL], [B-ROLL: kitchen], [SFX: whoosh], [PAUSE], [CUT TO KITCHEN]: no hit",
          "| Hook | 0-3 | x | [B-ROLL] |\n| CTA | 3-6 | x | [B-ROLL: kitchen] [SFX: whoosh] [PAUSE] [CUT TO KITCHEN] |", None),
         ("ph-tags: loop tags [open L1] [close L1, L2]: no hit", "1. Hook [open L1]\n2. CTA [close L1, L2]", None),
         ("ph-link: an all-caps link and a one-letter [X]: no hit", "[DM ME](https://example.com) for [X] more", None),
         ("ph-prose: Open gaps:, Status: approved, lowercase incomplete, OPENING: no hit",
          "Open gaps: none.\nStatus: approved\nAn incomplete routine.\nOPENING line: a question", None),
+        ("ph-vocab: [keyword] (cta-scaffolds.md:16)", "Comment **[keyword]** and I'll send you the guide.", "[keyword]"),
+        ("ph-vocab: [Keyword]", "CTA: Comment [Keyword].", "[Keyword]"),
+        ("ph-vocab: [insert stat]", "Proof: [insert stat] of people never chew.", "[insert stat]"),
+        ("ph-vocab: [TBD]", "CTA: [TBD]", "[TBD]"),
+        ("ph-vocab: [TODO]", "CTA: [TODO]", "[TODO]"),
+        ("ph-vocab: [TODO: ...]", "Proof: [TODO: a real number]", "[TODO: ...]"),
+        ("ph-vocab: [YOUR NAME]", "Hi, I'm [YOUR NAME].", "[YOUR NAME]"),
+        ("ph-vocab: [name]", "Tag [name] in the comments.", "[name]"),
+        ("ph-name: <name> and {{name}} are not the name slot", "Run it as <name> or {{name}}.", None),
+        ("ph-vocab: [placeholder]", "Body: [placeholder]", "[placeholder]"),
+        ("ph-vocab: {{keyword}}", "Comment {{keyword}} below.", "{{keyword}}"),
+        ("ph-vocab: <your offer>", "Grab <your offer> in my bio.", "<your offer>"),
+        ("ph-vocab: [YOUR RESULT HERE]", "Proof: [YOUR RESULT HERE]", "[YOUR RESULT HERE]"),
+        ("ph-scaffold: [outcome], as body-structures.md writes it", "Proof [outcome] in 30 days.", "[outcome]"),
+        ("ph-status-lower: STATUS: draft", "STATUS: draft\n", "a STATUS: DRAFT line"),
+        ("ph-fp: the checker's 22 finished-script stage directions: no hit",
+         "[CTA] Comment GUT.\n[HOOK] x\n[BODY] x\n[REHOOK] x\n[NASA] [FDA] [AI]\n[ON SCREEN: 3 foods]\n"
+         "[TEXT: STOP EATING THIS]\n[ZOOM IN] [JUMP CUT] [CLOSE-UP] [HOLD]\n1. Hook [L1]\n[OPEN LOOP] x\n"
+         "[CTA: comment GUT]\nCOMMENT [PACK] BELOW\n| Hook | 0:00-0:03 | YOUR ROUTINE IS INCOMPLETE | x |\n"
+         "## Script\nOPEN: Your gut runs on fiber. Need proof?\nHook: eat this [your gut will thank you]\n"
+         "[SCREEN DEMO: Claude settings]\n[FRAME 0: STOP COPYING PROMPTS]", None),
+        ("ph-fp: Joe's own front matter and tags: no hit",
+         "---\nstatus: draft\n---\n> Status: Draft, slides pending\n\"`[Belief]` is wrong\"\n[the fix]\n"
+         "[Add me on Skool](https://example.com) [vault] [re-hook] [keyword2 ...] [statue] [addendum]", None),
     ]
     ok = 0
     for name, text, want in cases:
@@ -1130,14 +1186,18 @@ def storyboard_hook_selftest():
         (t / "proj" / "scripts" / "notes.md").write_text(bad.replace("## Text overlays\n", ""), encoding="utf-8")
         (t / "proj" / "scripts" / "ph.md").write_text(ph, encoding="utf-8")
         files["ph"] = t / "proj" / "scripts" / "ph.md"
+        for folder in ("fin", "finok"):  # an Edit that creates the final script (D3)
+            (t / folder / "scripts" / "new.skeleton.md").write_text(sk, encoding="utf-8")
+            (t / folder / "scripts" / "new.md").write_text(good, encoding="utf-8")
+        files.update(newfin=t / "fin" / "scripts" / "new.md", newok=t / "finok" / "scripts" / "new.md")
         files.update(fin=t / "fin" / "scripts" / "r.md", finok=t / "finok" / "scripts" / "r.md",
                      old=t / "fin" / "scripts" / "old.md", draft=t / "fin" / "scripts" / "r.draft.md",
                      notes=t / "proj" / "scripts" / "notes.md")
 
-        def pl(tool, key, posix=False, event="PostToolUse", content=None):
+        def pl(tool, key, posix=False, event="PostToolUse", content=None, create=False):
             f = files[key]
             path = f.as_posix() if posix else str(f).replace("/", "\\")
-            edit = {"old_string": "x", "new_string": "x", "replace_all": False}
+            edit = {"old_string": "" if create else "x", "new_string": "x", "replace_all": False}
             content = content if content is not None else f.read_text(encoding="utf-8") if f.exists() else good
             inp = ({"file_path": path, "content": content} if tool == "Write" else
                    dict(edit, file_path=path) if tool == "Edit" else {"file_path": path, "edits": [edit]})
@@ -1185,6 +1245,14 @@ def storyboard_hook_selftest():
             ("370 Post Edit leaving [KEYWORD] in a final script: exit 2, move it to the draft", pl("Edit", "ph"), 2,
              "Move it to scripts/ph.draft.md now"),
             ("370 Post MultiEdit leaving [KEYWORD] in a final script: exit 2", pl("MultiEdit", "ph"), 2, "[KEYWORD]"),
+            ("370 Post Edit that created the final script (old_string empty), skeleton not passed: exit 2, move it",
+             pl("Edit", "newfin", create=True), 2, "has no matching passed: line"),
+            ("370 Post MultiEdit that created the final script, skeleton not passed: exit 2",
+             pl("MultiEdit", "newfin", create=True), 2, "Move it to scripts/new.draft.md now"),
+            ("370 Post Edit of that existing final script (old_string set), skeleton not passed: silent",
+             pl("Edit", "newfin"), 0, None),
+            ("370 Post Edit that created the final script, skeleton passed: silent", pl("Edit", "newok", create=True),
+             0, None),
         ]
         ok = 0
         for name, stdin, want, phrase in cases:
@@ -1221,8 +1289,12 @@ def storyboard_hook_selftest():
             ("Bash writes a draft and a skeleton with placeholders: silent", "Bash", False, None,
              {"scripts/r.draft.md": ph, "scripts/n.skeleton.md": ph}, 0, None),
             ("Bash outside a project: silent, nothing recorded", "Bash", None, None, {"scripts/r.md": ph}, 0, None),
+            ("PowerShell exits non-zero after creating a final script with [KEYWORD] (PostToolUseFailure): exit 2",
+             "PowerShell", True, None, {"scripts/r.md": ph}, 2, "Move it to scripts/r.draft.md now", "PostToolUseFailure"),
+            ("Bash exits non-zero, no script changed (PostToolUseFailure): silent, snapshot gone", "Bash", True, good,
+             {"reel-build/notes.txt": "x"}, 0, None, "PostToolUseFailure"),
         ]
-        for k, (name, tool, passed, before, writes, want, phrase) in enumerate(term):
+        for k, (name, tool, passed, before, writes, want, phrase, *post) in enumerate(term):
             p = t / f"term{k}"
             (p / "scripts").mkdir(parents=True)
             if passed is not None:
@@ -1242,13 +1314,15 @@ def storyboard_hook_selftest():
                      "tool_use_id": f"toolu_term{k}"}
                 if event == "PostToolUse":
                     d.update(tool_response={"stdout": "", "stderr": "", "interrupted": False}, duration_ms=1)
+                elif event == "PostToolUseFailure":  # the payload CLI 2.1.287 sends for a non-zero exit
+                    d.update(error="Exit code 1", is_interrupt=False, duration_ms=1)
                 return subprocess.run([sys.executable, str(hook)], input=json.dumps(d).encode("utf-8"),
                                       capture_output=True, env=env, cwd=str(p), timeout=60)
             r0 = run("PreToolUse")
             recorded = snap.is_file()
             for rel, text in writes.items():
                 (p / rel).write_text(text, encoding="utf-8")
-            r = run("PostToolUse")
+            r = run(post[0] if post else "PostToolUse")
             err = r.stderr.decode("utf-8", "replace")
             pre_ok = r0.returncode == 0 and not r0.stdout and not r0.stderr and recorded == (passed is not None)
             fine = (pre_ok and r.returncode == want and not r.stdout and (not err if phrase is None else phrase in err)
@@ -1257,7 +1331,43 @@ def storyboard_hook_selftest():
             say(f"{'ok ' if fine else 'BAD'} 370 terminal, {name}: Pre {'silent' if pre_ok else 'NOT as expected'}, "
                 f"Post exit {r.returncode}, stdout {'empty' if not r.stdout else 'NOT empty'}, stderr "
                 f"{'empty' if not err else 'set'}, snapshot {'left behind' if snap.exists() else 'gone'}")
-    return ok, len(cases) + len(term)
+    w_ok, w_n = wiring_selftest()
+    return ok + w_ok, len(cases) + len(term) + w_n
+
+
+def wiring_selftest():
+    """hooks/hooks.json sends every route that can write the final script to storyboard-on-write.py
+    (SKLLPLG-370): PreToolUse Write|Bash|PowerShell, PostToolUse Write|Edit|MultiEdit|Bash|PowerShell and
+    PostToolUseFailure Bash|PowerShell (a failing terminal call fires that, not PostToolUse). Each entry
+    goes through run-py.sh or, for Bash|PowerShell only, script-post.sh (it skips Python when the call left
+    no snapshot, so a Write behind it would go unchecked)."""
+    hooks = Path(__file__).resolve().parents[2] / "hooks"
+    hj = json.loads((hooks / "hooks.json").read_text(encoding="utf-8-sig"))["hooks"]
+    want = {"PreToolUse": {"Write", "Bash", "PowerShell"},
+            "PostToolUse": {"Write", "Edit", "MultiEdit", "Bash", "PowerShell"},
+            "PostToolUseFailure": {"Bash", "PowerShell"}}
+    ok = 0
+    for ev, tools in want.items():
+        got, fast_ok = set(), True
+        for e in hj.get(ev, []):
+            for h in e["hooks"]:
+                cmd, m = h.get("command", ""), set(e.get("matcher", "").split("|"))
+                if "storyboard-on-write.py" not in cmd:
+                    continue
+                if "/hooks/script-post.sh" in cmd:
+                    fast_ok = fast_ok and m <= {"Bash", "PowerShell"}
+                elif "/hooks/run-py.sh" not in cmd:
+                    continue
+                got |= m
+        fine = tools <= got and fast_ok
+        ok += fine
+        say(f"{'ok ' if fine else 'BAD'} 370 wiring: hooks.json {ev} reaches storyboard-on-write.py for "
+            f"{'|'.join(sorted(tools))}{'' if tools <= got else ', missing ' + '|'.join(sorted(tools - got))}"
+            f"{'' if fast_ok else ', script-post.sh carries a tool other than Bash|PowerShell'}")
+    fine = 'bash "${0%/*}/run-py.sh" "$1"' in (hooks / "script-post.sh").read_text(encoding="utf-8")
+    ok += fine
+    say(f"{'ok ' if fine else 'BAD'} 370 wiring: script-post.sh hands over to run-py.sh with the script it is given")
+    return ok, len(want) + 1
 
 
 def goldmine_hook_selftest():

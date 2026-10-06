@@ -128,7 +128,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **An unfinished script is saved as a draft, not as the final script** (SKLLPLG-370). A
   Write that would create `scripts/<slug>.md` while that reel's skeleton has no `passed:`
   line is blocked and routed to `<slug>.draft.md`, with a plain-words note of what the client
-  still has to give. Existing final scripts stay editable. The storyboard check skips client
+  still has to give. An Edit or MultiEdit that creates that file before the pass is flagged after it
+  lands and routed the same way. Existing final scripts stay editable. The storyboard check skips client
   notes in `scripts/` (no skeleton and no `## Text overlays` heading).
 - **A final script that still has gaps is saved as a draft** (SKLLPLG-370). In walks, scripts
   reached `scripts/<slug>.md` after the gate passed with `[NEEDS YOUR INPUT]` beats, `[YOUR LIST]`
@@ -136,13 +137,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   such a script is now blocked before it lands, and an Edit or MultiEdit that leaves one is flagged
   after; both route it to `<slug>.draft.md`, and Claude tells the client in plain words what is still
   missing. The rule lives once in `structure_gate.py` (`placeholder_problems`), and the walk rig uses
-  the same one. Measured before choosing it: no hit on any finished walk script, the seed project or
-  any shortform skill doc. A gap written in lowercase brackets is not caught.
+  the same one. It is built for precision, since blocking a finished script costs more than missing a
+  gap: a bracket counts only when it starts with a placeholder word (`[KEYWORD]`, `[keyword]`,
+  `[insert stat]`, `[TBD]`, `[TODO]`, `{{keyword}}`), is a short `[YOUR ...]` slot, or is a scaffold slot
+  reel-scripter's references teach (`[outcome]`, `[resource]`); a `STATUS: DRAFT` line and an
+  `INCOMPLETE` marker count too. Stage directions such as `[CTA]`, `[HOOK]`, `[ON SCREEN: ...]` and
+  `[FRAME 0: ...]` never count. Measured before shipping it: no hit on 22 such stage directions, Joe's 13
+  real scripts and his teleprompter scripts, any finished walk script or the seed project, and every
+  unfinished walk script is still caught. Ceiling: a gap written as free text (`[THE MISSING PIECE]`,
+  `[FOOD]`) is not caught, and an `OPEN:` note is not counted.
 - **A script written from the terminal gets the same checks** (SKLLPLG-370). A walk wrote the final
-  script with a Bash python heredoc, so no Write or Edit check ran. Now every Bash or PowerShell call
-  records the project's final scripts before it runs and checks each one it created or changed after:
-  the not-yet-passed rule, the gaps rule and the storyboard check, with a message saying what to move
-  or fix. The command itself is never read.
+  script with a Bash python heredoc, so no Write or Edit check ran. Now a Bash or PowerShell call made
+  while a reel project resolves (the active brand's project, else a working directory that holds
+  `analysis-data.json`; with neither, nothing is recorded) records that project's final scripts
+  before it runs and checks each one it created or changed after, also when the command exits non-zero
+  (Claude Code fires `PostToolUseFailure` then, not `PostToolUse`): the not-yet-passed rule, the gaps
+  rule and the storyboard check, with a message saying what to move or fix. The command itself is never read. The
+  after-check starts Python only when that call left a record, so a terminal call outside a reel
+  project no longer starts it.
 - **Checkpoint wording** (Joe's rulings, 10.02). "Just pick for me" covers the current
   checkpoint only: Claude picks, says which and why, and the client can change it. A
   copy-only edit at Checkpoint 4 keeps the gate's pass; only a skeleton change (a beat

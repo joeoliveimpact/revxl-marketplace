@@ -3,7 +3,7 @@
 # forward-slash, backslash and mixed Windows paths; a broken interpreter (the Store stub, a py with no Python 3)
 # or a Python 2 is skipped for a working one later on PATH; a working Python inside a WindowsApps folder is
 # used; and no
-# working Python at all exits 0 silently.  usage: bash tests/shortform/run-py-test.sh   (exit 0 = all pass)
+# working Python at all exits 0 silently. Also hooks/script-post.sh, the Bash|PowerShell Post fast path.  usage: bash tests/shortform/run-py-test.sh   (exit 0 = all pass)
 H="$(cd "$(dirname "$0")/../../plugins/shortform-superengine/hooks" && pwd)"; T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
 REAL="$(command -v python3 2>/dev/null || command -v python 2>/dev/null)"
 case "$REAL" in *WindowsApps*|"") REAL="$(py -3 -c 'import sys; print(sys.executable)' 2>/dev/null | tr -d '\r')";; esac
@@ -34,4 +34,17 @@ ck "Store stub first, real Python later on PATH -> 2" "$(echo "$IN" | PATH="$T/W
 ck "py with no Python 3, real Python later -> 2" "$(echo "$IN" | PATH="$T/badpy:$RD" "$B" "$H/run-py.sh" "$H/$S" 2>/dev/null; echo $?)" 2
 ck "Python 2 first, real Python later -> 2" "$(echo "$IN" | PATH="$T/py2:$RD" "$B" "$H/run-py.sh" "$H/$S" 2>/dev/null; echo $?)" 2
 ck "a working Python inside a WindowsApps folder is used -> 2" "$(echo "$IN" | PATH="$T/goodstore/WindowsApps" "$B" "$H/run-py.sh" "$H/$S" 2>/dev/null; echo $?)" 2
+# script-post.sh (PostToolUse and PostToolUseFailure on Bash|PowerShell): no snapshot for the call -> 0 with no Python
+# start (a py/python3 spy first on PATH marks any start); a snapshot -> handed to run-py.sh and the script (bad storyboard -> 2).
+mkdir -p "$T/spy" "$T/home/.claude/shortform-superengine/script-snap"
+printf '#!/bin/bash\ntouch "%s/started"; exit 1\n' "$T" > "$T/spy/py"; cp "$T/spy/py" "$T/spy/python3"; chmod +x "$T/spy/"*
+P="$(cygpath -m "$T/proj" 2>/dev/null || echo "$T/proj")"; UP="$(cygpath -w "$T/home" 2>/dev/null)"
+SN="$T/home/.claude/shortform-superengine/script-snap/toolu_rp.json"
+POST='{"hook_event_name":"PostToolUse","tool_name":"Bash","tool_use_id":"toolu_rp","tool_input":{"command":"x"}}'
+sp() { echo "$POST" | HOME="$T/home" USERPROFILE="$UP" PATH="$1" "$B" "$H/script-post.sh" "$H/$S" 2>/dev/null; echo $?; }
+ck "script-post.sh, no snapshot -> 0, Python never started" "$(sp "$T/spy:$PATH")$([ -e "$T/started" ] && echo ' started')" 0
+echo "{\"project\":\"$P\",\"scripts\":{}}" > "$SN"
+ck "script-post.sh, a snapshot -> Python starts (control: the spy marks it)" "$(sp "$T/spy:$PATH" >/dev/null; [ -e "$T/started" ] && echo started)" started
+echo "{\"project\":\"$P\",\"scripts\":{}}" > "$SN"
+ck "script-post.sh, a snapshot -> storyboard-on-write.py runs: bad storyboard -> 2, snapshot gone" "$(sp "$PATH")$([ -e "$SN" ] && echo ' left')" 2
 exit $fail
