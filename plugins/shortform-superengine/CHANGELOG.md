@@ -2,6 +2,46 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.0] ... 2026-10-06
+
+### Added
+- **content-goldmine skill** (SKLLPLG-332). Say "run the goldmine" after a finished
+  cross-reference and it builds the Content Goldmine dashboard. New `SKILL.md` with
+  `references/publish.md` and `references/gotchas.md`. The page is always saved under
+  `<project>/visuals/` first, then published as a private Artifact (db `bank`); its link,
+  the saved path and the dashboard tag go under `goldmine.*` in state. A first run (no
+  `reel-build/goldmine-run.json`) re-runs analyze with a 30-day `--window-from` window and
+  checks `window_source`. A later day resumes into the run's existing reads files.
+  Journey-map roster, edges E31 and F11, the shortform-next route, the state-schema
+  `goldmine` block and the skill count (16) follow.
+- **Dashboard fetch** in `goldmine_build.py`: curl plus `tarfile` download of the pinned
+  `content-goldmine-dashboard` tag (v0.2.1, engagement asks off the lead magnet board)
+  into the plugin cache, with a commit-stamp check, safe-member and single-root checks,
+  and a plain ERROR line and exit code for every failure.
+- **Runner sync**: weak-CTA, `named_word`, `weak_cta_reels`, `--top-per-creator` and the
+  stale-PAPS-row check. `reads` pre-fills the mechanical fields. `check-reads` labels
+  engagement bait `lm_none`, needs `lm_types` only when CTA rows exist, requires the
+  newest PAPS to match, and writes the Proven Hooks file.
+
+### Changed
+- **The paid comments step always asks first.** `plan` shows the exact capped price
+  before any paid call; `fetch` honours the saved cap, limits calls to the approved
+  credits divided by the per-reel price, and counts a missing `credits_used` as the
+  estimate (marked `credits_estimated`).
+- `publish.md` locks roster requests and reply drafts to the owner and Editors, like the
+  Bank, and says plainly who can see them.
+
+### Fixed
+- Zero breakouts give a plain message and exit 0 at every step. A first run that finds
+  nothing no longer uses up the 30-day window, and a zero result after a Goldmine keeps
+  its passed reads.
+- Long paths on Windows: the dashboard cache and the project folder work past the
+  260-character limit through the long-path form, with no machine setting changed and
+  nothing asked of the client. Messages and saved state show the normal path. A long
+  project on a network drive stops up front with one plain message (exit 10).
+- `transcribe` says plainly when there is nothing to transcribe.
+- The CTA pattern treats an em dash as a separator.
+
 ## [0.5.0] ... 2026-10-06
 
 ### Added
