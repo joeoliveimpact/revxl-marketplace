@@ -6,7 +6,7 @@ Instagram reel scripts in their brand voice. One front door, four exits, no dead
 ends. (The shared analysis core is bundled here for now; it splits into its own
 plugin at format #2.)
 
-**10 skills**, grouped by the stage of the journey they serve:
+**15 skills**, grouped by the stage of the journey they serve:
 
 **Start here**
 
@@ -46,6 +46,24 @@ plugin at format #2.)
   everything already scripted.
 - **`reel-scripter`** ... analysis-driven reel scripting: ranks proven niche moves,
   then guides an in-voice Hook to CTA script with craft scoring.
+- **`angles`** ... turns one topic into genuinely different concepts, each tagged
+  with audience, motivation, format and evidence. reel-scripter calls it at Step 1.
+- **`polarize`** ... sharpens a stance the creator actually holds into a bold,
+  evidence-backed take, and writes the Other side line: what the other camp
+  believes. It does not have to be fair (a straw man is fine), but it never makes
+  up facts. reel-scripter calls it at Step 2 for myth-bust and contrarian reels.
+- **`hook`** ... writes Reel openings as genuinely different options, or adapts a
+  proven hook to the topic. reel-scripter calls it for the hook pass.
+- **`rehooks`** ... finds where a script loses viewers and writes a re-hook for
+  each drop-off. reel-scripter calls it to place re-hooks (Step 2), write their
+  lines (Step 3) and fix dead seams (Step 4b).
+- **`viral`** ... rewrites a finished script to be more shareable and relatable,
+  keeping its message and voice. reel-scripter runs it on every reel at Step 4a,
+  and you pick which suggestions to use.
+
+  These five are the Legit Content Skills, bundled whole: each skill's method is a
+  byte-identical copy of the public master, checked by
+  `scripts/check_legit_sync.py`.
 
 **Pulse**
 
@@ -71,7 +89,7 @@ likely first, each carrying the exact phrase to say next. The edges live in
 **"what's next in shortform"** at any time for the same block on demand. The four
 exits the journey aims at are a scripted reel, a competitor analysis and roadmap,
 a weekly content plan, and a read on your own results (through the pulse until
-the dedicated read ships in 0.5.0). `scripts/check_routing.py` runs in CI and
+the dedicated read ships in a later release). `scripts/check_routing.py` runs in CI and
 fails the build when a block goes missing, sits past the point a long file gets
 truncated, or leaves a registry edge that no block cites. A phrase that leads
 nowhere is a warning, not a failure.

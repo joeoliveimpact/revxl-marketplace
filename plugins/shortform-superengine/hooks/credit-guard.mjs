@@ -54,6 +54,42 @@ const cmd =
     ? input.tool_input.command
     : "";
 
+// content-goldmine runner: its comment fetch calls SocialCrawl from Python, so the URL never
+// appears in the command and this is the guard's only look at that spend. Joe 09.23.26: silent
+// at or under the per-pull goldmine budget, one ask above. The runner hard-stops at --approved,
+// so the approved amount is the most it can spend; it is added to the session tally on intent.
+const GOLDMINE_BUDGET = 600; // mirrored in skills/content-goldmine/scripts/goldmine_build.py
+if (/goldmine_build\.py["']?\s+fetch\b/i.test(cmd)) {
+  try {
+    const m = cmd.match(/--approved[=\s]+["']?(\d+)/);
+    if (!m) {
+      emit({
+        hookSpecificOutput: { permissionDecision: "deny" },
+        systemMessage:
+          "content-goldmine fetch needs --approved <credits>. Run its plan step first and pass the estimate it prints.",
+      });
+    }
+    const n = parseInt(m[1], 10);
+    const sid = String((input && input.session_id) || "nosession").replace(/[^a-z0-9_-]/gi, "");
+    const stateFile = join(tmpdir(), `sc-credit-guard-${sid}.json`);
+    let spent = 0;
+    try { spent = JSON.parse(readFileSync(stateFile, "utf8")).spent || 0; } catch {}
+    const total = spent + n;
+    try { writeFileSync(stateFile, JSON.stringify({ spent: total })); } catch {}
+    if (n > GOLDMINE_BUDGET) {
+      emit({
+        hookSpecificOutput: { permissionDecision: "ask" },
+        systemMessage:
+          `content-goldmine comment fetch: up to ${n} credits, over the ${GOLDMINE_BUDGET} credit per-pull budget. ` +
+          `Session spend ~${total}cr. Confirm the amount with the user before approving.`,
+      });
+    }
+    emit({ systemMessage: `content-goldmine comment fetch: up to ${n}cr, within the ${GOLDMINE_BUDGET}cr per-pull budget (session ~${total}cr).` });
+  } catch {
+    pass();
+  }
+}
+
 // Fast path (case-insensitive): almost no Bash call touches SocialCrawl.
 if (!cmd.toLowerCase().includes("socialcrawl.dev")) pass();
 
@@ -90,7 +126,7 @@ try {
   // Returns null when the map knows nothing about the path.
   // Metered endpoints: the stored number is a UNIT price (per URL / item / chunk / page), so
   // the real spend scales with the array or limit the caller sends. prism/post-stats with 100
-  // Instagram URLs is 500 credits, not 1. Quoting the bare number here would be the single
+  // Instagram URLs is 200 credits (2 per URL), not 1; 100 LinkedIn URLs is 500. Quoting the bare number here would be the single
   // most dangerous thing this hook could say.
   const PER_UNIT = (COSTS && COSTS._perUnit) || {};
   function meteredFor(verb, p) {
@@ -153,6 +189,8 @@ try {
       for (const [k, v] of FALLBACK_BIG) if (p.includes(k)) { c = v; break; }
     }
     if (/[?&]deep_scan=true/.test(clean)) c = Math.max(c, 15); // deep-scan variants bill far higher
+    // include=stats on the reel listing bills 1 more a page (measured 09.23.26: 2cr, not the map's 1).
+    if (p === "instagram/profile/reels" && /[?&]include=[^&"'\s]*stats/.test(clean)) c += 1;
     return c;
   }
 

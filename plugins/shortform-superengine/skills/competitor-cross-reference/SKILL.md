@@ -44,7 +44,7 @@ registry id in parentheses.
 
 **Next moves**
 (E3)
-1. Script the top gap, in your voice, as the chosen angle. Say: "script the top gap"
+1. Script the top gap, in your voice, as option 1 at reel-scripter's Step 1. Say: "script the top gap"
 2. See it: `visuals/overview.html`, the reach ladder and the gaps. Say: "build my visual dashboards"
 3. Feed the winning themes into your brand brain, so later scripts lean on them. Say: "add these themes to my brand brain"
 4. *If `pulse.scheduled` is false:* keep this alive week to week, on your day. Say: "make the pulse weekly"
@@ -227,9 +227,9 @@ today's date. The pointer is persisted, never session memory.
 
 ### Step 3 — Gather Competitor Reels
 
-For each approved competitor handle, paginate `instagram/profile/reels` with `handle` and `&max_id=<next_cursor>` to collect ~36 reels (1cr per page). Apply the same ingest repairs (mojibake, epoch coercion). Save each to `source/competitors/reels/<handle>.json`.
+For each approved competitor handle, paginate `instagram/profile/reels` with `handle`, `&include=stats` (per-reel shares) and `&max_id=<next_cursor>` to ~36 reels (2cr per page). Apply the same ingest repairs (mojibake, epoch coercion). Save each to `source/competitors/reels/<handle>.json`.
 
-**Note:** ~36 reels per competitor × N competitors ≈ N×3 SocialCrawl credits.
+**Note:** ~36 reels per competitor × N competitors ≈ N×6 SocialCrawl credits.
 
 ---
 
@@ -238,7 +238,7 @@ For each approved competitor handle, paginate `instagram/profile/reels` with `ha
 Fetch the **live balance** first: `GET /v1/credits/balance` reads
 `data.balance` and costs 0 credits; every other price comes from
 `../_shared/references/socialcrawl-endpoints.md`. Report the approved count,
-reels per competitor (36), the estimated cost (`N x 3`) and the after-balance,
+reels per competitor (36), the estimated cost (`N x 6`) and the after-balance,
 plainly and out loud (`./references/pipeline-detail.md`). Over balance: say so
 and offer to shrink the set or top up. Never start a pull that runs dry
 mid-way.

@@ -38,7 +38,7 @@ budget for that step. Never loop over concepts, competitors or hits.
 A reel costs **two named steps**: `reel-scripter` Step 0d (the angle and its
 doctrine, before the draft) and Step 3 (the hook). Other named trigger points:
 `content-plan` before the pool is written, `competitor-cross-reference` at the
-roadmap, `own-content-analysis` at the read (0.5.0). One step, one call.
+roadmap, `own-content-analysis` at the read (a later release). One step, one call.
 
 ## Cache
 
@@ -60,8 +60,8 @@ validation list**: a hit that uses none of them is still a hit.
 | VOICE | this client's pillars and the language they already own | `content_pillars` three to five core topics, written first; `ideal_client` the who the pillars serve; `personal_brand` signature language and proof | `heydominik/bZettD3oFWE`, `kallaway/o_n5ED5fE1I`, `heydominik/Wd4ZQbmd1cs` |
 | FIELD | which accounts to model in this niche and what to take | `competitor_research` size bands, exclude above 1M, sweet spot 10k to 250k; `outlier_score` rank on the channel's own average, not raw views; `swipe_file` steal bricks, hold four of five constant | `kallaway/Lf7ZXu4WiUs`, `kallaway/o_n5ED5fE1I`, `kallaway/pirnGDCZD3Y` |
 | MAKE-topic | this week's topics without repeating last week | `content_ideation` rewrap what already works, do not invent; `transpositioning` a format from outside the niche on your own subject; `evergreen_content` recency windows, 7 to 14 days timely, 3 to 12 months evergreen | `heydominik/bZettD3oFWE`, `kallaway/ceRZVxO8KF8`, `brock_johnson/pXtzH3NJX9Q` |
-| MAKE-hook | what makes the first three seconds work for this angle | `hook_first_3_seconds` instant clarity plus a curiosity gap, 5 to 8 words; `hook_alignment` text, spoken and visual must imply each other; `hook_negative_framing` and `hook_contrarian` for the variants to test | `kallaway/pNIYikmYsyw`, `brock_johnson/QTgabAQ9kCU`, `heydominik/NdGYqW-bPdc` |
-| MAKE-retention | how this script holds the viewer after the hook | `retention_rate` the lock-in zone, seconds 5 to 10, and the trust anchor; `open_loop` one major loop plus one minor per body point; `rehook` dosage, first at 20 to 25 seconds, two maximum | `kallaway/0f6_pRAIJjI`, `kallaway/9K1b6dSdc50`, `brock_johnson/igV6Ll8c7lI` |
+| MAKE-hook | what makes the first three seconds work for this angle | `hook_first_3_seconds` instant clarity plus a curiosity gap; `hook_alignment` text, spoken and visual carry the same meaning, different jobs; `hook_contrarian` for the variant to test | `kallaway/pNIYikmYsyw`, `brock_johnson/QTgabAQ9kCU`, `heydominik/NdGYqW-bPdc` |
+| MAKE-retention | how this script holds the viewer after the hook | `retention_rate` the lock-in zone, seconds 5 to 10; `open_loop` one major loop plus one minor per body point; `rehook` dosage, a secondary hook by about 10 seconds, then about one re-hook every 30 seconds at any length | `kallaway/0f6_pRAIJjI`, `kallaway/9K1b6dSdc50`, `brock_johnson/igV6Ll8c7lI` |
 | MAKE-CTA | the one ask at the end of this reel | `keyword_cta` comment or reply a keyword, never link in bio or the link sticker; `dm_automation` the mechanism and what it does to reach; `lead_magnet` the ask is net-additional information, not a sale | `brock_johnson/YnepkAEC12I`, `heydominik/Wd4ZQbmd1cs`, `kallaway/ceRZVxO8KF8` |
 | READ | how to read this week's numbers without misreading them | `non_follower_reach` across a week, settling 50 to 60%; `save_rate` and `share_rate` in the first 24 hours; `content_shelf_life` never judge from two reels or one week | `heydominik/m6JFzxsSI7w`, `kallaway/Lf7ZXu4WiUs`, `brock_johnson/LU_c530SrzE` |
 | PULSE | what changed in the field and what it means for next week | `outlier_analysis` the monthly roster and outlier pass; `content_shelf_life` outdated hooks are the top reason a grown account stalls; `trending_audio` and `timely_content`, rationed | `heydominik/5xOo4NuNG8k`, `kallaway/pirnGDCZD3Y`, `heydominik/bZettD3oFWE` |

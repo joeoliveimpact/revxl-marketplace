@@ -9,6 +9,7 @@ only injected label). No LLM anywhere in this path.
 
   python render_visuals.py <project_dir> [--prev <old.json>] [--stamp "<label>"]
                            [--out <dir>] [--split]
+  A relative --prev resolves against <project_dir>; an unreadable --prev exits 1 before any page is written.
 
 Design system: dataviz-validated palette (CVD-safe), thin marks, hairline grid,
 table-view twin per chart. Brand tokens override via <project>/visual-theme.json
@@ -62,8 +63,8 @@ def check_version(data):
     if major != '1':
         print('ERROR: analysis-data.json schema major version %s is unsupported (need 1.x). Re-run analyze.py.' % v)
         sys.exit(1)
-    if v not in ('1.0', '1.1', '1.2', '1.3', '1.4'):
-        print('WARN: schema %s is newer than this renderer knows (1.4) - unknown keys ignored.' % v)
+    if v not in ('1.0', '1.1', '1.2', '1.3', '1.4', '1.5'):
+        print('WARN: schema %s is newer than this renderer knows (1.5) - unknown keys ignored.' % v)
     return v
 
 
@@ -120,7 +121,9 @@ def compute_delta(new, old):
         if o and (h['field_med_views'] != o['field_med_views'] or h['client_med_views'] != o['client_med_views']):
             hook_moves.append({'hook': h['hook'],
                                'field_med_views': [o['field_med_views'], h['field_med_views']],
-                               'client_med_views': [o['client_med_views'], h['client_med_views']]})
+                               'client_med_views': [o['client_med_views'], h['client_med_views']],
+                               'field_n': [o['field_n'], h['field_n']],
+                               'client_n': [o['client_n'], h['client_n']]})
     stat_moves = []
     for handle in sorted(set(n_h) & set(o_h)):
         n, o = n_h[handle], o_h[handle]
@@ -282,7 +285,7 @@ def render_overview(data, theme, chartjs, stamp, delta, history):
 
     # "This period" — the real breakouts, read STRAIGHT off analysis-data.json
     # (schema 1.3). Deliberately NOT routed through --prev/compute_delta: that channel
-    # fails open (G11 prints a WARN, exits 0 and renders an empty week), and its
+    # exists only when --prev is passed (G11: an unreadable one now exits 1), and its
     # new_outliers is a diff of two capped all-time top-30 lists, which structurally
     # cannot contain a reel published this period (G17, a 38x under-report).
     pb = data.get('period_breakouts')
@@ -321,7 +324,7 @@ def render_overview(data, theme, chartjs, stamp, delta, history):
     if delta:
         wn = []
         for o in delta['new_outliers'][:5]:
-            wn.append('New breakout: <b>%s×</b> @%s — “%s” (<a href="%s" target="_blank" rel="noopener">%s views</a>)'
+            wn.append('New in the all-time top-30 leaderboard (not a period breakout): <b>%s×</b> @%s, “%s” (<a href="%s" target="_blank" rel="noopener">%s views</a>)'
                       % (esc(round(o['mult'])), esc(o['handle']), esc(o['hook_line'][:70]), esc(o['url']), esc(fmt_n(o['views']))))
         r0, r1 = delta['client_rank']['reach_eff']
         if r0 and r1 and r0 != r1:
@@ -642,17 +645,20 @@ def main():
     theme = load_theme(root)
     chartjs = load_chartjs()
     out = args.out or os.path.join(root, 'visuals')
-    os.makedirs(out, exist_ok=True)
 
     delta = None
     if args.prev:
+        prev = os.path.join(root, args.prev)   # G11: relative -> project dir; an absolute path stays as is
         try:
-            old = json.load(io.open(args.prev, encoding='utf-8'))
-            delta = compute_delta(data, old)
-            io.open(os.path.join(out, 'whats-new.json'), 'w', encoding='utf-8').write(
-                json.dumps(delta, indent=2, ensure_ascii=False))
-        except (json.JSONDecodeError, OSError) as e:
-            print('WARN: --prev unreadable (%s) - skipping delta' % e)
+            old = json.load(io.open(prev, encoding='utf-8'))
+        except (ValueError, OSError) as e:
+            print('ERROR: --prev unreadable (%s): %s - nothing rendered.' % (e, prev))
+            sys.exit(1)
+        delta = compute_delta(data, old)
+    os.makedirs(out, exist_ok=True)   # CK4: after the --prev check, so a failed --prev leaves no empty folder
+    if delta is not None:
+        io.open(os.path.join(out, 'whats-new.json'), 'w', encoding='utf-8').write(
+            json.dumps(delta, indent=2, ensure_ascii=False))
 
     history = load_history(root)
     written = roadmap_sections(root)

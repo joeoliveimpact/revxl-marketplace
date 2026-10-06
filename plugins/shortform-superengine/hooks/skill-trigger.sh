@@ -18,11 +18,20 @@ START="start shortform|open shortform|shortform start|i'?m lost in shortform"
 ONBOARDING='set up shortform|onboard shortform|shortform setup|(install|configure) the reel plugin|get the shortform superengine ready|finish setting up the content engine|show my setup'
 REEL_SCRIPTER='write a reel script|script a reel|reel script|reel-scripter|script the next reel|script idea [0-9]+ from my content plan|script that reel|script the top idea|script the top gap|script the top seed|script the next angle'
 CROSS_REFERENCE='competitor cross-reference|cross-reference my client|content gap analysis|build my visual dashboards|regenerate my visuals|resume my cross-reference|analyze my instagram against my competitors'
-PULSE='run the weekly pulse|run the pulse|make the pulse weekly|search the field for|competitor pulse|what changed this week|refresh my competitor analysis|manage my roster|comment pulse|mine the comments on'
+PULSE='run the weekly pulse|run the pulse|retry the failed handles|make the pulse weekly|search the field for|competitor pulse|what changed this week|refresh my competitor analysis|manage my roster|comment pulse|mine the comments on'
 BRAND_BRAIN='capture my voice|build my brand brain|brand brain|mine my calls|set up my voice|refresh my voice guide|update my topics'
 HARVEST='harvest .{0,40}(library|content|videos)|get everything .{0,40} teaches|pull all of .{0,40} content|build a corpus from|refresh our notebook on'
 CONTENT_PLAN='content plan|weekly topic pool|topic pool|idea bank|plan my week|plan the week|what should i post this week'
 SOCIALCRAWL='socialcrawl|social crawl|social media api|check my socialcrawl balance'
+# The five Legit Content Skills. VIRAL and POLARIZE are checked before
+# REEL_SCRIPTER so "punch this up" and "hot take" reach them even when the prompt
+# also says "reel script"; HOOK, REHOOKS and ANGLES come after it, so a full
+# scripting ask still wins.
+HOOK='write me a hook|opening line[^.?!]{0,20}(reel|video)|(reel|video)[^.?!]{0,30}opening line|first 3 seconds of my reel'
+REHOOKS='add re-?hooks|keep them watching'
+VIRAL='make this more viral|punch this up|more shareable'
+ANGLES='angles on this topic|ways to cover this'
+POLARIZE='hot take|contrarian take|unpopular opinion'
 
 nudge() {
   echo "[shortform-superengine] This looks like a job for the $1 skill ... invoke it (Skill tool) before doing the work by hand."
@@ -34,8 +43,18 @@ elif echo "$input" | grep -qiE "$START"; then
   nudge shortform-start
 elif echo "$input" | grep -qiE "$ONBOARDING"; then
   nudge onboarding
+elif echo "$input" | grep -qiE "$VIRAL"; then
+  nudge viral
+elif echo "$input" | grep -qiE "$POLARIZE"; then
+  nudge polarize
 elif echo "$input" | grep -qiE "$REEL_SCRIPTER"; then
   nudge reel-scripter
+elif echo "$input" | grep -qiE "$HOOK"; then
+  nudge hook
+elif echo "$input" | grep -qiE "$REHOOKS"; then
+  nudge rehooks
+elif echo "$input" | grep -qiE "$ANGLES"; then
+  nudge angles
 elif echo "$input" | grep -qiE "$CROSS_REFERENCE"; then
   nudge competitor-cross-reference
 elif echo "$input" | grep -qiE "$PULSE"; then

@@ -1,8 +1,8 @@
-# Competitor Cross-Reference — Hook Diagnostics Reference
+# Hook Diagnostics Reference (shared: competitor-cross-reference and the generation engines)
 
 ## SCOPE NOTE
 
-This skill uses the 4 Hook Killers as a **diagnostic lens** to explain WHY a competitor hook wins or a client hook under-reaches. The goal is analysis, not generation. The generative hook-writing frameworks (BUT/THEREFORE story structure, specificity ladder, hook variant stacking) belong to a future content-creation skill — not this analysis skill. Use what's here to label and explain reach gaps; do not use it to write new hooks.
+Two engines read the 4 Hook Killers, each for its own job. **competitor-cross-reference** uses them as a **diagnostic lens** to explain WHY a competitor hook wins or a client hook under-reaches: label and explain reach gaps, grounded in the data (the "In competitor analysis" notes below serve that job). **Generation engines** use them as a **generation-time check**, and only the engine that writes a hook rewrites one that trips a killer; in this plugin that is the `hook` skill. **reel-scripter** writes no hooks: at its Step 4a it runs the picked hook against the four killers, flags any that fire and shows why, and a fix is one more `hook` call. The hook-writing method (laws, opener shapes, formulas) lives in the `hook` skill (`skills/hook/`), and the universal losing tables live in `./say-this-not-that.md`, not here.
 
 ---
 
@@ -63,7 +63,7 @@ The "DELAY" window is not the same on every platform. When diagnosing hooks, use
 | Newsletter | Subject line earns the open | Body hook then confirms within first sentence |
 | Carousel (IG / LinkedIn) | Slide 1, ≤9 words | Visual + text together in one glance |
 
-For this skill, the primary format is Reels — the ~2s cliff is the default. Note the platform when analyzing non-Reel hooks.
+For both engines the primary format is Reels, so the ~2s cliff is the default. Note the platform when analyzing or writing non-Reel hooks.
 
 ---
 
@@ -77,4 +77,4 @@ figures are the measured aggregate; per-niche numbers stay in each client's own 
 
 ---
 
-*Source: artemnovitckii/content-skills viral-hooks skill (MIT). Distilled 2026-06-22 for diagnostic use in competitor-cross-reference skill only.*
+*Source: artemnovitckii/content-skills viral-hooks skill (MIT). Distilled 2026-06-22 for diagnostic use; shared by competitor-cross-reference (analysis) and the generation engines (hook check), per the scope note above.*

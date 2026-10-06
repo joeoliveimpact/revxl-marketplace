@@ -2,3 +2,4 @@
 # (shebang + `set -euo pipefail` both break with trailing \r).
 *.sh text eol=lf
 plugins/booking-bandit/references/*.md text eol=lf
+plugins/shortform-superengine/skills/*/references/legit-*.md text eol=lf

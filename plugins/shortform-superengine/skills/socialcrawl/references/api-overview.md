@@ -67,7 +67,7 @@ Error responses:
 | standard | 1 credit | ~178 endpoints | Profiles, posts, search, comments, GitHub direct calls, HN, Tavily, Perplexity research, Twitter AI Search |
 | advanced | 5 credits | ~100 endpoints | Audience, ad libraries, trending, full-profile bundles, GitHub composites (`repo/top-issues`, `repo/dossier`) |
 | premium | 10 credits | ~20 endpoints | Transcripts (⛔ banned in this plugin), age/gender detection, deep listings-database search |
-| **flat override** | **0–50 credits** | ~30 endpoints | Prism intelligence bundles (`leads`/`creator-vet`/`brand-mentions` = **50**, `share-of-voice` = 40, several reports 25–35), all `content_analysis/*` (20), `search/everywhere` (20) — and the free end: `prism/lookup` (0), `prism/post-stats`/`prism/comments` (1) |
+| **flat override** | **0–50 credits** | ~30 endpoints | Prism intelligence bundles (`leads`/`creator-vet`/`brand-mentions` = **50**, `share-of-voice` = 40, several reports 25–35), all `content_analysis/*` (20), `search/everywhere` (20) — and the free end: `prism/lookup` (0), `prism/comments` (1), `prism/post-stats` (1 per URL, 2 Instagram, 5 LinkedIn) |
 
 Total: **333 endpoints across 43 platforms.**
 

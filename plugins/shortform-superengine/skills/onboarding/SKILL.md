@@ -50,14 +50,14 @@ and no idea what to say next. Ids are journey-map rows; the block shape is
 `../_shared/references/routing.md`. Render one of these, never an invented menu.
 
 **Next moves ... setup complete**
-(E1)
+(E1) If `goal` is `read-my-results`, say in one line: own-content-analysis ships in a later release; until then competitor-pulse reads the field, not their own account, once an analysis exists.
 1. Analyze this account against its competitors ... the field read every goal needs first. Say: "analyze my Instagram against my competitors"  <- start here
 2. Let the compass read what setup just wrote and rank the moves. Say: "what's next in shortform"
 3. *If the brand brain was skipped at Step 4b:* capture the client's real voice first, so the scripts sound like them. Say: "build my brand brain"
 4. *If a thought-leader's library is worth capturing:* pull the whole thing into a dated corpus. Say: "harvest <creator>'s library"
 
 **Next moves ... a prior analysis is already on this machine**
-(E1)
+(E1) Same read-my-results line as above.
 1. *If `state.pulse.scheduled` is false AND the marker's `competitor_pulse.scheduled` is false:* keep that field read alive week to week ... new winners, refreshed charts, one brief. Say: "make the pulse weekly"
 2. Script off what already wins in that analysis. Say: "write a reel script from my analysis"
 3. Pick the first job and let me route you. Say: "start shortform"

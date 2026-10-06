@@ -2,7 +2,237 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.5.0] ... 2026-10-06
+
+### Added
+- **Five Legit Content Skills: hook, rehooks, viral, angles and polarize.** Each
+  ships as a small wrapper SKILL.md (plugin triggers, routing, what reel-scripter
+  hands over) around a byte-identical copy of the public master at
+  `skills/<name>/references/legit-<name>.md`. `scripts/check_legit_sync.py`
+  proves the copies match the master and pins their hashes in
+  `scripts/legit-sync-manifest.json`. reel-scripter calls them from its reference
+  files: angles at Step 1, polarize at Step 2 (myth-bust and contrarian reels),
+  rehooks at Steps 2, 3 and 4b, hook in the Step 3 hook pass (with the top proven
+  hooks from the pull's Pattern Read), and viral on every reel at Step 4a.
+  Journey-map roster, registry rows E26
+  to E30, the trigger hook and the skill counts (15) follow.
+- **The structure gate enforces the calls.** Headless walks showed reel-scripter
+  skipping written call lines (hook 0 of 4, angles and rehooks 1 of 4). The
+  run now carries a `from:` stamp line from angles, rehooks and hook (kept in
+  `reel-build/provenance.md`, see "Stamps are per run" below), each handed back
+  only by that skill's wrapper, and `structure_gate.py` fails
+  Step 4b on a missing or wrong stamp with the Skill call that fixes it.
+  `angle_from:` waives the angles stamp when Step 1's proposal was skipped.
+  A second gate run before Checkpoint 1 (`structure_gate.py --angles` on the
+  saved proposals) makes angles run before the user picks, not after.
+- **Stamps are per run** (SKLLPLG-336). The `from:` lines now go in
+  `<project>/reel-build/provenance.md`, never in the skeleton or the angles file (a stamp in
+  either one fails the gate). The gate clears that file when a reel passes, leaving one
+  `passed:` line for that skeleton, so a second reel cannot pass on the first reel's stamps.
+  Step 1's dedupe skips `*.skeleton.md`.
+
+### Changed
+- **reel-scripter is a conductor** (SKLLPLG-359). It runs the steps; the five skills own
+  the method, and reel-scripter keeps no second copy of it. `hook-formulas.md`,
+  `hook-mastery.md`, `opener-patterns.md` and `retention-psychology.md` are deleted;
+  `say-this-not-that.md` moved to `skills/_shared/references/` with the losing-openers
+  table. New calls, each with its own stamp in `reel-build/provenance.md`: rehooks again
+  at Step 3 (`step: 3-lines`, the secondary hook first, the re-hooks after the body and
+  proof picks), polarize at Step 2 for the Other side beat that myth-bust and contrarian
+  skeletons now carry (it replaces the Step 1 polarize call), and viral on every reel at
+  Step 4a (it replaces the optional punch-up; the user picks which suggestions apply).
+  The skeleton needs an `angle_kind:` line. The hook pass shows 3 to 5 openings, all from
+  hook, and asks the Goldmine question only when `reel-build/goldmine-run.json` shows
+  data (a `goldmine:` line records it). Goldmine files are found through that JSON, never
+  by the newest file name. Story Locks drops Locks 1 and 3 and Swaps 1 and 7 (6 swaps
+  now) and may flag, never rewrite, another skill's line. The "follow for Part 2" CTA is
+  gone; "follow for more" stays. The storyboard gets per-beat seconds and a visual cue
+  every 3 to 5 s. pipeline-detail.md gains a method precedence rule (the skills and
+  rulings, the Vault, Goldmine data: 2 of 3 decide).
+- **Stamps are written by a hook, not by the model.** In 2 of 6 walks the model read a
+  wrapper SKILL.md or `rehooks/references/step3-lines.md` for its `from:` line and copied
+  the stamp instead of calling the skill; in 1 of 2 contrarian walks it wrote
+  `goldmine: asked-yes` without asking. No skill file holds a stamp now. A new PostToolUse
+  hook on the Skill tool, `hooks/stamp-on-skill.py`, appends `from: <name> <stamp>` to
+  `<project>/reel-build/provenance.md` when angles, rehooks, hook, polarize or viral is
+  really called (rehooks is written as `rehookslines` on a `step: 3-lines` call, or on a
+  call after its Step 2 stamp). A stamp is the first 12 hex of a sha256 over a salt, the
+  skill name and the project folder, so a stamp from another project or a typed token
+  fails the gate. The hook never blocks: it exits 0 and prints nothing. The Goldmine
+  question moves into the hook skill's reel-scripter Step 3 mode, which asks it, waits for
+  the answer and writes the `goldmine:` line. `structure_gate.py --selftest` uses a
+  throwaway salt; `--selftest-hook` feeds the hook sample input.
+- **A stamp now needs the Skill call followed by a Read of the method file** (SKLLPLG-361).
+  The stamp hook also runs on Read: a Skill call only opens a slot for that session, and the
+  stamp is written when the model then Reads that skill's `references/legit-<name>.md`
+  (`rehooks/references/step3-lines.md` for rehookslines) inside this plugin. A call with no
+  Read, a Read before the call, or a Read in another session writes no stamp.
+- **The final script's storyboard is checked on every write** (SKLLPLG-361). A new hook,
+  `hooks/storyboard-on-write.py`, runs on Write, Edit and MultiEdit of
+  `<project>/scripts/<slug>.md` (never the skeleton) and calls
+  `structure_gate.storyboard_problems()`: a pipe table with a seconds and a cue column, each
+  row over 0 and at most 5 s with exactly one visual cue, every `## Script` section named in
+  a Beat cell, and range times back to back from 0:00. A problem exits 2 with the list on
+  stderr, so the model fixes the file in the same turn. `structure_gate.py --storyboard
+  <script>` runs the same check by hand.
+- **The Goldmine answer is recorded only after the user replies** (SKLLPLG-365). A walk
+  showed the hook skill rewording and bolding the Goldmine question, then writing
+  `goldmine: asked-yes` in the turn it asked. The question now sits in `hook/SKILL.md` and
+  `step3-options.md` as one fenced line to send exactly, defined once in code
+  (`structure_gate.GOLD_Q`) and checked by selftest. A new hook, `hooks/goldmine-answer.py`,
+  writes a `goldmine-asked:` stamp to `reel-build/provenance.md` only when the user replies to
+  a turn holding the question word for word (or answers it through AskUserQuestion), and
+  blocks any `goldmine: asked-` write before that stamp exists and any hand-written stamp.
+  `structure_gate.py` check 9 fails an `asked-yes` or `asked-no` line with no valid stamp
+  above it.
+- **Walk rig** (tests/shortform/reel-scripter-walk): `probe-storyboard.sh` is a one-command
+  live proof that the storyboard hook fires and the model fixes the file (SKLLPLG-367).
+- **Checkpoints hold and Step 1 always runs** (SKLLPLG-362, SKLLPLG-366). Walks skipped Step 1
+  and, on a second reel, ran every sub-skill call in one turn and picked the options themselves,
+  because the gate checked that each call happened, never when. `hooks/stamp-on-skill.py` now
+  also runs on UserPromptSubmit and on PostToolUse AskUserQuestion (it counts the user's turns,
+  only for the session that owns the reel) and on PreToolUse Skill. It blocks (exit 2, the
+  reason shown to the model) a Step 2 or later sub-skill call when `reel-build/provenance.md`
+  holds no valid angles stamp, and a call that moves to a later step in the same user turn as
+  the last call at the furthest step reached (a checkpoint crossed without the user). Going
+  back a step is allowed. After the gate passes, Step 3 or later calls are fix calls allowed in
+  any session, and a Step 2 call starts a new reel that needs a fresh angles call. Step 1 is
+  never skipped: what the client brings (their own idea, leftover unpicked angles, a
+  content-plan idea, an open loop) goes into the angles call as `candidates` and comes back as
+  option 1 beside fresh options. The `--angles` instruction moved from SKILL.md to
+  pipeline-detail.md "Step 1 propose". Walk grader: angles must come before the first rehooks,
+  polarize, hook or viral call; new criterion K "checkpoints hold"; calls a hook blocked count
+  as no call; a step token's trailing period is ignored. The walk's simulated client approves
+  the skeleton only when asked a question.
+
+### Fixed
+- **Hooks start Python through a launcher** (SKLLPLG-370). The new hooks called bare
+  `python`, which fails on a Mac with only `python3` and hits the Store stub on a Windows
+  machine without Python. `hooks/run-py.sh` tries `py -3`, then every `python3` and `python` on PATH, and uses
+  the first one that really runs Python 3, so the Store stub, a `py` with no Python 3 and a
+  Python 2 are skipped
+  and a working Store Python is used. On a Mac it skips `/usr/bin/python3` unless the
+  command line tools are installed (no install dialog). No working Python: it exits 0
+  silently, so every hook fails open. `tests/shortform/run-py-test.sh` checks it.
+- **The five skills work on their own again** (SKLLPLG-370). The order rules now apply only
+  in a session that called reel-scripter, so "write me a hook" or a hot take in any other
+  chat is never pulled into the reel pipeline, and cannot switch off a reel in progress in
+  another chat: each chat keeps its own order state, so a fix call in a new chat still
+  stamps. After a finished reel, a Step 2 call (a hot take, rehooks) is held until
+  Claude asks the client whether it is a new reel or a one-off (Joe, 10.03); a one-off then
+  runs on its own and ends the order rules for that chat.
+- **The five Legit skills end with their Next-moves block when run on their own.** Run
+  outside reel-scripter, hook, rehooks, viral, angles and polarize ended on the method
+  copy's Close line and never showed the block. Each wrapper now puts its block after
+  the copy's Close; called by reel-scripter, it still hands back with no block.
+- **An unfinished script is saved as a draft, not as the final script** (SKLLPLG-370). A
+  Write that would create `scripts/<slug>.md` while that reel's skeleton has no `passed:`
+  line is blocked and routed to `<slug>.draft.md`, with a plain-words note of what the client
+  still has to give. An Edit or MultiEdit that creates that file before the pass is flagged after it
+  lands and routed the same way. Existing final scripts stay editable. The storyboard check skips client
+  notes in `scripts/` (no skeleton and no `## Text overlays` heading).
+- **A final script that still has gaps is saved as a draft** (SKLLPLG-370). In walks, scripts
+  reached `scripts/<slug>.md` after the gate passed with `[NEEDS YOUR INPUT]` beats, `[YOUR LIST]`
+  overlays and a `STATUS: DRAFT` line, or with `[KEYWORD]` in the CTA and an `OPEN:` note. A Write of
+  such a script is now blocked before it lands, and an Edit or MultiEdit that leaves one is flagged
+  after; both route it to `<slug>.draft.md`, and Claude tells the client in plain words what is still
+  missing. The rule lives once in `structure_gate.py` (`placeholder_problems`), and the walk rig uses
+  the same one. It is built for precision, since blocking a finished script costs more than missing a
+  gap: a bracket counts only when it starts with a placeholder word (`[KEYWORD]`, `[keyword]`,
+  `[insert stat]`, `[TBD]`, `[TODO]`, `{{keyword}}`), is a short `[YOUR ...]` slot, or is a scaffold slot
+  reel-scripter's references teach (`[outcome]`, `[resource]`); a `STATUS: DRAFT` line and an
+  `INCOMPLETE` marker count too. Stage directions such as `[CTA]`, `[HOOK]`, `[ON SCREEN: ...]` and
+  `[FRAME 0: ...]` do not count, but one that starts with a placeholder word does
+  (`[ADD ZOOM]`, `[STAT: 73%]`: a known limit). Measured before shipping it: no hit on 22 such stage directions, Joe's 13
+  real scripts and his teleprompter scripts, any finished walk script or the seed project, and every
+  unfinished walk script with a bracketed placeholder word is still caught. Ceiling: a gap written as free text (`[THE MISSING PIECE]`,
+  `[FOOD]`) is not caught, and an `OPEN:` note is not counted.
+- **A script written from the terminal gets the same checks** (SKLLPLG-370). A walk wrote the final
+  script with a Bash python heredoc, so no Write or Edit check ran. Now a Bash or PowerShell call made
+  while a reel project resolves (the active brand's project, else a working directory that holds
+  `analysis-data.json`; with neither, nothing is recorded) records that project's final scripts
+  before it runs and checks each one it created or changed after, also when the command exits non-zero
+  (Claude Code fires `PostToolUseFailure` then, not `PostToolUse`): the not-yet-passed rule, the gaps
+  rule and the storyboard check, with a message saying what to move or fix. The command itself is never read. The
+  after-check starts Python only when that call left a record, so a terminal call outside a reel
+  project no longer starts it.
+- **Checkpoint wording** (Joe's rulings, 10.02). "Just pick for me" covers the current
+  checkpoint only: Claude picks, says which and why, and the client can change it. A
+  copy-only edit at Checkpoint 4 keeps the gate's pass; only a skeleton change (a beat
+  added, cut, moved, relabelled or re-tagged) re-runs the skills. Four "as the angle" leftovers now say the idea is Step 1's option 1.
+  The paths in four reel-scripter commands (SKILL.md and pipeline-detail.md) are quoted for
+  folders with spaces. The hook nudge fires
+  on "opening line" only when a reel or video is named.
+- **Version notes.** subject-matter and own-content-analysis (SKLLPLG-301) ship in a later
+  release, not 0.5.0; the lines that promised them for 0.5.0 now say so.
+
+## [0.4.2] ... 2026-09-11 (never released on its own; ships in 0.5.0)
+
+### Added
+- **A structure gate at reel-scripter Step 4b.** Checkpoint 2 now writes the
+  locked skeleton to `<project>/scripts/<slug>.skeleton.md`: one numbered line per
+  beat, loops tagged `[open ID]`, `[close ID]` and `[hold ID]` (a beat that deepens
+  a loop already open), plus an optional `visual_loop:` line. `structure_gate.py`
+  fails an early close of the main loop, a flat run of two untagged beats, a dead
+  seam with no loop open, and a main loop that never pays off (the unpaid-loop
+  check, which a declared visual loop does not excuse). Step 4c never starts before
+  exit 0, and Checkpoint 4 shows the gate's `Seams:` line.
+- **The editor-superengine handoff.** The script-written block (E6) offers the next
+  step after recording: "Let me know when you record and where I can access the raw
+  video(s)", `Say: "cut this reel"` (if installed), with a line on installing
+  editor-superengine from the RevXL marketplace first. It replaces the "regenerate
+  my visuals" move.
+- **"retry the failed handles"**, the pulse's failed-handles-only retry: it re-lists
+  only the handles whose newest probe line is still `probe-failed`, on the window
+  they failed, priced at Checkpoint P1, and never moves `pulse.last_run`.
+- **Open loops in the compass.** `shortform-next` (E20 and F3) renders an open loop
+  by its skill: "resume my cross-reference", "script idea N from my content plan"
+  or "script that reel". reel-scripter writes its `open_loops` entry at Checkpoint
+  0, so an abandoned reel reaches the compass, and removes it at Step 5.
+- **Two `check_routing.py` checks.** An id cited anywhere in a block body with no
+  journey-map row is an error, and shortform-next's (E20) and (F3) blocks must
+  carry byte-identical move lines.
+
+### Changed
+- **txt transcripts now count and are diagnosed.** `analyze.py` reads the
+  `transcripts/<creator>/*.txt` files as spoken transcripts: they count toward
+  `transcript_coverage` AND feed the spoken hook and theme diagnosis, so a counted
+  reel is never ranked on its caption. On a project with txt transcripts the hook
+  and theme tables shift; a JSON-only project reads the same as before. A NO
+  VOICEOVER header or an empty body does not count, and a reel with both kinds
+  counts once, its JSON text diagnosed. `field_vet.py` reads the same competitor txt files (never the client's `reels-full`).
+- **Schema 1.5, additive only.** `meta.window_reels`, `window_reels_transcribed`,
+  `transcribed_newest_published_at`, `transcribed_median_published_at` and
+  `transcript_sources` (json, txt, both), plus `period_breakouts.window_source`.
+  Nothing is renamed or removed; `render_visuals.py` accepts 1.5.
+- **The pulse window starts at `pulse.last_run`.** `window_from` is the older of
+  the last run and today minus 7 days (14 on request), so a missed week is covered
+  in full and the window is never under 7 days; `analyze.py --window-from` takes
+  it. Listings page on with `max_id` until the window is covered (pinned reels never
+  decide the stop). Each page is keyed `pulse-<brand>-<handle>-<window_from>-p<n>`,
+  so a resumed run replays at 0cr within 24h, and every retry (a 502/503, the
+  failed-handles pass, retry mode) adds a fresh `-r<local HHMMSS>`. A handle
+  that fails logs `probe-failed` in `refresh-log.md`, a
+  later pull logs `probe-ok`, and roster health counts only the failures after a
+  handle's last `probe-ok`.
+- **The weekly brief** takes breakouts from `period_breakouts`, never the all-time
+  leaderboard (the render now labels those rows as the leaderboard), and states
+  this window's transcript coverage, the transcribed sample's recency, the tier
+  balance and the handles that still failed. `whats-new.json` hook moves carry
+  `field_n` and `client_n`.
+
+### Fixed
+- `field_vet.py`: the client's own reels no longer count as the field; with no
+  spoken rows it prints a DEGRADED banner and a `[cap]` caption verdict instead of
+  calling a keyword new; the strongest angle word is the first WINNER; a keyword
+  match ends on a word boundary.
+- `scripting_brief.py`: unranked rows count as neither winners nor flops; the
+  opener-order line is gone from the brief; a DEGRADED analysis carries a warning
+  line; a schema major-version mismatch stops before anything is written.
+- `analyze.py` snapshots the `analysis-data.json` it is about to overwrite into
+  `history/` (local date, never a duplicate). `render_visuals.py` resolves a
+  relative `--prev` against the project and exits 1 on an unreadable one before
+  writing anything.
 
 ## [0.4.1] ... 2026-09-08
 
@@ -89,7 +319,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   results" routes to the weekly pulse, and every block offering them is marked
   "(if installed)".
 - The SKLLPLG-236 reel-scripter repairs and the SKLLPLG-234 competitor-pulse
-  repairs ship in 0.4.1. No Python script in this plugin changed in 0.4.0.
+  repairs ship in 0.4.2. No Python script in this plugin changed in 0.4.0.
 
 ## [0.3.4] — 2026-09-05
 

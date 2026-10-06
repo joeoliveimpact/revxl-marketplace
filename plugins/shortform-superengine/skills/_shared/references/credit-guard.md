@@ -28,8 +28,9 @@ ground chasing an outcome.
    client as **low** when `balance < max(200, 5 × the run's estimate)`.
 4. **If headroom is thin, do NOT proceed silently.** Tell the user their balance and
    the estimate, and offer a cheaper path: the free/1cr cheat codes (`prism/lookup`
-   0cr, `prism/post-stats` 1cr/100 URLs, `prism/comments` 1cr, `reddit/omni-search`
-   1cr), a smaller scope, or topping up. **Never promise an outcome that would zap
+   0cr, `prism/comments` 1cr, `reddit/omni-search` 1cr), `prism/post-stats` in
+   place of `instagram/post/stats` for share counts (2cr per Instagram URL against
+   5, billed per URL, so 100 Instagram URLs = 200cr), a smaller scope, or topping up. **Never promise an outcome that would zap
    their balance.**
 
 ## Gate tiers (per call)

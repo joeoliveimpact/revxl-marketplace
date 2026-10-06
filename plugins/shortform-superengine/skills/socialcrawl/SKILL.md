@@ -110,7 +110,7 @@ Five endpoints that change the cost math for everything:
 | Endpoint | Credits | Why it matters |
 |----------|---------|----------------|
 | `GET /v1/prism/lookup?url=…` | **0** | Universal URL dispatcher — any social/commerce URL → the right detail endpoint's unified response. **Free.** Always prefer it when the user pastes a URL. |
-| `GET /v1/prism/post-stats?urls=…` | **1** | Current engagement for **up to 100 post URLs** in one call (failed URLs refunded). Refresh a whole watchlist for 1 credit. |
+| `POST /v1/prism/post-stats` (JSON body `urls`) | **1 per URL** | Current engagement for **up to 100 post URLs** in one call (failed URLs refunded). Billed per successful URL, not per call: 1cr most platforms, **2cr Instagram**, 5cr LinkedIn, so 100 Instagram URLs = **200 credits**, not 1. |
 | `GET /v1/prism/comments?url=…` | **1** | Every comment on a post, replies nested, paginated to completion — often 1/5th the price of the platform-native comments call. |
 | `GET /v1/reddit/omni-search?query=…` | **1** | One keyword → threads across all of Reddit with top comments inline. The cheapest voice-of-customer tool in the API. |
 | `GET /v1/prism/handle-audit?handle=…` | **5** | Should you pull this handle? Scores it across platforms and **projects the data volume + credit cost** before you spend. |

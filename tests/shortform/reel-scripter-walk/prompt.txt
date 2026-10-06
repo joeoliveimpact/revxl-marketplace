@@ -1,0 +1,3 @@
+Write a reel script for me from my competitor analysis.
+
+No human is available for this run. At every checkpoint, take the recommended option (or option 1 when none is marked), say in one line which option you took, and keep going. Do not stop until the script file is written.

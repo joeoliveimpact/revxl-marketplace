@@ -20,7 +20,8 @@ ERRORS (exit 1, printed as GitHub ::error annotations):
                  `## Terminal paths`, and no block header sits outside that
                  section (the section ends at the next `## ` heading).
   3. registry     every block cites a ledger id (E0b, E<n>, F<n>) in its header
-                 line or on the first non-blank line under it; every cited id
+                 line or on the first non-blank line under it; every cited id,
+                 in the header, that first line or anywhere in the block body,
                  has a row in journey-map.md; every happy-path and failure row
                  names a skill that exists; and every happy-path and failure row
                  is CITED BY a block, in the skill the row comes FROM or in a
@@ -35,6 +36,8 @@ ERRORS (exit 1, printed as GitHub ::error annotations):
   5. catalog     the marketplace entry's description starts with `v<version> `
                  for the version that same entry declares.
   6. counts      both READMEs' skill counts equal the number of skills shipped.
+  7. identity    shortform-next's (E20) and (F3) blocks carry byte-identical
+                 numbered move lines (by design; F3 is E20 with a degrade line).
 
 WARNINGS (annotate, never fail): a `Say: "<phrase>"` whose phrase resolves to no
 SKILL.md frontmatter and no journey-map roster row. A line carrying
@@ -76,6 +79,7 @@ RETIRED_ALIAS = "search/reels"
 RX_HEADER = re.compile(r"^\*\*Next moves(?:\s*(?:\.\.\.|[(:])[^*\n]*)?\*\*")
 RX_ID = re.compile(r"\b(E0b|E[0-9]+|F[0-9]+)\b")
 RX_ROW_ID = re.compile(r"^\|\s*`?(E0b|E[0-9]+|F[0-9]+)`?\s*\|")
+RX_MOVE = re.compile(r"^[0-9]+\. ")
 
 # Endpoint paths are matched ONLY when anchored, so prose like "search/Content"
 # or a skill name after a slash can never masquerade as an endpoint.
@@ -225,6 +229,7 @@ def collect():
             size = len(text.encode("utf-8"))
             lines = _lines(text)
             cited = cited_by_skill.setdefault(sk.parent.name, set())
+            moves = {}                 # a block's first cited id -> its numbered move lines (check 7)
 
             # 2. structure
             for heading in ("## Prereq (E0)", "## Terminal paths"):
@@ -296,6 +301,28 @@ def collect():
                         errors.append(
                             "::error file=%s::block at byte %d cites %s, which has "
                             "no row in journey-map.md" % (rel, off, i))
+                # 3. ...and so does every id cited only in the block body
+                for i in sorted(set(RX_ID.findall("\n".join(body))) - set(ids)):
+                    if i not in ledger:
+                        errors.append(
+                            "::error file=%s::block at byte %d (%s) cites %s in its body, "
+                            "which has no row in journey-map.md" % (rel, off, line.strip(), i))
+                if ids:
+                    moves.setdefault(ids[0], [l2 for l2 in body[1:] if RX_MOVE.match(l2)])
+
+            # 7. identity: shortform-next's E20 and F3 move lines are one list by design (W7-5)
+            if sk.parent.name == "shortform-next":
+                a, b = moves.get("E20"), moves.get("F3")
+                if a is None or b is None:
+                    errors.append("::error file=%s::the (E20) or (F3) block is missing; "
+                                  "check 7 compares their move lines" % rel)
+                elif a != b:
+                    k = next(n for n in range(max(len(a), len(b)))
+                             if n >= len(a) or n >= len(b) or a[n] != b[n])
+                    errors.append(
+                        "::error file=%s::(F3) move lines must equal (E20)'s byte for byte; "
+                        "first difference at move line %d: E20 %r, F3 %r"
+                        % (rel, k + 1, a[k] if k < len(a) else None, b[k] if k < len(b) else None))
 
             # warnings: unresolved Say: phrases
             for idx, (pos, line, fenced) in enumerate(lines):

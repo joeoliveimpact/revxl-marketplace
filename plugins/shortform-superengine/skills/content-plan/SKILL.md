@@ -11,7 +11,7 @@ description: >
   "lean the plan toward <pillar>", "rebuild the pool, lean <pillar>",
   "refresh next week's plan".
   Writes <project>/content-plan-<YYYY-Www>.md and state.plan, and hands a picked
-  idea to reel-scripter as the chosen angle. Shortform MAKE stage: it plans the
+  idea to reel-scripter as option 1 at its Step 1. Shortform MAKE stage: it plans the
   week that reel-scripter then writes.
 ---
 
@@ -35,14 +35,14 @@ first.
 
 **Next moves ... plan written**
 (E21) the plan is on disk. Pick the next thing to do with it.
-1. Script the strongest idea now ... it goes into reel-scripter Step 1 as the chosen angle, evidence attached. Say: "script idea N from my content plan"
+1. Script the strongest idea now ... it goes into reel-scripter Step 1 as option 1 beside fresh angles, evidence attached. Say: "script idea N from my content plan"
 2. Tilt the week toward one pillar ... same sources, different balance. Say: "lean the plan toward <pillar>"
 3. Keep the pool fed ... next week rebuilds off the weekly pulse's new winners. Say: "refresh next week's plan"
 4. Read how last week actually performed before you commit to this one. Say: "read last week's results" (if installed)
 
 **Next moves ... idea picked**
 (E7) an idea came out of the plan, carrying its source tag and its evidence.
-1. Write it ... reel-scripter takes the idea as the chosen angle with its source tag and evidence, and its Checkpoint 0 voice rules still apply. Say: "script that reel"
+1. Write it ... reel-scripter takes the idea into Step 1 as option 1, with its source tag and evidence, and its Checkpoint 0 voice rules still apply. Say: "script that reel"
 2. Take a different idea instead. Say: "script idea N from my content plan"
 3. Rebalance the week first, then script. Say: "lean the plan toward <pillar>"
 
@@ -93,14 +93,14 @@ built-in library"), and keep going.
 one with a shallower call. Probe for the install the way that file says, then:
 1. Get it installed first ... ask me to install socialcrawl-superengine from the RevXL marketplace, then say the phrase. It ships the same credit guard this plugin does. Say: "vet this creator" (if installed)
 2. What I can do today: the fresh pass on the table's own endpoints, `google_news/search` 1cr, `google_trends/explore` 5cr, `reddit/search` 1cr. Say: "refresh next week's plan"
-3. Field search inside the roster runs in the pulse. Say: "search the field for <keyword>"
+3. *If `analysis` is set and the marker is on disk:* field search inside the roster runs in the pulse. Say: "search the field for <keyword>"
 
 ## Prereq (E0)
 
 | Needed | Where | Absent |
 |---|---|---|
 | At least one source | analysis, `voc/`, or a subject brief | E0: the no-analysis block above names the door |
-| The field analysis | `<project>/analysis-data.json` + `state.analysis.date` | F2: the no-analysis block. In `field-first` this is the door |
+| The field analysis | `<project>/analysis-data.json` + `state.analysis.date` | F2: the no-analysis block. In `field-first` this is the door, unless Step 0 item 1's own-material exception applies |
 | Setup (marker + SocialCrawl key) | `~/.claude/shortform-superengine/.superengine` | the FRESH lane cannot run: say so, plan on disk sources, and offer the setup line the no-analysis block above carries |
 | Brand voice, OPTIONAL | `~/.claude/revxl/<brand>/voc/` | the plan still runs. Without it there is no own-material lane, so ideas come from the field and the audience only, the plan header says `voice: not captured`, and the client's language enters when an idea is picked and scripted. Offer a brand-brain capture once (F7), then proceed |
 
@@ -111,7 +111,10 @@ Prereqs and trigger phrases live in `journey-map.md`, never hardcoded here.
 1. Load `~/.claude/shortform-superengine/state/<brand>.json` per
    `../_shared/references/state-schema.md` (`active_brand` from the marker),
    and read `project_path`, `mode`, `analysis`, `scripts[]`, `plan`,
-   `declined_offers`.
+   `declined_offers`. No analysis on disk but `voc/` exists, and the client
+   chose the own-material plan ("plan the week" off the no-analysis block):
+   that choice answers the block, so do not render it again. Skip Step 1
+   (FIELD) and label the plan header "no field source".
 2. **Freshness.** If `plan.week_of` is under 7 days old, do not regenerate:
    offer to extend the live plan (add ideas to the thin pillars, re-slot the
    remaining days) and say which plan you are extending. Weekly is the doctrine
@@ -138,7 +141,7 @@ its URL. Detail and doctrine: `references/sources.md` section 1.
 
 `~/.claude/revxl/<brand>/voc/weekly-content-bank.md` (brand-brain's topical
 seeds, 7-day shelf, nothing else in this plugin consumes them) plus
-`<project>/subject-brief.md` (if present, 0.5.0). In `mode: subject-first` the
+`<project>/subject-brief.md` (if present, a later release). In `mode: subject-first` the
 client's own material outranks a field rewrap. Section 2.
 
 ## Step 3 ... FRESH (paid)
@@ -169,7 +172,7 @@ never automatic. Section 4.
 1. **Balance across the pillars.** No pillar eats the pool; a pillar with zero
    ideas is called out in one line rather than filled with filler.
 2. **Dedupe** against `state.scripts[]`, the prior `content-plan-*.md` pools in
-   `<project>/` and the `Angle:` lines in `<project>/scripts/*.md`. Ideas from
+   `<project>/` and the `Angle:` lines in `<project>/scripts/*.md` (not drafts). Ideas from
    `plan.ideas_unscripted` may carry forward, labelled "carried". Section 7.
 3. **Tag `[avoid-list]`** on any idea riding a hook bucket or theme the brief's
    Avoid list names as a niche loser, so nobody scripts it blind.

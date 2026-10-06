@@ -36,7 +36,7 @@ Evidence: @handle · <metric, e.g. 47x their median, 1.2M views> · <reel URL>
 |---|---|---|
 | The weekly bank | `~/.claude/revxl/<brand>/voc/weekly-content-bank.md` | brand-brain's fast shelf mined from call recordings: this week's themes, hot objections, questions coming up, topical seeds. 7-day TTL, so entries older than a week are expired, not used. Nothing else in this plugin consumes it |
 | The voice guide | `~/.claude/revxl/<brand>/voc/voice-guide.md` | read for what the client actually says, not to write copy here |
-| The subject brief | `<project>/subject-brief.md` (if present, 0.5.0) | subject-matter's output. In `mode: subject-first` its angles outrank a field rewrap |
+| The subject brief | `<project>/subject-brief.md` (if present, a later release) | subject-matter's output. In `mode: subject-first` its angles outrank a field rewrap |
 
 Doctrine (`heydominik/bZettD3oFWE`): the job is not to invent new topics every
 time, it is to rewrap the ones that already work. The client's own expertise is
@@ -121,7 +121,7 @@ Checked before an idea enters the pool:
 2. the previous `content-plan-*.md` files in `<project>/` ... their idea titles
    and angles. `state.plan.ideas_unscripted` names what was left unwritten; those
    may carry forward, labelled "carried".
-3. `<project>/scripts/*.md` `Angle:` lines ... what was written outside a plan.
+3. `<project>/scripts/*.md` `Angle:` lines (not `*.draft.md`) ... what was written outside a plan.
 
 A near-duplicate is dropped, or explicitly reframed as a different hook type on
 the same theme and labelled as the reframe. Repetition of a winner is a

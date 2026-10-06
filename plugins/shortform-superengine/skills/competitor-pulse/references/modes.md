@@ -40,6 +40,11 @@ last listing pass.
    1M is a GURU now, not a LARGE (the cross-reference roster rule).
 4. Recommend, never act. Which to swap out, which to keep, what a replacement
    would need to look like. Roster edits happen in roster mode, on a yes.
+5. Failed pulls: count each handle's `probe-failed` lines in `refresh-log.md`
+   (date, handle, error), only those after its last `probe-ok` line (a recovered
+   handle starts again from zero). No removal recommendation before three failed probes
+   across at least two separate runs (two different dates); below that, name the
+   count and keep the handle.
 
 Monthly is the natural rhythm, and it is what the schedule offer's monthly
 roster pass means. Ends on the `roster health` block in `SKILL.md` Terminal
@@ -98,8 +103,8 @@ Ends on the `comment intel` block in `SKILL.md` Terminal paths (E0b).
 ## 14-day window mode
 
 Trigger: "run the pulse on 14 days". The same pipeline as the weekly pulse with
-one constant changed: Step 2 filters new reels to the last **14** days instead
-of 7. The listing pass is priced per account, not per day, so the cost is
+one constant changed: Step 2's floor is **14** days instead of 7 (`window_from` =
+the older of `pulse.last_run` and today minus 14). The listing pass is priced per account, not per day, so the cost is
 unchanged and there is no new ✋ beyond P1. Use it after a quiet week, or when
 the roster posts slowly.
 
@@ -107,3 +112,67 @@ Say the window out loud on every line of the brief that depends on it: a
 14-day count is not comparable with the 7-day count from a previous run.
 Snapshot, merge and re-analysis are unchanged. Ends on the `14-day window`
 block in `SKILL.md` Terminal paths (E23).
+
+## Failed-only retry mode
+
+Trigger: "retry the failed handles", the F5 retry. It never runs the full pulse.
+
+1. Read `refresh-log.md`: the handles whose `probe-failed` lines carry the newest
+   run's date and whose newest probe line is still `probe-failed` (a later
+   `probe-ok` means it recovered), and that run's `window from` date. None selected (none logged, or every one recovered): say so and end on
+   the `roster health` block (E24).
+2. Balance first, then ✋P1 for those K handles: K × 1cr, plus 1cr per further
+   page. Nothing paid runs before this yes.
+3. Step 2's listing for those handles only, on that same window, each key
+   `pulse-<brand>-<handle>-<window_from>-p<n>-r<local HHMMSS>`, `<local HHMMSS>` being
+   the local time at the moment of the retry (the in-run pass of Step 2 and a
+   502/503 retry are keyed the same way). A fresh key per retry, across passes and
+   runs: SocialCrawl bills no failed
+   call, and a reused key may replay a stored failure. A 502/503 retry waits at least 1s before retrying (a 503 honours `Retry-After`). A failure logs another
+   `probe-failed` line; a pull logs
+   `<date> · probe-ok · @handle · window from <window_from>`.
+4. Steps 4 to 6 as in the pulse, `--window-from` that window. `pulse.last_run`
+   is NOT moved (`pulse.last_snapshot` is): moving it would skip days for every
+   handle that already pulled. Ends on E14, or F5 while any handle still fails.
+
+## Instrument delta (transcription-model change)
+
+A change to the transcription model moves the hook table on its own, as much as
+real field movement. When the local chain's model differs from the one that
+made the existing transcripts, before Step 4 merges anything new: re-transcribe
+on the unchanged corpus and run `analyze.py`, so its snapshot is the before and
+the new `analysis-data.json` the after. Report that delta as an instrument
+delta, never field movement, with `field_n` beside every median (bucket
+populations barely move while medians swing). Then merge and re-analyze as usual.
+
+## Marker-fallback seed
+
+Relocated verbatim from `SKILL.md` State at 0.4.2 (byte budget). Read it before
+the marker fallback's creation write; "Step 0" and "above" mean `SKILL.md`.
+
+When that fallback CREATES the state file, seed `analysis` in the same write from
+the `analysis-data.json` Step 0 just located: `date` = its modified time as
+YYYY-MM-DD, `n_competitors` = the competitor count inside it, `themes_set` false,
+`resume` null. Say that in the same one line. Without the seed the compass reads
+`analysis` as null on a machine that plainly has one and ranks "analyze my
+Instagram against my competitors" first all over again. Seeded at file creation
+only; `analysis.*` stays competitor-cross-reference's (`state-schema.md`).
+
+That same creation write seeds the rest of the migration list `shortform-start`
+writes at its MIGRATE step: `setup.complete` true (a marker means onboarding
+ran), `setup.keys_present.socialcrawl` from the marker's
+`connections.socialcrawl`, `project_path` from `competitor_pulse.project` when
+it is set, and the marker's `competitor_pulse` block INTO `state.pulse`
+(`scheduled` to `scheduled`, `last_run` to `last_run`, `cadence` to `day` only
+when it names a weekday, lowercased, otherwise null). Seeded at file creation only and
+never overwritten afterwards. Without it a pulse-first home reports setup as
+not done, and its project path as null, for good.
+
+## Week prices
+
+Relocated verbatim from `SKILL.md` Credit discipline at 0.4.2 (byte budget).
+
+Price from the loaded roster, N handles: a typical week ≈ **(N+2)cr**, plus 1cr
+per further listing page. Heavy week (6 deep-legged winners with shares +
+comments) ≈ **(N+62)cr** (6 × 5cr shares + 6 × ~5cr comments + listing). Quiet
+week = the listing cost and stops there.
