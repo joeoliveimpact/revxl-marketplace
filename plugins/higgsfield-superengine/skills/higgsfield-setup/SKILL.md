@@ -18,11 +18,7 @@ description: Use this skill the first time a coach or client wants to make image
 - If the conversation was compacted since this skill loaded, invoke this skill again before going on. Later steps may be missing from memory.
 - Never repeat a finished step. First run, in the PowerShell tool: `Test-Path higgsfield\.python`
   - `False`: start at step 1.
-  - `True`: first run the no-look status (PowerShell tool), then the step 8 check:
-
-`& (Get-Content -Raw -Encoding UTF8 higgsfield\.python) "${CLAUDE_PLUGIN_ROOT}/hooks/hf_guard.py" no-look status`
-
-    - state `on`, `expired` or `leaving`: a key may still be on screen. Resume inside step 7 and do not look at the browser.
+  - `True`: ask the client whether a Higgsfield key box is still open on screen. If yes, resume inside step 7 and do not look at the browser. Otherwise run the step 8 check:
     - check says `AUTH OK`: already connected. Do only step 9 (balance), unless the client asks for a new key.
     - anything else: resume at step 4.
 
@@ -106,11 +102,7 @@ Guide: **Billing** in the left menu, then **Add funds**, then $5 or more (the mi
 
 ### 7. Create the key, with Claude's eyes off the screen
 
-**Before** the client clicks Create API key, turn the screen guard ON (PowerShell tool):
-
-`& (Get-Content -Raw -Encoding UTF8 higgsfield\.python) "${CLAUDE_PLUGIN_ROOT}/hooks/hf_guard.py" no-look on`
-
-Expect `"state": "on"`. From now until 7d is done, do not screenshot, read, or click in the browser (the guard blocks it anyway). Guide by words only:
+From the moment the client clicks Create API key until 7d is done, the key is on screen: do not screenshot, read, or click in the browser, and do not use any screen or browser tool. Guide by words only:
 
 a. "Click **API keys** in the left menu, then **Create API key**. Name it something like Claude."
 b. "A box called **Save your API key** appears. Higgsfield shows this key only **once**. Click the copy button next to the key. Don't click Done yet. Tell me when it's copied."
@@ -123,11 +115,7 @@ It prints one word:
 - `invalid`: "That didn't look like the whole key. It's still copied, so let's try once more." Open the key box again.
 - `cancelled`: the box was closed, or it timed out after 5 minutes. If the Higgsfield box is still open, open the key box again. If they already clicked Done, the key can't be shown again: they create a new key (and delete the unsaved one), then repeat from b.
 
-d. Only after `saved` AND the client says the Higgsfield box is closed, clear the guard (PowerShell tool):
-
-`& (Get-Content -Raw -Encoding UTF8 higgsfield\.python) "${CLAUDE_PLUGIN_ROOT}/hooks/hf_guard.py" no-look off`
-
-A pop-up asks whether the key is off the screen. Say first: "This pop-up is you confirming the key is hidden. Click Allow only if the Higgsfield key box is closed." Then navigate the browser to https://open.higgsfield.ai/dashboard with the navigate tool on its own (not inside a batch). That finishes clearing the guard. If a pop-up later asks "Is the API key off the screen?", the client answers it, never Claude.
+d. Only after `saved` AND the client says the Higgsfield box is closed, navigate the browser to https://open.higgsfield.ai/dashboard with the navigate tool on its own (not inside a batch). Take no screenshot before that navigation. Then go on.
 
 ### 8. Check the key (free, PowerShell tool)
 

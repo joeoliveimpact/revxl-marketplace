@@ -2,6 +2,19 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.1.4 — 2026-10-05
+
+### Changed
+
+- Spend guard trimmed to the money checks (Mac report 10.05.26). It keeps: pricing + the spend cap (allow under, ask over), and the denies for raw api.higgsfield.ai calls, the higgsfield CLI/SDK, other ways into hf_rest (including scripts that mention it), and the guard's own files.
+- Over the cap in bypassPermissions now asks instead of denying: a PreToolUse hook's ask is honored in bypass (proven 10.05.26 with a headless bypass run). Only dontAsk, where nobody can be asked, still denies.
+- Showing the full prompt and reading the model notes are hf-generate instructions now, no longer guard checks.
+
+### Removed
+
+- The transcript checks `real_call()` and `reviewed()`. On Mac Claude Desktop (Code tab) the tool_use row is written after PreToolUse fires, so every submit was refused (no charge). Selftests R1–R6 and V1–V12 removed; new M1 (no transcript row, or no transcript_path, still allows under the cap).
+- The no-look screen guard (hooks.json browser/screen matcher, the no-look flag, selftests N0–N8). `hf_guard.py no-look ...` is a no-op for older setup text. higgsfield-setup step 7 tells Claude in words to keep off the screen while the key is showing.
+
 ## 0.1.3 — 2026-10-02
 
 ### Added

@@ -21,7 +21,7 @@ Each superengine is opinionated about audience, tone, and workflow, so it works 
 
 ## The catalog
 
-19 plugins. Versions are current as of catalog `0.1.73`.
+19 plugins. Versions are current as of catalog `0.1.74`.
 
 ### 📣 Marketing & Content
 
@@ -36,7 +36,7 @@ Each superengine is opinionated about audience, tone, and workflow, so it works 
 | [profile-optimization-superengine](plugins/profile-optimization-superengine/) | 0.2.0 | Social-profile optimization (bio, pinned content, CTA structure) for coach acquisition. 6 skills. |
 | [focus-group-superengine](plugins/focus-group-superengine/) | 0.1.1 | Synthetic persona-swarm testing for marketing assets before you publish them. 2 skills. |
 | [socialcrawl-superengine](plugins/socialcrawl-superengine/) | 0.2.1 | Social research plays on the SocialCrawl API: competitor content, trends, engagement. 3 skills. |
-| [higgsfield-superengine](plugins/higgsfield-superengine/) | 0.1.3 | Higgsfield image and video generation just by talking to Claude, on your own Higgsfield API key. Every paid job is priced first and held to a spend cap. Prompting best practices built in, plus guided flows for static ads, UGC video ads, product shots and thumbnails. 8 skills. Windows and Mac. |
+| [higgsfield-superengine](plugins/higgsfield-superengine/) | 0.1.4 | Higgsfield image and video generation just by talking to Claude, on your own Higgsfield API key. Every paid job is priced first and held to a spend cap. Prompting best practices built in, plus guided flows for static ads, UGC video ads, product shots and thumbnails. 8 skills. Windows and Mac. |
 
 ### 🤝 Sales & Client Ops
 
