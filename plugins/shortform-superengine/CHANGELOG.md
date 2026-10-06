@@ -121,6 +121,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   stamps. After a finished reel, a Step 2 call (a hot take, rehooks) is held until
   Claude asks the client whether it is a new reel or a one-off (Joe, 10.03); a one-off then
   runs on its own and ends the order rules for that chat.
+- **The five Legit skills end with their Next-moves block when run on their own.** Run
+  outside reel-scripter, hook, rehooks, viral, angles and polarize ended on the method
+  copy's Close line and never showed the block. Each wrapper now puts its block after
+  the copy's Close; called by reel-scripter, it still hands back with no block.
 - **An unfinished script is saved as a draft, not as the final script** (SKLLPLG-370). A
   Write that would create `scripts/<slug>.md` while that reel's skeleton has no `passed:`
   line is blocked and routed to `<slug>.draft.md`, with a plain-words note of what the client

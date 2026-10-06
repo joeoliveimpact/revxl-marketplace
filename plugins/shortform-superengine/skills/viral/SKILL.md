@@ -24,7 +24,8 @@ input is asked for, never invented. It writes no journey state.
 Ids are rows in `../_shared/references/journey-map.md`; the block shape is
 `../_shared/references/routing.md`. When reel-scripter is the caller, hand the
 result back and render no block here: reel-scripter's own checkpoint is the next
-move (a back-to-the-caller exit, E0b).
+move (a back-to-the-caller exit, E0b). Called on its own, not by reel-scripter,
+every response ends with the matching block below, after the copy's Close.
 
 **Next moves ... rewrite delivered**
 (E28)
@@ -43,7 +44,9 @@ move (a back-to-the-caller exit, E0b).
 
 Read `./references/legit-viral.md` in full and follow it exactly, from What you
 return to Close. Where this wrapper and the copy seem to differ on method, the copy
-wins, except where the reel-scripter hand-off below narrows what to return.
+wins, except where the reel-scripter hand-off below narrows what to return. Run on
+its own, a response still ends with this wrapper's Next-moves block: the copy's
+Close stays and the block follows it.
 
 **When reel-scripter calls it** (Step 4a, `step: 4a-viral`, on every reel: after
 the Step 3 picks, before the Step 4b gate), it passes the voice anchor confirmed at
