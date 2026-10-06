@@ -50,7 +50,7 @@ and no idea what to say next. Ids are journey-map rows; the block shape is
 `../_shared/references/routing.md`. Render one of these, never an invented menu.
 
 **Next moves ... setup complete**
-(E1) If `goal` is `read-my-results`, say in one line: own-content-analysis ships in 0.5.0; until then competitor-pulse reads the field, not their own account, once an analysis exists.
+(E1) If `goal` is `read-my-results`, say in one line: own-content-analysis ships in a later release; until then competitor-pulse reads the field, not their own account, once an analysis exists.
 1. Analyze this account against its competitors ... the field read every goal needs first. Say: "analyze my Instagram against my competitors"  <- start here
 2. Let the compass read what setup just wrote and rank the moves. Say: "what's next in shortform"
 3. *If the brand brain was skipped at Step 4b:* capture the client's real voice first, so the scripts sound like them. Say: "build my brand brain"

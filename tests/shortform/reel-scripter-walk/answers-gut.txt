@@ -6,6 +6,8 @@ OPEN ==> Write a reel script for me from my competitor analysis.
 double.check hook options against outliers ==> Yes, check them.
 # polarize at Step 2 asks for the belief and the evidence when they were not passed.
 \byour (own |actual |real )?(belief|stance|position)\b|\bwhat do you (actually |really |genuinely |personally )?believe\b|\bwhat (evidence|proof) do you have\b|\byour (own )?(evidence|proof)\b[^.\n]{0,60}\? ==> My belief: cutting out the one food everybody blames is not what settles most people's gut; what they eat every single day matters more. My evidence: when my clients change their everyday staples their bloating settles, and the ones who only cut the one blamed food keep the same symptoms. Use those two and keep going.
+# The client's own facts, when a beat needs claims the model will not invent (walk 369b-gut, SKLLPLG-370).
+\bwhat['’]?s true\b.{0,200}\b(source|experience)\b.{0,200}\bCTA\b ==> FOOD: kombucha. WHY THE COMMON ADVICE IS WRONG: one bottle a day does not undo what you eat the other twenty meals of the week. WHAT'S TRUE INSTEAD: your everyday staples settle your gut more than any single gut food; clients who swapped their breakfast and lunch staples for simpler whole-food versions told me their bloating eased within two to three weeks. SOURCE: what I've seen with my clients, labelled as that. CTA: follow for more. If the draft is already done, it looks good: finish it.
 Checkpoint 4 ==> Looks good, finish it.
 \bviral\b.{0,400}\bsuggestion|\bsuggestion.{0,400}\bviral\b ==> Use your top two suggestions.
 Checkpoint 3 ==> Go with your top-scored option.

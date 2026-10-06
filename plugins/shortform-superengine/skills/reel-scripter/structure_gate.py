@@ -781,7 +781,8 @@ def selftest_hook():
     """Feed hooks/stamp-on-skill.py sample PostToolUse, PreToolUse and UserPromptSubmit stdin in a
     temp home and project. Each case checks the exit code of every run (0, or the case's own code
     for its last run), stderr (empty, or the case's phrase on its last run), empty stdout, no
-    stamp-hook.log, the lines provenance.md gains, any stamp-pending.json keys the case names, and
+    stamp-hook.log, the lines provenance.md gains, any keys the case names in one session's entry of
+    stamp-pending.json, and
     an empty reel-build/ when the case says so.
     A Skill call alone opens a slot; the stamp comes from a later Read of the method file in the
     same session. Stamps are computed here at run time for temp folders and never printed."""
@@ -816,8 +817,8 @@ def selftest_hook():
     reel = first + ang + step2 + hk + l3 + l3 + [ups] + run("viral", "step: 4a", legit("viral"))
     # (name, fresh project, stdin, no marker so the cwd decides, skill names of the expected new lines
     #  [, {"exit": code of the last run, "err": phrase its stderr must hold, "prov": provenance.md
-    #  text before the case, fresh or not (as the gate's pass rewrites it), "state": stamp-pending.json
-    #  keys after, "empty": reel-build/ holds no file after}])
+    #  text before the case, fresh or not (as the gate's pass rewrites it), "state": keys after in the
+    #  stamp-pending.json entry of session "sid" (default t), "empty": reel-build/ holds no file after}])
     # stdin is one payload, or a list of payloads run as separate hook runs in order (one home and
     # project for all); the expected lines are what the whole list adds. A fresh project starts
     # with an empty reel-build/, so a no-stamp case cannot pass just because that folder is missing.
@@ -868,9 +869,17 @@ def selftest_hook():
         ("no marker, then Read legit-angles.md: angles", False, rd(legit("angles")), True, ["angles"]),
         ("order: second reel, provenance.md holds only a passed: line, rehooks with no angles call: blocked",
          True, first + [ups, ups, pre(sf + "rehooks", "place rehook slots, skeleton: Hook")], False, [],
-         {"exit": 2, "err": "Call Skill shortform-superengine:angles", "prov": "passed: 0123456789abcdef\n"}),
-        ("order: a hand-typed angles line does not count: blocked", True, [ups, pre(sf + "rehooks", "step: 2")], False,
-         [], {"exit": 2, "err": "Step 1 has not run", "prov": "from: angles 0123456789ab\n"}),
+         {"exit": 2, "err": "Step 1 has not run for this reel", "prov": "passed: 0123456789abcdef\n"}),
+        ("order: a hand-typed angles line does not count: blocked", True, first + [ups, pre(sf + "rehooks", "step: 2")],
+         False, [], {"exit": 2, "err": "Step 1 has not run for this reel", "prov": "from: angles 0123456789ab\n"}),
+        ("standalone (370): no reel-scripter call this session, hook with no angles stamp: allowed", True,
+         [ups] + run("hook", "step: 3-hook", legit("hook")), False, ["hook"]),
+        ("standalone (370): rehooks step 2 then hook in one turn, no reel-scripter call: allowed", True,
+         [ups] + run("rehooks", "step: 2", legit("rehooks")) + run("hook", "step: 3-hook", legit("hook")), False,
+         ["rehooks", "hook"]),
+        ("standalone (370): then reel-scripter in that session, rehooks step 2 a turn later: blocked, angles", False,
+         [ups, pre(sf + "reel-scripter"), ups, pre(sf + "rehooks", "step: 2")], False, [],
+         {"exit": 2, "err": "Step 1 has not run"}),
         ("order: angles, then rehooks in the same turn: blocked at Checkpoint 1", True,
          first + ang + [pre(sf + "rehooks", "step: 2")], False, ["angles"], {"exit": 2, "err": "Checkpoint 1"}),
         ("order: contra2 replay, rehooks 3-lines then viral in one turn: blocked at Checkpoint 3", True,
@@ -884,9 +893,9 @@ def selftest_hook():
         ("order: then the gate's pass leaves only passed:, rehooks 4b in viral's turn: top resets to 5, allowed (a fix call)",
          False, [pre(sf + "rehooks", "step: 4b")], False, [],
          {"exit": 0, "state": {"top": 5}, "prov": "passed: 0123456789abcdef\n"}),
-        ("order (M2a): same session, passed: only, a second reel's rehooks step 2 with no new angles call: blocked",
+        ("order (M2a): same session, passed: only, a second reel's rehooks step 2 with no new angles call: ask",
          False, [ups, pre(sf + "rehooks", "step: 2")], False, [],
-         {"exit": 2, "err": "Step 1 has not run", "prov": "passed: 0123456789abcdef\n"}),
+         {"exit": 2, "err": "Ask the client", "prov": "passed: 0123456789abcdef\n"}),
         ("order: passed: only, reel-scripter again, then rehooks 4b a turn later: allowed, a fix call", False,
          [ups, pre(sf + "reel-scripter"), ups, pre(sf + "rehooks", "step: 4b")], False, [],
          {"prov": "passed: 0123456789abcdef\n"}),
@@ -898,7 +907,7 @@ def selftest_hook():
           payload("Skill", {"skill": sf + "reel-scripter", "args": ""}, "u", "PreToolUse"),
           json.dumps({"hook_event_name": "UserPromptSubmit", "session_id": "u", "prompt": "next"}),
           payload("Skill", {"skill": sf + "rehooks", "args": "step: 2"}, "u", "PreToolUse")], False, [],
-         {"exit": 2, "err": "Call Skill shortform-superengine:angles", "prov": "passed: 0123456789abcdef\n"}),
+         {"exit": 2, "err": "Step 1 has not run for this reel", "prov": "passed: 0123456789abcdef\n"}),
         ("order (M2b): a new session, passed: only, a hook call (Checkpoint 4 fix): allowed", False,
          [up("w"), pre(sf + "hook", "step: 3-hook", "w"), call(sf + "hook", "step: 3-hook", "w"),
           rd(legit("hook"), "w")], False, ["hook"], {"prov": "passed: 0123456789abcdef\n"}),
@@ -907,11 +916,61 @@ def selftest_hook():
          {"exit": 2, "err": "crossing Checkpoint 0"}),
         ("order (M1): a prompt in session b leaves session t's state alone; rehooks step 2 a turn later: allowed",
          True, first + ang + [up("b"), ups] + run("rehooks", "step: 2", legit("rehooks")), False,
-         ["angles", "rehooks"], {"state": {"session": "t", "turn": 2, "top": 2, "at": 2}}),
+         ["angles", "rehooks"], {"state": {"turn": 2, "top": 2, "at": 2}}),
         ("order (M1): a prompt from a session with no state: no file", True, [up("b")], False, [], {"empty": True}),
         ("order (M3): angles, an AskUserQuestion answer, then polarize: allowed", True,
          first + [ups] + run("angles", "step: 1", legit("angles")) + [ask] + run("polarize", "step: 2", legit("polarize")),
          False, ["angles", "polarize"], {"state": {"turn": 2, "top": 2, "at": 2}}),
+        ("ask (370 D2): a reel in this session", True, first, False, []),
+        ("ask (370 D2): its pass, then polarize step 2: blocked, ask the client", False,
+         [ups, pre(sf + "polarize", "step: 2")], False, [],
+         {"exit": 2, "err": "Ask the client", "prov": "passed: 0123456789abcdef\n"}),
+        ("ask (370 D2): standalone in the same turn as the ask: still blocked", False,
+         [pre(sf + "polarize", "standalone: yes\nhot take")], False, [], {"exit": 2, "err": "Ask the client"}),
+        ("ask (370 m5): `not standalone` a turn later: still blocked", False,
+         [ups, pre(sf + "polarize", "not standalone, part of the reel")], False, [],
+         {"exit": 2, "err": "Ask the client"}),
+        ("ask (370 m5): `standalone: false` a turn later: still blocked", False,
+         [ups, pre(sf + "polarize", "standalone: false")], False, [], {"exit": 2, "err": "Ask the client"}),
+        ("ask (370 m5): `not a standalone call` a turn later: still blocked", False,
+         [ups, pre(sf + "polarize", "step: 2, part of the reel, not a standalone call")], False, [],
+         {"exit": 2, "err": "Ask the client"}),
+        ("ask (370 D2): the client answered, standalone a turn later: allowed, order rules off", False,
+         [ups, pre(sf + "polarize", "standalone: yes\nhot take")], False, [], {"state": {"rs": False}}),
+        ("ask (370 D2): then rehooks step 2 with no angles stamp: allowed", False,
+         [ups, pre(sf + "rehooks", "step: 2")], False, []),
+        ("per-session (370 M2): reel in progress in t, a hook call and Read in chat b: stamps, t's state kept",
+         True, first + ang + [up("b"), pre(sf + "hook", "step: 3-hook", "b"), call(sf + "hook", "step: 3-hook", "b"),
+                              rd(legit("hook"), "b")], False, ["angles", "hook"], {"state": {"rs": True, "top": 1}}),
+        ("per-session (370 M2): then t's rehooks in the angles turn: still blocked at Checkpoint 1", False,
+         [pre(sf + "rehooks", "step: 2")], False, [], {"exit": 2, "err": "Checkpoint 1"}),
+        ("per-session (370 M1): after a pass, t calls reel-scripter (a second reel), a one-off hook in b: stamps",
+         True, first + [up("b"), pre(sf + "hook", "step: 3-hook", "b"), call(sf + "hook", "step: 3-hook", "b"),
+                        rd(legit("hook"), "b")], False, ["hook"],
+         {"state": {"rs": True}, "prov": "passed: 0123456789abcdef\n"}),
+        ("per-session (370 M1): then t's rehooks step 2 a turn later: blocked, Step 1 (t's rules still on)", False,
+         [ups, pre(sf + "rehooks", "step: 2")], False, [], {"exit": 2, "err": "Step 1 has not run for this reel"}),
+        ("ask (370 m4): a reel in this session", True, first, False, []),
+        ("ask (370 m4): its pass, reel-scripter again, polarize step 2 a turn later: Step 1, no ask", False,
+         [ups, pre(sf + "reel-scripter"), ups, pre(sf + "polarize", "step: 2")], False, [],
+         {"exit": 2, "err": "Step 1 has not run for this reel", "prov": "passed: 0123456789abcdef\n"}),
+        ("ask (370 M3): a reel in this session", True, first, False, []),
+        ("ask (370 M3): its pass, polarize step 2: ask", False, [ups, pre(sf + "polarize", "step: 2")], False, [],
+         {"exit": 2, "err": "Ask the client", "prov": "passed: 0123456789abcdef\n"}),
+        ("ask (370 M3): the client said new reel: angles call and Read: allowed, ask cleared", False,
+         [ups] + run("angles", "step: 1", legit("angles")), False, ["angles"], {"state": {"asked": None}}),
+        ("ask (370 M3): that reel's pass, standalone polarize a turn later: ask again", False,
+         [ups, pre(sf + "polarize", "standalone: yes\nhot take")], False, [],
+         {"exit": 2, "err": "Ask the client", "prov": "passed: 1111111111111111\n"}),
+        ("ask (370 M3): a newer pass, no new ask, standalone a turn later: ask again (pass changed)", False,
+         [ups, pre(sf + "polarize", "standalone: yes\nhot take")], False, [],
+         {"exit": 2, "err": "Ask the client", "prov": "passed: 2222222222222222\n"}),
+        ("cap (370): 11 chats call reel-scripter: the oldest entry is dropped", True,
+         [pre(sf + "reel-scripter", sid=f"s{i}") for i in range(11)], False, [], {"sid": "s0", "state": {"rs": None}}),
+        ("cap (370): the next oldest is kept and counts its turn", False, [up("s1")], False, [],
+         {"sid": "s1", "state": {"rs": True, "turn": 1}}),
+        ("cap (370): a reel in t, then one-off hook calls in 10 other chats: t's entry is kept", True,
+         first + [call(sf + "hook", "step: 3-hook", f"o{i}") for i in range(10)], False, [], {"state": {"rs": True}}),
     ]
     ok = 0
     with tempfile.TemporaryDirectory() as t:
@@ -944,6 +1003,7 @@ def selftest_hook():
             exp = was + "".join(f"from: {n} {stamp(n, proj)}\n" for n in want)
             pend = proj / "reel-build" / "stamp-pending.json"
             st = json.loads(pend.read_text(encoding="utf-8")) if pend.exists() else {}
+            st = (st.get("sessions") or {}).get(x.get("sid", "t"), {})
             err_ok = not any(errs[:-1]) and (x["err"] in errs[-1] if "err" in x else not errs[-1])
             st_ok = all(st.get(key) == v for key, v in x.get("state", {}).items())
             st_ok = st_ok and not (x.get("empty") and any((proj / "reel-build").iterdir()))
@@ -985,15 +1045,30 @@ def storyboard_hook_selftest():
             elif marker == "r":
                 (t / folder / "reel-build").mkdir(exist_ok=True)
             files[key] = f
+        # SKLLPLG-370: a reel whose skeleton has not passed (fin), one that has (finok), an existing final
+        # script beside an unpassed skeleton with no Text overlays heading (old), a draft, and client notes.
+        sk = "## Beats\n1. Hook [open L1]\n2. CTA [close L1]\n"
+        for folder, ok_ in (("fin", False), ("finok", True)):
+            (t / folder / "scripts").mkdir(parents=True)
+            (t / folder / "reel-build").mkdir()
+            for stem in ("r", "old"):
+                (t / folder / "scripts" / f"{stem}.skeleton.md").write_text(sk, encoding="utf-8")
+            if ok_:
+                (t / folder / "reel-build" / "provenance.md").write_text(f"passed: {fingerprint(sk)}\n", encoding="utf-8")
+        (t / "fin" / "scripts" / "old.md").write_text(bad.replace("## Text overlays\n", ""), encoding="utf-8")
+        (t / "proj" / "scripts" / "notes.md").write_text(bad.replace("## Text overlays\n", ""), encoding="utf-8")
+        files.update(fin=t / "fin" / "scripts" / "r.md", finok=t / "finok" / "scripts" / "r.md",
+                     old=t / "fin" / "scripts" / "old.md", draft=t / "fin" / "scripts" / "r.draft.md",
+                     notes=t / "proj" / "scripts" / "notes.md")
 
-        def pl(tool, key, posix=False):
+        def pl(tool, key, posix=False, event="PostToolUse"):
             f = files[key]
             path = f.as_posix() if posix else str(f).replace("/", "\\")
             edit = {"old_string": "x", "new_string": "x", "replace_all": False}
-            inp = ({"file_path": path, "content": f.read_text(encoding="utf-8")} if tool == "Write" else
+            inp = ({"file_path": path, "content": f.read_text(encoding="utf-8") if f.exists() else good} if tool == "Write" else
                    dict(edit, file_path=path) if tool == "Edit" else {"file_path": path, "edits": [edit]})
             return json.dumps({"session_id": "t", "transcript_path": str(t / "t.jsonl"), "cwd": str(t),
-                               "permission_mode": "default", "hook_event_name": "PostToolUse", "tool_name": tool,
+                               "permission_mode": "default", "hook_event_name": event, "tool_name": tool,
                                "tool_input": inp, "tool_response": {"filePath": path}, "tool_use_id": "toolu_t",
                                "prompt_id": "p", "effort": "medium", "duration_ms": 1})
 
@@ -1011,6 +1086,18 @@ def storyboard_hook_selftest():
             ("bad .md in scripts/, parent has no analysis-data.json or reel-build/: silent", pl("Write", "loose"), 0,
              None),
             ("garbage stdin: silent", "{not json", 0, None),
+            ("370 Pre Write, new final script, skeleton not passed: blocked, routed to the draft",
+             pl("Write", "fin", event="PreToolUse"), 2, "save it as scripts/r.draft.md"),
+            ("370 Pre Write, new final script, skeleton passed: allowed", pl("Write", "finok", event="PreToolUse"), 0,
+             None),
+            ("370 Pre Write of a .draft.md: allowed", pl("Write", "draft", event="PreToolUse"), 0, None),
+            ("370 Pre Edit of a final script: allowed", pl("Edit", "fin", event="PreToolUse"), 0, None),
+            ("370 Pre Write over an existing final script, skeleton not passed: allowed",
+             pl("Write", "old", event="PreToolUse"), 0, None),
+            ("370 Post: final script with a sibling skeleton and no Text overlays heading: checked, exit 2",
+             pl("Write", "old"), 2, "Storyboard check failed for old.md:"),
+            ("370 Post: client notes in scripts/, no skeleton, no Text overlays heading: silent", pl("Write", "notes"),
+             0, None),
         ]
         ok = 0
         for name, stdin, want, phrase in cases:

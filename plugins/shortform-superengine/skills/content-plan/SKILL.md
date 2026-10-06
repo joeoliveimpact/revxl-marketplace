@@ -141,7 +141,7 @@ its URL. Detail and doctrine: `references/sources.md` section 1.
 
 `~/.claude/revxl/<brand>/voc/weekly-content-bank.md` (brand-brain's topical
 seeds, 7-day shelf, nothing else in this plugin consumes them) plus
-`<project>/subject-brief.md` (if present, 0.5.0). In `mode: subject-first` the
+`<project>/subject-brief.md` (if present, a later release). In `mode: subject-first` the
 client's own material outranks a field rewrap. Section 2.
 
 ## Step 3 ... FRESH (paid)
@@ -172,7 +172,7 @@ never automatic. Section 4.
 1. **Balance across the pillars.** No pillar eats the pool; a pillar with zero
    ideas is called out in one line rather than filled with filler.
 2. **Dedupe** against `state.scripts[]`, the prior `content-plan-*.md` pools in
-   `<project>/` and the `Angle:` lines in `<project>/scripts/*.md`. Ideas from
+   `<project>/` and the `Angle:` lines in `<project>/scripts/*.md` (not drafts). Ideas from
    `plan.ideas_unscripted` may carry forward, labelled "carried". Section 7.
 3. **Tag `[avoid-list]`** on any idea riding a hook bucket or theme the brief's
    Avoid list names as a niche loser, so nobody scripts it blind.

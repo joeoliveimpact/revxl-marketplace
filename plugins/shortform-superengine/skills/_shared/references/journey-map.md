@@ -18,8 +18,8 @@ referenced below: `state-schema.md`. Prices behind the credit-gated moves:
 SETUP ......> VOICE ......> FIELD ..........> MAKE .........> READ .........> PULSE
 onboarding    brand-brain   competitor-       content-plan    own-content-    competitor-
               subject-      cross-reference   reel-scripter   analysis        pulse
-              matter        creator-strategy-                 (0.5.0)            |
-              (0.5.0)       harvest                                              |
+              matter        creator-strategy-                 (later)            |
+              (later)       harvest                                              |
                                                                                  v
                                                                           back to MAKE
 
@@ -51,7 +51,7 @@ table. Every phrase belongs to exactly one skill.
 | Skill | Trigger phrases | Prereqs (state) | Produces |
 |---|---|---|---|
 | `brand-brain` | "capture my voice", "build my brand brain", "mine my calls", "set up my voice", "refresh my voice guide", "update my topics", "add these themes to my brand brain", "add this to my brand brain", "schedule my brain refresh" | none | `~/.claude/revxl/<brand>/voc/` (voice guide, themes, weekly content bank). **Writes no state keys** |
-| `subject-matter` | "use my own material", "subject matter", "brain dump on <topic>" | `setup` done | *(0.5.0, not yet installed)* `~/.claude/revxl/<brand>/subject/` + `<project>/subject-brief.md`; `subject.*` |
+| `subject-matter` | "use my own material", "subject matter", "brain dump on <topic>" | `setup` done | *(later release, not yet installed)* `~/.claude/revxl/<brand>/subject/` + `<project>/subject-brief.md`; `subject.*` |
 
 ### FIELD
 | Skill | Trigger phrases | Prereqs (state) | Produces |
@@ -73,7 +73,7 @@ table. Every phrase belongs to exactly one skill.
 ### READ
 | Skill | Trigger phrases | Prereqs (state) | Produces |
 |---|---|---|---|
-| `own-content-analysis` | "read my results", "how is my content doing", "read last week's results" | `setup` done | *(0.5.0, not yet installed)* `<project>/own-read-<date>.md`; `own_read.*` |
+| `own-content-analysis` | "read my results", "how is my content doing", "read last week's results" | `setup` done | *(later release, not yet installed)* `<project>/own-read-<date>.md`; `own_read.*` |
 
 ### PULSE
 | Skill | Trigger phrases | Prereqs (state) | Produces |
@@ -120,7 +120,7 @@ in 0.3.4's `next-moves.md`.
 | E4 | competitor-cross-reference, stopped at checkpoint 2 (thin set) | run more seeds - park and resume (F1) - proceed thin (explicit) |
 | E5 | competitor-cross-reference, stopped at checkpoint 3 (credit decline) | shrink the set - top up and resume (F1) - park (F4) |
 | E6 | reel-scripter, script written | script the next angle (from `angles_unpicked[]`) - content-plan - first cut of the recorded reel (editor-superengine, if installed; Cross-plugin triggers) - weekly pulse [schedule] |
-| E7 | content-plan, an idea picked from the plan | reel-scripter Step 1 with that idea as the angle (the pick carries its source tag and angle) |
+| E7 | content-plan, an idea picked from the plan | reel-scripter Step 1 with that idea as option 1 beside fresh angles (the pick carries its source tag and angle) |
 | E8 | content-plan, plan presented, no pick | saved pointer ("script idea N from my content plan") - weekly refresh via the pulse - lean the plan toward a pillar - script the top idea |
 | E9 | reel-scripter, Step 0a no analysis (field-first) | competitor-cross-reference, as a written block with the reason. This ending's general form across the MAKE skills is F2 |
 | E10 | brand-brain, mine or refresh complete | script the top seed (reel-scripter) - refresh schedule [schedule, if unset] - back to the caller |
@@ -166,7 +166,7 @@ in 0.3.4's `next-moves.md`.
 | SETUP | the `.superengine` marker exists AND the SocialCrawl key resolves | competitor-cross-reference, competitor-pulse, content-plan's FIELD and FRESH sources | E0 -> onboarding |
 | ANALYSIS | `analysis.date` set AND `<project>/analysis-data.json` exists | competitor-pulse, reel-scripter in `field-first`, content-plan's FIELD source | E0 -> competitor-cross-reference (F2) |
 | VOICE | `voc.present` (derived from `~/.claude/revxl/<brand>/voc/`) | an in-voice draft. reel-scripter still runs, labelled "voice confidence: low" | brand-brain (F7) |
-| SUBJECT | `subject.present`, only in `mode: subject-first` | reel-scripter's subject-first angle source | subject-matter, 0.5.0 (F8) |
+| SUBJECT | `subject.present`, only in `mode: subject-first` | reel-scripter's subject-first angle source | subject-matter, later release (F8) |
 | DEEP PLAY | the socialcrawl-superengine marker | field search beyond the endpoints table, creator vetting, share of voice, lead finding | F9 install refusal block |
 
 ## Cross-plugin triggers (external, detect-first, one line when absent)

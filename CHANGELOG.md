@@ -4,6 +4,22 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.74] ... 2026-10-03
+
+### Changed
+- **shortform-superengine v0.5.0** ... the five Legit Content Skills (hook, rehooks,
+viral, angles, polarize) join the plugin, and reel-scripter becomes the conductor that
+calls them step by step and pauses for the client at every checkpoint. Plugin hooks keep
+it honest: a skill counts only when it really runs, Step 1 (angles) always runs, a
+checkpoint is never crossed without the client, the final script's storyboard is checked
+on every save, and an unfinished script is saved as a draft instead of the final file.
+The five skills still work on their own. Hooks start Python through a launcher and stay
+silent on a machine without Python. Also ships the unreleased 0.4.2: the Step 4b
+structure gate, the "cut this reel" handoff to editor-superengine, and the weekly pulse
+fixes (a 7-day floor, full paging, "retry the failed handles"). Behaviour change from
+0.4.2: txt transcripts now count toward coverage, so hook and theme tables shift on
+projects that have them.
+
 ## [0.1.73] ... 2026-10-02
 
 ### Added

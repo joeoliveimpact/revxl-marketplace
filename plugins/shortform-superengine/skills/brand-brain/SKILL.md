@@ -39,7 +39,7 @@ a finished brain with nowhere to go. Ids are rows in
 
 **Next moves ... a mine or a refresh completed**
 (E10)
-1. Script a reel off the freshest topical seed ... I hand the seed text straight to reel-scripter as the angle, not a file path. Say: "script the top seed"
+1. Script a reel off the freshest topical seed ... I hand the seed text straight to reel-scripter as Step 1's option 1, not a file path. Say: "script the top seed"
 2. *If no refresh cadence is set:* keep the brain fresh on a schedule (Friday night, Monday morning, a time you pick ... always asked, never silent). Say: "schedule my brain refresh"
 3. Back to what you were doing. The consuming engine picks the fresh brain up on its own.
 
@@ -118,4 +118,4 @@ Offer refreshes at most ONCE per session — never nag on back-to-back builds.
 
 ## Shortform tie-in
 
-reel-scripter reads `voice-guide.md` (registers `written-content` / `spoken-video`) plus `voc-profile.md` and `business-config.md`. `weekly-content-bank.md` is read by `content-plan` as its own-material source ... after a mine or refresh, offer to script a reel off the freshest topical seed by handing the seed text to reel-scripter inline (as the angle input), not by pointing at the file.
+reel-scripter reads `voice-guide.md` (registers `written-content` / `spoken-video`) plus `voc-profile.md` and `business-config.md`. `weekly-content-bank.md` is read by `content-plan` as its own-material source ... after a mine or refresh, offer to script a reel off the freshest topical seed by handing the seed text to reel-scripter inline (as Step 1's option 1), not by pointing at the file.

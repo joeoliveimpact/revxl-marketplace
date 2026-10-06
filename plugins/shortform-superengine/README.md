@@ -89,7 +89,7 @@ likely first, each carrying the exact phrase to say next. The edges live in
 **"what's next in shortform"** at any time for the same block on demand. The four
 exits the journey aims at are a scripted reel, a competitor analysis and roadmap,
 a weekly content plan, and a read on your own results (through the pulse until
-the dedicated read ships in 0.5.0). `scripts/check_routing.py` runs in CI and
+the dedicated read ships in a later release). `scripts/check_routing.py` runs in CI and
 fails the build when a block goes missing, sits past the point a long file gets
 truncated, or leaves a registry edge that no block cites. A phrase that leads
 nowhere is a warning, not a failure.

@@ -2,7 +2,7 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [0.5.0] ... 2026-10-03
 
 ### Added
 - **Five Legit Content Skills: hook, rehooks, viral, angles and polarize.** Each
@@ -105,7 +105,38 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   as no call; a step token's trailing period is ignored. The walk's simulated client approves
   the skeleton only when asked a question.
 
-## [0.4.2] ... 2026-09-11
+### Fixed
+- **Hooks start Python through a launcher** (SKLLPLG-370). The new hooks called bare
+  `python`, which fails on a Mac with only `python3` and hits the Store stub on a Windows
+  machine without Python. `hooks/run-py.sh` tries `py -3`, then every `python3` and `python` on PATH, and uses
+  the first one that really runs Python 3, so the Store stub, a `py` with no Python 3 and a
+  Python 2 are skipped
+  and a working Store Python is used. On a Mac it skips `/usr/bin/python3` unless the
+  command line tools are installed (no install dialog). No working Python: it exits 0
+  silently, so every hook fails open. `tests/shortform/run-py-test.sh` checks it.
+- **The five skills work on their own again** (SKLLPLG-370). The order rules now apply only
+  in a session that called reel-scripter, so "write me a hook" or a hot take in any other
+  chat is never pulled into the reel pipeline, and cannot switch off a reel in progress in
+  another chat: each chat keeps its own order state, so a fix call in a new chat still
+  stamps. After a finished reel, a Step 2 call (a hot take, rehooks) is held until
+  Claude asks the client whether it is a new reel or a one-off (Joe, 10.03); a one-off then
+  runs on its own and ends the order rules for that chat.
+- **An unfinished script is saved as a draft, not as the final script** (SKLLPLG-370). A
+  Write that would create `scripts/<slug>.md` while that reel's skeleton has no `passed:`
+  line is blocked and routed to `<slug>.draft.md`, with a plain-words note of what the client
+  still has to give. Existing final scripts stay editable. The storyboard check skips client
+  notes in `scripts/` (no skeleton and no `## Text overlays` heading).
+- **Checkpoint wording** (Joe's rulings, 10.02). "Just pick for me" covers the current
+  checkpoint only: Claude picks, says which and why, and the client can change it. A
+  copy-only edit at Checkpoint 4 keeps the gate's pass; only a skeleton change (a beat
+  added, cut, moved, relabelled or re-tagged) re-runs the skills. Four "as the angle" leftovers now say the idea is Step 1's option 1.
+  The paths in four reel-scripter commands (SKILL.md and pipeline-detail.md) are quoted for
+  folders with spaces. The hook nudge fires
+  on "opening line" only when a reel or video is named.
+- **Version notes.** subject-matter and own-content-analysis (SKLLPLG-301) ship in a later
+  release, not 0.5.0; the lines that promised them for 0.5.0 now say so.
+
+## [0.4.2] ... 2026-09-11 (never released on its own; ships in 0.5.0)
 
 ### Added
 - **A structure gate at reel-scripter Step 4b.** Checkpoint 2 now writes the

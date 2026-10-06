@@ -1,5 +1,5 @@
 {
-  "description": "shortform-superengine hooks. (1) UserPromptSubmit: when the prompt contains one of the skills' trigger phrases, inject one line naming the skill to invoke instead of doing the work by hand. (2) PreToolUse on Bash: SocialCrawl credit guard, cost-gates paid API calls before they spend and hard-blocks the banned transcript endpoints. (3) PostToolUse on Skill and Read: a Skill call of angles, rehooks, hook, polarize or viral opens a slot for that session; a later Read of that skill's method file (references/legit-<name>.md, or rehooks' step3-lines.md in Step-3 mode) in the same session appends the stamp to <project>/reel-build/provenance.md for reel-scripter's gate. (4) PostToolUse on Write, Edit and MultiEdit: when reel-scripter's final script <project>/scripts/<slug>.md (never *.skeleton.md) is written, check its storyboard table and, on a problem, exit 2 with the problems on stderr so the model fixes the file. (5) hooks/goldmine-answer.py on UserPromptSubmit, PostToolUse AskUserQuestion and PreToolUse Write|Edit|MultiEdit|Bash|PowerShell: when the user replies to a message holding the Goldmine question word for word, append goldmine-asked: <stamp> to <project>/reel-build/provenance.md and tell the model to record the answer; block a goldmine: asked- write before that line exists, and any goldmine-asked: write. (6) hooks/stamp-on-skill.py on UserPromptSubmit, PostToolUse AskUserQuestion and PreToolUse Skill: counts user turns (a prompt or an AskUserQuestion answer, only for the session whose reel state is on file; it never creates or resets that state), and blocks (exit 2) a shortform sub-skill call at Step 2 or later with no valid angles stamp in provenance.md, or one that moves to a higher step in the same user turn as the last call at the highest step (a checkpoint crossed without the user). After a gate pass (a passed: line, no angles stamp) a call at Step 3 or later is a fix call and passes in any session, and a Step 2 call is a new reel that needs a fresh angles stamp; so a new reel that skips Step 2 and goes straight to hook after a pass is treated as a fix call. All fail-open (any error -> allow / silent).",
+  "description": "shortform-superengine hooks. (1) UserPromptSubmit: when the prompt contains one of the skills' trigger phrases, inject one line naming the skill to invoke instead of doing the work by hand. (2) PreToolUse on Bash: SocialCrawl credit guard, cost-gates paid API calls before they spend and hard-blocks the banned transcript endpoints. (3) PostToolUse on Skill and Read: a Skill call of angles, rehooks, hook, polarize or viral opens a slot for that session; a later Read of that skill's method file (references/legit-<name>.md, or rehooks' step3-lines.md in Step-3 mode) in the same session appends the stamp to <project>/reel-build/provenance.md for reel-scripter's gate. (4) hooks/storyboard-on-write.py. PreToolUse on Write: block creating reel-scripter's final script <project>/scripts/<slug>.md while <slug>.skeleton.md has no passed: line in provenance.md (route it to <slug>.draft.md). PostToolUse on Write, Edit and MultiEdit: when that final script (never *.skeleton.md or *.draft.md; it has a sibling skeleton or a ## Text overlays heading) is written, check its storyboard table and, on a problem, exit 2 with the problems on stderr so the model fixes the file. (5) hooks/goldmine-answer.py on UserPromptSubmit, PostToolUse AskUserQuestion and PreToolUse Write|Edit|MultiEdit|Bash|PowerShell: when the user replies to a message holding the Goldmine question word for word, append goldmine-asked: <stamp> to <project>/reel-build/provenance.md and tell the model to record the answer; block a goldmine: asked- write before that line exists, and any goldmine-asked: write. (6) hooks/stamp-on-skill.py on UserPromptSubmit, PostToolUse AskUserQuestion and PreToolUse Skill: counts user turns (a prompt or an AskUserQuestion answer) in that chat's own entry of the reel state file (one entry per chat), only when it has one (it never creates an entry), and blocks (exit 2) a shortform sub-skill call at Step 2 or later with no valid angles stamp in provenance.md, or one that moves to a higher step in the same user turn as the last call at the highest step (a checkpoint crossed without the user); both rules apply only in a session that called reel-scripter, so a sub-skill called on its own in any other session is never blocked; after a finished reel, a Step 2 call is held until the client says whether it is a new reel or a one-off. After a gate pass (a passed: line, no angles stamp) a call at Step 3 or later is a fix call and passes in any session, and a Step 2 call is a new reel that needs a fresh angles stamp; so a new reel that skips Step 2 and goes straight to hook after a pass is treated as a fix call. Python hooks start through hooks/run-py.sh (py -3, then every python3 and python on PATH; the first that runs Python 3 wins; no working Python -> silent). All fail-open (any error -> allow / silent).",
   "hooks": {
     "UserPromptSubmit": [
       {
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/goldmine-answer.py\"",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/run-py.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/goldmine-answer.py\"",
             "timeout": 10
           }
         ]
@@ -27,7 +27,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/stamp-on-skill.py\"",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/run-py.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/stamp-on-skill.py\"",
             "timeout": 10
           }
         ]
@@ -49,7 +49,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/goldmine-answer.py\"",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/run-py.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/goldmine-answer.py\"",
             "timeout": 10
           }
         ]
@@ -59,7 +59,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/stamp-on-skill.py\"",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/run-py.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/stamp-on-skill.py\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/run-py.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/storyboard-on-write.py\"",
             "timeout": 10
           }
         ]
@@ -71,7 +81,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/stamp-on-skill.py\"",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/run-py.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/stamp-on-skill.py\"",
             "timeout": 10
           }
         ]
@@ -81,7 +91,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/storyboard-on-write.py\"",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/run-py.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/storyboard-on-write.py\"",
             "timeout": 10
           }
         ]
@@ -91,12 +101,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/goldmine-answer.py\"",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/run-py.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/goldmine-answer.py\"",
             "timeout": 10
           },
           {
             "type": "command",
-            "command": "python \"${CLAUDE_PLUGIN_ROOT}/hooks/stamp-on-skill.py\"",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/run-py.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/stamp-on-skill.py\"",
             "timeout": 10
           }
         ]

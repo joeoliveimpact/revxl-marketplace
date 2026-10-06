@@ -68,7 +68,7 @@ The field read comes first.
 
 **Next moves ... subject-first requested**
 (F8) `mode` is subject-first and no subject material is on disk.
-1. subject-matter ships in 0.5.0; until then field-first. Every claim here traces to `analysis-data.json`, and the brief that satisfies that guardrail is what 0.5.0 adds. Say: "use my own material" (if installed)
+1. subject-matter ships in a later release; until then field-first. Every claim here traces to `analysis-data.json`, and the brief that satisfies that guardrail is what that release adds. Say: "use my own material" (if installed)
 2. Bring the topic inside field-first: Step 1's vet adapts the framing, never vetoes it. Say: "write a reel script"
 3. No analysis yet? That is the real blocker. Say: "analyze my Instagram against my competitors"
 
@@ -113,7 +113,7 @@ E9 above and stop.
 **0b. Run the brief.**
 
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/skills/reel-scripter/scripting_brief.py <project_dir>
+python "${CLAUDE_PLUGIN_ROOT}/skills/reel-scripter/scripting_brief.py" "<project_dir>"
 ```
 
 This writes `<project_dir>/scripting-brief.md` and `scripting-brief.json`. Read the `.md`: your menu of proven moves, and its
@@ -160,7 +160,7 @@ opened: <date>}` to `open_loops` at once, so an abandoned reel reaches the compa
 
 ### Step 1 — Pick the move
 
-**Dedupe before proposing.** Read `state.scripts[]` AND `<project>/scripts/*.md` (skip `*.skeleton.md`); every
+**Dedupe before proposing.** Read `state.scripts[]` AND `<project>/scripts/*.md` (skip `*.skeleton.md`, `*.draft.md`); every
 approved reel there carries an `Angle: <theme> × <hook type>` line (Step 5 writes it). State
 is the fast path, the files are the truth when they disagree. Exclude used `(theme, hook)`
 pairs unless nothing else remains; a deliberate repeat says so: "you scripted this pairing
@@ -176,7 +176,7 @@ winning hook type × the gap it closes}, evidence cited (`@handle · metric · r
 angle is field-backed; a user-supplied idea is not. Vet it before committing beats:
 
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/skills/reel-scripter/field_vet.py <project_dir> <keyword> [keyword2 ...]
+python "${CLAUDE_PLUGIN_ROOT}/skills/reel-scripter/field_vet.py" "<project_dir>" <keyword> [keyword2 ...]
 ```
 
 **The idea is never vetoed, only the framing adapts.** Keywords, report and verdict
@@ -284,7 +284,7 @@ assembled wording against the brief's §8 Avoid list and the losing tables (deta
 **4b. Loop integrity (mandatory, before the flow read).** Run the gate on the skeleton file:
 
 ```bash
-python "${CLAUDE_PLUGIN_ROOT}/skills/reel-scripter/structure_gate.py" <project>/scripts/<slug>.skeleton.md
+python "${CLAUDE_PLUGIN_ROOT}/skills/reel-scripter/structure_gate.py" "<project>/scripts/<slug>.skeleton.md"
 ```
 
 Exit 1 fails the step: apply its fix hints (a beat added, cut or moved is the user's call),

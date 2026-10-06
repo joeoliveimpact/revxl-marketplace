@@ -28,7 +28,9 @@ The three layers `reel-scripter` stands on (`SKILL.md`, Overview):
 ## Definition of done
 
 It is a **guided, checkpointed** pipeline ... you pause for a human decision at each ✋ before
-spending the next move. One run = one finished reel script written to `<project>/scripts/<slug>.md`.
+spending the next move. If the client asks you to choose ("just pick for me"), pick for that checkpoint only:
+say which option and why, and that they can change it, then pause again at the next ✋. One run = one finished
+reel script written to `<project>/scripts/<slug>.md`.
 
 > **Definition of done:** a reel script the client could film today ... hook that earns the
 > first 3 seconds, a body built on a structure the niche has proven, a CTA matched to the
@@ -110,7 +112,7 @@ contrarian angle is proposed as it stands; `polarize` runs at Step 2, for its Ot
 run once (again only after a FAIL):
 
 ```bash
-python "${CLAUDE_PLUGIN_ROOT}/skills/reel-scripter/structure_gate.py" --angles <that file>
+python "${CLAUDE_PLUGIN_ROOT}/skills/reel-scripter/structure_gate.py" --angles "<that file>"
 ```
 
 ## Step 1 field vet ... the report and the verdict branches
@@ -293,7 +295,8 @@ only lines you write to that file are `goldmine:` lines, written by the hook ski
 `from:` line in the skeleton or the angles file fails the gate. The gate reads the stamps there and
 clears them on a pass. After a pass the file holds one `passed:` line for that skeleton, so a
 re-run on the same skeleton passes, and the next reel needs its own calls and its own stamps.
-A skeleton changed after it passed needs fresh stamps too. Run the `--angles` check once,
+A copy-only edit at Checkpoint 4 leaves the skeleton as it is, so its pass holds and nothing re-runs; a
+structural change (a beat added, cut, moved, relabelled or re-tagged) changes the skeleton, which then needs fresh stamps too. Run the `--angles` check once,
 before Checkpoint 1: on a pass it trims the file to the angles line.
 
 **`rehooks` writes the fix for each dead seam.** For every dead seam the gate or the walk

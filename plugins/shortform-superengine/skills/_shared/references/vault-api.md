@@ -38,7 +38,7 @@ budget for that step. Never loop over concepts, competitors or hits.
 A reel costs **two named steps**: `reel-scripter` Step 0d (the angle and its
 doctrine, before the draft) and Step 3 (the hook). Other named trigger points:
 `content-plan` before the pool is written, `competitor-cross-reference` at the
-roadmap, `own-content-analysis` at the read (0.5.0). One step, one call.
+roadmap, `own-content-analysis` at the read (a later release). One step, one call.
 
 ## Cache
 

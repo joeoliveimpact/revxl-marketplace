@@ -136,7 +136,7 @@ Where each goal goes once setup is done, so move 1 can name it:
 |---|---|
 | make-a-reel | no marker: onboarding. Marker but no `analysis` in `field-first`: competitor-cross-reference (F2). Otherwise reel-scripter |
 | plan-the-week | no marker: onboarding. No source at all (`analysis`, `voc.present`, `subject.present` all empty): brand-brain, or competitor-cross-reference if they would rather start from the field. Otherwise content-plan |
-| read-my-results | no marker: onboarding, then own-content-analysis "(if installed)". Until 0.5.0 ships it, say so in one line and offer competitor-pulse, which reads the field rather than their own account |
+| read-my-results | no marker: onboarding, then own-content-analysis "(if installed)". Until it ships, say so in one line and offer competitor-pulse, which reads the field rather than their own account |
 | read-the-field | no marker: onboarding, then no `analysis`: competitor-cross-reference. `analysis` set: competitor-pulse |
 | set-up | onboarding |
 
@@ -175,7 +175,7 @@ is F3, stated once and then carried, never repeated per move.
 Never written here: `analysis.*`, `voc.*`, `subject.*`, `scripts[]`,
 `angles_unpicked[]`, `plan.*`, `own_read.*`, and `pulse.*` or `setup.*` after
 the migration created them. `mode` stays at the template's `field-first` unless
-the client explicitly asks for subject-first, which is a 0.5.0 path.
+the client explicitly asks for subject-first, which is a later-release path.
 
 ## Rules
 

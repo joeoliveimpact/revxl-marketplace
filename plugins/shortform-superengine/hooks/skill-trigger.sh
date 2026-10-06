@@ -27,7 +27,7 @@ SOCIALCRAWL='socialcrawl|social crawl|social media api|check my socialcrawl bala
 # REEL_SCRIPTER so "punch this up" and "hot take" reach them even when the prompt
 # also says "reel script"; HOOK, REHOOKS and ANGLES come after it, so a full
 # scripting ask still wins.
-HOOK='write me a hook|opening line|first 3 seconds of my reel'
+HOOK='write me a hook|opening line[^.?!]{0,20}(reel|video)|(reel|video)[^.?!]{0,30}opening line|first 3 seconds of my reel'
 REHOOKS='add re-?hooks|keep them watching'
 VIRAL='make this more viral|punch this up|more shareable'
 ANGLES='angles on this topic|ways to cover this'

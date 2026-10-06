@@ -27,7 +27,7 @@ beside it, registry id in parentheses.
 
 **Next moves**
 (E14)
-1. Script this week's winner, the top reel in `analysis-data.json` `period_breakouts` as the angle. Say: "script that reel"
+1. Script this week's winner, the top reel in `analysis-data.json` `period_breakouts` as option 1. Say: "script that reel"
 2. Open the refreshed pack, the This-week panel is live. Say: "open my visuals"
 3. Roster upkeep: someone quiet, or someone missing? Say: "swap a competitor"
 4. *If `pulse.scheduled` is false:* have this land on your desk weekly, on your day. Say: "make the pulse weekly"

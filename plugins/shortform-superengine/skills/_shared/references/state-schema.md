@@ -18,7 +18,7 @@ never deleted, never "cleaned up."
 | `~/.claude/shortform-superengine/state/<brand>.json` | THIS schema, the per-brand journey state |
 | `<project>/` | The client's project directory: `analysis-data.json`, the roadmap, `visuals/`, `scripts/`, `content-plan-<week>.md`, `brain-pulls/`, `history/`. `project_path` in state points at it |
 | `~/.claude/revxl/<brand>/voc/` | brand-brain's output. **Read-only from this plugin's point of view**: `voc.present` is derived from it |
-| `~/.claude/revxl/<brand>/subject/` | subject-matter's output (0.5.0). `subject.present` is derived the same way |
+| `~/.claude/revxl/<brand>/subject/` | subject-matter's output (later release). `subject.present` is derived the same way |
 | `~/.claude/socialcrawl-superengine/.superengine` | Read-only probe: is socialcrawl-superengine installed (gate DEEP PLAY, edge F9)? Never written by this plugin |
 | `~/.claude/revxl/teach-level` | The family teach dial. Authority for voice level, not state (`teach-mode.md`) |
 
@@ -71,7 +71,7 @@ files, fully isolated.
     "refreshed_at": null            // DERIVED: the newest mtime under that directory, formatted YYYY-MM-DD, local date; older than 7 days = stale (F7)
   },
 
-  // ---- SUBJECT (owner: subject-matter) ---- 0.5.0, present but unwritten until then
+  // ---- SUBJECT (owner: subject-matter) ---- later release, present but unwritten until then
   "subject": {
     "present": false,               // DERIVED from ~/.claude/revxl/<brand>/subject/ the same way voc.present is
     "n_notes": null,
@@ -92,7 +92,7 @@ files, fully isolated.
     "ideas_unscripted": []          // ["<idea id or slug>"] ... dedupe source for the next pool, drained as scripts[] grows
   },
 
-  // ---- READ (owner: own-content-analysis) ---- 0.5.0, present but unwritten until then
+  // ---- READ (owner: own-content-analysis) ---- later release, present but unwritten until then
   "own_read": {
     "last_run": null,
     "path": null                    // <project>/own-read-<date>.md
@@ -160,10 +160,10 @@ One writer per key. A skill not named here does not write that key.
 | `project_path` | onboarding seeds it, competitor-cross-reference confirms or corrects it. shortform-start (first run, migration) and competitor-pulse (its marker fallback) may SEED project_path from the marker's `competitor_pulse.project` when either CREATES the file, and neither overwrites it afterwards |
 | `analysis.*` (incl. `analysis.resume`) | competitor-cross-reference only. shortform-start (the E18 migration) and competitor-pulse (its marker fallback) may SEED analysis.* at file creation, from an `analysis-data.json` already on disk, and neither overwrites it afterwards |
 | `voc.present`, `voc.refreshed_at` | **nobody.** Derived on read from `~/.claude/revxl/<brand>/voc/`. brand-brain writes NOTHING in this file |
-| `subject.*` | subject-matter (0.5.0); `present` derived on read the same way `voc.present` is |
+| `subject.*` | subject-matter (later release); `present` derived on read the same way `voc.present` is |
 | `scripts[]`, `angles_unpicked[]` | reel-scripter only |
 | `plan.*` | content-plan only (NOT reel-scripter: the topic-pool mode moved out at 0.4.0) |
-| `own_read.*` | own-content-analysis (0.5.0) |
+| `own_read.*` | own-content-analysis (later release) |
 | `pulse.*` | competitor-pulse only. shortform-start may SEED pulse.* from the marker's `competitor_pulse` block when it creates the file (first run, migration) and never overwrites it afterwards |
 | `teach_level` | every skill (mirror of `~/.claude/revxl/teach-level` at last read; the file is authority) |
 | `completed_skills`, `open_loops`, `declined_offers`, `updated_at` | every skill |
@@ -210,5 +210,5 @@ its own entry and its own single offer.
 `schema_version` follows additive-minor: 1.x changes may ADD optional keys only.
 Removing or renaming a key = 2.0 plus a migration note in this file. Skills
 tolerate missing optional keys (treat as null) and never crash on an older file.
-`subject` and `own_read` are declared here at 1.0 and stay null until 0.5.0
+`subject` and `own_read` are declared here at 1.0 and stay null until a later release
 installs their writers.

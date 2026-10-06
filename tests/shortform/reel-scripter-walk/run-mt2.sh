@@ -25,7 +25,7 @@ MSG="$(PYTHONIOENCODING=utf-8 py -3.12 "$D/respond.py" "$ANSF" --open)" || { ech
 mkdir -p "$L"
 ls "$L/$N"-t*.jsonl >/dev/null 2>&1 && { echo "refuse: $N exists"; exit 2; }
 # One line per finished script: "<name> <sha256 of its content>", so a changed file is a new line.
-finished() { for f in "$P/scripts/"*.md; do [ -f "$f" ] || continue; case "${f##*/}" in *skeleton*|*.draft.md) continue;; esac; echo "${f##*/} $(sha256sum < "$f" | cut -d' ' -f1)"; done | sort; }
+finished() { for f in "$P/scripts/"*.md; do [ -f "$f" ] || continue; case "${f##*/}" in *skeleton*|*.draft.md) continue;; esac; grep -q INCOMPLETE "$f" && continue; echo "${f##*/} $(sha256sum < "$f" | cut -d' ' -f1)"; done | sort; }
 START=""; [ -n "$RUN2" ] && START="$(finished)"
 unset MSYS_NO_PATHCONV MSYS2_ARG_CONV_EXCL
 TF="${RS_WALK_TOKEN:-$HOME/.config/rs-walk/walk-token}"
