@@ -49,6 +49,10 @@ TAIL = re.compile(r"\s+2>&1\s*$")
 SPEND = ("Blocked by the higgsfield-superengine spend guard: ")
 PLAIN = ('run hf_rest.py as ONE plain command from the workspace folder: python "<plugin>/scripts/hf_rest.py" '
          "<command> <args> (no cd, &&, ;, pipes, redirects, variables, python -c/-m, or importing it).")
+CAP_RE = re.compile(r"session-cap\W+set\b", re.I)  # setting a cap; a mere mention (other projects' css, grep) passes
+BAND = ("only the Higgsfield band (the client's own buttons above the prompt) sets the session spending "
+        "cap. Ask the client to pick it there; never set it from a command.")
+RUNNERS = re.compile(r"(?i)(bash|sh|zsh|source|\.|pwsh|powershell)(\.exe)?")
 
 
 def out(kind, reason, event="PreToolUse"):
@@ -89,7 +93,9 @@ def files(ti, cwd=None):
                     "(~/.config/higgsfield-superengine: the ledger) are written only by the plugin's scripts. "
                     "Do not create, edit, move or delete them.")
     text = "\n".join(v for v in (ti.get("content"), ti.get("new_string")) if isinstance(v, str))
-    if not fp.lower().endswith(".md") and ("hf_rest" in text or "session-cap" in text or
+    if not fp.lower().endswith(".md") and CAP_RE.search(text):
+        return deny(BAND)
+    if not fp.lower().endswith(".md") and ("hf_rest" in text or
                                            (LEDGER_IMPORT.search(text) and "higgsfield" in text.lower())):
         return deny("a file (other than .md) that mentions hf_rest, or imports the plugin's ledger, cannot be "
                     "written: code that wraps them would skip the spend gate. " + PLAIN)
@@ -161,30 +167,56 @@ def plain(cmd, ps):
 SCRIPT_MAX = 4 * 1024 * 1024
 
 
+def read_script(name, cwd):
+    """Lower-cased text of a script file a command runs (relative to the event cwd); '' if unreadable or one of
+    this plugin's own scripts."""
+    try:
+        f = Path(os.path.expanduser(name))
+        f = (f if f.is_absolute() else Path(cwd if isinstance(cwd, str) and cwd else ".") / f).resolve()
+        if f.parent in (SCRIPTS.resolve(), HERE.resolve()):
+            return ""  # the plugin's own scripts
+        with open(f, "rb") as h:
+            return h.read(SCRIPT_MAX).decode("utf-8", "replace").lower()
+    except (OSError, ValueError, RuntimeError):
+        return ""
+
+
+def run_files(cmd, ps):
+    """Script files a command runs: python <file> (a plain command), bash|sh|zsh <file>, source|. <file>,
+    pwsh|powershell [-File] <file>, & <file>, ./<file>, .\\<file>."""
+    p = plain(cmd, ps)
+    found = [p[0]] if p else []
+    parts = re.split("(" + SEG_RE.pattern + ")", cmd)  # segments at even indexes, the separators between them
+    for i in range(0, len(parts), 2):
+        words = [w.strip("'\"") for w in re.findall(r"\"[^\"]*\"|'[^']*'|\S+", parts[i])]
+        while words and (words[0].lower() in LAUNCH or re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=\S*", words[0])):
+            words = words[1:]
+        if not words:
+            continue
+        f = None
+        if RUNNERS.fullmatch(re.split(r"[\\/]", words[0])[-1]):
+            rest, low = words[1:], [w.lower() for w in words[1:]]
+            rest = [w for w in (rest[low.index("-file") + 1:] if "-file" in low else rest) if not w.startswith("-")]
+            f = rest[0] if rest else None
+        elif parts[i - 1:i] == ["&"] or words[0].startswith(("./", ".\\")):
+            f = words[0]
+        if f:
+            found.append(f.replace("\\", "/") if os.sep == "/" else f)
+    return found
+
+
 def wraps_guard(cmd, ps, cwd):
     """`python <file>` where the file (any extension, outside this plugin) mentions the submit script, the guard or
     its files: it could feed the hook a made-up event or race a stamp (Codex review 10.01.26: `python attack.md`)."""
     p = plain(cmd, ps)
-    if not p:
-        return False
-    try:
-        f = Path(os.path.expanduser(p[0]))
-        f = (f if f.is_absolute() else Path(cwd if isinstance(cwd, str) and cwd else ".") / f).resolve()
-        if f.parent in (SCRIPTS.resolve(), HERE.resolve()):
-            return False  # the plugin's own scripts
-        with open(f, "rb") as h:
-            text = h.read(SCRIPT_MAX).decode("utf-8", "replace").lower()
-    except (OSError, ValueError, RuntimeError):
-        return False
+    text = read_script(p[0], cwd) if p else ""
     return any(m in text for m in ("hf_rest", "hf_guard", "spend-guard")) or \
-        bool(LEDGER_IMPORT.search(text) and "higgsfield" in text) or bool(CONFIG_DIR.search(text)) or \
-        bool(re.search(r"session-cap", text, re.I))
+        bool(LEDGER_IMPORT.search(text) and "higgsfield" in text) or bool(CONFIG_DIR.search(text))
 
 
 def shell(cmd, ps, cwd, mode, ev=None):
-    if re.search(r"session-cap", cmd, re.I):
-        return deny("only the Higgsfield band (the client's own buttons above the prompt) sets the session spending "
-                    "cap. Ask the client to pick it there; never set it from a command.")
+    if CAP_RE.search(cmd) or any(CAP_RE.search(read_script(f, cwd)) for f in run_files(cmd, ps)):
+        return deny(BAND)  # the command, or a script it runs (any extension), sets a cap
     if wraps_guard(cmd, ps, cwd):
         return deny("that script mentions the plugin's submit script, guard or ledger; scripts may not wrap them. "
                     + PLAIN)
@@ -715,11 +747,26 @@ def selftest():
               bash("python bump.py")[1] == "deny")
         for name in ("bump.ps1", "bump.sh"):
             c, d, r = run(ev("Write", {"file_path": str(ws / name), "content": "python ledger.py session-cap set x 999"}))
-            check(f"GS5 writing {name} that runs session-cap -> deny (a .ps1/.sh run is not parsed: caught at write)",
-                  d == "deny", f"{d} {r}")
+            check(f"GS5 writing {name} that runs session-cap -> deny with the band message (caught at write; "
+                  "running one is caught too, GS7)", d == "deny" and "only the Higgsfield band" in r, f"{d} {r}")
         (ws / "bump.py").write_text("import json,os\np=os.path.expanduser('~/.config/higgsfield-superengine/ledger.json')",
                                     encoding="utf-8")
         check("GS5 a script that names the per-user ledger folder -> deny", bash("python bump.py")[1] == "deny")
+        c, d, r = bash("grep -r session-cap src/")
+        c2, d2, r2 = run(ev("Write", {"file_path": str(ws / "notes.css"), "content": ".session-cap{}"}))
+        check("GS6 a mere mention passes: Bash `grep -r session-cap src/`, a Write of notes.css with `.session-cap{}`",
+              d is None and c == 0 and d2 is None and c2 == 0, f"{d} {r} | {d2} {r2}")
+        for name in ("bump.md", "bump.sh", "bump.ps1"):
+            (ws / name).write_text("python ledger.py session-cap set x 999", encoding="utf-8")
+        (ws / "ok.sh").write_text("echo hi", encoding="utf-8")
+        for tool, cmd in (("Bash", "bash bump.md"), ("Bash", "sh bump.sh"), ("PowerShell", "& .\\bump.ps1"),
+                          ("Bash", "source bump.sh"), ("Bash", ". ./bump.sh"), ("Bash", "./bump.sh"),
+                          ("PowerShell", "pwsh -File bump.ps1"), ("PowerShell", ".\\bump.ps1")):
+            c, d, r = run(ev(tool, {"command": cmd}))
+            check(f"GS7 {tool} `{cmd}` (the script it runs sets a cap) -> deny with the band message",
+                  d == "deny" and "only the Higgsfield band" in r, f"{d} {r}")
+        c, d, r = bash("bash ok.sh")
+        check("GS7 `bash ok.sh` (echo hi) -> untouched", d is None and c == 0, f"{c} {d} {r}")
 
         # --- deny list ------------------------------------------------------------------------------------------
         denies = [

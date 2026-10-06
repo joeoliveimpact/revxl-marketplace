@@ -10,7 +10,7 @@ test('E1: a Bash submit with no picked cap asks once; $10 sets this chat cap and
   on('session.id', async () => ({ value: 'sid-e1' }))
   on('fs.read', async ($, e) => {
     // the engine hands Windows paths over with backslashes
-    if (e.path.replace(/\\/g, '/') === 'C:/ws/higgsfield/.python') return { value: 'py\n' }
+    if (e.path.replace(/\\/g, '/') === 'C:/ws/higgsfield/.python') return { value: 'C:/Py312/python.exe\n' }
     throw new Error('ENOENT: ' + e.path)
   })
   on('process.run', async ($, e) => {
@@ -34,7 +34,7 @@ test('E1: a Bash submit with no picked cap asks once; $10 sets this chat cap and
   const r = await $.tool.call({ tool: 'Bash', command: 'py "C:/p/scripts/hf_rest.py" submit z-image/turbo body.json' })
 
   expect(asked).toBe(1)
-  expect(runs.some(a => a.endsWith('/scripts/ledger.py session-cap set sid-e1 10'))).toBe(true)
+  expect(runs.some(a => a.endsWith('/scripts/ledger.py session-cap set sid-e1 10.00'))).toBe(true)
   expect(reached).toBe(true)
   expect(r.deny).toBeUndefined()
 })

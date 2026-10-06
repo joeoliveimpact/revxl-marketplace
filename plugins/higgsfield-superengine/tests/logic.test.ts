@@ -1,5 +1,6 @@
 import { test, expect } from 'claude-code/testing'
-import { SUBMIT_RE, capFromAnswer, meterColor, dotGroup, parseJson, modelOf, kindOf, jobsFromLog, hhmm, submitStep } from '../hooks/mod/logic'
+import { SUBMIT_RE, USE_RE, capFromAnswer, meterColor, ratioOf, esc, pythonOk, logDays, dotGroup, parseJson, modelOf, kindOf,
+  jobsFromLog, hhmm, submitStep } from '../hooks/mod/logic'
 
 test('cap box answers: buttons, typed amounts, and anything else is Not now', () => {
   expect(capFromAnswer('$5')).toBe(5)
@@ -58,6 +59,53 @@ test('jobs: ledger entries joined with the log, newest first, statuses mapped', 
   expect(jobs.map(j => j.status)).toEqual(['running', 'done'])
   expect(jobs[1]).toEqual({ time: 100, model: 'Flare', kind: 'image', cost: 0.02, status: 'done',
                              files: ['higgsfield\\2026-10-06\\r1.png'] })
+})
+
+test('USE_RE: estimate/submit/wait show the band; check/models/setup do not', () => {
+  for (const c of ['estimate', 'submit', 'wait']) expect(USE_RE.test(`python "C:/p/scripts/hf_rest.py" ${c} x`)).toBe(true)
+  for (const c of ['check', 'models', 'setup']) expect(USE_RE.test(`python "C:/p/scripts/hf_rest.py" ${c}`)).toBe(false)
+})
+
+test('jobs: the same request run twice gets each run\'s own files (first entry <-> first submit)', () => {
+  const log = [
+    JSON.stringify({ event: 'submit', endpoint: 'marketing-studio/image/flare', estimate_key: 'k1', request_id: 'r1' }),
+    JSON.stringify({ event: 'download', request_id: 'r1', files: [{ path: 'higgsfield\\d\\r1.png', result: 'saved' }] }),
+    JSON.stringify({ event: 'submit', endpoint: 'marketing-studio/image/flare', estimate_key: 'k1', request_id: 'r2' }),
+    JSON.stringify({ event: 'download', request_id: 'r2', files: [{ path: 'higgsfield\\d\\r2.png', result: 'saved' }] }),
+  ]
+  const entries = [
+    { id: 'k1', state: 'settled', reserved: 0.03, actual: 0.02, created_at: 200 },
+    { id: 'k1', state: 'settled', reserved: 0.03, actual: 0.02, created_at: 100 },
+  ]
+  expect(jobsFromLog(log, entries).map(j => [j.time, j.files])).toEqual([[200, ['higgsfield\\d\\r2.png']],
+                                                                         [100, ['higgsfield\\d\\r1.png']]])
+})
+
+test('logDays: oldest entry day to today, local dates, at most 7 days back', () => {
+  const now = new Date(2026, 9, 6, 12).getTime(), at = (d: number) => new Date(2026, 9, d, 9).getTime() / 1000
+  expect(logDays(now, [])).toEqual(['2026-10-06'])
+  expect(logDays(now, [{ created_at: at(6) }, { created_at: at(4) }])).toEqual(['2026-10-04', '2026-10-05', '2026-10-06'])
+  expect(logDays(now, [{ created_at: at(1) - 30 * 86400 }])).toEqual(['2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02',
+    '2026-10-03', '2026-10-04', '2026-10-05', '2026-10-06'])
+})
+
+test('esc: model names are safe inside SVG text', () => {
+  expect(esc('A&B <x> "q"')).toBe('A&amp;B &lt;x&gt; &quot;q&quot;')
+})
+
+test('ratioOf: the meter share, 0 for no usable cap', () => {
+  expect(ratioOf(2.5, 5)).toBe(0.5)
+  expect(ratioOf(9, 5)).toBe(1)
+  expect(ratioOf(1, 0)).toBe(0)
+  expect(ratioOf(1, -5)).toBe(0)
+  expect(Number.isNaN(ratioOf(0, 0))).toBe(false)
+})
+
+test('pythonOk: only an absolute path to python/py runs as the interpreter', () => {
+  for (const p of ['C:\\Users\\j\\AppData\\Local\\Programs\\Python\\Python312\\python.exe', 'C:/Py/py.exe',
+                   '/opt/homebrew/bin/python3', '/usr/bin/python3.12']) expect(pythonOk(p)).toBe(true)
+  for (const p of ['py', 'python', 'relative/python3', 'C:/x/evil.exe', '/bin/sh', 'C:/x/python.exe.bat', ''])
+    expect(pythonOk(p)).toBe(false)
 })
 
 test('hhmm: local time as H:MM without Intl', () => {

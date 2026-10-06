@@ -1,5 +1,6 @@
 import type { Register } from 'claude-code'
-import { SUBMIT_RE, capFromAnswer, meterColor, dotGroup, parseJson, jobsFromLog, hhmm, submitStep, type Job } from './logic'
+import { SUBMIT_RE, USE_RE, meterColor, ratioOf, esc, pythonOk, logDays, dotGroup, parseJson, jobsFromLog, hhmm,
+  submitStep, type Job } from './logic'
 
 const PANE = 'hf-details'
 const ASK = 'Higgsfield: how much can Claude spend in this session without asking you each time?'
@@ -13,6 +14,7 @@ let err = ''              // why the ledger could not be read ('' = fine)
 let used = false          // this session touched Higgsfield: show the band
 let jobs: Job[] = []
 let asking: Promise<string | undefined> | null = null   // one box for parallel submits ("3 variations")
+let saving: Promise<boolean> | null = null              // ... and one save of its answer
 
 async function root($: any): Promise<string> { return await $.session.root() }
 
@@ -20,17 +22,16 @@ async function ledgerRun($: any, args: string[]): Promise<any> {
   let py = ''
   try { py = (await $.fs.read((await root($)) + '/higgsfield/.python')).trim() } catch { /* setup not done */ }
   if (!py) throw new Error('Higgsfield setup is not finished in this folder')
+  if (!pythonOk(py)) throw new Error('higgsfield/.python is not an absolute path to Python; run the setup again')
   const r = await $.process.run([py, '-B', $.plugin.root + '/scripts/ledger.py', ...args], { timeoutMs: 20000 })
   const o = parseJson(r.stdout)
   if (!o) throw new Error('the spend record gave no answer')
   return o
 }
 
-async function readLogs($: any): Promise<string[]> {
-  const now = new Date(await $.clock.now()), lines: string[] = []
-  for (const back of [1, 0]) {
-    const d = new Date(now.getTime() - back * 86400000)
-    const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+async function readLogs($: any, entries: any[]): Promise<string[]> {
+  const lines: string[] = []
+  for (const day of logDays(await $.clock.now(), entries)) {
     try { lines.push(...(await $.fs.read(`${await root($)}/higgsfield/${day}/log.jsonl`)).split(/\r?\n/)) } catch { /* none */ }
   }
   return lines
@@ -40,7 +41,7 @@ async function refresh($: any) {
   try {
     st = await ledgerRun($, ['status', '--session', await $.session.id()])
     err = st.ok === false ? String(st.message || 'the spend record could not be read') : ''
-    if (!err) jobs = jobsFromLog(await readLogs($), st.session_entries ?? [])
+    if (!err) jobs = jobsFromLog(await readLogs($, st.session_entries ?? []), st.session_entries ?? [])
   } catch (x) { err = String((x as Error).message || x) || 'the spend record could not be read' }
   $.ui.invalidate('ui.render')
 }
@@ -51,7 +52,7 @@ function figures(s: any) {
   const spent = Number((picked ? s?.session_spent : s?.spent_24h) ?? 0)
   const cap = Number((picked ? s?.session_cap : s?.cap_usd) ?? 5)
   const left = Number((picked ? s?.session_headroom : s?.headroom_usd) ?? Math.max(cap - spent, 0))
-  return { picked, spent, cap, left, ratio: Math.min(spent / cap, 1) }
+  return { picked, spent, cap, left, ratio: ratioOf(spent, cap) }
 }
 
 async function capAnswer($: any): Promise<string | undefined> {
@@ -62,7 +63,7 @@ async function capAnswer($: any): Promise<string | undefined> {
 
 async function setCap($: any, usd: number): Promise<boolean> {
   try {
-    const o = await ledgerRun($, ['session-cap', 'set', await $.session.id(), String(usd)])
+    const o = await ledgerRun($, ['session-cap', 'set', await $.session.id(), usd.toFixed(2)])
     if (o.ok === false) throw new Error(o.message)
   } catch {
     return false
@@ -105,14 +106,19 @@ export const register: Register = on => {
   // Cap box before the first paid job of the session; refresh after anything that touches Higgsfield.
   on('tool.call', { tool: ['Bash', 'PowerShell'], command: /higgsfield|hf_rest|ledger\.py/i }, async ($, e, next) => {
     const cmd = String((e as any).command ?? '')
-    used = true
+    if (USE_RE.test(cmd)) used = true
     if (SUBMIT_RE.test(cmd)) {
       await refresh($)
       if (err) $.ui.toast('Higgsfield spend record unavailable: the 24 h limit applies.')
       const answer = !err && st && !st.session_cap_set ? await capAnswer($) : undefined
       const step = submitStep(st, err, answer)
       if (step.kind === 'refuse') return { deny: NOT_NOW }
-      if (step.kind === 'set' && !(await setCap($, step.usd))) $.ui.toast("Couldn't save the cap: the 24 h limit applies.")
+      if (step.kind === 'set') {
+        // after the shared box: refresh, and save only if a parallel submit has not saved it (one save, one note)
+        if (!saving) saving = (async () => { await refresh($); return !!st?.session_cap_set || await setCap($, step.usd) })()
+          .finally(() => { saving = null })
+        if (!(await saving)) $.ui.toast("Couldn't save the cap: the 24 h limit applies.")
+      }
       await refresh($)   // the second of two parallel submits sees the cap the first one set
     }
     const r = await next(e)   // the permission check (guard + Allow box) and the tool run here
@@ -160,7 +166,7 @@ export const register: Register = on => {
     const max = Math.max(...top.map(m => m[1]), 0.01), RH = 22, CW = 300
     const chart = `<svg xmlns="http://www.w3.org/2000/svg" width="${CW}" height="${Math.max(top.length, 1) * RH}" ` +
       `font-family="system-ui,sans-serif" font-size="12">` + top.map(([m, v], i) =>
-        `<text x="0" y="${i * RH + 14}" fill="#e4e4e7">${m}</text>` + dotGroup(100, i * RH + 5, 150, 9, v / max, '#22c55e', false) +
+        `<text x="0" y="${i * RH + 14}" fill="#e4e4e7">${esc(m)}</text>` + dotGroup(100, i * RH + 5, 150, 9, v / max, '#22c55e', false) +
         `<text x="${CW}" y="${i * RH + 14}" fill="#a1a1aa" text-anchor="end">$${v.toFixed(2)}</text>`).join('') + `</svg>`
     const dot: any = { done: '#22c55e', running: '#f59e0b', refunded: '#9ca3af', charged: '#a1a1aa' }
     const cell = (k: string, w: string, ...children: any[]) => Box({ key: k, width: w, flexDirection: 'row', columnGap: 1, children })
@@ -170,9 +176,13 @@ export const register: Register = on => {
       let a: string | undefined
       try { a = await $.ui.ask(BALANCE_ASK, { header: 'Balance', options: ['Not now', 'Open Higgsfield'] }) } catch { return }
       if (a === 'Open Higgsfield') return void openBilling($)
-      const usd = capFromAnswer(a?.replace(/,/g, '')) ?? (/^\s*\$?\s*\d+(\.\d+)?\s*$/.test(a ?? '') ? Number(a!.replace(/[$\s]/g, '')) : null)
-      if (usd === null) return void (a && a !== 'Not now' && $.ui.toast('That did not look like a dollar amount; nothing changed.'))
-      try { await ledgerRun($, ['balance', 'set', String(usd)]); $.ui.log(`Higgsfield balance recorded as $${usd} by the client.`) } catch { $.ui.toast("Couldn't save the balance.") }
+      const usd = (a ?? '').replace(/[,$\s]/g, '')
+      if (!/^\d+(\.\d+)?$/.test(usd)) return void (a && a !== 'Not now' && $.ui.toast('That did not look like a dollar amount; nothing changed.'))
+      try {
+        const o = await ledgerRun($, ['balance', 'set', usd])
+        if (o.ok === false) throw new Error(o.message)
+        $.ui.log(`Higgsfield balance recorded as $${usd} by the client.`)
+      } catch { $.ui.toast("Couldn't save the balance.") }
       await refresh($)
     }
     return Box({ flexDirection: 'column', gap: 1, children: [
