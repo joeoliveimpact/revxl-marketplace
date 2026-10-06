@@ -27,11 +27,11 @@ never deleted, never "cleaned up."
 ("Maria G Fit" -> `mariagfit`). One client = usually one brand; an agency = N
 files, fully isolated.
 
-## Schema (version 1.0)
+## Schema (version 1.1)
 
 ```jsonc
 {
-  "schema_version": "1.0",          // additive-minor: new optional keys bump 1.x; never remove or rename in 1.x
+  "schema_version": "1.1",          // additive-minor: new optional keys bump 1.x; never remove or rename in 1.x
   "brand": "<slug>",                // this file's own slug; the marker's active_brand says which file is live
   "created_at": "YYYY-MM-DD",
   "updated_at": "YYYY-MM-DD",       // every writer refreshes this
@@ -106,7 +106,7 @@ files, fully isolated.
     "last_snapshot": null           // path under <project>/history/
   },
 
-  // ---- GOLDMINE (owner: content-goldmine) ----
+  // ---- GOLDMINE (owner: content-goldmine; added in 1.1, absent from 1.0 files) ----
   "goldmine": {
     "last_run": null,               // YYYY-MM-DD, local date, of the last dashboard build
     "dashboard_html": null,         // the saved page under <project>/visuals/, the copy that cannot get lost
@@ -156,6 +156,8 @@ files, fully isolated.
 7. **Schema-version bump on new keys.** Any writer that adds a key introduced
    after the file's stamped `schema_version` also bumps `schema_version` to the
    current version, so the file stays honest about the shape it holds.
+   Current is 1.1: content-goldmine writing `goldmine.*` into a 1.0 file
+   stamps it `"1.1"`.
 
 ## Ownership table (who writes what)
 
@@ -221,3 +223,4 @@ Removing or renaming a key = 2.0 plus a migration note in this file. Skills
 tolerate missing optional keys (treat as null) and never crash on an older file.
 `subject` and `own_read` are declared here at 1.0 and stay null until a later release
 installs their writers.
+1.1 adds the optional `goldmine` block (written by content-goldmine only).

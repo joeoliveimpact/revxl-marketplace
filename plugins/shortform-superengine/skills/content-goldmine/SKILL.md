@@ -128,7 +128,8 @@ or update the Artifact from it. If publishing fails, give the client the saved p
 **9. Record.** Write `goldmine.last_run` (today, YYYY-MM-DD local),
 `goldmine.dashboard_html`, `goldmine.dashboard_tag` (from `dashboard.tag` in
 `goldmine-run.json`) and `goldmine.dashboard_url` (when published), plus
-`updated_at` and a `completed_skills` append. Then render the **Next moves** block.
+`updated_at` and a `completed_skills` append. Set `schema_version` to `"1.1"` when
+it is older (`goldmine` is a 1.1 key). Then render the **Next moves** block.
 
 ## Governing rules
 
