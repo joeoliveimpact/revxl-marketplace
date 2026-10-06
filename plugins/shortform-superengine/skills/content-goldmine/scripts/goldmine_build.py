@@ -54,6 +54,8 @@ BASE = "https://www.socialcrawl.dev/v1/"
 NO_BREAKOUTS = ("No breakout reels in this pull's window, so there is nothing to build yet. A breakout "
                 "is a reel that beat its creator's usual views by a wide margin, and none did in this "
                 "window. Run the competitor pull again later, then run plan again.")
+PROJECT_LONG = ("This project is in a network folder with a long path (%d characters), where the runner cannot reach "
+                "files past the 260 characters Windows allows. Nothing was changed. Tell the plugin's maintainer.")
 
 
 # ---------------------------------------------------------------- helpers
@@ -97,8 +99,16 @@ def items_of(d):
 class Project:
     def __init__(self, path):
         self.p = os.path.abspath(path)
+        if os.name == "nt" and len(self.p) > 150:
+            # ponytail: the dashboard cache's fixed margin (fetch_dashboard). The deepest file the runner and
+            # the assembler touch under a project is about 75 characters (a 30-character handle's transcript
+            # file); measure again if that grows. Past 150, every project path takes the \\?\ form, so
+            # Windows' 260-character limit never applies. A network (UNC) folder has no such form here.
+            self.p = long_ok(self.p)
+            if not self.p.startswith("\\\\?\\"):
+                die(PROJECT_LONG % len(self.p), 10)
         if not os.path.isfile(self.j("analysis-data.json")):
-            die("no analysis-data.json in %s. Run the competitor pull (and analyze.py) first." % self.p)
+            die("no analysis-data.json in %s. Run the competitor pull (and analyze.py) first." % plain(self.p))
         self.rb = self.j("reel-build")
         os.makedirs(self.rb, exist_ok=True)
         self.state_path = os.path.join(self.rb, "goldmine-run.json")
@@ -997,6 +1007,11 @@ def long_ok(path):
     return "\\\\?\\" + p if os.name == "nt" and not p.startswith("\\\\") else path
 
 
+def plain(path):
+    r"""The path as the client knows it, without the \\?\ prefix long_ok adds."""
+    return path[4:] if path.startswith("\\\\?\\") else path
+
+
 def download(url, dest):
     """curl, never Python HTTPS: python.org's macOS builds ship without certificates."""
     if not shutil.which("curl"):
@@ -1056,7 +1071,7 @@ def fetch_dashboard():
         shutil.rmtree(tmp, ignore_errors=True)
         if os.path.isdir(tmp):
             print("NOTE: could not remove the temporary folder %s. Nothing in it is needed; it is safe to "
-                  "delete." % tmp)
+                  "delete." % plain(tmp))
     return root
 
 
@@ -1085,10 +1100,10 @@ def step_dashboard(prj, args):
     if code != 0 or not os.path.isfile(out):
         err = [l[6:].strip() for l in text.splitlines() if l.startswith("ERROR:")]
         die("The dashboard could not be built%s. Everything else is saved; the full output is in "
-            "reel-build/dashboard-build.log." % ((": " + err[-1]) if err else ""), 8)
-    prj.state["dashboard"] = {"at": now_utc(), "html": out, "tag": DASH_TAG}
+            "reel-build/dashboard-build.log." % ((": " + err[-1].replace("\\\\?\\", "")) if err else ""), 8)
+    prj.state["dashboard"] = {"at": now_utc(), "html": plain(out), "tag": DASH_TAG}
     prj.save_state()
-    print("Dashboard saved: " + out)
+    print("Dashboard saved: " + plain(out))
     print("NEXT: publish this saved file as an Artifact per references/publish.md and store the link "
           "under goldmine.* in state. If publishing fails, give the client this path instead.")
 

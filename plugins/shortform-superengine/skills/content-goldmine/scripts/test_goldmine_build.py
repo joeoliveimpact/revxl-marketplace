@@ -518,6 +518,18 @@ out, code = run("dashboard", d)
 gb.subprocess.run, gb.shutil.which = real_run, real_which
 assert code == 5 and out.startswith("ERROR: The dashboard download did not land") and "Windows" not in out, out
 assert os.listdir(cache) == [], os.listdir(cache)
+if os.name == "nt":                                              # exit 9 only for a plain path past 260
+    far = os.path.join(cache, "x" * 240, "dashboard.tar.gz")     # nothing creates it
+    gb.subprocess.run, gb.shutil.which = (lambda cmd, **k: subprocess.CompletedProcess(cmd, 0, b"", b"")), (lambda n: "curl")
+    for dest, want in ((far, 9), (gb.long_ok(far), 5)):
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                gb.download("https://example.invalid/x.tar.gz", dest)
+            code = None
+        except SystemExit as e:
+            code = e.code
+        assert code == want, (len(dest), dest[:4], code, want)
+    gb.subprocess.run, gb.shutil.which = real_run, real_which
 # A cache past 260 characters on Windows just works: the fetch takes the \\?\ form, and the build finds
 # its sibling module. Runs where Windows blocks long paths (a probe checks); the cache is sized so the
 # download's own path runs past 260 (unpack-* 244, the download 261).
@@ -567,7 +579,8 @@ if real_long:
     gb.download = real_download
     assert code is None and "Dashboard saved: " in out, out
     shutil.rmtree(real_long_ok(cache))                           # too deep for the plain cleanup at the end
-    # Without the \\?\ form (a network home folder, or a tarball deeper than the margin): exit 9, only then.
+    # Without the \\?\ form (a network home folder): exit 9, only then. A tarball deeper than the margin
+    # fails its unpack instead: exit 7.
     cache = long_cache()
     gb.long_ok = lambda p: p
     out, code = run("dashboard", d)
@@ -581,6 +594,13 @@ gb.shutil.rmtree, real_rmtree, gb.download = (lambda *a, **k: None), gb.shutil.r
 out, code = run("dashboard", d)
 gb.shutil.rmtree, gb.download = real_rmtree, real_download
 assert code == 7 and "NOTE: could not remove the temporary folder" in out, out
+if os.name == "nt":                                              # a \\?\ cache: the NOTE shows the normal path
+    cache = long_cache()
+    gb.shutil.rmtree, gb.download = (lambda *a, **k: None), bad_gzip
+    out, code = run("dashboard", d)
+    gb.shutil.rmtree, gb.download = real_rmtree, real_download
+    assert code == 7 and ("temporary folder %s\\unpack-" % cache) in out and "\\\\?\\" not in out, out
+    shutil.rmtree(real_long_ok(cache))
 print("OK guards: no dashboard before check-reads, reads resume on a later day, symlink and hardlink "
       "members, assembler failure, corrupt tarball, curl timeout and OSError")
 
@@ -600,6 +620,87 @@ out, code = run("compute", d)
 assert code == 0 and out.strip() == gb.NO_BREAKOUTS, out
 print("OK fixes: zero first run keeps the 30-day window, zero after a Goldmine keeps its reads, transcribe "
       "with no media, long download path, a cleanup that cannot remove its folder, em dash CTA")
+
+# 10. Long project folders. A short project or cache keeps its plain path, exactly as before.
+s = make([("alpha_coach", "SSS001", 5.0, "x")]); temps.append(s)
+assert len(os.path.abspath(s)) <= 150 and gb.Project(s).p == os.path.abspath(s), gb.Project(s).p
+cache = empty_cache()
+gb.download = lambda url, dest: tarball(dest)
+assert gb.fetch_dashboard() == os.path.join(cache, TOP)
+gb.download = real_download
+SPECS = [("alpha_coach", "DDD001", 9.0, 'Comment "GUIDE" and I will send it'),   # section 5's fixture
+         ("alpha_coach", "DDD002", 7.0, "Comment AMEN if you agree"),
+         ("beta_coach", "EEE001", 8.0, "Three habits that changed my mornings"),
+         ("beta_coach", "EEE002", 3.0, "Type “pure focus” if you believe it"),
+         ("beta_coach", "EEE003", 2.6, "Comment the word starter below and I will send the checklist")]
+
+
+def flow(proj, root):
+    """Every step on the path the client gives (proj); the test's own file reads and writes go through root."""
+    global d, names
+    os.makedirs(os.path.join(root, "source", "competitors", "transcripts"))
+    with open(os.path.join(root, "source", "competitors", "transcripts", "beta_coach.json"), "w", encoding="utf-8") as f:
+        json.dump({"handle": "beta_coach", "reels": [{"url": "https://www.instagram.com/reel/EEE001/",
+                                                      "text": "Spoken words"}]}, f)
+    outs = []
+    for step, kw in (("plan", {}), ("fetch", {"approved": "25"}), ("transcribe", {}), ("compute", {}), ("reads", {})):
+        out, code = run(step, proj, **kw)
+        assert code is None, (step, code, out)
+        outs.append(out)
+    d, names = root, rjson(root, "goldmine-run.json")["reads"]["expected"]
+    good()                                                       # the judgement fields, filled
+    cache = empty_cache()
+    gb.subprocess.run, gb.shutil.which = fake_curl, lambda name: "curl"
+    for step in ("check-reads", "dashboard"):
+        out, code = run(step, proj)
+        assert code is None, (step, code, out)
+        outs.append(out)
+    gb.subprocess.run, gb.shutil.which = real_run, real_which
+    return outs, cache
+
+
+if not real_long:
+    print("SKIP long project: this system opens paths past 260 characters itself, so there is no limit to get past")
+else:
+    short = make(SPECS); temps.append(short)
+    base = tempfile.mkdtemp(prefix="goldmine_test_")             # the plain cleanup at the end cannot reach inside
+    proj = os.path.join(base, "p" * (229 - len(base)))           # 230 characters: the reel-build files pass 260
+    src = make(SPECS); temps.append(src)
+    shutil.copytree(src, real_long_ok(proj))
+    try:
+        s_outs, _ = flow(short, short)
+        l_outs, l_cache = flow(proj, real_long_ok(proj))
+        assert [o.replace(short, "<p>") for o in s_outs] == [o.replace(proj, "<p>") for o in l_outs], (s_outs, l_outs)
+        assert not any("\\\\?\\" in o for o in l_outs), l_outs
+        html = l_outs[-1].split("Dashboard saved: ")[1].splitlines()[0]
+        assert html == os.path.join(proj, "visuals", "Content Goldmine Dashboard - %s.html" % gb.today()), html
+        st = rjson(real_long_ok(proj), "goldmine-run.json")
+        assert len(os.path.join(proj, "reel-build", st["reads"]["packet"])) > 260, st["reads"]["packet"]
+        assert st["dashboard"]["html"] == html and st["reads"]["passed"] is True, st
+        assert json.dumps("\\\\?\\")[1:-1] not in open(os.path.join(real_long_ok(proj), "reel-build", "goldmine-run.json"),
+                                                       encoding="utf-8").read()
+        man = rjson(real_long_ok(proj), st["manifest"])
+        assert json.load(open(real_long_ok(html))) == {"comments_since": man["generated_at"][:10]}
+        packet = rjson(real_long_ok(proj), st["reads"]["packet"])
+        assert [r["transcript"] for r in packet["reels"] if r["shortcode"] == "EEE001"] == ["Spoken words"], packet
+        files = lambda r: sorted(os.path.relpath(os.path.join(a, f), r) for a, _, fs in os.walk(r) for f in fs)
+        assert files(short) == files(real_long_ok(proj)), (files(short), files(real_long_ok(proj)))  # no .tmp left
+        assert not glob.glob(os.path.join(l_cache, "unpack-*")), os.listdir(l_cache)
+        with open(os.path.join(l_cache, TOP, "goldmine_dashboard.py"), "w") as f:   # fails, naming its --project
+            f.write('import sys\na = sys.argv\nprint("ERROR: project dir not found: " + a[a.index("--project") + 1])\n'
+                    'sys.exit(1)\n')
+        out, code = run("dashboard", proj)
+        assert code == 8 and ("not found: %s." % proj) in out and "\\\\?\\" not in out, out
+        out, code = run("plan", os.path.join(proj, "no-project-here"))
+        assert code == 2 and ("in %s." % os.path.join(proj, "no-project-here")) in out and "\\\\?\\" not in out, out
+    finally:
+        shutil.rmtree(real_long_ok(base))
+    print("OK long project: plan, fetch, transcribe, compute, reads, check-reads and dashboard at %d characters, "
+          "same as short; normal paths shown" % len(proj))
+if os.name == "nt":                     # a long network folder has no \\?\ form: one plain line, exit 10
+    out, code = run("plan", "\\\\goldmine-no-such-host\\share\\" + "u" * 140)
+    assert code == 10 and out.startswith("ERROR: This project is in a network folder") and len(out.splitlines()) == 1, out
+print("OK short paths stay plain%s" % ("; a long network folder stops with exit 10" if os.name == "nt" else ""))
 
 for t in temps:
     shutil.rmtree(t, ignore_errors=True)

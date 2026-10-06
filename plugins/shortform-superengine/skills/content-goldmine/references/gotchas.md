@@ -14,7 +14,7 @@ client does not need.
 | 6 | The download's commit stamp is not the pinned one | The dashboard download did not match the version this plugin trusts, so I did not use it. | Do not retry around it and never unpack it by hand. Stop on the same block and say the plugin's maintainer needs to know. |
 | 7 | The download is not laid out as expected (not one top folder, or an unsafe file path) | Same as 6. | Same as 6. |
 | 8 | The page could not be built | The dashboard could not be built from this run's files. | Read `reel-build/dashboard-build.log` yourself. A `required shared block missing` line means a runner file is gone: re-run compute, then check-reads, then the dashboard step. Anything else: stop on the same block and name the cause plainly. |
-| 9 | The download landed in a folder path over 260 characters that the runner could not reach. Rare: the runner handles long paths itself, so this is a network home folder or a plugin gap | I could not open the dashboard download: the folder it saves into has a longer path than Windows allows. Everything else is saved. | Do not retry, and change nothing on the computer. Stop on the **stopped before the dashboard** block and say the plugin's maintainer needs to know. |
+| 9 | The download landed in a folder path of 260 characters or more that the runner could not reach. Rare: the runner handles long paths itself, so this is a network home folder | I could not open the dashboard download: the folder it saves into has a longer path than Windows allows. Everything else is saved. | Do not retry, and change nothing on the computer. Stop on the **stopped before the dashboard** block and say the plugin's maintainer needs to know. |
 | 2 | check-reads has not passed | (Nothing; this is yours to fix.) | Finish the reads and run check-reads until PASS, then the dashboard step. |
 
 The pinned version is downloaded once and kept in
@@ -30,6 +30,11 @@ network. A half-finished unpack is cleaned up and redone on the next run.
   Carry on without comments; the comment parts of the page stay empty.
 - **The first-run window did not take**: `period_breakouts.window_source` is not `flag`
   after the analyze re-run. Stop. Running on without it would read a shorter window than the month a first run needs.
+- **A long project folder on a network drive (exit 10)**: the runner reaches long project
+  folders on this computer itself, but not on a network drive. Tell the client plainly that
+  this project's folder is on a network drive with a longer path than Windows allows there,
+  and nothing was changed. Do not retry, and change nothing on the computer. Stop and say the
+  plugin's maintainer needs to know.
 
 ## The first-run window
 
