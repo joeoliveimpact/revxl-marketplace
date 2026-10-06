@@ -94,7 +94,8 @@ const STATUS: Record<string, Job['status']> = { pending: 'running', settled: 'do
   assumed_charged: 'charged' }
 
 /** One row per ledger entry of this session, joined with the workspace log by estimate key and request id. The same
- *  request run again has the same key: its entries pair with its submit lines in order (first entry <-> first submit). */
+ *  request run again has the same key: its entries pair with its submit lines in order (first entry <-> first submit).
+ *  An entry refunded as not_sent never wrote a submit line, so it takes no submit (its row has no files). */
 export function jobsFromLog(logLines: string[], entries: any[]): Job[] {
   const submits = new Map<string, any[]>(), files = new Map<string, string[]>(), taken = new Map<string, number>()
   for (const l of logLines) {
@@ -107,9 +108,10 @@ export function jobsFromLog(logLines: string[], entries: any[]): Job[] {
         .filter(Boolean))
   }
   return [...entries].sort((a, b) => a.created_at - b.created_at).map(e => {
+    const unsent = e.state === 'refunded' && e.reason === 'not_sent'
     const n = taken.get(e.id) ?? 0
-    taken.set(e.id, n + 1)
-    const s = submits.get(e.id)?.[n] ?? {}
+    if (!unsent) taken.set(e.id, n + 1)
+    const s = unsent ? {} : submits.get(e.id)?.[n] ?? {}
     const ep = String(s.endpoint ?? '')
     return { time: e.created_at, model: ep ? modelOf(ep) : 'Higgsfield', kind: kindOf(ep),
              cost: e.state === 'pending' ? e.reserved : (e.actual ?? 0), status: STATUS[e.state] ?? 'running',

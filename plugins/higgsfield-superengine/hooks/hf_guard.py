@@ -53,6 +53,10 @@ CAP_RE = re.compile(r"session-cap\W+set\b", re.I)  # setting a cap; a mere menti
 BAND = ("only the Higgsfield band (the client's own buttons above the prompt) sets the session spending "
         "cap. Ask the client to pick it there; never set it from a command.")
 RUNNERS = re.compile(r"(?i)(bash|sh|zsh|source|\.|pwsh|powershell)(\.exe)?")
+PS_VALUE = ("executionpolicy", "workingdirectory", "outputformat", "inputformat", "windowstyle", "configurationname",
+            "configurationfile", "version", "psconsolefile", "settingsfile", "custompipename", "encodedcommand",
+            "encodedarguments")  # pwsh/powershell flags that take a value (any 3+ letter prefix, or an alias below)
+PS_VALUE_ALIAS = {"e", "ec", "ex", "ep", "if", "o", "of", "w", "wd", "v"}
 
 
 def out(kind, reason, event="PreToolUse"):
@@ -182,8 +186,9 @@ def read_script(name, cwd):
 
 
 def run_files(cmd, ps):
-    """Script files a command runs: python <file> (a plain command), bash|sh|zsh <file>, source|. <file>,
-    pwsh|powershell [-File] <file>, & <file>, ./<file>, .\\<file>."""
+    """Script files a command runs, in every segment of a chain (&&, ||, ;, |, newlines): python [flags] <file>,
+    bash|sh|zsh [-flags] <file>, source|. <file>, pwsh|powershell [flags] [-File] <file> (-Command's text is
+    inspected as a command, not taken as a file), & <file>, ./<file>, .\\<file>."""
     p = plain(cmd, ps)
     found = [p[0]] if p else []
     parts = re.split("(" + SEG_RE.pattern + ")", cmd)  # segments at even indexes, the separators between them
@@ -194,10 +199,28 @@ def run_files(cmd, ps):
         if not words:
             continue
         f = None
-        if RUNNERS.fullmatch(re.split(r"[\\/]", words[0])[-1]):
-            rest, low = words[1:], [w.lower() for w in words[1:]]
-            rest = [w for w in (rest[low.index("-file") + 1:] if "-file" in low else rest) if not w.startswith("-")]
+        name, rest = re.split(r"[\\/]", words[0])[-1], words[1:]
+        if re.fullmatch(r"(?i)(pwsh|powershell)(\.exe)?", name):
+            while rest and rest[0].startswith("-"):
+                x = rest[0].lower().lstrip("-")
+                if x and "file".startswith(x):
+                    rest = rest[1:]
+                    break
+                if x and "command".startswith(x):
+                    found += run_files(" ".join(rest[1:]), True)  # its text is a command, not a file
+                    rest = []
+                    break
+                value = x in PS_VALUE_ALIAS or (len(x) >= 3 and any(v.startswith(x) for v in PS_VALUE))
+                rest = rest[2:] if value else rest[1:]
             f = rest[0] if rest else None
+        elif RUNNERS.fullmatch(name):
+            while rest and rest[0].startswith("-"):
+                rest = rest[1:]  # bash -x <file>
+            f = rest[0] if rest else None
+        elif INTERP.fullmatch(words[0]):
+            while rest and rest[0].startswith("-") and rest[0] not in ("-c", "-m"):
+                rest = rest[2:] if rest[0] in ("-W", "-X") else rest[1:]
+            f = rest[0] if rest and not rest[0].startswith("-") else None  # -c / -m run no file
         elif parts[i - 1:i] == ["&"] or words[0].startswith(("./", ".\\")):
             f = words[0]
         if f:
@@ -767,6 +790,17 @@ def selftest():
                   d == "deny" and "only the Higgsfield band" in r, f"{d} {r}")
         c, d, r = bash("bash ok.sh")
         check("GS7 `bash ok.sh` (echo hi) -> untouched", d is None and c == 0, f"{c} {d} {r}")
+        (ws / "bump.py").write_text("import subprocess; subprocess.run(['python','ledger.py','session-cap','set','x','999'])",
+                                    encoding="utf-8")
+        (ws / "ok.py").write_text("print('hi')", encoding="utf-8")
+        for tool, cmd in (("PowerShell", "pwsh -NoProfile -ExecutionPolicy Bypass bump.ps1"),
+                          ("Bash", "cd . && python bump.py")):
+            c, d, r = run(ev(tool, {"command": cmd}))
+            check(f"GS8 {tool} `{cmd}` (pwsh flags / a chain; the script sets a cap) -> deny with the band message",
+                  d == "deny" and "only the Higgsfield band" in r, f"{d} {r}")
+        for cmd in ("cd . && python ok.py", "git status | cat"):
+            c, d, r = bash(cmd)
+            check(f"GS8 `{cmd}` -> untouched", d is None and c == 0, f"{c} {d} {r}")
 
         # --- deny list ------------------------------------------------------------------------------------------
         denies = [

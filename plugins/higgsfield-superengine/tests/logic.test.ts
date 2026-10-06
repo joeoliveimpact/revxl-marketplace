@@ -81,6 +81,19 @@ test('jobs: the same request run twice gets each run\'s own files (first entry <
                                                                          [100, ['higgsfield\\d\\r1.png']]])
 })
 
+test('jobs: an entry refunded as not_sent takes no submit; the next run of the same key gets the files', () => {
+  const log = [
+    JSON.stringify({ event: 'submit', endpoint: 'marketing-studio/image/flare', estimate_key: 'K', request_id: 'r1' }),
+    JSON.stringify({ event: 'download', request_id: 'r1', files: [{ path: 'higgsfield\\d\\r1.png', result: 'saved' }] }),
+  ]
+  const entries = [
+    { id: 'K', state: 'refunded', reason: 'not_sent', reserved: 0.03, actual: 0, created_at: 100 },
+    { id: 'K', state: 'settled', reason: 'actual', reserved: 0.03, actual: 0.02, created_at: 200 },
+  ]
+  expect(jobsFromLog(log, entries).map(j => [j.time, j.model, j.files])).toEqual([
+    [200, 'Flare', ['higgsfield\\d\\r1.png']], [100, 'Higgsfield', []]])
+})
+
 test('logDays: oldest entry day to today, local dates, at most 7 days back', () => {
   const now = new Date(2026, 9, 6, 12).getTime(), at = (d: number) => new Date(2026, 9, d, 9).getTime() / 1000
   expect(logDays(now, [])).toEqual(['2026-10-06'])
