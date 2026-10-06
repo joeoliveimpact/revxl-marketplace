@@ -21,6 +21,12 @@ Checks (mirror the three former CI jobs exactly):
   readme        root README catalog table lists every published plugin at its
                 current version + names the catalog version (main page can't
                 silently fall behind releases)
+  changelog     catalog number unique + current: root CHANGELOG.md has no
+                duplicate `## [x.y.z]` headings, its top heading equals
+                marketplace.json metadata.version, and on a branch that
+                changes marketplace.json that version is greater than every
+                heading on origin/main; each plugin CHANGELOG.md's top
+                version heading equals its plugin.json version
   routing       shortform-superengine's no-dead-end contract: every
                 Next-moves block above the compaction cut and inside its
                 Terminal paths section, every block citing a journey-map id,
@@ -44,6 +50,7 @@ Exit code 0 = all good, 1 = at least one error (errors printed, GitHub
 import argparse
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -290,6 +297,116 @@ def check_readme() -> list[str]:
     return errs
 
 
+# --- changelog -------------------------------------------------------------
+
+# Root headings are "## [0.1.74] ... date"; plugin headings are bracketed or
+# not ("## 0.7.1 - date", "## [0.3.0] - date"). "[Unreleased]" never matches.
+RX_ROOT_HEADING = re.compile(r"^## \[(\d+\.\d+\.\d+)\]", re.M)
+RX_PLUGIN_HEADING = re.compile(r"^## \[?(\d+\.\d+\.\d+)\]?", re.M)
+
+# Catalog numbers already shipped twice before this gate existed (recorded
+# 2026-10-06). Both releases are published under the same number, so the
+# history cannot be renumbered. Any OTHER duplicate fails the build.
+DUPLICATE_CATALOG_WAIVERS = {
+    "0.1.43": "socialcrawl-superengine v0.2.0 (2026-08-16) and promptception "
+              "v0.3.0 (2026-08-21) both shipped as catalog 0.1.43",
+}
+
+# Plugins whose CHANGELOG top heading knowingly trails plugin.json, keyed to
+# the plugin.json version the waiver covers. The waiver lapses on the next
+# bump, so the next release must carry its own CHANGELOG entry.
+CHANGELOG_VERSION_WAIVERS = {
+    "ghl-coach-superengine": ("0.1.1", "93685bb bumped plugin.json 0.1.0 -> 0.1.1 "
+                              "in a marketplace-wide fix with no CHANGELOG entry"),
+}
+
+
+def _semver(v: str) -> tuple[int, ...]:
+    return tuple(int(x) for x in v.split("."))
+
+
+def _git_show(ref_path: str) -> str | None:
+    try:
+        r = subprocess.run(["git", "-C", str(REPO), "show", ref_path],
+                           capture_output=True, text=True, encoding="utf-8")
+    except OSError:
+        return None
+    return r.stdout if r.returncode == 0 else None
+
+
+def check_changelog() -> list[str]:
+    """Catalog numbers never collide; CHANGELOG tops match the manifests.
+
+    Guards the failure mode measured 10.06.26: a release branch set
+    metadata.version to 0.1.74, a number origin/main had already used, and
+    nothing failed. Catalog 0.1.43 had already shipped twice on 08.16/08.21.
+
+    The origin/main comparison needs the ref present (CI checks out with
+    fetch-depth 0). A local run compares against the last `git fetch`, so
+    fetch first for a current answer. Missing ref = skipped, loudly.
+    """
+    errs: list[str] = []
+    m = json.loads(MKT.read_text(encoding="utf-8"))
+    cat_ver = m.get("metadata", {}).get("version") or m.get("version")
+    root = (REPO / "CHANGELOG.md").read_text(encoding="utf-8")
+    heads = RX_ROOT_HEADING.findall(root)
+
+    seen: set[str] = set()
+    for v in heads:
+        if v in seen and v not in DUPLICATE_CATALOG_WAIVERS:
+            errs.append(f"::error file=CHANGELOG.md::duplicate heading ## [{v}] "
+                        f"(every catalog version is used once)")
+        seen.add(v)
+    if not heads:
+        errs.append("::error file=CHANGELOG.md::no '## [x.y.z]' headings found")
+    elif heads[0] != cat_ver:
+        errs.append(f"::error file=CHANGELOG.md::top heading [{heads[0]}] != "
+                    f"marketplace.json metadata.version {cat_ver}")
+
+    main_mkt = _git_show("origin/main:.claude-plugin/marketplace.json")
+    main_cl = _git_show("origin/main:CHANGELOG.md")
+    if main_mkt is None or main_cl is None:
+        print("NOTE changelog: origin/main not available, catalog-vs-main check "
+              "SKIPPED (run `git fetch origin main`)")
+    elif json.loads(main_mkt) == m:
+        print("OK changelog: marketplace.json unchanged from origin/main, no new catalog number")
+    else:
+        main_heads = RX_ROOT_HEADING.findall(main_cl)
+        newest = max(main_heads, key=_semver) if main_heads else "0.0.0"
+        if cat_ver is None or _semver(cat_ver) <= _semver(newest):
+            errs.append(f"::error file=.claude-plugin/marketplace.json::catalog "
+                        f"{cat_ver} is not greater than origin/main's newest "
+                        f"CHANGELOG heading {newest} (take the next number; "
+                        f"rebase if main moved)")
+        else:
+            print(f"OK changelog: catalog {cat_ver} > origin/main newest {newest}")
+
+    n = 0
+    for p in m.get("plugins", []):
+        name = p["name"]
+        d = REPO / p["source"]
+        cl, pj = d / "CHANGELOG.md", d / ".claude-plugin" / "plugin.json"
+        if not cl.exists() or not pj.exists():
+            continue  # missing files are check_plugins()' job
+        try:
+            man_ver = json.loads(pj.read_text(encoding="utf-8")).get("version")
+        except Exception:
+            continue
+        hm = RX_PLUGIN_HEADING.search(cl.read_text(encoding="utf-8"))
+        top = hm.group(1) if hm else None
+        if top == man_ver or CHANGELOG_VERSION_WAIVERS.get(name, (None,))[0] == man_ver:
+            n += 1
+            continue
+        rel = cl.relative_to(REPO).as_posix()
+        errs.append(f"::error file={rel}::{name}: CHANGELOG top version {top} "
+                    f"!= plugin.json {man_ver} (add the release's heading)")
+    if not errs:
+        print(f"OK changelog: no unwaived duplicate headings (waived: "
+              f"{', '.join(DUPLICATE_CATALOG_WAIVERS)}), top [{cat_ver}] == catalog; "
+              f"{n} plugin CHANGELOG tops == plugin.json")
+    return errs
+
+
 def _read(p: Path) -> str:
     return p.read_text(encoding="utf-8", errors="replace")
 
@@ -501,6 +618,7 @@ SECTIONS = {
     "plugins": check_plugins,
     "frontmatter": check_frontmatter,
     "readme": check_readme,
+    "changelog": check_changelog,
     "routing": check_routing,
     "plugin_integrity": check_plugin_integrity,
 }
