@@ -25,7 +25,9 @@ type a command. Claude runs every command below.
 ## Prereq (E0)
 
 A finished field read: `analysis` set in state and `<project>/analysis-data.json` on
-disk (the ANALYSIS gate, `../_shared/references/journey-map.md`). Missing: render the
+disk (the ANALYSIS gate, `../_shared/references/journey-map.md`). `<project>` is only
+`project_path` from state: never search the disk for an `analysis-data.json` (the plugin's
+own test fixtures carry one). No state, no `project_path`, or no file there: render the
 **no field read yet** block. A SocialCrawl key is needed only for the paid comments
 step; without one the run carries on without comments.
 
