@@ -9,6 +9,7 @@
 # ponytail: the probe costs one extra interpreter start per hook; cache the chosen path if that ever shows up.
 # usage (hooks.json): bash "${CLAUDE_PLUGIN_ROOT}/hooks/run-py.sh" "${CLAUDE_PLUGIN_ROOT}/hooks/<script>.py"
 s="$1"; shift
+[ -f "$s" ] || exit 0  # a missing script (a hook removed by an in-place update) fails open, never exit 2
 try() { "$@" -c 'import sys; sys.exit(sys.version_info[0] != 3)' </dev/null >/dev/null 2>&1 && exec "$@" "$s" "${args[@]}"; }
 args=("$@")
 p="$(command -v py 2>/dev/null)" && try "$p" -3

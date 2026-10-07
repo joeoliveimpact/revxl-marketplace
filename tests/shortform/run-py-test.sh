@@ -34,6 +34,7 @@ ck "Store stub first, real Python later on PATH -> 2" "$(echo "$IN" | PATH="$T/W
 ck "py with no Python 3, real Python later -> 2" "$(echo "$IN" | PATH="$T/badpy:$RD" "$B" "$H/run-py.sh" "$H/$S" 2>/dev/null; echo $?)" 2
 ck "Python 2 first, real Python later -> 2" "$(echo "$IN" | PATH="$T/py2:$RD" "$B" "$H/run-py.sh" "$H/$S" 2>/dev/null; echo $?)" 2
 ck "a working Python inside a WindowsApps folder is used -> 2" "$(echo "$IN" | PATH="$T/goodstore/WindowsApps" "$B" "$H/run-py.sh" "$H/$S" 2>/dev/null; echo $?)" 2
+ck "missing script (a hook removed by an in-place update), real Python on PATH -> 0, silent" "$(echo "$IN" | bash "$H/run-py.sh" "$H/no-such-hook.py" 2>&1; echo $?)" 0
 # script-post.sh (PostToolUse and PostToolUseFailure on Bash|PowerShell): no snapshot for the call -> 0 with no Python
 # start (a py/python3 spy first on PATH marks any start); a snapshot -> handed to run-py.sh and the script (bad storyboard -> 2).
 mkdir -p "$T/spy" "$T/home/.claude/shortform-superengine/script-snap"

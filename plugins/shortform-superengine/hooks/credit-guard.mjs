@@ -55,8 +55,8 @@ const cmd =
     : "";
 
 // content-goldmine runner: its comment fetch calls SocialCrawl from Python, so the URL never
-// appears in the command and this is the guard's only look at that spend. Joe 09.23.26: silent
-// at or under the per-pull goldmine budget, one ask above. The runner hard-stops at --approved,
+// appears in the command and this is the guard's only look at that spend. Silent at or under
+// the per-pull goldmine budget, one ask above. The runner hard-stops at --approved,
 // so the approved amount is the most it can spend; it is added to the session tally on intent.
 const GOLDMINE_BUDGET = 600; // mirrored in skills/content-goldmine/scripts/goldmine_build.py
 if (/goldmine_build\.py["']?\s+fetch\b/i.test(cmd)) {

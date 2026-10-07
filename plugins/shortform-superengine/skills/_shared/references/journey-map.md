@@ -35,7 +35,7 @@ doctrine behind each handoff, with its note ids, is in `vault-api.md`.
 Skills check prereqs in state and **refuse to skip ahead**, with a plain-English
 why and the correct door (edge E0).
 
-## Skill roster (15 installed)
+## Skill roster (16 installed)
 
 Trigger phrases are canonical: Next-moves blocks quote them verbatim from this
 table. Every phrase belongs to exactly one skill.
@@ -58,6 +58,7 @@ table. Every phrase belongs to exactly one skill.
 |---|---|---|---|
 | `competitor-cross-reference` | "analyze my Instagram against my competitors", "competitor cross-reference analysis", "cross-reference my client against competitors", "content gap analysis for an Instagram account", "IG baseline plus competitor audit", "build a content/growth strategy roadmap from competitor data", "analyze why a client's reels underperform vs competitors", "create a client-facing strategy roadmap from Instagram data", "build my visual dashboards", "regenerate my visuals", "open my visuals", "run more seeds", "shrink the set to N", "resume my cross-reference" | `setup` done (marker + SocialCrawl key) | `<project>/analysis-data.json`, the 10-section roadmap, the visual pack; `analysis.*`, `project_path` |
 | `creator-strategy-harvest` | "harvest <creator>'s library", "get everything <creator> teaches", "pull all of <creator>'s content", "build a corpus from <creator>'s videos", "refresh our notebook on <creator>", "refresh the harvest on <creator>" | `yt-dlp` present | a dated, framework-extracted creator corpus + manifest. Writes no state keys |
+| `content-goldmine` | "run the goldmine", "content goldmine", "goldmine dashboard", "build my goldmine dashboard", "update my goldmine", "what's working for my competitors' lead magnets" | `analysis` set (a finished cross-reference). A SocialCrawl key only for the paid comments step | `<project>/visuals/Content Goldmine Dashboard - <date>.html`, the same page as a private Artifact, `reel-build/goldmine-run.json` with passed reads (reel scripting uses them by default); `goldmine.*` |
 
 ### MAKE
 | Skill | Trigger phrases | Prereqs (state) | Produces |
@@ -144,6 +145,7 @@ in 0.3.4's `next-moves.md`.
 | E28 | viral, rewrite delivered, or the ask is not a viral job | rehooks "add rehooks" - hook "write me a hook" - shortform-next. Not a viral job: angles (no script yet) - hook (only the opening is weak) - rehooks (viewers leave mid-reel) - polarize (a soft take made sharper). Called by reel-scripter: back to the caller (E0b) |
 | E29 | angles, concepts delivered, or the ask is not an angles job | reel-scripter "write a reel script" (an analysis on disk) - hook "write me a hook" - polarize "hot take" (a concept that holds a stance) - shortform-next. Not an angles job: viral (a script needs polish) - hook (only the opening) - rehooks (viewers leave mid-reel) - polarize (a stance to state with conviction). Called by reel-scripter: back to the caller (E0b) |
 | E30 | polarize, take delivered, or not a take (no real position, or the main message takes no side) | rehooks "add rehooks" - hook "write me a hook" - shortform-next. Not a take: angles "angles on this topic" - viral "make this more viral" (more shares is the real goal). Called by reel-scripter: back to the caller (E0b) |
+| E31 | content-goldmine, dashboard saved and published | reel-scripter "script the top gap" (every reel now uses the Goldmine by default) - content-plan "plan my week" - competitor-pulse "make the pulse weekly" [schedule, if unset] - shortform-next. Paused for a fresh chat (long reads): "run the goldmine" in a new chat (E0b) |
 
 ### Failure edges
 | ID | From, condition | Routes to |
@@ -158,6 +160,7 @@ in 0.3.4's `next-moves.md`.
 | F8 | reel-scripter or content-plan in `subject-first`, no subject on disk | `subject-matter` "(if installed)" as move #1, else switch to `field-first` and say so |
 | F9 | a deep play requested and the socialcrawl-superengine marker is absent | the install refusal block as move #1: which plays need it (field search beyond `socialcrawl-endpoints.md`, creator vetting, share of voice, lead finding), why this plugin will not fake them, then the exact phrase to say once it is installed. A refusal that routes, never a stall |
 | F10 | socialcrawl, call failed after the idempotent retry | balance check, then the compass |
+| F11 | content-goldmine, zero breakouts, or a step stopped before the dashboard (the 30-day first-run window did not take, the dashboard download failed or did not verify, the page did not build) | zero breakouts: the plain message, and a previous Goldmine stays in use (its passed reads stay recorded) - competitor-pulse "run the weekly pulse" - reel-scripter "script the top gap". Stopped: "run the goldmine" again once fixed (nothing paid is redone) - reel-scripter "script the top gap" (when the reads passed) - shortform-next |
 
 ## Gates (hard blocks, checked in state)
 

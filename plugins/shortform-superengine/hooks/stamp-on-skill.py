@@ -64,9 +64,14 @@ viral and rehooks with a step token starting 4 (4b) 5. rehooks' mode is read as 
 - Ask the client (Joe, 10.03): in an `rs` session past a pass boundary that came after its last
   reel-scripter call (a reel was finished since then), a Step 2 call with no fresh angles stamp (a
   polarize hot take, rehooks) may be a new reel or a one-off, and only the client knows. It is
-  blocked with ASK and `asked` keeps the turn and the pass. A later call whose args carry
-  `standalone: yes` (or `standalone=true`, quoted or not), in a LATER user turn than that block and
-  on the same pass (the client answered), passes and sets `rs` false,
+  blocked with ASK and `asked` keeps the turn and the pass; a re-block on the same pass keeps the
+  first block's turn, a block on a new pass rewrites both. While `asked` is set, a UserPromptSubmit
+  whose text (`prompt`, else `user_prompt`) says "on its own", "one-off" ("one off", "oneoff"), "by
+  itself" or "standalone" sets `oneoff` to that turn, unless the same text says "new reel", negates
+  the phrase ("not on its own", "don't ... on its own") or carries a <task-notification>. An
+  AskUserQuestion answer never sets it. A later call whose args carry `standalone: yes` (or
+  `standalone=true`, quoted or not), on the same pass, with `oneoff` later than the block's turn
+  (the client's own reply asked for a one-off), passes and sets `rs` false,
   so the session's order rules end until reel-scripter is called again. A reel-scripter or angles
   call clears `asked`. A reel-scripter call after the pass starts a new reel, so its Step 2 call
   gets Rule 1. Ceiling: a second reel started in that session without a reel-scripter call runs
@@ -94,10 +99,17 @@ RULE2 = ("Blocked: you are crossing Checkpoint {n} without the user. Show Checkp
          "turn; make this call after the user replies. Pick an option only when the user asked you to "
          "choose; then say which one and why, and that they can change it.")
 ASK = ("Blocked: Step 1 has not run for a new reel, and a reel was finished since reel-scripter last ran in "
-       "this chat, so this call may be a one-off. Ask the client in plain words whether they want a new reel or "
-       "just this on its own, and end your turn. New reel: Call Skill shortform-superengine:angles with step: 1 "
-       "(Step 1). On its own: after they reply, call this skill again with the line `standalone: yes` in its args.")
+       "this chat, so this call may be a one-off. Ask the client in a plain chat reply, not an AskUserQuestion "
+       "popup (a popup answer never counts), whether they want a new reel or just this on its own, and end your "
+       "turn. New reel: Call Skill shortform-superengine:angles with step: 1 (Step 1). On its own: only the "
+       "client's own reply saying \"on its own\" or \"one-off\" counts, and not a reply that also says \"new reel\"; after it, call this skill again with the "
+       "line `standalone: yes` in its args.")
 STANDALONE = re.compile(r"""(?<![\w-])standalone["']?[ \t]*[:=][ \t]*["']?(?:yes|true)\b""", re.I)
+_ONE = r"\b(?:on its own|one[- ]?off|by itself|standalone)\b"
+ONEOFF = re.compile(_ONE, re.I)
+# ponytail: a negation anywhere earlier in the same clause rejects ("I never said on its own" fails safe:
+# Claude asks again; a comma ends the clause, so "I don't mind, on its own" counts). Narrow it if clients trip it.
+ONEOFF_NOT = re.compile(r"\bnew reel\b|(?:\bnot|\bnever|\bdont|n['\u2019]t)\b[^.,;:!?\n]*" + _ONE, re.I)
 STEP = re.compile(r"\bstep(?:[ \t]*[:=][ \t]*|[ \t]+)([0-9A-Za-z][\w.-]*)", re.I)
 ROOTS = {Path(__file__).absolute().parent.parent, Path(__file__).resolve().parent.parent}
 METHOD = {f"skills/{n}/references/legit-{n}.md": n for n in NAMES}
@@ -225,6 +237,11 @@ def main():
         if user:
             if state is not None:
                 state["turn"] = state.get("turn", 0) + 1
+                text = data.get("prompt") or data.get("user_prompt")
+                if (event == "UserPromptSubmit" and state.get("asked") and isinstance(text, str)
+                        and "<task-notification>" not in text and ONEOFF.search(text)
+                        and not ONEOFF_NOT.search(text)):
+                    state["oneoff"] = state["turn"]
                 save_pending(pend, sessions, sid, state)
             return 0
         sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "skills" / "reel-scripter"))
@@ -259,11 +276,11 @@ def main():
             if passed and step == 2 and not angled and state.get("rsp") != passed[-1]:
                 args, asked = inp.get("args"), state.get("asked") or [0, None]
                 if (STANDALONE.search(args if isinstance(args, str) else json.dumps(args))
-                        and asked[1] == passed[-1] and turn > asked[0]):
+                        and asked[1] == passed[-1] and state.get("oneoff", 0) > asked[0]):
                     state["rs"] = False
                     save_pending(pend, sessions, sid, state)
                     return 0
-                state["asked"] = [turn, passed[-1]]
+                state["asked"] = asked if asked[1] == passed[-1] else [turn, passed[-1]]
                 save_pending(pend, sessions, sid, state)
                 sys.stderr.write(ASK + "\n")
                 return 2

@@ -1,6 +1,7 @@
-# Client answers for the gut fixture (seed-proj). Grammar: respond.py. First match wins, so
-# later stops come before earlier ones (a Checkpoint 3 text may name Checkpoint 2).
-OPEN ==> Write a reel script for me from my competitor analysis.
+# Client answers for the gut fixture, Goldmine override walk: answers-gut.txt with only this header and
+# OPEN changed. The client turns the Goldmine data off in plain words; grade with --goldmine override.
+# Grammar: respond.py. First match wins, so later stops come before earlier ones.
+OPEN ==> Write a reel script for me from my competitor analysis. Use my own hook, ignore the Goldmine data.
 # The plugin's one-off ASK (hooks/stamp-on-skill.py): a new reel, or just this on its own. This walk is a new reel.
 new (reel|one)\b.{0,200}(on its own|by itself|one-?off)|(on its own|by itself|one-?off).{0,200}new (reel|one)\b|same .{0,40}reel.{0,40} or a new one ==> A new reel: start it from Step 1.
 # polarize at Step 2 asks for the belief and the evidence when they were not passed.

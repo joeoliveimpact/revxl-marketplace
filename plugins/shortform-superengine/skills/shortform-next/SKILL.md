@@ -62,6 +62,7 @@ same render rule governs the conditional lines in every block below.
 11. *If `open_loops` holds a `competitor-cross-reference` entry (F1):* pick the parked cross-reference back up at its checkpoint ... nothing already paid for is re-spent. Say: "resume my cross-reference"
 12. *If `open_loops` holds a `content-plan` entry:* script the plan idea its note names, N being that idea's number in the plan. Say: "script idea N from my content plan"
 13. *If `open_loops` holds a `reel-scripter` entry:* pick the unfinished reel its note names back up. Say: "script that reel"
+14. *If `analysis` is set, `goldmine.last_run` is unset or older than the newer of `analysis.date` and `pulse.last_run`, and the marker is on disk:* see what broke out in your field, the hooks, topics and lead magnets, in one dashboard. Say: "run the goldmine"
 
 **Next moves ... nothing on disk**
 (E0) no marker and no state file for this brand. Hardcoded, because there is no
@@ -89,6 +90,7 @@ reorder of lines 8 and 9, the four-move cap and the floor govern them here too.
 11. *If `open_loops` holds a `competitor-cross-reference` entry (F1):* pick the parked cross-reference back up at its checkpoint ... nothing already paid for is re-spent. Say: "resume my cross-reference"
 12. *If `open_loops` holds a `content-plan` entry:* script the plan idea its note names, N being that idea's number in the plan. Say: "script idea N from my content plan"
 13. *If `open_loops` holds a `reel-scripter` entry:* pick the unfinished reel its note names back up. Say: "script that reel"
+14. *If `analysis` is set, `goldmine.last_run` is unset or older than the newer of `analysis.date` and `pulse.last_run`, and the marker is on disk:* see what broke out in your field, the hooks, topics and lead magnets, in one dashboard. Say: "run the goldmine"
 
 **Next moves ... deep play needs socialcrawl-superengine**
 (F9) the highest-ranked move is a play beyond `socialcrawl-endpoints.md` (field

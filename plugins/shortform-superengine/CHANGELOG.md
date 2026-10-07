@@ -2,6 +2,80 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.0] ... 2026-10-06
+
+### Added
+- **content-goldmine skill** (SKLLPLG-332). Say "run the goldmine" after a finished
+  cross-reference and it builds the Content Goldmine dashboard. New `SKILL.md` with
+  `references/publish.md` and `references/gotchas.md`. The page is always saved under
+  `<project>/visuals/` first, then published as a private Artifact (db `bank`); its link,
+  the saved path and the dashboard tag go under `goldmine.*` in state. A first run (no
+  `reel-build/goldmine-run.json`) re-runs analyze with a 30-day `--window-from` window and
+  checks `window_source`. A later day resumes into the run's existing reads files.
+  Journey-map roster, edges E31 and F11, the shortform-next route, the state-schema
+  `goldmine` block and the skill count (16) follow.
+- **Dashboard fetch** in `goldmine_build.py`: curl plus `tarfile` download of the pinned
+  `content-goldmine-dashboard` tag (v0.2.1, engagement asks off the lead magnet board)
+  into `~/.cache/shortform-superengine/goldmine-dashboard/<tag>`, with a commit-stamp
+  check, safe-member and single-root checks, and a plain ERROR line and exit code for
+  every failure.
+- **Runner sync**: weak-CTA, `named_word`, `weak_cta_reels`, `--top-per-creator` and the
+  stale-PAPS-row check. `reads` pre-fills the mechanical fields. `check-reads` requires
+  `lm_none` on a row with no offer (an engagement ask) and never sets it itself, needs
+  `lm_types` only when CTA rows exist, requires the newest PAPS to match, and writes the
+  Proven Hooks file.
+
+### Changed
+- **Goldmine data is used by default.** When a Goldmine run's reads have passed, every
+  reel uses its Pattern Read and proven hooks (hook, rehooks, viral, angles, polarize),
+  adapted to the client's voice and never copied. The 0.5.0 mid-reel Goldmine question,
+  gate check 9 and `hooks/goldmine-answer.py` are gone. The client's own hook enters as a
+  `candidates:` line beside the proven ones. The only off switch is the client plainly
+  saying to use their own hook or ignore the data; then no skill gets the data for that
+  reel. The proven hooks come from the file named by `reads.proven_hooks`, else the top 3
+  by multiplier from `reads.packet`.
+- **The paid comments step always asks first, at three depth levels.** With no
+  `--top-per-creator`, `plan` prices Light (each competitor's best breakout), Standard
+  (top 3 per competitor) and Deep (every breakout in the window) in one ask, with the
+  balance and the pull's window dates; the client picks a level, and a bare yes gets
+  "which level?". `fetch` honours the saved cap, limits calls to the approved credits
+  divided by the per-reel price, counts a missing `credits_used` as the estimate (marked
+  `credits_estimated`), and refuses an approval below the Deep price that names no level.
+  `--top-per-creator` must be a whole number of 1 or more.
+- **A one-off counts only when the client asks for it.** The 0.5.0 new-reel-or-one-off
+  hold lifts only after the client's own chat reply says "on its own", "one-off", "by
+  itself" or "standalone", never with "new reel" or a negation in the same reply, and
+  never from Claude's own `standalone: yes` alone. Popup answers and task notifications
+  never count. The question is asked in plain chat.
+- `publish.md` locks roster requests and reply drafts to the owner and Editors, like the
+  Bank, and says plainly who can see them.
+- **State schema 1.1.** The `goldmine` block is a 1.1 key, so content-goldmine Step 9
+  sets `schema_version` to "1.1" when it records a run (`state-schema.md`, rule 7).
+- The marketplace listing and the catalog README name the Content Goldmine. The skill
+  count stays 16.
+- The credit guard's Goldmine comment is reworded; the guard behaves the same.
+
+### Fixed
+- Zero breakouts give a plain message and exit 0 at every step, except `fetch` run
+  without `--approved` or without a SocialCrawl API key, which stops on that first. A
+  first run that finds nothing no longer uses up the 30-day window, and a zero result
+  after a Goldmine keeps its passed reads.
+- Long paths on Windows: the dashboard cache and the project folder work past the
+  260-character limit through the long-path form, with no machine setting changed and
+  nothing asked of the client. Messages and saved state show the normal path. A long
+  project on a network drive stops up front with one plain message (exit 10).
+- `analyze.py` works in long project folders on Windows too: the runner's 150-character
+  gate, file paths joined from parts, and the same exit 10 for a long network folder.
+  Checked by `tests/shortform/test_analyze_long_path.py`.
+- `transcribe` says plainly when there is nothing to transcribe.
+- The CTA pattern treats an em dash as a separator.
+- `run-py.sh` exits 0 when a hook script is missing, so an update that removes a hook
+  never blocks a session that is already open.
+
+### Known limits
+- The SocialCrawl calls still run from shortform in this release. Moving them to
+  SocialCrawl Superengine is planned for the next release.
+
 ## [0.5.0] ... 2026-10-06
 
 ### Added

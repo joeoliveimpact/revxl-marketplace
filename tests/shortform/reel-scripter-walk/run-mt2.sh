@@ -3,7 +3,7 @@
 # State lives outside the repo: home/ (scratch Claude profile; never holds a login file), proj/ (gut) or proj-contra/ (contra), fixtures/, logs/, synced-aside/.
 # Auth (SKLLPLG-369): a walk-only `claude setup-token` token read from RS_WALK_TOKEN (default $HOME/.config/rs-walk/walk-token) and passed as CLAUDE_CODE_OAUTH_TOKEN. The live ~/.claude/.credentials.json is never read or copied.
 # --run2 (or RS_WALK_RUN2=1): a second reel in the same project with no reset; the loop stops on a finished script whose name or content was not there at start (a reused or overwritten slug counts).
-# Answers: respond.py picks each one from the fixture's answer file (gut: answers-gut.txt here; contra: <state>/fixtures/contra-answers.txt) off the last assistant text of the turn before. At most 18 turns.
+# Answers: respond.py picks each one from the fixture's answer file (gut: answers-gut.txt here; contra: <state>/fixtures/contra-answers.txt; RS_WALK_ANSWERS=<file> overrides either) off the last assistant text of the turn before. At most 18 turns.
 # Budget: --max-budget-usd 3.00 per turn; the walk stops once the session's total_cost_usd passes RS_WALK_CAP (default 8.00).
 S="$(cygpath -m "${RS_WALK_STATE:-$HOME/rs-walk-state}")"; H="$S/home"; L="$S/logs"; N="$1"
 RUN2="${RS_WALK_RUN2:-}"; FX=gut
@@ -16,6 +16,8 @@ case "$FX" in
   gut) P="$S/proj"; B=fixturebrand; ANSF="$D/answers-gut.txt";;
   contra) P="$S/proj-contra"; B=contrabrand; ANSF="$S/fixtures/contra-answers.txt";;
 esac
+# Made absolute: the walk cds into the project before later answers are picked.
+[ -n "${RS_WALK_ANSWERS:-}" ] && ANSF="$(cygpath -m "$(realpath "$RS_WALK_ANSWERS")")"
 [ -n "$N" ] || { echo "usage: bash run-mt2.sh <name> [gut|contra] [--run2]"; exit 2; }
 [ -d "$R" ] || { echo "refuse: no plugin at $R"; exit 2; }
 [ -d "$H/.claude" ] && [ -d "$P" ] || { echo "refuse: no home/.claude or $P (set RS_WALK_STATE, run reset.sh $FX)"; exit 2; }

@@ -108,7 +108,8 @@ What it is, its inputs, the ✋ pause rule and done: `./references/pipeline-deta
 **0a. Locate the analysis.** Confirm `<project>/analysis-data.json` exists (a completed
 `competitor-cross-reference` run). If only the older `analysis-data.md` exists, re-run
 `analyze.py` to emit the JSON. No analysis on disk is a terminal path, not an error: render
-E9 above and stop.
+E9 above and stop. Then read `<project>/reel-build/goldmine-run.json` (missing = no
+data): if `reads.passed`, pass every Goldmine line unless the client said to ignore it.
 
 **0b. Run the brief.**
 
@@ -189,8 +190,7 @@ to `state.angles_unpicked[]` as `{angle, from, opened}`, so a later Step 1 can o
 Step 5 removes the one scripted.
 
 **Stamps.** A Skill call, then a Read of its method file, records the stamp; never write or edit a `from:` line.
-In `<project>/reel-build/provenance.md` you write only `goldmine:` (the hook skill's step).
-The gate clears it on a pass.
+You write nothing in `<project>/reel-build/provenance.md`; the gate clears it on a pass.
 
 ### ✋ Checkpoint 1 — Pick one angle
 **Pause.** The user picks one angle (or redirects). Everything downstream serves that one move.
