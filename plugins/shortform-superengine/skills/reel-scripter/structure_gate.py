@@ -1007,7 +1007,7 @@ def selftest_hook():
         ("ask (370 M3): a newer pass, no new ask, one-off reply, standalone: ask again (pass changed)", False,
          [upt("just this on its own"), solo()], False, [],
          {"exit": 2, "err": "Ask the client", "prov": "passed: 2222222222222222\n"}),
-        # Only the client's own chat reply asking for a one-off lifts the ask (Joe, 10.06; walk 060-yes).
+        # Only the client's own chat reply asking for a one-off lifts the ask (ruled 10.06; walk 060-yes).
         ("oneoff (060): a reel in this session", True, first, False, []),
         ("oneoff (060): its pass, polarize step 2: ask", False, [ups, pre(sf + "polarize", "step: 2")], False, [],
          {"exit": 2, "err": "Ask the client", "prov": "passed: 0123456789abcdef\n"}),
