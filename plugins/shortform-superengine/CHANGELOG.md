@@ -26,10 +26,27 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   Proven Hooks file.
 
 ### Changed
-- **The paid comments step always asks first.** `plan` shows the exact capped price
-  before any paid call; `fetch` honours the saved cap, limits calls to the approved
-  credits divided by the per-reel price, and counts a missing `credits_used` as the
-  estimate (marked `credits_estimated`).
+- **Goldmine data is used by default.** When a Goldmine run's reads have passed, every
+  reel uses its Pattern Read and proven hooks (hook, rehooks, viral, angles, polarize),
+  adapted to the client's voice and never copied. The 0.5.0 mid-reel Goldmine question,
+  gate check 9 and `hooks/goldmine-answer.py` are gone. The client's own hook enters as a
+  `candidates:` line beside the proven ones. The only off switch is the client plainly
+  saying to use their own hook or ignore the data; then no skill gets the data for that
+  reel. The proven hooks come from the file named by `reads.proven_hooks`, else the top 3
+  by multiplier from `reads.packet`.
+- **The paid comments step always asks first, at three depth levels.** With no
+  `--top-per-creator`, `plan` prices Light (each competitor's best breakout), Standard
+  (top 3 per competitor) and Deep (every breakout in the window) in one ask, with the
+  balance and the pull's window dates; the client picks a level, and a bare yes gets
+  "which level?". `fetch` honours the saved cap, limits calls to the approved credits
+  divided by the per-reel price, counts a missing `credits_used` as the estimate (marked
+  `credits_estimated`), and refuses an approval below the Deep price that names no level.
+  `--top-per-creator` must be a whole number of 1 or more.
+- **A one-off counts only when the client asks for it.** The 0.5.0 new-reel-or-one-off
+  hold lifts only after the client's own chat reply says "on its own", "one-off", "by
+  itself" or "standalone", never with "new reel" or a negation in the same reply, and
+  never from Claude's own `standalone: yes` alone. Popup answers and task notifications
+  never count. The question is asked in plain chat.
 - `publish.md` locks roster requests and reply drafts to the owner and Editors, like the
   Bank, and says plainly who can see them.
 - **State schema 1.1.** The `goldmine` block is a 1.1 key, so content-goldmine Step 9
@@ -52,6 +69,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   Checked by `tests/shortform/test_analyze_long_path.py`.
 - `transcribe` says plainly when there is nothing to transcribe.
 - The CTA pattern treats an em dash as a separator.
+- `run-py.sh` exits 0 when a hook script is missing, so an update that removes a hook
+  never blocks a session that is already open.
 
 ### Known limits
 - The SocialCrawl calls still run from shortform in this release. Moving them to

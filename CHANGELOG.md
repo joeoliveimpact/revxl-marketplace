@@ -12,7 +12,8 @@ say "run the goldmine" and it builds a dashboard of what broke out in your field
 the hooks, topics and lead magnets behind it, saved as a page in your project and
 published as a private Artifact in your own account. The dashboard is downloaded at a
 pinned version, never bundled. The only paid step (comments) always asks first, with
-its capped price. Long project folders on Windows work with no machine setting changed.
+three depth levels and their prices. Reels now use the Goldmine data by default: the
+0.5.0 mid-reel Goldmine question is gone, and a one-off counts only when you ask for it. Long project folders on Windows work with no machine setting changed.
 
 ## [0.1.75] ... 2026-10-06
 
