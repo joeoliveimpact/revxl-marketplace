@@ -28,19 +28,13 @@ flag it and ask ... never paper over with invented teaching.
      Each opening comes back with its spoken line, its on-screen text and its visual. The
      on-screen text is its own line, not the spoken line copied (the hook skill's Written
      hook). A gold phrase from the coach or their audience goes in word for word.
-     **The Goldmine question is asked by the hook skill, not here** (do not ask it twice).
-     When `<project>/reel-build/goldmine-run.json` shows `reads.passed` true, the hook skill
-     asks it before it writes any opening, as its own paragraph, word for word (no bold, no
-     quotes, no change of case):
-
-     ```
-     Should I double-check hook options against outliers, breakouts, and existing winners from the Content Goldmine dashboard? I'd look for anything that could apply to what we're trying to do with this reel and maximize its engagement, or any ideas that could better the content overall.
-     ```
-
-     It ends the turn there. Only after the user replies (a plugin hook then writes
-     `goldmine-asked:` and blocks any earlier write) does it write the `goldmine:` line in
-     `<project>/reel-build/provenance.md` (`asked-yes` or `asked-no`; `no-data` when there is
-     no data); the Step 4b gate checks it. Call `hook` once with the Skill tool (its stamp counts only from that call plus a Read of its method file):
+     **Goldmine data is on by default; never ask whether to use it.** When
+     `<project>/reel-build/goldmine-run.json` shows `reads.passed` true, always pass the
+     Pattern Read and the proven hooks below; the hook skill adapts them through its copy's
+     "Adapting a proven hook" section, never copied. The one off switch: the client said
+     plainly to use their own hook or to ignore the data. Then no Goldmine data goes to any
+     skill for this reel. A hook the client gave goes in as `candidates`, beside the proven
+     ones. Call `hook` once with the Skill tool (its stamp counts only from that call plus a Read of its method file):
 
      ```
      Skill: shortform-superengine:hook
@@ -48,20 +42,21 @@ flag it and ask ... never paper over with invented teaching.
             topic: <the locked angle>
             body: <the approved skeleton>
             voice: <the voice anchor confirmed at Checkpoint 0>
-            pattern_read: <only when Goldmine data exists (the hook skill uses it only after a yes): the reel-build/ file named by
-                          reads.patternread in <project>/reel-build/goldmine-run.json, when its
-                          reads.passed is true>
-            proven_hooks: <same condition: the top 3 breakouts by mult from the reads packet named by
-                          reads.packet, each with its Pattern Read formula (name and template), its
-                          opening line and @handle, mult, URL>
+            candidates: <the client's own hook, word for word, when they gave one; leave this line out when there is none>
+            pattern_read: <the reel-build/ file named by reads.patternread in <project>/reel-build/goldmine-run.json,
+                          only when its reads.passed is true and the client has not said to ignore the data or
+                          use their own hook; else leave this line out>
+            proven_hooks: <same condition (reads.passed true, and the client has not said to ignore the data or use
+                          their own hook): the file named by reads.proven_hooks; when that key is missing, the top 3
+                          breakouts by mult from reads.packet, each with its Pattern Read formula (name and
+                          template), its opening line and @handle, mult, URL; else leave this line out>
             redo: <what cut the first set, or which killer fired and why>
      ```
 
-     With no Goldmine data, leave `pattern_read` and `proven_hooks` out. Vault pull #2
+     With no Goldmine data, or after the off switch, leave `pattern_read` and `proven_hooks` out. Vault pull #2
      hits, when there are any, ride in the `topic:` line as data, never as rules. The stamp is
-     recorded automatically when you call the skill with the Skill tool and then Read its method file; never write or edit a `from:` line yourself. The
-     only lines you write to `<project>/reel-build/provenance.md` are `goldmine:` lines, written
-     by the hook skill's step.
+     recorded automatically when you call the skill with the Skill tool and then Read its method file; never write or edit a `from:` line yourself. You
+     write nothing else to `<project>/reel-build/provenance.md` either.
 
      The proven hooks go through its "Adapting a proven hook" section, so each comes back
      rebuilt for this reel's subject or refused as a bad fit. Its openings run the passes
@@ -81,7 +76,7 @@ flag it and ask ... never paper over with invented teaching.
                    re-hook slots in a later call, after the body and proof picks>
             picks: <the lines picked so far, in beat order>
             voice: <the voice anchor confirmed at Checkpoint 0>
-            pattern_read: <the reel-build/ file named by reads.patternread in <project>/reel-build/goldmine-run.json, only when its reads.passed is true; else leave this line out>
+            pattern_read: <the reel-build/ file named by reads.patternread in <project>/reel-build/goldmine-run.json, only when its reads.passed is true and the client has not said to ignore the data or use their own hook; else leave this line out>
             redo: <what cut the first set, or which killer fired and why>
      ```
 

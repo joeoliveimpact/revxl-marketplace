@@ -189,8 +189,7 @@ to `state.angles_unpicked[]` as `{angle, from, opened}`, so a later Step 1 can o
 Step 5 removes the one scripted.
 
 **Stamps.** A Skill call, then a Read of its method file, records the stamp; never write or edit a `from:` line.
-In `<project>/reel-build/provenance.md` you write only `goldmine:` (the hook skill's step).
-The gate clears it on a pass.
+You write nothing in `<project>/reel-build/provenance.md`; the gate clears it on a pass.
 
 ### ✋ Checkpoint 1 — Pick one angle
 **Pause.** The user picks one angle (or redirects). Everything downstream serves that one move.

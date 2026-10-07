@@ -46,6 +46,9 @@ Goldmine data, the skills and the rulings win, and the Vault point is shown to t
 a suggestion. Vault hits go into the hook call as data, never as rules. At Checkpoint 0,
 where Vault doctrine and the brief's local stats disagree, the brief says so in one
 sentence and ranks the doctrine first.
+Goldmine data is used by default whenever it exists; never ask whether to use it. One
+override sits above all three voices: when the client has said plainly to use their own
+hook or to ignore the data, no Goldmine data goes to any skill for this reel.
 
 ## Step 0b ... what the brief writes, and its two modes
 
@@ -97,7 +100,7 @@ args:  step: 1
        topic: <the reel's topic, or the brief's top attack theme>
        candidates: <what the client brought, one per line: their idea or thought, each angles_unpicked[] leftover, a content-plan idea, an open-loop note; leave this line out when there is none>
        voice: <the voice anchor confirmed at Checkpoint 0>
-       pattern_read: <the reel-build/ file named by reads.patternread in <project>/reel-build/goldmine-run.json, only when its reads.passed is true; else leave this line out>
+       pattern_read: <the reel-build/ file named by reads.patternread in <project>/reel-build/goldmine-run.json, only when its reads.passed is true and the client has not said to ignore the data or use their own hook; else leave this line out>
        used: <the (theme, hook) pairs already scripted>
 ```
 
@@ -181,7 +184,7 @@ args:  step: 2
        script: <the beat list, labels and estimated times, no copy yet>
        length: <the brief's length target>
        voice: <the voice anchor confirmed at Checkpoint 0>
-       pattern_read: <the reel-build/ file named by reads.patternread in <project>/reel-build/goldmine-run.json, only when its reads.passed is true; else leave this line out>
+       pattern_read: <the reel-build/ file named by reads.patternread in <project>/reel-build/goldmine-run.json, only when its reads.passed is true and the client has not said to ignore the data or use their own hook; else leave this line out>
 ```
 
 The stamp is recorded automatically when you call the skill with the Skill tool and then Read its method file; never write or edit a `from:` line yourself.
@@ -206,7 +209,7 @@ args:  step: 2
        stance: <the belief, in the creator's own words, when given>
        evidence: <the creator's evidence, when given>
        voice: <the voice anchor confirmed at Checkpoint 0>
-       pattern_read: <the reel-build/ file named by reads.patternread in <project>/reel-build/goldmine-run.json, only when its reads.passed is true; else leave this line out>
+       pattern_read: <the reel-build/ file named by reads.patternread in <project>/reel-build/goldmine-run.json, only when its reads.passed is true and the client has not said to ignore the data or use their own hook; else leave this line out>
        competitors: <the three closest competitors from the analysis>
 ```
 
@@ -247,7 +250,7 @@ args:  step: 4a-viral
        script: <the drafted lines: the Step 3 picks in beat order>
        final: yes (the skeleton is locked; suggestions only, each paired with its exact line)
        voice: <the voice anchor confirmed at Checkpoint 0>
-       pattern_read: <the reel-build/ file named by reads.patternread in <project>/reel-build/goldmine-run.json, only when its reads.passed is true; else leave this line out>
+       pattern_read: <the reel-build/ file named by reads.patternread in <project>/reel-build/goldmine-run.json, only when its reads.passed is true and the client has not said to ignore the data or use their own hook; else leave this line out>
 ```
 
 It returns suggestions, each paired with the exact line it would replace, plus the share
@@ -290,8 +293,8 @@ stamps.
 
 **Stamps live in `<project>/reel-build/provenance.md`.** Each called skill (angles, rehooks at
 Step 2 and again at Step 3, hook, polarize when the angle needs it, viral) gets its `from:`
-line recorded there automatically when you call it with the Skill tool and then Read its method file; never write or edit a `from:` line yourself. The
-only lines you write to that file are `goldmine:` lines, written by the hook skill's step. A
+line recorded there automatically when you call it with the Skill tool and then Read its method file; never write or edit a `from:` line yourself. You
+write nothing else to that file either. A
 `from:` line in the skeleton or the angles file fails the gate. The gate reads the stamps there and
 clears them on a pass. After a pass the file holds one `passed:` line for that skeleton, so a
 re-run on the same skeleton passes, and the next reel needs its own calls and its own stamps.
@@ -309,7 +312,7 @@ args:  step: 4b
        final: yes (the skeleton is locked)
        dead_seams: <each dead seam, as the two beats it sits between>
        voice: <the voice anchor confirmed at Checkpoint 0>
-       pattern_read: <the reel-build/ file named by reads.patternread in <project>/reel-build/goldmine-run.json, only when its reads.passed is true; else leave this line out>
+       pattern_read: <the reel-build/ file named by reads.patternread in <project>/reel-build/goldmine-run.json, only when its reads.passed is true and the client has not said to ignore the data or use their own hook; else leave this line out>
 ```
 
 It returns one re-hook proposal per dead seam, anchored to the exact line it follows. Apply

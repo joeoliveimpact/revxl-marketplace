@@ -51,32 +51,19 @@ Close stays and the block follows it.
 `../reel-scripter/references/step3-options.md`), it passes the voice anchor
 confirmed at its Checkpoint 0. Write every opening in that voice.
 
-**The Goldmine question comes first, in this mode.** Ask it once per reel: if
-`<project>/reel-build/provenance.md` already holds a `goldmine:` line, do not ask again
-or append another; use that answer (a `redo:` call reuses it). Before you write any opening,
-read `<project>/reel-build/goldmine-run.json`. When its `reads.passed` is true, send the
-line inside this fence as its own paragraph, copied character for character: no fence,
-no bold, no quotes, no change of case or wording.
-
-```
-Should I double-check hook options against outliers, breakouts, and existing winners from the Content Goldmine dashboard? I'd look for anything that could apply to what we're trying to do with this reel and maximize its engagement, or any ideas that could better the content overall.
-```
-
-Then end your turn and wait for the reply. Write no answer in the turn you ask: when the
-user replies, a plugin hook writes a `goldmine-asked:` line and tells you to record the
-answer, and it blocks any earlier write. Only then append one line to
-`<project>/reel-build/provenance.md`: `goldmine: asked-yes` or `goldmine: asked-no`.
-Never write a `goldmine-asked:` line yourself.
-With no such file, or `reads.passed` not true, do not ask: append `goldmine: no-data`.
-
+**Goldmine data is on by default, in this mode. Never ask whether to use it.**
 Goldmine data comes only through `<project>/reel-build/goldmine-run.json`: when its
-`reads.passed` is true, reel-scripter passes the Pattern Read and the proven hooks
-from the files that JSON names (`reads.patternread` and the reads packet,
-`reads.packet`). Use them only after a yes; after a no, leave them out. They are
-never found by picking the newest file name. The proven hooks, with their numbers, go through the copy's "Adapting a proven
+`reads.passed` is true, reel-scripter passes the Pattern Read (the file named by
+`reads.patternread`) and the proven hooks (the file named by `reads.proven_hooks`; when
+that key is missing, the top 3 by mult from `reads.packet`). Use them on every reel.
+They are never found by picking the newest file name. The proven hooks, with their numbers, go through the copy's "Adapting a proven
 hook" section one at a time: check the proof, keep the skeleton and the trigger, swap
-in this reel's subject, refuse a bad fit. After a no, or with no Goldmine data passed,
-write from the grid as usual. Return the openings; reel-scripter's passes screen, score and gate
+in this reel's subject, refuse a bad fit. Adapt them to the client's voice; never copy
+their wording. The one off switch: the client said plainly to use their own hook or to
+ignore the data. Then no Goldmine data comes for this reel; write from the grid as usual,
+as you do when none exists. A hook the client gave comes as `candidates`: return it first,
+shaped like your other openings, beside the proven and fresh ones; the client picks.
+Return the openings; reel-scripter's passes screen, score and gate
 them. Your stamp is recorded automatically once this skill is called and you then Read ./references/legit-hook.md; do not write a from: line. The call names its step in the args:
 
 ```
@@ -85,12 +72,14 @@ args:  step: 3-hook
        topic: <the locked angle>
        body: <the approved skeleton>
        voice: <the voice anchor confirmed at Checkpoint 0>
-       pattern_read: <only when Goldmine data exists (used only after a yes): the reel-build/ file named by
-                     reads.patternread in <project>/reel-build/goldmine-run.json, when its
-                     reads.passed is true>
-       proven_hooks: <same condition: the top 3 breakouts by mult from the reads packet named by
-                     reads.packet, each with its Pattern Read formula (name and template), its
-                     opening line and @handle, mult, URL>
+       candidates: <the client's own hook, word for word, when they gave one; leave this line out when there is none>
+       pattern_read: <the reel-build/ file named by reads.patternread in <project>/reel-build/goldmine-run.json,
+                     only when its reads.passed is true and the client has not said to ignore the data or
+                     use their own hook; else leave this line out>
+       proven_hooks: <same condition (reads.passed true, and the client has not said to ignore the data or use
+                     their own hook): the file named by reads.proven_hooks; when that key is missing, the top 3
+                     breakouts by mult from reads.packet, each with its Pattern Read formula (name and
+                     template), its opening line and @handle, mult, URL; else leave this line out>
        redo: <what cut the first set, or which killer fired and why>
 ```
 

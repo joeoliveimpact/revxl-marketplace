@@ -1,6 +1,6 @@
 ---
 name: content-goldmine
-description: Turns the client's latest competitor pull into the Content Goldmine, a dashboard of what broke out in their field (the reels, their hooks, topics and lead magnets), saved as an HTML file and published as a private Artifact. Its passed reads switch on the Goldmine check in reel scripting. Trigger phrases include "run the goldmine", "content goldmine", "goldmine dashboard", "build my goldmine dashboard", "update my goldmine", "what's working for my competitors' lead magnets".
+description: Turns the client's latest competitor pull into the Content Goldmine, a dashboard of what broke out in their field (the reels, their hooks, topics and lead magnets), saved as an HTML file and published as a private Artifact. Once its reads pass, reel scripting uses them by default. Trigger phrases include "run the goldmine", "content goldmine", "goldmine dashboard", "build my goldmine dashboard", "update my goldmine", "what's working for my competitors' lead magnets".
 ---
 
 # content-goldmine
@@ -8,15 +8,15 @@ description: Turns the client's latest competitor pull into the Content Goldmine
 **Output contract.** One run delivers: the saved page at
 `<project>/visuals/Content Goldmine Dashboard - <MM.DD.YY>.html`, the same page as a
 private Artifact (its link in state as `goldmine.dashboard_url`), and the three reads
-that turn on the Goldmine check in reel scripting. No credit is spent without the
+that reel scripting then uses by default. No credit is spent without the
 client's yes.
 
 **Re-invoke guard.** This file can be cut short after a long chat. If you are unsure
 which step you are on, invoke this skill again and resume from
 `<project>/reel-build/goldmine-run.json` at Step 3. Never rebuild a step from memory.
 
-This skill never shows reel-scripter's Goldmine question. That line belongs to the
-hook pass and appears only there.
+Reel scripting uses these reads on every reel by default and never asks whether to; only
+the client saying to ignore the data or use their own hook turns them off for a reel.
 
 Teach mode: read `~/.claude/revxl/teach-level` per `../_shared/references/teach-mode.md`.
 Plain English for every level here: clients are coaches, not engineers, and they never
@@ -36,8 +36,8 @@ Ids are rows in `../_shared/references/journey-map.md`; the block shape is
 
 **Next moves**
 (E31) dashboard saved and published. Say where the file is, give the link, and say in
-one line that reel scripting now offers to check its hooks against this Goldmine.
-1. Script your next reel. The hook step can now check its openings against what broke out. Say: "script the top gap"
+one line that reel scripting now uses this Goldmine by default.
+1. Script your next reel. Its hooks now build on what broke out. Say: "script the top gap"
 2. Plan the week around what is working in your field. Say: "plan my week"
 3. *If `pulse.scheduled` is false:* keep the field fresh on your day, then run the goldmine again after each pulse. Say: "make the pulse weekly"
 4. Not sure what is next? The compass reads where you are. Say: "what's next in shortform"
@@ -45,7 +45,7 @@ one line that reel scripting now offers to check its hooks against this Goldmine
 **Next moves ... nothing broke out**
 (F11) zero breakouts. Say the runner's plain message. *If `goldmine.last_run` is set:*
 add "Your last Goldmine, from <goldmine.last_run>, stays in use, and reel scripting
-keeps checking against it."
+keeps using it."
 1. Pull the newest reels, a cheap weekly delta, then run the goldmine again. Say: "run the weekly pulse"
 2. Script from the field read you already have. Say: "script the top gap"
 3. *If `pulse.scheduled` is false:* let the pulse run on your day, so breakouts are caught as they happen. Say: "make the pulse weekly"
@@ -54,7 +54,7 @@ keeps checking against it."
 (F11) a step could not finish (`./references/gotchas.md` has the row and what to say).
 Everything before it is saved and nothing paid is redone.
 1. Try again once it is fixed. The run picks up where it stopped. Say: "run the goldmine"
-2. *If `reads.passed` is true in `goldmine-run.json`:* script a reel meanwhile; the Goldmine check is already on. Say: "script the top gap"
+2. *If `reads.passed` is true in `goldmine-run.json`:* script a reel meanwhile; it already uses the Goldmine. Say: "script the top gap"
 3. Not sure what is next? Say: "what's next in shortform"
 
 **Next moves ... paused for a fresh chat**
@@ -115,7 +115,7 @@ with the date 30 days before today. Then read `period_breakouts.window_source` i
 - The step pre-fills every mechanical field. Write only the null and empty judgement
   fields, in batches of about 15 reels, saving each batch.
 - Then `GB check-reads "<project>"`. On FAIL, fix the named rows and run it again until
-  PASS. A pass writes the Proven Hooks file and switches the Goldmine check on.
+  PASS. A pass writes the Proven Hooks file, and reel scripting uses the reads from then on.
 
 **7. Dashboard (free).** `GB dashboard "<project>"`. It downloads the pinned dashboard
 (once per version), checks it, and saves the page into `<project>/visuals/`. A failure

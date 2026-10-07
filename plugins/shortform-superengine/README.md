@@ -41,7 +41,7 @@ plugin at format #2.)
   builds the Content Goldmine: what broke out in your field, with the hooks, topics
   and lead magnets behind it, saved as a page and published as a private Artifact.
   The only paid part (comments) is asked first, with its price. Once its reads
-  pass, reel-scripter offers to check its hooks against it.
+  pass, reel-scripter uses them by default on every reel.
 
 **Make**
 
