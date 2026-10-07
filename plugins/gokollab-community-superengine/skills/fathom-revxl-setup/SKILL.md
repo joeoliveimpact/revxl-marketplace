@@ -28,7 +28,7 @@ Audit a host for everything the Fathom→REVXL suite needs, report present/missi
 | python3 | `python3 --version` | POSIX token helper + JSON parsing | Linux: `apt install python3` / Mac: preinstalled or `brew install python`. (Windows path uses the .ps1 helper — python not required there.) |
 | curl | `curl --version` (`curl.exe` on Win) | Fathom share-URL fetch | Win10+/Mac/most Linux ship it. Linux minimal: `apt install curl`. |
 | node / npx | `node --version`, `npx --version` | gws CLI + Playwright re-auth | Install Node LTS (nodejs.org / nvm / `brew install node`). |
-| gws CLI | `gws drive --help` | Drive transcript lookup | `npm i -g @googleworkspace/cli` (then authenticate via its keyring). |
+| Drive access: **gws CLI or Composio CLI** (either passes) | `gws drive --help` + a test search, OR `composio search "google drive find file"` shows `googledrive` in `connected_toolkits` | Drive transcript lookup | Already have Composio? Run `composio link googledrive` (the client signs in). Otherwise `npm i -g @googleworkspace/cli` and authenticate it. Neither is fatal: posts go out without the 📜 transcript link (pipeline §5). |
 | refresh token | `config.refreshTokenPath` exists + token helper mints an idToken | Firebase auth | Run `/har-capture` Phase 2 against clientclub.net to obtain; save to `~/.config/clientclub-pp-cli/refresh-token.txt`. |
 | `~/.config/clientclub-pp-cli/` writable | write test | token rotation persists here | `mkdir -p` + ensure writable. |
 | Fathom storage-state | `config.fathomStorageState` exists; test call returns 200 | share-URL auth (~7d cookie) | `npx playwright open --save-storage="<path>" https://fathom.video` → log in → close. |

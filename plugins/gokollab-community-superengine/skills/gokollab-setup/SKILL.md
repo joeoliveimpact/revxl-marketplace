@@ -25,8 +25,8 @@ For each: detect → if missing, install (OS-branched) → re-verify. Report a t
 |---|---|---|
 | Node LTS | `winget install OpenJS.NodeJS.LTS` | `brew install node` |
 | Python 3 | `winget install Python.Python.3.12` | `brew install python` |
-| gws CLI | `npm i -g @googleworkspace/cli` | same |
-| clientclub binary | **bundled** at `cli/bin/clientclub-windows-amd64.exe` | `cli/bin/clientclub-darwin-{arm64,amd64}` → `chmod +x` + clear Gatekeeper quarantine |
+| Drive access: gws CLI **or** Composio CLI | First check Composio: if `composio search "google drive find file"` lists `googledrive` as connected, skip gws. If Composio is installed but Drive isn't connected, have the client run `composio link googledrive`. Else `npm i -g @googleworkspace/cli` | same (Composio on PATH natively; on Windows it may live in WSL: `wsl.exe -e bash -lc 'composio …'`) |
+| clientclub binary | **bundled** at `cli/bin/clientclub-windows-amd64.exe` | `cli/bin/clientclub-darwin-arm64` (Apple Silicon, `uname -m` = `arm64`) or `-amd64` (Intel). Run `chmod +x <binary> <plugin>/cli/token-helpers/get-clientclub-token.sh` and `xattr -d com.apple.quarantine <binary>` (ignore "No such xattr"), then verify with `<binary> version`. The pipeline repeats this prep on every run |
 | Browser MCP | superpowers-chrome `use_browser` — install the MCP **and** connect its Chrome extension; verify with one `use_browser` navigate | same |
 
 The browser MCP is the only interactive install (the client connects the Chrome extension once) — walk them through it and confirm with a test navigation before Phase 3.

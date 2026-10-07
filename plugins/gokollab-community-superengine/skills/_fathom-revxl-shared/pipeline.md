@@ -28,10 +28,16 @@ The token is a 60-min Firebase idToken minted from the refresh token at `config.
 ```powershell
 $env:CLIENTCLUB_COMMUNITY_TOKEN_ID = & '<tokenHelper.windows>'
 ```
-**POSIX (bash):**
+**POSIX (bash):** run the prep block first, every invocation. Plugin updates reinstall the files, which can drop the executable flag, and macOS quarantines downloaded binaries, so "permission denied" or "cannot be opened" means this block was skipped.
 ```bash
-export CLIENTCLUB_COMMUNITY_TOKEN_ID="$(<tokenHelper.posix>)"
+# Mac/Linux prep: idempotent, safe to re-run every time
+chmod +x '<clientclubBinary>' '<tokenHelper.posix>' 2>/dev/null || true
+[ "$(uname -s)" = "Darwin" ] && xattr -d com.apple.quarantine '<clientclubBinary>' 2>/dev/null || true
+
+# Run the helper through bash so it works even if the executable flag is missing
+export CLIENTCLUB_COMMUNITY_TOKEN_ID="$(bash '<tokenHelper.posix>')"
 ```
+Never route a Mac through the PowerShell branch, and never ask the client to install PowerShell. The POSIX branch is complete.
 
 Both emit the idToken to stdout and the clientclub binary reads `$CLIENTCLUB_COMMUNITY_TOKEN_ID`. Then smoke-test:
 ```
@@ -114,11 +120,25 @@ A 302 to a login URL (instead of `/calls/…`) means the cookie expired — re-a
 
 ## 5. Drive transcript resolution
 
-Match a call to its transcript file via `gws drive files list` (cross-platform via Node). PowerShell arg-quoting mangles the JSON `--params` — pass it through `cmd /c` on Windows (POSIX shells are fine).
+Match a call to its transcript file with a Drive search. **Two tools work, and either one is enough.** The search query (`q`) is the same Drive query syntax in both, so the resolution order below doesn't change.
 
+**Pick the tool (once per run, first match wins):**
+1. **gws CLI**: `gws drive --help` runs, and a test search returns files, not an auth error.
+2. **Composio CLI** with Google Drive connected:
+   - Where it lives: `composio` on PATH (Mac/Linux), or `wsl.exe -e bash -lc 'composio …'` on a Windows machine that runs Composio inside WSL.
+   - Check: `composio search "google drive find file"` lists `googledrive` under `connected_toolkits`.
+   - If it's installed but Drive isn't connected, tell the client to run `composio link googledrive` themselves. It opens a Google sign-in, and Claude never runs it.
+3. **Neither** → skip Drive and use resolution steps (4)–(5) below. Never block the post on a missing transcript.
+
+**gws CLI.** PowerShell arg-quoting mangles the JSON `--params`, so pass it through `cmd /c` on Windows (POSIX shells are fine):
 ```
 gws drive files list --params '{"q":"<query>","fields":"files(id,name)","pageSize":50}'
 ```
+**Composio CLI.** On Windows, write the JSON to a temp file and pass `-d @file` to dodge quoting:
+```
+composio execute GOOGLEDRIVE_FIND_FILE -d '{"q":"<query>","fields":"files(id,name)","pageSize":50}'
+```
+Read `data.files[]`, each with `id` and `name` (check `successful` is `true` first). Verified 10.07.26.
 View URL from a file id: `https://drive.google.com/file/d/<id>/view?usp=sharing`.
 
 **Filename schemes:**

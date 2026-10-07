@@ -4,7 +4,7 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.1.78] ... 2026-10-07
+## [0.1.80] ... 2026-10-07
 
 ### Changed
 - **socialcrawl-superengine v0.3.0** ... prices now come from the vendor's own 10-06
@@ -17,6 +17,21 @@ options now say what they pull, and a "what are people saying" ask always offers
 search-everywhere option. One key box sets up both keys, and no instruction prints a key.
 An optional helper (Jev, on your own OpenRouter key) can pick the option for you; without
 it you choose from the menu.
+
+## [0.1.79] ... 2026-10-07
+
+### Added
+- **gokollab-community-superengine v0.1.4** ... Google Drive transcript lookup now works
+through the Composio CLI as well as the gws CLI. Clients who already connected Google Drive
+in Composio don't need to install gws.
+
+## [0.1.78] ... 2026-10-07
+
+### Fixed
+- **gokollab-community-superengine v0.1.3** ... on a Mac the bundled clientclub CLI and
+its token helper failed with "permission denied" because they were stored without the
+executable flag. They are now executable, and every run re-applies the flag and clears the
+macOS quarantine, so updates can't break it again.
 
 ## [0.1.77] ... 2026-10-07
 

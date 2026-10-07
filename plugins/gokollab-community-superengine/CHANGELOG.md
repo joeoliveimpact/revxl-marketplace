@@ -2,6 +2,16 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.4] — 2026-10-07
+
+### Added
+- **Google Drive via Composio CLI.** Drive transcript lookup (pipeline §5) now works through either the `gws` CLI or the Composio CLI with Google Drive connected (`GOOGLEDRIVE_FIND_FILE`, same `q` query syntax, reply in `data.files[]`). The skills pick whichever is set up, and setup no longer forces a `gws` install on clients who already use Composio. With neither, posts still go out without the transcript link.
+
+## [0.1.3] — 2026-10-07
+
+### Fixed
+- **macOS / Linux: the bundled `clientclub` binaries and token helpers now run.** They were stored without the executable flag, so on a Mac the CLI and `get-clientclub-token.sh` failed with "permission denied". All POSIX binaries and helpers are now committed executable. `pipeline.md` §1 adds an every-run prep block (`chmod +x`, clear the macOS quarantine flag) and runs the token helper through `bash`, so it works even after an update drops the flag. `gokollab-setup` spells out the exact Mac commands and arch check.
+
 ## [0.1.2] — 2026-07-06
 
 ### Fixed
