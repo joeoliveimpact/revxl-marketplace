@@ -139,8 +139,8 @@ rename to Vault.
 
 ```bash
 mkdir -p ~/.config/revxl
-printf '{"ts":"%s","op":"search","spoke":"content-strategy","status":200,"hits":8,"secs":1.4,"plugin":"shortform-superengine"}
-' \n  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> ~/.config/revxl/brain-calls.jsonl
+printf '{"ts":"%s","op":"search","spoke":"content-strategy","status":200,"hits":8,"secs":1.4,"plugin":"shortform-superengine"}\n' \
+  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> ~/.config/revxl/brain-calls.jsonl
 ```
 
 `ts` always comes from `date -u` inside the command, never typed by hand.
