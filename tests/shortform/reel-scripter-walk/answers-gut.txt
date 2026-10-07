@@ -2,7 +2,7 @@
 # later stops come before earlier ones (a Checkpoint 3 text may name Checkpoint 2).
 OPEN ==> Write a reel script for me from my competitor analysis.
 # The plugin's one-off ASK (hooks/stamp-on-skill.py): a new reel, or just this on its own. This walk is a new reel.
-new reel.{0,200}on its own|on its own.{0,200}new reel ==> A new reel: start it from Step 1.
+new (reel|one)\b.{0,200}(on its own|by itself|one-?off)|(on its own|by itself|one-?off).{0,200}new (reel|one)\b|same .{0,40}reel.{0,40} or a new one ==> A new reel: start it from Step 1.
 # polarize at Step 2 asks for the belief and the evidence when they were not passed.
 \byour (own |actual |real )?(belief|stance|position)\b|\bwhat do you (actually |really |genuinely |personally )?believe\b|\bwhat (evidence|proof) do you have\b|\byour (own )?(evidence|proof)\b[^.\n]{0,60}\? ==> My belief: cutting out the one food everybody blames is not what settles most people's gut; what they eat every single day matters more. My evidence: when my clients change their everyday staples their bloating settles, and the ones who only cut the one blamed food keep the same symptoms. Use those two and keep going.
 # The client's own facts, when a beat needs claims the model will not invent (walk 369b-gut, SKLLPLG-370).
