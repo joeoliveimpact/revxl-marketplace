@@ -375,7 +375,7 @@ crit("D no deleted-file Read", not dead, f"read: {dead}" if dead else "none read
 
 # Q, Goldmine data (0.6.0): used by default when goldmine-run.json shows reads.passed; the only off switch
 # is the client saying to use their own hook / ignore the data; never offered as a question.
-GM_ARG = re.compile(r"(?im)(?:^|\s)(?:proven_hooks|pattern_read)[ \t]*[:=][ \t]*([^\n]*)")
+GM_ARG = re.compile(r"(?im)(?:^|(?<!\bno)\s)(?:proven_hooks|pattern_read)[ \t]*[:=][ \t]*([^\n]*)")
 GM_NAME = re.compile(r"(?i)\b(?:Pattern Read|Proven Hooks|Goldmine Reads Packet) - ")
 # ponytail: one sentence (no . ! ? or newline inside) naming the Goldmine or "check the hooks against", ending
 # in "?". Tuned on 347 walk logs: no false fire. A pick question naming a Goldmine-backed option would fire.
