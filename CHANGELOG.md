@@ -4,6 +4,13 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.79] ... 2026-10-07
+
+### Added
+- **gokollab-community-superengine v0.1.4** ... Google Drive transcript lookup now works
+through the Composio CLI as well as the gws CLI. Clients who already connected Google Drive
+in Composio don't need to install gws.
+
 ## [0.1.78] ... 2026-10-07
 
 ### Fixed

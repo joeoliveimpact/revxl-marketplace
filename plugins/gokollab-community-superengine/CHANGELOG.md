@@ -2,6 +2,11 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.4] — 2026-10-07
+
+### Added
+- **Google Drive via Composio CLI.** Drive transcript lookup (pipeline §5) now works through either the `gws` CLI or the Composio CLI with Google Drive connected (`GOOGLEDRIVE_FIND_FILE`, same `q` query syntax, reply in `data.files[]`). The skills pick whichever is set up, and setup no longer forces a `gws` install on clients who already use Composio. With neither, posts still go out without the transcript link.
+
 ## [0.1.3] — 2026-10-07
 
 ### Fixed
