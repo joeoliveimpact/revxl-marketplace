@@ -22,7 +22,7 @@ PULSE='run the weekly pulse|run the pulse|retry the failed handles|make the puls
 BRAND_BRAIN='capture my voice|build my brand brain|brand brain|mine my calls|set up my voice|refresh my voice guide|update my topics'
 HARVEST='harvest .{0,40}(library|content|videos)|get everything .{0,40} teaches|pull all of .{0,40} content|build a corpus from|refresh our notebook on'
 CONTENT_PLAN='content plan|weekly topic pool|topic pool|idea bank|plan my week|plan the week|what should i post this week'
-GOLDMINE='content goldmine|goldmine dashboard|(run|update|build|refresh|set up|setup|open) (the |my )?goldmine|competitors.? lead magnets'
+GOLDMINE='content goldmine|goldmine dashboard|(run|update|build|refresh|set up|setup|open) (the |my )?goldmine|competitor\S{0,4} lead magnets'
 SOCIALCRAWL='socialcrawl|social crawl|social media api|check my socialcrawl balance'
 # The five Legit Content Skills. VIRAL and POLARIZE are checked before
 # REEL_SCRIPTER so "punch this up" and "hot take" reach them even when the prompt

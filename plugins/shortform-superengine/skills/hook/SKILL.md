@@ -52,7 +52,8 @@ Close stays and the block follows it.
 confirmed at its Checkpoint 0. Write every opening in that voice.
 
 **Goldmine data is on by default, in this mode. Never ask whether to use it.**
-Goldmine data comes only through `<project>/reel-build/goldmine-run.json`: when its
+Goldmine data comes only through `<project>/reel-build/goldmine-run.json`. Read it before you
+write any opening (unless reel-scripter already passed its lines): when its
 `reads.passed` is true, reel-scripter passes the Pattern Read (the file named by
 `reads.patternread`) and the proven hooks (the file named by `reads.proven_hooks`; when
 that key is missing, the top 3 by mult from `reads.packet`). Use them on every reel.

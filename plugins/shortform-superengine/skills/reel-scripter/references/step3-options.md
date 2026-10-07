@@ -30,7 +30,7 @@ flag it and ask ... never paper over with invented teaching.
      hook). A gold phrase from the coach or their audience goes in word for word.
      **Goldmine data is on by default; never ask whether to use it.** When
      `<project>/reel-build/goldmine-run.json` shows `reads.passed` true, always pass the
-     Pattern Read and the proven hooks below; the hook skill adapts them through its copy's
+     Pattern Read and the proven hooks below (read that file before this call if you have not); the hook skill adapts them through its copy's
      "Adapting a proven hook" section, never copied. The one off switch: the client said
      plainly to use their own hook or to ignore the data. Then no Goldmine data goes to any
      skill for this reel. A hook the client gave goes in as `candidates`, beside the proven

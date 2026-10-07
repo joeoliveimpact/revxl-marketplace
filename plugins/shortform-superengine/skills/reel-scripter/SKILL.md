@@ -108,7 +108,8 @@ What it is, its inputs, the ✋ pause rule and done: `./references/pipeline-deta
 **0a. Locate the analysis.** Confirm `<project>/analysis-data.json` exists (a completed
 `competitor-cross-reference` run). If only the older `analysis-data.md` exists, re-run
 `analyze.py` to emit the JSON. No analysis on disk is a terminal path, not an error: render
-E9 above and stop.
+E9 above and stop. Then read `<project>/reel-build/goldmine-run.json` (missing = no
+data): if `reads.passed`, pass every Goldmine line unless the client said to ignore it.
 
 **0b. Run the brief.**
 
