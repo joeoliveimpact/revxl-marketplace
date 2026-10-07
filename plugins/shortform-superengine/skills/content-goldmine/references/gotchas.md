@@ -26,7 +26,7 @@ network. A half-finished unpack is cleaned up and redone on the next run.
 - **Transcribe stops (exit 3)**: ffmpeg or faster-whisper is missing. Say the reels
   without transcripts will be read from their captions, offer setup ("set up shortform
   superengine" installs the transcription tools), and carry on to compute.
-- **No SocialCrawl key, or a balance below the price**: the plan's NEXT line says so.
+- **No SocialCrawl key, or a balance below the cheapest level**: the plan's NEXT line says so.
   Carry on without comments; the comment parts of the page stay empty.
 - **The first-run window did not take**: `period_breakouts.window_source` is not `flag`
   after the analyze re-run. Stop. Running on without it would read a shorter window than the month a first run needs.
@@ -45,10 +45,13 @@ second analyze run creates `history/`. On a first run, analyze re-runs with
 ## The priced ask
 
 The comments are the only paid part: 5 credits per breakout reel. The plan step prints
-the exact ask with the price; say it word for word and wait for a yes. That holds at
-any price, even a few credits. If the client hesitates at the price, offer the smaller
-set (the top 3 breakouts per creator) and ask again with its own price. A no is fine:
-the dashboard builds without comments.
+one ask with three levels, each with its real price: Light (the best breakout per
+competitor), Standard (the top 3) and Deep (every breakout in the window), plus the
+window dates and the balance. Say it in plain words and wait for the client to pick a
+level. That holds at any price, even a few credits. A bare yes is not a pick: ask which
+level, never default to Deep. Then run only that level's command. A level priced over
+the balance is marked; a level with nothing new says so. A no is fine: the dashboard
+builds without comments.
 
 ## Bait or a real lead magnet
 

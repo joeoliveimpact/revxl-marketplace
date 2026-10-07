@@ -108,24 +108,32 @@ def wjson(d, name, obj):
 
 temps = []
 
-# 1. Ask always, under the budget: 3 missing comment pages = 15 credits, still an ask.
+# 1. Ask always, under the budget: three levels, each priced, the client picks. Here Standard and
+#    Deep cost the same (15 credits) and both are shown as they are.
 d = make([("alpha_coach", "AAA001", 9.0, "x"), ("alpha_coach", "AAA002", 5.0, "x"),
           ("beta_coach", "BBB001", 4.0, "x")]); temps.append(d)
 out, code = run("plan", d)
 nl = next_line(out)
 assert code is None, out
-assert nl.startswith("NEXT: ASK the user") and "15 SocialCrawl credits" in nl and "spend 15 credits" in nl, nl
-assert "fetch --approved 15" in nl and "over the" not in nl, nl
+assert nl.startswith("NEXT: ASK the user to pick one level") and "posted 2000-01-01 to 2000-01-31" in nl, nl
+assert "Light, the single best breakout per competitor: 2 reels, 10 credits." in nl, nl
+assert "Standard, the top 3 breakouts per competitor: 3 reels, 15 credits." in nl, nl
+assert "Deep, every breakout in the window: 3 reels, 15 credits." in nl, nl
+assert "Your balance is 100000 SocialCrawl credits." in nl and 'A bare yes is not a pick: ask "Which level?"' in nl, nl
+assert nl.endswith("Light: fetch --approved 10 --top-per-creator 1; Standard: fetch --approved 15 "
+                   "--top-per-creator 3; Deep: fetch --approved 15"), nl
+assert "over the" not in nl and "more than your balance" not in nl and "30 days" not in nl, nl
 assert "no ask" not in out and "tell" not in out, out
 assert CALLS == ["credits/balance"], CALLS
 
-# 2. Ask always, over the budget: 130 missing pages = 650 credits, the ask names the budget.
+# 2. Ask always, over the budget: Deep is 130 missing pages = 650 credits, and only Deep names the budget.
 specs = [("alpha_coach" if i % 2 else "beta_coach", "CCC%03d" % i, 2.5 + i / 100.0, "x") for i in range(130)]
 d = make(specs); temps.append(d)
 out, code = run("plan", d)
 nl = next_line(out)
-assert "650 SocialCrawl credits" in nl and "over the 600 credit per-pull budget" in nl, nl
-assert "spend 650 credits" in nl and "fetch --approved 650" in nl, nl
+assert "Deep, every breakout in the window: 130 reels, 650 credits. That is over the 600 credit per-pull budget." in nl, nl
+assert nl.count("over the 600") == 1 and "2 reels, 10 credits." in nl and "6 reels, 30 credits." in nl, nl
+assert nl.endswith("Deep: fetch --approved 650"), nl
 
 # 3. --top-per-creator on plan prices the capped set, and the fetch it names takes the same cap.
 out, code = run("plan", d, top_per_creator="3")
@@ -164,15 +172,16 @@ out, code = run("fetch", d, approved="20", top_per_creator="1")
 got = sorted(os.path.basename(p)[:-5] for p in glob.glob(os.path.join(d, "source", "comments", "*.json")))
 assert CALLS == ["prism/comments"] * 2 and got == ["HHH3", "III3"], (CALLS, got)
 
-# 3c. The cap holds when the API does not report credits_used (missing, or not a number).
+# 3c. The cap holds when the API does not report credits_used (missing, or not a number). Flagged:
+#     top 5 priced at 25, approved only 10.
 for used in (None, "n/a"):
     d = make([("alpha_coach", "JJJ%d" % i, 3.0 + i, "x") for i in range(5)]); temps.append(d)
-    run("plan", d)
+    run("plan", d, top_per_creator="5")
     gb.api_get = lambda path, params, key, timeout=300, used=used: (
         CALLS.append(path) or (200, dict({"success": True, "data": {"comments": [], "completed": True}},
                                          **({} if used is None else {"credits_used": used}))))
     del CALLS[:]
-    out, code = run("fetch", d, approved="10")
+    out, code = run("fetch", d, approved="10", top_per_creator="5")
     gb.api_get = fake_get
     assert CALLS == ["prism/comments"] * 2, (used, CALLS)
     assert "STOP: the next call would pass the approved 10 credits (spent 10)." in out, out
@@ -182,16 +191,93 @@ for used in (None, "n/a"):
 # 3d. A reported credits_used of 0 cannot lift the cap: approved // 5 calls at most. A reported
 #     number also writes no credits_estimated key.
 d = make([("alpha_coach", "KKK%d" % i, 3.0 + i, "x") for i in range(5)]); temps.append(d)
-run("plan", d)
+run("plan", d, top_per_creator="5")
 gb.api_get = lambda path, params, key, timeout=300: (CALLS.append(path) or (200, {
     "success": True, "credits_used": 0, "data": {"comments": [], "completed": True}}))
 del CALLS[:]
-out, code = run("fetch", d, approved="10")
+out, code = run("fetch", d, approved="10", top_per_creator="5")
 gb.api_get = fake_get
 assert CALLS == ["prism/comments"] * 2, CALLS
 assert "STOP: the next call would pass the 2 calls the approved 10 credits allow (5 each)." in out, out
 files = glob.glob(os.path.join(d, "source", "comments", "*.json"))
 assert len(files) == 2 and not any("credits_estimated" in json.load(open(p))["_fetch"] for p in files), files
+
+# 3e. Three levels with distinct prices: one creator with 1 breakout, one with 5. Light 2 reels, Standard
+#     1 + 3, Deep all 6. plan saves the three levels and keeps top_per_creator None.
+MIXED = [("solo_coach", "SOL001", 6.0, "x")] + [("multi_coach", "MUL%03d" % i, 3.0 + i, "x") for i in range(5)]
+d = make(MIXED); temps.append(d)
+out, code = run("plan", d)
+nl = next_line(out)
+assert "Light, the single best breakout per competitor: 2 reels, 10 credits." in nl, nl
+assert "Standard, the top 3 breakouts per competitor: 4 reels, 20 credits." in nl, nl
+assert "Deep, every breakout in the window: 6 reels, 30 credits." in nl, nl
+assert nl.endswith("Light: fetch --approved 10 --top-per-creator 1; Standard: fetch --approved 20 "
+                   "--top-per-creator 3; Deep: fetch --approved 30"), nl
+plan = rjson(d, "goldmine-run.json")["plan"]
+assert plan["top_per_creator"] is None and plan["levels"] == {
+    "light": {"top_per_creator": 1, "reels": 2, "credits": 10},
+    "standard": {"top_per_creator": 3, "reels": 4, "credits": 20},
+    "deep": {"top_per_creator": None, "reels": 6, "credits": 30}}, plan
+# a Light price with no flag must not fetch: name the level, zero calls, no files
+del CALLS[:]
+out, code = run("fetch", d, approved="10")
+assert code == 2 and "Name the level" in out and CALLS == [], (code, CALLS, out)
+assert not glob.glob(os.path.join(d, "source", "comments", "*.json"))
+# the Light command fetches exactly the best breakout per creator
+out, code = run("fetch", d, approved="10", top_per_creator="1")
+got = sorted(os.path.basename(p)[:-5] for p in glob.glob(os.path.join(d, "source", "comments", "*.json")))
+assert CALLS == ["prism/comments"] * 2 and got == ["MUL004", "SOL001"], (CALLS, got)
+# 3f. A level with nothing new costs 0 and says so; it names no fetch command.
+out, code = run("plan", d)
+nl = next_line(out)
+assert "Light, the single best breakout per competitor: nothing new at this level" in nl and "Light: no fetch" in nl, nl
+assert "Standard, the top 3 breakouts per competitor: 2 reels, 10 credits." in nl and nl.endswith(
+    "Standard: fetch --approved 10 --top-per-creator 3; Deep: fetch --approved 20"), nl
+
+
+def with_balance(resp):
+    """fake_get, but the balance call answers resp: (status, body)."""
+    def get(path, params, key, timeout=300):
+        if path == "credits/balance":
+            CALLS.append(path)
+            return resp
+        return fake_get(path, params, key, timeout)
+    return get
+
+
+# 3g. Balance below Light: say so plainly, no ask. Balance between levels: only the dearer ones are marked.
+d = make(MIXED); temps.append(d)
+gb.api_get = with_balance((200, {"data": {"balance": 5}}))
+out, code = run("plan", d)
+nl = next_line(out)
+assert nl.startswith("NEXT: balance 5 is below even the cheapest level (10 credits)") and "ASK" not in nl, nl
+gb.api_get = with_balance((200, {"data": {"balance": 25}}))
+out, code = run("plan", d)
+nl = next_line(out)
+assert nl.count("That is more than your balance.") == 1 and "6 reels, 30 credits. That is more than your balance." in nl, nl
+assert "Your balance is 25 SocialCrawl credits." in nl, nl
+# 3h. Balance unknown: a failed balance call still shows every price; no key says so and still prices.
+gb.api_get = with_balance((500, {"error": "down"}))
+out, code = run("plan", d)
+nl = next_line(out)
+assert "balance unknown" in nl and "Balance           : unknown" in out and "6 reels, 30 credits." in nl, nl
+assert nl.startswith("NEXT: ASK the user to pick one level") and "more than your balance" not in nl, nl
+gb.api_get, gb.api_key = fake_get, lambda: None
+del CALLS[:]
+out, code = run("plan", d)
+gb.api_key = lambda: "sc_fixture_key"
+assert next_line(out).startswith("NEXT: no SocialCrawl key found") and CALLS == [], (CALLS, out)
+assert "Balance           : unknown" in out and "Light 2 reels, 10 credits, Standard 4 reels, 20 credits, " \
+       "Deep 6 reels, 30 credits" in out, out
+# 3i. --top-per-creator must be a whole number of 1 or more.
+for bad_n in ("0", "²", "-1"):
+    out, code = run("plan", d, top_per_creator=bad_n)
+    assert code == 2 and "whole number of 1 or more" in out, (bad_n, out)
+    out, code = run("fetch", d, approved="30", top_per_creator=bad_n)
+    assert code == 2 and "whole number of 1 or more" in out, (bad_n, out)
+del CALLS[:]
+print("OK depth levels: three prices, equal prices shown, a 0-credit level, balance below, between and "
+      "unknown, the Light command, name the level, top-per-creator 1 or more")
 
 # 4. Zero breakouts: one plain message and a clean exit from every step, never a traceback.
 d = make([]); temps.append(d)
@@ -217,7 +303,7 @@ assert not os.path.exists(os.path.join(d, "reel-build", "goldmine-run.json")), o
 with open(ap, "w", encoding="utf-8") as f:
     json.dump(full, f)
 out, code = run("plan", d)
-assert next_line(out).startswith("NEXT: ASK the user") and rjson(d, "goldmine-run.json")["manifest"], out
+assert next_line(out).startswith("NEXT: ASK the user to pick one level") and rjson(d, "goldmine-run.json")["manifest"], out
 
 # 4c. transcribe with no media links: nothing to transcribe, and the reads use the captions.
 d = make([("alpha_coach", "OOO001", 5.0, "x"), ("beta_coach", "PPP001", 4.0, "x")]); temps.append(d)

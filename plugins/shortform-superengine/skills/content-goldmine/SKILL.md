@@ -8,8 +8,8 @@ description: Turns the client's latest competitor pull into the Content Goldmine
 **Output contract.** One run delivers: the saved page at
 `<project>/visuals/Content Goldmine Dashboard - <MM.DD.YY>.html`, the same page as a
 private Artifact (its link in state as `goldmine.dashboard_url`), and the three reads
-that reel scripting then uses by default. No credit is spent without the
-client's yes.
+that reel scripting then uses by default. No credit is spent until the
+client picks a level.
 
 **Re-invoke guard.** This file can be cut short after a long chat. If you are unsure
 which step you are on, invoke this skill again and resume from
@@ -93,15 +93,16 @@ with the date 30 days before today. Then read `period_breakouts.window_source` i
   entry: go to Step 6. Neither: Step 4.
 
 **4. The comments ask (paid).** Read plan's `NEXT:` line.
-- It says ASK: give the client the quoted sentence exactly as printed, credits and
-  all, then end your turn and wait. Only after a clear yes, run the fetch command that
-  line names (`GB fetch "<project>" --approved N`, plus its `--top-per-creator` when
-  shown). No paid call without that yes, ever, at any price.
+- It says ASK: give the client the quoted sentence in plain words, every level with
+  its reels and credits, the window dates and the balance, then end your turn and wait.
+  The client picks one level: Light (the best breakout per competitor), Standard (the
+  top 3) or Deep (every breakout). Run only that level's command from the line
+  (`GB fetch "<project>" --approved N`, plus its `--top-per-creator` when shown). A bare
+  yes is not a pick: ask "Which level?", never default to Deep. No paid call without a
+  picked level, ever, at any price.
 - A no: skip the fetch and carry on. The comment parts of the page stay empty.
-- The price feels high: offer the smaller set. Re-run plan with `--top-per-creator 3`
-  and ask again with its new price.
-- No key, or a balance below the price: say so plainly, then carry on without comments
-  (or, for the key, offer setup: "set up shortform superengine").
+- No key, or a balance below even the cheapest level: say so plainly, then carry on
+  without comments (or, for the key, offer setup: "set up shortform superengine").
 
 **5. Transcribe, then compute (free).** `GB transcribe "<project>"`, then
 `GB compute "<project>"`. If transcribe stops on a missing tool, say so plainly
@@ -133,7 +134,7 @@ it is older (`goldmine` is a 1.1 key). Then render the **Next moves** block.
 
 ## Governing rules
 
-- **No paid call without the client's yes**, at any price. The ask names the credits.
+- **No paid call until the client picks a level**, at any price. The ask names the credits.
 - **The breakout set is frozen.** The runner reads the manifest; never recompute it or
   edit a number by hand.
 - **Read, never invent.** A comment ask with no offer behind it is an engagement ask

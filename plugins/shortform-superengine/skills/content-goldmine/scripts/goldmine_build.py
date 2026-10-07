@@ -7,14 +7,16 @@ Usage:  python goldmine_build.py <step> <project_dir> [options]
 Steps, in order. Every step is resume-safe: re-running never pays twice.
   plan [--top-per-creator K]
                           FREE. Freezes this pull's breakouts into a dated Breakout Manifest,
-                          counts what is missing (comments, transcripts, shares), prints the
-                          credit price (capped to the top K breakouts per creator when K is
-                          given) and a NEXT line that always asks the user, with that price,
-                          before the paid fetch, whatever the credit count.
+                          counts what is missing (comments, transcripts, shares) and prints a
+                          NEXT line that always asks the user, with the price, before the paid
+                          fetch, whatever the credit count. With no K it prices three levels
+                          (Light = the best breakout per creator, Standard = the top 3, Deep =
+                          every breakout) and the user picks one; with K, only the top K.
   fetch --approved N [--top-per-creator K]
-                          PAID. Only after the user said yes to plan's ask. One comments page
-                          (prism/comments, 5 cr) per breakout that has none yet (the same top K
-                          per creator). Hard-stops before spend would pass N.
+                          PAID. Only after the user picked a level (or said yes to a K ask). One
+                          comments page (prism/comments, 5 cr) per breakout that has none yet (the
+                          same top K per creator). Hard-stops before spend would pass N. With no K,
+                          an N below plan's Deep price stops before any call: name the level.
   transcribe              FREE. Breakouts with no transcript, through the plugin's own engine
                           (faster-whisper small, GPU if present, else CPU). Merges into the
                           per-creator transcript files, never overwriting a good record.
@@ -304,8 +306,8 @@ def per_creator_arg(args):
     v = args.get("top-per-creator")
     if v is None:
         return None
-    if not str(v).isdigit():
-        die("--top-per-creator needs a whole number, for example 3.")
+    if not re.fullmatch(r"[0-9]+", str(v)) or int(v) < 1:  # isdigit() passes "²", which int() rejects
+        die("--top-per-creator needs a whole number of 1 or more, for example 3.")
     return int(v)
 
 
@@ -334,6 +336,41 @@ def shares_of(prj, corpus, sc):
         except Exception:
             pass
     return None, None
+
+
+LEVELS = (("light", "Light", "the single best breakout per competitor"),
+          ("standard", "Standard", "the top 3 breakouts per competitor"),
+          ("deep", "Deep", "every breakout in the window"))
+
+
+def level_ask(man, levels, balance):
+    """plan's NEXT line with no --top-per-creator: the client picks one of three levels, each priced."""
+    cheapest = min(v["credits"] for v in levels.values() if v["credits"])
+    if balance is not None and balance < cheapest:
+        return ("NEXT: balance %s is below even the cheapest level (%d credits), so no level can run. Tell the "
+                "user plainly, then top up or skip comments." % (balance, cheapest))
+    w = man.get("window") or {}
+    win = " posted %s to %s" % (w["from"], w["to"]) if w.get("from") and w.get("to") else ""
+    says, runs = [], []
+    for lv, label, what in LEVELS:
+        v = levels[lv]
+        if not v["credits"]:
+            says.append("%s, %s: nothing new at this level, its reels already have comments." % (label, what))
+            runs.append("%s: no fetch" % label)
+            continue
+        says.append("%s, %s: %d reel%s, %d credits.%s%s" % (
+            label, what, v["reels"], "" if v["reels"] == 1 else "s", v["credits"],
+            " That is over the %d credit per-pull budget." % BUDGET if v["credits"] > BUDGET else "",
+            " That is more than your balance." if balance is not None and v["credits"] > balance else ""))
+        runs.append("%s: fetch --approved %d%s" % (
+            label, v["credits"], "" if v["top_per_creator"] is None else " --top-per-creator %d" % v["top_per_creator"]))
+    bal = ("Your balance is %s SocialCrawl credits." % balance if balance is not None
+           else "SocialCrawl balance unknown: the balance check did not answer.")
+    return ('NEXT: ASK the user to pick one level, in plain words like these, and wait for the pick before any paid call: '
+            '"The comments come from this pull\'s breakout reels%s, at %d SocialCrawl credits per reel. %s Pick a '
+            'level. %s Which level?" A bare yes is not a pick: ask "Which level?" again, never default to Deep. '
+            'Then run only the picked level\'s command. %s'
+            % (win, COMMENT_CR, bal, " ".join(says), "; ".join(runs)))
 
 
 def step_plan(prj, args):
@@ -391,6 +428,13 @@ def step_plan(prj, args):
         share_src[shares_of(prj, corpus, sc)[1]] += 1
 
     est = COMMENT_CR * len(need_comments)
+    levels = None
+    if cap_n is None:  # no flag: price the three levels the client picks from, all from the same missing set
+        levels = {}
+        for lv, n in (("light", 1), ("standard", 3), ("deep", None)):
+            tops = None if n is None else {sc_of(u) for u in top_per_creator(man["breakouts"], n)}
+            k = sum(1 for sc in need_comments if tops is None or sc in tops)
+            levels[lv] = {"top_per_creator": n, "reels": k, "credits": COMMENT_CR * k}
     key = api_key()
     balance = None
     if key and est:
@@ -406,6 +450,8 @@ def step_plan(prj, args):
         "shares_from_pull": share_src["pull"], "shares_from_stats_files": share_src["stats_file"],
         "shares_missing": share_src[None],
     }
+    if levels:
+        plan["levels"] = levels
     prj.state["plan"] = plan
     prj.save_state()
 
@@ -414,8 +460,13 @@ def step_plan(prj, args):
     print("Comments          : %d have, %d to fetch%s -> price %d credits (budget %d)"
           % (plan["comments_have"], len(need_comments),
              " (top %d per creator)" % cap_n if cap_n is not None else "", est, BUDGET))
+    if levels and est:
+        print("Levels            : %s" % ", ".join("%s %d reels, %d credits" % (lb, levels[lv]["reels"], levels[lv]["credits"])
+                                                  for lv, lb, _ in LEVELS))
     if balance is not None:
         print("Balance           : %s credits" % balance)
+    elif levels and est:
+        print("Balance           : unknown")
     print("Transcripts       : %d missing%s" % (len(need_tx),
           (", %d with no media link (re-pull to transcribe)" % len(no_media)) if no_media else ""))
     print("Shares            : %d from the pull, %d from stats files, %d unavailable%s"
@@ -425,6 +476,8 @@ def step_plan(prj, args):
         print("NEXT: nothing to fetch. Run transcribe, then compute.")
     elif not key:
         print("NEXT: no SocialCrawl key found (SOCIALCRAWL_API_KEY or ~/.config/socialcrawl/api_key).")
+    elif levels:
+        print(level_ask(man, levels, balance))
     elif balance is not None and balance < est:
         print("NEXT: balance %s is below the %d credit estimate. Top up or skip comments." % (balance, est))
     else:
@@ -459,7 +512,13 @@ def step_fetch(prj, args):
     todo = [b for b in man["breakouts"] if comments_status(prj, sc_of(b["url"])) == "missing"]
     cap_n = per_creator_arg(args)
     if cap_n is None:  # no flag: fetch exactly what plan priced
-        cap_n = (prj.state.get("plan") or {}).get("top_per_creator")
+        plan = prj.state.get("plan") or {}
+        deep = (plan.get("levels") or {}).get("deep")
+        if deep and cap < deep["credits"]:  # a Light or Standard price with no flag would fetch the wrong set
+            die("--approved %d is below the Deep price (%d credits) and names no level. Name the level the user "
+                "picked and run its command from plan's NEXT line: Light adds --top-per-creator 1, Standard adds "
+                "--top-per-creator 3. After a partial fetch, re-run plan for fresh prices." % (cap, deep["credits"]))
+        cap_n = plan.get("top_per_creator")
     if cap_n is not None:
         keep = top_per_creator(man["breakouts"], cap_n)
         todo = [b for b in todo if b["url"] in keep]
