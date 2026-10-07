@@ -11,7 +11,7 @@ https://www.socialcrawl.dev
 Pass your API key in the `x-api-key` header with every request:
 
 ```bash
-curl -s -H "x-api-key: sc_your_api_key_here" \
+curl -s -H "x-api-key: $(cat ~/.config/socialcrawl/api_key)" \
   "https://www.socialcrawl.dev/v1/tiktok/profile?handle=charlidamelio"
 ```
 
@@ -64,18 +64,19 @@ Error responses:
 
 | Tier | Cost | Count | Typical endpoints |
 |------|------|-------|-------------------|
-| standard | 1 credit | 217 endpoints | Profiles, posts, search, comments, GitHub direct calls, HN, Tavily, Perplexity research |
-| advanced | 5 credits | 134 endpoints | Audience, ad libraries, trending, full-profile bundles, GitHub composites (`repo/top-issues`, `repo/dossier`), Twitter AI Search |
-| premium | 10 credits | 29 endpoints | Transcripts (⛔ banned in this plugin), age/gender detection, deep listings-database search |
-| **flat override** | **0–50 credits** | 37 endpoints | Prism intelligence bundles (`leads`/`creator-vet`/`brand-mentions` = **50**, `share-of-voice`/`korea-gap` = 40, several reports 25–35), all `content_analysis/*` (20), `search/everywhere` (20), `web/agent` (**25**) — and the free end: `prism/lookup` (0), `prism/post-stats`/`prism/comments` (1) |
+| standard | 1 credit | 359 endpoints | Profiles, posts, search, comments, GitHub direct calls, HN, Tavily, Perplexity research |
+| advanced | 5 credits | 240 endpoints | Audience, ad libraries, trending, full-profile bundles, GitHub composites (`repo/top-issues`, `repo/dossier`), Twitter AI Search |
+| premium | 10 credits | 46 endpoints | Transcripts (⚠️ gated in this plugin: 10cr **per item**, 3cr per video on YouTube — the guard asks and names a cheaper route), age/gender detection, deep listings-database search |
+| **flat override** | **0–50 credits** | 98 of the 645 | Prism intelligence bundles (`leads`/`brand-mentions` = **50**, `creator-vet` = **50–75**, `share-of-voice`/`korea-gap` = 40, several reports 25–35), all `content_analysis/*` (20), `search/everywhere` (20), `web/agent` (**25**) — and at the low end `prism/lookup` (1–5, never 0) and the metered `prism/post-stats` (1–500) and `prism/comments` (2–200) |
 
-> The tier label and the actual charge are **not** the same thing: 37 endpoints carry a flat
-> override that ignores the 1/5/10 ladder entirely. Counted from the committed spec's
-> `x-credit-tier` and `x-credit-cost` (08.08.26) — 18 endpoints are free, and the off-ladder
-> band runs 2, 3, 15, 20, 25, 26, 30, 35, 40 and 50 credits. Always read the per-endpoint
+> The tier label and the actual charge are **not** the same thing: 98 of the 645 tiered
+> endpoints carry a spec price off their tier's 1/5/10 figure. Counted from the committed spec's
+> `x-credit-tier` and `x-credit-cost` (10.06.26) — 31 tiered endpoints are free, the spec prices
+> run 0 to 50 credits, and 19 account/meta operations (credits, status, monitors, cohorts) carry
+> no tier. Always read the per-endpoint
 > credit column in the platform reference; never infer cost from the tier name.
 
-Total: **381 endpoints across 48 platforms.**
+Total: **645 endpoints across 68 platform namespaces.**
 
 Flat overrides bypass the 1/5/10 ladder entirely — the band runs **0 to 50 credits**, so the
 tier label alone understates the expensive end by 5×. The per-endpoint credit column in every
@@ -109,6 +110,23 @@ Returns the standard envelope:
 ```
 
 This call costs **0 credits** and is never cached (`Cache-Control: no-store`). The dashboard UI uses a separate session-authed `/api/credits/balance` route — programmatic callers must use `/v1/credits/balance`.
+
+**`credits_remaining` can be null.** A free cache hit or an idempotent replay may not read the
+balance: the body then carries `credits_remaining: null` (and `credits_used: 0`). Call
+`/v1/credits/balance` for the figure.
+
+### Monitors bill by the run
+
+Every `/v1/monitors` call — list, get, create, pause/resume (`PATCH`), delete, `runs`,
+`timeseries`, `export` — costs 0 credits (the spec's `x-credit-cost` is 0), and the plugin's
+guard lets it through without a prompt. What bills is each scheduled run: the recipe endpoint's
+own price plus 1 credit for orchestration (the spec's `x-credit-cost-formula`), at its cadence
+(hourly at most), until the monitor is paused or deleted; a paused monitor bills nothing, a run
+whose recipe fails outright is refunded in full, and `runs` shows the credits each run used.
+Before creating one, state the monthly cost — (the recipe's price + 1) × its runs a month, e.g. a
+20-credit recipe daily ≈ 630, hourly ≈ 15,120 — and that it keeps charging until paused or
+deleted. The create response's `monitor` carries `estimated_cost_per_run` and
+`estimated_monthly_cost`: state that figure to the user too.
 
 ## Unified Schema & Computed Fields
 
@@ -243,7 +261,7 @@ Six platforms proxy upstreams other than ScrapeCreators and behave identically t
 | **Polymarket** | Gamma API (no auth) | 1 thin proxy + 1 fan-out research endpoint (5cr). Returns full Gamma event shape — no unified Author/Post mapping. |
 | **Tavily** | Tavily POST API (Bearer auth) | Public surface is GET; fetcher translates to POST + JSON body server-side. CSV array params. |
 | **Twitter AI Search** | Grok 4.20 via Vercel AI Gateway with `x_search` tool | `/v1/twitter/ai-search` only — the other 6 Twitter endpoints stay on ScrapeCreators. |
-| **Search (universal)** | Internal — fans out to 12 platforms | Flat 20cr. Sync JSON or SSE streaming. Auto-refunds on zero-floor (every source failed). |
+| **Search (universal)** | Internal — fans out to 14 platforms (up to 17 sources) | Flat 20cr. Sync JSON or SSE streaming. Auto-refunds on zero-floor (every source failed). |
 
 Field maps and computed fields apply only to ScrapeCreators-backed Author/Post endpoints. `?format=raw` is therefore a no-op on non-ScrapeCreators platforms — there's no transform pipeline to bypass.
 

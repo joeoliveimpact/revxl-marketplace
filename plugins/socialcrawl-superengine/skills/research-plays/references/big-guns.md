@@ -1,23 +1,38 @@
-# Big-gun runbooks — 15–200 credit one-shot deliverables
+# Big-gun runbooks — priced one-shot deliverables (see the table)
 
-Most of these are flat-priced. **`share-of-voice` is not** — it meters per brand and is the
-only play here that can pass 50cr. Check each runbook's header before quoting.
+Most of these are flat-priced. **`share-of-voice` is not** — it meters per brand, and
+**`creator-vet`** and **`crisis-radar`** hold a ceiling and refund down. Check the table.
 
-Every play here follows the same **gate ritual, no exceptions**:
+Every play here runs the same way, no exceptions. **The pick is the go; the guard asks only at
+a cap step, on a can't-count call, or on a command that isn't a plain `curl`.**
 
 1. `GET /v1/credits/balance` (0cr) — show the balance.
 2. Name the exact cost: *"This is a premium one-shot: `<endpoint>` costs **N credits**
-   (about $X at your plan's rate). Run it?"* — **on a metered play, N is the computed
-   worst case for the parameters you are actually sending, not the unit price.**
-3. Wait for an explicit yes. A vague "sure, whatever's needed" earlier in the
-   conversation does NOT count.
+   (about $X at your plan's rate)."* — **on a metered play, N is the computed worst case
+   for the parameters you are actually sending, not the unit price.**
+3. Their pick of that priced option is the explicit yes. A vague "sure, whatever's needed"
+   earlier in the conversation does NOT count.
 4. One call. **Never batched, never looped, never auto-repeated.** A re-run (new keyword,
-   second brand) is a fresh gate.
-5. After the call, report `credits_used` + `credits_remaining`.
+   second brand) is a new plan and needs its own pick.
+5. After the call, report `credits_used` + `credits_remaining` (null on a cache hit).
 
 Params below are the primary ones — full param lists live in
 [../../socialcrawl/references/prism.md](../../socialcrawl/references/prism.md) and
 [search.md](../../socialcrawl/references/search.md).
+
+| Play | Endpoint | Credits | Metered? |
+|------|----------|---------|----------|
+| Audience questions (content-seed engine) | `prism/audience-questions` | **30** | flat |
+| Creator vetting (partnership due diligence) | `prism/creator-vet` | **50–75** | held ceiling, refunds down — quote 75 |
+| Lead discovery (competitor switchers) | `prism/leads` | **50** | flat |
+| Share of voice (2–5 brands) | `prism/share-of-voice` | **80–200** | ⚠️ **40cr _per brand_** (20 web-only); `brands=` takes 2–5, so a real call is 80–200cr, never 40 |
+| Reputation report (cross-source) | `prism/reputation` | **30** | flat |
+| Campaign tracker (launch lift) | `prism/campaign` | **35** | flat (half-refunds fire; measured 17 on a thin window) |
+| Earned-media footprint | `prism/earned-media` | **25** | flat |
+| Crisis radar (mention-volume breach check) | `prism/crisis-radar` | **15–45** | held ceiling, refunds down — quote 45 |
+| TikTok audience overlap (2 creators) | `prism/audience-overlap` | **20** | flat |
+| AI-visibility audit | `prism/ai-visibility` | **20–1,605** | ⚠️ **2cr _per probe_** (`prompt × run × engine`); always pass `preset=` |
+| Universal search (up to 17 sources) | `search/everywhere` | **20** | flat |
 
 ---
 
@@ -34,7 +49,7 @@ questions become hooks. Feeds a brand-brain topics shelf directly.
 incremental mining — cheaper, but **not 1cr**: it is metered at 1cr per search page + 1cr
 per expanded thread with a floor of 5, so budget **5–8cr+ per keyword**.
 
-## Creator vetting — `prism/creator-vet` · 50cr · [J]
+## Creator vetting — `prism/creator-vet` · 50–75cr, quote 75 · [J]
 
 **Worth it when:** real money or brand risk rides on a creator — a partnership, a paid
 collab, a high-ticket enrollment. The most expensive call in the API; treat it like a
@@ -44,7 +59,7 @@ background check, not a curiosity.
 controversy signals — optionally across platforms.
 **Deliverable:** go / no-go one-pager with the three strongest signals quoted.
 **Cheaper first pass:** `prism/handle-audit` (5cr) + `prism/creator-card` (5cr) answer
-"is this account worth anything" for 1/5th the price — reserve creator-vet for the final
+"is this account worth anything" for a fraction of the price — reserve creator-vet for the final
 check on a shortlist of one.
 
 ## Lead discovery — `prism/leads` · 50cr · [J]
@@ -102,7 +117,7 @@ rollup.
 **Deliverable:** press footprint page — coverage list + the two outlets that already know
 them (warm pitch targets).
 
-## Crisis radar — `prism/crisis-radar` · 15cr · [C]
+## Crisis radar — `prism/crisis-radar` · 15–45cr, quote 45 · [C]
 
 **Worth it when:** on-demand "is something blowing up?" check — a client saw a nasty
 comment thread and wants to know if it's spreading.
@@ -122,10 +137,10 @@ creators actually share an audience?
 **Deliverable:** competitor-set validation note — keep/cut verdict per candidate pair.
 Pairs are chosen before calling; 3 pairs = 60cr = a conversation, not a default.
 
-## Universal 12-source search — `search/everywhere` · 20cr · [CJ]
+## Universal search (up to 17 sources) — `search/everywhere` · 20cr · [CJ]
 
 **Worth it when:** scouting a NEW topic/niche once — "where does this conversation even
-live?" Twelve platforms, one ranked + clustered result.
+live?" Fourteen platforms (up to 17 sources), one ranked + clustered result.
 **Call:** `GET /v1/search/everywhere?query=<topic>` (sync JSON or SSE — see
 [search.md](../../socialcrawl/references/search.md); auto-refunds if every source fails).
 **Deliverable:** platform map — which 2–3 platforms own this topic. Then leave this

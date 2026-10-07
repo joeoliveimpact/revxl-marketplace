@@ -1,0 +1,813 @@
+{
+  "$comment": [
+    "Packages = the route table (Stage B rev4 R11). Transcribed from the Joe-ruled package list",
+    "(rev4 Package List, ruled 09.23.26) and the plan's R11 table. An uncurated option's id is built",
+    "from its endpoint path(s) in kebab-case (search-then-size is the plan's own name); a curated",
+    "option's label is that curated row's name.",
+    "",
+    "Jev picks ONE row (or none_fit) from the rows with jev: true, offered in THIS FILE'S ROW ORDER.",
+    "dev_radar has jev: false: it runs only when named. That row's options become the menu.",
+    "",
+    "Row shape: {id, jev, use_when, not_this, free: {how, curated?} | null, options: [...]}.",
+    "free.curated names the free curated row when the free path is one.",
+    "An option is {id, label, curated: <curated-workflows.json id>} or",
+    "{id, label, endpoints: [{call, countLow, countHigh, role}], quote, ceiling} — the curated shape,",
+    "so the ledger, execution.md and check_r6 E2 read it unchanged. A curated option keeps its own",
+    "row's quote. quote/ceiling on the others are written by",
+    "tools/socialcrawl/derive_curated_quotes.mjs through hooks/price.mjs, never by hand.",
+    "",
+    "The 14 tested use_when sentences are byte-identical to",
+    "tools/socialcrawl/fixtures/jev-t2-route-criteria.json (T2, 14/14). Don't reword one without a re-test.",
+    "tools/socialcrawl/check_packages.mjs checks all of this."
+  ],
+  "version": 1,
+  "none_fit": {
+    "criterion": "The person wants a specific kind of data from a platform, marketplace or app that none of the options above is built to pull, and a plain web search would give only a rough answer.",
+    "trigger": "package.choice == \"none_fit\" or package.probabilities.none_fit >= 0.20",
+    "packageConfidenceLine": null,
+    "packageConfidenceNote": "No package-confidence line: confidence doesn't separate right from wrong (a wrong pick scored 0.77, the lowest right one 0.73). The p(none_fit) trigger replaces it.",
+    "source": "Step 0.5 (09.23.26), frozen"
+  },
+  "rows": [
+    {
+      "id": "website",
+      "jev": true,
+      "use_when": "The person wants information pulled from a specific website or web page they name or link.",
+      "not_this": "what a competitor sells, with no link given → competitor_offer.",
+      "free": {
+        "how": "read the page with WebFetch."
+      },
+      "options": [
+        {
+          "id": "web-scrape",
+          "label": "The content of one web page, scraped when reading it directly is blocked",
+          "endpoints": [
+            {
+              "call": "GET web/scrape",
+              "countLow": 1,
+              "countHigh": 1,
+              "role": "web/scrape (one page, when the free read is blocked)"
+            }
+          ],
+          "quote": {
+            "low": 1,
+            "high": 5
+          },
+          "ceiling": 5
+        },
+        {
+          "id": "site-teardown",
+          "label": "Site teardown (Tavily)",
+          "curated": "site-teardown"
+        }
+      ]
+    },
+    {
+      "id": "competitor_offer",
+      "jev": true,
+      "use_when": "The person wants to know what a competitor sells, what it costs, and how their offers are laid out.",
+      "not_this": "their ads → competitor_ads.",
+      "free": {
+        "how": "Free offer sketch",
+        "curated": "free-offer-sketch"
+      },
+      "options": [
+        {
+          "id": "link-in-bio-recon",
+          "label": "Link-in-bio / offer recon",
+          "curated": "link-in-bio-recon"
+        },
+        {
+          "id": "site-teardown",
+          "label": "Site teardown (Tavily)",
+          "curated": "site-teardown"
+        }
+      ]
+    },
+    {
+      "id": "answer_with_sources",
+      "jev": true,
+      "use_when": "The person wants a factual answer or a news summary backed by cited web sources, not social posts.",
+      "not_this": "what people are saying on social → people_saying.",
+      "free": {
+        "how": "Free topic scout",
+        "curated": "free-topic-scout"
+      },
+      "options": [
+        {
+          "id": "cited-answer",
+          "label": "Cited answer (Perplexity + Tavily)",
+          "curated": "cited-answer"
+        },
+        {
+          "id": "news-pulse",
+          "label": "Recent-news pulse (Tavily)",
+          "curated": "news-pulse"
+        },
+        {
+          "id": "search-news",
+          "label": "News articles on the topic from several countries, searched across two news indexes at once",
+          "endpoints": [
+            {
+              "call": "GET search/news",
+              "countLow": 1,
+              "countHigh": 1,
+              "role": "search/news (multi-country news)"
+            }
+          ],
+          "quote": {
+            "low": 2,
+            "high": 62
+          },
+          "ceiling": 62
+        },
+        {
+          "id": "prism-answers",
+          "label": "Perplexity, Grok and Tavily answers to one question side by side, with merged citations and where they agree",
+          "endpoints": [
+            {
+              "call": "GET prism/answers",
+              "countLow": 1,
+              "countHigh": 1,
+              "role": "Perplexity, Grok and Tavily answers to one question, side by side"
+            }
+          ],
+          "quote": {
+            "low": 15,
+            "high": 15
+          },
+          "ceiling": 15
+        }
+      ]
+    },
+    {
+      "id": "people_saying",
+      "jev": true,
+      "use_when": "The person wants to know what people are saying, feeling or complaining about a topic, brand or person across social platforms or forums.",
+      "not_this": "Reddit as the default (R4.6 ruling: an option, never the default) · reviews of a product → reviews_reputation.",
+      "free": {
+        "how": "web search limited to forum results (thin)."
+      },
+      "options": [
+        {
+          "id": "search-forums",
+          "label": "Search Reddit, Hacker News and Naver in one call",
+          "endpoints": [
+            {
+              "call": "GET search/forums",
+              "countLow": 1,
+              "countHigh": 2,
+              "role": "search/forums (Reddit + Hacker News + Naver in one call)"
+            }
+          ],
+          "quote": {
+            "low": 10,
+            "high": 20
+          },
+          "ceiling": 20
+        },
+        {
+          "id": "search-everywhere",
+          "label": "Universal search (up to 17 sources)",
+          "curated": "search-everywhere"
+        },
+        {
+          "id": "voice-of-customer",
+          "label": "Voice-of-Customer mining",
+          "curated": "voice-of-customer"
+        },
+        {
+          "id": "share-of-voice",
+          "label": "Share of voice (2-5 brands)",
+          "curated": "share-of-voice"
+        },
+        {
+          "id": "campaign-tracker",
+          "label": "Campaign tracker (launch lift)",
+          "curated": "campaign-tracker"
+        },
+        {
+          "id": "crisis-radar",
+          "label": "Crisis radar (mention-volume breach check)",
+          "curated": "crisis-radar"
+        }
+      ]
+    },
+    {
+      "id": "who_is",
+      "jev": true,
+      "use_when": "The person wants a profile of a specific creator, brand or account: who they are, their size, their audience and followers.",
+      "not_this": "a person's work history → person_background · finding new creators → find_creators.",
+      "free": {
+        "how": "Free web snapshot",
+        "curated": "free-web-snapshot"
+      },
+      "options": [
+        {
+          "id": "prism-creator-card",
+          "label": "One handle's profile cards across TikTok, Instagram, YouTube, X and more",
+          "endpoints": [
+            {
+              "call": "GET prism/creator-card",
+              "countLow": 1,
+              "countHigh": 1,
+              "role": "prism/creator-card (one handle across platforms)"
+            }
+          ],
+          "quote": {
+            "low": 5,
+            "high": 8
+          },
+          "ceiling": 8
+        },
+        {
+          "id": "audience-demographics",
+          "label": "Audience demographics",
+          "curated": "audience-demographics"
+        },
+        {
+          "id": "earned-media",
+          "label": "Earned-media footprint",
+          "curated": "earned-media"
+        },
+        {
+          "id": "creator-vetting",
+          "label": "Creator vetting (partnership due diligence)",
+          "curated": "creator-vetting"
+        },
+        {
+          "id": "audience-overlap",
+          "label": "TikTok audience overlap (2 creators)",
+          "curated": "audience-overlap"
+        }
+      ]
+    },
+    {
+      "id": "person_background",
+      "jev": true,
+      "use_when": "The person wants a person's job history, employer or professional background.",
+      "not_this": "jobs/*. Changed from R11's seed: the vendor says these list job openings, not a person's history.",
+      "free": {
+        "how": "web search on name + company."
+      },
+      "options": [
+        {
+          "id": "linkedin-profile",
+          "label": "A person's basic LinkedIn profile",
+          "endpoints": [
+            {
+              "call": "GET linkedin/profile",
+              "countLow": 1,
+              "countHigh": 1,
+              "role": "linkedin/profile (basic)"
+            }
+          ],
+          "quote": {
+            "low": 5,
+            "high": 5
+          },
+          "ceiling": 5
+        },
+        {
+          "id": "linkedin-profile-complete",
+          "label": "A person's full LinkedIn profile: experience, education, skills and recommendations",
+          "endpoints": [
+            {
+              "call": "GET linkedin/profile/complete",
+              "countLow": 1,
+              "countHigh": 1,
+              "role": "A person's full LinkedIn profile: experience, education and skills"
+            }
+          ],
+          "quote": {
+            "low": 10,
+            "high": 10
+          },
+          "ceiling": 10
+        },
+        {
+          "id": "prism-adverse-screen",
+          "label": "A screen of a person's public social profiles that flags risky posts, each citing its post, for a human to review",
+          "endpoints": [
+            {
+              "call": "GET prism/adverse-screen",
+              "countLow": 1,
+              "countHigh": 1,
+              "role": "Flags a person's risky public posts for a human to review"
+            }
+          ],
+          "quote": {
+            "low": 25,
+            "high": 75
+          },
+          "ceiling": 75
+        }
+      ]
+    },
+    {
+      "id": "find_creators",
+      "jev": true,
+      "use_when": "The person wants to find or build a list of creators or accounts that match a niche or size, not one account they already know.",
+      "not_this": "vetting one creator you already know → who_is.",
+      "free": {
+        "how": "web search for \"top <niche> creators\"."
+      },
+      "options": [
+        {
+          "id": "search-creators",
+          "label": "Creators matching a niche across TikTok, Threads and Instagram, ranked by relevance, followers and verification",
+          "endpoints": [
+            {
+              "call": "GET search/creators",
+              "countLow": 1,
+              "countHigh": 1,
+              "role": "search/creators (TikTok + Threads + Instagram, ranked; one archived call)"
+            }
+          ],
+          "quote": {
+            "low": 10,
+            "high": 12
+          },
+          "ceiling": 12
+        },
+        {
+          "id": "instagram-search-profiles",
+          "label": "Instagram profiles that match a keyword",
+          "endpoints": [
+            {
+              "call": "GET instagram/search/profiles",
+              "countLow": 1,
+              "countHigh": 2,
+              "role": "Instagram profiles that match a keyword"
+            }
+          ],
+          "quote": {
+            "low": 1,
+            "high": 50
+          },
+          "ceiling": 50
+        },
+        {
+          "id": "tiktok-search-users",
+          "label": "TikTok accounts that match a keyword",
+          "endpoints": [
+            {
+              "call": "GET tiktok/search/users",
+              "countLow": 1,
+              "countHigh": 2,
+              "role": "TikTok accounts that match a keyword"
+            }
+          ],
+          "quote": {
+            "low": 1,
+            "high": 200
+          },
+          "ceiling": 200
+        },
+        {
+          "id": "search-then-size",
+          "label": "Creators matching a niche across TikTok, Threads and Instagram, then profile cards on the shortlist to size each one",
+          "endpoints": [
+            {
+              "call": "GET search/creators",
+              "countLow": 1,
+              "countHigh": 1,
+              "role": "TikTok + Threads + Instagram, ranked; one archived call"
+            },
+            {
+              "call": "GET prism/creator-card",
+              "countLow": 3,
+              "countHigh": 5,
+              "role": "to size the shortlist"
+            }
+          ],
+          "quote": {
+            "low": 25,
+            "high": 52
+          },
+          "ceiling": 52
+        }
+      ]
+    },
+    {
+      "id": "buyers_leads",
+      "jev": true,
+      "use_when": "The person wants to find potential buyers or leads: people publicly showing they want to buy something.",
+      "not_this": "general complaints → people_saying.",
+      "free": {
+        "how": "web search for \"alternative to X\" threads."
+      },
+      "options": [
+        {
+          "id": "lead-discovery",
+          "label": "Lead discovery (competitor switchers)",
+          "curated": "lead-discovery"
+        },
+        {
+          "id": "prism-comment-leads",
+          "label": "Buyers found in the comments under the posts a keyword search returns",
+          "endpoints": [
+            {
+              "call": "GET prism/comment-leads",
+              "countLow": 1,
+              "countHigh": 1,
+              "role": "Buyers in the comments under the posts a keyword finds"
+            }
+          ],
+          "quote": {
+            "low": 0,
+            "high": 243
+          },
+          "ceiling": 243
+        }
+      ]
+    },
+    {
+      "id": "reviews_reputation",
+      "jev": true,
+      "use_when": "The person wants product or company reviews and ratings, or what customers say about their experience with a product.",
+      "not_this": "social chatter → people_saying.",
+      "free": {
+        "how": "web search for reviews."
+      },
+      "options": [
+        {
+          "id": "trustpilot-reviews",
+          "label": "A business's Trustpilot reviews, each labelled with its sentiment and the issue it raises",
+          "endpoints": [
+            {
+              "call": "GET trustpilot/reviews",
+              "countLow": 1,
+              "countHigh": 3,
+              "role": "trustpilot/reviews (one site, labelled)"
+            }
+          ],
+          "quote": {
+            "low": 5,
+            "high": 27
+          },
+          "ceiling": 27
+        },
+        {
+          "id": "g2-reviews",
+          "label": "A product's G2 reviews, each labelled with its sentiment and the issue it raises",
+          "endpoints": [
+            {
+              "call": "GET g2/reviews",
+              "countLow": 1,
+              "countHigh": 3,
+              "role": "g2/reviews (one site, labelled)"
+            }
+          ],
+          "quote": {
+            "low": 5,
+            "high": 27
+          },
+          "ceiling": 27
+        },
+        {
+          "id": "prism-product-reviews",
+          "label": "One product's reviews across Amazon, Google Shopping and Trustpilot, folded into one rating with themed pros and cons",
+          "endpoints": [
+            {
+              "call": "GET prism/product-reviews",
+              "countLow": 1,
+              "countHigh": 1,
+              "role": "prism/product-reviews (Amazon + Google Shopping + Trustpilot for one product)"
+            }
+          ],
+          "quote": {
+            "low": 30,
+            "high": 30
+          },
+          "ceiling": 30
+        },
+        {
+          "id": "reputation-report",
+          "label": "Reputation report (cross-source)",
+          "curated": "reputation-report"
+        }
+      ]
+    },
+    {
+      "id": "trending",
+      "jev": true,
+      "use_when": "The person wants to know what is trending or popular right now on a platform or in a niche.",
+      "not_this": "how one campaign landed → people_saying (campaign-tracker).",
+      "free": {
+        "how": "web search."
+      },
+      "options": [
+        {
+          "id": "tiktok-trending",
+          "label": "TikTok's trending videos feed",
+          "endpoints": [
+            {
+              "call": "GET tiktok/trending",
+              "countLow": 1,
+              "countHigh": 1,
+              "role": "tiktok/trending"
+            }
+          ],
+          "quote": {
+            "low": 5,
+            "high": 5
+          },
+          "ceiling": 5
+        },
+        {
+          "id": "tiktok-hashtags-popular",
+          "label": "TikTok's own popular-hashtag board, by industry",
+          "endpoints": [
+            {
+              "call": "GET tiktok/hashtags/popular",
+              "countLow": 1,
+              "countHigh": 1,
+              "role": "TikTok's own hashtag board, by industry"
+            }
+          ],
+          "quote": {
+            "low": 6,
+            "high": 96
+          },
+          "ceiling": 96
+        },
+        {
+          "id": "instagram-reels-trending",
+          "label": "Instagram's trending reels",
+          "endpoints": [
+            {
+              "call": "GET instagram/reels/trending",
+              "countLow": 1,
+              "countHigh": 1,
+              "role": "instagram/reels/trending"
+            }
+          ],
+          "quote": {
+            "low": 5,
+            "high": 5
+          },
+          "ceiling": 5
+        },
+        {
+          "id": "youtube-shorts-trending",
+          "label": "YouTube's trending shorts",
+          "endpoints": [
+            {
+              "call": "GET youtube/shorts/trending",
+              "countLow": 1,
+              "countHigh": 1,
+              "role": "youtube/shorts/trending"
+            }
+          ],
+          "quote": {
+            "low": 5,
+            "high": 15
+          },
+          "ceiling": 15
+        },
+        {
+          "id": "google-trends-trending-rising",
+          "label": "Google Trends: what is trending now and what is rising",
+          "endpoints": [
+            {
+              "call": "GET google_trends/trending",
+              "countLow": 1,
+              "countHigh": 1,
+              "role": "google_trends/trending"
+            },
+            {
+              "call": "GET google_trends/rising",
+              "countLow": 1,
+              "countHigh": 1,
+              "role": "google_trends/rising"
+            }
+          ],
+          "quote": {
+            "low": 10,
+            "high": 10
+          },
+          "ceiling": 10
+        }
+      ]
+    },
+    {
+      "id": "competitor_ads",
+      "jev": true,
+      "use_when": "The person wants to see the ads a competitor or brand is running.",
+      "not_this": "their normal posts → who_is / carousel_text.",
+      "free": null,
+      "options": [
+        {
+          "id": "ad-library-recon",
+          "label": "Ad-library recon",
+          "curated": "ad-library-recon"
+        },
+        {
+          "id": "tiktok-ads-top",
+          "label": "TikTok's best-performing ads in a market, not one brand's ads",
+          "endpoints": [
+            {
+              "call": "GET tiktok/ads/top",
+              "countLow": 1,
+              "countHigh": 1,
+              "role": "TikTok's top ads in a market, not one brand's"
+            }
+          ],
+          "quote": {
+            "low": 10,
+            "high": 100
+          },
+          "ceiling": 100
+        }
+      ]
+    },
+    {
+      "id": "own_account_health",
+      "jev": true,
+      "use_when": "The person wants an audit or health check of their own social account.",
+      "not_this": "prism/handle-audit (estimates what pulling a handle's data would cost; not a health check) · prism/creator-vet (vets someone else before a deal). Both replace R11's seed for this row.",
+      "free": null,
+      "options": [
+        {
+          "id": "prism-creator-card",
+          "label": "Your own handle's profile cards across TikTok, Instagram, YouTube, X and more",
+          "endpoints": [
+            {
+              "call": "GET prism/creator-card",
+              "countLow": 1,
+              "countHigh": 1,
+              "role": "prism/creator-card on your own handle (size across platforms)"
+            }
+          ],
+          "quote": {
+            "low": 5,
+            "high": 8
+          },
+          "ceiling": 8
+        },
+        {
+          "id": "instagram-profile-posts",
+          "label": "Your recent Instagram posts, ranked by engagement",
+          "endpoints": [
+            {
+              "call": "GET instagram/profile/posts",
+              "countLow": 1,
+              "countHigh": 3,
+              "role": "instagram/profile/posts (recent posts, ranked by engagement)"
+            }
+          ],
+          "quote": {
+            "low": 1,
+            "high": 51
+          },
+          "ceiling": 51
+        },
+        {
+          "id": "prism-post-stats",
+          "label": "Current engagement for up to 100 of your post URLs, across platforms",
+          "endpoints": [
+            {
+              "call": "POST prism/post-stats",
+              "countLow": 1,
+              "countHigh": 1,
+              "role": "prism/post-stats (current engagement on up to 100 post URLs)"
+            }
+          ],
+          "quote": {
+            "low": 1,
+            "high": 500
+          },
+          "ceiling": 500
+        }
+      ]
+    },
+    {
+      "id": "audience_questions",
+      "jev": true,
+      "use_when": "The person wants to know what questions their audience or market is asking.",
+      "not_this": "quora/spaces.",
+      "free": {
+        "how": "Free question harvest",
+        "curated": "free-question-harvest"
+      },
+      "options": [
+        {
+          "id": "quora-search-answers",
+          "label": "Questions and answers on the topic from Quora",
+          "endpoints": [
+            {
+              "call": "GET quora/search",
+              "countLow": 1,
+              "countHigh": 2,
+              "role": "quora/search"
+            },
+            {
+              "call": "GET quora/answers",
+              "countLow": 1,
+              "countHigh": 2,
+              "role": "quora/answers"
+            }
+          ],
+          "quote": {
+            "low": 10,
+            "high": 20
+          },
+          "ceiling": 20
+        },
+        {
+          "id": "search-forums",
+          "label": "Search Reddit, Hacker News and Naver in one call",
+          "endpoints": [
+            {
+              "call": "GET search/forums",
+              "countLow": 1,
+              "countHigh": 2,
+              "role": "search/forums"
+            }
+          ],
+          "quote": {
+            "low": 10,
+            "high": 20
+          },
+          "ceiling": 20
+        },
+        {
+          "id": "audience-questions",
+          "label": "Audience questions (content-seed engine)",
+          "curated": "audience-questions"
+        }
+      ]
+    },
+    {
+      "id": "carousel_text",
+      "jev": true,
+      "use_when": "The person wants the actual words written on a competitor's Instagram carousel slides.",
+      "not_this": "reels (only the cover frame is read) · stories/highlights (untested).",
+      "free": null,
+      "options": [
+        {
+          "id": "instagram-profile-posts-then-media-screen-text",
+          "label": "Their Instagram posts, ranked by engagement to find the carousels, then the words on each carousel's slides",
+          "endpoints": [
+            {
+              "call": "GET instagram/profile/posts",
+              "countLow": 1,
+              "countHigh": 2,
+              "role": "find their carousels, rank by engagement"
+            },
+            {
+              "call": "GET instagram/media/screen-text",
+              "countLow": 3,
+              "countHigh": 10,
+              "role": "The words on each carousel's slides, one post at a time"
+            }
+          ],
+          "quote": {
+            "low": 16,
+            "high": 84
+          },
+          "ceiling": 84
+        }
+      ]
+    },
+    {
+      "id": "ai_visibility",
+      "jev": true,
+      "use_when": "The person wants to know whether ChatGPT or other AI search tools mention them, their brand or their competitors.",
+      "not_this": "what people say about you on social → people_saying; press coverage → who_is",
+      "free": null,
+      "options": [
+        {
+          "id": "ai-visibility-audit",
+          "label": "AI-visibility (GEO) audit",
+          "curated": "ai-visibility-audit"
+        }
+      ]
+    },
+    {
+      "id": "free_web",
+      "jev": true,
+      "use_when": "None of the above: a plain web search answers this, and no social data is needed.",
+      "not_this": "anything that needs posts, comments, profiles, ads or reviews from social platforms",
+      "free": {
+        "how": "WebSearch / WebFetch."
+      },
+      "options": []
+    },
+    {
+      "id": "dev_radar",
+      "jev": false,
+      "use_when": "The person wants to know what is shipping, breaking or being complained about in a software tool, code repo or developer community.",
+      "not_this": "general tech news → answer_with_sources",
+      "free": null,
+      "options": [
+        {
+          "id": "dev-radar",
+          "label": "Dev radar",
+          "curated": "dev-radar"
+        }
+      ]
+    }
+  ]
+}

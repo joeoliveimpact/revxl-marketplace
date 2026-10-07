@@ -4,6 +4,20 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.80] ... 2026-10-07
+
+### Changed
+- **socialcrawl-superengine v0.3.0** ... prices now come from the vendor's own 10-06
+catalogue (645 endpoints across 68 platforms), including the endpoints that bill per post
+or per row. Paid calls no longer ask one by one: each is priced up front and counted
+against a silent session cap (the smaller of 500 credits or a quarter of your balance),
+and the plugin asks when a call would cross the cap or can't be priced. In a session where
+nobody is there to confirm, a paid call is refused and nothing is counted. Research
+options now say what they pull, and a "what are people saying" ask always offers the
+search-everywhere option. One key box sets up both keys, and no instruction prints a key.
+An optional helper (Jev, on your own OpenRouter key) can pick the option for you; without
+it you choose from the menu.
+
 ## [0.1.79] ... 2026-10-07
 
 ### Added
