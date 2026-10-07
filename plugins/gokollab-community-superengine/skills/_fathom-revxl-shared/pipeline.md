@@ -28,10 +28,16 @@ The token is a 60-min Firebase idToken minted from the refresh token at `config.
 ```powershell
 $env:CLIENTCLUB_COMMUNITY_TOKEN_ID = & '<tokenHelper.windows>'
 ```
-**POSIX (bash):**
+**POSIX (bash):** run the prep block first, every invocation. Plugin updates reinstall the files, which can drop the executable flag, and macOS quarantines downloaded binaries, so "permission denied" or "cannot be opened" means this block was skipped.
 ```bash
-export CLIENTCLUB_COMMUNITY_TOKEN_ID="$(<tokenHelper.posix>)"
+# Mac/Linux prep: idempotent, safe to re-run every time
+chmod +x '<clientclubBinary>' '<tokenHelper.posix>' 2>/dev/null || true
+[ "$(uname -s)" = "Darwin" ] && xattr -d com.apple.quarantine '<clientclubBinary>' 2>/dev/null || true
+
+# Run the helper through bash so it works even if the executable flag is missing
+export CLIENTCLUB_COMMUNITY_TOKEN_ID="$(bash '<tokenHelper.posix>')"
 ```
+Never route a Mac through the PowerShell branch, and never ask the client to install PowerShell. The POSIX branch is complete.
 
 Both emit the idToken to stdout and the clientclub binary reads `$CLIENTCLUB_COMMUNITY_TOKEN_ID`. Then smoke-test:
 ```
