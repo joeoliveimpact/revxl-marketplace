@@ -4,6 +4,14 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.78] ... 2026-10-07
+
+### Fixed
+- **gokollab-community-superengine v0.1.3** ... on a Mac the bundled clientclub CLI and
+its token helper failed with "permission denied" because they were stored without the
+executable flag. They are now executable, and every run re-applies the flag and clears the
+macOS quarantine, so updates can't break it again.
+
 ## [0.1.77] ... 2026-10-07
 
 ### Fixed
