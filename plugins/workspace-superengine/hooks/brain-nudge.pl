@@ -177,9 +177,9 @@ if (-e $ledger) {
         $line =~ s/\s+$//;
         next unless length $line;
         my $r = eval { decode_json($line) };
-        exit 0 unless ref($r) eq 'HASH';
+        next unless ref($r) eq 'HASH';   # skip a bad line, never stop on it
         my $e = iso_epoch($r->{ts});
-        exit 0 unless defined $e;
+        next unless defined $e;
         exit 0 if $e >= $since;
     }
     close $lg;

@@ -4,6 +4,14 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.77] ... 2026-10-07
+
+### Fixed
+- **workspace-superengine v0.15.2** ... the Vault call ledger line in revxl-vault-search
+had a misplaced newline, so a copied command wrote a broken first line, and brain-nudge
+stopped for good at the first line it could not read. The command now writes one clean
+line, and brain-nudge skips an unreadable line instead of stopping.
+
 ## [0.1.76] ... 2026-10-06
 
 ### Added

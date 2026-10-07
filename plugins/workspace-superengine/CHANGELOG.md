@@ -2,6 +2,18 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.15.2 ... 2026-10-06
+
+### Fixed
+- revxl-vault-search: the ledger `printf` had its `\n` outside the quotes, so it became
+  a stray `n` argument and the command wrote two lines, the first with `"ts":"n"`. The
+  newline is now inside the format string and the command writes one line.
+- brain-nudge: an unreadable ledger line made the pre-write check exit, which switched
+  the nudge off for good on that machine with no message. It now skips that line and
+  keeps reading. Tested both ways: the old script stays silent on a ledger holding a
+  bad line and no fresh search; the new one nudges, and still stays quiet when a real
+  search is logged after the bad line.
+
 ## 0.15.1 ... 2026-09-08
 
 ### Added
