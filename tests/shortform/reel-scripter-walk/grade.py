@@ -1,11 +1,18 @@
 """Grade one reel-scripter walk transcript against RUBRIC.md.
-Usage: py -3.12 grade.py <log> [--fixture gut|contra] [--run2]
+Usage: py -3.12 grade.py <log> [--fixture gut|contra] [--goldmine on|off|override] [--run2]
 
 <log> is a name under <state>/logs (or a path). <state> is RS_WALK_STATE (default
 <home>/rs-walk-state), the folder run-mt2.sh writes to. The project graded is <state>/proj
 (gut, the default) or <state>/proj-contra (contra). The plugin under test, its gate and its
 trigger hook are the ones in this repo, found from this file's own location. The gate is
 not re-run (its stamps are per project, so a copy cannot pass); grading writes nothing.
+
+--goldmine sets what criterion Q expects of the Goldmine data (reel-build/goldmine-run.json):
+  on        the data is there (reads.passed) and the hook pass used it
+  override  the data is there, the client said to use their own hook / ignore the data, none used
+  off       no data, none used
+Default: off for gut (its seed has no data), on for contra. A gut walk with a Goldmine copy
+added after reset.sh needs --goldmine on or override.
 
 Prints one PASS or FAIL line per criterion, then `VERDICT: PASS` or `VERDICT: FAIL` with the
 failed criteria. Exit 0 on PASS, 1 on FAIL, 2 on bad usage. A criterion whose input is absent
@@ -39,16 +46,19 @@ def usage():
 args = sys.argv[1:]
 if not args or args[0].startswith("--"):
     usage()
-log_name, fixture, run2 = args[0], "gut", False
+log_name, fixture, run2, goldmine = args[0], "gut", False, None
 rest = args[1:]
 while rest:
     a = rest.pop(0)
     if a == "--fixture" and rest and rest[0] in ("gut", "contra"):
         fixture = rest.pop(0)
+    elif a == "--goldmine" and rest and rest[0] in ("on", "off", "override"):
+        goldmine = rest.pop(0)
     elif a == "--run2":
         run2 = True
     else:
         usage()
+goldmine = goldmine or ("on" if fixture == "contra" else "off")
 
 D = Path(os.environ.get("RS_WALK_STATE") or Path.home() / "rs-walk-state")
 PROJ = D / ("proj" if fixture == "gut" else "proj-contra")
@@ -61,7 +71,7 @@ ev = [json.loads(l) for l in raw.splitlines() if l.strip().startswith("{")]
 inits = [e for e in ev if e.get("type") == "system" and e.get("subtype") == "init"]
 res = next((e for e in reversed(ev) if e.get("type") == "result"), {})
 
-# One flat, ordered list of what happened: ("skill", name, step, turn, blocked), ("read", path), ("text", text),
+# One flat, ordered list of what happened: ("skill", name, step, turn, blocked, args), ("read", path), ("text", text),
 # ("tool", name, input). turn: the result events before it (one per user turn). blocked: its tool_result is an
 # error (a plugin hook stopped it), so it never ran and counts as no call.
 errored = {c.get("tool_use_id") for e in ev if e.get("type") == "user"
@@ -81,7 +91,7 @@ for e in ev:
                 a = a if isinstance(a, str) else json.dumps(a)
                 m = re.search(r"(?i)\bstep(?:[ \t]*[:=][ \t]*|[ \t]+)([0-9A-Za-z][\w.-]*)", a)
                 seq.append(("skill", inp.get("skill") or inp.get("command") or "", m.group(1).lower().rstrip(".") if m else None,
-                            turn, c.get("id") in errored))
+                            turn, c.get("id") in errored, a))
             elif name == "Read":
                 seq.append(("read", inp.get("file_path", "")))
             else:
@@ -163,7 +173,7 @@ def of(name):
 
 def method_read(k, folder, fname):
     """(item of a Read of the method file after item k and before the next options text, or None; that text's item)."""
-    # The hook skill asks the Goldmine question first; that question is not the options.
+    # Pre-0.6.0 logs: the hook skill asked the Goldmine question first; that question is not the options.
     fl = lambda t: " ".join(t.replace("\u2019", "'").split())
     shown = next((j for j in range(k + 1, len(seq)) if seq[j][0] == "text" and len(seq[j][1]) >= OPTIONS_MIN
                   and fl(GOLDMINE_Q) not in fl(seq[j][1])), len(seq))
@@ -363,13 +373,71 @@ else:
 dead = [s[1] for s in seq if s[0] == "read" and any(norm(s[1]).endswith("/" + d) for d in DELETED)]
 crit("D no deleted-file Read", not dead, f"read: {dead}" if dead else "none read")
 
-# Goldmine question: asked on contra (Goldmine data exists), never on gut.
+# Q, Goldmine data (0.6.0): used by default when goldmine-run.json shows reads.passed; the only off switch
+# is the client saying to use their own hook / ignore the data; never offered as a question.
+GM_ARG = re.compile(r"(?im)(?:^|\s)(?:proven_hooks|pattern_read)[ \t]*[:=][ \t]*([^\n]*)")
+GM_NAME = re.compile(r"(?i)\b(?:Pattern Read|Proven Hooks|Goldmine Reads Packet) - ")
+# ponytail: one sentence (no . ! ? or newline inside) naming the Goldmine or "check the hooks against", ending
+# in "?". Tuned on 347 walk logs: no false fire. A pick question naming a Goldmine-backed option would fire.
+GM_ASK = re.compile(r"(?i)[^.!?\n]*\b(?:goldmine|check (?:the|your|these) hooks? (?:options )?against)\b[^.!?\n]*\?")
+OPENERS = ("Read", "Bash", "PowerShell", "Grep")
+
+
+def gm_args(s):
+    """A Skill call's non-empty proven_hooks / pattern_read values (none, n/a, and bracketed placeholders like (none) / [not passed] are empty)."""
+    return [v.strip()[:80] for v in GM_ARG.findall(s[5]) if v.strip()
+            and not re.match(r"(?i)[(\[]?\s*(none|n/?a|null|no\b|not\b|omit|empty|-)", v.strip())]
+
+
+def gm_named(s, tools):
+    """The tool call names a Pattern Read, Proven Hooks or reads packet file (tools=None: any tool)."""
+    if s[0] == "read":
+        return (tools is None or "Read" in tools) and GM_NAME.search(s[1])
+    return s[0] == "tool" and (tools is None or s[1] in tools) and GM_NAME.search(json.dumps(s[2], ensure_ascii=False))
+
+
+def strings(x):
+    return [x] if isinstance(x, str) else [t for v in (x.values() if isinstance(x, dict) else x if isinstance(x, list) else [])
+                                           for t in strings(v)]
+
+
 flat = lambda t: " ".join(t.replace("\u2019", "'").split())
-asked = flat(GOLDMINE_Q) in " ".join(flat(s[1]) for s in seq if s[0] == "text")
-if fixture == "contra":
-    crit("Q goldmine question asked", asked, "asked in the exact words" if asked else "the exact question text never appears")
+said = [s[1] for s in seq if s[0] == "text"] + [t for s in seq if s[0] == "tool" and s[1] == "AskUserQuestion" for t in strings(s[2])]
+exact = flat(GOLDMINE_Q) in " ".join(flat(t) for t in said)
+offers = [m.group(0).strip()[-160:] for t in said for m in GM_ASK.finditer(t)]
+crit("Q no Goldmine question", not exact and not offers,
+     "the old question never appears and no text or AskUserQuestion offers the Goldmine as a question" if not exact and not offers
+     else f"old question text {'appears' if exact else 'absent'}; {len(offers)} question(s) offering the Goldmine: {offers[:3]}")
+
+gm_file = PROJ / "reel-build" / "goldmine-run.json"
+has_data, gm_note = gate.goldmine_state(gm_file)
+data_why = (f"{gm_file} is missing; copy the Goldmine data into the walk project after reset.sh (a walk with no data "
+            f"copy proves nothing about use)" if not gm_file.exists() else gm_note or f"{gm_file} does not show reads.passed true")
+sk = [(k, s) for k, s in enumerate(seq) if s[0] == "skill" and not s[4]]
+if goldmine == "on":
+    why, used = [], []
+    hooks = [k for k, s in sk if s[1] == SF + "hook"]
+    for k in hooks:
+        shown = method_read(k, "hook", "legit-hook.md")[1]
+        hit = gm_args(seq[k]) or [f"item {j} {seq[j][0] if seq[j][0] == 'read' else seq[j][1]}" for j in range(k + 1, shown)
+                                  if gm_named(seq[j], OPENERS)]
+        (used if hit else why).append(f"hook at item {k}: {hit[:2]}" if hit else
+                                      f"hook at item {k}: no proven_hooks/pattern_read arg and no Read/Bash/PowerShell/Grep "
+                                      f"naming a Goldmine file before its options (item {shown})")
+    ok = has_data and hooks and not why
+    crit("Q Goldmine data used (on)", ok, "; ".join(used) if ok else data_why if not has_data else
+         "no unblocked hook call" if not hooks else "; ".join(why))
 else:
-    crit("Q goldmine question absent", not asked, "not asked" if not asked else "asked, but this fixture has no Goldmine data")
+    args_use = [f"item {k} {s[1][len(SF):]}: {gm_args(s)[:1]}" for k, s in sk if gm_args(s)]
+    named = [f"item {k} {s[0] if s[0] == 'read' else s[1]}" for k, s in enumerate(seq) if gm_named(s, None)]
+    none_used = not args_use and not named
+    if goldmine == "override":
+        ok, pre = has_data and none_used, None if has_data else data_why
+    else:
+        ok, pre = not has_data and none_used, f"{gm_file} shows reads.passed true: grade with --goldmine on or override" if has_data else None
+    crit(f"Q Goldmine data not used ({goldmine})", ok, pre or (
+         "no Skill args carry proven_hooks/pattern_read and no tool input names a Pattern Read, Proven Hooks or reads packet file"
+         if none_used else f"Skill args: {args_use[:4]}; tool inputs: {named[:4]}"))
 
 # No "follow for part 2" CTA in the final script.
 if script is None:
@@ -390,7 +458,7 @@ print("Blocked Skill calls (item, skill, turn):", [(k, s[1], s[3]) for k, s in e
 prov = PROJ / "reel-build" / "provenance.md"
 print("provenance.md:", prov.read_text("utf-8-sig").splitlines() if prov.exists() else "missing")
 print(f"result: subtype={res.get('subtype')} turns={res.get('num_turns')} cost=${res.get('total_cost_usd')} is_error={res.get('is_error')}")
-print(f"fixture: {fixture} | project: {PROJ} | skeleton: {skel} | script: {script}\n")
+print(f"fixture: {fixture} | goldmine: {goldmine} | project: {PROJ} | skeleton: {skel} | script: {script}\n")
 for cid, ok, detail in results:
     print(f"{'PASS' if ok else 'FAIL'} {cid}: {detail}")
 failed = [cid for cid, ok, _ in results if not ok]
