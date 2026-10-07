@@ -1,0 +1,826 @@
+{
+  "$comment": [
+    "Curated combo specs — the tier-tagged workflows this plugin offers as ready-made",
+    "research. Read by the front door; no dispatch needed. Three families live here: tier 1,",
+    "the 16 SocialCrawl plays from R2a (6 plays + 10 big guns); tier 0, the free recipes that",
+    "spend nothing; and tier 0.5, the Perplexity and Tavily combos at 1 credit a call. Each",
+    "family carries its own count and lint_curated.mjs C1 asserts every one of them — but NOT",
+    "at equal strength, and the difference is worth knowing. Tier 1's 16 is a literal frozen",
+    "in the lint itself, so deleting one of those plays fails even if the count here is edited",
+    "to match. Tier 0 and tier 0.5 are consistency assertions only (the count must equal the",
+    "rows actually present, and the family must be non-empty), so deleting a free row AND",
+    "editing its count in the same edit passes. That is deliberate while those two families",
+    "are still growing; C1's own comment records the measurement and says when to freeze them.",
+    "",
+    "EVERY NUMBER IN THIS FILE IS ONE OF TWO THINGS, NEVER A BLUR OF BOTH:",
+    "  DERIVED       kind:\"derivable\", derivationLint:\"enforced\". quote.low, quote.high and",
+    "                ceiling are recomputed from hooks/costs.json by",
+    "                tools/socialcrawl/derive_curated_quotes.mjs and asserted exactly equal by",
+    "                tools/socialcrawl/lint_curated.mjs. Editing one by hand fails the lint.",
+    "  HAND-REVIEWED kind:\"response-determined\", derivationLint:\"exempt\". The endpoint's real",
+    "                cost is decided by what comes back (or by a knob the caller sets), so a",
+    "                derived figure would be false precision. These rows carry handReviewed,",
+    "                reviewedOn, a MANDATORY ceiling, and a ceilingBasis saying where the",
+    "                ceiling came from. They are exempt from the derivation assertion ONLY —",
+    "                every other lint rule still applies to them.",
+    "",
+    "kind is NOT trusted as written. The lint recomputes it from responseDeterminedEndpoints",
+    "and fails if the declared value disagrees, so a derivable row cannot buy an exemption by",
+    "relabelling itself.",
+    "",
+    "route is the discriminator R5/R6 lint on. A route:\"socialcrawl\" row carries endpoints[]",
+    "— the allowlist R6 executes from. A route:\"websearch\" row carries NO endpoints[] and",
+    "carries steps[] instead: plain-English instructions for the web search built into Claude.",
+    "The absence of endpoints[] IS the discriminator, and R5/R6 will key on it. It is NOT a",
+    "lint exemption: an earlier draft of this note said every endpoints[] rule stays keyed to",
+    "route:\"socialcrawl\" and never sees a free row, and R2b made that false on purpose. C6 and",
+    "C11 now read `r.endpoints || []` on every row instead of skipping the ones without legs.",
+    "C6 adjudicates the EMPTY leg set: with no legs the recomputation yields \"derivable\", so a",
+    "free row cannot relabel itself response-determined. C11 keys on route rather than on legs",
+    "and asserts tier \"0\" iff route \"websearch\", both directions. C7 then derives the empty",
+    "sum to 0. A rule that skips a row proves nothing about that row. lint_curated.mjs's own",
+    "header lists, check by check, which ones read a free row and which two structurally cannot.",
+    "",
+    "HOW A FREE ROW SAYS \"FREE\": it says 0, and the 0 is DERIVED, not asserted. A tier-0 row",
+    "is kind:\"derivable\" with an empty leg set, and the derivation sums its legs — an empty",
+    "sum is 0 — so quote.low, quote.high and ceiling all derive to 0 and lint_curated.mjs C7",
+    "asserts that equality exactly as it does for a paid row. Free is a number this file can",
+    "prove, never a field left blank and read as free. And because C6 recomputes kind from the",
+    "row's own endpoints, a free row cannot relabel itself response-determined to buy a",
+    "hand-written ceiling instead.",
+    "",
+    "WHAT THE 0 CEILING IS TODAY: a build-time assertion, and nothing else. As this file ships,",
+    "its only readers are the two build-time scripts in tools/ — nothing in hooks/ reads a",
+    "`ceiling` from here, and no executor exists that could abort on one. So the 0 is proof that",
+    "the row was specified as free, not a runway guard that stops a run mid-flight. That is the",
+    "same status every other ceiling in this file has. The INTENT is that the executor planned",
+    "for a later stage reads `ceiling` and aborts at it, which would make a free row that ever",
+    "reached a billed call stop on the first credit — but until that executor exists and is",
+    "tested against this field, do not read the 0 as a live control, and do not let a row's",
+    "safety rest on one.",
+    "",
+    "Quotes are stated in the same direction the credit guard states them: over-quote is safe,",
+    "under-quote is the defect class. quote.high for a derivable row equals the sum of each",
+    "call's PUBLISHED CEILING x its pinned count, which is exactly what hooks/credit-guard.mjs",
+    "quotes for those same calls. lint_curated.mjs proves that equality by running the guard.",
+    "",
+    "Build-time data. Nothing here executes; the scripts that check it live in tools/, outside",
+    "the plugin, so no runtime agent can run them."
+  ],
+  "version": 1,
+  "generatedFor": "Stage B rev2.1 R2b",
+  "dateFormat": "MM.DD.YY",
+  "curatedCount": 23,
+  "curatedCountNote": "23 rows = 16 tier-1 + 4 tier-0 + 3 tier-0.5. Counts, never ceilings.",
+  "tier1Count": 16,
+  "tier0Count": 4,
+  "tier05Count": 3,
+  "tierCountNote": [
+    "One denominator per family, each asserted separately by lint_curated.mjs C1, because a",
+    "single total cannot tell a deleted play from an added free row. 16 is R2a's number and",
+    "keeps its own assertion (6 plays + 10 big guns); 4 and 3 are R2b's halves. The families",
+    "must also sum to workflows.length, so a row belonging to no counted family fails too."
+  ],
+  "costsSource": "plugins/socialcrawl-superengine/hooks/costs.json",
+  "vendorSnapshot": "research/socialcrawl-docs-2026-08-27/",
+
+  "tiers": {
+    "0": "Free. The web search built into Claude — no key, no credits, nothing billed.",
+    "0.5": "Perplexity and Tavily. These ARE SocialCrawl endpoints — 1 credit a call, flat.",
+    "1 shallow": "1-3 cheap targeted endpoints, worst case 5 credits or less.",
+    "1 standard": "A curated combo: several legs, quoted as a range.",
+    "1 deep": "Custom composition by the router agent (R5). No curated row uses this tier — it exists so R5's specs validate against the same schema."
+  },
+  "tierRule": "Tier is computed from the row, never taken on trust. route \"websearch\" => tier \"0\" (no legs, so nothing to bill). A socialcrawl row whose every leg is a tier05Platforms platform AND prices flat 1 in costs.json => tier \"0.5\". Every other socialcrawl row is \"1 shallow\" iff it has 3 or fewer endpoint legs AND quote.high <= 5, otherwise \"1 standard\". Enforced by lint_curated.mjs C11, both directions.",
+
+  "tier05Platforms": ["perplexity", "tavily"],
+  "tier05PlatformsNote": [
+    "Perplexity and Tavily are SocialCrawl PLATFORMS, not third parties, and this is the fact",
+    "the whole tier turns on: costs.json prices GET perplexity/research and",
+    "GET tavily/{search,extract,map,crawl} at a flat 1 each, and none of the five is",
+    "metered. So tier 0.5 needs no second API key, no key-management surface and no",
+    "second cost model — it spends the same credits tier 1 does, one per call, and the credit",
+    "guard sees it on the same path.",
+    "",
+    "The flat price is load-bearing, so the lint recomputes the family from BOTH this list and",
+    "the price: a tier-0.5 row must have every leg on one of these platforms AND every leg",
+    "priced 1-1. If a regen of costs.json ever moved one of them off 1, the row would stop",
+    "computing as tier 0.5 and C11 would say so, instead of the menu quietly keeping a stale",
+    "'1 credit a call' promise."
+  ],
+
+  "responseDeterminedEndpoints": [
+    "reddit/omni-search",
+    "search/news",
+    "prism/comments",
+    "prism/share-of-voice",
+    "prism/ai-visibility",
+    "web/search",
+    "facebook/adlibrary/company/ads"
+  ],
+  "responseDeterminedNote": [
+    "The six endpoints named by the Stage B rev2.1 plan (R2a), plus facebook/adlibrary/company/ads",
+    "(R18, Q-f: the 10-06 catalogue meters it 5-35, include=audience at 1 credit per ad). A row that touches ANY of them",
+    "is response-determined: its cost is set by what the response contains or by a knob the",
+    "caller turns, so a script-derived quote would be false precision dressed as arithmetic.",
+    "web/search is on this list and is used by NO curated row today — it is registered here so",
+    "R2b's tier-0.5 rows and R5's custom compositions inherit the classification rule instead",
+    "of re-deriving it. search/news IS on the menu: it is the news-first rung of the",
+    "voice-of-customer row (research-plays/SKILL.md:54)."
+  ],
+
+  "guardHardcodes": {
+    "credits/": 0
+  },
+  "guardHardcodesNote": [
+    "One price the guard states from its own code, not from costs.json, so the derivation has",
+    "to state it too or it would disagree with the guard. credits/* are free account-meta",
+    "calls and are absent from the generated map. prism/lookup has no hardcode since R10.1",
+    "(Joe, 09.24.26): costs.json prices it 1-5 from its own catalogue label, so the guard and",
+    "the derivation both read it there."
+  ],
+
+  "workflows": [
+    {
+      "id": "voice-of-customer",
+      "name": "Voice-of-Customer mining",
+      "tier": "1 standard",
+      "route": "socialcrawl",
+      "kind": "response-determined",
+      "derivationLint": "exempt",
+      "handReviewed": true,
+      "reviewedOn": "08.29.26",
+      "audience": "[C]",
+      "when": "Building or refreshing a brand brain; hunting the pain language, objections and vocabulary a niche actually uses.",
+      "endpoints": [
+        { "call": "GET reddit/omni-search", "countLow": 2, "countHigh": 4, "role": "Keyword variants across all of Reddit, top comments inline. Run pains, product category, and \"alternatives to X\"." },
+        { "call": "GET prism/comments", "countLow": 3, "countHigh": 5, "role": "Comments under the top proven posts — the client's and the competitors'." },
+        { "call": "GET search/news", "countLow": 0, "countHigh": 1, "role": "News-first rung of the search ladder, when the question is about coverage rather than chatter." },
+        { "call": "GET instagram/post/comments", "countLow": 0, "countHigh": 2, "role": "Substitute for prism/comments when prism coverage fails on Instagram. Flat 5." },
+        { "call": "GET tiktok/post/comments", "countLow": 0, "countHigh": 2, "role": "Substitute for prism/comments when prism coverage fails on TikTok." },
+        { "call": "GET youtube/video/comments", "countLow": 0, "countHigh": 2, "role": "Substitute for prism/comments when prism coverage fails on YouTube." }
+      ],
+      "params": {
+        "query": "The niche keyword for each omni-search run.",
+        "url": "The post URL for each comment pull.",
+        "max": "This is the knob that BILLS on prism/comments. `limit` only trims what comes back — it never reduces what was scanned or charged."
+      },
+      "quote": {
+        "low": 25,
+        "high": 1050,
+        "driver": "Two things move it: how many keyword variants you search (2 to 4, at 8-9 credits each) and how deep each comment pull goes. prism/comments bills 1 credit per page it scans, driven by `max`, up to 200 for one post — an Instagram URL is a flat 5 instead."
+      },
+      "ceiling": 120,
+      "ceilingBasis": "Hand-reviewed 08.29.26. Four keyword variants at the omni-search published ceiling (4 x 9 = 36) plus five comment pulls held by `max` at roughly 15 credits each (75), plus 9 of headroom. Stop and re-ask above it — the published worst case for the same call set is 1,050, so the ceiling is the control here, not the quote.",
+      "artifact": "Pain-language doc — verbatim quotes grouped into pains / desired outcomes / objections / vocabulary, each with its source URL. Feeds any brand-brain or VoC-profile artifact.",
+      "source": "plugins/socialcrawl-superengine/skills/research-plays/references/plays.md",
+      "notes": [
+        "prism/audience-questions (30cr) is listed by the play as an optional deep add-on. It is NOT in endpoints[] because it is its own curated row (audience-questions) with its own gate — running it is a fresh approval, not a leg of this one.",
+        "search/news is included on the strength of the plan's explicit instruction that news search stays on the menu, and of the search ladder at SKILL.md:54 which offers it to any play that searches."
+      ]
+    },
+
+    {
+      "id": "ad-library-recon",
+      "name": "Ad-library recon",
+      "tier": "1 standard",
+      "route": "socialcrawl",
+      "kind": "response-determined",
+      "derivationLint": "exempt",
+      "handReviewed": true,
+      "reviewedOn": "10.06.26",
+      "audience": "[CJ]",
+      "when": "What is a competitor — or the whole niche — running as paid creative right now?",
+      "endpoints": [
+        { "call": "GET facebook/adlibrary/search/companies", "countLow": 1, "countHigh": 1, "role": "Find the advertiser by name." },
+        { "call": "GET facebook/adlibrary/company/ads", "countLow": 1, "countHigh": 1, "role": "Pull their live ads." },
+        { "call": "GET facebook/adlibrary/ad", "countLow": 1, "countHigh": 5, "role": "Open an interesting ad in detail. Cap at 5 and say the running total." }
+      ],
+      "params": {
+        "query": "Advertiser name for the company search.",
+        "pageId": "The advertiser id the company search returned.",
+        "id": "The ad id, one per detail call."
+      },
+      "quote": {
+        "low": 15,
+        "high": 65,
+        "driver": "How many individual ads you open — 1 to 5, at 5 credits each — and whether the ads pull adds include=audience, which holds 1 credit per ad (5 a page, up to 35 with it), on top of the 5-credit company search."
+      },
+      "ceiling": 65,
+      "ceilingBasis": "Hand-reviewed 10.06.26 from the 10-06 catalogue: search/companies 5 + company/ads at its metered worst case 35 (5 a page, include=audience 1 credit per ad) + 5 ad details at 5 = 65. Stop and re-ask above it.",
+      "artifact": "Ad teardown table — hook / creative format / offer / CTA / landing URL per ad, with a \"what to steal\" line each.",
+      "source": "plugins/socialcrawl-superengine/skills/research-plays/references/plays.md",
+      "notes": [
+        "Google/YouTube and LinkedIn variants exist at the same 5 credits a call (google/adlibrary/advertisers/search -> google/company/ads -> google/ad; linkedin/ads/search -> linkedin/ad). They are the same play on another platform and are quoted as their own pass, so they are deliberately not in this row's endpoints[] — R6 executes only what is allowlisted here.",
+        "google/company/ads carries a conditional: get_ad_details=true bills 25 instead of 5 (costs.json _conditional). Not set by this row."
+      ]
+    },
+
+    {
+      "id": "ai-visibility-audit",
+      "name": "AI-visibility (GEO) audit",
+      "tier": "1 standard",
+      "route": "socialcrawl",
+      "kind": "response-determined",
+      "derivationLint": "exempt",
+      "handReviewed": true,
+      "reviewedOn": "08.29.26",
+      "audience": "[CJ]",
+      "when": "\"Does ChatGPT or AI search mention me, or my client, when someone asks about my topic?\" — the AI-era SEO check.",
+      "endpoints": [
+        { "call": "GET prism/ai-visibility", "countLow": 1, "countHigh": 1, "role": "Run the buyer prompts across the AI engines and report who gets named." }
+      ],
+      "params": {
+        "preset": "REQUIRED. Pass an explicit preset so the budget is flat. preset=quick billed 20 credits live. A bigger preset needs a fresh, higher ceiling agreed first.",
+        "prompts": "5 to 10 questions a real buyer would ask an AI."
+      },
+      "quote": {
+        "low": 20,
+        "high": 1605,
+        "driver": "2 credits per PROBE, and a probe is prompt x run x engine — not per prompt. At defaults (8 runs x 2 engines = 16 probes a prompt) a 5-prompt audit is about 160 credits, not 10. Measured: preset=quick = 20; 20 prompts x 20 runs = 1,600."
+      },
+      "ceiling": 40,
+      "ceilingBasis": "Hand-reviewed 08.29.26. preset=quick billed 20 credits live (research-plays/SKILL.md:115); 40 is that measured cost with one doubling of headroom. Anything whose worst case passes 40 stops and needs a fresh explicit approval naming the higher number. This is the documented control for the most under-quoted endpoint in the catalogue — the ceiling, not the quote, is what keeps it safe.",
+      "artifact": "AI-visibility report — per prompt: which engines mention the brand, who is being recommended instead, and the cited domains to target. Repeat quarterly; the deltas are the story.",
+      "source": "plugins/socialcrawl-superengine/skills/research-plays/references/plays.md"
+    },
+
+    {
+      "id": "link-in-bio-recon",
+      "name": "Link-in-bio / offer recon",
+      "tier": "1 standard",
+      "route": "socialcrawl",
+      "kind": "derivable",
+      "derivationLint": "enforced",
+      "audience": "[CJ]",
+      "when": "Map a competitor's or a prospect's whole offer ladder from their social bio.",
+      "endpoints": [
+        { "call": "GET instagram/profile", "countLow": 1, "countHigh": 1, "role": "Get the bio URL, if you do not already have it." },
+        { "call": "GET prism/lookup", "countLow": 1, "countHigh": 1, "role": "Universal URL dispatcher — resolves linktree / linkbio / linkme / komi / pillar automatically." },
+        { "call": "GET linktree/page", "countLow": 0, "countHigh": 1, "role": "Direct page endpoint, only if the dispatcher does not cover it." }
+      ],
+      "params": {
+        "handle": "The account whose bio you want.",
+        "url": "The bio URL for prism/lookup."
+      },
+      "quote": {
+        "low": 2,
+        "high": 7,
+        "driver": "What the dispatcher resolves the link to — 1 credit for most social links, 5 for an advanced one (Amazon, LinkedIn) — and whether you need the direct page endpoint after it, 1 extra credit if you do."
+      },
+      "ceiling": 7,
+      "ceilingBasis": "Derived: equals quote.high.",
+      "artifact": "Offer-ladder map — every link, its offer, price point if visible, and funnel position (lead magnet -> low ticket -> core -> high ticket).",
+      "source": "plugins/socialcrawl-superengine/skills/research-plays/references/plays.md",
+      "notes": [
+        "prism/lookup is quoted at 1-5, not 0. The catalogue's price field stores 0, but its label prices it as the resolved endpoint's own: 1 credit for most social lookups and 5 for the advanced ones (Amazon, LinkedIn). The free-offer-sketch row builds the same offer-ladder artifact for 0cr from public pages; the 2-7cr here buys the dispatcher resolving a hosted link page the free route cannot open cleanly."
+      ]
+    },
+
+    {
+      "id": "audience-demographics",
+      "name": "Audience demographics",
+      "tier": "1 standard",
+      "route": "socialcrawl",
+      "kind": "derivable",
+      "derivationLint": "enforced",
+      "audience": "[C]",
+      "when": "Check an ICP claim against real data — \"is your audience actually 35+ women?\" TikTok only; nothing comparable exists on Instagram.",
+      "endpoints": [
+        { "call": "GET tiktok/user/audience", "countLow": 1, "countHigh": 2, "role": "Age / gender / geo split for a handle. A second call covers a competitor handle for contrast." }
+      ],
+      "params": {
+        "handle": "The account to profile. Add a competitor handle for the contrast run."
+      },
+      "quote": {
+        "low": 5,
+        "high": 10,
+        "driver": "One handle is 5 credits. Adding a competitor handle for contrast makes it 10."
+      },
+      "ceiling": 10,
+      "ceilingBasis": "Derived: equals quote.high.",
+      "artifact": "ICP-validation one-pager — age/gender/geo split against the claimed ICP, a single match/mismatch verdict line, and what to change if it is a mismatch (content targeting, not identity).",
+      "source": "plugins/socialcrawl-superengine/skills/research-plays/references/plays.md",
+      "notes": [
+        "The play's prose runs one call and treats the contrast handle as a separate \"+5cr, confirm\". Both handles are allowlisted here and the quote covers both, because R6 executes only what this row allowlists and quoting 5 for a run that may make two calls is exactly the under-quote this schema exists to prevent."
+      ]
+    },
+
+    {
+      "id": "dev-radar",
+      "name": "Dev radar",
+      "tier": "1 standard",
+      "route": "socialcrawl",
+      "kind": "derivable",
+      "derivationLint": "enforced",
+      "audience": "[J]",
+      "when": "Operator-side intel — what is shipping in AI/dev tooling, what the repos this stack depends on are doing, and what people are complaining about.",
+      "endpoints": [
+        { "call": "GET hackernews/search", "countLow": 1, "countHigh": 1, "role": "Pulse check on a tool or topic." },
+        { "call": "GET hackernews/story/comments", "countLow": 0, "countHigh": 1, "role": "Open the interesting story." },
+        { "call": "GET github/repo/releases", "countLow": 0, "countHigh": 1, "role": "Repo watch — what shipped." },
+        { "call": "GET github/repo/issues", "countLow": 0, "countHigh": 1, "role": "Repo watch — what is broken." },
+        { "call": "GET github/repo/readme", "countLow": 0, "countHigh": 1, "role": "Repo watch — what it claims to do." },
+        { "call": "GET github/repo/top-issues", "countLow": 0, "countHigh": 1, "role": "Build-gap radar — top feature request plus top complaint in one call." },
+        { "call": "GET github/repo/dossier", "countLow": 0, "countHigh": 1, "role": "Deeper repo profile." },
+        { "call": "GET prism/launch-echo", "countLow": 0, "countHigh": 1, "role": "Gated bundle — how a launch actually landed." },
+        { "call": "GET prism/devtool-pulse", "countLow": 0, "countHigh": 1, "role": "Gated bundle — the dev-tool conversation." },
+        { "call": "GET prism/org-radar", "countLow": 0, "countHigh": 1, "role": "Gated bundle — resolve an org and dossier its repos. Unused per-repo credits auto-refund." }
+      ],
+      "params": {
+        "query": "Tool or topic for the Hacker News pulse.",
+        "owner": "GitHub org or user.",
+        "repo": "GitHub repo name.",
+        "org": "Org handle for prism/org-radar."
+      },
+      "quote": {
+        "low": 1,
+        "high": 114,
+        "driver": "The cheap legs are 1-9 credits each. What moves the number is whether you add the gated bundles: launch-echo 20, devtool-pulse 20, and org-radar which reserves up to 51 and refunds the repos it did not dossier."
+      },
+      "ceiling": 114,
+      "ceilingBasis": "Derived: equals quote.high.",
+      "artifact": "A dated radar note — what moved, what broke, what people are begging for, and any build idea it suggests.",
+      "source": "plugins/socialcrawl-superengine/skills/research-plays/references/plays.md",
+      "notes": [
+        "The Hacker News plus GitHub legs alone are 1 to 23 credits — 1 apiece except the Hacker News search, metered up to 9, and top-issues and dossier, which are 5 each. Run those first; the bundles are a separate decision with a separate price."
+      ]
+    },
+
+    {
+      "id": "audience-questions",
+      "name": "Audience questions (content-seed engine)",
+      "tier": "1 standard",
+      "route": "socialcrawl",
+      "kind": "derivable",
+      "derivationLint": "enforced",
+      "audience": "[C]",
+      "when": "Onboarding a new client niche, or a quarterly content refresh — you want the real questions the audience asks, not guesses.",
+      "endpoints": [
+        { "call": "GET prism/audience-questions", "countLow": 1, "countHigh": 1, "role": "Harvest questions from Reddit and YouTube threads, clustered by intent." }
+      ],
+      "params": { "topic": "The niche topic." },
+      "quote": { "low": 30, "high": 30, "driver": "Flat 30 credits for one call. One call per niche per quarter." },
+      "ceiling": 30,
+      "ceilingBasis": "Derived: equals quote.high.",
+      "artifact": "Content-seed bank — each intent cluster becomes a content pillar; the verbatim questions become hooks.",
+      "source": "plugins/socialcrawl-superengine/skills/research-plays/references/big-guns.md"
+    },
+
+    {
+      "id": "creator-vetting",
+      "name": "Creator vetting (partnership due diligence)",
+      "tier": "1 standard",
+      "route": "socialcrawl",
+      "kind": "derivable",
+      "derivationLint": "enforced",
+      "audience": "[J]",
+      "when": "Real money or brand risk rides on a creator — a partnership, a paid collab, a high-ticket enrollment. Treat it like a background check, not a curiosity.",
+      "endpoints": [
+        { "call": "GET prism/creator-vet", "countLow": 1, "countHigh": 1, "role": "Engagement quality, commenter authenticity, posting cadence, controversy signals." }
+      ],
+      "params": {
+        "handle": "The creator to vet.",
+        "include": "NOT SET by this row. include=cross_platform adds the universal presence leg for another 25 credits on top — a separate decision with a separate price."
+      },
+      "quote": {
+        "low": 50,
+        "high": 75,
+        "driver": "The vendor holds 75 up front and refunds down to the work it actually did; 50 is the measured floor. Quote the 75, not the 50."
+      },
+      "ceiling": 75,
+      "ceilingBasis": "Derived: equals quote.high.",
+      "artifact": "Go / no-go one-pager with the three strongest signals quoted.",
+      "source": "plugins/socialcrawl-superengine/skills/research-plays/references/big-guns.md",
+      "notes": [
+        "Cheaper first pass: prism/handle-audit (5-8) plus prism/creator-card (5-8) answer \"is this account worth anything\" for a fraction of the price. They are their own pass, not a leg of this row.",
+        "The play's prose says 50 flat. costs.json publishes 50-75 and the credit guard quotes 75, so 75 is what this row quotes. The prose figure is stale — flagged for R4, not edited here."
+      ]
+    },
+
+    {
+      "id": "lead-discovery",
+      "name": "Lead discovery (competitor switchers)",
+      "tier": "1 standard",
+      "route": "socialcrawl",
+      "kind": "derivable",
+      "derivationLint": "enforced",
+      "audience": "[J]",
+      "when": "One qualified lead is worth far more than the call — high-ticket offers hunting people who are actively unhappy with a named competitor.",
+      "endpoints": [
+        { "call": "GET prism/leads", "countLow": 1, "countHigh": 1, "role": "Ranked feed of public conversations where people are seeking alternatives to that competitor." }
+      ],
+      "params": { "competitor": "The brand or product people are switching away from." },
+      "quote": { "low": 50, "high": 50, "driver": "Flat 50 credits for one call." },
+      "ceiling": 50,
+      "ceilingBasis": "Derived: equals quote.high.",
+      "artifact": "Lead list — conversation URL, platform, verbatim pain quote and a suggested opening line each. Route it the same day; these go stale in days.",
+      "source": "plugins/socialcrawl-superengine/skills/research-plays/references/big-guns.md"
+    },
+
+    {
+      "id": "share-of-voice",
+      "name": "Share of voice (2-5 brands)",
+      "tier": "1 standard",
+      "route": "socialcrawl",
+      "kind": "response-determined",
+      "derivationLint": "exempt",
+      "handReviewed": true,
+      "reviewedOn": "08.29.26",
+      "audience": "[C]",
+      "when": "A competitive-audit deliverable needs the headline number — who owns the conversation in this niche?",
+      "endpoints": [
+        { "call": "GET prism/share-of-voice", "countLow": 1, "countHigh": 1, "role": "Engagement-weighted share of voice with a web/social split, emotion overlay and excess share of voice." }
+      ],
+      "params": {
+        "brands": "CSV of 2 to 5 brands. Count them, multiply by 40, and name that number in the gate. The list is fixed at call time — adding a brand afterwards costs another 40."
+      },
+      "quote": {
+        "low": 80,
+        "high": 200,
+        "driver": "40 credits PER BRAND, not per call — 20 a brand if you restrict it to web-only. `brands=` takes 2 to 5, so a real call is 80 to 200. Quote 40 x the brand count, not the headline 40."
+      },
+      "ceiling": 200,
+      "ceilingBasis": "Hand-reviewed 08.29.26. `brands=` caps at 5 and the vendor bills 40 a brand, so 5 x 40 = 200 is the endpoint's own maximum and there is nothing above it to abort at. Nothing may exceed it without a fresh approval.",
+      "artifact": "The flagship page of a competitive audit — the share-of-voice split plus a \"where the gap is\" paragraph.",
+      "source": "plugins/socialcrawl-superengine/skills/research-plays/references/big-guns.md",
+      "notes": [
+        "costs.json and the credit guard print 40-200 for this endpoint because the guard counts no brands and 40 is the measured single-brand floor. This row quotes a low of 80 instead, because `brands=` will not accept fewer than 2 — a deliberate over-quote against the guard's low, which is the safe direction."
+      ]
+    },
+
+    {
+      "id": "reputation-report",
+      "name": "Reputation report (cross-source)",
+      "tier": "1 standard",
+      "route": "socialcrawl",
+      "kind": "derivable",
+      "derivationLint": "enforced",
+      "audience": "[C]",
+      "when": "A local-business or product client wants the outside view — what does the internet collectively say?",
+      "endpoints": [
+        { "call": "GET prism/reputation", "countLow": 1, "countHigh": 1, "role": "Trustpilot, app stores, Google Business and web sentiment blended into one weighted score." }
+      ],
+      "params": { "brand": "The brand name." },
+      "quote": { "low": 30, "high": 30, "driver": "Flat 30 credits for one call." },
+      "ceiling": 30,
+      "ceilingBasis": "Derived: equals quote.high.",
+      "artifact": "Reputation snapshot — the score, top 3 praise themes, top 3 complaint themes (each a content or ops fix), and the single worst-source callout.",
+      "source": "plugins/socialcrawl-superengine/skills/research-plays/references/big-guns.md"
+    },
+
+    {
+      "id": "campaign-tracker",
+      "name": "Campaign tracker (launch lift)",
+      "tier": "1 standard",
+      "route": "socialcrawl",
+      "kind": "derivable",
+      "derivationLint": "enforced",
+      "audience": "[C]",
+      "when": "Measuring how a launch actually landed — a hashtag or campaign phrase, before / during / after.",
+      "endpoints": [
+        { "call": "GET prism/campaign", "countLow": 1, "countHigh": 1, "role": "Volume lift across the window, cross-platform engagement, ranked top amplifiers." }
+      ],
+      "params": { "query": "The hashtag or campaign phrase." },
+      "quote": { "low": 35, "high": 35, "driver": "Flat 35 credits for one call. Half-refunds do fire — a thin window measured at 17." },
+      "ceiling": 35,
+      "ceilingBasis": "Derived: equals quote.high.",
+      "artifact": "Launch post-mortem — the lift numbers, the 5 amplifiers to thank or DM, and one \"do differently next launch\" line. Run once post-launch, not during.",
+      "source": "plugins/socialcrawl-superengine/skills/research-plays/references/big-guns.md"
+    },
+
+    {
+      "id": "earned-media",
+      "name": "Earned-media footprint",
+      "tier": "1 standard",
+      "route": "socialcrawl",
+      "kind": "derivable",
+      "derivationLint": "enforced",
+      "audience": "[C]",
+      "when": "An authority audit for a personal brand — where do they actually get cited?",
+      "endpoints": [
+        { "call": "GET prism/earned-media", "countLow": 1, "countHigh": 1, "role": "News, tech press and fresh-web clips, deduped and ranked, with an outlet rollup." }
+      ],
+      "params": { "brand": "The brand or person." },
+      "quote": { "low": 25, "high": 25, "driver": "Flat 25 credits for one call." },
+      "ceiling": 25,
+      "ceilingBasis": "Derived: equals quote.high.",
+      "artifact": "Press footprint page — the coverage list plus the two outlets that already know them (warm pitch targets).",
+      "source": "plugins/socialcrawl-superengine/skills/research-plays/references/big-guns.md"
+    },
+
+    {
+      "id": "crisis-radar",
+      "name": "Crisis radar (mention-volume breach check)",
+      "tier": "1 standard",
+      "route": "socialcrawl",
+      "kind": "derivable",
+      "derivationLint": "enforced",
+      "audience": "[C]",
+      "when": "On-demand \"is something blowing up?\" — a client saw a nasty comment thread and wants to know whether it is spreading.",
+      "endpoints": [
+        { "call": "GET prism/crisis-radar", "countLow": 1, "countHigh": 1, "role": "Stateless z-score on daily mention volume plus negative share." }
+      ],
+      "params": {
+        "brand": "The brand to check.",
+        "confirm": "NOT SET by this row. confirm=true runs the escalation legs and grades severity for another 30 credits, charged only when a breach actually fires."
+      },
+      "quote": {
+        "low": 15,
+        "high": 45,
+        "driver": "The vendor holds 45 up front and refunds down to the work it actually did. The 15 is the vendor's published Range floor, NOT a measurement — the Stage A sweep never got a successful call on this endpoint — so quote the 45."
+      },
+      "ceiling": 45,
+      "ceilingBasis": "Derived: equals quote.high.",
+      "artifact": "One-line verdict — \"normal noise\" or \"elevated, here is the source\" — plus the volume numbers. One check per incident; this is not a monitoring loop.",
+      "source": "plugins/socialcrawl-superengine/skills/research-plays/references/big-guns.md",
+      "notes": [
+        "The play's prose says 15 flat. costs.json publishes 15-45 and the credit guard quotes 45, so 45 is what this row quotes. The prose figure is stale — flagged for R4, not edited here."
+      ]
+    },
+
+    {
+      "id": "audience-overlap",
+      "name": "TikTok audience overlap (2 creators)",
+      "tier": "1 standard",
+      "route": "socialcrawl",
+      "kind": "derivable",
+      "derivationLint": "enforced",
+      "audience": "[C]",
+      "when": "Validating a competitor set for a TikTok-first client — do these two creators actually share an audience?",
+      "endpoints": [
+        { "call": "GET prism/audience-overlap", "countLow": 1, "countHigh": 1, "role": "Commenter-audience overlap, shared-fan count, confidence label — for ONE pair." }
+      ],
+      "params": {
+        "handle_a": "First creator.",
+        "handle_b": "Second creator. One pair per call — 3 pairs is 60 credits and 3 separate gates."
+      },
+      "quote": { "low": 20, "high": 20, "driver": "Flat 20 credits per pair. Pairs are chosen before calling." },
+      "ceiling": 20,
+      "ceilingBasis": "Derived: equals quote.high.",
+      "artifact": "Competitor-set validation note — a keep/cut verdict per candidate pair.",
+      "source": "plugins/socialcrawl-superengine/skills/research-plays/references/big-guns.md"
+    },
+
+    {
+      "id": "search-everywhere",
+      "name": "Universal search (up to 17 sources)",
+      "tier": "1 standard",
+      "route": "socialcrawl",
+      "kind": "derivable",
+      "derivationLint": "enforced",
+      "audience": "[CJ]",
+      "when": "Scouting a NEW topic once — \"where does this conversation even live?\" Fourteen platforms (up to 17 sources), one ranked and clustered result.",
+      "endpoints": [
+        { "call": "GET search/everywhere", "countLow": 1, "countHigh": 1, "role": "The full cross-platform sweep (up to 17 sources). Auto-refunds if every source fails." }
+      ],
+      "params": { "query": "The topic." },
+      "quote": { "low": 20, "high": 20, "driver": "Flat 20 credits for one call." },
+      "ceiling": 20,
+      "ceilingBasis": "Derived: equals quote.high.",
+      "artifact": "Platform map — which 2-3 platforms own this topic. Then leave this endpoint alone and search those platforms at 1 credit each.",
+      "source": "plugins/socialcrawl-superengine/skills/research-plays/references/big-guns.md",
+      "notes": [
+        "Climb the ladder before booking this: one platform search is 1 credit flat, reddit/omni-search is 8-9, search/news is 7-14, search/forums is 10 flat. Only pay 20 when you actually want the fused cross-platform result."
+      ]
+    },
+
+    {
+      "id": "free-web-snapshot",
+      "name": "Free web snapshot",
+      "tier": "0",
+      "route": "websearch",
+      "kind": "derivable",
+      "derivationLint": "enforced",
+      "audience": "[CJ]",
+      "when": "First look at a person, brand or product, before you spend anything. Answers \"who are they, and where do they turn up on the open web?\"",
+      "steps": [
+        "Search the name on its own, then again with a word that pins the right one down: a city, a niche, a company.",
+        "Open the pages that keep coming back — their own site, any write-ups about them, any directory or podcast listing.",
+        "Write down what they say they do, who they say it is for, and any proof they show for it.",
+        "Keep every link. A claim with no link is a guess, and this whole route is public pages you can point at."
+      ],
+      "params": {
+        "name": "The person, brand or product to look up.",
+        "pinningWords": "Optional. A city, a niche or a company name, so you get the right one and not a namesake."
+      },
+      "quote": {
+        "low": 0,
+        "high": 0,
+        "driver": "Nothing moves it. This row runs on the web search built into Claude, so there is no key to buy and nothing to bill."
+      },
+      "ceiling": 0,
+      "ceilingBasis": "Derived: equals quote.high.",
+      "upgrade": "earned-media",
+      "artifact": "A one-page snapshot: who they are, what they say they do, and the handful of public pages that back it up, each with its link.",
+      "source": "plugins/socialcrawl-superengine/skills/research-plays/curated-workflows.json — net-new in Stage B rev2.1 R2b; no earlier in-tree play describes a free route, so this file is its own record",
+      "notes": [
+        "What this route cannot do, stated up front: it reads pages that are open to the public web. It does not read what people posted inside Instagram, TikTok, YouTube or Reddit, it has no follower or engagement numbers, and it has no comment threads. That gap is the honest reason the paid tiers exist."
+      ]
+    },
+
+    {
+      "id": "free-offer-sketch",
+      "name": "Free offer sketch",
+      "tier": "0",
+      "route": "websearch",
+      "kind": "derivable",
+      "derivationLint": "enforced",
+      "audience": "[CJ]",
+      "when": "You want to know what a competitor sells and what they charge, and their site or link page is public.",
+      "steps": [
+        "Search their name to find the site or link page they send people to.",
+        "Open the pages that sell: services, pricing, book a call, the checkout, any free download.",
+        "Note each offer, and the price only if they published it. If they did not, write \"not shown\" — never guess a price.",
+        "Put the offers in order, cheapest first, so the ladder is obvious at a glance."
+      ],
+      "params": {
+        "competitor": "The business or person whose offers you want.",
+        "siteUrl": "Optional. Their site or link page, if you already have it."
+      },
+      "quote": {
+        "low": 0,
+        "high": 0,
+        "driver": "Nothing moves it. Public pages, read with the web search built into Claude, so there is nothing to bill."
+      },
+      "ceiling": 0,
+      "ceilingBasis": "Derived: equals quote.high.",
+      "upgrade": "link-in-bio-recon",
+      "artifact": "An offer-ladder sketch: every offer you could see, its published price or \"not shown\", and where it sits from free lead magnet up to high ticket.",
+      "source": "plugins/socialcrawl-superengine/skills/research-plays/curated-workflows.json — net-new in Stage B rev2.1 R2b; no earlier in-tree play describes a free route, so this file is its own record",
+      "notes": [
+        "This is the free version of the artifact the link-in-bio row buys. Pay for that row when the bio link is a hosted link page this route cannot open cleanly, or when you want the dispatcher to resolve it rather than clicking through by hand."
+      ]
+    },
+
+    {
+      "id": "free-topic-scout",
+      "name": "Free topic scout",
+      "tier": "0",
+      "route": "websearch",
+      "kind": "derivable",
+      "derivationLint": "enforced",
+      "audience": "[CJ]",
+      "when": "Scoping a topic you do not know yet. \"What is being published about this, and is it worth paying to go deeper?\"",
+      "steps": [
+        "Search the topic three ways: as a plain question, in the words a buyer would use, and against the obvious alternative.",
+        "Read the top results and note which two or three places the answers keep pointing back to.",
+        "Write down the questions that came up and were not answered. Those are what a paid pass is for.",
+        "Say out loud whether the free pass already answered it. Often it has, and that is a real result, not a failure."
+      ],
+      "params": {
+        "topic": "The subject you are scoping.",
+        "alternative": "Optional. The obvious rival or substitute, for the head-to-head search."
+      },
+      "quote": {
+        "low": 0,
+        "high": 0,
+        "driver": "Nothing moves it. The web search built into Claude does the work, so no key and no credits are involved."
+      },
+      "ceiling": 0,
+      "ceilingBasis": "Derived: equals quote.high.",
+      "upgrade": "search-everywhere",
+      "artifact": "A topic scout note: what the open web publishes about the topic, the two or three places it keeps pointing to, and the questions still open.",
+      "source": "plugins/socialcrawl-superengine/skills/research-plays/curated-workflows.json — net-new in Stage B rev2.1 R2b; no earlier in-tree play describes a free route, so this file is its own record",
+      "notes": [
+        "Run this before you buy any search row. A free first pass often ends the job, and when it does not it tells you which paid rung to climb to instead of guessing."
+      ]
+    },
+
+    {
+      "id": "free-question-harvest",
+      "name": "Free question harvest",
+      "tier": "0",
+      "route": "websearch",
+      "kind": "derivable",
+      "derivationLint": "enforced",
+      "audience": "[C]",
+      "when": "You need content ideas and want the questions people really ask, in their own words, before paying for a deeper dig.",
+      "steps": [
+        "Search the topic with question words in front of it: how, why, what, best, worst, is it worth.",
+        "Open the public question-and-answer and forum pages that come back, and read the questions rather than the answers.",
+        "Copy the questions word for word. The wording is the value, and a tidied-up version loses it.",
+        "Group them into a few themes and name each theme in the audience's own words."
+      ],
+      "params": {
+        "topic": "The niche or subject.",
+        "audienceWords": "Optional. The words your audience actually uses, when they differ from the industry ones."
+      },
+      "quote": {
+        "low": 0,
+        "high": 0,
+        "driver": "Nothing moves it. Reading public pages with the web search built into Claude costs nothing at all."
+      },
+      "ceiling": 0,
+      "ceilingBasis": "Derived: equals quote.high.",
+      "upgrade": "audience-questions",
+      "artifact": "A question list: the real questions people asked, in their words, grouped into themes you can turn into content pillars.",
+      "source": "plugins/socialcrawl-superengine/skills/research-plays/curated-workflows.json — net-new in Stage B rev2.1 R2b; no earlier in-tree play describes a free route, so this file is its own record",
+      "notes": [
+        "It finds whatever public pages happen to be indexed, which skews to what ranks. When you need the questions asked inside Reddit and YouTube threads rather than on pages that rank, that is the paid row this one points at."
+      ]
+    },
+
+    {
+      "id": "cited-answer",
+      "name": "Cited answer (Perplexity + Tavily)",
+      "tier": "0.5",
+      "route": "socialcrawl",
+      "kind": "derivable",
+      "derivationLint": "enforced",
+      "audience": "[CJ]",
+      "when": "You want a straight written answer to a research question, with its sources listed so you can check it yourself. The free pass came back thin.",
+      "endpoints": [
+        { "call": "GET perplexity/research", "countLow": 1, "countHigh": 1, "role": "Ask the question in plain English. Returns a written answer plus the pages it leaned on." },
+        { "call": "GET tavily/search", "countLow": 0, "countHigh": 1, "role": "Second opinion on the same question: ranked raw results, so you can see what the answer left out." }
+      ],
+      "params": {
+        "query": "The question, written the way you would say it out loud. No prompt tricks needed.",
+        "include_answer": "Tavily leg only. Turn it on and that call returns its own short answer beside the results.",
+        "time_range": "Tavily leg only. Bound the results to a day, week, month or year when the question is time-sensitive."
+      },
+      "quote": {
+        "low": 1,
+        "high": 2,
+        "driver": "Whether you take the second opinion. One call answers the question; the second shows you the raw results behind it. Each call is a credit, so the number of calls is the price."
+      },
+      "ceiling": 2,
+      "ceilingBasis": "Derived: equals quote.high.",
+      "artifact": "A short written answer with every source listed under it, plus the raw result links beside it if you took the second pass.",
+      "source": "plugins/socialcrawl-superengine/skills/socialcrawl/references/perplexity.md and plugins/socialcrawl-superengine/skills/socialcrawl/references/tavily.md — the leg facts; the combo itself is net-new in Stage B rev2.1 R2b",
+      "notes": [
+        "Two engines answering the same question is the point. When they agree you can move on; when they disagree you have found the thing worth checking by hand.",
+        "When the question is contested enough that two engines are not enough, prism/answers runs Perplexity, Grok and Tavily together and returns an agreement matrix. That is big-gun pricing, not tier 0.5, and it has no curated row yet — flagged for R4."
+      ]
+    },
+
+    {
+      "id": "site-teardown",
+      "name": "Site teardown (Tavily)",
+      "tier": "0.5",
+      "route": "socialcrawl",
+      "kind": "derivable",
+      "derivationLint": "enforced",
+      "audience": "[CJ]",
+      "when": "You need a competitor's whole site read properly — every service page, the pricing page, the about page — not just whichever page a search result happened to show you.",
+      "endpoints": [
+        { "call": "GET tavily/map", "countLow": 1, "countHigh": 1, "role": "List the pages that exist on the site, without their content, so you can pick the ones worth reading." },
+        { "call": "GET tavily/extract", "countLow": 1, "countHigh": 3, "role": "Pull the clean text out of the pages you picked. One call takes up to twenty addresses, so most sites need one." },
+        { "call": "GET tavily/crawl", "countLow": 0, "countHigh": 1, "role": "The other way round: say what you are after in a sentence and let it choose the pages itself." }
+      ],
+      "params": {
+        "url": "The site's home page. The map and crawl legs start from here.",
+        "urls": "Extract leg: the page addresses you picked, separated by commas, up to twenty in one call.",
+        "instructions": "Crawl leg: what you are looking for, in a sentence, such as every page that mentions a price.",
+        "limit": "How many pages the map or crawl leg will work through before it stops. It changes how much comes back. It does not change what the call costs."
+      },
+      "quote": {
+        "low": 2,
+        "high": 5,
+        "driver": "How many batches of pages you pull, and whether you add the crawl leg. Every leg here is a credit a call, so the number of calls is the price — not the number of pages."
+      },
+      "ceiling": 5,
+      "ceilingBasis": "Derived: equals quote.high.",
+      "artifact": "A site teardown: every offer, price and claim the site makes, quoted from the page it came from, with that page's address next to it.",
+      "source": "plugins/socialcrawl-superengine/skills/socialcrawl/references/tavily.md — the leg facts; the combo itself is net-new in Stage B rev2.1 R2b",
+      "notes": [
+        "Map then extract when you want to choose the pages yourself; crawl when you would rather describe what you want. Running both over the same site is allowed and priced for, but it usually buys the same pages twice.",
+        "This is the paid step up from the free offer sketch, and what you get for it is completeness: the sketch reads whatever search surfaced, this reads the site."
+      ]
+    },
+
+    {
+      "id": "news-pulse",
+      "name": "Recent-news pulse (Tavily)",
+      "tier": "0.5",
+      "route": "socialcrawl",
+      "kind": "derivable",
+      "derivationLint": "enforced",
+      "audience": "[CJ]",
+      "when": "\"What has happened lately with this brand, product or topic?\" A dated catch-up, not a deep dig.",
+      "endpoints": [
+        { "call": "GET tavily/search", "countLow": 1, "countHigh": 2, "role": "News-shaped search over a time window. A second call widens the window or changes the wording when the first comes back thin." }
+      ],
+      "params": {
+        "query": "The brand, product or topic.",
+        "topic": "Set it to news so results skew to reporting rather than evergreen pages.",
+        "time_range": "The window: day, week, month or year. Start narrow and widen only if it comes back thin.",
+        "include_domains": "Optional. Restrict to outlets you trust, separated by commas."
+      },
+      "quote": {
+        "low": 1,
+        "high": 2,
+        "driver": "Whether the first window comes back thin. One call usually answers it; a second widens the window or changes the words. A credit a call either way."
+      },
+      "ceiling": 2,
+      "ceilingBasis": "Derived: equals quote.high.",
+      "upgrade": "earned-media",
+      "artifact": "A dated catch-up: what got published inside the window, newest first, one line each with its outlet and its link.",
+      "source": "plugins/socialcrawl-superengine/skills/socialcrawl/references/tavily.md — the leg facts; the combo itself is net-new in Stage B rev2.1 R2b",
+      "notes": [
+        "This is the cheap rung under search/news on the ladder in research-plays/SKILL.md. Climb it first: it answers most catch-up questions, and when it does not it tells you which rung to buy.",
+        "It searches the open web, so it finds what outlets published. It does not find what people said about it on social platforms — that is what the tier-1 rows are for."
+      ]
+    }
+  ]
+}

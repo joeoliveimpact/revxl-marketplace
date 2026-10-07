@@ -1,455 +1,7475 @@
 {
-"DELETE web/jobs/{job_id}": 0,
-"DELETE web/monitors/{monitor_id}": 0,
-"DELETE web/sessions/{session_id}": 0,
-"GET amazon/product": 5,
-"GET amazon/product-search": 1,
-"GET amazon/reviews": 5,
-"GET amazon/sellers": 1,
-"GET amazon/shop": 1,
-"GET app_store/app-info": 5,
-"GET app_store/app-list": 5,
-"GET app_store/app-listings-search": 10,
-"GET app_store/app-reviews": 5,
-"GET app_store/app-search": 5,
-"GET app_store/categories": 1,
-"GET app_store/languages": 1,
-"GET app_store/locations": 1,
-"GET app_store/search-suggestions": 1,
-"GET bluesky/post": 1,
-"GET bluesky/profile": 1,
-"GET bluesky/user/posts": 1,
-"GET content_analysis/categories": 1,
-"GET content_analysis/category-trends": 20,
-"GET content_analysis/filters": 1,
-"GET content_analysis/languages": 1,
-"GET content_analysis/locations": 1,
-"GET content_analysis/phrase-trends": 20,
-"GET content_analysis/rating-distribution": 20,
-"GET content_analysis/search": 20,
-"GET content_analysis/sentiment": 20,
-"GET content_analysis/summary": 20,
-"GET ebay/product": 5,
-"GET ebay/search": 5,
-"GET facebook/adlibrary/ad": 5,
-"GET facebook/adlibrary/ad/transcript": 10,
-"GET facebook/adlibrary/company/ads": 5,
-"GET facebook/adlibrary/search/ads": 5,
-"GET facebook/adlibrary/search/companies": 5,
-"GET facebook/event/details": 1,
-"GET facebook/events": 1,
-"GET facebook/events/search": 1,
-"GET facebook/group/posts": 1,
-"GET facebook/marketplace/item": 1,
-"GET facebook/marketplace/location/search": 1,
-"GET facebook/marketplace/search": 1,
-"GET facebook/post": 1,
-"GET facebook/post/comment/replies": 1,
-"GET facebook/post/comments": 1,
-"GET facebook/post/transcript": 10,
-"GET facebook/profile": 1,
-"GET facebook/profile/events": 1,
-"GET facebook/profile/full": 5,
-"GET facebook/profile/photos": 1,
-"GET facebook/profile/posts": 1,
-"GET facebook/profile/reels": 1,
-"GET facebook/profile/reels/full": 5,
-"GET github/issue": 1,
-"GET github/issue/comments": 1,
-"GET github/profile": 1,
-"GET github/profile/repos": 1,
-"GET github/repo": 1,
-"GET github/repo/dossier": 5,
-"GET github/repo/issues": 1,
-"GET github/repo/readme": 1,
-"GET github/repo/releases": 1,
-"GET github/repo/top-issues": 5,
-"GET github/search": 1,
-"GET github/user/profile-velocity": 10,
-"GET google/ad": 5,
-"GET google/adlibrary/advertisers/search": 5,
-"GET google/business/extended-reviews": 5,
-"GET google/business/info": 1,
-"GET google/business/questions": 5,
-"GET google/business/updates": 1,
-"GET google/company/ads": 5,
-"GET google/hotels/info": 5,
-"GET google/hotels/search": 1,
-"GET google/search": 1,
-"GET google_finance/markets": 1,
-"GET google_finance/quote": 5,
-"GET google_finance/ticker-search": 1,
-"GET google_news/search": 1,
-"GET google_play/app-info": 5,
-"GET google_play/app-list": 5,
-"GET google_play/app-listings-search": 10,
-"GET google_play/app-reviews": 5,
-"GET google_play/app-search": 5,
-"GET google_play/categories": 1,
-"GET google_play/languages": 1,
-"GET google_play/locations": 1,
-"GET google_play/search-suggestions": 1,
-"GET google_shopping/product": 1,
-"GET google_shopping/product-search": 5,
-"GET google_shopping/reviews": 1,
-"GET google_shopping/sellers": 1,
-"GET google_trends/explore": 5,
-"GET google_trends/rising": 5,
-"GET hackernews/profile": 1,
-"GET hackernews/search": 1,
-"GET hackernews/story": 1,
-"GET hackernews/story/comments": 1,
-"GET home_depot/product": 5,
-"GET home_depot/reviews": 5,
-"GET instagram/audio/reels": 1,
-"GET instagram/basic-profile": 1,
-"GET instagram/comment": 5,
-"GET instagram/engagement": 5,
-"GET instagram/followers": 5,
-"GET instagram/following": 5,
-"GET instagram/highlight/detail": 1,
-"GET instagram/highlights": 1,
-"GET instagram/location/posts": 5,
-"GET instagram/media/transcript": 10,
-"GET instagram/music/trending": 5,
-"GET instagram/post": 1,
-"GET instagram/post/comments": 5,
-"GET instagram/post/likers": 5,
-"GET instagram/post/stats": 5,
-"GET instagram/profile": 1,
-"GET instagram/profile/full": 5,
-"GET instagram/profile/posts": 1,
-"GET instagram/profile/posts/full": 5,
-"GET instagram/profile/reels": 1,
-"GET instagram/profile/reels/full": 5,
-"GET instagram/reels/trending": 5,
-"GET instagram/search/hashtag": 5,
-"GET instagram/search/location": 5,
-"GET instagram/search/music": 5,
-"GET instagram/search/profiles": 1,
-"GET instagram/search/reels": 1,
-"GET instagram/similar": 5,
-"GET instagram/stories": 5,
-"GET instagram/story/download": 5,
-"GET instagram/tagged": 5,
-"GET instagram/user/embed": 1,
-"GET instagram/username-suggestions": 5,
-"GET kick/clip": 1,
-"GET komi/page": 1,
-"GET kwai/post": 1,
-"GET kwai/profile": 1,
-"GET kwai/user/posts": 1,
-"GET linkbio/page": 1,
-"GET linkedin/ad": 5,
-"GET linkedin/ads/search": 5,
-"GET linkedin/company": 5,
-"GET linkedin/company/affiliated-pages": 5,
-"GET linkedin/company/insights": 5,
-"GET linkedin/company/job-count": 5,
-"GET linkedin/company/jobs": 10,
-"GET linkedin/company/people": 10,
-"GET linkedin/company/posts": 5,
-"GET linkedin/group": 5,
-"GET linkedin/group/posts": 5,
-"GET linkedin/job": 5,
-"GET linkedin/post": 5,
-"GET linkedin/post/comments": 5,
-"GET linkedin/post/comments/replies": 5,
-"GET linkedin/post/reactions": 10,
-"GET linkedin/post/reposts": 5,
-"GET linkedin/post/transcript": 10,
-"GET linkedin/profile": 5,
-"GET linkedin/profile/about": 5,
-"GET linkedin/profile/certifications": 5,
-"GET linkedin/profile/comments": 5,
-"GET linkedin/profile/contact": 5,
-"GET linkedin/profile/educations": 5,
-"GET linkedin/profile/experiences": 5,
-"GET linkedin/profile/full": 5,
-"GET linkedin/profile/honors": 5,
-"GET linkedin/profile/images": 5,
-"GET linkedin/profile/interests/companies": 5,
-"GET linkedin/profile/interests/groups": 5,
-"GET linkedin/profile/posts": 5,
-"GET linkedin/profile/publications": 5,
-"GET linkedin/profile/reactions": 5,
-"GET linkedin/profile/recommendations": 5,
-"GET linkedin/profile/skills": 5,
-"GET linkedin/profile/stats": 5,
-"GET linkedin/profile/videos": 5,
-"GET linkedin/profile/volunteers": 5,
-"GET linkedin/search/industry": 1,
-"GET linkedin/search/jobs": 10,
-"GET linkedin/search/location": 1,
-"GET linkedin/search/people": 10,
-"GET linkedin/search/posts": 5,
-"GET linkedin/search/schools": 1,
-"GET linkme/page": 1,
-"GET linktree/page": 1,
-"GET naver/adult": 1,
-"GET naver/blog/search": 1,
-"GET naver/brief": 10,
-"GET naver/cafearticle/search": 1,
-"GET naver/encyc/search": 1,
-"GET naver/errata": 1,
-"GET naver/image/search": 1,
-"GET naver/kin/search": 1,
-"GET naver/local/search": 1,
-"GET naver/news/search": 1,
-"GET naver/search-trend": 5,
-"GET naver/shopping-insight/category": 5,
-"GET naver/shopping-insight/keyword": 5,
-"GET naver/webkr/search": 1,
-"GET perplexity/research": 1,
-"GET pillar/page": 1,
-"GET pinterest/board": 1,
-"GET pinterest/pin": 1,
-"GET pinterest/search": 1,
-"GET pinterest/url-stats": 1,
-"GET pinterest/user/boards": 1,
-"GET polymarket/research": 5,
-"GET prism/ai-visibility": 2,
-"GET prism/answers": 15,
-"GET prism/app-reviews": 15,
-"GET prism/apps-lookup": 30,
-"GET prism/audience-overlap": 20,
-"GET prism/audience-questions": 30,
-"GET prism/brand-mentions": 50,
-"GET prism/campaign": 35,
-"GET prism/comments": 1,
-"GET prism/creator-card": 5,
-"GET prism/creator-vet": 50,
-"GET prism/crisis-postmortem": 35,
-"GET prism/crisis-radar": 15,
-"GET prism/demand-signals": 30,
-"GET prism/devtool-pulse": 20,
-"GET prism/earned-media": 25,
-"GET prism/employer-brand": 30,
-"GET prism/handle-audit": 5,
-"GET prism/korea-gap": 40,
-"GET prism/launch-echo": 20,
-"GET prism/leads": 50,
-"GET prism/lookup": 0,
-"GET prism/org-radar": 26,
-"GET prism/product-reviews": 30,
-"GET prism/reputation": 30,
-"GET prism/review-integrity": 30,
-"GET prism/share-of-voice": 40,
-"GET prism/truthsocial-pulse": 20,
-"GET prism/video-intel": 5,
-"GET prism/voice": 5,
-"GET reddit/omni-search": 1,
-"GET reddit/post": 1,
-"GET reddit/post/comments": 5,
-"GET reddit/post/transcript": 10,
-"GET reddit/search": 1,
-"GET reddit/subreddit": 1,
-"GET reddit/subreddit/details": 1,
-"GET reddit/subreddit/search": 1,
-"GET rumble/channel/videos": 1,
-"GET rumble/search": 1,
-"GET rumble/video": 1,
-"GET rumble/video/comments": 1,
-"GET rumble/video/transcript": 10,
-"GET search/everywhere": 20,
-"GET search/forums": 10,
-"GET search/news": 1,
-"GET snapchat/profile": 1,
-"GET spotify/album": 1,
-"GET spotify/artist": 1,
-"GET spotify/podcast": 1,
-"GET spotify/podcast/episodes": 1,
-"GET spotify/search": 1,
-"GET spotify/track": 1,
-"GET target/categories": 1,
-"GET target/category": 5,
-"GET target/product": 5,
-"GET target/reviews": 5,
-"GET target/stores": 1,
-"GET tavily/crawl": 1,
-"GET tavily/extract": 1,
-"GET tavily/map": 1,
-"GET tavily/search": 1,
-"GET threads/post": 1,
-"GET threads/post/comments": 1,
-"GET threads/profile": 1,
-"GET threads/search": 1,
-"GET threads/search/users": 1,
-"GET threads/user/posts": 1,
-"GET tiktok/comment": 2,
-"GET tiktok/post": 1,
-"GET tiktok/post/comments": 1,
-"GET tiktok/post/transcript": 10,
-"GET tiktok/profile": 1,
-"GET tiktok/profile/full": 5,
-"GET tiktok/profile/region": 1,
-"GET tiktok/profile/videos": 1,
-"GET tiktok/search": 1,
-"GET tiktok/search/hashtag": 1,
-"GET tiktok/search/top": 1,
-"GET tiktok/search/users": 1,
-"GET tiktok/song": 1,
-"GET tiktok/song/videos": 1,
-"GET tiktok/trending": 5,
-"GET tiktok/user/audience": 5,
-"GET tiktok/user/followers": 1,
-"GET tiktok/user/following": 1,
-"GET tiktok/user/live": 1,
-"GET tiktok/video/comment/replies": 1,
-"GET tiktok/video/screen-text": 5,
-"GET tiktokshop/product": 1,
-"GET tiktokshop/product/reviews": 1,
-"GET tiktokshop/products": 1,
-"GET tiktokshop/search": 1,
-"GET tiktokshop/user/showcase": 1,
-"GET tripadvisor/reviews": 1,
-"GET tripadvisor/search": 1,
-"GET trustpilot/business-search": 1,
-"GET trustpilot/reviews": 5,
-"GET truthsocial/post": 1,
-"GET truthsocial/profile": 1,
-"GET truthsocial/user/posts": 1,
-"GET twitch/clip": 1,
-"GET twitch/profile": 1,
-"GET twitch/user/schedule": 1,
-"GET twitch/user/videos": 1,
-"GET twitter/ai-search": 5,
-"GET twitter/community": 1,
-"GET twitter/community/tweets": 1,
-"GET twitter/profile": 1,
-"GET twitter/profile/full": 5,
-"GET twitter/tweet": 1,
-"GET twitter/tweet/transcript": 10,
-"GET twitter/user/tweets": 1,
-"GET utility/endpoint": 0,
-"GET utility/endpoints": 0,
-"GET utility/llms": 0,
-"GET utility/quickstart": 0,
-"GET walmart/category": 5,
-"GET walmart/offers": 5,
-"GET walmart/product": 5,
-"GET walmart/reviews": 5,
-"GET walmart/search": 5,
-"GET web/extract": 5,
-"GET web/jobs": 0,
-"GET web/jobs/{job_id}": 0,
-"GET web/map": 1,
-"GET web/monitors": 0,
-"GET web/monitors/{monitor_id}": 0,
-"GET web/monitors/{monitor_id}/checks": 0,
-"GET web/scrape": 1,
-"GET web/search": 2,
-"GET web/sessions": 0,
-"GET web/sessions/{session_id}": 0,
-"GET youtube/channel": 1,
-"GET youtube/channel/community-posts": 1,
-"GET youtube/channel/lives": 1,
-"GET youtube/channel/playlists": 1,
-"GET youtube/channel/shorts": 1,
-"GET youtube/channel/videos": 1,
-"GET youtube/community-post": 1,
-"GET youtube/playlist": 1,
-"GET youtube/playlist/items": 1,
-"GET youtube/profile/full": 5,
-"GET youtube/search": 1,
-"GET youtube/search/advanced": 1,
-"GET youtube/search/hashtag": 1,
-"GET youtube/search/suggestions": 1,
-"GET youtube/shorts/trending": 5,
-"GET youtube/video": 1,
-"GET youtube/video/audio": 5,
-"GET youtube/video/comment/replies": 1,
-"GET youtube/video/comments": 1,
-"GET youtube/video/files": 5,
-"GET youtube/video/sponsors": 10,
-"GET youtube/video/subtitles": 1,
-"GET youtube/video/thumbnails": 1,
-"GET youtube/video/transcript": 3,
-"GET youtube/videos/trending": 1,
-"PATCH web/monitors/{monitor_id}": 0,
-"POST prism/comment-lookup": 2,
-"POST prism/post-stats": 1,
-"POST prism/profiles": 1,
-"POST web/agent": 25,
-"POST web/batch-scrape": 1,
-"POST web/crawl": 1,
-"POST web/monitors": 0,
-"POST web/parse": 1,
-"POST web/sessions": 5,
-"POST web/sessions/{session_id}/execute": 0,
-"POST youtube/channels": 5,
-"POST youtube/transcripts": 3,
-"POST youtube/videos": 5,
-"_perUnit": {
+"DELETE web/jobs/{job_id}": {
+"credits": 0,
+"desc": "Cancel an async web job",
+"dryRun": false,
+"label": "0 (override; tier standard)",
+"metered": false,
+"range": [
+0,
+0
+]
+},
+"DELETE web/monitors/{monitor_id}": {
+"credits": 0,
+"desc": "Delete a web monitor",
+"dryRun": false,
+"label": "0 (override; tier standard)",
+"metered": false,
+"range": [
+0,
+0
+]
+},
+"DELETE web/sessions/{session_id}": {
+"credits": 0,
+"desc": "Close an interactive web session",
+"dryRun": false,
+"label": "0 (override; tier standard)",
+"metered": false,
+"range": [
+0,
+0
+]
+},
+"GET aliexpress/categories": {
+"credits": 1,
+"desc": "List AliExpress categories",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET aliexpress/product": {
+"credits": 5,
+"desc": "Get an AliExpress product by id or URL",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET aliexpress/product/shipping": {
+"credits": 5,
+"desc": "Get AliExpress shipping for a product SKU",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET aliexpress/product/similar": {
+"credits": 5,
+"desc": "Get similar AliExpress products",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET aliexpress/promo": {
+"credits": 1,
+"desc": "List AliExpress featured promotions",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET aliexpress/reviews": {
+"credits": 5,
+"desc": "Get AliExpress product reviews",
+"dryRun": true,
+"label": "5-9 (metered): 5 credits per page. The default labels (sentiment, issue) are free. label=reports, incentivized or injection holds 4 extra credits and refunds down to 1 credit per started 25 reviews that were newly judged (the first 100 reviews of a page are judged): reviews already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 5,
+"range": [
+5,
+9
+]
+},
+"GET aliexpress/search": {
+"credits": 5,
+"desc": "Search AliExpress products",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET aliexpress/search/hot": {
+"credits": 5,
+"desc": "List hot AliExpress products",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET aliexpress/search/promo": {
+"credits": 5,
+"desc": "List AliExpress products in a featured promotion",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET amazon/best-sellers": {
+"credits": 1,
+"desc": "Get Amazon Best Sellers in a category",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET amazon/deals": {
+"credits": 1,
+"desc": "Get current Amazon deals",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET amazon/product": {
+"credits": 5,
+"desc": "Get an Amazon product by ASIN",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET amazon/product-search": {
+"credits": 1,
+"desc": "Search Amazon products by keyword",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET amazon/reviews": {
+"credits": 5,
+"desc": "Get Amazon product reviews",
+"dryRun": true,
+"label": "5-9 (metered): 5 credits per page. The default labels (sentiment, issue) are free. label=reports, incentivized or injection holds 4 extra credits and refunds down to 1 credit per started 25 reviews that were newly judged (the first 100 reviews of a page are judged): reviews already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 5,
+"range": [
+5,
+9
+]
+},
+"GET amazon/seller": {
+"credits": 1,
+"desc": "Get an Amazon seller profile",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET amazon/sellers": {
+"credits": 1,
+"desc": "Get Amazon sellers and offers for a product",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET amazon/shop": {
+"credits": 1,
+"desc": "Get Amazon shop page",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET app_store/app-info": {
+"credits": 5,
+"desc": "Get full Apple App Store app details",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET app_store/app-list": {
+"credits": 5,
+"desc": "Get an Apple App Store chart",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET app_store/app-listings-search": {
+"credits": 10,
+"desc": "Search the Apple App Store listings database (paginated)",
+"dryRun": false,
+"label": "10 (premium)",
+"metered": false,
+"range": [
+10,
+10
+]
+},
+"GET app_store/app-reviews": {
+"credits": 5,
+"desc": "Get Apple App Store reviews for an app",
+"dryRun": true,
+"label": "5-9 (metered): 5 credits per page. The default labels (sentiment, issue) are free. label=reports, incentivized or injection holds 4 extra credits and refunds down to 1 credit per started 25 reviews that were newly judged (the first 100 reviews of a page are judged): reviews already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 5,
+"range": [
+5,
+9
+]
+},
+"GET app_store/app-search": {
+"credits": 5,
+"desc": "Search Apple App Store apps by keyword",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET app_store/categories": {
+"credits": 1,
+"desc": "List Apple App Store app categories",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET app_store/languages": {
+"credits": 1,
+"desc": "List supported Apple App Store languages",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET app_store/locations": {
+"credits": 1,
+"desc": "List supported Apple App Store storefront locations",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET app_store/search-suggestions": {
+"credits": 1,
+"desc": "Get Apple App Store search suggestions",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET apple_music/album": {
+"credits": 1,
+"desc": "Get an Apple Music album",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET apple_music/artist": {
+"credits": 1,
+"desc": "Get an Apple Music artist",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET apple_music/charts": {
+"credits": 1,
+"desc": "Get the Apple Music charts for a country",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET apple_music/search": {
+"credits": 1,
+"desc": "Search Apple Music",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET apple_music/track": {
+"credits": 1,
+"desc": "Get an Apple Music track",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET bluesky/post": {
+"credits": 1,
+"desc": "Get a Bluesky post",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET bluesky/profile": {
+"credits": 1,
+"desc": "Get a Bluesky profile",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET bluesky/search": {
+"credits": 1,
+"desc": "Search Bluesky posts",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET bluesky/user/posts": {
+"credits": 1,
+"desc": "List a Bluesky user's posts",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET content_analysis/categories": {
+"credits": 1,
+"desc": "List the Content Analysis category taxonomy",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET content_analysis/category-trends": {
+"credits": 20,
+"desc": "Category mention volume + sentiment over time",
+"dryRun": false,
+"label": "20 (override; tier advanced)",
+"metered": false,
+"range": [
+20,
+20
+]
+},
+"GET content_analysis/filters": {
+"credits": 1,
+"desc": "List the filterable fields for Content Analysis",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET content_analysis/languages": {
+"credits": 1,
+"desc": "List supported Content Analysis languages",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET content_analysis/locations": {
+"credits": 1,
+"desc": "List supported Content Analysis locations",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET content_analysis/phrase-trends": {
+"credits": 20,
+"desc": "Keyword mention volume + sentiment over time",
+"dryRun": false,
+"label": "20 (override; tier advanced)",
+"metered": false,
+"range": [
+20,
+20
+]
+},
+"GET content_analysis/rating-distribution": {
+"credits": 20,
+"desc": "Rating histogram for a keyword",
+"dryRun": false,
+"label": "20 (override; tier advanced)",
+"metered": false,
+"range": [
+20,
+20
+]
+},
+"GET content_analysis/search": {
+"credits": 20,
+"desc": "Search web citations of a keyword with per-mention sentiment",
+"dryRun": false,
+"label": "20 (override; tier advanced)",
+"metered": false,
+"range": [
+20,
+20
+]
+},
+"GET content_analysis/sentiment": {
+"credits": 20,
+"desc": "Sentiment breakdown for a keyword",
+"dryRun": false,
+"label": "20 (override; tier advanced)",
+"metered": false,
+"range": [
+20,
+20
+]
+},
+"GET content_analysis/summary": {
+"credits": 20,
+"desc": "Aggregate mention summary for a keyword",
+"dryRun": false,
+"label": "20 (override; tier advanced)",
+"metered": false,
+"range": [
+20,
+20
+]
+},
+"GET douyin/comment/replies": {
+"credits": 5,
+"desc": "Get replies to a Douyin comment",
+"dryRun": false,
+"label": "5-250 (metered): 5 credits per reply RETURNED. The call holds `limit x 5` up front - the default limit of 10 holds 50 and the 50 maximum holds 250 - and settles down to the replies actually delivered. Only a comment with a non-zero `engagement.replies` has a thread, so check that on the parent row before spending a call here",
+"metered": true,
+"range": [
+5,
+250
+]
+},
+"GET douyin/post": {
+"credits": 10,
+"desc": "Get a Douyin video",
+"dryRun": false,
+"label": "10 (premium)",
+"metered": false,
+"range": [
+10,
+10
+]
+},
+"GET douyin/post/comments": {
+"credits": 1,
+"desc": "Get Douyin video comments",
+"dryRun": false,
+"label": "2-100 (metered): 1 credit per comment RETURNED, with a floor of 2. The call holds `limit x 1` up front - the default limit of 20 holds 20 and the 100 maximum holds 100 - and settles down to the comments actually delivered, so a video with four comments does not cost a twenty-comment request",
+"metered": true,
+"range": [
+2,
+100
+]
+},
+"GET douyin/profile": {
+"credits": 6,
+"desc": "Get a Douyin creator profile",
+"dryRun": false,
+"label": "6 (override; tier advanced)",
+"metered": false,
+"range": [
+6,
+6
+]
+},
+"GET douyin/profile/posts": {
+"credits": 5,
+"desc": "List a Douyin creator's videos",
+"dryRun": false,
+"label": "5-125 (metered): 5 credits per row RETURNED. The call holds `limit x 5` up front - the default limit of 10 holds 50 and the 25 maximum holds 125 - and settles down to the videos actually delivered, so a creator with 4 recent videos costs 20 credits however high `limit` was set. `recent_days` and `exclude_pinned` narrow the result set BEFORE billing settles, so they lower the charge as well as the noise",
+"metered": true,
+"range": [
+5,
+125
+]
+},
+"GET douyin/search": {
+"credits": 5,
+"desc": "Search Douyin videos",
+"dryRun": false,
+"label": "5-125 (metered): 5 credits per row RETURNED. The call holds `limit x 5` up front - the default limit of 10 holds 50 and the 25 maximum holds 125 - and settles down to the rows actually delivered, so a narrow query that returns 3 videos costs 15 credits however high `limit` was set",
+"metered": true,
+"range": [
+5,
+125
+]
+},
+"GET douyin/search/users": {
+"credits": 5,
+"desc": "Search Douyin creators",
+"dryRun": false,
+"label": "5-125 (metered): 5 credits per creator RETURNED. The call holds `limit x 5` up front - the default limit of 10 holds 50 and the 25 maximum holds 125 - and settles down to the creators actually delivered",
+"metered": true,
+"range": [
+5,
+125
+]
+},
+"GET douyin/trending": {
+"credits": 25,
+"desc": "Get the Douyin hot-search board",
+"dryRun": false,
+"label": "25 (override; tier advanced)",
+"metered": false,
+"range": [
+25,
+25
+]
+},
+"GET ebay/product": {
+"credits": 5,
+"desc": "Get an eBay listing by item id",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET ebay/search": {
+"credits": 5,
+"desc": "Search eBay listings",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET economy/consumer-spend": {
+"credits": 1,
+"desc": "Get household spending by country and category",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET economy/government-contracts": {
+"credits": 1,
+"desc": "Search US federal contract awards",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET economy/government-spend": {
+"credits": 1,
+"desc": "Get US federal spending by state, county or country",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET economy/imports": {
+"credits": 20,
+"desc": "Get a US importer's suppliers and shipments",
+"dryRun": false,
+"label": "20 credits per call, whatever the limit. A company with no US import records returns 404 and costs 0 credits, and a cached repeat within 24 hours costs 0 credits.",
+"metered": false,
+"range": null
+},
+"GET economy/tourism-spend": {
+"credits": 1,
+"desc": "Get travel spending by country and category",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET etsy/product": {
+"credits": 5,
+"desc": "Get an Etsy listing by id or URL",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET etsy/product/similar": {
+"credits": 5,
+"desc": "Get listings similar to an Etsy product",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET etsy/search/suggestions": {
+"credits": 5,
+"desc": "Get Etsy search suggestions",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET etsy/shop/products": {
+"credits": 5,
+"desc": "List products in an Etsy shop",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET facebook/adlibrary/ad": {
+"credits": 5,
+"desc": "Get Facebook Ad Library ad details",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET facebook/adlibrary/ad/transcript": {
+"credits": 10,
+"desc": "Get a Facebook Ad Library video ad transcript",
+"dryRun": false,
+"label": "10 (premium)",
+"metered": false,
+"range": [
+10,
+10
+]
+},
+"GET facebook/adlibrary/company/ads": {
+"credits": 5,
+"desc": "List Facebook Ad Library company ads",
+"dryRun": false,
+"label": "5-35 (metered): 5 credits for the page. include=audience holds 1 credit per ad (30 a page) and keeps only the rows filled from a fresh lookup, so a page is at most 35 credits; rows served from cache are free, ads that never ran in the EU and other unfilled rows are refunded, and a repeat of the same call within the cache window costs 0.",
+"metered": true,
+"range": [
+5,
+35
+]
+},
+"GET facebook/adlibrary/search/ads": {
+"credits": 5,
+"desc": "Search Facebook Ad Library",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET facebook/adlibrary/search/companies": {
+"credits": 5,
+"desc": "Search Facebook Ad Library companies",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET facebook/event/details": {
+"credits": 1,
+"desc": "Get details for a Facebook event",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET facebook/events": {
+"credits": 1,
+"desc": "List Facebook events for a city",
+"dryRun": false,
+"label": "1-13 (metered): 1 credit for the page. include=details holds 1 credit per event (at most 12 a page) and keeps only the rows filled from a fresh lookup, so a page is at most 13 credits; rows served from cache are free, unfilled rows are refunded, and a repeat of the same call within the cache window costs 0.",
+"metered": true,
+"range": [
+1,
+13
+]
+},
+"GET facebook/events/search": {
+"credits": 1,
+"desc": "Search Facebook events by keyword",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET facebook/group": {
+"credits": 1,
+"desc": "Get a Facebook group",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET facebook/group/posts": {
+"credits": 1,
+"desc": "List Facebook group posts",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET facebook/marketplace/item": {
+"credits": 1,
+"desc": "Get a Facebook Marketplace item",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET facebook/marketplace/location/search": {
+"credits": 1,
+"desc": "Search Facebook Marketplace locations",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET facebook/marketplace/search": {
+"credits": 1,
+"desc": "Search Facebook Marketplace listings",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET facebook/post": {
+"credits": 1,
+"desc": "Get Facebook post details",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET facebook/post/comment/replies": {
+"credits": 1,
+"desc": "List replies to a Facebook post comment",
+"dryRun": true,
+"label": "1-5 (metered): 1 credit per page, with the default labels (sentiment, question, purchase_intent, complaint) included free. label=spam, toxic or low_quality holds 4 extra credits and refunds down to 1 credit per started 25 comments that were newly judged: comments already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 1,
+"range": [
+1,
+5
+]
+},
+"GET facebook/post/comments": {
+"credits": 1,
+"desc": "List Facebook post comments",
+"dryRun": true,
+"label": "1-5 (metered): 1 credit per page, with the default labels (sentiment, question, purchase_intent, complaint) included free. label=spam, toxic or low_quality holds 4 extra credits and refunds down to 1 credit per started 25 comments that were newly judged: comments already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 1,
+"range": [
+1,
+5
+]
+},
+"GET facebook/post/transcript": {
+"credits": 10,
+"desc": "Get Facebook video transcript",
+"dryRun": false,
+"label": "10 (premium)",
+"metered": false,
+"range": [
+10,
+10
+]
+},
+"GET facebook/profile": {
+"credits": 1,
+"desc": "Get Facebook page profile",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET facebook/profile/events": {
+"credits": 1,
+"desc": "List a Facebook page's events",
+"dryRun": false,
+"label": "1-9 (metered): 1 credit for the page. include=details holds 1 credit per event (8 a page) and keeps only the rows filled from a fresh lookup, so a page is at most 9 credits; rows served from cache are free, unfilled rows are refunded, and a repeat of the same call within the cache window costs 0.",
+"metered": true,
+"range": [
+1,
+9
+]
+},
+"GET facebook/profile/full": {
+"credits": 5,
+"desc": "Facebook profile, recent posts, and computed analytics in one call.",
+"dryRun": false,
+"label": "5 (override; tier standard)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET facebook/profile/photos": {
+"credits": 1,
+"desc": "List Facebook profile photos",
+"dryRun": false,
+"label": "1-9 (metered): 1 credit for the page. include=details holds 1 credit per photo (8 a page) and keeps only the rows filled from a fresh lookup, so a page is at most 9 credits; rows served from cache are free, unfilled rows are refunded, and a repeat of the same call within the cache window costs 0.",
+"metered": true,
+"range": [
+1,
+9
+]
+},
+"GET facebook/profile/posts": {
+"credits": 1,
+"desc": "List Facebook page posts",
+"dryRun": false,
+"label": "1-4 (metered): 1 credit for the page. include=engagement holds 1 credit per row (3 rows a page) and keeps only the rows filled from a fresh lookup, so a page is at most 4 credits; rows served from cache are free, unfilled rows are refunded, and a repeat of the same call within the cache window costs 0.",
+"metered": true,
+"range": [
+1,
+4
+]
+},
+"GET facebook/profile/reels": {
+"credits": 1,
+"desc": "List Facebook profile reels",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
 "GET facebook/profile/reels/full": {
-"note": "limit=50 = 25cr",
-"unit": "page of 10 reels",
-"worst": 5
+"credits": 5,
+"desc": "Facebook profile reels with exact views, likes, comments, and shares merged in, in one call.",
+"dryRun": false,
+"label": "5-25 (metered): 5 credits per page of 10 reels - 1 for the list and 4 for the per-reel enrichment - which is roughly half what running the list-then-post-stats chain yourself costs. With no `limit` that is one page and a flat 5 credits. With `limit` set the endpoint walks `ceil(limit / 10)` pages, up to 5 for the 50 maximum (25 credits), holds that many up front and refunds every page it did not need. A page whose enrichment yields zero coverage refunds the 4-credit premium automatically, leaving the 1-credit list price",
+"metered": true,
+"perPage": 5,
+"range": [
+5,
+25
+]
+},
+"GET facebook/search/groups": {
+"credits": 1,
+"desc": "Search Facebook groups by keyword",
+"dryRun": true,
+"label": "1-15 (metered): 1 credit for the page. include=details holds 1 credit per group (at most 10 a page) and keeps only the groups filled from a fresh lookup, so a page is at most 11 credits; groups served from cache are free, unfilled groups are refunded, and a repeat of the same call within the cache window costs 0. Relevance against your query (by default, or with relevance=) is free. Adding relevant_to= holds 4 extra credits and refunds down to 1 credit per started 25 rows that were newly judged: rows already judged for the same topic are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"range": [
+1,
+15
+]
+},
+"GET facebook/search/pages": {
+"credits": 1,
+"desc": "Search Facebook pages by keyword",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET facebook/search/people": {
+"credits": 1,
+"desc": "Search Facebook people by keyword",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET facebook/search/posts": {
+"credits": 1,
+"desc": "Search Facebook posts by keyword",
+"dryRun": true,
+"label": "1-9 (metered): 1 credit per page. Relevance against your query (by default, or with relevance=) is free. Adding relevant_to= holds 4 extra credits and refunds down to 1 credit per started 25 rows that were newly judged: rows already judged for the same topic are free, a page where nothing could be judged refunds the whole extra, and a cached page is free. The default labels (sponsored, intent, niche) are free. label=mention, or label=intent with offer=, holds 4 extra credits and refunds down to 1 credit per started 25 posts that were newly judged: posts already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free. With `max_pages`, each page walked is billed at this price (a cached page is free). With `seen`, a page's price falls with its share of rows you already received under that id; credits for joined data (`include=`) are never discounted.",
+"metered": true,
+"perPage": 1,
+"range": [
+1,
+9
+]
+},
+"GET facebook/search/videos": {
+"credits": 1,
+"desc": "Search Facebook videos by keyword",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET finance/fundamentals": {
+"credits": 1,
+"desc": "Get quarterly or annual fundamentals for a public company",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET finance/history": {
+"credits": 1,
+"desc": "Get daily price history for an instrument",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET finance/markets": {
+"credits": 1,
+"desc": "Get a markets overview (indices + movers)",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET finance/news": {
+"credits": 1,
+"desc": "Get recent news for a financial instrument",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET finance/options": {
+"credits": 5,
+"desc": "Get an options chain for an instrument",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET finance/quote": {
+"credits": 5,
+"desc": "Get a financial instrument quote",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET finance/statements": {
+"credits": 5,
+"desc": "Get financial statements for a company",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET finance/ticker-search": {
+"credits": 1,
+"desc": "Search financial instruments by name",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET g2/categories": {
+"credits": 1,
+"desc": "List every G2 category URL",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET g2/category": {
+"credits": 5,
+"desc": "List products in a G2 category",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET g2/product": {
+"credits": 5,
+"desc": "Get a G2 product by slug or URL",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET g2/product-index": {
+"credits": 5,
+"desc": "List G2 product URLs",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET g2/reviews": {
+"credits": 5,
+"desc": "Get G2 reviews for a product",
+"dryRun": true,
+"label": "5-9 (metered): 5 credits per page. The default labels (sentiment, issue) are free. label=reports, incentivized or injection holds 4 extra credits and refunds down to 1 credit per started 25 reviews that were newly judged (the first 100 reviews of a page are judged): reviews already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 5,
+"range": [
+5,
+9
+]
+},
+"GET g2/seller": {
+"credits": 5,
+"desc": "Get a G2 seller (vendor) profile",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET g2/seller/products": {
+"credits": 5,
+"desc": "List products for a G2 seller",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET github/issue": {
+"credits": 1,
+"desc": "Get a single issue or pull request",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET github/issue/comments": {
+"credits": 1,
+"desc": "Get comments on an issue or pull request",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET github/profile": {
+"credits": 1,
+"desc": "Get a GitHub user profile",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET github/profile/repos": {
+"credits": 1,
+"desc": "List a GitHub user's repositories",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET github/repo": {
+"credits": 1,
+"desc": "Get a GitHub repository",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET github/repo/dossier": {
+"credits": 5,
+"desc": "Full project dossier for a repository",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET github/repo/issues": {
+"credits": 1,
+"desc": "List a repository's issues (and PRs)",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET github/repo/readme": {
+"credits": 1,
+"desc": "Get a repository's README",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET github/repo/releases": {
+"credits": 1,
+"desc": "List a repository's releases",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET github/repo/top-issues": {
+"credits": 5,
+"desc": "Top feature request and top complaint for a repository",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET github/search": {
+"credits": 1,
+"desc": "Search GitHub issues and pull requests",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET github/user/profile-velocity": {
+"credits": 10,
+"desc": "User contribution velocity dossier",
+"dryRun": false,
+"label": "10 (premium)",
+"metered": false,
+"range": [
+10,
+10
+]
+},
+"GET google/ad": {
+"credits": 5,
+"desc": "Get Google ad details",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET google/adlibrary/advertisers/search": {
+"credits": 5,
+"desc": "Search Google Ad Library advertisers",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET google/business/extended-reviews": {
+"credits": 5,
+"desc": "Get Google extended (multi-source) reviews",
+"dryRun": true,
+"label": "5-9 (metered): 5 credits per page. The default labels (sentiment, issue) are free. label=reports, incentivized or injection holds 4 extra credits and refunds down to 1 credit per started 25 reviews that were newly judged (the first 100 reviews of a page are judged): reviews already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 5,
+"range": [
+5,
+9
+]
+},
+"GET google/business/info": {
+"credits": 1,
+"desc": "Get a Google Business Profile",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET google/business/questions": {
+"credits": 5,
+"desc": "Get Google Business Profile questions & answers",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET google/business/updates": {
+"credits": 1,
+"desc": "Get Google Business Profile posts (updates)",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET google/company/ads": {
+"credits": 5,
+"desc": "List Google ads by company",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET google/hotels/info": {
+"credits": 5,
+"desc": "Get Google hotel detail",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET google/hotels/search": {
+"credits": 1,
+"desc": "Search Google hotels",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET google/keyword-volume": {
+"credits": 16,
+"desc": "Get Google keyword search volume by country",
+"dryRun": false,
+"label": "16 (override; tier premium)",
+"metered": false,
+"range": [
+16,
+16
+]
+},
+"GET google/search": {
+"credits": 1,
+"desc": "Google web search",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET google_news/search": {
+"credits": 1,
+"desc": "Search Google News",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET google_play/app-info": {
+"credits": 5,
+"desc": "Get full Google Play app details",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET google_play/app-list": {
+"credits": 5,
+"desc": "Get a Google Play store chart",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET google_play/app-listings-search": {
+"credits": 10,
+"desc": "Search the Google Play listings database (paginated)",
+"dryRun": false,
+"label": "10 (premium)",
+"metered": false,
+"range": [
+10,
+10
+]
+},
+"GET google_play/app-reviews": {
+"credits": 5,
+"desc": "Get Google Play reviews for an app",
+"dryRun": true,
+"label": "5-9 (metered): 5 credits per page. The default labels (sentiment, issue) are free. label=reports, incentivized or injection holds 4 extra credits and refunds down to 1 credit per started 25 reviews that were newly judged (the first 100 reviews of a page are judged): reviews already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 5,
+"range": [
+5,
+9
+]
+},
+"GET google_play/app-search": {
+"credits": 5,
+"desc": "Search Google Play apps by keyword",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET google_play/categories": {
+"credits": 1,
+"desc": "List Google Play app categories",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET google_play/languages": {
+"credits": 1,
+"desc": "List supported Google Play languages",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET google_play/locations": {
+"credits": 1,
+"desc": "List supported Google Play storefront locations",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET google_play/search-suggestions": {
+"credits": 1,
+"desc": "Get Google Play search suggestions",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET google_shopping/price-history": {
+"credits": 1,
+"desc": "Get Google Shopping price history for a product",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET google_shopping/product": {
+"credits": 1,
+"desc": "Get Google Shopping product detail",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET google_shopping/product-search": {
+"credits": 5,
+"desc": "Search Google Shopping products",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET google_shopping/reviews": {
+"credits": 1,
+"desc": "Get Google Shopping product reviews",
+"dryRun": true,
+"label": "1-5 (metered): 1 credit per page. The default labels (sentiment, issue) are free. label=reports, incentivized or injection holds 4 extra credits and refunds down to 1 credit per started 25 reviews that were newly judged (the first 100 reviews of a page are judged): reviews already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 1,
+"range": [
+1,
+5
+]
+},
+"GET google_shopping/sellers": {
+"credits": 1,
+"desc": "Get Google Shopping sellers for a product",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET google_trends/explore": {
+"credits": 5,
+"desc": "Get Google Trends interest over time",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET google_trends/rising": {
+"credits": 5,
+"desc": "Get related + rising Google Trends queries",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET google_trends/trending": {
+"credits": 5,
+"desc": "Get Google Trends Trending Now for a location",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET gumtree/categories": {
+"credits": 1,
+"desc": "Get the Gumtree category tree",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET gumtree/filters": {
+"credits": 1,
+"desc": "Get Gumtree filters for a category",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET gumtree/locations": {
+"credits": 5,
+"desc": "Autocomplete Gumtree locations",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET gumtree/locations/nearest": {
+"credits": 5,
+"desc": "Find the nearest Gumtree location",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET gumtree/product": {
+"credits": 5,
+"desc": "Get a Gumtree listing by ad id or URL",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET gumtree/product/similar": {
+"credits": 5,
+"desc": "Get listings similar to a Gumtree ad",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET gumtree/search": {
+"credits": 5,
+"desc": "Search Gumtree UK listings",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET gumtree/search/suggestions": {
+"credits": 5,
+"desc": "Get Gumtree search suggestions",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET gumtree/seller": {
+"credits": 5,
+"desc": "Get a Gumtree seller profile",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET gumtree/seller/listings": {
+"credits": 5,
+"desc": "List a Gumtree seller's active ads",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET gumtree/trending": {
+"credits": 1,
+"desc": "Get trending Gumtree searches",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET hackernews/profile": {
+"credits": 1,
+"desc": "Get a Hacker News user profile",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET hackernews/search": {
+"credits": 1,
+"desc": "Search Hacker News",
+"dryRun": true,
+"label": "1-9 (metered): 1 credit per page. Relevance against your query (by default, or with relevance=) is free. Adding relevant_to= holds 4 extra credits and refunds down to 1 credit per started 25 rows that were newly judged: rows already judged for the same topic are free, a page where nothing could be judged refunds the whole extra, and a cached page is free. The default labels (sponsored, intent, niche) are free. label=mention, or label=intent with offer=, holds 4 extra credits and refunds down to 1 credit per started 25 posts that were newly judged: posts already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 1,
+"range": [
+1,
+9
+]
+},
+"GET hackernews/story": {
+"credits": 1,
+"desc": "Get a Hacker News story",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET hackernews/story/comments": {
+"credits": 1,
+"desc": "Get comments on a Hacker News story",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET hm/categories": {
+"credits": 1,
+"desc": "Get the H&M category tree",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET hm/countries": {
+"credits": 1,
+"desc": "List H&M countries and languages",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET hm/product/suppliers": {
+"credits": 5,
+"desc": "Get H&M suppliers and factories for a product",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET hm/search": {
+"credits": 5,
+"desc": "Search H&M products by keyword",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET hm/search/suggestions": {
+"credits": 5,
+"desc": "Get H&M search suggestions",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET hm/stores": {
+"credits": 5,
+"desc": "List H&M stores in a country",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET home_depot/product": {
+"credits": 5,
+"desc": "Get a Home Depot product by item id or URL",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET home_depot/reviews": {
+"credits": 5,
+"desc": "Get Home Depot product reviews",
+"dryRun": true,
+"label": "5-9 (metered): 5 credits per page. The default labels (sentiment, issue) are free. label=reports, incentivized or injection holds 4 extra credits and refunds down to 1 credit per started 25 reviews that were newly judged (the first 100 reviews of a page are judged): reviews already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 5,
+"range": [
+5,
+9
+]
+},
+"GET home_depot/search": {
+"credits": 5,
+"desc": "Search Home Depot products by keyword",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET home_depot/stores": {
+"credits": 1,
+"desc": "Find Home Depot stores near a ZIP code",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET instagram/audio/reels": {
+"credits": 1,
+"desc": "List Instagram reels using an audio track",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET instagram/basic-profile": {
+"credits": 1,
+"desc": "Get Instagram basic profile",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET instagram/comment": {
+"credits": 5,
+"desc": "Look up one Instagram comment by URL or id",
+"dryRun": false,
+"label": "5-15 (metered): 5 credits for a standard lookup, 15 with `deep_scan=true`, which keeps paging the thread when the comment is not in the first pages. Reach for deep_scan only after a standard lookup comes back not-found",
+"metered": true,
+"range": [
+5,
+15
+]
+},
+"GET instagram/engagement": {
+"credits": 5,
+"desc": "Get Instagram engagement statistics",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET instagram/followers": {
+"credits": 5,
+"desc": "List Instagram followers",
+"dryRun": false,
+"label": "5-10 (metered): 5 credits a page. Up to three reads are merged into one page, typically about 50 accounts, and a page can carry fewer. With `coverage=full`, up to 10 credits a page, settled down to 5 when the plain walk covered the whole page. A page that fails is refunded.",
+"metered": true,
+"range": [
+5,
+10
+]
+},
+"GET instagram/following": {
+"credits": 5,
+"desc": "List Instagram following",
+"dryRun": false,
+"label": "5-10 (metered): 5 credits a page. Up to three reads are merged into one page, typically about 50 accounts, and a page can carry fewer. With `coverage=full`, up to 10 credits a page, settled down to 5 when the plain walk covered the whole page. A page that fails is refunded.",
+"metered": true,
+"range": [
+5,
+10
+]
+},
+"GET instagram/highlight/detail": {
+"credits": 1,
+"desc": "Get Instagram highlight detail",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET instagram/highlights": {
+"credits": 1,
+"desc": "List Instagram story highlights",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET instagram/location/posts": {
+"credits": 5,
+"desc": "List recent posts at an Instagram location",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET instagram/media/screen-text": {
+"credits": 5,
+"desc": "Get Instagram post on-screen text",
+"dryRun": false,
+"label": "5 credits a call, the same for a photo, a reel or a carousel. Refunded when the post cannot be found or when no image on it could be read.",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET instagram/media/transcript": {
+"credits": 10,
+"desc": "Get Instagram media transcript",
+"dryRun": false,
+"label": "10 (premium)",
+"metered": false,
+"range": [
+10,
+10
+]
+},
+"GET instagram/music/trending": {
+"credits": 5,
+"desc": "List trending Instagram music",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET instagram/post": {
+"credits": 1,
+"desc": "Get Instagram post details",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET instagram/post/comment/replies": {
+"credits": 1,
+"desc": "List replies under an Instagram comment",
+"dryRun": true,
+"label": "1-5 (metered): 1 credit per page, with the default labels (sentiment, question, purchase_intent, complaint) included free. label=spam, toxic or low_quality holds 4 extra credits and refunds down to 1 credit per started 25 comments that were newly judged: comments already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 1,
+"range": [
+1,
+5
+]
+},
+"GET instagram/post/comments": {
+"credits": 5,
+"desc": "List Instagram post comments",
+"dryRun": true,
+"label": "5-19 (metered): 5 credits per page, with the default labels (sentiment, question, purchase_intent, complaint) included free. label=spam, toxic or low_quality holds 4 extra credits and refunds down to 1 credit per started 25 comments that were newly judged: comments already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 5,
+"range": [
+5,
+19
+]
+},
+"GET instagram/post/likers": {
+"credits": 5,
+"desc": "List Instagram post likers",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET instagram/post/stats": {
+"credits": 5,
+"desc": "Get Instagram post stats including the share count",
+"dryRun": false,
+"label": "5-9 (metered): 5 credits for the post. include=saves holds 4 more and keeps them only when it fills a save count the plain call lacked, refunding them otherwise, so a hydrated call is at most 9 credits; on a reel whose save count the plain call already carries, and on any photo or carousel, it settles at 5. Post lookups are cached for 10 minutes.",
+"metered": true,
+"range": [
+5,
+9
+]
+},
+"GET instagram/profile": {
+"credits": 1,
+"desc": "Get Instagram user profile",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET instagram/profile/about": {
+"credits": 1,
+"desc": "Get Instagram account transparency details",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET instagram/profile/full": {
+"credits": 5,
+"desc": "Instagram profile, recent posts, and computed analytics in one call.",
+"dryRun": false,
+"label": "5 (override; tier standard)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET instagram/profile/posts": {
+"credits": 1,
+"desc": "List Instagram user posts",
+"dryRun": true,
+"label": "1-17 (metered): 1 credit per page. include=audio holds 1 more per row, up to 12, and keeps it only for each video whose sound came back, refunding the rest, so a page costs at most 13 credits and a page with no videos costs 1. exclude_pinned and recent_days do not change the price of a page. The default labels (sponsored, intent, niche) are free. label=mention, or label=intent with offer=, holds 4 extra credits and refunds down to 1 credit per started 25 posts that were newly judged: posts already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 1,
+"range": [
+1,
+17
+]
+},
+"GET instagram/profile/posts/full": {
+"credits": 5,
+"desc": "Instagram posts with views, likes, comments, and per-post share counts where available, in one call.",
+"dryRun": false,
+"label": "5-25 (metered): 5 credits per upstream page of about 12 posts. With no `limit` that is one page and a flat 5 credits. With `limit` set the composite walks `ceil(limit / 12)` pages - 3 for limit=30, 5 for the 50 maximum, so 25 credits at the top - holds that many up front and refunds every page it did not need. One partial refund sits inside the per-page price: a shares leg that fails outright refunds 4 of the 5 credits for that page, leaving the 1-credit list price. A shares leg that succeeds with low coverage is still the full 5, because the second source was queried either way. A `user_id` call is priced exactly like a `handle` call",
+"metered": true,
+"range": [
+5,
+25
+]
+},
+"GET instagram/profile/reels": {
+"credits": 1,
+"desc": "List Instagram user reels",
+"dryRun": true,
+"label": "1-18 (metered): 1 credit per page. include=stats adds 1 credit a page. include=audio holds 1 more per row, up to 12, and keeps it only for each video whose sound came back, refunding the rest; with include=stats every reel already carries its sound, so the audio join costs nothing more. A page costs at most 14 credits. exclude_pinned and recent_days do not change the price of a page. The default labels (sponsored, intent, niche) are free. label=mention, or label=intent with offer=, holds 4 extra credits and refunds down to 1 credit per started 25 posts that were newly judged: posts already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 1,
+"range": [
+1,
+18
+]
+},
+"GET instagram/profile/reels/full": {
+"credits": 5,
+"desc": "Instagram reels with views, likes, comments, and per-reel share counts where available, in one call.",
+"dryRun": false,
+"label": "5-25 (metered): 5 credits per upstream page of about 12 reels. With no `limit` that is one page and a flat 5 credits. With `limit` set the composite walks `ceil(limit / 12)` pages - 3 for limit=30, 5 for the 50 maximum, so 25 credits at the top - holds that many up front and refunds every page it did not need. One partial refund sits inside the per-page price: a shares leg that fails outright refunds 4 of the 5 credits for that page, leaving the 1-credit list price. A shares leg that succeeds with low coverage is still the full 5, because the second source was queried either way. A `user_id` call is priced exactly like a `handle` call",
+"metered": true,
+"range": [
+5,
+25
+]
+},
+"GET instagram/reels/trending": {
+"credits": 5,
+"desc": "Get trending Instagram reels",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET instagram/search": {
+"credits": 1,
+"desc": "Search Instagram accounts, hashtags, and places",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET instagram/search/hashtag": {
+"credits": 5,
+"desc": "Search Instagram posts by hashtag",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET instagram/search/location": {
+"credits": 5,
+"desc": "Search Instagram locations",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET instagram/search/music": {
+"credits": 5,
+"desc": "Search Instagram music",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET instagram/search/popular": {
+"credits": 1,
+"desc": "Search popular Instagram posts",
+"dryRun": false,
+"label": "1-13 (metered): 1 credit for the page. include=engagement holds 1 credit per row, at most 12 (or `limit`), and keeps only the rows filled from a fresh lookup, so a full page is at most 13 credits; rows served from cache are free, unfilled rows are refunded, and a repeat of the same call within the cache window costs 0. Search pages are cached for 2 minutes and the per-post lookups for 10 minutes.",
+"metered": true,
+"range": [
+1,
+13
+]
+},
+"GET instagram/search/profiles": {
+"credits": 1,
+"desc": "Search Instagram profiles by keyword",
+"dryRun": false,
+"label": "1-25 (metered): 1 credit for the search page. With `include=about`, 1 plus 2 credits per row filled, held at the top 8 (17) unless you send `limit`, refunded down to the rows that actually received an About-panel leaf.",
+"metered": true,
+"range": [
+1,
+25
+]
+},
+"GET instagram/search/reels": {
+"credits": 1,
+"desc": "Search Instagram reels",
+"dryRun": true,
+"label": "1-69 (metered): 1 credit per page. `region` costs nothing extra. `include=creator` adds 2 credits per creator looked up: it holds 60 extra credits for a full page of 30 and refunds every creator it did not look up or could not find. Two reels by one creator are one lookup, a creator looked up in the last 15 minutes is free, and on a `max_pages` walk each creator is looked up and billed once. `country` adds the creator card at the same price, charged for every creator looked up, kept or not. Relevance against your query (by default, or with relevance=) is free. Adding relevant_to= holds 4 extra credits and refunds down to 1 credit per started 25 rows that were newly judged: rows already judged for the same topic are free, a page where nothing could be judged refunds the whole extra, and a cached page is free. The default labels (sponsored, intent, niche) are free. label=mention, or label=intent with offer=, holds 4 extra credits and refunds down to 1 credit per started 25 posts that were newly judged: posts already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free. With `max_pages`, each page walked is billed at this price (a cached page is free). With `seen`, a page's price falls with its share of rows you already received under that id; credits for joined data (`include=`) are never discounted.",
+"metered": true,
+"perPage": 1,
+"range": [
+1,
+69
+]
+},
+"GET instagram/similar": {
+"credits": 5,
+"desc": "List similar Instagram accounts",
+"dryRun": false,
+"label": "5-85 (metered): 5 credits for the list. include=profile holds 1 credit per row and keeps only the rows filled from a fresh lookup; the hydrated list is its top 20 accounts by default (at most 25 credits) and `limit=80` buys the full roster (at most 85). Rows served from cache are free, unfilled rows are refunded, and a repeat within the cache window costs 0. The list and the per-account lookups are cached for 15 minutes.",
+"metered": true,
+"range": [
+5,
+85
+]
+},
+"GET instagram/stories": {
+"credits": 5,
+"desc": "List an Instagram user's active stories",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET instagram/story/download": {
+"credits": 5,
+"desc": "Download a single Instagram story",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET instagram/tagged": {
+"credits": 5,
+"desc": "List posts an Instagram user is tagged in",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET instagram/user/embed": {
+"credits": 1,
+"desc": "Get Instagram user embed HTML",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET instagram/username-suggestions": {
+"credits": 5,
+"desc": "Get Instagram username suggestions",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET jobs/bing": {
+"credits": 5,
+"desc": "Get a Bing job listing by id",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET jobs/bing/search": {
+"credits": 10,
+"desc": "Search Bing job listings",
+"dryRun": false,
+"label": "10 (premium)",
+"metered": false,
+"range": [
+10,
+10
+]
+},
+"GET jobs/indeed": {
+"credits": 5,
+"desc": "Get an Indeed job listing by id",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET jobs/indeed/search": {
+"credits": 10,
+"desc": "Search Indeed job listings",
+"dryRun": false,
+"label": "10 (premium)",
+"metered": false,
+"range": [
+10,
+10
+]
+},
+"GET jobs/linkedin": {
+"credits": 5,
+"desc": "Get a LinkedIn job listing by id",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET jobs/linkedin/organizations": {
+"credits": 1,
+"desc": "Resolve LinkedIn organization ids",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET jobs/linkedin/search": {
+"credits": 10,
+"desc": "Search LinkedIn job listings",
+"dryRun": false,
+"label": "10 (premium)",
+"metered": false,
+"range": [
+10,
+10
+]
+},
+"GET jobs/salary": {
+"credits": 1,
+"desc": "Get salary ranges for a job title and country",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET jobs/salary/titles": {
+"credits": 1,
+"desc": "Suggest job titles for a salary lookup",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET jobs/xing": {
+"credits": 5,
+"desc": "Get a Xing job listing by id",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET jobs/xing/search": {
+"credits": 10,
+"desc": "Search Xing job listings",
+"dryRun": false,
+"label": "10 (premium)",
+"metered": false,
+"range": [
+10,
+10
+]
+},
+"GET kick/clip": {
+"credits": 1,
+"desc": "Get Kick clip details",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET klarna/categories": {
+"credits": 1,
+"desc": "List Klarna root categories",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET klarna/categories/children": {
+"credits": 1,
+"desc": "Get Klarna sub-categories",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET klarna/category": {
+"credits": 5,
+"desc": "Browse Klarna products in a category",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET klarna/category/filters": {
+"credits": 1,
+"desc": "Get Klarna filters for a category",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET klarna/category/guide": {
+"credits": 1,
+"desc": "Get Klarna buying-guide content for a category",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET klarna/category/keywords": {
+"credits": 1,
+"desc": "Get popular Klarna search keywords for a category",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET klarna/product": {
+"credits": 5,
+"desc": "Get a Klarna product by id or URL",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET klarna/product/compare": {
+"credits": 5,
+"desc": "Compare two Klarna products",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET klarna/product/offers": {
+"credits": 5,
+"desc": "List merchant offers for a Klarna product",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET klarna/product/price-history": {
+"credits": 5,
+"desc": "Get Klarna price history for a product",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET klarna/reviews": {
+"credits": 5,
+"desc": "Get Klarna user reviews for a product",
+"dryRun": true,
+"label": "5-9 (metered): 5 credits per page. The default labels (sentiment, issue) are free. label=reports, incentivized or injection holds 4 extra credits and refunds down to 1 credit per started 25 reviews that were newly judged (the first 100 reviews of a page are judged): reviews already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 5,
+"range": [
+5,
+9
+]
+},
+"GET klarna/reviews/overview": {
+"credits": 5,
+"desc": "Get Klarna review totals and score distributions",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET klarna/reviews/pro": {
+"credits": 5,
+"desc": "Get Klarna professional reviews for a product",
+"dryRun": true,
+"label": "5-9 (metered): 5 credits per page. The default labels (sentiment, issue) are free. label=reports, incentivized or injection holds 4 extra credits and refunds down to 1 credit per started 25 reviews that were newly judged (the first 100 reviews of a page are judged): reviews already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 5,
+"range": [
+5,
+9
+]
+},
+"GET klarna/search": {
+"credits": 5,
+"desc": "Search Klarna products by keyword",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET klarna/search/suggestions": {
+"credits": 1,
+"desc": "Get Klarna search suggestions",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET klarna/store/filters": {
+"credits": 1,
+"desc": "Get Klarna filters for a store page",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET klarna/store/products": {
+"credits": 5,
+"desc": "List products from a Klarna store",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET klarna/stores": {
+"credits": 1,
+"desc": "List Klarna shopping stores",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET kohls/categories": {
+"credits": 1,
+"desc": "Get the Kohl's category tree",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET kohls/questions": {
+"credits": 5,
+"desc": "Get Kohl's product questions and answers",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET kohls/reviews": {
+"credits": 5,
+"desc": "Get Kohl's product reviews",
+"dryRun": true,
+"label": "5-9 (metered): 5 credits per page. The default labels (sentiment, issue) are free. label=reports, incentivized or injection holds 4 extra credits and refunds down to 1 credit per started 25 reviews that were newly judged (the first 100 reviews of a page are judged): reviews already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 5,
+"range": [
+5,
+9
+]
+},
+"GET kohls/search": {
+"credits": 5,
+"desc": "Search Kohl's products by keyword",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET kohls/stores": {
+"credits": 5,
+"desc": "Find Kohl's stores near a coordinate",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET komi/page": {
+"credits": 1,
+"desc": "Get Komi page",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET kwai/post": {
+"credits": 1,
+"desc": "Get a Kwai post",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET kwai/profile": {
+"credits": 1,
+"desc": "Get a Kwai user profile",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET kwai/user/posts": {
+"credits": 1,
+"desc": "List a Kwai user's posts",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET linkbio/page": {
+"credits": 1,
+"desc": "Get Linkbio page",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET linkedin/ad": {
+"credits": 5,
+"desc": "Get LinkedIn ad details",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/ads/search": {
+"credits": 5,
+"desc": "Search LinkedIn ads",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/article": {
+"credits": 5,
+"desc": "Get a LinkedIn Pulse article",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/article/comments": {
+"credits": 5,
+"desc": "List comments on a LinkedIn Pulse article",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/article/reactions": {
+"credits": 5,
+"desc": "List reactors on a LinkedIn Pulse article",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/company": {
+"credits": 5,
+"desc": "Get LinkedIn company page with its full About tab",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/company/affiliated-pages": {
+"credits": 5,
+"desc": "List a company's affiliated/showcase pages",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/company/also-viewed": {
+"credits": 5,
+"desc": "List company pages people also viewed",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/company/by-domain": {
+"credits": 5,
+"desc": "Look up a LinkedIn company page from its website domain",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/company/employees-count": {
+"credits": 5,
+"desc": "Get a company's employee count, optionally by location",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/company/insights": {
+"credits": 5,
+"desc": "Get aggregate insights about a company's members",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/company/job-count": {
+"credits": 5,
+"desc": "Get a company's open job count",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/company/jobs": {
+"credits": 10,
+"desc": "List a company's job postings",
+"dryRun": false,
+"label": "10 (premium)",
+"metered": false,
+"range": [
+10,
+10
+]
+},
+"GET linkedin/company/people": {
+"credits": 10,
+"desc": "List people at a LinkedIn company",
+"dryRun": false,
+"label": "10-50 (metered): 10 credits for the list. include=profile holds 4 credits per row and keeps only the rows filled from a fresh lookup: at most 50 for the 10-row page, or 10 + 4 x limit when you pass `limit`. Rows served from cache are free, unfilled rows are refunded, and a repeat of a fully joined page within the list's cache window costs 0. The list is cached for 15 minutes and each profile lookup for 15 minutes.",
+"metered": true,
+"range": [
+10,
+50
+]
+},
+"GET linkedin/company/posts": {
+"credits": 5,
+"desc": "List LinkedIn company posts",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/group": {
+"credits": 5,
+"desc": "Get LinkedIn group details",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/group/posts": {
+"credits": 5,
+"desc": "List posts in a LinkedIn group",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/job": {
+"credits": 5,
+"desc": "Get LinkedIn job details",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/job/hiring-team": {
+"credits": 5,
+"desc": "List the hiring team on a LinkedIn job",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/post": {
+"credits": 5,
+"desc": "Get LinkedIn post details",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/post/comments": {
+"credits": 5,
+"desc": "Get LinkedIn post comments",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/post/comments/replies": {
+"credits": 5,
+"desc": "List replies to a LinkedIn comment",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/post/reactions": {
+"credits": 10,
+"desc": "List reactors on a LinkedIn post",
+"dryRun": false,
+"label": "10-50 (metered): 10 credits for the list. include=profile holds 4 credits per row and keeps only the rows filled from a fresh lookup: at most 50 for the 10-row page, or 10 + 4 x limit when you pass `limit`. Rows served from cache are free, unfilled rows are refunded, and a repeat of a fully joined page within the list's cache window costs 0. The list is cached for 5 minutes and each profile lookup for 15 minutes.",
+"metered": true,
+"range": [
+10,
+50
+]
+},
+"GET linkedin/post/reposts": {
+"credits": 5,
+"desc": "List reposts of a LinkedIn post",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/post/transcript": {
+"credits": 10,
+"desc": "Get a LinkedIn post video transcript",
+"dryRun": false,
+"label": "10 (premium)",
+"metered": false,
+"range": [
+10,
+10
+]
+},
+"GET linkedin/post/with-comments": {
+"credits": 5,
+"desc": "Get a LinkedIn post together with its comments",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile": {
+"credits": 5,
+"desc": "Get LinkedIn user profile",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/about": {
+"credits": 5,
+"desc": "Get a member's account freshness signals (NOT the profile About section)",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/activity": {
+"credits": 5,
+"desc": "Get when a LinkedIn member was last active",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/all": {
+"credits": 5,
+"desc": "Get a member's entire profile, counts included, in one call",
+"dryRun": false,
+"label": "5-50 (metered)",
+"metered": true,
+"range": [
+5,
+50
+]
+},
+"GET linkedin/profile/articles": {
+"credits": 5,
+"desc": "List Pulse articles a LinkedIn member published",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/certifications": {
+"credits": 5,
+"desc": "List a member's licenses and certifications",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/comments": {
+"credits": 5,
+"desc": "List a member's comments",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/complete": {
+"credits": 10,
+"desc": "Get a member's profile, experience, education, skills and recommendations",
+"dryRun": false,
+"label": "10 (premium)",
+"metered": false,
+"range": [
+10,
+10
+]
+},
+"GET linkedin/profile/contact": {
+"credits": 5,
+"desc": "Get a member's public contact info",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/educations": {
+"credits": 5,
+"desc": "List a member's education history",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/experiences": {
+"credits": 5,
+"desc": "List a member's work experiences",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/full": {
+"credits": 5,
+"desc": "LinkedIn company profile, recent posts, and computed analytics in one call. Company pages only; a member's profile is `/v1/linkedin/profile/all`.",
+"dryRun": false,
+"label": "5 (override; tier standard)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/honors": {
+"credits": 5,
+"desc": "List a member's honors and awards",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/images": {
+"credits": 5,
+"desc": "List a member's image posts",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/interests/companies": {
+"credits": 5,
+"desc": "List companies a member follows",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/interests/groups": {
+"credits": 5,
+"desc": "List groups a member follows",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/interests/newsletters": {
+"credits": 5,
+"desc": "List newsletters a LinkedIn member follows",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/interests/schools": {
+"credits": 5,
+"desc": "List schools a LinkedIn member follows",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/interests/top-voices": {
+"credits": 5,
+"desc": "List Top Voices a LinkedIn member follows",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/position-skills": {
+"credits": 5,
+"desc": "List a member's positions with the skills on each role",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/posted-jobs": {
+"credits": 5,
+"desc": "List jobs a LinkedIn member has posted",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/posts": {
+"credits": 5,
+"desc": "List a LinkedIn member's posts",
+"dryRun": false,
+"label": "5-200 (metered): 5 credits for a call with no `limit`, or `limit` at 50 or below. Above 50 the call is metered at 2 credits per post RETURNED: it holds `limit x 2` up front (the 100 maximum holds 200) and refunds down to the posts that actually came back, never below 5, so a member with 60 posts settles at 120 credits however high `limit` was set",
+"metered": true,
+"range": [
+5,
+200
+]
+},
+"GET linkedin/profile/posts/archive": {
+"credits": 5,
+"desc": "Walk a LinkedIn member's COMPLETE post history, 100 posts a page, with exact publish times and share counts the other lanes cannot return. Metered: 5 credits per post returned, so try the cheaper /v1/linkedin/profile/posts first",
+"dryRun": false,
+"label": "5-500 (metered): 5 credits per post RETURNED. The call holds `limit x 5` up front - the default limit of 20 holds 100 and the 100 maximum holds 500 - and refunds down to the posts that actually came back, so a member with 12 posts settles at 60 credits however high `limit` was set. This is the most expensive read on the platform per row: check whether /v1/linkedin/profile/posts (5 credits up to 50 posts, 2 a post above that) already covers the window you need before walking the archive",
+"metered": true,
+"range": [
+5,
+500
+]
+},
+"GET linkedin/profile/publications": {
+"credits": 5,
+"desc": "List a member's publications",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/reactions": {
+"credits": 5,
+"desc": "List posts a LinkedIn member reacted to",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/recommendations": {
+"credits": 5,
+"desc": "List recommendations for a member",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/similar": {
+"credits": 5,
+"desc": "List LinkedIn members similar to a given profile",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/skills": {
+"credits": 5,
+"desc": "List a member's skills",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/stats": {
+"credits": 5,
+"desc": "Get a member's follower + connection counts",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/top-position": {
+"credits": 5,
+"desc": "Get the company page of a member's top position",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/videos": {
+"credits": 5,
+"desc": "List a member's video posts",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/volunteers": {
+"credits": 5,
+"desc": "List a member's volunteer experiences",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET linkedin/profile/with-posts": {
+"credits": 10,
+"desc": "Get a member profile with follower and connection counts and recent posts",
+"dryRun": false,
+"label": "10 (premium)",
+"metered": false,
+"range": [
+10,
+10
+]
+},
+"GET linkedin/search/companies": {
+"credits": 10,
+"desc": "Search LinkedIn company pages",
+"dryRun": false,
+"label": "10 (premium)",
+"metered": false,
+"range": [
+10,
+10
+]
+},
+"GET linkedin/search/hashtag": {
+"credits": 10,
+"desc": "Search LinkedIn posts by hashtag",
+"dryRun": false,
+"label": "10 (premium)",
+"metered": false,
+"range": [
+10,
+10
+]
+},
+"GET linkedin/search/industry": {
+"credits": 1,
+"desc": "Resolve an industry name to a LinkedIn industry id",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET linkedin/search/jobs": {
+"credits": 10,
+"desc": "Search LinkedIn jobs",
+"dryRun": false,
+"label": "10 (premium)",
+"metered": false,
+"range": [
+10,
+10
+]
+},
+"GET linkedin/search/location": {
+"credits": 1,
+"desc": "Resolve a location to a LinkedIn geocode id",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET linkedin/search/people": {
+"credits": 10,
+"desc": "Search LinkedIn people",
+"dryRun": false,
+"label": "10-50 (metered): 10 credits for the list. include=profile holds 4 credits per row and keeps only the rows filled from a fresh lookup: at most 50 for the 10-row page, or 10 + 4 x limit when you pass `limit`. Rows served from cache are free, unfilled rows are refunded, and a repeat of a fully joined page within the list's cache window costs 0. The list is cached for 2 minutes and each profile lookup for 15 minutes.",
+"metered": true,
+"range": [
+10,
+50
+]
+},
+"GET linkedin/search/people/by-url": {
+"credits": 10,
+"desc": "Search LinkedIn people from a search-results URL",
+"dryRun": false,
+"label": "10 (premium)",
+"metered": false,
+"range": [
+10,
+10
+]
+},
+"GET linkedin/search/posts": {
+"credits": 5,
+"desc": "Search public LinkedIn posts by keyword",
+"dryRun": true,
+"label": "1-56 (metered): 5 credits per page. Relevance against your query (by default, or with relevance=) is free. Adding relevant_to= holds 8 extra credits and refunds down to 1 credit per started 25 rows that were newly judged: rows already judged for the same topic are free, a page where nothing could be judged refunds the whole extra, and a cached page is free. The default labels (sponsored, intent, niche) are free. label=mention, or label=intent with offer=, holds 8 extra credits and refunds down to 1 credit per started 25 posts that were newly judged: posts already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 5,
+"range": [
+1,
+56
+]
+},
+"GET linkedin/search/schools": {
+"credits": 1,
+"desc": "Search LinkedIn schools",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET linkme/page": {
+"credits": 1,
+"desc": "Get Linkme profile",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET linktree/page": {
+"credits": 1,
+"desc": "Get Linktree page",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET naver/adult": {
+"credits": 1,
+"desc": "Check whether a Korean search term is adult-only (성인 검색어 판별)",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET naver/blog/search": {
+"credits": 1,
+"desc": "Search Naver Blog",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET naver/brief": {
+"credits": 10,
+"desc": "One query across the Korean internet (5 Naver corpora) + optional digest.",
+"dryRun": false,
+"label": "10 (override; tier advanced)",
+"metered": false,
+"range": [
+10,
+10
+]
+},
+"GET naver/cafearticle/search": {
+"credits": 1,
+"desc": "Search Naver Cafe articles",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET naver/encyc/search": {
+"credits": 1,
+"desc": "Search Naver Encyclopedia",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET naver/errata": {
+"credits": 1,
+"desc": "Correct a mistyped Korean search query (오타변환)",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET naver/image/search": {
+"credits": 1,
+"desc": "Search Naver Image",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET naver/kin/search": {
+"credits": 1,
+"desc": "Search Naver KnowledgeiN (지식iN)",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET naver/local/search": {
+"credits": 1,
+"desc": "Search Naver Local (장소 검색)",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET naver/news/search": {
+"credits": 1,
+"desc": "Search Naver News",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET naver/search-trend": {
+"credits": 5,
+"desc": "Get Naver search-volume trend for Korean keywords (검색어트렌드)",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET naver/shopping-insight/category": {
+"credits": 5,
+"desc": "Get Naver Shopping click trend for a category (쇼핑인사이트)",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET naver/shopping-insight/keyword": {
+"credits": 5,
+"desc": "Get Naver Shopping click trend for keywords inside a category (쇼핑인사이트)",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET naver/webkr/search": {
+"credits": 1,
+"desc": "Search Naver Web (웹문서)",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET on_page/page": {
+"credits": 1,
+"desc": "Run an on-page SEO audit for one URL",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET perplexity/research": {
+"credits": 1,
+"desc": "Web research via Perplexity Sonar",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET pillar/page": {
+"credits": 1,
+"desc": "Get Pillar page",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET pinterest/board": {
+"credits": 1,
+"desc": "Get Pinterest board",
+"dryRun": false,
+"label": "1-16 (metered): 1 credit for the page. include=engagement holds 1 credit per row, at most 15 (or `limit`), and keeps only the rows filled from a fresh lookup, so a page is at most 16 credits; rows served from cache are free, unfilled rows are refunded, and a repeat of the same call within the cache window costs 0.",
+"metered": true,
+"range": [
+1,
+16
+]
+},
+"GET pinterest/pin": {
+"credits": 1,
+"desc": "Get Pinterest pin details",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET pinterest/search": {
+"credits": 1,
+"desc": "Search Pinterest pins",
+"dryRun": false,
+"label": "1-26 (metered): 1 credit for the page. include=engagement holds 1 credit per row, at most 25 (or `limit`), and keeps only the rows filled from a fresh lookup, so a page is at most 26 credits; rows served from cache are free, unfilled rows are refunded, and a repeat of the same call within the cache window costs 0.",
+"metered": true,
+"range": [
+1,
+26
+]
+},
+"GET pinterest/trends": {
+"credits": 10,
+"desc": "Get Pinterest Trends for a country",
+"dryRun": false,
+"label": "10 (premium)",
+"metered": false,
+"range": [
+10,
+10
+]
+},
+"GET pinterest/url-stats": {
+"credits": 1,
+"desc": "Get Pinterest save counts for external URLs",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET pinterest/user/boards": {
+"credits": 1,
+"desc": "List Pinterest user boards",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET polymarket/research": {
+"credits": 5,
+"desc": "Polymarket prediction markets: multi-query research",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET prism/adverse-screen": {
+"credits": 25,
+"desc": "Screen a person's public social profiles for adverse posts, with every flag citing its post, for human review.",
+"dryRun": false,
+"label": "25-75 (metered): 25 credits for one profile, plus 10 for each further profile (4 profiles cost 55). Profiles that could not be screened are refunded their share, and a call that screened nothing keeps 5",
+"metered": true,
+"range": [
+25,
+75
+]
 },
 "GET prism/ai-visibility": {
-"note": "defaults runs=8 x 2 engines = 16 probes = 32cr; 20 prompts x 20 runs = 1600cr; use preset= for a flat budget",
-"unit": "probe (prompt x run x engine)",
-"worst": 2
+"credits": 2,
+"desc": "AI Share-of-Voice / GEO monitoring: prompt set x reruns to per-brand appearance-% per AI engine plus a cited-domain ranking.",
+"dryRun": false,
+"label": "2-1605 (metered): 2 credits per probe, where a probe is one prompt run once on one engine, so the charge is `2 x prompts x runs x engines`. On the defaults (both engines, 8 runs) a 5-prompt audit is 160 credits. `include=web_baseline` adds a flat 5. The 1,605 ceiling is the 20-prompt, 20-run, two-engine worst case with the baseline on - `preset=quick` holds far less, and the hold settles down to the probes that actually completed",
+"metered": true,
+"range": [
+2,
+1605
+]
+},
+"GET prism/answers": {
+"credits": 15,
+"desc": "Multi-engine AI consensus: one question → Perplexity + Grok + Tavily answers verbatim, merged citations, and an agreement matrix.",
+"dryRun": false,
+"label": "15 (override; tier premium)",
+"metered": false,
+"range": [
+15,
+15
+]
+},
+"GET prism/app-reviews": {
+"credits": 15,
+"desc": "Cross-store app review intelligence (Google Play + App Store): translated, clustered, sentiment-scored.",
+"dryRun": false,
+"label": "10-15 (metered): 10 credits for one store, 15 for both. A bare `query` resolves both stores and costs 15; naming a single store in `stores`, or passing only one of `google_play_id` / `app_store_id`, costs 10",
+"metered": true,
+"range": [
+10,
+15
+]
+},
+"GET prism/apps-lookup": {
+"credits": 30,
+"desc": "One app across Google Play + the App Store: resolved, title-matched, and compared into a cross-store rating + listing report.",
+"dryRun": false,
+"label": "30 (override; tier premium)",
+"metered": false,
+"range": [
+30,
+30
+]
+},
+"GET prism/audience-language": {
+"credits": 2,
+"desc": "Language mix of the people commenting on a creator's recent posts, beside the follower sample on TikTok.",
+"dryRun": false,
+"label": "2-26 (metered): Floor 2 credits (one YouTube post: the channel list plus one comment page). Each further comment page is 1 credit, or 5 on Instagram, up to 5 posts. TikTok also opens the audience sample (5) and one follower page (1). Unopened pages are refunded. Five Instagram posts is 26 credits.",
+"metered": true,
+"range": [
+2,
+26
+]
+},
+"GET prism/audience-overlap": {
+"credits": 20,
+"desc": "How much two TikTok creators' commenter audiences overlap. Jaccard, shared-fan count, and a confidence label.",
+"dryRun": false,
+"label": "20 (override; tier advanced)",
+"metered": false,
+"range": [
+20,
+20
+]
+},
+"GET prism/audience-questions": {
+"credits": 30,
+"desc": "The real questions a topic's audience asks: harvested from Reddit + YouTube threads and clustered by intent (who/what/why/how/vs).",
+"dryRun": false,
+"label": "30 (override; tier premium)",
+"metered": false,
+"range": [
+30,
+30
+]
+},
+"GET prism/brand-mentions": {
+"credits": 50,
+"desc": "Brand mention volume time-series, sentiment split, top sources, and recent mentions for one keyword.",
+"dryRun": false,
+"label": "50 (override; tier advanced)",
+"metered": false,
+"range": [
+50,
+50
+]
+},
+"GET prism/brief-check": {
+"credits": 15,
+"desc": "Check a creator post against a campaign brief: talking points, forbidden claims, and disclosure.",
+"dryRun": false,
+"label": "15 credits per post (provisional). Caption and transcript are pulled; each talking point is scored and quoted. A missing transcript is reported, never treated as a pass.",
+"metered": false,
+"range": [
+15,
+15
+]
+},
+"GET prism/campaign": {
+"credits": 35,
+"desc": "Campaign tracker: pre/during/post volume lift, cross-platform engagement, and ranked top amplifiers for a hashtag or phrase.",
+"dryRun": false,
+"label": "35 (override; tier advanced)",
+"metered": false,
+"range": [
+35,
+35
+]
+},
+"GET prism/comment-leads": {
+"credits": 1,
+"desc": "Buyer leads from the comments under the posts a keyword search returns, opening only the posts worth opening.",
+"dryRun": false,
+"label": "0-243 (metered): Pay for what is opened: 1 credit a search page, 1 credit a comment page fetched and 1 credit for every started 25 comments labelled. The default request holds 37 and refunds what did not run; judging which posts to open is free",
+"metered": true,
+"range": [
+0,
+243
+]
 },
 "GET prism/comments": {
-"note": "1cr per page (min 2), driven by max= not limit=; an Instagram URL is a flat 5cr instead",
-"unit": "internal page scanned",
-"worst": 5
+"credits": 1,
+"desc": "Every comment on a post, replies nested, server-paginated to completion.",
+"dryRun": false,
+"label": "2-200 (metered): 1 credit per comment page scanned, except on Instagram, where a post URL is a flat 5 credits whatever `max` and `replies` you pass",
+"metered": true,
+"range": [
+2,
+200
+]
+},
+"GET prism/creator-card": {
+"credits": 5,
+"desc": "One handle, unified author cards across TikTok, Instagram, YouTube, X (and more).",
+"dryRun": false,
+"label": "5-8 (metered): 5 credits covering any 4 platforms, plus 1 credit per platform beyond 4. The default selection is 4 platforms, so the 7-platform maximum is 8 credits",
+"metered": true,
+"range": [
+5,
+8
+]
+},
+"GET prism/creator-vet": {
+"credits": 50,
+"desc": "Vet a creator before partnering: engagement quality, commenter authenticity, posting cadence, and controversy signals, optionally across platforms.",
+"dryRun": false,
+"label": "50-75 (metered): 50 credits for the standard vet. `include=cross_platform` raises it to 75 for the cross-platform identity check on top",
+"metered": true,
+"range": [
+50,
+75
+]
+},
+"GET prism/crisis-postmortem": {
+"credits": 35,
+"desc": "Crisis post-mortem: a who-said-what-first timeline across web, Reddit, Hacker News, and social, with an origin, peak, propagation sequence, and a grounded narrative.",
+"dryRun": false,
+"label": "35 (override; tier advanced)",
+"metered": false,
+"range": [
+35,
+35
+]
+},
+"GET prism/crisis-radar": {
+"credits": 15,
+"desc": "Stateless crisis breach check: a z-score on daily mention volume and negative share, with on-breach confirmation and a severity grade.",
+"dryRun": false,
+"label": "15-45 (metered): 15 credits for the baseline breach check. `confirm=true` escalates to the full 45-credit investigation. Run the baseline first and escalate only when it reports a breach: that is the whole point of the two-step shape",
+"metered": true,
+"range": [
+15,
+45
+]
+},
+"GET prism/demand-signals": {
+"credits": 30,
+"desc": "Consumer-demand nowcast: app-review velocity, web mention slope, Reddit velocity, and commerce review levels, fused into a published demand index.",
+"dryRun": false,
+"label": "30 (override; tier advanced)",
+"metered": false,
+"range": [
+30,
+30
+]
+},
+"GET prism/devtool-pulse": {
+"credits": 20,
+"desc": "Developer-brand health: a devtool's repo dossier + Hacker News reaction + Reddit chatter + dev-blog echo, in one call.",
+"dryRun": false,
+"label": "20 (override; tier advanced)",
+"metered": false,
+"range": [
+20,
+20
+]
+},
+"GET prism/earliness": {
+"credits": 25,
+"desc": "How early a term appeared on each platform, before Trends and before ads.",
+"dryRun": false,
+"label": "25 credits (provisional). One date-sorted page per platform, Google Trends over five years, and one page of the TikTok and Meta ad libraries. A lane that does not answer is listed and is not a first-seen date.",
+"metered": false,
+"range": [
+25,
+25
+]
+},
+"GET prism/earned-media": {
+"credits": 25,
+"desc": "A brand's earned-media footprint: news + tech-press + fresh-web clips, deduped and ranked, with an outlet-coverage rollup.",
+"dryRun": false,
+"label": "25 (override; tier advanced)",
+"metered": false,
+"range": [
+25,
+25
+]
+},
+"GET prism/employer-brand": {
+"credits": 30,
+"desc": "A company's employer brand: what people say about working there across Reddit, the web, YouTube, Naver, and the company's own LinkedIn voice.",
+"dryRun": false,
+"label": "30 (override; tier premium)",
+"metered": false,
+"range": [
+30,
+30
+]
+},
+"GET prism/find-accounts": {
+"credits": 6,
+"desc": "Turn a person's or a company's name into ranked candidate accounts on Instagram, TikTok, X and LinkedIn, with a match level per platform, for human review.",
+"dryRun": false,
+"label": "2-17 (metered): The searches at their own prices (1 credit each for Instagram, TikTok and X, 10 for LinkedIn) plus 1 credit per platform judged: 6 credits for a person by default, 17 for a company (LinkedIn included). A search that fails and a platform that could not be judged are refunded",
+"metered": true,
+"range": [
+2,
+17
+]
+},
+"GET prism/format-lift": {
+"credits": 4,
+"desc": "Which hook works for this creator, measured against their own posts.",
+"dryRun": false,
+"label": "4 credits (provisional). One page of the creator's recent posts is read, and each post is compared with that creator's own median. A bucket with fewer than eight posts lists the count and leaves the median empty.",
+"metered": false,
+"range": [
+4,
+4
+]
+},
+"GET prism/handle-audit": {
+"credits": 5,
+"desc": "Should you pull this handle? One call scores a handle across platforms, ranks the best ones, and projects the data volume + credit cost to pull it.",
+"dryRun": false,
+"label": "5-8 (metered): 5 credits for any selection of up to 4 supported platforms; +1 credit per selected platform beyond 4",
+"metered": true,
+"range": [
+5,
+8
+]
+},
+"GET prism/investigate": {
+"credits": 1,
+"desc": "A bounded read-only walk over SocialCrawl endpoints that turns a research goal into a trail of searches, profiles and comments.",
+"dryRun": false,
+"label": "Holds `budget` credits (default 40, max 200) up front and refunds what the walk does not spend. Each underlying page is charged at its own price. Deciding the next step is free.",
+"metered": false,
+"range": null
+},
+"GET prism/jobs": {
+"credits": 0,
+"desc": "List the API key's background jobs, newest first.",
+"dryRun": false,
+"label": "0 (override; tier standard)",
+"metered": false,
+"range": [
+0,
+0
+]
+},
+"GET prism/jobs/{job_id}": {
+"credits": 0,
+"desc": "Status and results of one background job.",
+"dryRun": false,
+"label": "0 (override; tier standard)",
+"metered": false,
+"range": [
+0,
+0
+]
+},
+"GET prism/korea-gap": {
+"credits": 40,
+"desc": "What the world is talking about that Korea isn't (and vice versa): the global vs Korean (Naver) conversation gap for a brand/topic.",
+"dryRun": false,
+"label": "15-40 (metered): 15 credits for the web-only read. The default `include` carries the social leg, which makes the call 40; pass an `include` without `social` to stay at 15",
+"metered": true,
+"range": [
+15,
+40
+]
+},
+"GET prism/launch-echo": {
+"credits": 20,
+"desc": "How a launch landed: the Hacker News reaction (top threads + comments), the dev-blog echo, and an optional repo dossier.",
+"dryRun": false,
+"label": "20 (override; tier advanced)",
+"metered": false,
+"range": [
+20,
+20
+]
+},
+"GET prism/leads": {
+"credits": 50,
+"desc": "Ranked feed of public conversations where people seek alternatives to or are switching from a competitor.",
+"dryRun": false,
+"label": "50 (override; tier advanced)",
+"metered": false,
+"range": [
+50,
+50
+]
+},
+"GET prism/lookup": {
+"credits": 0,
+"desc": "Universal post/product URL dispatcher: any post, video, product or repo link → the right detail endpoint's unified response.",
+"dryRun": false,
+"label": "the resolved endpoint's own price, with no routing surcharge: 1 credit for most social lookups and 5 for the advanced ones (Amazon, LinkedIn). The `resolved.endpoint` field in the response names the endpoint that was charged",
+"metered": false,
+"range": [
+1,
+5
+]
+},
+"GET prism/mentions": {
+"credits": 1,
+"desc": "Public posts and comments that mention a handle or contain a link, from the first page of each search that can find them.",
+"dryRun": false,
+"label": "1-9 (metered): 1 credit for each X or Reddit page, 5 for an Instagram tag page, 1 for a web page. A default call holds 3. A page with no verified row is refunded. Facebook, Threads and TikTok are not searched.",
+"metered": true,
+"range": [
+1,
+9
+]
 },
 "GET prism/org-radar": {
-"note": "1cr to resolve the org + 5cr per repo; unused per-repo credits refunded",
-"unit": "repo dossiered",
-"worst": 5
+"credits": 26,
+"desc": "A GitHub org's footprint: its top repos each expanded into a full dossier (releases, issue load, top request/complaint), rolled up.",
+"dryRun": false,
+"label": "6-51 (metered): 1 credit for the org read plus 5 per repository expanded into a dossier. The default of 5 repos is 26 credits, a single repo is 6, and the 10-repo maximum is 51. Set `repos` to bound it before calling",
+"metered": true,
+"range": [
+6,
+51
+]
+},
+"GET prism/product-reviews": {
+"credits": 30,
+"desc": "A product's reviews across Amazon + Google Shopping + Trustpilot, folded into a cross-marketplace rating + themed pros/cons report.",
+"dryRun": false,
+"label": "30 (override; tier premium)",
+"metered": false,
+"range": [
+30,
+30
+]
+},
+"GET prism/reputation": {
+"credits": 30,
+"desc": "A brand's cross-source reputation. Trustpilot + app stores + Google Business + web sentiment, blended into one weighted score with themed pros/cons.",
+"dryRun": false,
+"label": "30 (override; tier premium)",
+"metered": false,
+"range": [
+30,
+30
+]
+},
+"GET prism/review-integrity": {
+"credits": 30,
+"desc": "Cross-source review integrity verdict (statistical, deterministic).",
+"dryRun": false,
+"label": "30 (override; tier premium)",
+"metered": false,
+"range": [
+30,
+30
+]
 },
 "GET prism/share-of-voice": {
-"note": "40cr/brand (20 web-only); brands= takes 2-5, so 5 brands = 200cr",
-"unit": "brand",
-"worst": 40
+"credits": 40,
+"desc": "Engagement-weighted Share of Voice across 2-5 brands, with web+social split, emotion overlay, and ESOV.",
+"dryRun": false,
+"label": "20-200 (metered): 40 credits per brand with the social leg, which is the default, or 20 per brand for the web-only read. Up to 5 brands per call, so the 200-credit ceiling is 5 brands with social and dropping `social` from `include` halves it. Price the call as `brands x per-brand` before you send it - this is the most expensive composite on the API",
+"metered": true,
+"range": [
+20,
+200
+]
+},
+"GET prism/trend-board": {
+"credits": 30,
+"desc": "What is rising in one country today, with no keyword in: breakout TikTok posts, sounds, hashtags, and Google searches.",
+"dryRun": false,
+"label": "30 credits flat (provisional). One call reads TikTok's local feed, TikTok's hashtag board, Google Trending Now, up to 5 author pages and up to 3 sounds. A source that does not answer is listed under unavailable and its section is empty. Only a call where the feed, the hashtag board and Google Trending Now all fail is refunded.",
+"metered": false,
+"range": [
+30,
+30
+]
+},
+"GET prism/truthsocial-pulse": {
+"credits": 20,
+"desc": "A Truth Social handle's pulse: profile, recent posts, per-post detail drill, and the news echo, in one call.",
+"dryRun": false,
+"label": "20 (override; tier advanced)",
+"metered": false,
+"range": [
+20,
+20
+]
+},
+"GET prism/video-intel": {
+"credits": 5,
+"desc": "One video URL → detail + stats + transcript + top comments + commenter sample, across YouTube/TikTok/Rumble/Instagram.",
+"dryRun": false,
+"label": "5-15 (metered): 5 credits for the video detail, stats and comments. `include=transcript` adds 10, which is exactly what the standalone transcript endpoint charges, so the bundle never costs more than running the two calls yourself",
+"metered": true,
+"range": [
+5,
+15
+]
+},
+"GET prism/voice": {
+"credits": 5,
+"desc": "One person's public posts across X, Threads, Bluesky, and Truth Social, time-merged.",
+"dryRun": false,
+"label": "5 (override; tier advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET producthunt/launches": {
+"credits": 1,
+"desc": "List current Product Hunt launches",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET quora/answers": {
+"credits": 5,
+"desc": "Search Quora answers",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET quora/post": {
+"credits": 5,
+"desc": "Get a Quora question",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET quora/posts": {
+"credits": 5,
+"desc": "Search Quora space posts",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET quora/profiles": {
+"credits": 5,
+"desc": "Search Quora profiles",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET quora/search": {
+"credits": 5,
+"desc": "Search Quora questions",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET quora/spaces": {
+"credits": 5,
+"desc": "Search Quora Spaces",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET quora/topics": {
+"credits": 5,
+"desc": "Search Quora topics",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
 },
 "GET reddit/omni-search": {
-"note": "1cr per search page + 1cr per successfully-expanded thread (min 5); failed threads refunded",
-"unit": "search page + expanded thread",
-"worst": 1
+"credits": 1,
+"desc": "Reddit VoC sweep: one keyword → threads across all of Reddit with subreddit attribution and top comments inline.",
+"dryRun": false,
+"label": "5-9 (metered): 1 credit for the search page plus 1 per thread SUCCESSFULLY expanded, with a floor of 5. The call holds `1 + threads` up front (the 8-thread maximum holds 9) and refunds every thread that failed to expand, so the floor is what most sweeps cost. Running the same sweep by hand - one reddit/search plus eight reddit/post/comments calls - costs the same 9 at best and gives you no subreddit rollup",
+"metered": true,
+"range": [
+5,
+9
+]
+},
+"GET reddit/post": {
+"credits": 1,
+"desc": "Get a Reddit post",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET reddit/post/comments": {
+"credits": 5,
+"desc": "List Reddit post comments",
+"dryRun": true,
+"label": "5-9 (metered): 5 credits per page, with the default labels (sentiment, question, purchase_intent, complaint) included free. label=spam, toxic or low_quality holds 4 extra credits and refunds down to 1 credit per started 25 comments that were newly judged: comments already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 5,
+"range": [
+5,
+9
+]
+},
+"GET reddit/post/transcript": {
+"credits": 10,
+"desc": "Get a Reddit video post transcript",
+"dryRun": false,
+"label": "10 (premium)",
+"metered": false,
+"range": [
+10,
+10
+]
+},
+"GET reddit/profile": {
+"credits": 1,
+"desc": "Get a Reddit user profile",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET reddit/profile/comments": {
+"credits": 1,
+"desc": "Read a Reddit account's own comment history, newest first, deeper than any search index reaches. Metered: 2 credits per comment returned, so try /v1/reddit/search/comments?query=author:name first",
+"dryRun": false,
+"label": "2-200 (metered): 2 credits per comment returned. A limit of 25 holds 50 credits and settles down to the number of comments that actually came back; an account with no comments costs nothing.",
+"metered": true,
+"range": [
+2,
+200
+]
+},
+"GET reddit/profile/posts": {
+"credits": 1,
+"desc": "List a Reddit user's posts",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET reddit/search": {
+"credits": 1,
+"desc": "Search Reddit posts",
+"dryRun": true,
+"label": "1-34 (metered): 1 credit for the search page. include_body=true reserves up to 25 extra credits and refunds every one it does not spend. Rows now arrive with their bodies, and a link post has no body to fetch, so a row is only charged for when a body actually comes back: on most pages nothing is spent and the page costs 1 credit. Relevance against your query (by default, or with relevance=) is free. Adding relevant_to= holds 4 extra credits and refunds down to 1 credit per started 25 rows that were newly judged: rows already judged for the same topic are free, a page where nothing could be judged refunds the whole extra, and a cached page is free. The default labels (sponsored, intent, niche) are free. label=mention, or label=intent with offer=, holds 4 extra credits and refunds down to 1 credit per started 25 posts that were newly judged: posts already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free. With `max_pages`, each page walked is billed at this price (a cached page is free). With `seen`, a page's price falls with its share of rows you already received under that id; credits for joined data (`include=`) are never discounted.",
+"metered": true,
+"range": [
+1,
+34
+]
+},
+"GET reddit/search/comments": {
+"credits": 1,
+"desc": "Search Reddit comments",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET reddit/search/media": {
+"credits": 1,
+"desc": "Search Reddit image and video posts",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET reddit/subreddit": {
+"credits": 1,
+"desc": "List Reddit subreddit posts",
+"dryRun": true,
+"label": "1-5 (metered): 1 credit per page. The default labels (sponsored, intent, niche) are free. label=mention, or label=intent with offer=, holds 4 extra credits and refunds down to 1 credit per started 25 posts that were newly judged: posts already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 1,
+"range": [
+1,
+5
+]
+},
+"GET reddit/subreddit/details": {
+"credits": 1,
+"desc": "Get Reddit subreddit details",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET reddit/subreddit/search": {
+"credits": 1,
+"desc": "Search within a subreddit",
+"dryRun": false,
+"label": "1-26 (metered): 1 credit for the search page. With include_body=true, 1 extra credit per post that comes back with a body, up to 25 per page, unused credits refunded. Link posts have no body and are not charged for.",
+"metered": true,
+"range": [
+1,
+26
+]
+},
+"GET reddit/subreddits/search": {
+"credits": 1,
+"desc": "Find subreddits by topic",
+"dryRun": false,
+"label": "1-26 (metered): 1 credit for the page. include=details holds 1 credit per row, at most 25 (or `limit`), and keeps only the rows filled from a fresh lookup, so a page is at most 26 credits; rows served from cache are free, unfilled rows are refunded, and a repeat within the cache window costs 0.",
+"metered": true,
+"range": [
+1,
+26
+]
+},
+"GET rumble/channel/videos": {
+"credits": 1,
+"desc": "List videos for a Rumble channel",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET rumble/search": {
+"credits": 1,
+"desc": "Search Rumble videos",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET rumble/video": {
+"credits": 1,
+"desc": "Get a Rumble video",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET rumble/video/comments": {
+"credits": 1,
+"desc": "List top-level comments on a Rumble video",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET rumble/video/transcript": {
+"credits": 10,
+"desc": "Get a Rumble video transcript",
+"dryRun": false,
+"label": "10 (premium)",
+"metered": false,
+"range": [
+10,
+10
+]
+},
+"GET search/creators": {
+"credits": 10,
+"desc": "Fused creator discovery across TikTok, Threads, and Instagram, ranked by relevance, followers, and verification. YouTube, X, and Facebook people are opt-in via sources=.",
+"dryRun": false,
+"label": "10-12 (metered): 10 credits flat, with a coverage-based partial refund. Adding brief= adds 2 credits, refunded when the judging step could not answer for every judged creator. A cached page is free.",
+"metered": true,
+"range": [
+10,
+12
+]
+},
+"GET search/everywhere": {
+"credits": 20,
+"desc": "Universal social search across 14 platforms",
+"dryRun": false,
+"label": "20 (override; tier standard)",
+"metered": false,
+"range": [
+20,
+20
+]
+},
+"GET search/forums": {
+"credits": 10,
+"desc": "Fused forum search across Reddit, Hacker News, and Naver 지식iN/카페, with top comments inline on hero threads by default.",
+"dryRun": false,
+"label": "10 (override; tier standard)",
+"metered": false,
+"range": [
+10,
+10
+]
+},
+"GET search/multi": {
+"credits": 1,
+"desc": "One query, each platform's own search results, in one call at each platform's own price.",
+"dryRun": true,
+"label": "0-28 (metered): Metered, usually 1-12 credits: each platform is billed at its own endpoint's price, per platform, exactly as a direct call to that endpoint is billed (TikTok, Instagram, YouTube, Reddit, Threads, X and Facebook 1 credit a page, LinkedIn 5). A platform whose page found nothing or failed costs nothing, and a platform page served from cache is free. A Threads phrase that Threads does not recognise is expanded into narrower searches, as on /v1/threads/search, and costs 1 credit per search that returned posts. data.sources.<platform>.credits shows each platform's charge and credits_used the total. Relevance against your query (by default, or with relevance=) is free. Adding relevant_to= holds 8 extra credits and refunds down to 1 credit per started 25 rows that were newly judged: rows already judged for the same topic are free, a page where nothing could be judged refunds the whole extra, and a cached page is free. The default labels (sponsored, intent, niche) are free. label=mention, or label=intent with offer=, holds 8 extra credits and refunds down to 1 credit per started 25 posts that were newly judged: posts already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"range": [
+0,
+28
+]
 },
 "GET search/news": {
-"note": "base planning fee + 1cr per leg that returned articles; unused ceiling auto-refunded",
-"unit": "leg returning articles",
-"worst": 1
+"credits": 1,
+"desc": "Planned multi-country news search: one query, localized and fanned out across two independent news indexes in a single call.",
+"dryRun": false,
+"label": "2-62 (metered): 2 credits + 1 credit per google leg that returns at least one article (upfront hold 2 + min(5 x countries, max_legs, 12), maximum 14 on the default engine). Adding the bing engine adds 1 credit per 5 articles it returns, because that engine is priced per article rather than per call; the absolute ceiling with both engines is 62. The hold always settles down to the actual charge, and empty, skipped or failed legs bill 0.",
+"metered": true,
+"range": [
+2,
+62
+]
+},
+"GET sephora/availability": {
+"credits": 5,
+"desc": "Get Sephora in-store availability for a sku",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET sephora/brand/products": {
+"credits": 5,
+"desc": "List Sephora products for a brand",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET sephora/brands": {
+"credits": 1,
+"desc": "List Sephora brands",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET sephora/categories": {
+"credits": 1,
+"desc": "List Sephora root categories",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET sephora/category": {
+"credits": 5,
+"desc": "Browse Sephora products in a category",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET sephora/category/data": {
+"credits": 1,
+"desc": "Get a Sephora category and its children",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET sephora/product": {
+"credits": 5,
+"desc": "Get a Sephora product by id or URL",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET sephora/reviews": {
+"credits": 5,
+"desc": "Get Sephora product reviews",
+"dryRun": true,
+"label": "5-9 (metered): 5 credits per page. The default labels (sentiment, issue) are free. label=reports, incentivized or injection holds 4 extra credits and refunds down to 1 credit per started 25 reviews that were newly judged (the first 100 reviews of a page are judged): reviews already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 5,
+"range": [
+5,
+9
+]
+},
+"GET sephora/search": {
+"credits": 5,
+"desc": "Search Sephora products by keyword",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET sephora/search/suggestions": {
+"credits": 1,
+"desc": "Get Sephora search suggestions",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET sephora/stores": {
+"credits": 1,
+"desc": "Find Sephora stores near a coordinate",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET snapchat/profile": {
+"credits": 1,
+"desc": "Get Snapchat user profile",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET snapchat/spotlight/comments": {
+"credits": 1,
+"desc": "List comments on a Snapchat Spotlight",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET spotify/album": {
+"credits": 1,
+"desc": "Get a Spotify album",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET spotify/artist": {
+"credits": 1,
+"desc": "Get a Spotify artist",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET spotify/podcast": {
+"credits": 1,
+"desc": "Get a Spotify podcast",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET spotify/podcast/episodes": {
+"credits": 1,
+"desc": "List a Spotify podcast's episodes",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET spotify/search": {
+"credits": 1,
+"desc": "Search Spotify",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET spotify/track": {
+"credits": 1,
+"desc": "Get a Spotify track",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET target/categories": {
+"credits": 1,
+"desc": "List the Target category taxonomy",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET target/category": {
+"credits": 5,
+"desc": "Browse Target products in a category",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET target/product": {
+"credits": 5,
+"desc": "Get a Target product by TCIN",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET target/reviews": {
+"credits": 5,
+"desc": "Get Target product reviews",
+"dryRun": true,
+"label": "5-9 (metered): 5 credits per page. The default labels (sentiment, issue) are free. label=reports, incentivized or injection holds 4 extra credits and refunds down to 1 credit per started 25 reviews that were newly judged (the first 100 reviews of a page are judged): reviews already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 5,
+"range": [
+5,
+9
+]
+},
+"GET target/stores": {
+"credits": 1,
+"desc": "Find Target stores near a location",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tavily/crawl": {
+"credits": 1,
+"desc": "Crawl a website with LLM-driven path selection",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tavily/extract": {
+"credits": 1,
+"desc": "Extract clean content from one or more URLs",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tavily/map": {
+"credits": 1,
+"desc": "Map a website's sitegraph",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tavily/search": {
+"credits": 1,
+"desc": "Tavily web search with optional LLM-generated answer",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET telegram/post": {
+"credits": 1,
+"desc": "Get Telegram post",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET telegram/profile": {
+"credits": 1,
+"desc": "Get Telegram channel profile",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET telegram/profile/posts": {
+"credits": 1,
+"desc": "List Telegram channel posts",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET threads/post": {
+"credits": 1,
+"desc": "Get Threads post details",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET threads/post/comments": {
+"credits": 1,
+"desc": "Get comments on a Threads post",
+"dryRun": false,
+"label": "1-10 (metered): 1 credit for the bundled window of about 20 replies, which is what a call with no `limit`, or `limit` at 25 or below, costs. Above 25 the deeper lane is metered at 1 credit per 5 replies RETURNED: the call holds `ceil(limit / 5)` up front (the 50 maximum holds 10) and refunds down to what came back, so a post with 12 replies settles at 3 credits however high `limit` was set",
+"metered": true,
+"range": [
+1,
+10
+]
+},
+"GET threads/profile": {
+"credits": 1,
+"desc": "Get Threads user profile",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
 },
 "GET threads/search": {
-"note": "limit=100 = ~5-7cr",
-"unit": "window (~15-20 posts)",
-"worst": 1
+"credits": 1,
+"desc": "Search Threads posts",
+"dryRun": true,
+"label": "1-34 (metered): 1 credit per result window. A call with no `limit` is one window and costs exactly 1. With `limit` set the walker consumes `ceil(limit / 15)` windows - 4 for limit=50, 7 for the 100 maximum - holds that many up front and refunds every window it did not need. Query relaxation can add up to 4 more windows on a page-1 request, billed only for the relaxed searches that returned posts and refunded for the ones that did not; send `expand=false` to hold none of them, and note that a request carrying a cursor never relaxes, so a pagination loop's last hop costs nothing extra. With `include=engagement` the call also holds 20 credits and keeps 1 for each of the first 20 posts whose view count or display name it filled from a fresh lookup; posts served from the post lookup's cache (10 minutes) are free, a post Threads has published no view count for is free (it still gets its pinned flag), and the rest is refunded Relevance against your query (by default, or with relevance=) is free. Adding relevant_to= holds 4 extra credits and refunds down to 1 credit per started 25 rows that were newly judged: rows already judged for the same topic are free, a page where nothing could be judged refunds the whole extra, and a cached page is free. The default labels (sponsored, intent, niche) are free. label=mention, or label=intent with offer=, holds 4 extra credits and refunds down to 1 credit per started 25 posts that were newly judged: posts already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free. With `max_pages`, each page walked is billed at this price (a cached page is free). With `seen`, a page's price falls with its share of rows you already received under that id; credits for joined data (`include=`) are never discounted.",
+"metered": true,
+"range": [
+1,
+34
+]
+},
+"GET threads/search/users": {
+"credits": 1,
+"desc": "Search Threads users",
+"dryRun": false,
+"label": "1-13 (metered): 1 credit for the identity window, which is what a call with no `include` costs. With `include=profile` the call holds 1 credit per row of the page (12, or `limit`) and keeps 1 for each account it filled from a fresh lookup; accounts served from the profile lookup's cache (15 minutes) are free and the rest is refunded, so a call costs 13 at most",
+"metered": true,
+"range": [
+1,
+13
+]
+},
+"GET threads/user/posts": {
+"credits": 1,
+"desc": "List Threads user posts",
+"dryRun": false,
+"label": "1-165 (metered): 1 credit for the bundled window of about 15 posts, which is what a call with no `limit`, or `limit` at 15 or below, costs. Above 15 the deeper lane is metered at 3 credits per post RETURNED: the call holds `limit x 3` up front (the 50 maximum holds 150) and refunds down to what came back. With `include=engagement` the call also holds 1 credit per post of the window (15) and keeps 1 for each post whose view count or display name it filled from a fresh lookup; posts served from the post lookup's cache (10 minutes) are free and the rest is refunded, so the default window costs 16 at most. Beside a `limit` above 15 the deeper rows already carry both fields, so the 15 are refunded in full",
+"metered": true,
+"range": [
+1,
+165
+]
+},
+"GET tiktok/adlibrary/ad": {
+"credits": 5,
+"desc": "Get a TikTok Ad Library ad",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET tiktok/adlibrary/search": {
+"credits": 5,
+"desc": "Search the TikTok Ad Library",
+"dryRun": false,
+"label": "5-17 (metered): 5 credits for the page. include=ad holds 1 credit per ad, at most 12 (or `limit`), and keeps only the ads filled from a fresh lookup, so a page is at most 17 credits; ads served from cache are free, unfilled ads are refunded, and a repeat within the cache window costs 0. The page is cached for 2 minutes and the per-ad lookups for 30 minutes.",
+"metered": true,
+"range": [
+5,
+17
+]
+},
+"GET tiktok/ads/top": {
+"credits": 1,
+"desc": "Read TikTok's Creative Center Top Ads board: the best-performing ads in a market, ranked by CTR, impressions or engagement. Metered: 1 credit per ad returned, minimum 10",
+"dryRun": false,
+"label": "10-100 (metered): 1 credit per ad returned, minimum 10 credits. A limit of 20 holds 20 credits and settles down to the number of ads that actually came back; a filter combination with no board costs nothing.",
+"metered": true,
+"range": [
+10,
+100
+]
+},
+"GET tiktok/collection/videos": {
+"credits": 1,
+"desc": "List videos in a TikTok collection",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tiktok/comment": {
+"credits": 2,
+"desc": "Look up one TikTok comment by URL or id",
+"dryRun": false,
+"label": "2-6 (metered): 2 credits for a standard lookup, 6 with `deep_scan=true`, which keeps paging the thread when the comment is not in the first pages. Reach for deep_scan only after a standard lookup comes back not-found",
+"metered": true,
+"range": [
+2,
+6
+]
+},
+"GET tiktok/effect/videos": {
+"credits": 1,
+"desc": "List TikTok videos made with an effect",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tiktok/effects": {
+"credits": 1,
+"desc": "Get TikTok effects by id",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tiktok/hashtag": {
+"credits": 1,
+"desc": "Get TikTok hashtag details",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tiktok/hashtags/popular": {
+"credits": 1,
+"desc": "Read TikTok's own trending-hashtag board for a market and time window: the overall board plus 15 industry boards. Metered: 2 credits per hashtag returned, minimum 6",
+"dryRun": false,
+"label": "6-96 (metered): 2 credits per hashtag returned, minimum 6. One board is 6 credits. industry=all holds 96 credits (sixteen boards of three) and settles down to the hashtags actually returned, typically 88 to 92. An empty board costs nothing.",
+"metered": true,
+"range": [
+6,
+96
+]
+},
+"GET tiktok/location/posts": {
+"credits": 1,
+"desc": "List TikTok videos tagged at a place",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tiktok/playlist/videos": {
+"credits": 1,
+"desc": "List videos in a TikTok playlist",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tiktok/post": {
+"credits": 1,
+"desc": "Get TikTok post details",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tiktok/post/comments": {
+"credits": 1,
+"desc": "List TikTok post comments",
+"dryRun": true,
+"label": "1-7 (metered): 1 credit per page, with the default labels (sentiment, question, purchase_intent, complaint) included free. label=spam, toxic or low_quality holds 4 extra credits and refunds down to 1 credit per started 25 comments that were newly judged: comments already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 1,
+"range": [
+1,
+7
+]
+},
+"GET tiktok/post/transcript": {
+"credits": 10,
+"desc": "Get TikTok video transcript",
+"dryRun": false,
+"label": "10 (premium)",
+"metered": false,
+"range": [
+10,
+10
+]
+},
+"GET tiktok/profile": {
+"credits": 1,
+"desc": "Get TikTok user profile",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tiktok/profile/full": {
+"credits": 5,
+"desc": "TikTok profile, recent posts, and computed analytics in one call.",
+"dryRun": false,
+"label": "5 (override; tier standard)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET tiktok/profile/playlists": {
+"credits": 1,
+"desc": "List a TikTok account's playlists",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tiktok/profile/region": {
+"credits": 1,
+"desc": "Get TikTok profile region",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tiktok/profile/videos": {
+"credits": 1,
+"desc": "List TikTok user videos",
+"dryRun": true,
+"label": "1-5 (metered): 1 credit per page. The default labels (sponsored, intent, niche) are free. label=mention, or label=intent with offer=, holds 4 extra credits and refunds down to 1 credit per started 25 posts that were newly judged: posts already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 1,
+"range": [
+1,
+5
+]
+},
+"GET tiktok/search": {
+"credits": 1,
+"desc": "Search TikTok videos by keyword",
+"dryRun": true,
+"label": "1-42 (metered): 1 credit for the page. limit= holds ceil(N/4)+2 credits for the N rows the source fills (30 to 120, rounded up to a multiple of 30), 32 at 120 and 10 at 30, and unfilled slots are refunded. Repeated videos are removed after billing. Relevance against your query (by default, or with relevance=) is free. Adding relevant_to= holds 5 extra credits and refunds down to 1 credit per started 25 rows that were newly judged: rows already judged for the same topic are free, a page where nothing could be judged refunds the whole extra, and a cached page is free. The default labels (sponsored, intent, niche) are free. label=mention, or label=intent with offer=, holds 5 extra credits and refunds down to 1 credit per started 25 posts that were newly judged: posts already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free. With `max_pages`, each page walked is billed at this price (a cached page is free). With `seen`, a page's price falls with its share of rows you already received under that id; credits for joined data (`include=`) are never discounted.",
+"metered": true,
+"range": [
+1,
+42
+]
+},
+"GET tiktok/search/hashtag": {
+"credits": 1,
+"desc": "Search TikTok by hashtag",
+"dryRun": true,
+"label": "1-5 (metered): 1 credit per page. The default labels (sponsored, intent, niche) are free. label=mention, or label=intent with offer=, holds 4 extra credits and refunds down to 1 credit per started 25 posts that were newly judged: posts already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free. With `max_pages`, each page walked is billed at this price (a cached page is free). With `seen`, a page's price falls with its share of rows you already received under that id; credits for joined data (`include=`) are never discounted.",
+"metered": true,
+"perPage": 1,
+"range": [
+1,
+5
+]
+},
+"GET tiktok/search/music": {
+"credits": 1,
+"desc": "Search TikTok sounds",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tiktok/search/suggestions": {
+"credits": 1,
+"desc": "Get TikTok search suggestions",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tiktok/search/top": {
+"credits": 1,
+"desc": "TikTok top search results",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tiktok/search/users": {
+"credits": 1,
+"desc": "Search TikTok users",
+"dryRun": false,
+"label": "1-100 (metered): 1 credit for the page. include=profile holds 1 credit per row, at most 30 (or `limit`), and keeps only the rows filled from a fresh lookup, so a page is at most 31 credits; rows served from cache are free, unfilled rows are refunded, and a repeat within the cache window costs 0. country= holds 5 credits per requested in-country row (8 by default, at most 20) and keeps only the rows returned, so a miss is 0. The page is cached for 2 minutes and the per-account lookups for 15 minutes.",
+"metered": true,
+"range": [
+1,
+100
+]
+},
+"GET tiktok/similar": {
+"credits": 5,
+"desc": "List similar TikTok accounts",
+"dryRun": false,
+"label": "5 credits a call. An empty list is refunded, an unknown handle is a free 404, and the list is cached for 15 minutes, so a repeat within that window costs 0.",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET tiktok/song": {
+"credits": 1,
+"desc": "Get TikTok song details",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tiktok/song/videos": {
+"credits": 1,
+"desc": "List TikTok videos using a song",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tiktok/trending": {
+"credits": 5,
+"desc": "Get TikTok trending feed",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET tiktok/user/audience": {
+"credits": 5,
+"desc": "Get TikTok user audience demographics",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET tiktok/user/followers": {
+"credits": 1,
+"desc": "List TikTok user followers",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tiktok/user/following": {
+"credits": 1,
+"desc": "List TikTok user following",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tiktok/user/liked": {
+"credits": 1,
+"desc": "List the videos a TikTok account has liked",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tiktok/user/live": {
+"credits": 1,
+"desc": "Get TikTok user live stream",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tiktok/video/comment/replies": {
+"credits": 1,
+"desc": "List TikTok comment replies",
+"dryRun": true,
+"label": "1-5 (metered): 1 credit per page, with the default labels (sentiment, question, purchase_intent, complaint) included free. label=spam, toxic or low_quality holds 4 extra credits and refunds down to 1 credit per started 25 comments that were newly judged: comments already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 1,
+"range": [
+1,
+5
+]
+},
+"GET tiktok/video/screen-text": {
+"credits": 5,
+"desc": "Get TikTok video on-screen text",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET tiktok/videos/popular": {
+"credits": 1,
+"desc": "Read TikTok's own Top Videos board for the US, Japan, Vietnam, Thailand or Indonesia. Metered: 25 credits per board plus 1 per video returned",
+"dryRun": false,
+"label": "26-45 (metered): 25 credits per board plus 1 credit per video returned. The default limit of 20 holds 45 credits and settles to the videos actually returned; an empty board costs nothing.",
+"metered": true,
+"range": [
+26,
+45
+]
+},
+"GET tiktokshop/product": {
+"credits": 1,
+"desc": "Get TikTok Shop product details",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tiktokshop/product/reviews": {
+"credits": 1,
+"desc": "List TikTok Shop product reviews",
+"dryRun": true,
+"label": "1-5 (metered): 1 credit per page. The default labels (sentiment, issue) are free. label=reports, incentivized or injection holds 4 extra credits and refunds down to 1 credit per started 25 reviews that were newly judged (the first 100 reviews of a page are judged): reviews already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 1,
+"range": [
+1,
+5
+]
+},
+"GET tiktokshop/products": {
+"credits": 1,
+"desc": "List TikTok Shop products",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tiktokshop/sales": {
+"credits": 1,
+"desc": "TikTok Shop units sold and estimated sales per market",
+"dryRun": false,
+"label": "0-8 (metered): Metered, 0-8 credits: each market is one /v1/tiktokshop/search page billed at that endpoint's own price (1 credit), exactly as a direct call is billed. A market whose page found nothing or failed costs nothing, and a page served from cache is free. data.regions[].credits shows each market's charge and credits_used the total.",
+"metered": true,
+"range": [
+0,
+8
+]
+},
+"GET tiktokshop/search": {
+"credits": 1,
+"desc": "Search TikTok Shop products",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tiktokshop/user/showcase": {
+"credits": 1,
+"desc": "List TikTok user showcase products",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tripadvisor/attraction": {
+"credits": 1,
+"desc": "Get a TripAdvisor attraction",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tripadvisor/attraction/reviews": {
+"credits": 1,
+"desc": "Get TripAdvisor reviews for an attraction",
+"dryRun": true,
+"label": "1-5 (metered): 1 credit per page. The default labels (sentiment, issue) are free. label=reports, incentivized or injection holds 4 extra credits and refunds down to 1 credit per started 25 reviews that were newly judged (the first 100 reviews of a page are judged): reviews already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 1,
+"range": [
+1,
+5
+]
+},
+"GET tripadvisor/attractions": {
+"credits": 1,
+"desc": "Search TripAdvisor attractions and things to do",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tripadvisor/autocomplete": {
+"credits": 1,
+"desc": "Autocomplete TripAdvisor places",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tripadvisor/cruise": {
+"credits": 1,
+"desc": "Get a TripAdvisor cruise ship",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tripadvisor/cruise/reviews": {
+"credits": 1,
+"desc": "Get TripAdvisor reviews for a cruise ship",
+"dryRun": true,
+"label": "1-5 (metered): 1 credit per page. The default labels (sentiment, issue) are free. label=reports, incentivized or injection holds 4 extra credits and refunds down to 1 credit per started 25 reviews that were newly judged (the first 100 reviews of a page are judged): reviews already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 1,
+"range": [
+1,
+5
+]
+},
+"GET tripadvisor/cruises": {
+"credits": 1,
+"desc": "Search TripAdvisor cruises",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tripadvisor/experience-types": {
+"credits": 1,
+"desc": "List TripAdvisor experience types for a destination",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tripadvisor/hotel": {
+"credits": 1,
+"desc": "Get a TripAdvisor hotel",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tripadvisor/hotels": {
+"credits": 1,
+"desc": "Search TripAdvisor hotels",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tripadvisor/place": {
+"credits": 1,
+"desc": "Get a TripAdvisor place by URL",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tripadvisor/restaurant": {
+"credits": 1,
+"desc": "Get a TripAdvisor restaurant",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tripadvisor/restaurant/reviews": {
+"credits": 1,
+"desc": "Get TripAdvisor reviews for a restaurant",
+"dryRun": true,
+"label": "1-5 (metered): 1 credit per page. The default labels (sentiment, issue) are free. label=reports, incentivized or injection holds 4 extra credits and refunds down to 1 credit per started 25 reviews that were newly judged (the first 100 reviews of a page are judged): reviews already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 1,
+"range": [
+1,
+5
+]
+},
+"GET tripadvisor/restaurants": {
+"credits": 1,
+"desc": "Search TripAdvisor restaurants",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET tripadvisor/reviews": {
+"credits": 1,
+"desc": "Get TripAdvisor reviews for a place",
+"dryRun": true,
+"label": "1-5 (metered): 1 credit per page. The default labels (sentiment, issue) are free. label=reports, incentivized or injection holds 4 extra credits and refunds down to 1 credit per started 25 reviews that were newly judged (the first 100 reviews of a page are judged): reviews already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 1,
+"range": [
+1,
+5
+]
+},
+"GET tripadvisor/search": {
+"credits": 1,
+"desc": "Search TripAdvisor businesses & places",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET trustpilot/business-search": {
+"credits": 1,
+"desc": "Search Trustpilot businesses",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET trustpilot/reviews": {
+"credits": 5,
+"desc": "Get Trustpilot reviews for a business",
+"dryRun": true,
+"label": "5-9 (metered): 5 credits per page. The default labels (sentiment, issue) are free. label=reports, incentivized or injection holds 4 extra credits and refunds down to 1 credit per started 25 reviews that were newly judged (the first 100 reviews of a page are judged): reviews already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 5,
+"range": [
+5,
+9
+]
+},
+"GET truthsocial/post": {
+"credits": 1,
+"desc": "Get Truth Social post details",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET truthsocial/profile": {
+"credits": 1,
+"desc": "Get Truth Social user profile",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET truthsocial/user/posts": {
+"credits": 1,
+"desc": "List Truth Social user posts",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET twitch/clip": {
+"credits": 1,
+"desc": "Get Twitch clip details",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET twitch/profile": {
+"credits": 1,
+"desc": "Get Twitch streamer profile",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET twitch/user/schedule": {
+"credits": 1,
+"desc": "Get a Twitch user's stream schedule",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET twitch/user/videos": {
+"credits": 1,
+"desc": "List a Twitch user's videos",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET twitter/ai-search": {
+"credits": 5,
+"desc": "AI-powered X (Twitter) search via xAI Grok",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET twitter/community": {
+"credits": 1,
+"desc": "Get Twitter community details",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET twitter/community/tweets": {
+"credits": 1,
+"desc": "List Twitter community tweets",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET twitter/profile": {
+"credits": 1,
+"desc": "Get Twitter user profile",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET twitter/profile/full": {
+"credits": 5,
+"desc": "X (Twitter) profile, recent posts, and computed analytics in one call.",
+"dryRun": false,
+"label": "5 (override; tier standard)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET twitter/search/tweets": {
+"credits": 1,
+"desc": "Search Twitter tweets",
+"dryRun": true,
+"label": "1-9 (metered): 1 credit per page. Relevance against your query (by default, or with relevance=) is free. Adding relevant_to= holds 4 extra credits and refunds down to 1 credit per started 25 rows that were newly judged: rows already judged for the same topic are free, a page where nothing could be judged refunds the whole extra, and a cached page is free. The default labels (sponsored, intent, niche) are free. label=mention, or label=intent with offer=, holds 4 extra credits and refunds down to 1 credit per started 25 posts that were newly judged: posts already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free. With `max_pages`, each page walked is billed at this price (a cached page is free). With `seen`, a page's price falls with its share of rows you already received under that id; credits for joined data (`include=`) are never discounted.",
+"metered": true,
+"perPage": 1,
+"range": [
+1,
+9
+]
+},
+"GET twitter/search/users": {
+"credits": 1,
+"desc": "Search Twitter users",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET twitter/tweet": {
+"credits": 1,
+"desc": "Get Twitter tweet details",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET twitter/tweet/replies": {
+"credits": 1,
+"desc": "List Twitter tweet replies",
+"dryRun": true,
+"label": "1-5 (metered): 1 credit per page, with the default labels (sentiment, question, purchase_intent, complaint) included free. label=spam, toxic or low_quality holds 4 extra credits and refunds down to 1 credit per started 25 comments that were newly judged: comments already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 1,
+"range": [
+1,
+5
+]
+},
+"GET twitter/tweet/retweeters": {
+"credits": 1,
+"desc": "List Twitter tweet retweeters",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET twitter/tweet/transcript": {
+"credits": 10,
+"desc": "Get Twitter video transcript",
+"dryRun": false,
+"label": "10 (premium)",
+"metered": false,
+"range": [
+10,
+10
+]
+},
+"GET twitter/user/followers": {
+"credits": 1,
+"desc": "List Twitter user followers",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET twitter/user/following": {
+"credits": 1,
+"desc": "List Twitter user following",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET twitter/user/media": {
+"credits": 1,
+"desc": "List Twitter user media tweets",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET twitter/user/tweets": {
+"credits": 1,
+"desc": "List Twitter user tweets",
+"dryRun": true,
+"label": "1-5 (metered): 1 credit per page. The default labels (sponsored, intent, niche) are free. label=mention, or label=intent with offer=, holds 4 extra credits and refunds down to 1 credit per started 25 posts that were newly judged: posts already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 1,
+"range": [
+1,
+5
+]
+},
+"GET us_congress_trades/members": {
+"credits": 1,
+"desc": "List members of Congress who have disclosed trades",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET us_congress_trades/politician": {
+"credits": 1,
+"desc": "Get a politician's trading summary",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET us_congress_trades/politician/trades": {
+"credits": 1,
+"desc": "List trades for one politician",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET us_congress_trades/state/trades": {
+"credits": 1,
+"desc": "List trades from a state's congressional delegation",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET us_congress_trades/stats": {
+"credits": 1,
+"desc": "Dataset summary",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET us_congress_trades/stats/buy-sell": {
+"credits": 1,
+"desc": "Congressional buy vs sell ratio",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET us_congress_trades/stats/issuers": {
+"credits": 1,
+"desc": "Most-traded issuers in Congress",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET us_congress_trades/stats/party": {
+"credits": 1,
+"desc": "Compare trade counts by party",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET us_congress_trades/stats/politicians": {
+"credits": 1,
+"desc": "Most-active congressional traders",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET us_congress_trades/stats/reporting-gaps": {
+"credits": 1,
+"desc": "Politicians ranked by late STOCK Act filings",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET us_congress_trades/stats/sectors": {
+"credits": 1,
+"desc": "Trade counts by industry sector",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET us_congress_trades/stats/tickers": {
+"credits": 1,
+"desc": "Most-traded tickers in Congress",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET us_congress_trades/stats/unusual": {
+"credits": 1,
+"desc": "Tickers with unusual congressional activity",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET us_congress_trades/stats/volume": {
+"credits": 1,
+"desc": "Congressional trade volume over time",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET us_congress_trades/ticker": {
+"credits": 1,
+"desc": "Get congressional trading stats for a ticker",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET us_congress_trades/ticker/trades": {
+"credits": 1,
+"desc": "List congressional trades for a ticker",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET us_congress_trades/trades": {
+"credits": 1,
+"desc": "Search US Congress stock trades",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET us_congress_trades/trades/latest": {
+"credits": 1,
+"desc": "Latest US Congress trades (48 hours)",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET us_congress_trades/trades/recent": {
+"credits": 1,
+"desc": "Recent US Congress trades (7 days)",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET utility/capabilities": {
+"credits": 0,
+"desc": "List the parameters that work across endpoints",
+"dryRun": false,
+"label": "Free (0 credits)",
+"metered": false,
+"range": [
+0,
+0
+]
+},
+"GET utility/docs-search": {
+"credits": 0,
+"desc": "Search the docs",
+"dryRun": false,
+"label": "Free (0 credits)",
+"metered": false,
+"range": [
+0,
+0
+]
+},
+"GET utility/endpoint": {
+"credits": 0,
+"desc": "How to use any endpoint",
+"dryRun": false,
+"label": "Free (0 credits)",
+"metered": false,
+"range": [
+0,
+0
+]
+},
+"GET utility/endpoints": {
+"credits": 0,
+"desc": "List every available endpoint",
+"dryRun": false,
+"label": "Free (0 credits)",
+"metered": false,
+"range": [
+0,
+0
+]
+},
+"GET utility/estimate": {
+"credits": 0,
+"desc": "Quote the credit cost of a call or a plan",
+"dryRun": false,
+"label": "Free (0 credits)",
+"metered": false,
+"range": [
+0,
+0
+]
+},
+"GET utility/explain-error": {
+"credits": 0,
+"desc": "Explain a failed API response",
+"dryRun": false,
+"label": "Free (0 credits)",
+"metered": false,
+"range": [
+0,
+0
+]
+},
+"GET utility/find": {
+"credits": 0,
+"desc": "Find the endpoint for a task",
+"dryRun": false,
+"label": "Free (0 credits)",
+"metered": false,
+"range": [
+0,
+0
+]
+},
+"GET utility/llms": {
+"credits": 0,
+"desc": "AI-agent context payload",
+"dryRun": false,
+"label": "Free (0 credits)",
+"metered": false,
+"range": [
+0,
+0
+]
+},
+"GET utility/plan": {
+"credits": 0,
+"desc": "Plan the calls for a job",
+"dryRun": false,
+"label": "Free (0 credits)",
+"metered": false,
+"range": [
+0,
+0
+]
+},
+"GET utility/quickstart": {
+"credits": 0,
+"desc": "Get started in one call",
+"dryRun": false,
+"label": "Free (0 credits)",
+"metered": false,
+"range": [
+0,
+0
+]
+},
+"GET utility/recipes": {
+"credits": 0,
+"desc": "List task recipes with their cost",
+"dryRun": false,
+"label": "Free (0 credits)",
+"metered": false,
+"range": [
+0,
+0
+]
+},
+"GET utility/resolve": {
+"credits": 0,
+"desc": "Identify a URL, handle or id",
+"dryRun": false,
+"label": "Free (0 credits)",
+"metered": false,
+"range": [
+0,
+0
+]
+},
+"GET walmart/category": {
+"credits": 5,
+"desc": "Browse Walmart products in a category",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET walmart/offers": {
+"credits": 5,
+"desc": "Get every seller offering a Walmart product",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET walmart/product": {
+"credits": 5,
+"desc": "Get a Walmart product by id",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET walmart/reviews": {
+"credits": 5,
+"desc": "Get Walmart product reviews",
+"dryRun": true,
+"label": "5-9 (metered): 5 credits per page. The default labels (sentiment, issue) are free. label=reports, incentivized or injection holds 4 extra credits and refunds down to 1 credit per started 25 reviews that were newly judged (the first 100 reviews of a page are judged): reviews already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 5,
+"range": [
+5,
+9
+]
+},
+"GET walmart/search": {
+"credits": 5,
+"desc": "Search Walmart products by keyword",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET wayfair/product": {
+"credits": 5,
+"desc": "Get a Wayfair product by SKU",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET wayfair/reviews": {
+"credits": 5,
+"desc": "Get Wayfair product reviews",
+"dryRun": true,
+"label": "5-9 (metered): 5 credits per page. The default labels (sentiment, issue) are free. label=reports, incentivized or injection holds 4 extra credits and refunds down to 1 credit per started 25 reviews that were newly judged (the first 100 reviews of a page are judged): reviews already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 5,
+"range": [
+5,
+9
+]
+},
+"GET wayfair/search": {
+"credits": 5,
+"desc": "Search Wayfair products",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET web/extract": {
+"credits": 5,
+"desc": "Extract structured data from a web page",
+"dryRun": false,
+"label": "5 (metered): A flat 5 credits. It runs through the metered pricer for consistency with the rest of the web surface, but nothing in your query changes the charge",
+"metered": true,
+"range": [
+5,
+5
+]
+},
+"GET web/jobs": {
+"credits": 0,
+"desc": "List async web jobs",
+"dryRun": false,
+"label": "0 (override; tier standard)",
+"metered": false,
+"range": [
+0,
+0
+]
+},
+"GET web/jobs/{job_id}": {
+"credits": 0,
+"desc": "Get an async web job",
+"dryRun": false,
+"label": "0 (override; tier standard)",
+"metered": false,
+"range": [
+0,
+0
+]
+},
+"GET web/map": {
+"credits": 1,
+"desc": "Map URLs on a site",
+"dryRun": false,
+"label": "1 (override; tier standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET web/monitors": {
+"credits": 0,
+"desc": "List web monitors",
+"dryRun": false,
+"label": "0 (override; tier standard)",
+"metered": false,
+"range": [
+0,
+0
+]
+},
+"GET web/monitors/{monitor_id}": {
+"credits": 0,
+"desc": "Get a web monitor",
+"dryRun": false,
+"label": "0 (override; tier standard)",
+"metered": false,
+"range": [
+0,
+0
+]
+},
+"GET web/monitors/{monitor_id}/checks": {
+"credits": 0,
+"desc": "List web monitor checks",
+"dryRun": false,
+"label": "0 (override; tier standard)",
+"metered": false,
+"range": [
+0,
+0
+]
+},
+"GET web/scrape": {
+"credits": 1,
+"desc": "Scrape a web page",
+"dryRun": false,
+"label": "1-5 (metered): 1 credit for a standard scrape. It rises to a flat 5 when the fetch needs more than a plain request: `proxy=auto`, `proxy=enhanced`, or `pdf_parse=true`. Nothing else moves the price, so screenshots, tag filters, `wait_for` and a mobile viewport are all included in the 1 credit",
+"metered": true,
+"range": [
+1,
+5
+]
+},
+"GET web/search": {
+"credits": 2,
+"desc": "Search the web",
+"dryRun": false,
+"label": "2-120 (metered): 2 credits per 10 results, so `limit` up to 10 costs 2, 11-20 costs 4, and the 100 maximum costs 20. `include_content=true` adds 1 credit per result, because it scrapes each result page as well as reading the SERP row - that is what takes a 100-result content search to the 120-credit ceiling. The hold settles down to the work actually done",
+"metered": true,
+"range": [
+2,
+120
+]
+},
+"GET web/sessions": {
+"credits": 0,
+"desc": "List interactive web sessions",
+"dryRun": false,
+"label": "0 (override; tier standard)",
+"metered": false,
+"range": [
+0,
+0
+]
+},
+"GET web/sessions/{session_id}": {
+"credits": 0,
+"desc": "Get an interactive web session",
+"dryRun": false,
+"label": "0 (override; tier standard)",
+"metered": false,
+"range": [
+0,
+0
+]
+},
+"GET xiaohongshu/post": {
+"credits": 5,
+"desc": "Get a Xiaohongshu note",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET xiaohongshu/post/comments": {
+"credits": 5,
+"desc": "Get Xiaohongshu note comments",
+"dryRun": false,
+"label": "5-100 (metered): 5 credits per row RETURNED. The call holds `limit x 5` up front and settles down to the rows actually delivered.",
+"metered": true,
+"range": [
+5,
+100
+]
+},
+"GET xiaohongshu/profile": {
+"credits": 5,
+"desc": "Get a Xiaohongshu creator",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET xiaohongshu/profile/posts": {
+"credits": 5,
+"desc": "List a Xiaohongshu creator's notes",
+"dryRun": false,
+"label": "5-100 (metered): 5 credits per row RETURNED. The call holds `limit x 5` up front and settles down to the rows actually delivered.",
+"metered": true,
+"range": [
+5,
+100
+]
+},
+"GET xiaohongshu/search": {
+"credits": 5,
+"desc": "Search Xiaohongshu notes",
+"dryRun": false,
+"label": "5-100 (metered): 5 credits per row RETURNED. The call holds `limit x 5` up front and settles down to the rows actually delivered.",
+"metered": true,
+"range": [
+5,
+100
+]
+},
+"GET xiaohongshu/trending": {
+"credits": 5,
+"desc": "Get the Xiaohongshu hot search board",
+"dryRun": false,
+"label": "5-100 (metered): 5 credits per row RETURNED. The call holds `limit x 5` up front and settles down to the rows actually delivered.",
+"metered": true,
+"range": [
+5,
+100
+]
+},
+"GET yelp/business/info": {
+"credits": 1,
+"desc": "Get a Yelp business by encid",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET yelp/business/reviews": {
+"credits": 5,
+"desc": "Get Yelp reviews for a business",
+"dryRun": true,
+"label": "5-9 (metered): 5 credits per page. The default labels (sentiment, issue) are free. label=reports, incentivized or injection holds 4 extra credits and refunds down to 1 credit per started 25 reviews that were newly judged (the first 100 reviews of a page are judged): reviews already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 5,
+"range": [
+5,
+9
+]
+},
+"GET yelp/search": {
+"credits": 1,
+"desc": "Search Yelp businesses",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET yelp/search/full": {
+"credits": 1,
+"desc": "Search Yelp businesses with full cards",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET yelp/search/suggestions": {
+"credits": 1,
+"desc": "Get Yelp search suggestions",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET youtube/channel": {
+"credits": 1,
+"desc": "Get YouTube channel info",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET youtube/channel/about": {
+"credits": 25,
+"desc": "Get a YouTube channel's contact email and country. Try the 1-credit youtube/channel first: it already carries the email for some channels, and you are charged here only when an address is returned. A first read of an address behind the View email address button can take up to 5 minutes, so set your HTTP timeout to at least 300s; on a 503, retry after the Retry-After seconds",
+"dryRun": false,
+"label": "25 (override; tier premium)",
+"metered": false,
+"range": [
+25,
+25
+]
+},
+"GET youtube/channel/community-posts": {
+"credits": 1,
+"desc": "List a YouTube channel's community posts",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET youtube/channel/lives": {
+"credits": 1,
+"desc": "List a YouTube channel's live streams",
+"dryRun": false,
+"label": "1-7 (metered): 1 credit for the page. include=engagement adds 1 credit per distinct stream filled, at most 5 per page; include=channel adds 1 credit for the single channel lookup the page shares. Anything that could not be filled is refunded, so a page with both is at most 7 credits, and a repeat of the same call within the cache window costs 0.",
+"metered": true,
+"range": [
+1,
+7
+]
+},
+"GET youtube/channel/playlists": {
+"credits": 1,
+"desc": "List a YouTube channel's playlists",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET youtube/channel/shorts": {
+"credits": 1,
+"desc": "List YouTube channel shorts",
+"dryRun": false,
+"label": "1-2 (metered): 1 credit for the page. include=channel adds 1 credit for the single channel lookup the page shares, refunded if the channel could not be read and free when it was looked up recently.",
+"metered": true,
+"range": [
+1,
+2
+]
+},
+"GET youtube/channel/videos": {
+"credits": 1,
+"desc": "List YouTube channel videos",
+"dryRun": false,
+"label": "1-2 (metered): 1 credit for the page. include=channel adds 1 credit for the single channel lookup the page shares, refunded if the channel could not be read and free when it was looked up recently.",
+"metered": true,
+"range": [
+1,
+2
+]
+},
+"GET youtube/community-post": {
+"credits": 1,
+"desc": "Get YouTube community post",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET youtube/playlist": {
+"credits": 1,
+"desc": "Get YouTube playlist",
+"dryRun": false,
+"label": "1-11 (metered): 1 credit for the page. include=engagement and include=channel each add 1 credit per distinct video or channel filled, at most 5 per join on a page of up to 50 rows, so a page with both is at most 11 credits; ids that could not be filled are refunded, and a repeat of the same call within the cache window costs 0.",
+"metered": true,
+"range": [
+1,
+11
+]
+},
+"GET youtube/playlist/items": {
+"credits": 1,
+"desc": "List the videos in a YouTube playlist",
+"dryRun": false,
+"label": "1-11 (metered): 1 credit for the page. include=engagement and include=channel each add 1 credit per distinct video or channel filled, at most 5 per join on a page of up to 50 rows, so a page with both is at most 11 credits; ids that could not be filled are refunded, and a repeat of the same call within the cache window costs 0.",
+"metered": true,
+"range": [
+1,
+11
+]
+},
+"GET youtube/profile/full": {
+"credits": 5,
+"desc": "YouTube profile, recent posts, and computed analytics in one call.",
+"dryRun": false,
+"label": "5 (override; tier standard)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET youtube/search": {
+"credits": 1,
+"desc": "Search YouTube",
+"dryRun": true,
+"label": "1-19 (metered): 1 credit for the page. include=engagement and include=channel each add 1 credit per distinct video or channel filled, at most 5 per join on a page of up to 50 rows, so a page with both is at most 11 credits; ids that could not be filled are refunded, and a repeat of the same call within the cache window costs 0. Relevance against your query (by default, or with relevance=) is free. Adding relevant_to= holds 4 extra credits and refunds down to 1 credit per started 25 rows that were newly judged: rows already judged for the same topic are free, a page where nothing could be judged refunds the whole extra, and a cached page is free. The default labels (sponsored, intent, niche) are free. label=mention, or label=intent with offer=, holds 4 extra credits and refunds down to 1 credit per started 25 posts that were newly judged: posts already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free. With `max_pages`, each page walked is billed at this price (a cached page is free). With `seen`, a page's price falls with its share of rows you already received under that id; credits for joined data (`include=`) are never discounted.",
+"metered": true,
+"range": [
+1,
+19
+]
+},
+"GET youtube/search/advanced": {
+"credits": 1,
+"desc": "Advanced YouTube video search",
+"dryRun": false,
+"label": "1-11 (metered): 1 credit for the search page. `includeExtras=true` adds a flat 5 credits for the single hydration call that fills view, like and comment counts and `duration_seconds` on the whole page. The increment never repeats: the page caps at 50 results, which one hydration call covers, so a hydrated page of 50 costs 6 credits and so does a hydrated page of 5. include=channel adds 1 credit per distinct channel filled, at most 5 per page, with channels that could not be read refunded, so a page with both is at most 11 With `max_pages`, each page walked is billed at this price (a cached page is free). With `seen`, a page's price falls with its share of rows you already received under that id; credits for joined data (`include=`) are never discounted.",
+"metered": true,
+"range": [
+1,
+11
+]
+},
+"GET youtube/search/hashtag": {
+"credits": 1,
+"desc": "Search YouTube by hashtag",
+"dryRun": false,
+"label": "1-11 (metered): 1 credit for the page. include=engagement and include=channel each add 1 credit per distinct video or channel filled, at most 5 per join on a page of up to 50 rows, so a page with both is at most 11 credits; ids that could not be filled are refunded, and a repeat of the same call within the cache window costs 0. With `max_pages`, each page walked is billed at this price (a cached page is free). With `seen`, a page's price falls with its share of rows you already received under that id; credits for joined data (`include=`) are never discounted.",
+"metered": true,
+"range": [
+1,
+11
+]
+},
+"GET youtube/search/suggestions": {
+"credits": 1,
+"desc": "Get YouTube search suggestions",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET youtube/shorts/trending": {
+"credits": 5,
+"desc": "Get trending YouTube shorts",
+"dryRun": false,
+"label": "5-15 (metered): 5 credits for the feed. include=channel adds 1 credit per distinct channel filled, at most 5 per 50 channels (the feed carries about 70, so at most 10); channels that could not be read are refunded, and a repeat of the same call within the cache window costs 0.",
+"metered": true,
+"range": [
+5,
+15
+]
+},
+"GET youtube/video": {
+"credits": 1,
+"desc": "Get YouTube video details",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET youtube/video/audio": {
+"credits": 5,
+"desc": "Get a YouTube video's audio file streams",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET youtube/video/comment/replies": {
+"credits": 1,
+"desc": "List YouTube comment replies",
+"dryRun": true,
+"label": "1-5 (metered): 1 credit per page, with the default labels (sentiment, question, purchase_intent, complaint) included free. label=spam, toxic or low_quality holds 4 extra credits and refunds down to 1 credit per started 25 comments that were newly judged: comments already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 1,
+"range": [
+1,
+5
+]
+},
+"GET youtube/video/comments": {
+"credits": 1,
+"desc": "List YouTube video comments",
+"dryRun": true,
+"label": "1-5 (metered): 1 credit per page, with the default labels (sentiment, question, purchase_intent, complaint) included free. label=spam, toxic or low_quality holds 4 extra credits and refunds down to 1 credit per started 25 comments that were newly judged: comments already labelled are free, a page where nothing could be judged refunds the whole extra, and a cached page is free.",
+"metered": true,
+"perPage": 1,
+"range": [
+1,
+5
+]
+},
+"GET youtube/video/files": {
+"credits": 5,
+"desc": "Get a YouTube video's video file streams",
+"dryRun": false,
+"label": "5 (advanced)",
+"metered": false,
+"range": [
+5,
+5
+]
+},
+"GET youtube/video/sponsors": {
+"credits": 10,
+"desc": "Detect sponsors of a YouTube video",
+"dryRun": false,
+"label": "10 (premium)",
+"metered": false,
+"range": [
+10,
+10
+]
+},
+"GET youtube/video/subtitles": {
+"credits": 1,
+"desc": "Get a YouTube video's subtitle files",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET youtube/video/thumbnails": {
+"credits": 1,
+"desc": "Get a YouTube video's thumbnail files",
+"dryRun": false,
+"label": "1 (standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"GET youtube/video/transcript": {
+"credits": 3,
+"desc": "Get YouTube video transcript",
+"dryRun": false,
+"label": "3 (override; tier standard)",
+"metered": false,
+"range": [
+3,
+3
+]
+},
+"GET youtube/videos/trending": {
+"credits": 1,
+"desc": "Get trending YouTube videos",
+"dryRun": false,
+"label": "1-6 (metered): 1 credit for the page. include=channel adds 1 credit per distinct channel filled, at most 5 per 50 channels; channels that could not be read are refunded, and a repeat of the same call within the cache window costs 0.",
+"metered": true,
+"range": [
+1,
+6
+]
+},
+"PATCH web/monitors/{monitor_id}": {
+"credits": 0,
+"desc": "Update a web monitor",
+"dryRun": false,
+"label": "0 (override; tier standard)",
+"metered": false,
+"range": [
+0,
+0
+]
 },
 "POST prism/comment-lookup": {
-"note": "2cr TikTok, 5cr Instagram, more with deep_scan",
-"unit": "item",
-"worst": 5
+"credits": 2,
+"desc": "Re-check up to 25 known comments in one call: per-item results, failed items refunded.",
+"dryRun": false,
+"label": "2-100 (metered): 2 credits per found TikTok item and 5 per found Instagram item, raised by `deep_scan`. Up to 25 items per call: the whole batch holds at most 100 credits up front and refunds every not_found, errored and deferred item",
+"metered": true,
+"range": [
+2,
+100
+]
+},
+"POST prism/jobs": {
+"credits": 1,
+"desc": "Up to 5,000 profiles or post URLs in one background job, at the batch endpoints' own prices.",
+"dryRun": false,
+"label": "The same price per row as the batch endpoint the job runs: prism/profiles (1 credit per profile on most platforms, 5 on LinkedIn, plus 1 per posts page with include: \"posts\") or prism/post-stats (its per-URL price). The call holds the whole job's worst case up front, answered in credits_used on the 202, and refunds every row that is not ok when the job completes. Reading the job is free.",
+"metered": false,
+"range": null
 },
 "POST prism/post-stats": {
-"note": "1cr most platforms, 5cr Instagram/LinkedIn",
-"unit": "successful URL",
-"worst": 5
+"credits": 1,
+"desc": "Up to 100 mixed-platform post URLs → current engagement per URL, failed URLs refunded.",
+"dryRun": false,
+"label": "1-500 (metered): 1 credit per successful URL on most platforms, 2 on Instagram and 5 on LinkedIn, charged at each URL's own platform rate. Up to 100 URLs per call: the call holds the summed worst case up front (a 100-URL Instagram batch holds 200) and refunds every dead, errored and unsupported URL, so you pay for exactly the rows that returned counts",
+"metered": true,
+"range": [
+1,
+500
+]
 },
 "POST prism/profiles": {
-"note": "1cr most platforms, 5cr LinkedIn",
-"unit": "item",
-"worst": 5
+"credits": 1,
+"desc": "Up to 50 (platform, handle) pairs → one canonical Author per row, failed handles refunded.",
+"dryRun": false,
+"label": "1-250 (metered): 1 credit per successful row on most platforms and 5 on LinkedIn, charged at each handle's own platform tier. Up to 50 items per call: the call holds the summed worst case up front and refunds every not_found, unsupported, errored and deferred row. With include: \"posts\" (up to 25 items) a row also costs its post list page, 1 credit, charged only when that page came back with posts",
+"metered": true,
+"range": [
+1,
+250
+]
+},
+"POST web/agent": {
+"credits": 25,
+"desc": "Start an async web agent job",
+"dryRun": false,
+"label": "25 (override; tier premium)",
+"metered": false,
+"range": [
+25,
+25
+]
+},
+"POST web/batch-scrape": {
+"credits": 1,
+"desc": "Start an async batch scrape",
+"dryRun": false,
+"label": "1 credit per URL submitted, held up front and refunded down to the URLs actually scraped when the job settles",
+"metered": false,
+"range": null
+},
+"POST web/crawl": {
+"credits": 1,
+"desc": "Start an async web crawl",
+"dryRun": false,
+"label": "1-10000 (metered): 1 credit per page crawled. Submitting holds `limit` credits up front (default limit 10, max 10,000) and the unused portion is refunded when the job settles",
+"metered": true,
+"perPage": 1,
+"range": [
+1,
+10000
+]
+},
+"POST web/monitors": {
+"credits": 0,
+"desc": "Create a web monitor",
+"dryRun": false,
+"label": "0 credits to create. Each scheduled check then bills its upstream cost plus 1 credit for orchestration, repeating on `cadence_minutes` until you pause or delete the monitor (a 5-minute cadence is 288 checks a day)",
+"metered": false,
+"range": null
+},
+"POST web/parse": {
+"credits": 1,
+"desc": "Parse an uploaded document",
+"dryRun": false,
+"label": "1 (override; tier standard)",
+"metered": false,
+"range": [
+1,
+1
+]
+},
+"POST web/sessions": {
+"credits": 5,
+"desc": "Create an interactive web session",
+"dryRun": false,
+"label": "20 credits per browser-hour, minimum 5. The hold is taken from `ttl_seconds` when the session is created (60s default = 5, the 3,600s maximum = 20) and settled when it closes",
+"metered": false,
+"range": null
+},
+"POST web/sessions/{session_id}/execute": {
+"credits": 0,
+"desc": "Execute an interaction in a web session",
+"dryRun": false,
+"label": "0 (override; tier standard)",
+"metered": false,
+"range": [
+0,
+0
+]
 },
 "POST youtube/channels": {
-"note": "1000 ids = 20 chunks = 100cr",
-"unit": "50-id chunk",
-"worst": 5
+"credits": 5,
+"desc": "Batch get YouTube channel details (up to 1000)",
+"dryRun": false,
+"label": "5-100 (metered): 5 credits per 50-id chunk, so a 50-id batch is 5 credits and the 1,000-id maximum is 100. Batching is what makes this cheap: the same 1,000 channels fetched one at a time through GET /v1/youtube/channel cost 1,000 credits. A chunk is charged whether or not every id in it resolves, so there is no per-id refund; a call that resolves nothing at all is refunded in full",
+"metered": true,
+"range": [
+5,
+100
+]
 },
 "POST youtube/transcripts": {
-"note": "verified live 08.08.26: 1 row = 3cr",
-"unit": "successful video",
-"worst": 3
+"credits": 3,
+"desc": "Up to 100 YouTube video ids → one transcript per row, failed ids refunded.",
+"dryRun": false,
+"label": "3-300 (metered): 3 credits per successful transcript. Up to 100 ids per call: the call holds ids × 3 up front (a full batch holds 300) and refunds every not_found, errored and deferred row",
+"metered": true,
+"range": [
+3,
+300
+]
 },
 "POST youtube/videos": {
-"note": "1000 ids = 20 chunks = 100cr",
-"unit": "50-id chunk",
-"worst": 5
+"credits": 5,
+"desc": "Batch get YouTube video details (up to 1000)",
+"dryRun": false,
+"label": "5-100 (metered): 5 credits per 50-id chunk, so a 50-id batch is 5 credits and the 1,000-id maximum is 100. Batching is what makes this cheap: the same 1,000 videos fetched one at a time through GET /v1/youtube/video cost 1,000 credits. A chunk is charged whether or not every id in it resolves, so there is no per-id refund; a call that resolves nothing at all is refunded in full",
+"metered": true,
+"range": [
+5,
+100
+]
+},
+"_conditional": {
+"GET google/company/ads": [
+{
+"credits": 25,
+"note": "openapi get_ad_details param: 'Set to true to get the ad details. Will cost 25 credits.' Base is 5. NOT measured — the 08.23.26 sweep billed the 5cr base only. Recorded in findings.md:885 as a conditional-price instance",
+"param": "get_ad_details",
+"value": "true"
 }
+],
+"GET instagram/comment": [
+{
+"credits": 15,
+"note": "openapi deep_scan param: 'Bills 15 credits instead of 5.' Confirmed by measurement 08.23.26 (endpoint-sweep/conditionals-a: base 5 -> 15)",
+"param": "deep_scan",
+"value": "true"
 }
+],
+"GET tiktok/comment": [
+{
+"credits": 6,
+"note": "openapi deep_scan param: 'Bills 6 credits instead of 2.' NOT measured — the 08.23.26 sweep only billed the 2cr base; this number is the vendor's",
+"param": "deep_scan",
+"value": "true"
+}
+]
+},
+"_gated": {
+"GET facebook/adlibrary/ad/transcript": {
+"cheaper": "pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself",
+"credits": 10,
+"unit": "ad"
+},
+"GET facebook/post/transcript": {
+"cheaper": "pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself",
+"credits": 10,
+"unit": "post"
+},
+"GET instagram/media/transcript": {
+"cheaper": "pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself",
+"credits": 10,
+"unit": "media"
+},
+"GET linkedin/post/transcript": {
+"cheaper": "pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself",
+"credits": 10,
+"unit": "post"
+},
+"GET reddit/post/transcript": {
+"cheaper": "pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself",
+"credits": 10,
+"unit": "post"
+},
+"GET rumble/video/transcript": {
+"cheaper": "pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself",
+"credits": 10,
+"unit": "video"
+},
+"GET tiktok/post/transcript": {
+"cheaper": "pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself",
+"credits": 10,
+"unit": "post"
+},
+"GET twitter/tweet/transcript": {
+"cheaper": "pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself",
+"credits": 10,
+"unit": "tweet"
+},
+"GET youtube/video/transcript": {
+"cheaper": "GET youtube/video/subtitles — 1 credit, the same words straight off the caption track",
+"credits": 3,
+"unit": "video"
+}
+},
+"_platforms": {
+"aliexpress": {
+"category": "research",
+"endpoints": 9
+},
+"amazon": {
+"category": "social_media",
+"endpoints": 8
+},
+"app_store": {
+"category": "research",
+"endpoints": 9
+},
+"apple_music": {
+"category": "social_media",
+"endpoints": 5
+},
+"bluesky": {
+"category": "social_media",
+"endpoints": 4
+},
+"content_analysis": {
+"category": "research",
+"endpoints": 10
+},
+"douyin": {
+"category": "social_media",
+"endpoints": 8
+},
+"ebay": {
+"category": "research",
+"endpoints": 2
+},
+"economy": {
+"category": "research",
+"endpoints": 5
+},
+"etsy": {
+"category": "research",
+"endpoints": 4
+},
+"facebook": {
+"category": "social_media",
+"endpoints": 29
+},
+"finance": {
+"category": "research",
+"endpoints": 8
+},
+"g2": {
+"category": "research",
+"endpoints": 7
+},
+"github": {
+"category": "research",
+"endpoints": 12
+},
+"google": {
+"category": "social_media",
+"endpoints": 11
+},
+"google_news": {
+"category": "research",
+"endpoints": 1
+},
+"google_play": {
+"category": "research",
+"endpoints": 9
+},
+"google_shopping": {
+"category": "research",
+"endpoints": 5
+},
+"google_trends": {
+"category": "research",
+"endpoints": 3
+},
+"gumtree": {
+"category": "research",
+"endpoints": 11
+},
+"hackernews": {
+"category": "research",
+"endpoints": 4
+},
+"hm": {
+"category": "research",
+"endpoints": 6
+},
+"home_depot": {
+"category": "research",
+"endpoints": 4
+},
+"instagram": {
+"category": "social_media",
+"endpoints": 38
+},
+"jobs": {
+"category": "research",
+"endpoints": 11
+},
+"kick": {
+"category": "social_media",
+"endpoints": 1
+},
+"klarna": {
+"category": "research",
+"endpoints": 18
+},
+"kohls": {
+"category": "research",
+"endpoints": 5
+},
+"komi": {
+"category": "social_media",
+"endpoints": 1
+},
+"kwai": {
+"category": "social_media",
+"endpoints": 3
+},
+"linkbio": {
+"category": "social_media",
+"endpoints": 1
+},
+"linkedin": {
+"category": "social_media",
+"endpoints": 68
+},
+"linkme": {
+"category": "social_media",
+"endpoints": 1
+},
+"linktree": {
+"category": "social_media",
+"endpoints": 1
+},
+"naver": {
+"category": "social_media",
+"endpoints": 14
+},
+"on_page": {
+"category": "research",
+"endpoints": 1
+},
+"perplexity": {
+"category": "research",
+"endpoints": 1
+},
+"pillar": {
+"category": "social_media",
+"endpoints": 1
+},
+"pinterest": {
+"category": "social_media",
+"endpoints": 6
+},
+"polymarket": {
+"category": "research",
+"endpoints": 1
+},
+"prism": {
+"category": "research",
+"endpoints": 46
+},
+"producthunt": {
+"category": "research",
+"endpoints": 1
+},
+"quora": {
+"category": "social_media",
+"endpoints": 7
+},
+"reddit": {
+"category": "social_media",
+"endpoints": 14
+},
+"rumble": {
+"category": "social_media",
+"endpoints": 5
+},
+"search": {
+"category": "research",
+"endpoints": 5
+},
+"sephora": {
+"category": "research",
+"endpoints": 11
+},
+"snapchat": {
+"category": "social_media",
+"endpoints": 2
+},
+"spotify": {
+"category": "social_media",
+"endpoints": 6
+},
+"target": {
+"category": "research",
+"endpoints": 5
+},
+"tavily": {
+"category": "research",
+"endpoints": 4
+},
+"telegram": {
+"category": "social_media",
+"endpoints": 3
+},
+"threads": {
+"category": "social_media",
+"endpoints": 6
+},
+"tiktok": {
+"category": "social_media",
+"endpoints": 37
+},
+"tiktokshop": {
+"category": "social_media",
+"endpoints": 6
+},
+"tripadvisor": {
+"category": "research",
+"endpoints": 16
+},
+"trustpilot": {
+"category": "research",
+"endpoints": 2
+},
+"truthsocial": {
+"category": "social_media",
+"endpoints": 3
+},
+"twitch": {
+"category": "social_media",
+"endpoints": 4
+},
+"twitter": {
+"category": "social_media",
+"endpoints": 15
+},
+"us_congress_trades": {
+"category": "research",
+"endpoints": 19
+},
+"utility": {
+"category": "social_media",
+"endpoints": 12
+},
+"walmart": {
+"category": "research",
+"endpoints": 5
+},
+"wayfair": {
+"category": "research",
+"endpoints": 3
+},
+"web": {
+"category": "research",
+"endpoints": 22
+},
+"xiaohongshu": {
+"category": "social_media",
+"endpoints": 6
+},
+"yelp": {
+"category": "research",
+"endpoints": 5
+},
+"youtube": {
+"category": "social_media",
+"endpoints": 29
+}
+},
+"_unpriced": [
+"cohort-queries/",
+"cohorts"
+]
 }
