@@ -125,6 +125,12 @@ export function hhmm(t: number): string {
   return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
+/** Show the band when a chat opens or reopens: only if its spend record says this chat already used Higgsfield
+ *  (a picked cap, or money spent). An unreadable record, or a folder without Higgsfield, stays silent. */
+export function bandOnStart(status: any, err: string): boolean {
+  return !err && !!status && status.ok !== false && (!!status.session_cap_set || Number(status.session_spent) > 0)
+}
+
 export type Step = { kind: 'pass' } | { kind: 'set'; usd: number } | { kind: 'refuse' }
 
 /** What the mod does with a paid submit. It refuses only on the person's explicit Not now; a closed box, no

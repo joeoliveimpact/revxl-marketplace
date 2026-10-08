@@ -22,6 +22,11 @@ test('E1: a Bash submit with no picked cap asks once; $10 sets this chat cap and
   on('ui.invalidate', async () => ({ value: undefined }))
   on('ui.log', async () => ({ value: undefined }))
   on('ui.toast', async () => ({ value: undefined }))
+  const notes: string[] = []
+  on('session.append', async ($, e, next) => {
+    if (e.door === 'note') notes.push(e.message.content.map((b: any) => b.text).join(''))
+    return next(e)
+  })
   on('tool.call', { tool: 'AskUserQuestion' }, async ($, e) => {
     asked++
     return { result: { questions: e.questions, answers: { [e.questions[0]!.question]: '$10' } } }
@@ -37,4 +42,5 @@ test('E1: a Bash submit with no picked cap asks once; $10 sets this chat cap and
   expect(runs.some(a => a.endsWith('/scripts/ledger.py session-cap set sid-e1 10.00'))).toBe(true)
   expect(reached).toBe(true)
   expect(r.deny).toBeUndefined()
+  expect(notes).toEqual(['Higgsfield session cap set to $10.00 by the client.'])   // the model is told
 })

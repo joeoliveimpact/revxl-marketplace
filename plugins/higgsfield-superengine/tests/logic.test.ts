@@ -1,6 +1,6 @@
 import { test, expect } from 'claude-code/testing'
 import { SUBMIT_RE, USE_RE, capFromAnswer, meterColor, ratioOf, esc, pythonOk, logDays, dotGroup, parseJson, modelOf, kindOf,
-  jobsFromLog, hhmm, submitStep } from '../hooks/mod/logic'
+  jobsFromLog, hhmm, submitStep, bandOnStart } from '../hooks/mod/logic'
 
 test('cap box answers: buttons, typed amounts, and anything else is Not now', () => {
   expect(capFromAnswer('$5')).toBe(5)
@@ -133,4 +133,13 @@ test('submitStep: the mod refuses only on a Not now click; everything else is th
   expect(submitStep(noCap, '', 'Not now')).toEqual({ kind: 'refuse' })                             // S3 the explicit click
   for (const a of [undefined, '', 'ten', '$0']) expect(submitStep(noCap, '', a)).toEqual({ kind: 'pass' })  // S4 closed / junk
   expect(submitStep(null, 'the spend record gave no answer', '$5')).toEqual({ kind: 'pass' })      // S5 ledger unreadable
+})
+
+test('bandOnStart: a reopened chat shows the band only if it already picked a cap or spent', () => {
+  expect(bandOnStart({ ok: true, session_cap_set: true, session_spent: 0 }, '')).toBe(true)        // B1 picked cap
+  expect(bandOnStart({ ok: true, session_cap_set: false, session_spent: 0.08 }, '')).toBe(true)    // B2 spent, no pick
+  expect(bandOnStart({ ok: true, session_cap_set: false, session_spent: 0 }, '')).toBe(false)      // B3 untouched chat
+  expect(bandOnStart(null, 'Higgsfield setup is not finished in this folder')).toBe(false)          // B4 not a Higgsfield folder
+  expect(bandOnStart({ ok: false, session_cap_set: true, session_spent: 1 }, 'bad')).toBe(false)   // B5 unreadable record
+  expect(bandOnStart({ ok: true }, '')).toBe(false)                                                  // B6 fields missing
 })

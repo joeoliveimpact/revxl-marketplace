@@ -1,6 +1,6 @@
 import type { Register } from 'claude-code'
 import { SUBMIT_RE, USE_RE, meterColor, ratioOf, esc, pythonOk, logDays, dotGroup, parseJson, jobsFromLog, hhmm,
-  submitStep, type Job } from './logic'
+  submitStep, bandOnStart, type Job } from './logic'
 
 const PANE = 'hf-details'
 const ASK = 'Higgsfield: how much can Claude spend in this session without asking you each time?'
@@ -46,6 +46,13 @@ async function refresh($: any) {
   $.ui.invalidate('ui.render')
 }
 
+/** A reopened chat that already used Higgsfield gets its band back without waiting for the next command.
+ *  No higgsfield/.python here: ledgerRun throws before spawning anything, so nothing shows. */
+async function startBand($: any) {
+  await refresh($)
+  if (bandOnStart(st, err)) { used = true; $.ui.invalidate('ui.render') }
+}
+
 /** The figures the client sees: the chat's picked cap, else the 24 h limit (same rule as the guard and the quote). */
 function figures(s: any) {
   const picked = !!s?.session_cap_set
@@ -68,7 +75,8 @@ async function setCap($: any, usd: number): Promise<boolean> {
   } catch {
     return false
   }
-  $.ui.log(`Higgsfield session cap set to $${usd.toFixed(2)} by the client.`)
+  const note = `Higgsfield session cap set to $${usd.toFixed(2)} by the client.`
+  await $.session.append({ message: { type: 'user', content: [{ type: 'text', text: note }] } }).catch(() => $.ui.log(note))
   await refresh($)
   return true
 }
@@ -101,7 +109,11 @@ async function openBilling($: any) {   // a fixed URL, never data from the log
 }
 
 export const register: Register = on => {
-  on('session.start', async ($, e, next) => next(e))
+  on('session.start', async ($, e, next) => {
+    const r = await next(e)
+    $.clock.after(0, () => void startBand($).catch(() => {}))   // a timer outlives this dispatch; never blocks the start
+    return r
+  })
 
   // Cap box before the first paid job of the session; refresh after anything that touches Higgsfield.
   on('tool.call', { tool: ['Bash', 'PowerShell'], command: /higgsfield|hf_rest|ledger\.py/i }, async ($, e, next) => {
@@ -137,13 +149,16 @@ export const register: Register = on => {
     const words = picked ? `of $${cap.toFixed(2)} this session · $${left.toFixed(2)} left`
       : `of $${cap.toFixed(2)} (24 h limit) · you pick this chat's cap with the next paid job`
     const press = (label: string, usd: number) => Button({ key: label, label, onPress: () => void pressCap($, usd) })
-    return Box({ flexDirection: 'row', columnGap: 1, children: [
-      Svg ? Svg({ source: bar, alt: `Higgsfield: $${spent.toFixed(2)} ${words}`, width: W + 22, height: 16 })
-          : Text({ children: ['higgsfield'] }),
-      Text({ bold: true, children: ['$' + spent.toFixed(2)] }),
-      Text({ dimColor: true, children: [words] }),
-      press('+$5', cap + 5), press('×2', cap * 2), press('Back to $5', 5),
-      Button({ key: 'details', label: 'Details', onPress: () => void openDetails($) }),
+    return Box({ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', children: [
+      Box({ key: 'meter', flexDirection: 'column', children: [
+        Svg ? Svg({ source: bar, alt: `Higgsfield: $${spent.toFixed(2)} ${words}`, width: W + 22, height: 16 })
+            : Text({ children: ['higgsfield'] }),
+        Box({ key: 'line', flexDirection: 'row', columnGap: 1, children: [
+          Text({ bold: true, children: ['$' + spent.toFixed(2)] }),
+          Text({ dimColor: true, children: [words] })] })] }),
+      Box({ key: 'buttons', flexDirection: 'row', columnGap: 1, children: [
+        press('+$5', cap + 5), press('×2', cap * 2), press('Back to $5', 5),
+        Button({ key: 'details', label: 'Details', onPress: () => void openDetails($) })] }),
     ] })
   })
 
@@ -154,7 +169,7 @@ export const register: Register = on => {
     const { picked, spent, cap, left, ratio } = figures(st)
     const ageDays = st.balance_at ? Math.floor(((await $.clock.now()) / 1000 - st.balance_at) / 86400) : null
     const tile = (k: string, label: string, value: string, sub?: string) => Box({ key: k, flexDirection: 'column', flexGrow: 1,
-      width: '33%', borderStyle: 'round', borderColor: '#3f3f46', paddingX: 1, children: [
+      width: '30%', minWidth: 26, borderStyle: 'round', borderColor: '#3f3f46', paddingX: 1, children: [
         Text({ dimColor: true, children: [label] }), Text({ bold: true, children: [value] }),
         ...(sub ? [Text({ dimColor: true, children: [sub] })] : [])] })
     const meter = `<svg xmlns="http://www.w3.org/2000/svg" width="460" height="22" viewBox="0 0 460 22">` +
@@ -186,7 +201,7 @@ export const register: Register = on => {
       await refresh($)
     }
     return Box({ flexDirection: 'column', gap: 1, children: [
-      Box({ key: 'tiles', flexDirection: 'row', columnGap: 1, children: [
+      Box({ key: 'tiles', flexDirection: 'row', flexWrap: 'wrap', columnGap: 1, children: [
         tile('t1', picked ? 'SPENT THIS SESSION' : 'SPENT, LAST 24 H', `$${spent.toFixed(2)}`),
         tile('t2', 'LEFT', `$${left.toFixed(2)}`, picked ? `of $${cap.toFixed(2)} session cap` : `of $${cap.toFixed(2)} (24 h limit)`),
         tile('t3', 'ACCOUNT', st.balance == null ? 'not set' : `≈ $${Number(st.balance).toFixed(2)}`,
