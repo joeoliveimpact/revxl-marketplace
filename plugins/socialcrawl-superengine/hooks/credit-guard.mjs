@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /*
- * SocialCrawl credit guard — PreToolUse(Bash) hook, and the PostToolUse(Bash) /
- * PostToolUseFailure(Bash) commit (the same script, branching on hook_event_name).
+ * SocialCrawl credit guard — PreToolUse(Bash|PowerShell) hook, and the PostToolUse /
+ * PostToolUseFailure(Bash|PowerShell) commit (the same script, branching on hook_event_name).
  *
  * Purpose: a silent session cap. Every paid call's quoted worst case is counted against
  * min(500, 25% of the balance) (R18-1, Joe 10.06.26); under the cap nothing is said, one ask comes at each cap
@@ -40,7 +40,9 @@
  * route. Never let a code change strip the number out of that message; the number IS the
  * control now that the block is gone.
  *
- * Fires on EVERY Bash call. Commands that don't touch socialcrawl.dev, and missing or unreadable
+ * Fires on EVERY Bash and PowerShell call; only a Bash command can be plain, so a SocialCrawl
+ * command through PowerShell (any tool but Bash) always asks, and is denied unattended (0.3.1).
+ * Commands that don't touch socialcrawl.dev, and missing or unreadable
  * input, pass through untouched (fast path). An error past the fast path passes attended (the
  * CLI's own permission prompt still applies) and denies unattended, where a silent pass could
  * spend with nobody there (R14b); in a Post run, whose command has already run, it passes and
@@ -58,7 +60,7 @@
  */
 import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { homedir, tmpdir } from "node:os";
+import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -87,6 +89,16 @@ function done(obj) {
 // throw, so both catches can see it (R14b, O2).
 const UNATTENDED = process.env.CLAUDE_CODE_SESSION_ATTENDED === "0";
 
+// The guard's one time limit (0.3.1): D ms from process start. performance.now() counts from the
+// start of this process, so a slow Node start uses up part of D. Every wait ends by it: the lock
+// wait, the balance read's timeout, a Post run's save retries, the lock delete retries and the PATH
+// scan for a local transcription route. Out of time, each takes the path it already had (no lock:
+// the refusal; no balance read: an unreadable balance, so a paid call asks), never a silent pass.
+// Claude Code kills a hook still running at its 10 s timeout and lets the call run (a stated LIMIT);
+// D keeps a run under it with 3 s to spare for the process to start and exit.
+const D = 7000;
+const left = () => D - performance.now();
+
 // The unattended log (R14b, J2/O5): one JSON line per unattended decision past the fast path,
 // except a plain free pass, in <revxl>/credit-guard-unattended.jsonl (SC_REVXL_HOME, else
 // ~/.claude/revxl). research-suggest.mjs reports new lines on the next prompt. Never the command
@@ -106,6 +118,10 @@ function logUnattended(sid, decision, kind, paths, cmdWorst, committed, cap) {
 
 // Set once the input is parsed: a PostToolUse / PostToolUseFailure run, whose command has run.
 let POST = false;
+// Set past the fast path (0.3.1): the call came through a tool other than Bash (PowerShell), whose
+// command is never read as plain. Every decision on it says to use the Bash tool.
+let NOT_BASH = false;
+const USE_BASH = " For SocialCrawl calls, use the Bash tool.";
 
 // An error inside the guard, in either catch (R14b, O2): attended it passes and the CLI's own
 // permission prompt applies; unattended nobody can answer and a pass could spend, so it denies.
@@ -117,23 +133,27 @@ function failed(sid) {
     hookSpecificOutput: { permissionDecision: "deny" },
     systemMessage:
       "Unattended session: nobody can confirm this SocialCrawl call, so it was not run. The credit " +
-      "guard hit an error reading this command, so it could not count what it would cost.",
+      "guard hit an error reading this command, so it could not count what it would cost." +
+      (NOT_BASH ? USE_BASH : ""),
   });
 }
 
 // The balance read (R14b, O3/O4): GET /v1/credits/balance, 0 credits, which answers
 // {"data":{"balance":<number>}} (skills/_shared/references/credit-guard.md). The URL and the key
 // come from ledger.mjs, which builds only /v1/credits/ URLs; the request is the global fetch with a
-// 3 s timeout. Only a finite number at data.balance is a read. No key (then nothing is sent), a
-// failed import, a timeout, a network error, a non-OK status or any other body: null, a failed try.
+// 3 s timeout, cut to the time left before D. Only a finite number at data.balance is a read. No key
+// or no time left (then nothing is sent), a failed import, a timeout, a network error, a non-OK
+// status or any other body: null, a failed try.
 async function readBalance() {
   try {
     const { ledgerUrl, resolveKey } = await import("./ledger.mjs");
     const key = resolveKey(process.env, homedir());
     if (!key) return null;
+    const ms = Math.floor(Math.min(3000, left()));
+    if (ms <= 0) return null;
     const res = await fetch(ledgerUrl("/v1/credits/balance"), {
       headers: { "x-api-key": key },
-      signal: AbortSignal.timeout(3000),
+      signal: AbortSignal.timeout(ms),
     });
     if (!res.ok) return null;
     const body = await res.json();
@@ -158,18 +178,29 @@ const rawCmd =
     ? input.tool_input.command
     : "";
 
-// Fast path (case-insensitive): almost no Bash call touches SocialCrawl.
+// Fast path (case-insensitive): almost no Bash or PowerShell call touches SocialCrawl.
 if (!rawCmd.toLowerCase().includes("socialcrawl.dev")) return done();
+
+// The tool (0.3.1): the plain grammar below reads the Bash tool's commands only. Any other tool_name
+// (PowerShell, or any other value, null included) is never plain, so its SocialCrawl calls always ask,
+// and are denied unattended. A missing tool_name is Bash, as before.
+NOT_BASH = input.tool_name !== undefined && input.tool_name !== "Bash";
 
 // The session state: {spent, pending: {sha256(command): worst}, balance, balanceFails, lost}.
 // `balance` is cached by the balance read below (R14b), `balanceFails` counts its failed tries,
 // `lost` marks a session whose committed total was lost (J4), and every write keeps all three.
+// Its file (0.3.1) is <revxl>/sessions/socialcrawl-<sid>.json, <revxl> resolved inline as in
+// logUnattended() (the mutant fixtures copy this file alone). The old %TEMP%/sc-credit-guard-<sid>.json
+// is never read or written, and TEMP is not used: shortform 0.6.0's guard writes that same name.
 const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
 const sid = String((input && input.session_id) || "nosession").replace(/[^a-z0-9_-]/gi, "");
-const stateFile = join(tmpdir(), `sc-credit-guard-${sid}.json`);
+const override = process.env.SC_REVXL_HOME;
+const revxl = override && String(override).trim() ? String(override) : join(homedir(), ".claude", "revxl");
+const stateFile = join(revxl, "sessions", `socialcrawl-${sid}.json`);
 const hash = createHash("sha256").update(rawCmd).digest("hex");
 function readState() {
-  // Local wrap (F-F8). No file is a fresh session, and an old `{spent}` file still reads. A file
+  // Local wrap (F-F8). No file is a fresh session (ENOENT, or ENOTDIR: a file where one of its
+  // folders should be), and an old `{spent}` file still reads. A file
   // that is there but can't be read back as a state (any other read error, empty, not JSON, not an
   // object, or a `spent` that is not a finite number) has lost the committed total, so it reads as
   // `lost` (J4): the cap is off and the balance is not read for the rest of the session.
@@ -177,7 +208,7 @@ function readState() {
   try {
     raw = readFileSync(stateFile, "utf8");
   } catch (e) {
-    return e && e.code === "ENOENT" ? { spent: 0, pending: {} } : { spent: 0, pending: {}, lost: true };
+    return e && (e.code === "ENOENT" || e.code === "ENOTDIR") ? { spent: 0, pending: {} } : { spent: 0, pending: {}, lost: true };
   }
   try {
     const o = JSON.parse(raw);
@@ -204,35 +235,45 @@ function writeState(st) {
     return true;
   } catch (e) {
     why = `the session file could not be saved (${(e && e.code) || "error"})`;
-    if (e && e.code === "ENOENT") noFolder();
+    if (e && e.code === "ENOENT") noFolder("ENOENT");
   }
   return false;
 }
 
 // One guard run of a session at a time (checker X7): two runs that read the same state and each
 // save it back lose one run's count, the last save wins. So a run holds `<state file>.lock`, made
-// exclusively, from its read to its last save, and has one 4 s wait to get it. Whatever the create
+// exclusively, from its read to its last save, and has one wait to get it: 4 s, cut to the time left
+// before D. Whatever the create
 // fails with (EEXIST while another run holds the lock; EPERM, EBUSY or EACCES as another run
 // deletes it), it is tried again every 20 ms, and only the wait running out gives up (checker X8).
-// ENOENT is the one exception: with no TEMP folder no wait can help, so the run gives up at once and
+// A run first makes the sessions folder (0.3.1). When it can't, or the create fails ENOENT (the folder
+// gone), no wait can help, so the run gives up at once and
 // its wait ends there, Pre and Post (R18-2, Joe 10.06.26). A lock older than the hook's 10 s timeout was left by a killed run and
 // is cleared. Without the lock a run before a command saves nothing, so a call it has to record is
 // refused (J6); a run after a command saves its count anyway, as the command has run. unlock()
-// tries a failed delete again, 10 times at most, so a run that ends normally leaves no lock behind.
+// tries a failed delete again, 10 times at most and never past D, so a run that ends normally leaves no lock behind.
 // ponytail: two runs clearing one stale lock at the same instant can both hold it; a lock with an
 // owner check would close that if it is ever seen.
 const lockFile = `${stateFile}.lock`;
-const nap = () => new Promise((r) => setTimeout(r, 20));
+const nap = () => new Promise((r) => setTimeout(r, Math.max(0, Math.min(20, left()))));   // never past D
 let locked = false;
-let until = 0;                                   // when this run's one wait ends
+let until = 0;                                   // when this run's one wait ends (never past D)
 let why = "the session total is not a number";   // why the last save did not happen (J6)
-// No session folder (ENOENT): say which folder, and end this run's one wait now (R18-2).
-function noFolder() {
-  why = `the session folder ${dirname(stateFile)} does not exist (ENOENT), so the session file can't be saved`;
+// No session folder: say which folder and why (ENOENT, gone; any other code, it can't be made), and
+// end this run's one wait now (R18-2).
+function noFolder(code) {
+  why = `the session folder ${dirname(stateFile)} does not exist${code === "ENOENT" ? "" : " and can't be created"} (${code}), so the session file can't be saved`;
   until = 0;
 }
 async function lock() {
-  until = Date.now() + 4000;
+  const start = performance.now();
+  until = Math.min(start + 4000, D);
+  try {
+    mkdirSync(dirname(stateFile), { recursive: true });   // paid path only: the fast path and a free plain pass never lock
+  } catch (e) {
+    noFolder((e && e.code) || "error");
+    return false;
+  }
   for (;;) {
     let code;
     try {
@@ -241,14 +282,16 @@ async function lock() {
     } catch (e) {
       code = (e && e.code) || "error";
     }
-    if (code === "ENOENT") { noFolder(); return false; }
+    if (code === "ENOENT") { noFolder(code); return false; }
     try {
       if (Date.now() - statSync(lockFile).mtimeMs > 10000) unlinkSync(lockFile);
     } catch {}
-    if (Date.now() > until) {
+    if (performance.now() >= until) {
+      // The wait this run really had: 4 s, or less when D cut it short (stated, never a fixed figure).
       why =
-        `the session lock ${lockFile} could not be taken in 4 seconds (${code}); a lock left by ` +
-        `a killed run is cleared once it is 10 seconds old`;
+        `the session lock ${lockFile} could not be taken in ${+(Math.max(0, until - start) / 1000).toFixed(1)} seconds (${code})` +
+        (until < start + 4000 ? `, all the time left before the guard's ${D / 1000}-second limit` : "") +
+        `; a lock left by a killed run is cleared once it is 10 seconds old`;
       return false;
     }
     await nap();
@@ -256,16 +299,16 @@ async function lock() {
 }
 async function unlock() {
   for (let i = 0; locked && i < 10; i++) {
-    try { unlinkSync(lockFile); break; } catch (e) { if (e && e.code === "ENOENT") break; await nap(); }
+    try { unlinkSync(lockFile); break; } catch (e) { if ((e && e.code === "ENOENT") || left() <= 0) break; await nap(); }
   }
   locked = false;
 }
 
-// PostToolUse(Bash) / PostToolUseFailure(Bash): the command has run (a failed command may still
+// PostToolUse / PostToolUseFailure, Bash or PowerShell: the command has run (a failed command may still
 // have billed — counting it is the safe direction). Commit its pending quote, if it has one. A
 // state it can't read back is a lost total here too, and is saved as lost (J4, checker X6). A call
 // that has run can't be refused, so a save that fails is tried again until this run's wait ends (at
-// once when the session folder is missing, R18-2); if it still can't be saved, the call goes
+// once when the session folder is missing, R18-2; never past D); if it still can't be saved, the call goes
 // uncounted (J6, a stated LIMIT).
 if (POST) {
   try {
@@ -276,7 +319,7 @@ if (POST) {
       st.spent += w;
       delete st.pending[hash];
     }
-    if (w !== null || st.lost) while (!writeState(st) && Date.now() < until) await nap();
+    if (w !== null || st.lost) while (!writeState(st) && performance.now() < until) await nap();
   } catch {} finally {
     await unlock();
   }
@@ -329,7 +372,8 @@ try {
         `SocialCrawl call not run: the credit guard couldn't record it, and a call it can't record ` +
         `would run uncounted (this command's worst case is ~${cmdWorst} credits). Reason: ${why}. ` +
         `Session file: ${stateFile}. Nothing was sent. Run the command again; if it is refused ` +
-        `again, check that the session file and its folder exist and can be written.`,
+        `again, check that the session file and its folder exist and can be written.` +
+        (NOT_BASH ? USE_BASH : ""),
     });
     return false;
   }
@@ -825,6 +869,7 @@ try {
   }
   let plain = false;
   try { plain = plainCommand(cmd); } catch {}           // local wrap (F-F8): unsure = not plain
+  if (NOT_BASH) plain = false;                          // 0.3.1: not the Bash tool = never plain
 
   // EVERY socialcrawl API URL in the command (chained curls, &&, ;, pipes). `found` keeps each
   // match as typed, with its offset, for sentValues(). In a plain command each is a curl's URL
@@ -1083,7 +1128,8 @@ try {
   // filename on PATH. Nothing is executed and nothing is read; this cannot tell whether the
   // pipeline actually works, so the message it feeds must be worded as an observation ("I see
   // a key here"), never as a promise. Runs only inside the transcript branch, never on the
-  // hot path.
+  // hot path. The scan checks the deadline D between directories (0.3.1): out of time, it has
+  // seen nothing, so the message only loses that optional sentence.
   function localRouteDetected() {
     try {
       if (process.env.GROQ_API_KEY) return "a GROQ_API_KEY in this environment";
@@ -1091,6 +1137,7 @@ try {
       const exts = win ? ["", ".exe", ".cmd", ".bat"] : [""];
       const dirs = String(process.env.PATH || "").split(win ? ";" : ":").slice(0, 64);
       for (const d of dirs) {
+        if (left() <= 0) break;
         if (!d) continue;
         for (const b of ["whisper", "whisper-cli", "whisper.cpp", "faster-whisper", "whisperx"]) {
           for (const e of exts) {
@@ -1156,10 +1203,14 @@ try {
   if (!plain) {
     const crossing = cmdWorst > 0 && (cap === null || Math.floor((spent + cmdWorst) / cap) > Math.floor(spent / cap));
     return decide(
-      `SocialCrawl command NOT A PLAIN CURL: it carries a SocialCrawl URL but is not plain \`curl\` ` +
-        `calls this guard fully reads (a loop, a pipe into a program, a wrapper, a variable, a ` +
-        `heredoc, a note or other mention, or a flag outside the plain set), so what it sends, and ` +
-        `how many times, can't be read from it. ` +
+      (NOT_BASH
+        ? `SocialCrawl command NOT A PLAIN CURL: it came through a tool other than Bash, and this ` +
+          `guard reads plain \`curl\` calls only in the Bash tool, so what it sends, and how many ` +
+          `times, can't be read from it.${USE_BASH} `
+        : `SocialCrawl command NOT A PLAIN CURL: it carries a SocialCrawl URL but is not plain \`curl\` ` +
+          `calls this guard fully reads (a loop, a pipe into a program, a wrapper, a variable, a ` +
+          `heredoc, a note or other mention, or a flag outside the plain set), so what it sends, and ` +
+          `how many times, can't be read from it. `) +
         (nCalls
           ? `Visible counted total: ~${cmdWorst} credits (${roster}).${caveat}`
           : `Visible counted total: ~0 credits (no SocialCrawl /v1/ URL can be read in it).`) +
@@ -1178,7 +1229,7 @@ try {
         (cmdWorst > 0
           ? `once it runs, the visible total is counted.`
           : `its visible total is 0, so nothing is counted for it.`) +
-        ` A single call rewritten as a plain curl is counted without this ask.`
+        ` A single call rewritten as a plain curl${NOT_BASH ? " in the Bash tool" : ""} is counted without this ask.`
     );
   }
 
@@ -1299,8 +1350,8 @@ try {
   //    now — the CLI's own permission prompt can still decline it, an over-count, the safe
   //    direction. A pending quote left by an earlier declined ask of this same command is
   //    dropped, so the Post run cannot count it a second time. Unattended, the pass is logged.
-  //    A commit that can't be recorded (TEMP missing or read-only, a full disk, a folder at the
-  //    state path, no session lock) would leave this call uncounted, so recorded() refuses it.
+  //    A commit that can't be recorded (no session folder or a read-only one, a full disk, a folder
+  //    at the state path, no session lock) would leave this call uncounted, so recorded() refuses it.
   st.spent = spent + cmdWorst;
   delete st.pending[hash];
   if (!recorded()) return;

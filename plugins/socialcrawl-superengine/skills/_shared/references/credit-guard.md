@@ -8,7 +8,10 @@
 > asks before every transcript endpoint — quoting its per-unit price and a cheaper
 > route — and counts every other paid call in a plain `curl` silently against a session
 > cap (see below): it asks once at each cap step, before any call it can't count, and on
-> any other command with a SocialCrawl URL, which is denied unattended. Treat that as
+> any other command with a SocialCrawl URL, which is denied unattended. It watches the
+> Bash and PowerShell tools. A SocialCrawl call through PowerShell is never silent: it
+> always asks, and unattended it is denied, so run SocialCrawl calls through the Bash tool.
+> Treat that as
 > a backstop, not a license to skip the ritual below — an engine without the hook
 > relies on this ritual alone.
 
@@ -52,7 +55,8 @@ the balance)** and stays silent under it for a plain `curl`: send each paid call
 call (the `socialcrawl` skill's API Key and Making API Calls sections give the exact form). One ask comes each time the session's committed total crosses the next
 cap step; a declined ask is never counted, so the next paid call asks again, and a balance
 that can't be read counts as a crossing. The guard reads the balance itself (0cr, at most 3
-tries a session). Unattended, it logs every deny and every paid pass to
+tries a session) and keeps the session's count in `<revxl>/sessions/socialcrawl-<session id>.json`
+(`<revxl>` is `SC_REVXL_HOME`, else `~/.claude/revxl`). Unattended, it logs every deny and every paid pass to
 `~/.claude/revxl/credit-guard-unattended.jsonl`, and the next attended prompt reports them once.
 
 | Call | What happens |
@@ -61,9 +65,9 @@ tries a session). Unattended, it logs every deny and every paid pass to
 | **flat** — incl. `prism/lookup` at 5 | counted at its price; a **loop** is not a plain `curl` (see below): say the count first ("~N handles × 1cr = ~Ncr") before running it |
 | **metered** — `post-stats`, `comments`, `omni-search`, `ai-visibility`, `share-of-voice`, `org-radar`, `search/news`, `threads/search`, `*/profile/*/full`, the batch POSTs | counted at the **worst case**, never the floor. State `low–high` and what drives it before the first call |
 | **can't count** — transcripts, `cohorts`, an unreadable URL, a per-unit call with no ceiling | the guard asks every time |
-| **not a plain `curl`** — any other command with a SocialCrawl URL: a loop, a pipe into a program, a wrapper, a variable, a heredoc, a note, `grep`, `echo`, a commit message, a docs URL | the guard asks every time, counting the URLs it can see; unattended, it is denied |
+| **not a plain `curl`** — any other command with a SocialCrawl URL: a loop, a pipe into a program, a wrapper, a variable, a heredoc, a note, `grep`, `echo`, a commit message, a docs URL, or any call through PowerShell | the guard asks every time, counting the URLs it can see; unattended, it is denied |
 | **15–50cr (big guns)** | one-shot deliverables only: never batched, never auto-repeated |
-| **can't record** — the guard can't save its count (no session lock in 4 seconds, no session folder, a save that fails) | the call is refused, attended and unattended, with the reason and the session file; run it again |
+| **can't record** — the guard can't save its count (no session lock before its wait ends, no session folder it can make, a save that fails; every wait ends within 7 seconds of the guard's start) | the call is refused, attended and unattended, with the reason and the session file; run it again |
 
 After every call, report `credits_used` and `credits_remaining` from the response
 (`credits_remaining` is null on a free cache hit: say the balance wasn't read on that call).

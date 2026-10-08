@@ -7,7 +7,7 @@
     "email": "joe@engineforimpact.com"
   },
   "metadata": {
-    "version": "0.1.82"
+    "version": "0.1.83"
   },
   "plugins": [
     {
@@ -249,10 +249,10 @@
     },
     {
       "name": "socialcrawl-superengine",
-      "description": "v0.3.0 · Deep social research superengine on the SocialCrawl API: the full canon — 645 endpoints across 68 platform namespaces — with exact per-call credits, plus guided research plays — voice-of-customer mining, competitor ad-library recon, AI-visibility (GEO) audits, link-in-bio offer mapping, audience demographics, dev/tool radar — and priced big-gun one-shots (creator vetting, lead discovery, share-of-voice). Bring-your-own key; every paid call is priced up front and counted against a silent session cap. Pairs with the RevXL format engines (they detect it and unlock deep plays) or runs standalone.",
+      "description": "v0.3.1 · Deep social research superengine on the SocialCrawl API: the full canon — 645 endpoints across 68 platform namespaces — with exact per-call credits, plus guided research plays — voice-of-customer mining, competitor ad-library recon, AI-visibility (GEO) audits, link-in-bio offer mapping, audience demographics, dev/tool radar — and priced big-gun one-shots (creator vetting, lead discovery, share-of-voice). Bring-your-own key; every paid call is priced up front and counted against a silent session cap. Pairs with the RevXL format engines (they detect it and unlock deep plays) or runs standalone.",
       "source": "./plugins/socialcrawl-superengine",
       "category": "marketing",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"

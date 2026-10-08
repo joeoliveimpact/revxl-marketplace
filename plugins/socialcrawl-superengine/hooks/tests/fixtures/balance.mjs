@@ -68,14 +68,18 @@ function hooksCopy(edit, withLedger = true) {
   return d;
 }
 
-/** A preload that makes os.tmpdir() throw, inside the guard's main() and outside its inner try. */
-function tmpdirThrows() {
+/**
+ * A preload that makes crypto.createHash throw, inside the guard's main() and outside its inner try
+ * (the command's hash, taken before either branch). It was os.tmpdir() until 0.3.1, which keeps no
+ * state in TEMP and so calls it no more.
+ */
+function hashThrows() {
   const d = mkdtempSync(join(tmpdir(), "sc-r14b-throw-"));
-  const f = join(d, "tmpdir-throws.mjs");
+  const f = join(d, "hash-throws.mjs");
   writeFileSync(f,
     `import { createRequire, syncBuiltinESMExports } from "node:module";\n` +
-    `const os = createRequire(import.meta.url)("node:os");\n` +
-    `os.tmpdir = () => { throw new Error("forced by the R14b fixture"); };\n` +
+    `const crypto = createRequire(import.meta.url)("node:crypto");\n` +
+    `crypto.createHash = () => { throw new Error("forced by the R14b fixture"); };\n` +
     `syncBuiltinESMExports();\n`);
   return pathToFileURL(f).href;
 }
@@ -127,6 +131,24 @@ function stateFault() {
     `syncBuiltinESMExports();\n`);
   return pathToFileURL(f).href;
 }
+
+/**
+ * 0.3.1 (c): a preload that holds the guard's start for SLOW_START ms (a slow Node start: the guard's
+ * clock, performance.now(), counts it), then, when SLOW_LOCK is set, deletes that lock file SLOW_RELEASE
+ * ms later, as a live holder letting go would. The timer is unref'd, so it never keeps the run alive.
+ */
+function slowStart() {
+  const d = mkdtempSync(join(tmpdir(), "sc-p2-slow-"));
+  const f = join(d, "slow-start.mjs");
+  writeFileSync(f,
+    `import { unlinkSync } from "node:fs";\n` +
+    `await new Promise((r) => setTimeout(r, Number(process.env.SLOW_START)));\n` +
+    `if (process.env.SLOW_LOCK) setTimeout(() => { try { unlinkSync(process.env.SLOW_LOCK); } catch {} }, Number(process.env.SLOW_RELEASE)).unref();\n`);
+  return pathToFileURL(f).href;
+}
+/** The guard's deadline D (0.3.1), read from its source: one `const D = <ms>;` line, NaN when there is none. */
+const deadlineOf = (file) => Number((readFileSync(file, "utf8").match(/^const D = (\d+);$/m) || [])[1]);
+const esc = (p) => p.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
 
 /** The guard's environment for session `s`, as lib.mjs builds it for one run (offline; `o.fetch` answers the read). */
 function guardEnv(s, o = {}) {
@@ -382,7 +404,7 @@ export default [
   },
   {
     id: "R14b-06-unattended-decisions",
-    desc: "UNATTENDED (J1/O1/O2): grep, echo and a docs URL are denied with no read; a cap step after a read is denied; a paid plain call under the cap after a good read passes silently and is committed; a forced throw inside the guard, in the inner try (a costs.json of the wrong shape) or outside it (os.tmpdir throws), denies unattended and passes attended, exit 0",
+    desc: "UNATTENDED (J1/O1/O2): grep, echo and a docs URL are denied with no read; a cap step after a read is denied; a paid plain call under the cap after a good read passes silently and is committed; a forced throw inside the guard, in the inner try (a costs.json of the wrong shape) or outside it (crypto.createHash throws), denies unattended and passes attended, exit 0",
     fn() {
       const P = `${V1}prism/leads?query=x`;
       const rows = [];
@@ -416,8 +438,8 @@ export default [
       p.cleanup();
       // Forced throws. Inner: `_unpriced` a number makes the cost lookup throw inside the try.
       const d = hooksCopy((costs) => ({ ...costs, _unpriced: 5 }));
-      const outer = tmpdirThrows();
-      for (const [label, o] of [["inner try (costs.json _unpriced: 5)", { guard: join(d, "credit-guard.mjs") }], ["outside the inner try (os.tmpdir throws)", { node: ["--import", outer] }]]) {
+      const outer = hashThrows();
+      for (const [label, o] of [["inner try (costs.json _unpriced: 5)", { guard: join(d, "credit-guard.mjs") }], ["outside the inner try (crypto.createHash throws)", { node: ["--import", outer] }]]) {
         const a = fresh();
         const att = a.run(P50, o);
         a.cleanup();
@@ -437,7 +459,7 @@ export default [
   },
   {
     id: "R14b-07-the-log",
-    desc: "LOG (J2/O5): SC_REVXL_HOME is created when missing, else ~/.claude/revxl; each line has exactly ts, session_id, decision, kind, paths, cmdWorst, committed, cap; kind names the branch; attended decisions and a plain free pass write nothing; no query string, comment, body or key is logged; SC_REVXL_HOME being a file changes no decision, exit code or stdout",
+    desc: "LOG (J2/O5): SC_REVXL_HOME is created when missing, else ~/.claude/revxl; each line has exactly ts, session_id, decision, kind, paths, cmdWorst, committed, cap; kind names the branch; attended decisions and a plain free pass write nothing; no query string, comment, body or key is logged; a log that can't be written (its path a folder) changes no decision, exit code or stdout",
     fn() {
       const rows = [];
       // The folder: a missing nested SC_REVXL_HOME is created; with none, ~/.claude/revxl under HOME.
@@ -498,16 +520,18 @@ export default [
       assert(c.logLines().length === 4, `every canary command is logged, read ${c.logLines().length}`);
       assert(!/canary|curl|echo|x-api-key|sc_[a-z0-9]/i.test(text), `no command text, query, comment, body or key in the log:\n${text}`);
       c.cleanup();
-      // SC_REVXL_HOME is a file: the log write fails, and nothing else changes.
+      // The log can't be written (its path is a folder): the log write fails, and nothing else changes.
+      // (Until 0.3.1 this made SC_REVXL_HOME a file; the session file now lives under it, so a file
+      // there also leaves no session folder, which P2-A14 covers.)
       for (const [label, cmd] of [["a deny", `echo '${V1}prism/leads'`], ["a paid pass", P1]]) {
         const ok = session().seed({ spent: 0 });
         const good = ok.run(cmd, { env: UN });
         const bad = session().seed({ spent: 0 });
-        const file = join(bad.dir, "not-a-folder");
-        writeFileSync(file, "x");
-        const r = bad.run(cmd, { env: { ...UN, SC_REVXL_HOME: file } });
-        rows.push(cell(`SC_REVXL_HOME is a file, ${label}`, [`decision ${r.decision} (normal ${good.decision})`, `exit ${r.exit}`, `stdout same ${r.raw === good.raw}`, `committed ${bad.state().spent} (normal ${ok.state().spent})`]));
-        assert(r.decision === good.decision && r.exit === 0 && r.raw === good.raw && bad.state().spent === ok.state().spent && statSync(file).isFile(),
+        const logPath = join(bad.revxl, "credit-guard-unattended.jsonl");
+        mkdirSync(logPath, { recursive: true });
+        const r = bad.run(cmd, { env: UN });
+        rows.push(cell(`the log path is a folder, ${label}`, [`decision ${r.decision} (normal ${good.decision})`, `exit ${r.exit}`, `stdout same ${r.raw === good.raw}`, `committed ${bad.state().spent} (normal ${ok.state().spent})`]));
+        assert(r.decision === good.decision && r.exit === 0 && r.raw === good.raw && bad.state().spent === ok.state().spent && statSync(logPath).isDirectory(),
           `${label}: the same decision, exit 0, stdout and count, read ${r.decision}/${r.exit}/${JSON.stringify(r.raw).slice(0, 80)}`);
         ok.cleanup();
         bad.cleanup();
@@ -574,7 +598,9 @@ export default [
       const d = mkdtempSync(join(tmpdir(), "sc-r14b-exit-"));
       const redirect = join(d, "redirect.mjs");
       writeFileSync(redirect, "const real = globalThis.fetch;\nglobalThis.fetch = (url, init) => { const u = new URL(String(url)); return real(process.env.LOOP + u.pathname + u.search, init); };\n");
-      writeFileSync(join(d, "sc-credit-guard-r14b9.json"), JSON.stringify({ spent: 190 }));
+      const state = join(d, "revxl", "sessions", "socialcrawl-r14b9.json");   // the guard's session file, SC_REVXL_HOME = d/revxl
+      mkdirSync(dirname(state), { recursive: true });
+      writeFileSync(state, JSON.stringify({ spent: 190 }));
       const drv = join(d, "driver.mjs");
       writeFileSync(drv,
         `import http from "node:http";\nimport { spawn } from "node:child_process";\n` +
@@ -583,7 +609,7 @@ export default [
         `  res.end(JSON.stringify(req.url.startsWith("/v1/credits/balance") ? { data: { balance: 800 } } : { data: { items: [], next_cursor: null }, credits_remaining: 800 })); });\n` +
         `server.keepAliveTimeout = 60000;\n` +
         `const run = (args, input) => new Promise((ok) => {\n` +
-        `  const env = { ...process.env, LOOP: "http://127.0.0.1:" + server.address().port, NO_PROXY: "127.0.0.1", SOCIALCRAWL_API_KEY: ${JSON.stringify(FAKE_KEY)}, HOME: ${JSON.stringify(d)}, USERPROFILE: ${JSON.stringify(d)}, TEMP: ${JSON.stringify(d)}, TMP: ${JSON.stringify(d)}, TMPDIR: ${JSON.stringify(d)} };\n` +
+        `  const env = { ...process.env, LOOP: "http://127.0.0.1:" + server.address().port, NO_PROXY: "127.0.0.1", SOCIALCRAWL_API_KEY: ${JSON.stringify(FAKE_KEY)}, HOME: ${JSON.stringify(d)}, USERPROFILE: ${JSON.stringify(d)}, SC_REVXL_HOME: ${JSON.stringify(join(d, "revxl"))}, TEMP: ${JSON.stringify(d)}, TMP: ${JSON.stringify(d)}, TMPDIR: ${JSON.stringify(d)} };\n` +
         `  delete env.CLAUDE_CODE_SESSION_ATTENDED;\n` +
         `  const t0 = Date.now(); const c = spawn(process.execPath, ["--import", ${JSON.stringify(pathToFileURL(redirect).href)}, ...args], { env, stdio: ["pipe", "pipe", "pipe"] });\n` +
         `  let out = "", err = ""; c.stdout.on("data", (b) => (out += b)); c.stderr.on("data", (b) => (err += b));\n` +
@@ -598,7 +624,7 @@ export default [
       const r = spawnSync(process.execPath, [drv], { encoding: "utf8", timeout: 60000 });
       let j = null;
       try { j = JSON.parse(String(r.stdout || "")); } catch {}
-      const st = (() => { try { return JSON.parse(readFileSync(join(d, "sc-credit-guard-r14b9.json"), "utf8")); } catch { return null; } })();
+      const st = (() => { try { return JSON.parse(readFileSync(state, "utf8")); } catch { return null; } })();
       rmSync(d, { recursive: true, force: true });
       assert(j, `the driver reported nothing: ${String(r.stderr || "").slice(0, 300)}`);
       console.log(cell("ledger snapshot after a loopback fetch", [`exit ${j.ledger.code}`, `${j.ledger.ms} ms`, `stderr ${JSON.stringify(j.ledger.err.slice(0, 80))}`]));
@@ -624,46 +650,49 @@ export default [
   },
   {
     id: "R14b-10-unsaved-state",
-    desc: "STATE (checker X1, J6; R18-2): a session state that can't be saved (TEMP missing, a folder at the state path, a read-only state file, or one that turns read-only as the balance is read) never lets a paid call pass silently or uncounted: attended each call is refused (a deny that names the reason and the session file), unattended each is denied; a read is made only once its try is saved, so there is at most one. A missing TEMP folder (ENOENT) is refused at once, with no lock wait, and the reason names the folder; a Post run whose save fails ENOENT stops at once instead of retrying for 4 s",
+    desc: "STATE (checker X1, J6; R18-2, re-pointed 0.3.1): a session state that can't be saved (no session folder, a folder at the state path, a read-only state file, or one that turns read-only as the balance is read) never lets a paid call pass silently or uncounted: attended each call is refused (a deny that names the reason and the session file), unattended each is denied; a read is made only once its try is saved, so there is at most one. A <revxl>/sessions folder that can't be made is refused at once, with no lock wait, and the reason names the folder; a Post run whose save fails ENOENT stops at once instead of retrying for its whole wait",
     fn() {
       const rows = [];
+      // No session folder (re-pointed from TEMP missing, 0.3.1 A14): <revxl>/sessions is a regular file, so
+      // the guard can't make the folder; <revxl> itself stays a folder, so the unattended log still writes.
       const gone = (s) => {
-        const m = join(s.dir, "no-such-temp");
-        return { TEMP: m, TMP: m, TMPDIR: m };
+        rmSync(dirname(s.stateFile), { recursive: true, force: true });
+        writeFileSync(dirname(s.stateFile), "a regular file where the sessions folder goes");
+        return {};
       };
-      const goneFile = (s) => join(s.dir, "no-such-temp", `sc-credit-guard-${s.sid}.json`);
-      const NOFOLDER = (s) => new RegExp(`the session folder ${join(s.dir, "no-such-temp").replace(/[\\^$.*+?()[\]{}|]/g, "\\$&")} does not exist \\(ENOENT\\)`);
+      const goneFile = (s) => s.stateFile;
+      const NOFOLDER = (s) => new RegExp(`the session folder ${esc(dirname(s.stateFile))} does not exist and can't be created \\(E[A-Z]+\\)`);
       const NOSAVE = /session file could not be saved \(E[A-Z]+\)/;
-      // TEMP missing, the balance answering 800 (cap 200): attended 5 x 50cr, unattended 8 x 50cr. No
-      // lock can be made there, so each run gives up at once (R18-2), not after a 4 s wait (the runs
+      // No session folder, the balance answering 800 (cap 200): attended 5 x 50cr, unattended 8 x 50cr. No
+      // lock can be made there, so each run gives up at once (R18-2), not after a lock wait (the runs
       // are started at once).
       for (const [who, env, n] of [["attended", {}, 5], ["unattended", UN, 8]]) {
         const s = fresh();
         const rs = together(s, Array.from({ length: n }, () => P50), { fetch: [bal(800)], env: { ...env, ...gone(s) } });
         const l = s.logLines();
         const slow = Math.max(...rs.map((r) => r.ms));
-        rows.push(cell(`TEMP missing, ${who}, ${n} x 50cr`, [`decisions ${decs(rs)}`, `fetches ${s.fetches().length}`, `slowest ${slow} ms`, `log ${l.length} x ${short(l[0])}`]));
-        assert(rs.length === n && rs.every((r) => r.decision === "deny" && r.exit === 0) && s.fetches().length === 0, `TEMP missing, ${who}: deny x${n} and no read, read ${decs(rs)} / ${s.fetches().length} request(s)`, rs[0]);
-        assert(slow < 3000, `TEMP missing, ${who}: no run waits out the 4 s lock wait, read ${slow} ms`);
+        rows.push(cell(`no session folder, ${who}, ${n} x 50cr`, [`decisions ${decs(rs)}`, `fetches ${s.fetches().length}`, `slowest ${slow} ms`, `log ${l.length} x ${short(l[0])}`]));
+        assert(rs.length === n && rs.every((r) => r.decision === "deny" && r.exit === 0) && s.fetches().length === 0, `no session folder, ${who}: deny x${n} and no read, read ${decs(rs)} / ${s.fetches().length} request(s)`, rs[0]);
+        assert(slow < 3000, `no session folder, ${who}: no run waits out the lock wait, read ${slow} ms`);
         if (who === "unattended") {
-          assertMatch(rs[0], /couldn't read your balance/, "TEMP missing, unattended: no balance, so no cap");
+          assertMatch(rs[0], /couldn't read your balance/, "no session folder, unattended: no balance, so no cap");
           assert(l.length === n && l.every((x) => x.decision === "deny" && x.kind === "cap-step" && x.cap === null && x.committed === 0 && x.cmdWorst === 50),
-            `TEMP missing, unattended: ${n} cap-step denies at cap null, nothing committed, read ${JSON.stringify(l)}`);
+            `no session folder, unattended: ${n} cap-step denies at cap null, nothing committed, read ${JSON.stringify(l)}`);
         } else {
-          for (const r of rs) assertRefused(r, goneFile(s), NOFOLDER(s), "TEMP missing, attended");
-          assert(l.length === 0, `TEMP missing, attended: nothing logged, read ${JSON.stringify(l)}`);
+          for (const r of rs) assertRefused(r, goneFile(s), NOFOLDER(s), "no session folder, attended");
+          assert(l.length === 0, `no session folder, attended: nothing logged, read ${JSON.stringify(l)}`);
         }
         s.cleanup();
       }
-      // One run at a time (R18-2, checker A11): a Pre run with no TEMP folder is refused at once, its
+      // One run at a time (R18-2, checker A11): a Pre run with no session folder is refused at once, its
       // reason naming the folder, and a Post run there ends at once too.
       {
         const s = fresh();
         const pre = s.run(P50, { env: gone(s) });
         const post = s.post(P50, { env: gone(s) });
-        rows.push(cell("TEMP missing, one Pre run, then its Post run", [`Pre ${pre.decision} after ${pre.ms} ms`, `Post ${JSON.stringify(post.raw)} after ${post.ms} ms`]));
-        assertRefused(pre, goneFile(s), NOFOLDER(s), "TEMP missing, one Pre run");
-        assert(pre.ms < 1000 && post.raw === "" && post.exit === 0 && post.ms < 1000, `TEMP missing: Pre refused and Post done at once, read ${pre.ms} / ${post.ms} ms`, pre);
+        rows.push(cell("no session folder, one Pre run, then its Post run", [`Pre ${pre.decision} after ${pre.ms} ms`, `Post ${JSON.stringify(post.raw)} after ${post.ms} ms`]));
+        assertRefused(pre, goneFile(s), NOFOLDER(s), "no session folder, one Pre run");
+        assert(pre.ms < 1000 && post.raw === "" && post.exit === 0 && post.ms < 1000, `no session folder: Pre refused and Post done at once, read ${pre.ms} / ${post.ms} ms`, pre);
         s.cleanup();
       }
       // A save that fails ENOENT with the folder there (it went between the read and the save): the Pre
@@ -676,7 +705,7 @@ export default [
         const parked = s.stateRaw();
         const post = s.post(P50, { node: ["--import", fault], env: { STATE_FAULT: JSON.stringify(["busy", s.stateFile, "ENOENT"]) } });
         rows.push(cell("a save that throws ENOENT, Pre then Post", [`Pre ${pre.decision} after ${pre.ms} ms`, `then ${ok.decision}`, `Post ${JSON.stringify(post.raw)} after ${post.ms} ms`, `state ${s.stateRaw()}`]));
-        assertRefused(pre, s.stateFile, new RegExp(`the session folder ${s.dir.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&")} does not exist \\(ENOENT\\)`), "a save that throws ENOENT, Pre");
+        assertRefused(pre, s.stateFile, new RegExp(`the session folder ${esc(dirname(s.stateFile))} does not exist \\(ENOENT\\)`), "a save that throws ENOENT, Pre");
         assert(pre.ms < 1000 && ok.decision === "ask" && post.raw === "" && post.exit === 0 && post.ms < 1000 && s.stateRaw() === parked,
           `a save that throws ENOENT: Pre refused at once, Post stops at once and the parked quote stays, read ${pre.ms} / ${post.ms} ms / ${s.stateRaw()}`, post);
         s.cleanup();
@@ -698,14 +727,14 @@ export default [
       assert(rf.every((r) => r.decision === "deny") && f.fetches().length === 0 && f.logLines().length === 5 && f.logLines().every((x) => x.kind === "cap-step" && x.cap === null),
         `a folder at the state path: deny x5, no read, read ${decs(rf)} / ${f.fetches().length} / ${JSON.stringify(f.logLines())}`);
       f.cleanup();
-      // TEMP missing, the read failing: no try is made, so no request is sent and no hang is waited on.
+      // No session folder, the read failing: no try is made, so no request is sent and no hang is waited on.
       for (const [label, reply, n] of [["HTTP 500", { status: 500, body: {} }, 6], ["hang", { hang: true }, 3]]) {
         const s = fresh();
         const rs = together(s, Array.from({ length: n }, () => P50), { fetch: [reply], env: gone(s) });
         const slow = Math.max(...rs.map((r) => r.ms));
-        rows.push(cell(`TEMP missing, ${label}, attended, ${n} x 50cr`, [`decisions ${decs(rs)}`, `fetches ${s.fetches().length}`, `slowest ${slow} ms`]));
+        rows.push(cell(`no session folder, ${label}, attended, ${n} x 50cr`, [`decisions ${decs(rs)}`, `fetches ${s.fetches().length}`, `slowest ${slow} ms`]));
         assert(rs.length === n && rs.every((r) => r.decision === "deny" && REFUSAL.test(r.message)) && s.fetches().length === 0 && slow < 3000,
-          `TEMP missing, ${label}: refused, no request, no read waited on, read ${decs(rs)} / ${s.fetches().length} / ${slow} ms`);
+          `no session folder, ${label}: refused, no request, no read waited on, read ${decs(rs)} / ${s.fetches().length} / ${slow} ms`);
         s.cleanup();
       }
       // A read-only state file with the balance cached (800, cap 200): a 1cr and a 50cr call, both under the cap.
@@ -752,16 +781,16 @@ export default [
   },
   {
     id: "R14b-11-post-run-errors",
-    desc: "POST (checker X2): an error outside the inner try in a PostToolUse or PostToolUseFailure run (os.tmpdir throws) prints nothing, logs nothing, adds nothing to the next notice and exits 0, attended or not; the same error before a command still denies unattended",
+    desc: "POST (checker X2): an error outside the inner try in a PostToolUse or PostToolUseFailure run (crypto.createHash throws) prints nothing, logs nothing, adds nothing to the next notice and exits 0, attended or not; the same error before a command still denies unattended",
     fn() {
       const rows = [];
-      const outer = tmpdirThrows();
+      const outer = hashThrows();
       for (const [event, failure] of [["PostToolUse", false], ["PostToolUseFailure", true]]) {
         for (const [who, env] of [["attended", {}], ["unattended", UN]]) {
           const s = fresh();
           const r = s.post(P50, { failure, node: ["--import", outer], env });
           const note = ask("what's for lunch", { env: { SC_REVXL_HOME: s.revxl } });
-          rows.push(cell(`${event}, ${who}, os.tmpdir throws`, [`exit ${r.exit}`, `stdout ${JSON.stringify(r.raw.slice(0, 60))}`, `log lines ${s.logLines().length}`, `next notice ${JSON.stringify(note.raw.slice(0, 60))}`]));
+          rows.push(cell(`${event}, ${who}, createHash throws`, [`exit ${r.exit}`, `stdout ${JSON.stringify(r.raw.slice(0, 60))}`, `log lines ${s.logLines().length}`, `next notice ${JSON.stringify(note.raw.slice(0, 60))}`]));
           assert(r.exit === 0 && r.raw === "" && s.logLines().length === 0 && note.raw === "",
             `${event}, ${who}: exit 0, nothing printed, logged or noticed, read exit ${r.exit}, stdout ${r.raw.slice(0, 160)}, stderr ${r.stderr.slice(0, 160)}, log ${JSON.stringify(s.logLines())}`);
           s.cleanup();
@@ -769,7 +798,7 @@ export default [
       }
       const s = fresh();
       const pre = s.run(P50, { node: ["--import", outer], env: UN });
-      rows.push(cell("PreToolUse, unattended, os.tmpdir throws", [`decision ${pre.decision}`, `exit ${pre.exit}`, `log ${short(s.logLines()[0])}`]));
+      rows.push(cell("PreToolUse, unattended, createHash throws", [`decision ${pre.decision}`, `exit ${pre.exit}`, `log ${short(s.logLines()[0])}`]));
       assert(pre.decision === "deny" && pre.exit === 0 && s.logLines().length === 1 && s.logLines()[0].kind === "error", `PreToolUse, unattended: still denied and logged, read ${pre.decision} / ${JSON.stringify(s.logLines())}`);
       s.cleanup();
       rmSync(dirname(fileURLToPath(outer)), { recursive: true, force: true });
@@ -852,7 +881,7 @@ export default [
   },
   {
     id: "R14b-14-J4-lost-for-the-session",
-    desc: "LOST TOTAL (J4): a lost session stays lost: after its Post run commits the asked call and later calls read a whole file again, every paid call still asks attended or is denied unattended with no balance read, and a saved lost: true keeps the cap null beside a cached balance; another session id in the same TEMP is not affected (one read, a silent pass)",
+    desc: "LOST TOTAL (J4): a lost session stays lost: after its Post run commits the asked call and later calls read a whole file again, every paid call still asks attended or is denied unattended with no balance read, and a saved lost: true keeps the cap null beside a cached balance; another session id in the same sessions folder is not affected (one read, a silent pass)",
     fn() {
       const rows = [];
       const TORN = '{"spent":190,"pend';
@@ -872,11 +901,11 @@ export default [
       assertMatch(r3, /no cap to stay under/, "attended: still no cap once the file reads whole again");
       assert(afterPost && afterPost.lost === true && afterPost.spent === 50 && pendingOf(afterPost) === 0, `the Post run commits the asked 50 and keeps lost, read ${JSON.stringify(afterPost)}`);
       assert(st.lost === true && st.spent === 50 && pendingOf(st) === 51 && st.balance === undefined, `the session stays lost, nothing read, read ${JSON.stringify(st)}`);
-      // Another session id in the same TEMP: its own state, one read, a silent pass.
+      // Another session id in the same sessions folder: its own state, one read, a silent pass.
       const before = a.fetches().length;
       const other = a.run(P50, { ...o, extra: { session_id: "otherj4" } });
-      const ost = JSON.parse(readFileSync(join(a.dir, "sc-credit-guard-otherj4.json"), "utf8"));
-      rows.push(cell("another session id, same TEMP", [`decision ${other.decision}`, `fetches +${a.fetches().length - before}`, `its state ${JSON.stringify(ost)}`, `the lost one untouched ${JSON.stringify(a.state()) === JSON.stringify(st)}`]));
+      const ost = JSON.parse(readFileSync(join(dirname(a.stateFile), "socialcrawl-otherj4.json"), "utf8"));
+      rows.push(cell("another session id, same sessions folder", [`decision ${other.decision}`, `fetches +${a.fetches().length - before}`, `its state ${JSON.stringify(ost)}`, `the lost one untouched ${JSON.stringify(a.state()) === JSON.stringify(st)}`]));
       assert(other.raw === "" && a.fetches().length - before === 1 && ost.balance === 800 && ost.spent === 50 && ost.lost === undefined, `another session: one read and a silent pass, read ${other.decision} / ${JSON.stringify(ost)}`, other);
       assert(JSON.stringify(a.state()) === JSON.stringify(st), `the lost session's file is untouched, read ${a.stateRaw()}`);
       a.cleanup();
@@ -1542,6 +1571,164 @@ export default [
         assert(got.length > 0, `DEAD FIXTURE: the mutant (${what}) passes every wording check`);
       }
       console.log(rows.join("\n"));
+    },
+  },
+  {
+    id: "P2-A10-sessions-folder-made",
+    desc: "STATE (0.3.1, A9/A10): the session file is <revxl>/sessions/socialcrawl-<sid>.json. In a fresh <revxl> with no sessions/ folder a plain free call makes nothing, and the first paid call is not refused: the guard makes the folder and counts the call there (a silent 50cr pass, attended and unattended; a 150cr ask's quote parked); a blank SC_REVXL_HOME means ~/.claude/revxl",
+    fn() {
+      const rows = [];
+      const fileOf = (home, sid) => join(home, "sessions", `socialcrawl-${sid}.json`);
+      const read = (f) => { try { return JSON.parse(readFileSync(f, "utf8")); } catch { return null; } };
+      for (const [who, env] of [["attended", {}], ["unattended", UN]]) {
+        const s = fresh();
+        rmSync(s.revxl, { recursive: true, force: true });              // a fresh <revxl>: nothing there yet
+        const free = s.run(`curl -s "${V1}credits/balance"`, { env });
+        const afterFree = existsSync(join(s.revxl, "sessions"));
+        const r = s.run(P50, { fetch: [bal(800)], env });
+        const st = read(fileOf(s.revxl, s.sid));
+        rows.push(cell(`fresh <revxl>, ${who}: free, then 50cr`, [`free ${free.decision || "pass"}, folder after it ${afterFree}`, `50cr ${r.decision || "pass"}`, `file ${JSON.stringify(st)}`]));
+        assert(free.raw === "" && !afterFree, `${who}: a plain free call passes and makes no folder, read ${free.decision} / ${afterFree}`, free);
+        assert(r.raw === "" && r.exit === 0 && st && st.spent === 50 && st.balance === 800,
+          `${who}: the first paid call passes silently and is counted in ${fileOf(s.revxl, s.sid)}, read ${r.decision} / ${JSON.stringify(st)}`, r);
+        s.cleanup();
+      }
+      const a = fresh();
+      rmSync(a.revxl, { recursive: true, force: true });
+      const ra = a.run(NP150, { fetch: [bal(800)] });
+      const sa = read(fileOf(a.revxl, a.sid));
+      rows.push(cell("fresh <revxl>, a 150cr ask", [`decision ${ra.decision}`, `file ${JSON.stringify(sa)}`]));
+      assert(ra.decision === "ask" && sa && sa.pending[sha(NP150)] === 150 && sa.spent === 0, `a 150cr ask in a fresh <revxl> parks its quote there, read ${ra.decision} / ${JSON.stringify(sa)}`, ra);
+      a.cleanup();
+      const b = fresh();
+      const rb = b.run(P50, { fetch: [bal(800)], env: { SC_REVXL_HOME: "   " } });
+      const sb = read(fileOf(join(b.dir, ".claude", "revxl"), b.sid));
+      rows.push(cell("SC_REVXL_HOME blank, 50cr", [`decision ${rb.decision || "pass"}`, `~/.claude/revxl file ${JSON.stringify(sb)}`]));
+      assert(rb.raw === "" && sb && sb.spent === 50, `a blank SC_REVXL_HOME is ~/.claude/revxl (HOME), read ${rb.decision} / ${JSON.stringify(sb)}`, rb);
+      b.cleanup();
+      console.log(rows.join("\n"));
+    },
+  },
+  {
+    id: "P2-A11-old-temp-file-ignored",
+    desc: "STATE (0.3.1, A11): the old TEMP file is never read or written. A leftover sc-credit-guard-<sid>.json in TEMP holding {spent: 9999}, with no new file, reads as a fresh session (one balance read, a 50cr plain curl silent and counted 50); rewritten mid-session to {spent: 0}, as shortform 0.6.0's guard does, it leaves the new file's count as it was",
+    fn() {
+      const s = fresh();
+      const old = join(s.dir, `sc-credit-guard-${s.sid}.json`);       // TEMP is the session folder (lib.mjs)
+      writeFileSync(old, JSON.stringify({ spent: 9999 }));
+      const r1 = s.run(P50, { fetch: [bal(800)] });
+      const st1 = s.state();
+      const r2 = s.run(P1, { fetch: [bal(800)] });
+      const oldBefore = readFileSync(old, "utf8");
+      writeFileSync(old, JSON.stringify({ spent: 0 }));            // the shortform-style rewrite of the old name
+      const r3 = s.run(P1B, { fetch: [bal(800)] });
+      const st3 = s.state();
+      const oldAfter = readFileSync(old, "utf8");
+      console.log([
+        cell("leftover {spent 9999}, no new file: 50cr", [`decision ${r1.decision || "pass"}`, `fetches ${s.fetches().length}`, `new file ${JSON.stringify(st1)}`]),
+        cell("then 1cr, old file rewritten {spent 0}, 1cr", [`${r2.decision || "pass"}, ${r3.decision || "pass"}`, `new file ${JSON.stringify(st3)}`, `old file ${oldBefore} -> ${oldAfter}`]),
+      ].join("\n"));
+      assert(r1.raw === "" && st1 && st1.spent === 50 && st1.balance === 800 && s.fetches().length === 1,
+        `the leftover is not read: a fresh session, one read, silent and counted 50, read ${r1.decision} / ${JSON.stringify(st1)}`, r1);
+      assert(r2.raw === "" && r3.raw === "" && st3.spent === 52 && oldBefore === JSON.stringify({ spent: 9999 }) && oldAfter === JSON.stringify({ spent: 0 }),
+        `the rewrite changes nothing and the old file is never written, read ${JSON.stringify(st3)} / ${oldBefore} / ${oldAfter}`, r3);
+      s.cleanup();
+    },
+  },
+  {
+    id: "P2-A14-no-sessions-folder",
+    desc: "STATE (0.3.1, A14): when <revxl>/sessions can't be made (SC_REVXL_HOME under a regular file), a paid call is refused at once attended (a deny naming the folder, under 1 s) and denied at once unattended, and the Post run stops at once, printing nothing",
+    fn() {
+      const s = fresh();
+      const file = join(s.dir, "a-file");
+      writeFileSync(file, "a regular file");
+      const folder = join(file, "revxl", "sessions");
+      const env = { SC_REVXL_HOME: join(file, "revxl") };
+      const pre = s.run(P50, { env });
+      const un = s.run(P50, { env: { ...env, ...UN } });
+      const post = s.post(P50, { env });
+      console.log(cell("SC_REVXL_HOME under a file, 50cr", [`Pre ${pre.decision} after ${pre.ms} ms`, `unattended ${un.decision} after ${un.ms} ms`, `Post ${JSON.stringify(post.raw)} after ${post.ms} ms`]));
+      assertRefused(pre, join(folder, `socialcrawl-${s.sid}.json`), new RegExp(`the session folder ${esc(folder)} does not exist and can't be created \\(E[A-Z]+\\)`), "no sessions folder, attended");
+      assert(pre.ms < 1000 && un.decision === "deny" && un.exit === 0 && un.ms < 1000 && post.raw === "" && post.exit === 0 && post.stderr === "" && post.ms < 1000 && statSync(file).isFile(),
+        `no sessions folder: Pre refused and denied at once, Post done at once, read ${pre.ms} / ${un.decision} ${un.ms} / ${post.ms} ms`, un);
+      s.cleanup();
+    },
+  },
+  {
+    id: "P2-A15-no-temp-needed",
+    desc: "STATE (0.3.1, A15): the guard no longer needs TEMP: with TEMP, TMP and TMPDIR at a folder that doesn't exist and a valid <revxl>, a plain 50cr Bash curl under the cap passes silently and is counted, attended and unattended",
+    fn() {
+      const rows = [];
+      for (const [who, env] of [["attended", {}], ["unattended", UN]]) {
+        const s = session().seed({ spent: 0 });
+        const m = join(s.dir, "no-such-temp");
+        const r = s.run(P50, { env: { ...env, TEMP: m, TMP: m, TMPDIR: m } });
+        const st = s.state();
+        rows.push(cell(`TEMP missing, ${who}, 50cr`, [`decision ${r.decision || "pass"}`, `state ${JSON.stringify(st)}`]));
+        assert(r.raw === "" && r.exit === 0 && st && st.spent === 50 && !existsSync(m), `TEMP missing, ${who}: silent and counted 50, read ${r.decision} / ${JSON.stringify(st)}`, r);
+        s.cleanup();
+      }
+      console.log(rows.join("\n"));
+    },
+  },
+  {
+    id: "P2-A16-deadline-slow-start",
+    desc: "DEADLINE (0.3.1, A16/A18/A19): one time limit D <= 7000 ms from process start bounds the worst Pre run. Its start held 3 s (a slow Node start), a live lock let go 3.7 s after the guard starts waiting, a balance read that hangs: it still decides within D + 1 s of spawn, asking attended and denying unattended; let go at 3.9 s, racing D, it asks or is refused, never silent; never let go, it is refused within D + 1 s, stating the wait it really had. A mutant with the deadline removed (D = Infinity, the 0.3.0 timing) takes longer than D + 1 s on the same run",
+    fn() {
+      const D = deadlineOf(GUARD);
+      const pre = slowStart();
+      const rows = [];
+      const scene = (label, o) => {
+        const s = fresh();
+        writeFileSync(lockOf(s), "");                                 // a live holder's lock: fresh the whole run
+        const env = { ...(o.env || {}), SLOW_START: "3000", ...(o.release == null ? {} : { SLOW_LOCK: lockOf(s), SLOW_RELEASE: String(o.release) }) };
+        const r = s.run(P50, { guard: o.guard, fetch: [{ hang: true }], node: ["--import", pre], env });
+        rows.push(cell(label, [`decision ${r.decision || "none"}`, `${r.ms} ms`, `fetches ${s.fetches().length}`, `reason ${r.message.slice(0, 70)}`]));
+        s.cleanup();
+        return r;
+      };
+      const att = scene("held 3 s, lock let go at 3.7 s, read hangs, attended", { release: 3700 });
+      const un = scene("the same, unattended", { release: 3700, env: UN });
+      const race = scene("the same, let go at 3.9 s (racing D), attended", { release: 3900 });
+      const held = scene("the same, the lock never let go, attended", {});
+      const d = hooksCopy(null);                                       // the deadline removed: D = Infinity
+      const mf = join(d, "credit-guard.mjs");
+      const msrc = readFileSync(mf, "utf8");
+      const anchored = msrc.split(`const D = ${D};`).length === 2;
+      if (anchored) writeFileSync(mf, msrc.replace(`const D = ${D};`, "const D = Infinity;"));
+      const mut = anchored ? scene("mutant D = Infinity (0.3.0 timing), as the first row", { release: 3700, guard: mf }) : null;
+      rmSync(d, { recursive: true, force: true });
+      rmSync(dirname(fileURLToPath(pre)), { recursive: true, force: true });
+      console.log(rows.join("\n"));
+      const bound = D + 1000;
+      assert(Number.isInteger(D) && D > 0 && D <= 7000, `one deadline constant \`const D = <ms>;\` <= 7000 in credit-guard.mjs, read ${D}`);
+      assert(att.decision === "ask" && att.ms <= bound, `attended: an ask within ${bound} ms of spawn, read ${att.decision} after ${att.ms} ms`, att);
+      assert(un.decision === "deny" && un.ms <= bound, `unattended: a deny within ${bound} ms of spawn, read ${un.decision} after ${un.ms} ms`, un);
+      assert((race.decision === "ask" || (race.decision === "deny" && REFUSAL.test(race.message))) && race.ms <= bound,
+        `racing D: an ask or the lock refusal, never silent, within ${bound} ms, read ${race.decision} after ${race.ms} ms`, race);
+      assert(held.decision === "deny" && REFUSAL.test(held.message) && held.ms <= bound &&
+        /session lock .* could not be taken in \d+(\.\d)? seconds \(EEXIST\), all the time left before the guard's \d+-second limit/.test(held.message),
+        `never let go: the lock refusal, stating the wait it really had, within ${bound} ms, read ${held.decision} after ${held.ms} ms`, held);
+      assert(mut && mut.ms > bound, `the fixture binds: the deadline-removed mutant takes longer than ${bound} ms, read ${mut ? mut.ms : "no mutant (no D anchor)"}`);
+    },
+  },
+  {
+    id: "P2-A17-post-slow-start",
+    desc: "DEADLINE (0.3.1, A17): a Post run under the same 3 s slow start, a live lock held throughout, ends within D + 1 s of spawn, prints nothing, exits 0 and still counts the asked call (a Post run saves without the lock), leaving the holder's lock",
+    fn() {
+      const D = deadlineOf(GUARD);
+      const pre = slowStart();
+      const s = session().seed({ spent: 190, pending: { [sha(P50)]: 50 } });
+      writeFileSync(lockOf(s), "");
+      const r = s.post(P50, { node: ["--import", pre], env: { SLOW_START: "3000" } });
+      const st = s.state();
+      const kept = existsSync(lockOf(s));
+      s.cleanup();
+      rmSync(dirname(fileURLToPath(pre)), { recursive: true, force: true });
+      console.log(cell("Post, held 3 s, the lock held throughout", [`stdout ${JSON.stringify(r.raw)}`, `exit ${r.exit}`, `${r.ms} ms`, `state ${JSON.stringify(st)}`, `lock kept ${kept}`]));
+      assert(Number.isInteger(D) && D > 0 && D <= 7000, `one deadline constant D <= 7000 in credit-guard.mjs, read ${D}`);
+      assert(r.raw === "" && r.exit === 0 && r.stderr === "" && r.ms <= D + 1000, `Post: nothing printed, exit 0, no throw, within ${D + 1000} ms, read ${r.ms} ms / exit ${r.exit} / ${r.stderr.slice(0, 120)}`, r);
+      assert(st && st.spent === 240 && pendingOf(st) === 0 && kept, `Post: the asked 50 counted without the lock, the holder's lock kept, read ${JSON.stringify(st)} / ${kept}`);
     },
   },
 ];

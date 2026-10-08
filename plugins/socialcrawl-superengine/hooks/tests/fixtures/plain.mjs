@@ -24,6 +24,24 @@ const LQ = `${V1}linkedin/search/posts?keyword=x&dry_run=1`;          // declare
 const KEY = `-H "x-api-key: $SOCIALCRAWL_API_KEY"`;
 const sha = (c) => createHash("sha256").update(c).digest("hex");
 const pendingOf = (st) => Object.values((st && st.pending) || {}).reduce((a, v) => a + v, 0);
+// 0.3.1 (a): a command through any tool but Bash (PowerShell first) is never plain.
+const PS = { extra: { tool_name: "PowerShell" } };
+const USE_BASH = /use the Bash tool/;
+const END = "Nothing was counted. If it is needed, run it in an attended session, where it can be confirmed.";
+const ATT = /run it only on a yes|run this only on an explicit yes|every paid call asks|Confirm with the user|Work out what it will cost|Show the user|Re-run it with the full literal URL/i;
+const API = "https://api." + "social" + "crawl" + ".dev/v1/";
+const MIXED = "https://www." + "Social" + "Crawl" + ".DEV/v1/";
+/** A2 (i)-(vii): [label, command, visible worst]. (i) is a valid Bash plain curl. */
+const PS_CASES = [
+  ["(i) a valid Bash plain curl, -o out.json", `curl -s "${V1}instagram/profile?handle=x" -o out.json`, 1],
+  ["(ii) $env: key header, api. host", `curl -s -H "x-api-key: $env:SOCIALCRAWL_API_KEY" "${API}prism/leads?q=a" -o out.json`, 50],
+  ["(iii) curl.exe", `curl.exe -s "${P}" -o out.json`, 50],
+  ["(iv) Invoke-RestMethod", `Invoke-RestMethod -Uri "${P}" -Headers @{"x-api-key"=$env:SOCIALCRAWL_API_KEY}`, 50],
+  ["(v) iwr", `iwr "${P}" -Headers @{"x-api-key"=$env:SOCIALCRAWL_API_KEY} -OutFile out.json`, 50],
+  ["(v) Invoke-WebRequest", `Invoke-WebRequest -Uri "${P}" -OutFile out.json`, 50],
+  ["(vi) a free endpoint, plain curl", `curl -s "${V1}credits/balance"`, 0],
+  ["(vii) a mixed-case host", `curl -s "${MIXED}prism/leads?query=x" -o out.json`, 50],
+];
 
 /** One guard run in a fresh session (spent `spent`); returns the result and the state after. */
 function once(command, opts = {}, spent = 0) {
@@ -64,6 +82,28 @@ function plain(label, cmd, want) {
     rows.push(`${mode} null  spent=${st.spent || 0}`);
   }
   return `    ${label.padEnd(52)} ${rows.join(" | ")}`;
+}
+
+/**
+ * (a) 0.3.1: one SocialCrawl command through a tool that is not Bash. Attended it asks, names and parks
+ * `want` under sha256(command) with nothing committed; unattended it is denied with nothing counted or
+ * pending, its reason ending with the unattended line and carrying no attended instruction. Both
+ * reasons say to use the Bash tool. Returns the printed row.
+ */
+function notBash(label, cmd, want, extra = PS.extra) {
+  const a = once(cmd, { extra });
+  assertDecision(a.r, "ask", `${label}: attended, a SocialCrawl command that is not Bash asks`);
+  assertMatch(a.r, USE_BASH, `${label}: the ask says to use the Bash tool`);
+  assertMatch(a.r, new RegExp(`Visible counted total: ~${want} credits`), `${label}: names the visible total`);
+  assert(!a.st.spent && (want ? a.st.pending[sha(cmd)] === want : pendingOf(a.st) === 0),
+    `${label}: pending ${want}, nothing committed, read ${JSON.stringify(a.st)}`, a.r);
+  const u = once(cmd, { extra, env: UNATTENDED.env });
+  assertDecision(u.r, "deny", `${label}: unattended, it is denied`);
+  assertMatch(u.r, USE_BASH, `${label}: the deny says to use the Bash tool`);
+  assert(u.r.message.endsWith(END) && !ATT.test(u.r.message),
+    `${label}: the deny ends with the unattended line and carries no attended instruction, read …${u.r.message.slice(-160)}`, u.r);
+  assert(!u.st.spent && pendingOf(u.st) === 0, `${label}: a deny is never counted and never pending, read ${JSON.stringify(u.st)}`, u.r);
+  return `    ${label.padEnd(52)} att ${String(a.r.decision).padEnd(5)} pending=${pendingOf(a.st)} | unatt ${u.r.decision} spent=${u.st.spent || 0}`;
 }
 
 /** A mutant copy of the guard: `anchor` must be present exactly once and is replaced. */
@@ -403,6 +443,92 @@ export default [
       const fd = once(`curl -s "${LQ}"`);
       rows.push(`    ${"dry-run-reader".padEnd(20)} mutant spent=${md.st.spent || 0} | fix spent=${fd.st.spent}`);
       assert(!md.st.spent && fd.st.spent === 56, `dry-run-reader: mutant 0, fix 56, read ${JSON.stringify(md.st)} / ${JSON.stringify(fd.st)}`);
+      console.log(rows.join("\n"));
+      rmSync(dir, { recursive: true, force: true });
+    },
+  },
+  {
+    id: "P2-A2-powershell-never-plain",
+    desc: "POWERSHELL (0.3.1, A2-A4, A6, B1, B3): any tool_name but Bash is never plain. Each SocialCrawl command through PowerShell (a valid Bash plain curl, a $env: key header, curl.exe, Invoke-RestMethod, iwr, Invoke-WebRequest, a free credits/balance curl, a mixed-case host) asks attended with its visible total parked and is denied unattended with nothing counted, and every reason says to use the Bash tool; \"powershell\" and \"PowerShell7\" are not Bash either; a missing tool_name is Bash (silent and counted); a PowerShell command with no SocialCrawl URL returns nothing and touches no folder",
+    fn() {
+      const rows = [];
+      const bad = [];
+      const each = (f) => { try { rows.push(f()); } catch (e) { bad.push(String(e.message).split("\n")[0]); } };
+      for (const [label, cmd, want] of PS_CASES) each(() => notBash(label, cmd, want));
+      for (const name of ["powershell", "PowerShell7"]) each(() => notBash(`tool_name ${JSON.stringify(name)}, (i)`, PS_CASES[0][1], 1, { tool_name: name }));
+      each(() => {                                        // B3: no tool_name is Bash, so (i) is plain
+        const { r, st } = once(PS_CASES[0][1], { extra: { tool_name: undefined } });
+        assert(r.exit === 0 && r.raw === "" && st.spent === 1 && pendingOf(st) === 0, `no tool_name: read as Bash, (i) silent and counted 1, read ${r.decision} / ${JSON.stringify(st)}`, r);
+        return `    ${"no tool_name (Bash), (i)".padEnd(52)} att null  spent=${st.spent}`;
+      });
+      each(() => {                                        // B1: no SocialCrawl URL, the fast path
+        const s = session();
+        const home = join(s.dir, "not-made");
+        const r = s.run(`Get-ChildItem -Path . | Select-Object -First 3`, { ...PS, env: { SC_REVXL_HOME: home } });
+        s.cleanup();
+        assert(r.exit === 0 && r.raw === "" && !r.stateWritten && !existsSync(home), `PowerShell, no SocialCrawl URL: nothing, read ${r.decision} / ${r.raw.slice(0, 80)}`, r);
+        return `    ${"PowerShell, no SocialCrawl URL".padEnd(52)} att null  no folder made`;
+      });
+      console.log(rows.join("\n"));
+      assert(!bad.length, `${bad.length} broken:\n      ${bad.join("\n      ")}`);
+    },
+  },
+  {
+    id: "P2-A5-powershell-post-counts",
+    desc: "POWERSHELL (0.3.1, A5): an attended PowerShell ask parks its visible worst, and its PostToolUse or PostToolUseFailure run (tool_name PowerShell, the same command) commits exactly that, once; a not-plain command ends in the same state through either tool; a declined PowerShell ask is never counted",
+    fn() {
+      const cmd = PS_CASES[0][1];                         // (i): 1cr, plain only through Bash
+      const IRM = PS_CASES[3][1];                         // (iv): 50cr, not plain through either tool
+      const rows = [];
+      for (const failure of [false, true]) {
+        const ev = failure ? "PostToolUseFailure" : "PostToolUse";
+        const s = session().seed({ spent: 0 });
+        const a = s.run(cmd, PS);
+        const parked = (s.state().pending || {})[sha(cmd)];
+        s.post(cmd, { ...PS, failure });
+        const after = s.state();
+        const again = s.post(cmd, { ...PS, failure });
+        s.cleanup();
+        rows.push(`    ${`(i), ${ev}`.padEnd(40)} ${a.decision} parked ${parked} -> spent ${after.spent} pending ${pendingOf(after)} | second Post wrote ${again.stateWritten}`);
+        assert(a.decision === "ask" && parked === 1 && after.spent === 1 && pendingOf(after) === 0 && !again.stateWritten,
+          `(i), ${ev}: the ask parks 1 and its Post run commits it once, read ${a.decision} / ${parked} / ${JSON.stringify(after)}`, a);
+        const states = [PS, {}].map((o) => {
+          const t = session().seed({ spent: 0 });
+          t.run(IRM, o);
+          t.post(IRM, { ...o, failure });
+          const st = t.state();
+          t.cleanup();
+          return JSON.stringify(st);
+        });
+        rows.push(`    ${`(iv), ${ev}`.padEnd(40)} PowerShell ${states[0]} | Bash ${states[1]}`);
+        assert(states[0] === states[1] && JSON.parse(states[0]).spent === 50, `(iv), ${ev}: PowerShell and Bash end the same, 50 committed, read ${states.join(" / ")}`);
+      }
+      const d = session().seed({ spent: 0 });
+      d.run(cmd, PS);
+      const next = d.run(`curl -s "${V1}amazon/shop?q=a"`);
+      const dst = d.state();
+      d.cleanup();
+      rows.push(`    ${"(i) declined, then a 1cr Bash call".padEnd(40)} next ${next.decision || "pass"}, spent ${dst.spent}, pending ${pendingOf(dst)}`);
+      assert(next.raw === "" && dst.spent === 1 && pendingOf(dst) === 1, `declined: never counted, read ${JSON.stringify(dst)}`, next);
+      console.log(rows.join("\n"));
+    },
+  },
+  {
+    id: "P2-A7-powershell-mutant",
+    desc: "MUTANT (0.3.1, A7, the N9 pattern): with the tool-name check neutralised (every tool read as Bash), a valid Bash plain curl sent through PowerShell slips through silently and is committed, attended and unattended; this build asks attended and denies unattended",
+    fn() {
+      const dir = mkdtempSync(join(tmpdir(), "sc-guard-ps-mutant-"));
+      const m = mutant(dir, "tool-check-gone", `NOT_BASH = input.tool_name !== undefined && input.tool_name !== "Bash";`, "NOT_BASH = false;");
+      const cmd = PS_CASES[0][1];
+      const rows = [];
+      for (const [mode, opts, want] of [["att", PS, "ask"], ["unatt", { ...PS, ...UNATTENDED }, "deny"]]) {
+        const mut = once(cmd, { ...opts, guard: m });
+        const fix = once(cmd, opts);
+        rows.push(`    ${mode.padEnd(6)} mutant ${String(mut.r.decision).padEnd(5)} spent=${mut.st.spent || 0} | fix ${fix.r.decision} spent=${fix.st.spent || 0}`);
+        assert(mut.r.decision === null && mut.r.raw === "" && mut.st.spent === 1,
+          `mutant (${mode}): the PowerShell call slips through silently and is committed (the leak this fixture catches), read ${mut.r.decision} / ${JSON.stringify(mut.st)}`, mut.r);
+        assert(fix.r.decision === want && !fix.st.spent, `fix (${mode}): ${want}, nothing committed, read ${fix.r.decision} / ${JSON.stringify(fix.st)}`, fix.r);
+      }
       console.log(rows.join("\n"));
       rmSync(dir, { recursive: true, force: true });
     },
