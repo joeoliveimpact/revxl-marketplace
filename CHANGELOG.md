@@ -4,6 +4,15 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.83] ... 2026-10-08
+
+### Added
+- **higgsfield-superengine v0.1.5** ... you pick how much each chat may spend, and you see it above the prompt.
+- **A cap box per chat.** The first paid job in a chat asks how much this chat may spend: $5, $10, $20, or Not now. Jobs under that amount just run; Not now sends nothing. Until you pick, the old limit applies (at most $5 per 24 hours, with a pop-up for anything bigger).
+- **A spend band above the prompt** shows this chat's spend against its cap, with buttons to raise it (+$5, ×2), go back to $5, or open Details: this chat's jobs (open any finished picture or video), spend by model, and your Higgsfield balance. A reopened chat shows its band again.
+- **Only your clicks change the cap.** Claude can't set it itself, by any command or script.
+- **Where the band doesn't show** (Cowork, VS Code, WSL, Claude Code older than 2.1.287, or mods turned off), the $5-per-24-hours limit and the per-job pop-up still protect your spending.
+
 ## [0.1.82] ... 2026-10-08
 
 ### Added
