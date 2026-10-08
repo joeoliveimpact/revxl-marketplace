@@ -25,9 +25,9 @@ Higgsfield can make great images and videos, but getting good results means know
 New in v0.1.5: you decide how much each chat may spend, and you can see it.
 
 - **The cap box.** The first paid job in a chat asks you how much this chat may spend: $5, $10, $20, or Not now. Jobs that fit under the amount you pick just run. Not now sends nothing, and the box comes back with the next paid job.
-- **The band.** A strip above the prompt shows what this chat has spent against its cap, with buttons: **+$5** and **×2** raise the cap, **Back to $5** lowers it, and **Details** opens the Details pane. It turns amber at 70% of the cap and red at 90%. Only your clicks change the cap; Claude can't set it for you.
+- **The band.** A strip above the prompt shows what this chat has spent against its cap (before you pick one, against the 24-hour limit), with buttons: **+$5** and **×2** raise the cap, **Back to $5** lowers it, and **Details** opens the Details pane. It turns amber at 70% of the cap and red at 90%. Only your clicks change the cap; Claude is blocked from setting it with a command.
 - **The Details pane.** This chat's jobs (time, model, price, status), with **Open** to view a finished picture or video; spend by model; what you spent in the last 24 hours and 7 days; and your Higgsfield balance (**Update balance** records the figure from your Higgsfield billing page).
-- **A reopened chat** that already used Higgsfield shows its band again.
+- **A reopened chat** that already picked a cap or spent money shows its band again.
 - **A cap you pick is the cap for that chat.** It is not lowered to a quarter of your balance, the way the 24-hour limit is, so pick an amount your balance can cover.
 - **Prices are Higgsfield's list prices**, before any sale. While Higgsfield runs a sale, a quote can be higher than what you are actually charged, so a job may ask for your OK sooner than it needs to.
 

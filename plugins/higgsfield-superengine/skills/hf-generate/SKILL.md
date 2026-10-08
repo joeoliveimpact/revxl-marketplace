@@ -64,7 +64,7 @@ An estimate is good for 30 minutes. If more time has passed, estimate again befo
 
 ## 4. Submit (this spends)
 
-Say first: "The first paid job in a chat asks you how much this chat may spend. Small jobs under your safety cap just run. Bigger ones show a pop-up with the price: Allow runs this one job, Deny spends nothing. Please answer within 60 seconds."
+Say first: "In the Claude Code app, the first paid job in a chat asks you how much this chat may spend. Small jobs under your safety cap just run. Bigger ones show a pop-up with the price: Allow runs this one job, Deny spends nothing. Please answer within 60 seconds."
 
 `& (Get-Content -Raw -Encoding UTF8 higgsfield\.python) "${CLAUDE_PLUGIN_ROOT}/scripts/hf_rest.py" submit <endpoint> higgsfield/requests/<name>.json`
 
