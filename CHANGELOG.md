@@ -4,7 +4,7 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.1.81] ... 2026-10-07
+## [0.1.81] ... 2026-10-08
 
 ### Fixed
 - **shortform-superengine v0.6.1** ... with socialcrawl-superengine also installed, both
