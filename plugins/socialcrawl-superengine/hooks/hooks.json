@@ -1,9 +1,9 @@
 {
-  "description": "SocialCrawl credit guard: counts each paid API call's worst case against a silent session cap (min(500, 25% of the balance)) when the command is a plain curl, and asks only at a cap step, before a call it can't count, such as a transcript call, which gets its per-unit price and a cheaper route, or on any other command carrying a SocialCrawl URL (denied unattended). The same script on PostToolUse and PostToolUseFailure counts an asked call once it has run. A call it can't record (no session lock in 4 seconds, no session folder, a save that fails) is refused, attended and unattended. Fires on Bash and only acts on socialcrawl.dev commands. It reads the balance once a session (0 credits, at most 3 tries), logs each unattended deny and paid pass, and on an error of its own it allows attended and denies unattended.",
+  "description": "SocialCrawl credit guard: counts each paid API call's worst case against a silent session cap (min(500, 25% of the balance)) when the command is a plain curl in the Bash tool, and asks only at a cap step, before a call it can't count, such as a transcript call, which gets its per-unit price and a cheaper route, or on any other command carrying a SocialCrawl URL (denied unattended). A SocialCrawl call through PowerShell is never a plain curl: it always asks (denied unattended) and says to use the Bash tool. The same script on PostToolUse and PostToolUseFailure counts an asked call once it has run. A call it can't record (no session lock before its wait ends, no session folder, a save that fails) is refused, attended and unattended. Fires on Bash and PowerShell and only acts on socialcrawl.dev commands. It keeps the session's count in <revxl>/sessions/ (SC_REVXL_HOME, else ~/.claude/revxl), and every wait it makes ends within 7 seconds of its start, under this hook's 10-second timeout. It reads the balance once a session (0 credits, at most 3 tries), logs each unattended deny and paid pass, and on an error of its own it allows attended and denies unattended.",
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash",
+        "matcher": "Bash|PowerShell",
         "hooks": [
           {
             "type": "command",
@@ -15,7 +15,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Bash",
+        "matcher": "Bash|PowerShell",
         "hooks": [
           {
             "type": "command",
@@ -27,7 +27,7 @@
     ],
     "PostToolUseFailure": [
       {
-        "matcher": "Bash",
+        "matcher": "Bash|PowerShell",
         "hooks": [
           {
             "type": "command",

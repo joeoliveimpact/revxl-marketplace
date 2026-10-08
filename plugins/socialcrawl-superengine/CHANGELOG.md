@@ -1,5 +1,44 @@
 # Changelog — socialcrawl-superengine
 
+## 0.3.1 - 2026-10-08
+
+### Changed
+- **The credit guard watches the PowerShell tool too.** Its three hooks (PreToolUse,
+  PostToolUse, PostToolUseFailure) match `Bash|PowerShell`. A SocialCrawl call through any tool
+  but Bash is never read as a plain `curl`, whatever its shape: attended it asks every time,
+  naming the URLs it can see, and once it runs that visible total is counted; unattended it is
+  denied and nothing is counted. Every such ask or deny says to use the Bash tool, where a plain
+  `curl` is still counted silently under the cap. A hook input with no tool name is read as Bash,
+  as before.
+- **The session's count has its own file: `<revxl>/sessions/socialcrawl-<session id>.json`**
+  (`<revxl>` is `SC_REVXL_HOME`, else `~/.claude/revxl`), with its lock beside it. The guard
+  makes the `sessions` folder on the first SocialCrawl call that isn't a free plain `curl`; if it can't, that call is refused at once,
+  naming the folder. TEMP is no longer used, and the old `%TEMP%/sc-credit-guard-<session id>.json`
+  is ignored: never read, never written. The reason: shortform-superengine 0.6.0's guard writes
+  that same name, unlocked, so it could overwrite this guard's count. A plugin update in the
+  middle of a session therefore starts that session's count from 0, and the balance is read again.
+- **Every wait ends within one time limit: 7 seconds from the guard's start.** The lock wait (4
+  seconds at most), the balance read (3 seconds at most), the run after a command retrying its
+  save, the lock delete retries and the PATH scan for a local transcription route are all cut to
+  the time left, and a slow Node start uses part of it. A run out of time takes a path it already
+  had: no lock is a refusal, and a balance read cut short is an unreadable balance, so the paid
+  call asks. The lock refusal states the wait it really had.
+
+### Known limits
+- Claude Code kills a hook still running at its 10-second timeout and lets the tool call run,
+  with nothing asked or counted. The 7-second limit exists to finish every run before that; it
+  can't help a run whose process doesn't start in time.
+- `<revxl>/sessions/` is never pruned: about 100 bytes a session.
+- shortform-superengine 0.6.0 writes the old TEMP file (0.6.1 moved to its own name); this guard
+  reads neither. Shortform's own guard still watches only Bash, so with both plugins on, a paid
+  Bash call can be asked about twice.
+- With the Bash tool unavailable, every SocialCrawl call through PowerShell asks.
+- A PowerShell call's own verb flag (`Invoke-RestMethod -Method Post`) isn't read, so a POST
+  through it is priced as a GET: it still asks, but the visible total can be low (up to 20
+  credits for `web/sessions`). Use the Bash tool, where `curl -X POST` is priced.
+- A SocialCrawl address hidden from a plain text match (split strings, an escape character
+  inside the host) is not seen by the guard in either shell.
+
 ## 0.3.0 - 2026-10-07
 
 ### Added

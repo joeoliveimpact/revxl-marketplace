@@ -4,6 +4,18 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.84] ... 2026-10-08
+
+### Fixed
+- **socialcrawl-superengine v0.3.1** ... a safety release for the credit guard (the check that
+prices and counts every paid SocialCrawl call). It now watches the PowerShell tool as well as
+Bash: a SocialCrawl call through PowerShell always asks first (and is refused when nobody is
+there), and the message says to use the Bash tool, where plain calls are still counted quietly.
+The session count moved to its own file under `~/.claude/revxl/sessions/`, so another plugin
+writing the old TEMP file can no longer overwrite it. Every wait the guard makes now ends
+within 7 seconds, well under the 10 seconds after which Claude Code would let the call run
+unchecked.
+
 ## [0.1.83] ... 2026-10-08
 
 ### Added

@@ -6,9 +6,10 @@
  * It invokes the guard exactly the way Claude Code does: a PreToolUse envelope as JSON on
  * stdin, the decision as JSON on stdout, exit 0 always (every path sets exit code 0).
  *
- * TEMP/TMP/TMPDIR are redirected to a throwaway directory per session so the guard's session
- * state file (`sc-credit-guard-<sid>.json`) is isolated and seedable, and so running the
- * suite never touches a real session's counter.
+ * Each session gets a throwaway directory, and SC_REVXL_HOME is its `revxl` folder, so the guard's
+ * session state file (`<revxl>/sessions/socialcrawl-<sid>.json`) is isolated and seedable, and so
+ * running the suite never touches a real session's counter. TEMP/TMP/TMPDIR point at the same
+ * directory; the guard keeps no state there.
  *
  * OFFLINE BY DEFAULT (R14b): the guard reads the balance on a paid command with none cached, so
  * every run gets no SOCIALCRAWL_API_KEY, HOME/USERPROFILE at the session directory (no key file)
@@ -22,7 +23,7 @@
  * Test hygiene, not evasion — the guard under test still sees the fully assembled string.
  */
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, writeFileSync, readFileSync, existsSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -68,11 +69,12 @@ export function quoted(state) {
   return (typeof state.spent === "number" ? state.spent : 0) + pend;
 }
 
-/** A guard session: one session_id and one isolated TEMP dir, reusable across calls. */
+/** A guard session: one session_id and one isolated directory (its TEMP and its revxl), reusable across calls. */
 export function session(opts = {}) {
   const dir = mkdtempSync(join(tmpdir(), "sc-guard-test-"));
   const sid = opts.sessionId || `scgt${process.pid}x${++seq}`;
-  const stateFile = join(dir, `sc-credit-guard-${sid}.json`);
+  const stateFile = join(dir, "revxl", "sessions", `socialcrawl-${sid}.json`);
+  mkdirSync(dirname(stateFile), { recursive: true });   // as TEMP always was; a fixture removes it to test its making
   const balance = opts.balance === undefined ? BALANCE : opts.balance;
   const s = {
     dir,
@@ -165,14 +167,15 @@ export function session(opts = {}) {
         ms,
       };
     },
-    /** The same command after it ran: PostToolUse, or PostToolUseFailure with `failure: true`. */
+    /** The same command after it ran: PostToolUse, or PostToolUseFailure with `failure: true`. `o.extra` (a tool_name) is kept. */
     post(command, o = {}) {
       return this.run(command, {
         ...o,
         event: o.failure ? "PostToolUseFailure" : "PostToolUse",
-        extra: o.failure
-          ? { error: "Exit code 1" }
-          : { tool_response: { stdout: "", stderr: "", interrupted: false } },
+        extra: {
+          ...(o.extra || {}),
+          ...(o.failure ? { error: "Exit code 1" } : { tool_response: { stdout: "", stderr: "", interrupted: false } }),
+        },
       });
     },
     cleanup() {

@@ -14,7 +14,7 @@
  */
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -473,7 +473,8 @@ export default [
     desc: "EXIT (P2): rc 0 and the decision on stdout while a real keep-alive socket is open in the guard's process at exit",
     fn() {
       const d = mkdtempSync(join(tmpdir(), "sc-guard-p2-"));
-      writeFileSync(join(d, "sc-credit-guard-p2.json"), JSON.stringify({ balance: 800, spent: 190 }));
+      mkdirSync(join(d, "revxl", "sessions"), { recursive: true });   // the guard's session folder, SC_REVXL_HOME = d/revxl
+      writeFileSync(join(d, "revxl", "sessions", "socialcrawl-p2.json"), JSON.stringify({ balance: 800, spent: 190 }));
       const pre = join(d, "keepalive.mjs");
       writeFileSync(pre, "const r = await fetch(process.env.P2_URL);\nawait r.text();\n");
       const drv = join(d, "driver.mjs");
@@ -486,7 +487,7 @@ export default [
           `server.keepAliveTimeout = 60000;\n` +
           `server.on("connection", () => conns++);\n` +
           `server.listen(0, "127.0.0.1", () => {\n` +
-          `  const env = { ...process.env, P2_URL: "http://127.0.0.1:" + server.address().port + "/", NO_PROXY: "127.0.0.1", TEMP: ${JSON.stringify(d)}, TMP: ${JSON.stringify(d)}, TMPDIR: ${JSON.stringify(d)} };\n` +
+          `  const env = { ...process.env, P2_URL: "http://127.0.0.1:" + server.address().port + "/", NO_PROXY: "127.0.0.1", HOME: ${JSON.stringify(d)}, USERPROFILE: ${JSON.stringify(d)}, SC_REVXL_HOME: ${JSON.stringify(join(d, "revxl"))}, TEMP: ${JSON.stringify(d)}, TMP: ${JSON.stringify(d)}, TMPDIR: ${JSON.stringify(d)} };\n` +
           `  delete env.CLAUDE_CODE_SESSION_ATTENDED;\n` +
           `  const c = spawn(process.execPath, ["--import", ${JSON.stringify(pathToFileURL(pre).href)}, ${JSON.stringify(GUARD)}], { env, stdio: ["pipe", "pipe", "pipe"] });\n` +
           `  let out = "", err = "";\n` +
