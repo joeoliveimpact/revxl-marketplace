@@ -1,0 +1,58 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Story frames</title>
+<!-- Served by scripts/render_frames.py: /plugin/ = plugin root, /job/ = the story's folder (story.json + photos). -->
+<link rel="stylesheet" href="/plugin/design/styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="/plugin/design/_ds_bundle.js"></script>
+<style>
+  body{margin:0;background:#000}
+  #canvas{width:1080px;height:1920px;overflow:hidden}
+</style></head><body>
+<div id="root"></div>
+<script type="text/babel">
+const { StoryText, StoryFrame, STYLE_MAP } = window.IGStoryNative_12be32;
+const want = Number(new URLSearchParams(location.search).get('f')) || 1;
+
+// A frame background is a swatch hex, a create-mode wash (cm-1..cm-7), or a photo path inside the job folder.
+const isPhoto = (bg) => bg && !bg.startsWith('#') && !/^cm-[1-7]$/.test(bg);
+const photoStyle = (bg, focus) => ({ backgroundImage: `url("/job/${encodeURI(bg)}")`, backgroundSize: 'cover', backgroundPosition: focus || 'center' });
+
+// Text stack position inside the safe area (270 top / 384 bottom / 65 sides).
+const STACK = {
+  top:    { marginTop: 0 },
+  center: { marginTop: 'auto', marginBottom: 'auto' },
+  bottom: { marginTop: 'auto', marginBottom: 0 },
+};
+
+function Frame({ spec, style }) {
+  const bg = spec.bg || '#000000';
+  const lines = spec.lines || [];
+  return (
+    <div id="canvas">
+      <StoryFrame background={isPhoto(bg) ? '#000000' : bg} scale={1} style={isPhoto(bg) ? photoStyle(bg, spec.focus) : undefined}>
+        <div id="stack" style={{ ...(STACK[spec.position] || STACK.top), display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 30 }}>
+          {lines.map((l, i) => (
+            <StoryText key={i} text={l.text} style={l.style || style} color={l.color || 'white'}
+                       background={l.background || 'solid'} align={l.align || 'center'} size={l.size || spec.size || 70} />
+          ))}
+        </div>
+      </StoryFrame>
+    </div>
+  );
+}
+
+fetch('/job/story.json').then(r => r.json()).then(story => {
+  const spec = story.frames[want - 1];
+  if (!spec) { document.body.dataset.error = `no frame ${want}`; document.body.dataset.ready = '1'; return; }
+  const style = story.style || 'strong';
+  // The render script checks these fonts actually loaded (FONT gate).
+  const used = new Set([style, ...(spec.lines || []).map(l => l.style).filter(Boolean)]);
+  document.body.dataset.fonts = JSON.stringify([...used].map(s => {
+    const m = STYLE_MAP[s] || STYLE_MAP.strong;
+    return [m.font, m.weight, !!m.italic];
+  }));
+  ReactDOM.createRoot(document.getElementById('root')).render(<Frame spec={spec} style={style} />);
+  setTimeout(() => document.fonts.ready.then(() => setTimeout(() => { document.body.dataset.ready = '1'; }, 400)), 150);
+}).catch(e => { document.body.dataset.error = String(e); document.body.dataset.ready = '1'; });
+</script></body></html>

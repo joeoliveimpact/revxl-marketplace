@@ -1,0 +1,21 @@
+:root{
+--text-size:70px;/* line-height per style in cap units (measured in app). Never 1.2. */
+--lh-modern:1.57cap; /* @kind other */--lh-classic:1.57cap; /* @kind other */--lh-signature:1.58cap; /* @kind other */--lh-editor:1.7cap; /* @kind other */--lh-poster:1.42cap; /* @kind other */--lh-bubble:1.53cap; /* @kind other */--lh-deco:1.53cap; /* @kind other */--lh-squeeze:1.35cap; /* @kind other */--lh-typewriter:2.13cap; /* @kind other */--lh-strong:1.4cap; /* @kind other */--lh-meme:2.17cap; /* @kind other */--lh-elegant:1.45cap; /* @kind other */--lh-directional:1.64cap; /* @kind other */--lh-literature:1.7cap; /* @kind other */
+/* bubble padding, cap units: top (from cap top) / bottom (from baseline) / sides */
+--pad-modern:0.62cap 0.7cap 0.51cap; /* @kind spacing */--pad-classic:0.57cap 0.65cap 0.49cap; /* @kind spacing */--pad-signature:0.6cap 0.73cap 1.23cap; /* @kind spacing */--pad-editor:1.19cap 1.19cap 1.28cap; /* @kind spacing */--pad-poster:0.73cap 0.83cap 1.1cap; /* @kind spacing */--pad-bubble:0.62cap 0.77cap 1.28cap; /* @kind spacing */--pad-deco:1.19cap 1.19cap 1.28cap; /* @kind spacing */--pad-squeeze:0.2cap 0.27cap 0.34cap; /* @kind spacing */--pad-typewriter:1.44cap 1.33cap 1.42cap; /* @kind spacing */--pad-strong:0.45cap 0.7cap 0.55cap; /* @kind spacing */--pad-meme:0.59cap 0.8cap 0.57cap; /* @kind spacing */--pad-elegant:1.36cap 1.25cap 1.36cap; /* @kind spacing */--pad-directional:0.68cap 0.77cap 1.34cap; /* @kind spacing */--pad-literature:0.98cap 0.98cap 1.21cap; /* @kind spacing */
+/* 14 native styles, picker order */
+--font-modern:"Roboto Condensed";--wt-modern:400; /* @kind other */--ls-modern:-0.07em; /* @kind spacing */
+--font-classic:"Inter Tight";--wt-classic:700; /* @kind other */
+--font-signature:"Caveat";--wt-signature:500; /* @kind other */
+--font-editor:"JetBrains Mono";--wt-editor:400; /* @kind other */--ls-editor:0.02em; /* @kind spacing */
+--font-poster:"Fraunces";--wt-poster:800; /* @kind other */
+--font-bubble:"Fredoka";--wt-bubble:700; /* @kind other */
+--font-deco:"Quicksand";--wt-deco:400; /* @kind other */
+--font-squeeze:"Anton";--wt-squeeze:400; /* @kind other */
+--font-typewriter:"Courier Prime";--wt-typewriter:700; /* @kind other */
+--font-strong:"Montserrat";--wt-strong:900; /* @kind other */--style-strong:italic; /* @kind other */
+--font-meme:"Comic Neue";--wt-meme:700; /* @kind other */--ls-meme:-0.06em; /* @kind spacing */
+--font-elegant:"Playfair Display";--wt-elegant:400; /* @kind other */--style-elegant:italic; /* @kind other */
+--font-directional:"Inter Tight";--wt-directional:700; /* @kind other */--case-directional:uppercase; /* @kind other */
+--font-literature:"Libre Baskerville";--wt-literature:400; /* @kind other */
+}
