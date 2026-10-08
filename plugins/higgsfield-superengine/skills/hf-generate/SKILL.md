@@ -64,7 +64,7 @@ An estimate is good for 30 minutes. If more time has passed, estimate again befo
 
 ## 4. Submit (this spends)
 
-Say first: "Small jobs under your safety cap just run. Bigger ones show a pop-up with the price: Allow runs this one job, Deny spends nothing. Please answer within 60 seconds."
+Say first: "In the Claude Code app, the first paid job in a chat asks you how much this chat may spend. Small jobs under your safety cap just run. Bigger ones show a pop-up with the price: Allow runs this one job, Deny spends nothing. Please answer within 60 seconds."
 
 `& (Get-Content -Raw -Encoding UTF8 higgsfield\.python) "${CLAUDE_PLUGIN_ROOT}/scripts/hf_rest.py" submit <endpoint> higgsfield/requests/<name>.json`
 
@@ -113,7 +113,7 @@ Tell the client what went wrong in plain words, and whether anything was charged
 1. With the Write tool, put the details in `higgsfield/reports/report-body.md`: what the client asked for, the model and endpoint, the prompt text, the step that failed, and the output's `class`, `message`, `request_id` and `correlation_id`. Never the key.
 2. Draft it. Keep the summary short, in single quotes, with no apostrophes and no script names:
 
-`& (Get-Content -Raw -Encoding UTF8 higgsfield\.python) "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin higgsfield-superengine --plugin-version 0.1.3 --summary 'Video job failed on Seedance' --body-file higgsfield/reports/report-body.md --error-code job_failed`
+`& (Get-Content -Raw -Encoding UTF8 higgsfield\.python) "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin higgsfield-superengine --plugin-version 0.1.5 --summary 'Video job failed on Seedance' --body-file higgsfield/reports/report-body.md --error-code job_failed`
 
 3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
 4. Send, using the path after `DRAFT:`:
