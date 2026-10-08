@@ -1,0 +1,183 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Quote card</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<!-- FONTS:START --><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Poppins:wght@400;600&display=block" rel="stylesheet"><!-- FONTS:END -->
+<link rel="stylesheet" href="/plugin/design/styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="/plugin/design/_ds_bundle.js"></script>
+<style>body{margin:0;background:#000}</style>
+</head><body>
+<div id="root"></div>
+<script type="text/babel">
+/* All settings come from the URL (scripts/render_card.py builds it). Image paths are inside the job folder. */
+const { StoryText } = window.IGStoryNative_12be32;
+const q = new URLSearchParams(location.search);
+const P = {
+  size:   q.get('size')   || 'carousel',          // square | carousel | story
+  theme:  q.get('theme')  || 'auto',              // auto | dark | light | dim  (auto = picked from the background)
+  font:   q.get('font')   || 'native',            // native (Inter) | brand (Poppins)
+  layout: q.get('layout') || 'full',              // full | card
+  bg:     q.get('bg')     || '#000000',           // card layout: image path, #hex, or cm-1..cm-7 gradient
+  text:   (q.get('text')  || 'Know that there is something inside you that is greater than any obstacle.').replace(/\\n/g, '\n'),
+  meta:   q.get('meta')   ?? '',                  // timestamp line; empty = today at 8:00 AM, "off" = hide
+  story:  (q.get('storytext') || '').replace(/\\n/g, '\n'), // story size only
+  storybg: q.get('storybg') || '',                 // story size only: image path or #hex behind the tile
+  ring:   q.get('ring')   || 'on',                // IG story ring around the avatar: on | off
+  name:   q.get('name')   || '',                   // required: the coach's display name
+  handle: q.get('handle') || '',                   // required: @handle
+  avatar: q.get('avatar') || '',                   // photo in the job folder; empty = initials circle
+  check:  q.get('check')  || 'off',                // blue verified badge: on only if the coach really has one
+};
+
+// X's own three display themes.
+const THEMES = {
+  dark:  { bg: '#000000', text: '#E7E9EA', sub: '#71767B', line: '#2F3336' },
+  dim:   { bg: '#15202B', text: '#F7F9F9', sub: '#8B98A5', line: '#38444D' },
+  light: { bg: '#FFFFFF', text: '#0F1419', sub: '#536471', line: '#EFF3F4' },
+};
+const FONTS = { native: '"Inter", system-ui, sans-serif', brand: '"Poppins", sans-serif' };
+const CANVAS = { square: [1080, 1080], carousel: [1080, 1440], story: [1080, 1920] };
+// Story: a card the width of the safe area (65px sides) that hugs its text, story text right above it.
+const STORY_W = 950;
+
+let t = THEMES[P.theme] || THEMES.dark;   // replaced by pickTheme() when theme=auto
+let lightBehind = false;                  // flips the story-text bubble to black on light backgrounds
+const [CW, CH] = CANVAS[P.size] || CANVAS.carousel;
+const card = P.layout === 'card';
+
+// Text steps down as posts get longer, but never below 48. Soft cap is 220 characters (render_card.py warns past it).
+const len = P.text.length;
+const base = len <= 90 ? 64 : len <= 160 ? 56 : 48;
+
+function metaLine() {
+  if (P.meta === 'off') return null;
+  if (P.meta) return P.meta;
+  const d = new Date();
+  return `8:00 AM · ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+}
+
+const Badge = ({ s }) => (
+  <svg viewBox="0 0 24 24" width={s} height={s} style={{ flex: 'none' }}>
+    <path fill="#1D9BF0" d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z"/>
+    <path fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M7.9 12.2l2.7 2.7 5.5-5.8"/>
+  </svg>
+);
+
+// The coach's photo from the job folder, or their initials when there is no photo.
+function Avatar({ u, ring }) {
+  const s = { display: 'block', width: 128 * u, height: 128 * u, borderRadius: '50%', flex: 'none', boxSizing: 'border-box',
+              ...(ring ? { border: `${6 * u}px solid ${t.bg}` } : {}) };
+  if (P.avatar) return <img src={job(P.avatar)} style={{ ...s, objectFit: 'cover' }} />;
+  const ini = P.name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('');
+  return <div style={{ ...s, background: '#536471', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                       fontWeight: 700, fontSize: 52 * u }}>{ini}</div>;
+}
+
+function Post({ w }) {
+  const u = w / 1080;               // everything scales off the post width
+  const pad = (card ? 64 : 96) * u;
+  const fs = base * u * (card ? 1.08 : 1);
+  const m = metaLine();
+  return (
+    <div style={{ padding: pad, fontFamily: FONTS[P.font] || FONTS.native, color: t.text, textAlign: 'left' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 28 * u }}>
+        {P.ring === 'off'
+          ? <Avatar u={u} />
+          : <div style={{ padding: 6 * u, borderRadius: '50%', flex: 'none', background: 'linear-gradient(45deg, #F9CE34 0%, #EE2A7B 45%, #6228D7 100%)' }}>
+              <Avatar u={u} ring />
+            </div>}
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 * u, fontWeight: 700, fontSize: 46 * u, lineHeight: 1.2 }}>
+            {P.name}{P.check === 'on' && <Badge s={46 * u} />}
+          </div>
+          <div style={{ color: t.sub, fontSize: 40 * u, lineHeight: 1.25, marginTop: 4 * u }}>{P.handle}</div>
+        </div>
+      </div>
+      <div style={{ whiteSpace: 'pre-wrap', textWrap: 'pretty', fontSize: fs, lineHeight: 1.32, marginTop: 44 * u, letterSpacing: P.font === 'native' ? '-0.01em' : 0 }}>{P.text}</div>
+      {m && <div style={{ color: t.sub, fontSize: 36 * u, marginTop: 44 * u }}>{m}</div>}
+    </div>
+  );
+}
+
+const job = (v) => /^(https?:|data:|\/)/.test(v) ? v : `/job/${encodeURI(v)}`;
+const fill = (v) => v.startsWith('#') ? { background: v }
+  : /^cm-[1-7]$/.test(v) ? { background: `var(--${v})` }
+  : { backgroundImage: `url("${job(v)}")`, backgroundSize: 'cover', backgroundPosition: 'center 25%' };
+
+// ---- theme=auto: pick the card color from what's behind it ----
+// Color stops of the design system's create-mode gradients (tokens/colors.css).
+const CM = {
+  'cm-1': ['#E8134B', '#F44A26', '#FD7906'], 'cm-2': ['#B65DED', '#E172E7', '#F501AB'],
+  'cm-3': ['#0294EB', '#4A5DF2', '#D12EE4'], 'cm-4': ['#018BBE', '#01AECF', '#14DA2B'],
+  'cm-5': ['#B6DC49', '#A2BE32', '#A037CF'], 'cm-6': ['#C8CCD2', '#D1D5DB', '#D9DDE3'],
+  'cm-7': ['#202426', '#22262C', '#26272E'],
+};
+// Brightness L and colorfulness S of one pixel, both 0..1.
+const ls = (r, g, b) => {
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+  return [(0.2126 * r + 0.7152 * g + 0.0722 * b) / 255, mx ? (mx - mn) / mx : 0];
+};
+const hexRgb = (h) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const avg = (pairs) => [0, 1].map(k => pairs.reduce((s, p) => s + p[k], 0) / pairs.length);
+
+async function measure(v) {
+  if (v.startsWith('#')) return ls(...hexRgb(v));
+  if (CM[v]) return avg(CM[v].map(h => ls(...hexRgb(h))));
+  // onload, not img.decode(): decode() never settles under headless Chrome's virtual time.
+  const img = new Image();
+  await new Promise((ok, fail) => { img.onload = ok; img.onerror = fail; img.src = job(v); });
+  const c = document.createElement('canvas'); c.width = c.height = 32;
+  const x = c.getContext('2d'); x.drawImage(img, 0, 0, 32, 32);
+  const d = x.getImageData(0, 0, 32, 32).data, px = [];
+  for (let i = 0; i < d.length; i += 4) px.push(ls(d[i], d[i + 1], d[i + 2]));
+  return avg(px);
+}
+
+// The decision tree (SKILL.md "Choosing the theme").
+function pickTheme([L, S]) {
+  // Auto only picks white or black. Navy (dim) is a manual choice.
+  if (L < 0.25) return 'light';   // very dark behind -> white card
+  if (S > 0.35) return 'dark';    // colorful behind (gradients, bright colors) -> black card
+  return L < 0.5 ? 'light' : 'dark'; // otherwise: darker -> white, lighter -> black
+}
+
+async function resolveTheme() {
+  const behind = P.size === 'story' ? (P.storybg || P.bg) : card ? P.bg : null;
+  if (!behind) return;                       // full-frame: nothing behind the post
+  const m = await measure(behind);
+  lightBehind = m[0] > 0.6;
+  if (P.theme === 'auto') t = THEMES[pickTheme(m)];
+  document.body.dataset.theme = Object.keys(THEMES).find(k => THEMES[k] === t);
+}
+
+// The post itself at square or 3:4 size.
+function Composition({ w, h }) {
+  const cardW = w * 0.86;
+  return (
+    <div style={{ width: w, height: h, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', ...(card ? fill(P.bg) : { background: t.bg }) }}>
+      {card
+        ? <div id="post" style={{ width: cardW, background: t.bg, borderRadius: 40, border: `2px solid ${t.line}`, boxShadow: '0 30px 80px rgba(0,0,0,.35)' }}><Post w={cardW} /></div>
+        : <div id="post" style={{ width: w }}><Post w={w} /></div>}
+    </div>
+  );
+}
+
+function App() {
+  if (P.size !== 'story') return <div id="canvas"><Composition w={CW} h={CH} /></div>;
+  return (
+    <div id="canvas" style={{ width: CW, height: CH, position: 'relative', overflow: 'hidden', ...fill(P.storybg || P.bg) }}>
+      {/* Safe area: 270px top bar, 384px reply bar. Text + card are one group centered in it. */}
+      <div id="safe" style={{ position: 'absolute', left: 65, right: 65, top: 270, bottom: 384, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 32 }}>
+        {P.story && <StoryText text={P.story} style="modern" color={lightBehind ? 'black' : 'white'} background="solid" size={64} />}
+        <div style={{ width: STORY_W, background: t.bg, borderRadius: 40, border: `2px solid ${t.line}`, boxShadow: '0 30px 80px rgba(0,0,0,.4)' }}><Post w={STORY_W} /></div>
+      </div>
+    </div>
+  );
+}
+resolveTheme().catch(() => {}).finally(() => {
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  // Ready only after React has painted and the fonts it asked for have settled (render.py waits on this).
+  setTimeout(() => document.fonts.ready.then(() => setTimeout(() => document.body.dataset.ready = '1', 300)), 100);
+});
+</script></body></html>

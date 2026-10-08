@@ -1,0 +1,18 @@
+:root{
+/* Picker page 1 */
+--sw-white:#FFFFFF;--sw-black:#000000;--sw-blue:#3897F0;--sw-green:#70C050;--sw-yellow:#FDCB5C;--sw-orange:#FD8D32;--sw-red:#ED4956;--sw-magenta:#D10869;--sw-purple:#A307BA;
+/* Picker page 2 */
+--sw-scarlet:#ED0013;--sw-salmon:#ED858E;--sw-light-salmon:#FFD2D3;--sw-light-sand:#FFDBB4;--sw-sand:#FFC382;--sw-dark-sand:#D28F46;--sw-brown:#996439;--sw-dark-brown:#432324;--sw-dark-green:#1C4A29;
+/* Picker page 3 */
+--sw-gray-1:#262626;--sw-gray-2:#363636;--sw-gray-3:#555555;--sw-gray-4:#737373;--sw-gray-5:#999999;--sw-gray-6:#B2B2B2;--sw-gray-7:#C7C7C7;--sw-gray-8:#DBDBDB;--sw-gray-9:#EFEFEF;
+/* Partner colors (measured). Light = partner fill + swatch letters; Solid = swatch fill + partner letters. */
+--partner-white:#000000;--partner-black:#FFFFFF;--partner-blue:#E9F2F9;--partner-green:#EFF6EE;--partner-yellow:#FEF8E8;--partner-orange:#FEF1E8;--partner-red:#FAEAEB;--partner-magenta:#FEDBEF;--partner-purple:#F7D9FD;--partner-scarlet:#FEE0E4;--partner-salmon:#FBF0F0;--partner-light-salmon:#261F1E;--partner-light-sand:#2D2420;--partner-sand:#352624;--partner-dark-sand:#F8F1EA;--partner-brown:#F6EBE5;--partner-dark-brown:#F1DEE0;--partner-dark-green:#DCF1E6;--partner-gray-1:#E6E6E6;--partner-gray-2:#E7E7E7;--partner-gray-3:#ECECEC;--partner-gray-4:#EEEEEE;--partner-gray-5:#F4F4F4;--partner-gray-6:#F5F5F5;--partner-gray-7:#363636;--partner-gray-8:#262626;--partner-gray-9:#252525;
+/* Create-mode backgrounds (soft blurry washes, not linear gradients) */
+--cm-1:radial-gradient(120% 90% at 8% 4%,#E8134B 0%,transparent 55%),radial-gradient(90% 70% at 92% 96%,#FD7906 0%,transparent 60%),radial-gradient(80% 60% at 10% 96%,#DA362C 0%,transparent 60%),linear-gradient(160deg,#E8134B,#F44A26 55%,#FD7906); /* @kind color */
+--cm-2:radial-gradient(120% 90% at 6% 4%,#B65DED 0%,transparent 55%),radial-gradient(90% 70% at 94% 96%,#F501AB 0%,transparent 60%),radial-gradient(80% 60% at 8% 96%,#E871BD 0%,transparent 60%),linear-gradient(160deg,#B65DED,#E172E7 55%,#F501AB); /* @kind color */
+--cm-3:radial-gradient(120% 90% at 6% 4%,#0294EB 0%,transparent 55%),radial-gradient(90% 70% at 94% 96%,#D12EE4 0%,transparent 60%),radial-gradient(80% 60% at 8% 96%,#A761E8 0%,transparent 60%),linear-gradient(160deg,#0294EB,#4A5DF2 50%,#D12EE4); /* @kind color */
+--cm-4:radial-gradient(120% 90% at 6% 4%,#018BBE 0%,transparent 55%),radial-gradient(90% 70% at 94% 96%,#14DA2B 0%,transparent 60%),radial-gradient(80% 60% at 8% 96%,#D8A901 0%,transparent 60%),linear-gradient(160deg,#018BBE,#01AECF 50%,#14DA2B); /* @kind color */
+--cm-5:radial-gradient(120% 90% at 6% 4%,#B6DC49 0%,transparent 55%),radial-gradient(90% 70% at 94% 96%,#A037CF 0%,transparent 60%),radial-gradient(80% 60% at 8% 96%,#EB015B 0%,transparent 60%),linear-gradient(160deg,#B6DC49,#A2BE32 45%,#A037CF); /* @kind color */
+--cm-6:radial-gradient(120% 90% at 6% 4%,#C8CCD2 0%,transparent 60%),linear-gradient(160deg,#C8CCD2,#D1D5DB 50%,#D9DDE3); /* @kind color */
+--cm-7:radial-gradient(120% 90% at 6% 4%,#202426 0%,transparent 60%),linear-gradient(160deg,#202426,#22262C 50%,#26272E); /* @kind color */
+}

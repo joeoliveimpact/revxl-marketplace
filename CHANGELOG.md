@@ -4,6 +4,16 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.82] ... 2026-10-08
+
+### Added
+- **stories-superengine v0.1.0** ... new plugin: Instagram + Facebook Stories for coaches.
+Lead-magnet story sets and the coach's own words become 1080x1920 frames in Instagram's native
+text look, checked before the coach sees them (text off the screen or under Instagram's bars is
+blocked), then scheduled as one Metricool story post on Instagram + Facebook (connector or
+composio) or posted to Instagram directly, only after the coach says go. Also quote cards and the
+shared brand-brain. brand-brain added to `scripts/sync-brand-brain.py` destinations.
+
 ## [0.1.81] ... 2026-10-08
 
 ### Fixed

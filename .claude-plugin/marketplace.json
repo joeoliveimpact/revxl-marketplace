@@ -7,7 +7,7 @@
     "email": "joe@engineforimpact.com"
   },
   "metadata": {
-    "version": "0.1.81"
+    "version": "0.1.82"
   },
   "plugins": [
     {
@@ -297,6 +297,30 @@
         "coaching",
         "social-media",
         "teardown",
+        "superengine"
+      ]
+    },
+    {
+      "name": "stories-superengine",
+      "description": "v0.1.0 · Instagram + Facebook Stories engine for coaches: from a lead magnet or one of your own lines to finished 1080x1920 story frames in the native Instagram text look, then scheduled to Instagram and Facebook through Metricool (or posted to Instagram directly) after you say go. Guide-story sets that end on a reply keyword, quote-card stories, your brand read once and reused, and a render check that blocks clipped text before anything posts. Claude installs what it needs; you never type a command.",
+      "source": "./plugins/stories-superengine",
+      "category": "marketing",
+      "version": "0.1.0",
+      "author": {
+        "name": "Joe Olive",
+        "email": "joe@engineforimpact.com"
+      },
+      "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/stories-superengine",
+      "keywords": [
+        "instagram",
+        "facebook",
+        "stories",
+        "metricool",
+        "lead-magnet",
+        "quote-card",
+        "content",
+        "coaching",
+        "social-media",
         "superengine"
       ]
     },

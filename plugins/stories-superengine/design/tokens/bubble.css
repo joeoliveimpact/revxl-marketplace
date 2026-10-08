@@ -1,0 +1,2 @@
+:root{--bubble-radius-rounded:0.1; /* @kind other */ --bubble-radius-rounded-px:12px; /* @kind radius */ --bubble-goo-blur:10; /* @kind other */}
+/* Bubble padding is per style and measured in cap units — see --pad-* in tokens/typography.css. There is no single global padding value. */
