@@ -2,6 +2,13 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.1] ... 2026-10-07
+
+### Fixed
+- **Credit guard state file.** With SocialCrawl SE also installed, shortform's credit guard
+  and SE's no longer share one running-total file, so SE's balance check and its pending
+  asks are no longer wiped.
+
 ## [0.6.0] ... 2026-10-06
 
 ### Added
