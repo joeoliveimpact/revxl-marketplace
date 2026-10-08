@@ -71,7 +71,7 @@ if (/goldmine_build\.py["']?\s+fetch\b/i.test(cmd)) {
     }
     const n = parseInt(m[1], 10);
     const sid = String((input && input.session_id) || "nosession").replace(/[^a-z0-9_-]/gi, "");
-    const stateFile = join(tmpdir(), `sc-credit-guard-${sid}.json`);
+    const stateFile = join(tmpdir(), `sf-credit-guard-${sid}.json`);
     let spent = 0;
     try { spent = JSON.parse(readFileSync(stateFile, "utf8")).spent || 0; } catch {}
     const total = spent + n;
@@ -256,7 +256,7 @@ try {
 
   // 4. Cumulative session spend (estimated; conservative — counts on intent).
   const sid = String((input && input.session_id) || "nosession").replace(/[^a-z0-9_-]/gi, "");
-  const stateFile = join(tmpdir(), `sc-credit-guard-${sid}.json`);
+  const stateFile = join(tmpdir(), `sf-credit-guard-${sid}.json`);
   let spent = 0;
   try { spent = JSON.parse(readFileSync(stateFile, "utf8")).spent || 0; } catch {}
   const total = spent + sum;

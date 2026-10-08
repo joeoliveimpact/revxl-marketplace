@@ -4,6 +4,14 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.81] ... 2026-10-08
+
+### Fixed
+- **shortform-superengine v0.6.1** ... with socialcrawl-superengine also installed, both
+plugins' credit guards wrote to the same running-total file, and shortform's guard wiped
+the SocialCrawl balance check and any pending asks. Shortform's guard now keeps its own
+file, so the two no longer interfere.
+
 ## [0.1.80] ... 2026-10-07
 
 ### Changed
