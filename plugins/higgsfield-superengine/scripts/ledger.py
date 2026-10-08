@@ -11,6 +11,8 @@
   python ledger.py balance set <usd>                        the balance read off the console; 0 after a 403
                                                             "Insufficient credits"
   python ledger.py status                                   totals + the open entries
+  python ledger.py session-cap set <session> <usd> | get <session>
+                                                            the session's cap (only the plugin's mod runs this)
   python ledger.py --selftest
 
 Every command prints one JSON line (ASCII); "class" is the outcome. Exit codes: 0 ok (check/reserve: it fits, or
@@ -26,6 +28,8 @@ Rules:
   24 h spend     counted amounts of entries created in the trailing 24 h.
   known balance  the recorded balance minus the counted amounts of entries created since it was recorded (>= 0).
   cap            pricing.cap_usd(known balance) = min($5, 25%); unknown balance (never set) -> UNKNOWN_BALANCE_CAP.
+  session        --session SID: a cap a person picked for that chat (session-cap set) is checked against that
+                 chat's spend; with no pick, the 24 h cap rule above decides.
   fits           pricing.fits_cap(): 24 h spend + amount <= cap (landing exactly on the cap fits).
   unknown        no price figure is always an ask: check / reserve without --force refuse (exit 3, needs_ask);
                  reserve --force (the client approved) reserves UNKNOWN_RESERVE ($5).
@@ -64,9 +68,12 @@ OPEN = ("pending", "assumed_charged")
 AMOUNT_RE = re.compile(r"[0-9]{1,9}(\.[0-9]{1,9})?")
 ID_RE = re.compile(r"[A-Za-z0-9._:-]{1,80}")
 WORD_RE = re.compile(r"[a-z0-9_]{1,40}")
-USAGE = ("usage: ledger.py check <usd|unknown> | reserve <usd|unknown> --id ID [--force] [--stamp PATH] | "
+CAP_MAX = 1000.0  # dollars: the largest chat cap the mod may set
+USAGE = ("usage: ledger.py check <usd|unknown> [--session SID] | "
+         "reserve <usd|unknown> --id ID [--force] [--stamp PATH] [--session SID] | "
          "settle ID [--usd X] | "
-         "refund ID [--reason WHY] | balance set <usd> | status | --selftest")
+         "refund ID [--reason WHY] | balance set <usd> | status [--session SID] | "
+         "session-cap set SID USD | session-cap get SID | --selftest")
 
 
 def ledger_dir():
@@ -119,7 +126,7 @@ def _entry_ok(e):
     return (isinstance(e, dict) and isinstance(e.get("id"), str) and bool(ID_RE.fullmatch(e["id"]))
             and e.get("state") in STATES and _num(e.get("reserved")) and _num(e.get("created_at"), -math.inf)
             and (_num(e.get("actual")) if e["state"] in ("assumed_charged", "settled") else True)
-            and isinstance(e.get("stamp", ""), str))
+            and isinstance(e.get("stamp", ""), str) and isinstance(e.get("session", ""), str))
 
 
 def _bad_constant(name):
@@ -136,7 +143,10 @@ def load():
         ok = (isinstance(d, dict) and d.get("v") == 1 and d.get("kind") == KIND
               and isinstance(d.get("entries"), list) and all(_entry_ok(e) for e in d["entries"])
               and ((d.get("balance") is None and d.get("balance_at") is None)
-                   or (_num(d.get("balance")) and _num(d.get("balance_at"), -math.inf))))
+                   or (_num(d.get("balance")) and _num(d.get("balance_at"), -math.inf)))
+              and isinstance(d.get("session_caps", {}), dict)
+              and all(isinstance(k, str) and ID_RE.fullmatch(k) and isinstance(v, dict) and _num(v.get("usd"))
+                      for k, v in d.get("session_caps", {}).items()))
     except (ValueError, RecursionError):
         ok = False
     if not ok:
@@ -204,21 +214,43 @@ def totals(d, now):
                                                                          "balance")
 
 
+def session_spent(d, sid):
+    return sum(counted(e) for e in d["entries"] if e.get("session") == sid)
+
+
+def session_cap(d, sid, now):
+    """-> (cap, basis). A cap a person picked for this chat wins; else the rolling 24 h rule (all chats)."""
+    c = d.get("session_caps", {}).get(sid)
+    if c:
+        return c["usd"], "session"
+    _, _, cap, basis = totals(d, now)
+    return cap, "default_" + basis
+
+
 def _r(x):
     return None if x is None else round(x, 7)
 
 
-def _out(cmd, d, now, **kw):
+def _out(cmd, d, now, sid=None, **kw):
     spent, known, cap, basis = totals(d, now)
     o = {"ok": True, "command": cmd, "class": "ok", "spent_24h": _r(spent), "cap_usd": _r(cap), "cap_basis": basis,
          "headroom_usd": _r(max(0.0, cap - spent)), "balance": _r(known), "balance_recorded": d.get("balance"),
          "balance_at": d.get("balance_at"), "open_entries": sum(e["state"] in OPEN for e in d["entries"])}
+    if sid is not None:
+        s_spent, (s_cap, s_basis) = session_spent(d, sid), session_cap(d, sid, now)
+        used = s_spent if s_basis == "session" else spent
+        o.update(session_id=sid, session_spent=_r(s_spent), session_cap=_r(s_cap), session_cap_basis=s_basis,
+                 session_cap_set=s_basis == "session", session_headroom=_r(max(0.0, s_cap - used)),
+                 spent_7d=_r(sum(counted(e) for e in d["entries"] if e["created_at"] > now - 7 * DAY)))
     o.update(kw)
     return o
 
 
-def _fits(d, usd, now):
-    spent, known, _, _ = totals(d, now)
+def _fits(d, usd, now, sid=None):
+    c = d.get("session_caps", {}).get(sid) if sid is not None else None
+    if c:  # a person picked this chat's cap
+        return round(session_spent(d, sid) + usd, 6) <= round(c["usd"], 6)
+    spent, known, _, _ = totals(d, now)  # no pick: today's rolling 24 h rule, all chats
     f = pricing.fits_cap(usd, spent, known)
     return (round(spent + usd, 6) <= round(UNKNOWN_BALANCE_CAP, 6)) if f is None else f
 
@@ -267,7 +299,8 @@ def _needs_ask():
 
 
 def cmd_check(args, now):
-    (amt,), _ = _args(args, 1)
+    (amt,), o = _args(args, 1, flags=("--session",))
+    sid = _id(o["--session"]) if "--session" in o else None
     usd, known = _amount(amt)
     if not known:
         raise _needs_ask()
@@ -275,17 +308,18 @@ def cmd_check(args, now):
         d = load()
         if sweep(d, now):
             save(d)
-        if _fits(d, usd, now):
-            return 0, _out("check", d, now, usd=usd, fits=True, message="Fits under the silent cap.")
-        return 3, _out("check", d, now, ok=False, usd=usd, fits=False, **{"class": "over_cap"},
+        if _fits(d, usd, now, sid):
+            return 0, _out("check", d, now, sid=sid, usd=usd, fits=True, message="Fits under the silent cap.")
+        return 3, _out("check", d, now, sid=sid, ok=False, usd=usd, fits=False, **{"class": "over_cap"},
                        message="Over the silent cap: ask the client (a real click).")
 
 
 def cmd_reserve(args, now):
-    (amt,), o = _args(args, 1, flags=("--id", "--stamp"), switches=("--force",))
+    (amt,), o = _args(args, 1, flags=("--id", "--stamp", "--session"), switches=("--force",))
     if "--id" not in o:
         raise Fail("usage", USAGE, 2)
     eid, (usd, known), force = _id(o["--id"]), _amount(amt), o.get("--force", False)
+    sid = _id(o["--session"]) if "--session" in o else None
     if not known and not force:
         raise _needs_ask()
     with locked():
@@ -297,20 +331,22 @@ def cmd_reserve(args, now):
                 save(d)
             raise Fail("duplicate_id", f"An open entry already uses this id ({dup['state']}, "
                                        f"${dup['reserved']}). Settle or refund it first. Nothing was reserved.", 2)
-        fits = _fits(d, usd, now)
+        fits = _fits(d, usd, now, sid)
         if not fits and not force:
             if swept:
                 save(d)
-            return 3, _out("reserve", d, now, ok=False, usd=usd, fits=False, **{"class": "over_cap"},
+            return 3, _out("reserve", d, now, sid=sid, ok=False, usd=usd, fits=False, **{"class": "over_cap"},
                            message="Over the silent cap: nothing was reserved. Ask the client (a real click); "
                                    "if they approve, reserve again with --force.")
         e = {"id": eid, "state": "pending", "reserved": usd, "amount_known": known, "actual": None,
              "forced": bool(force), "created_at": now, "updated_at": now, "reason": None}
         if "--stamp" in o:
             e["stamp"] = o["--stamp"]
+        if sid is not None:
+            e["session"] = sid
         d["entries"].append(e)
         save(d)
-        return 0, _out("reserve", d, now, usd=usd, fits=fits, entry=e,
+        return 0, _out("reserve", d, now, sid=sid, usd=usd, fits=fits, entry=e,
                        message="Reserved." if fits else "Reserved over the cap (--force: the client approved).")
 
 
@@ -362,16 +398,42 @@ def cmd_balance(args, now):
 
 
 def cmd_status(args, now):
-    _args(args, 0)
+    _, o = _args(args, 0, flags=("--session",))
+    sid = _id(o["--session"]) if "--session" in o else None
     with locked():
         d = load()
         if sweep(d, now):
             save(d)
-        return 0, _out("status", d, now, entries=[e for e in d["entries"] if e["state"] in OPEN])
+        extra = {"session_entries": [e for e in d["entries"] if e.get("session") == sid]} if sid else {}
+        return 0, _out("status", d, now, sid=sid, entries=[e for e in d["entries"] if e["state"] in OPEN], **extra)
+
+
+def cmd_session_cap(args, now):
+    sub = args[0] if args else None
+    if sub == "set":
+        (_, sid, amt), _ = _args(args, 3)
+        usd = _amount(amt, unknown_ok=False)[0]
+        if not 0 < usd <= CAP_MAX:
+            raise Fail("bad_input", f"A session cap is more than $0 and at most ${CAP_MAX:g}.", 2)
+    elif sub == "get":
+        (_, sid), _ = _args(args, 2)
+    else:
+        raise Fail("usage", USAGE, 2)
+    sid = _id(sid)
+    with locked():
+        d = load()
+        swept = sweep(d, now)
+        if sub == "set":
+            d.setdefault("session_caps", {})[sid] = {"usd": usd, "by": "mod", "at": now}
+        if sub == "set" or swept:
+            save(d)
+        return 0, _out("session-cap", d, now, sid=sid,
+                       message=f"Session cap set to ${usd:g}." if sub == "set" else "Session cap read.")
 
 
 COMMANDS = {"check": cmd_check, "reserve": cmd_reserve, "settle": lambda a, n: _close(a, n, "settle"),
-            "refund": lambda a, n: _close(a, n, "refund"), "balance": cmd_balance, "status": cmd_status}
+            "refund": lambda a, n: _close(a, n, "refund"), "balance": cmd_balance, "status": cmd_status,
+            "session-cap": cmd_session_cap}
 
 
 def run(argv, now=None):
@@ -696,6 +758,38 @@ def selftest():
             rounds.append((codes.count(0), codes.count(3), len(es), total))
         check(f"R1 8 processes reserve $0.90 at once against a $5 cap, 3 rounds -> exactly 5 reserved, 3 over_cap, "
               f"total $4.50 <= $5 each round {rounds}", all(r == (5, 3, 5, 4.5) for r in rounds))
+        # --- per-chat caps (v0.1.5) ------------------------------------------------------------------------
+        ws("sess")
+        R("balance", "set", "100")  # 24 h cap = min($5, 25% of $100) = $5
+        c1, j1 = R("reserve", "1.00", "--id", "a1", "--session", "sA")
+        c2, j2 = R("reserve", "4.50", "--id", "a2", "--session", "sA")
+        c3, j3 = R("reserve", "4.50", "--id", "b1", "--session", "sB")
+        check("SC1 no cap picked: the 24 h rule across all chats decides ($1 + $4.50 > $5, for sA and sB alike)",
+              c1 == 0 and c2 == 3 and j2["class"] == "over_cap" and c3 == 3 and j3["session_spent"] == 0
+              and j3["session_cap_basis"] == "default_balance" and not j3["session_cap_set"])
+        c4, j4 = R("session-cap", "set", "sA", "10")
+        c5, j5 = R("reserve", "4.50", "--id", "a2", "--session", "sA")
+        check("SC2 sA picks $10 -> sA fits $4.50 more (spent $5.50 of $10); sB is still on the 24 h rule",
+              c4 == 0 and j4["session_cap"] == 10 and j4["session_cap_basis"] == "session" and j4["session_cap_set"]
+              and c5 == 0 and j5["session_spent"] == 5.5 and R("check", "1.00", "--session", "sB")[0] == 3)
+        check("SC3 session-cap get reads it back; bad amounts are refused (0, -1, 1001, abc)",
+              R("session-cap", "get", "sA")[1]["session_cap"] == 10 and
+              all(R("session-cap", "set", "sA", x)[0] == 2 for x in ("0", "-1", "1001", "abc")))
+        _, j6 = R("status", "--session", "sA")
+        check("SC4 status --session lists every entry of that chat, any state; spent_7d present",
+              sorted(e["id"] for e in j6["session_entries"]) == ["a1", "a2"] and j6["spent_7d"] == 5.5)
+        c7, j7 = R("check", "1.00")
+        check("SC5 no --session: the 24 h rule is unchanged (spent $5.50 > cap $5 -> over_cap)",
+              c7 == 3 and j7["spent_24h"] == 5.5)
+        ws("sess-old")
+        put([ent("old1", "settled", 0.5, T0 - 60, actual=0.5)], balance=100, balance_at=T0 - 120)
+        c8, j8 = R("status", "--session", "sX")
+        check("SC6 a v0.1.4 store (entries without 'session') loads; counts in 24 h, not in a chat",
+              c8 == 0 and j8["spent_24h"] == 0.5 and j8["session_spent"] == 0 and not j8["session_cap_set"])
+        ledger_dir().joinpath("ledger.json").write_text(json.dumps({"v": 1, "kind": KIND, "balance": None,
+            "balance_at": None, "entries": [], "session_caps": {"sZ": {"usd": "ten"}}}), "utf-8")
+        check("SC7 a malformed session_caps block is ledger_corrupt (fail closed)",
+              R("status")[1]["class"] == "ledger_corrupt")
     except Exception as e:
         check(f"selftest crashed: {type(e).__name__}: {e}", False)
     finally:

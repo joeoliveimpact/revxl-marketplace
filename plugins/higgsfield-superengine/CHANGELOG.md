@@ -2,6 +2,20 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.1.5 — 2026-10-08
+
+### Added
+
+- Spend mod (`hooks/mod/register.ts` + `logic.ts`, registered under `modules` in hooks.json; Claude Code 2.1.287+). The first paid submit in a chat asks the client for that chat's cap ($5 / $10 / $20 / Not now; only Not now refuses the job). A band above the prompt shows the chat's spend against its cap with +$5, ×2, Back to $5 and Details; the Details pane lists the chat's jobs (Open shows a media file inside the folder), spend by model, last 24 h / 7 days, and the balance (Update balance). A reopened chat that already used Higgsfield shows its band again (`bandOnStart`). A cap change is noted to Claude in the chat (`$.session.append`, else `$.ui.log`).
+- Ledger: each reservation records its chat (`reserve --session`); `session-cap set|get`; `check`/`status --session` report the chat's spend, cap and headroom. A picked cap is checked against that chat's spend only and ignores the 25%-of-balance rule; with no pick, the rolling 24 h rule decides as before. v0.1.4 ledgers (entries without a session) load and keep counting in 24 h.
+
+### Changed
+
+- Guard: passes the hook event's `session_id` to `reserve --session`; the estimate's price quote uses the same rule, so the band, the quote and the guard show the same figures ("this chat's cap" after a pick, "the 24 h limit" before).
+- Guard: refuses any command, or script Claude wrote (`.py`, `.ps1`, `.sh`, at write time and at run time), that sets a session cap. Only the client's band buttons set one.
+- The mod never blocks on its own trouble: a closed box, no window to ask in, or an unreadable spend record falls back to the guard's 24 h rule (the band then shows a grey "spend record unavailable" line).
+- hf-generate: the "Say first" line mentions the cap box; failure reports send `--plugin-version 0.1.5`.
+
 ## 0.1.4 — 2026-10-05
 
 ### Changed
