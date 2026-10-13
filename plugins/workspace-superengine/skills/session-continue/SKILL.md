@@ -56,12 +56,12 @@ If the user explicitly invokes `/session-continue`, skip the suggestion and proc
 | What you found | What to do |
 |---|---|
 | `## Last session` carries **today's** date | Closeout's handoff rewrite already ran today. Ask the user (below); the default is skipping to Step 2. |
-| **Older date, AND `Checkpoint.md`'s top entry is dated today** | Closeout half-ran and died between Phase 1 and Phase 2. **Resume it — never re-run it in full.** See "Resuming a half-run closeout" below. |
-| Older date (or no such line), and no today-dated Checkpoint entry | Closeout has not run. Go to the invocation below and run it in full. |
+| **Older date, AND `Checkpoint.md`'s top entry is dated today AND carries a `**Summary:**` handle whose file exists** (`sessions/<handle>.md`; Code: `test -f`, Cowork: Glob) | Closeout half-ran and died between Phase 1 and Phase 2. **Resume it ... never re-run it in full.** See "Resuming a half-run closeout" below. |
+| Anything else: older date (or no such line) with no today-dated top entry, or a today-dated top entry with no `**Summary:**` handle or one that resolves to no file (the curator agent and `/workspace-cleanup` write those) | Closeout has not run. Go to the invocation below and run it in full. |
 
 ### Resuming a half-run closeout
 
-A today-dated Checkpoint entry over a yesterday-dated handoff means Phases 0.7 and 1 already ran and Phase 2 onward did not. Their artifacts exist. Running closeout in full from here writes a **second** summary file and appends a **second** today-dated Checkpoint entry — the split-record damage this whole check exists to prevent, self-inflicted. This surfaced in a live test: the only thing that stopped the double-write was the executor improvising, which is exactly what a skill must never depend on.
+A today-dated Checkpoint entry whose `**Summary:**` handle resolves on disk, over a yesterday-dated handoff, means Phases 0.7 and 1 already ran and Phase 2 onward did not. Their artifacts exist. Running closeout in full from here writes a **second** summary file and appends a **second** today-dated Checkpoint entry ... the split-record damage this whole check exists to prevent, self-inflicted. This surfaced in a live test: the only thing that stopped the double-write was the executor improvising, which is exactly what a skill must never depend on.
 
 So resume, and put the boundary in the invocation itself: invoke `workspace-superengine:session-closeout` and state plainly that Phases 0.7 and 1 are already complete on disk — their artifacts are `sessions/session-summary-MM-DD-YY.md` and the existing today-dated Checkpoint entry — and that the run picks up at **Phase 2**, treating those artifacts as its own earlier output. Three rails on the resumed run:
 

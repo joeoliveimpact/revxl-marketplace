@@ -2,6 +2,46 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.15.3 ... 2026-10-13
+
+### Fixed
+- session-continue: a today-dated Checkpoint entry now counts as a half-run closeout
+  only when its `**Summary:**` link points at a file that exists. The curator agent and
+  `/workspace-cleanup` write today-dated entries with no link, and those made continue
+  skip the summary and leave the handoff pointing at a missing file.
+- workspace-cleanup: junk files now go to `_recycle-bin/` with a manifest row instead
+  of being deleted, and the bin itself is never swept. The "older than 60/90 days"
+  test is gone (Glob and Read cannot see file dates); specs are archived on their
+  shipped, completed or done marker. The cleanup entry goes at the top of
+  Checkpoint.md like every other entry, not the bottom. In Cowork, cleanup shows its
+  plan and stops, because moves need Bash.
+- workspace-add-hook: the exit-code text was wrong. Only exit 2 blocks (or feeds the
+  reason back after a tool runs); any other non-zero code, a crash included, lets the
+  action go ahead. Hooks are always `.sh` now (`.ps1` only on request, wired with
+  `powershell -NoProfile -ExecutionPolicy Bypass -File`). The settings change is shown
+  before and after, confirmed, parsed after writing, and restored if it does not parse.
+- update-everything: a question ("am I behind?") now gets the snapshot and an
+  "Update these now?" ask before anything updates. The cache delete script runs now:
+  it was missing `size()` and the list of approved folders, and it added the
+  Windows-only long-path prefix on every OS. The weekly routine's prompt says
+  "update everything" so it never stops to ask.
+- session-closeout: Phase 1 inserted the Checkpoint entry by replacing "the first
+  `---`", which is never unique, so the Edit failed; on a file with no `---` above its
+  newest entry it would also have landed second. The entry now goes directly before
+  the first `## ` line, or at the end of a file with no entries yet. The template's
+  footer comment says the same.
+- workspace-cleanup: every draft in `content/drafts/` is listed in the plan, and "all"
+  or a category pick never moves one. A draft marked published or shipped is offered a
+  move (to `content/published/` if it shipped, else `content/drafts/_stale/`). Any
+  draft moves only when the user picks it item by item; an unmarked one goes to
+  `content/drafts/_stale/`. The preamble and the closeout comparison no
+  longer say cleanup deletes: removal is a quarantine with a manifest row. The
+  Checkpoint entry is written with the Edit tool, never rewritten by a shell command,
+  so the file keeps its line endings.
+- session-closeout and workspace-cleanup: when the newest Checkpoint heading appears
+  twice (two same-day cleanups), the Edit anchor is extended with the following lines
+  until it is unique, so the insert no longer fails.
+
 ## 0.15.2 ... 2026-10-06
 
 ### Fixed

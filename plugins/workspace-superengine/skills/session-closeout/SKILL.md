@@ -130,8 +130,8 @@ Keep targets resolvable to a same-folder sibling where you can. **Do not tell th
 **Both environments:**
 1. Read `Checkpoint.md` with the Read tool to load current contents.
 2. Construct the new entry (template below).
-3. Locate the position after the file's format header (first `---` separator).
-4. Use the Edit tool to insert the new entry there — replace the first `---\n` with `---\n\n<new entry>\n\n---\n`.
+3. Find the first line that starts with `## `: the current newest entry's heading.
+4. Use the Edit tool to insert the new entry directly before it: `old_string` = that whole heading line; `new_string` = the new entry (it ends with its own `---` line, per the template), a blank line, then the same heading line. If that exact heading line occurs more than once in the file, extend `old_string` (and the end of `new_string`) with the lines that follow it until it is unique; the Edit tool needs a unique match. If the file has no `## ` line yet (no entries), append the entry at the end of the file instead. Never anchor on a bare `---`: the format header and every entry carry one, so it is never unique.
 
 Do NOT use Bash redirects (`>>`) — they create encoding issues in Cowork and overwrite risk in Code.
 

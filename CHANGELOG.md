@@ -4,6 +4,19 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.85] ... 2026-10-13
+
+### Fixed
+- **workspace-superengine v0.15.3** ... five bug fixes and a drafts safety rule. `/session-continue` no longer
+mistakes a cleanup or curator Checkpoint entry for a half-finished closeout.
+`/workspace-cleanup` moves junk to the recycle bin instead of deleting it.
+`/workspace-add-hook` builds hooks that really block (exit 2) and checks the settings
+file before keeping it. "Am I behind?" now asks before updating anything, and the
+cache cleanup script runs. `/session-closeout` puts the new Checkpoint entry above
+the newest one instead of failing on the first `---`. `/workspace-cleanup` lists every draft
+and never moves one on "all" or a category pick; a draft marked published or shipped is
+offered a move, and any draft moves only when picked one at a time.
+
 ## [0.1.84] ... 2026-10-08
 
 ### Fixed

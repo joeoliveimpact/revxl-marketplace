@@ -40,7 +40,7 @@ Do NOT use for:
 ## Step 0 — Preconditions
 
 1. Confirm we're in a scaffolded workspace (`CLAUDE.md` at root, plus `.claude/rules/overrides.md` or a legacy root `RULES.md`).
-2. Read `.claude/workspace.yml#environment` to know whether to emit a `.sh` or `.ps1` script.
+2. Read `.claude/workspace.yml#environment` (`code` or `cowork`; it says nothing about the OS). Always emit a `.sh` script; emit `.ps1` only when the user explicitly asks for PowerShell.
 
 ## Step 1 — Gather the four pieces of info
 
@@ -57,7 +57,7 @@ Ask the user (one batched question if your tools allow, otherwise sequential):
    ```
 2. **Matcher** — for PreToolUse / PostToolUse only. Which tool(s)? Default `*` (all). Examples: `Bash`, `Write|Edit`, `mcp__.*`.
 3. **What should happen?** — one sentence in plain English. The skill turns this into a script.
-4. **Script style** — auto-pick based on `environment`. `code` → `.sh` (POSIX) or `.ps1` (Windows). `cowork` → defer to a JSON-only declarative hook if possible; otherwise warn the user this hook may not fire in Cowork.
+4. **Script style** ... always `.sh` (bash). `.ps1` only on the user's explicit request, wired with the `-File` command form in Step 4. `cowork` → defer to a JSON-only declarative hook if possible; otherwise warn the user this hook may not fire in Cowork.
 
 ## Step 2 — Name the hook
 
@@ -71,13 +71,15 @@ Translate the user's plain-English action into a script. Keep it small and self-
 
 - A comment header with the user's stated purpose, the date, and the event it binds to.
 - Defensive `set -euo pipefail` (bash) or `$ErrorActionPreference = 'Stop'` (PowerShell).
-- An explicit exit code policy: exit 0 on success; exit non-zero only if the hook should block the action (PreToolUse blocking is the only case where non-zero is load-bearing).
+- An explicit exit-code policy. Exit 0 is success. **Exit 2, with the reason on stderr, is the ONLY code that blocks** the action (PreToolUse, UserPromptSubmit, Stop) or feeds the reason back to Claude (PostToolUse). Any other non-zero code, including a `set -e` crash or a PowerShell throw, is logged and the action GOES AHEAD. So a hook meant to block denies with an explicit `exit 2`, and the header comment states whether it fails open (a crash lets the action through, the default) or fails closed (add `trap 'exit 2' ERR` after `set -euo pipefail`).
 
 Show the generated script to the user before writing. Offer "looks good / edit / cancel".
 
 ## Step 4 — Wire it into settings.json
 
 Write to workspace `.claude/settings.json` (NOT user global). If the file does not exist, create it with `{ "hooks": { ... } }`. If it exists, merge into the `hooks` block.
+
+Before writing, show the user the `hooks` block as it is now and as it will be after the change, and get a yes. Save the file's exact bytes first (`cp .claude/settings.json .claude/settings.json.before`). After writing, parse it: `perl -MJSON::PP -e 'decode_json(do{local $/;<>})' .claude/settings.json`. If the parse fails, restore the saved bytes (`mv .claude/settings.json.before .claude/settings.json`, or delete a file you just created) and tell the user the hook was not wired. On success, remove the `.before` copy.
 
 Example settings.json entry for a `PostToolUse` hook matching `Bash`:
 
@@ -101,9 +103,11 @@ Example settings.json entry for a `PostToolUse` hook matching `Bash`:
 
 Use `${CLAUDE_PROJECT_DIR}` for the path so the hook is portable.
 
+For a `.ps1` hook a bare path does not run. The command is `powershell -NoProfile -ExecutionPolicy Bypass -File "${CLAUDE_PROJECT_DIR}/.claude/hooks/<name>.ps1"`, with the inner quotes escaped inside the JSON string.
+
 ## Step 5 — Make it executable
 
-On POSIX (`environment: code` and not Windows): `chmod +x` the new script via Bash. On Windows: no-op (PowerShell scripts run by interpreter).
+On POSIX (`environment: code` and not Windows): `chmod +x` the new script via Bash. On Windows: no-op.
 
 In Cowork: skip the chmod and warn that the hook may need to be made executable manually if the workspace is later opened in Code.
 
