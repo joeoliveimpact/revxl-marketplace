@@ -18,4 +18,4 @@ Adds the lightest possible structure for running a content operation out of this
 
 1. Draft lives in `content/drafts/<slug>.md`.
 2. When it ships, rename to `YYYY-MM-DD_<slug>.md` and move to `content/published/`.
-3. `workspace-cleanup` can sweep stale drafts (over 90 days, untouched) on request.
+3. `workspace-cleanup` lists every draft and never moves one on "all"; a draft marked published or shipped is offered a move, and a draft moves only when you pick it by hand (to `content/published/` if it shipped, else `content/drafts/_stale/`).

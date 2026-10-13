@@ -12,4 +12,4 @@ Append-only session log. Newest entries on top. Each session, `/session-closeout
 
 ---
 
-<!-- New entries appended above this line by /session-closeout -->
+<!-- Newest entries go on top: /session-closeout inserts each new entry directly above the newest one. -->

@@ -114,11 +114,11 @@ TOKEN_CEILING_WAIVERS = {
     # A waiver is a recorded exception with an owner, never a silent pass. Do not add
     # to this list to get a red run green; trim the skill instead.
     "workspace-superengine/session-closeout":
-        "11445 est; was 11256 before 0.13.0 added its compaction guard. Reordering "
+        "11572 est; was 11256 before 0.13.0 added its compaction guard. Reordering "
         "was tried and measurably moved zero sections above the cut, so it was "
         "reverted; the guard is the fix. Trim to <5000 tracked in SKLLPLG-245",
     "workspace-superengine/session-continue":
-        "7013 est; was 6860 before the compaction guard. Same measured result as "
+        "7091 est; was 6860 before the compaction guard. Same measured result as "
         "closeout ... reorder reverted. Trim to <5000 tracked in SKLLPLG-245",
     "workspace-superengine/session-start":
         "6860 est; was 6164 before 0.13.0's read guard and compaction guard. "

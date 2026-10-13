@@ -40,6 +40,10 @@ Three states to handle correctly, none of which mean "fine":
 - **Git-SHA versions** (12-hex, e.g. `0427b5b1281b`) — normal for source-tracked plugins. A changed SHA IS an update; report it as "updated (new build)".
 - **`Status: disabled`** — skip it, and name it in the report as skipped-because-disabled. Updating a disabled plugin is wasted work and confusing output.
 
+## Step 3.5 ... Ask first when the request was a question
+
+If the user asked a question ("am I behind", "are my plugins current", "check for updates", "everything up to date?"), stop here: report the Step 3 snapshot and any pins it found, then ask **"Update these now?"** Run Step 4 onward only on a yes; on a no, that report is the deliverable. "update everything", "update my plugins", "update my skills" and `/update-everything` already are the yes, so go straight on.
+
 ## Step 4 — Update plugins (the loop)
 
 `claude plugin update` takes a required `<plugin>` argument and has no `--all`. Loop over the enabled plugins from Step 3:
@@ -170,13 +174,26 @@ Three requirements — all of them, or the number reported is fiction:
 3. **Compare freed against planned, and report the delta.** A pass that frees far less than it planned must say so loudly instead of printing a success line.
 
 ```python
-import os, shutil, stat
+import os, shutil, stat, sys
 
 EXT = "\\\\?\\"   # literal \\?\
 
 def ext(p):
-    p = os.path.abspath(p).replace("/", os.sep)
+    p = os.path.abspath(p)
+    if os.name != "nt":
+        return p                             # the prefix is Windows-only
+    p = p.replace("/", os.sep)
     return p if p.startswith(EXT) else EXT + p
+
+def size(p):
+    total = 0
+    for root, _, files in os.walk(ext(p)):
+        for f in files:
+            try:
+                total += os.lstat(os.path.join(root, f)).st_size
+            except OSError:
+                pass
+    return total
 
 def onerr(func, path, exc):
     """Read-only attribute is the usual cause of WinError 5 — clear and retry."""
@@ -186,13 +203,23 @@ def onerr(func, path, exc):
     except Exception:
         pass
 
-size_before = size(vp)                       # walk and sum before deleting
-shutil.rmtree(ext(vp), onerror=onerr)
-if os.path.exists(vp):
-    failed.append(vp)                        # still there = it did NOT work
-else:
-    freed += size_before
+approved = sys.argv[1:]                      # the directories the user said yes to
+planned = freed = 0
+failed = []
+for vp in approved:
+    size_before = size(vp)                   # walk and sum before deleting
+    planned += size_before
+    shutil.rmtree(ext(vp), onerror=onerr)
+    if os.path.exists(ext(vp)):
+        failed.append(vp)                    # still there = it did NOT work
+    else:
+        freed += size_before
+print(f"planned {planned} B, freed {freed} B, failed {len(failed)}")
+for vp in failed:
+    print("FAILED:", vp)
 ```
+
+Save it as a file and pass the approved directories as its arguments.
 
 **Verify by arithmetic, not by absence of errors.** Re-check `os.path.exists()` on every directory after deleting it, count the failures, and print them. On the live run this fix took the same pass from 0.03 GB to **4.48 GB**.
 
@@ -238,4 +265,4 @@ Build it with the **`/schedule`** capability (cloud routines survive a closed la
 
 Pick an **off-peak, non-round** time. Everyone who asks for "weekly" gets Monday 9am, which is exactly when marketplaces are busiest — `17 6 * * 2` (Tuesday 06:17) is a better default. Say why in one line so it does not look arbitrary.
 
-The routine's prompt must be **self-contained** — it fires with no conversation to remember. Have it: run this skill's sequence, report only changes, and stay silent on a no-change week.
+The routine's prompt must be **self-contained** ... it fires with no conversation to remember. Have it say "update everything" (a question such as "am I behind?" stops at Step 3.5 to wait for a yes nobody is there to give), report only changes, and stay silent on a no-change week.
