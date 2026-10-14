@@ -64,6 +64,16 @@
             "async": false
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" summary-queue",
+            "async": false
+          }
+        ]
       }
     ]
   }

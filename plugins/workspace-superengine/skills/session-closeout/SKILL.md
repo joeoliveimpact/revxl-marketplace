@@ -7,6 +7,8 @@ description: Use at the end of a working session to capture state — writes a s
 
 Run at end of every session. No skipping the file updates — those are non-negotiable.
 
+**Every file closeout writes** (summary, handoff.md, Checkpoint.md by hand): Write or Edit tool only, never a Bash redirect (`>`, `>>`, `cat >`).
+
 ## Compaction guard ... re-invoke this skill if the session compacted
 
 This file is long. After a context compaction the skill body is re-injected **truncated to roughly the first 5,000 tokens, keeping only the start**, so the later phases silently vanish.
@@ -57,11 +59,15 @@ One file per session. It is the expansion of the terse Checkpoint burst, and it 
 
 ### Step 1 ... pick the path
 
-`sessions/session-summary-MM-DD-YY.md` at the workspace root.
+Get it from the script. Never pick or reuse a name yourself:
 
-- **Create `sessions/` if it does not exist.** Most workspaces were scaffolded before this existed, so a missing folder is normal, not an error.
-- **Collisions get a numeric suffix**, in order: `session-summary-08-14-26.md`, then `-1`, then `-2`. Check with Glob before writing. Never overwrite an existing summary ... a second session on the same day is a second file.
-- **Every pointer written later carries the suffix you actually used.** Phase 1's `**Summary:**` handle and Phase 2's `## Session summary` block both show `session-summary-MM-DD-YY` as a placeholder, not a literal. On a second same-day session the file is `-1` and so is every pointer at it. A pointer at the un-suffixed name is the handle-pointing-at-nothing failure this phase exists to avoid, self-inflicted.
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/hooks/run-py.sh" "${CLAUDE_PLUGIN_ROOT}/scripts/closeout_bookkeep.py" "<workspace root>" summary-path
+```
+
+It prints the next free `sessions/session-summary-MM-DD-YY[-N].md` (none, then `-1`, `-2`) and creates `sessions/` if missing. Write the summary there, with frontmatter `id:` set to that file name minus `.md` (the queue hook checks it). **Every later pointer carries that exact name:** `session-summary-MM-DD-YY` in this skill is a placeholder, never a literal.
+
+**`NO-PYTHON` fallback:** only when a call's output starts `NO-PYTHON`, do that step "by hand" as noted and tell the user once: "Python isn't installed, so I did the Checkpoint bookkeeping by hand." By hand here: create `sessions/`, take the first free name of none, `-1`, `-2` (Glob).
 
 ### Step 2 ... write the file
 
@@ -127,15 +133,13 @@ Keep targets resolvable to a same-folder sibling where you can. **Do not tell th
 
 ## Phase 1: Append to Checkpoint.md (5 min)
 
-**Both environments:**
-1. Read `Checkpoint.md` with the Read tool to load current contents.
-2. Construct the new entry (template below).
-3. Find the first line that starts with `## `: the current newest entry's heading.
-4. Use the Edit tool to insert the new entry directly before it: `old_string` = that whole heading line; `new_string` = the new entry (it ends with its own `---` line, per the template), a blank line, then the same heading line. If that exact heading line occurs more than once in the file, extend `old_string` (and the end of `new_string`) with the lines that follow it until it is unique; the Edit tool needs a unique match. If the file has no `## ` line yet (no entries), append the entry at the end of the file instead. Never anchor on a bare `---`: the format header and every entry carry one, so it is never unique.
+**The script places the entry. Never write the insert yourself** (no Edit, Write, redirect or code of your own) outside the `NO-PYTHON` fallback:
 
-Do NOT use Bash redirects (`>>`) — they create encoding issues in Cowork and overwrite risk in Code.
+1. `bash "${CLAUDE_PLUGIN_ROOT}/hooks/run-py.sh" "${CLAUDE_PLUGIN_ROOT}/scripts/closeout_bookkeep.py" "<workspace root>" entry-header <summary path>` prints the `**Summary:**` and `**Session log:**` lines; put each in its template slot as printed. By hand: `**Summary:** [[<stem>]]`, Session log per the reference below.
+2. Write the whole entry (template below) to a scratch file outside the workspace (session scratchpad, else system temp).
+3. `bash "${CLAUDE_PLUGIN_ROOT}/hooks/run-py.sh" "${CLAUDE_PLUGIN_ROOT}/scripts/closeout_bookkeep.py" "<workspace root>" insert-entry <that file>` puts it above the newest entry (the first `## ` line), keeps the line endings, and refuses a duplicate `[[handle]]`. A refusal means it is already in: never insert it another way. By hand: Edit with `old_string` = the first `## ` line (extended until unique), `new_string` = the entry, a blank line, that line; no `## ` line: append at the end.
 
-Open `Checkpoint.md`. Add a NEW entry at the top (newest first), below the format header.
+**Any other failure** (no Bash, a script error): say so, leave Checkpoint.md untouched, and give the user the entry's scratch file path.
 
 Template:
 ```markdown
@@ -173,7 +177,7 @@ Template:
 
 The raw transcript is the one artifact that is not a summary of anything, and **nothing else on disk records which transcript belongs to which session** ... so unless this line is written, `/session-continue` cannot find it later.
 
-Identify the file, **confirm it exists before writing the path**, and if you cannot identify it write what happened instead of a guess. How to find it and the exact fallback wording: `${CLAUDE_PLUGIN_ROOT}/references/session-log-stamping.md`.
+`entry-header` prints the path only when the transcript is on disk, else `could not determine`. Use it as printed, never a guess. Background, and by hand: `${CLAUDE_PLUGIN_ROOT}/references/session-log-stamping.md`.
 
 ### The retrieval header ... two lines, deliberately not one
 
@@ -597,7 +601,7 @@ Also confirm:
 6. Phase 4.2 ran and produced a spoken result? In Claude Code that is either a list the user answered, or "nothing was left running." In Cowork it is the plain "I cannot do this from here." A closeout that says nothing at all about background processes is a defect.
 7. Phase 2.7 ran? If a deferred marker was present, it was either **honored** (heavy pass ran, items proposed) or **explicitly declined by the user**. A closeout that leaves a deferred marker sitting there without saying a word is a defect. If the workspace was clean, 2.7 correctly produced no output and there is nothing to report here.
 
-8. Session summary written, and does the Checkpoint entry's `**Summary:**` handle point at a file that is actually on disk? Check it with Glob or `test -f`, do not assume it. A handle pointing at nothing is worse than no handle, because it looks like it works.
+8. After Phase 2, run `bash "${CLAUDE_PLUGIN_ROOT}/hooks/run-py.sh" "${CLAUDE_PLUGIN_ROOT}/scripts/closeout_bookkeep.py" "<workspace root>" check <summary path>`. It exits non-zero naming each miss (newest entry's `**Summary:**` handle not on disk or not this session's, a load-bearing `handoff.md` heading missing, `## Last session` not today). Fix, re-run, and never report it passed without running it (by hand: check those three with Glob and Read). A handle pointing at nothing is worse than no handle, because it looks like it works.
 9. Demotion ran, **and said something**? Entries older than 30 days (beyond the newest 5) are one-liners in the tail, EXCEPT pre-summary entries with no handle, which stay full on purpose. The retained count was spoken out loud. A demotion that compressed nothing and reported nothing is a defect, not a pass ... it is indistinguishable from bloat control working when it is actually waiting on the backfill.
 
 If any row shows `?` — fix it before reporting complete.

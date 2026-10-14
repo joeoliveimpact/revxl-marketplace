@@ -1,0 +1,158 @@
+#!/usr/bin/env bash
+# Summary queue writer ... the floor layer, no Python.
+#
+# PostToolUse(Write|Edit|MultiEdit). When the tool just wrote
+# <ws>/sessions/session-summary-*.md, append ONE line to
+# <ws>/.claude/revxl/summary-queue.jsonl:
+#   {"v":1,"ts":"<UTC>","path":"sessions/<name>.md","id":"<stem>",
+#    "session_id":"<id>","sha256":"<raw bytes>","op":"written|rewritten"}
+# This hook is the single writer of that file. Fewzhun's `collect` reads it.
+#
+# <ws> is the folder that holds the `sessions/` folder the summary was written in.
+# `id` comes from the summary's frontmatter and must equal the filename stem, or
+# no line is written. `op` is `rewritten` when that path is already queued.
+# sha256 is over the file's raw bytes, no line-ending normalising.
+#
+# It never blocks or fails the tool call: every exit is 0. The only output is a
+# short note to Claude when the id is wrong, or one stderr line when it cannot run.
+#
+# Usage, from hooks.json:
+#   run-hook.cmd summary-queue
+
+IFS= read -r -d '' WSE_SQ_INPUT
+
+# Path filter first, in bash builtins only: every other write exits here.
+re='"file_path"[[:space:]]*:[[:space:]]*"([^"]*)"'
+[[ $WSE_SQ_INPUT =~ $re ]] || exit 0
+shopt -s nocasematch
+re='(^|/|\\)sessions(/|\\)+session-summary-[^/\\]*\.md$'
+[[ ${BASH_REMATCH[1]} =~ $re ]] || exit 0
+shopt -u nocasematch
+
+PERL_BIN=""
+if command -v perl >/dev/null 2>&1; then
+    PERL_BIN="perl"
+elif [ -x /usr/bin/perl ]; then
+    PERL_BIN="/usr/bin/perl"
+fi
+if [ -z "$PERL_BIN" ] || ! command -v sha256sum >/dev/null 2>&1; then
+    echo "workspace-superengine summary-queue: perl or sha256sum not found, summary not queued." >&2
+    exit 0
+fi
+
+read -r -d '' WSE_SQ_PERL <<'PERL'
+use strict;
+use warnings;
+use File::Path qw(make_path);
+use POSIX qw(strftime);
+
+my $note = sub {
+    my ($msg) = @_;
+    my $J = JSON::PP->new->utf8;
+    print $J->encode({ hookSpecificOutput => {
+        hookEventName => 'PostToolUse',
+        additionalContext => "summary-queue: $msg" } }), "\n";
+    exit 0;
+};
+
+eval { require JSON::PP; 1 } or do { print STDERR "workspace-superengine summary-queue: JSON::PP missing, summary not queued.\n"; exit 0 };
+my $J = JSON::PP->new->utf8->allow_nonref;
+
+binmode STDIN;
+my $raw = do { local $/; <STDIN> };
+my $p = eval { $J->decode(defined $raw ? $raw : '') };
+exit 0 unless ref($p) eq 'HASH' && ref($p->{tool_input}) eq 'HASH';
+
+my $fp = $p->{tool_input}{file_path};
+exit 0 unless defined $fp && !ref($fp) && length $fp;
+$fp =~ s{\\}{/}g;
+if ($fp !~ m{^(?:[A-Za-z]:)?/}) {    # relative: resolve against the hook's cwd
+    my $cwd = $p->{cwd};
+    exit 0 unless defined $cwd && !ref($cwd) && length $cwd;
+    $cwd =~ s{\\}{/}g;
+    $cwd =~ s{/+$}{};
+    $fp = "$cwd/$fp";
+}
+$fp =~ s{/+}{/}g;
+exit 0 unless $fp =~ m{^(.*)/([^/]+)/(session-summary-[^/]*)\.md$}i && lc($2) eq 'sessions';
+my ($ws, $dir, $stem) = ($1, $2, $3);
+my $name = "$stem.md";
+exit 0 if $ws eq '';
+
+# Filesystem calls need the UTF-8 bytes of the path, not perl characters.
+my ($fpb, $wsb) = ($fp, $ws);
+utf8::encode($fpb);
+utf8::encode($wsb);
+
+open(my $in, '<', $fpb) or exit 0;
+binmode $in;
+my $body = do { local $/; <$in> };
+close $in;
+$body = '' unless defined $body;
+
+# Frontmatter id, parsed the way Fewzhun's splitFrontmatter does: the file must
+# open with a `---` line, the block ends at the next `---` line.
+my $id;
+if ($body =~ /\A---[ \t]*\r?\n(.*?)(?:\r?\n)---[ \t]*(?:\r?\n|\z)/s) {
+    for my $l (split /\r?\n/, $1) {
+        next unless $l =~ /^id\s*:(.*)$/;
+        $id = $1;
+        $id =~ s/^\s+|\s+$//g;
+        $id =~ s/^(["'])(.*)\1$/$2/;
+        last;
+    }
+}
+if (defined $id) { utf8::decode($id) }
+$note->("not queued. $name has no frontmatter `id:` line. Add `id: $stem` to its frontmatter.")
+    unless defined $id && length $id;
+$note->("not queued. The frontmatter id `$id` does not match the file name `$stem`. Set `id: $stem` in $name.")
+    unless $id eq $stem;
+
+my $sha;
+if (open(my $sh, '-|', 'sha256sum', '-b', '--', $fpb)) {
+    my $o = <$sh>;
+    close $sh;
+    ($sha) = (defined $o ? $o : '') =~ /([0-9a-f]{64})/;
+}
+unless ($sha) { print STDERR "workspace-superengine summary-queue: sha256sum failed, summary not queued.\n"; exit 0 }
+
+my $rel = "$dir/$name";
+my $qdir = "$wsb/.claude/revxl";
+my $qfile = "$qdir/summary-queue.jsonl";
+
+my $op = 'written';
+if (open(my $q, '<', $qfile)) {
+    while (my $line = <$q>) {
+        my $r = eval { $J->decode($line) };
+        next unless ref($r) eq 'HASH' && defined $r->{path} && !ref($r->{path});
+        my $rp = $r->{path};
+        $rp =~ s{\\}{/}g;
+        if ($rp eq $rel) { $op = 'rewritten'; last }
+    }
+    close $q;
+}
+
+my $sid = $p->{session_id};
+$sid = $ENV{CLAUDE_CODE_SESSION_ID} unless defined $sid && !ref($sid) && length $sid;
+$sid = undef unless defined $sid && !ref($sid) && length $sid;
+
+my @f = (v => 1, ts => strftime('%Y-%m-%dT%H:%M:%SZ', gmtime), path => $rel, id => $id,
+         session_id => $sid, sha256 => $sha, op => $op);
+my @parts;
+while (my ($k, $v) = splice(@f, 0, 2)) { push @parts, $J->encode($k) . ':' . $J->encode($v) }
+my $out = '{' . join(',', @parts) . "}\n";
+
+eval { make_path($qdir); 1 } or do { print STDERR "workspace-superengine summary-queue: cannot create $qdir, summary not queued.\n"; exit 0 };
+# One append, one print: an O_APPEND write of one short line.
+if (open(my $w, '>>', $qfile)) {
+    binmode $w;
+    print {$w} $out;
+    close $w or print STDERR "workspace-superengine summary-queue: write to $qfile failed.\n";
+} else {
+    print STDERR "workspace-superengine summary-queue: cannot open $qfile, summary not queued.\n";
+}
+exit 0;
+PERL
+
+printf '%s' "$WSE_SQ_INPUT" | "$PERL_BIN" -e "$WSE_SQ_PERL"
+exit 0
