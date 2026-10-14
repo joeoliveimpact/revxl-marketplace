@@ -4,6 +4,19 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased] ... 2026-10-14
+
+### Added
+- **The validator now fails when an update adds a required plugin.** `scripts/validate.py`
+gained a `dependencies` section, and CI runs it as its own job. Measured 10.13.26: when a
+plugin update starts listing another plugin under `dependencies`, Claude Code never installs
+that plugin on any update path (CLI, git auto-update, the Desktop plugin screen), and the next
+session switches the updated plugin off, so it disappears for the client. A plugin's first
+release may still list any dependency. Every later release is compared with origin/main and
+fails if it lists a dependency name the released version did not (in `plugin.json` or its
+`marketplace.json` entry). Changing a version range or removing a dependency is fine. No
+plugin version changes, so no catalog bump.
+
 ## [0.1.85] ... 2026-10-13
 
 ### Fixed

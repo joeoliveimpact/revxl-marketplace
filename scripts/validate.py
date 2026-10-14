@@ -27,6 +27,10 @@ Checks (mirror the three former CI jobs exactly):
                 changes marketplace.json that version is greater than every
                 heading on origin/main; each plugin CHANGELOG.md's top
                 version heading equals its plugin.json version
+  dependencies  no update adds a required plugin: a published plugin may
+                not list a dependency (plugin.json or its marketplace.json
+                entry) that origin/main's version did not; a first release
+                (not in origin/main's catalog) may list any
   routing       shortform-superengine's no-dead-end contract: every
                 Next-moves block above the compaction cut and inside its
                 Terminal paths section, every block citing a journey-map id,
@@ -49,6 +53,7 @@ Exit code 0 = all good, 1 = at least one error (errors printed, GitHub
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -407,6 +412,89 @@ def check_changelog() -> list[str]:
     return errs
 
 
+# --- dependencies ----------------------------------------------------------
+
+
+def _dep_names(entries) -> set[str]:
+    """Dependency identities, "name" or "name@marketplace".
+
+    Version constraints are ignored on purpose: tightening or loosening the
+    range on a dependency the plugin already had is not adding one.
+    """
+    out: set[str] = set()
+    for e in entries or []:
+        if isinstance(e, str):
+            out.add(e)
+        elif isinstance(e, dict) and e.get("name"):
+            mk = e.get("marketplace")
+            out.add(f"{e['name']}@{mk}" if mk else e["name"])
+    return out
+
+
+def _deps_of(entry: dict, pj_text: str | None) -> set[str]:
+    """A plugin's dependencies: its marketplace.json entry plus its plugin.json."""
+    deps = _dep_names(entry.get("dependencies"))
+    if pj_text:
+        try:
+            deps |= _dep_names(json.loads(pj_text).get("dependencies"))
+        except Exception:
+            pass  # plugin.json validity is check_plugins()' job
+    return deps
+
+
+def check_dependencies() -> list[str]:
+    """No update may add a required plugin.
+
+    Measured 10.13.26: when an update starts requiring another plugin, Claude
+    Code never installs the required plugin on any path (CLI update, git
+    auto-update, Desktop plugin screen), and the next session switches the
+    updated plugin off, so it vanishes for the client. Rule (Joe 10.14.26): a
+    `dependencies` entry may only appear in a plugin's FIRST release.
+
+    "Previously released" = origin/main, the branch clients install from.
+    A plugin not in origin/main's catalog is a first release and may list any
+    dependency. Every other plugin fails on any dependency name origin/main
+    did not list (plugin.json or its marketplace.json entry). Removing one is
+    fine. CI checks out with fetch-depth 0; a local run compares against the
+    last `git fetch`. Missing origin/main fails in CI and warns locally.
+    """
+    m = json.loads(MKT.read_text(encoding="utf-8"))
+    main_mkt = _git_show("origin/main:.claude-plugin/marketplace.json")
+    if main_mkt is None:
+        msg = ("dependencies: origin/main not available, so a newly added "
+               "dependency cannot be detected")
+        if os.environ.get("GITHUB_ACTIONS") == "true":
+            return [f"::error::{msg} (the CI job needs fetch-depth: 0)"]
+        print(f"::warning::{msg}. NOT CHECKED: run `git fetch origin main` and rerun.")
+        return []
+    main_entries = {p.get("name"): p for p in json.loads(main_mkt).get("plugins", [])}
+
+    errs: list[str] = []
+    n_upd = n_first = 0
+    for p in m.get("plugins", []):
+        name = p["name"]
+        pj_rel = (Path(p["source"]) / ".claude-plugin" / "plugin.json").as_posix()
+        pj = REPO / pj_rel
+        now = _deps_of(p, pj.read_text(encoding="utf-8") if pj.exists() else None)
+        old = main_entries.get(name)
+        if old is None:
+            n_first += 1
+            continue  # first release: may declare any dependency
+        n_upd += 1
+        old_rel = (Path(old["source"]) / ".claude-plugin" / "plugin.json").as_posix()
+        before = _deps_of(old, _git_show(f"origin/main:{old_rel}"))
+        for dep in sorted(now - before):
+            errs.append(f"::error file={pj_rel}::{name} adds the dependency '{dep}', "
+                        f"which its released version on origin/main does not list. "
+                        f"An update that adds a required plugin never installs it "
+                        f"and switches {name} off for clients. Dependencies may "
+                        f"only appear in a plugin's first release: remove '{dep}'.")
+    if not errs:
+        print(f"OK dependencies: no update adds a required plugin ({n_upd} "
+              f"compared with origin/main, {n_first} first release(s))")
+    return errs
+
+
 def _read(p: Path) -> str:
     return p.read_text(encoding="utf-8", errors="replace")
 
@@ -619,6 +707,7 @@ SECTIONS = {
     "frontmatter": check_frontmatter,
     "readme": check_readme,
     "changelog": check_changelog,
+    "dependencies": check_dependencies,
     "routing": check_routing,
     "plugin_integrity": check_plugin_integrity,
 }
