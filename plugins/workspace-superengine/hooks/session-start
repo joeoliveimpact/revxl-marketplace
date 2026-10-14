@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SessionStart hook for workspace-superengine
-# Three jobs:
+# Four jobs:
 #   1. Scaffold existence check — warn when CLAUDE.md is missing, or when
 #      neither .claude/rules/overrides.md nor a legacy root RULES.md exists.
 #   2. Broadcast .claude/workspace.yml (verbosity + environment) as a
@@ -11,6 +11,8 @@
 #      it prints nothing, as does an unfamiliar layout or any version string
 #      that is not N.N.N. A false notice is worse than none. Cowork never loads
 #      plugin hooks, so this is Desktop and Code only.
+#   4. Prune this plugin's N6 heartbeat folder (~/.claude/revxl/heartbeat/
+#      workspace-superengine/, written by the mod): files older than 7 days.
 #
 # This hook used to also paste the whole agent-optimizer SKILL.md into every
 # session. 0.12.0 moved the override constraints to .claude/rules/overrides.md,
@@ -28,6 +30,16 @@ PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 # Workspace root: Claude Code sets CLAUDE_PROJECT_DIR; fall back to $PWD.
 WORKSPACE_ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
+
+# --- Job 4: prune the mod's heartbeat files. Our folder only, older than 7 days.
+# Silent and fast; it never fails the hook.
+(
+    set +eu
+    hb="${USERPROFILE:-$HOME}"
+    hb="${hb//\\//}"
+    hb="${hb%/}/.claude/revxl/heartbeat/workspace-superengine"
+    [ -n "${USERPROFILE:-$HOME}" ] && [ -d "$hb" ] && /usr/bin/find "$hb" -maxdepth 1 -type f -mmin +10080 -delete
+) >/dev/null 2>&1 || true
 
 # --- Job 1: scaffold existence check ---
 scaffold_warning=""
