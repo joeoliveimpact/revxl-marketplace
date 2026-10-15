@@ -3,7 +3,8 @@
 
 Standard library only. Claude runs it from a skill in a non-interactive shell:
   python report_to_joe.py draft --plugin P --plugin-version V --summary S (--body-file F | --body-stdin)
-                                [--client-label L] [--error-code C] [--local-dir D]
+                                [--skill K] [--step T] [--error-line E] [--error-code C]
+                                [--client-id I] [--client-label L] [--local-dir D]
   python report_to_joe.py send <draft.json> [--local-dir D]   # the client said Send
   python report_to_joe.py skip <draft.json>                   # the client said Skip
   python report_to_joe.py --selftest                          # offline checks, never the real relay
@@ -12,12 +13,16 @@ Exit codes: 0 sent or skipped, 2 usage error, 3 saved locally (not sent).
 The REVXL Vault key (env VAULT_API_KEY, else ~/.config/revxl/vault_api_key) only ever goes
 into the x-api-key header. It is never printed, logged, or written to a file.
 Relay contract: output/orchestrator-mode/09.26.26/phase-1/RELAY.md
+Standard: revxl-marketplace docs/client-reporting.md. The relay files each report under
+REVXL Client Reports/<plugin>/<client_id>/ (no client id: key-<fingerprint>), root folder as fallback.
+client_id: --client-id, else env REVXL_CLIENT_ID, else ~/.config/revxl/client_id, else left out.
 """
 import argparse, hashlib, json, os, re, string, sys, urllib.error, urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
-DEFAULT_LOCAL_DIR = "higgsfield/reports"  # the only plugin-specific line: other plugins change this
+DEFAULT_LOCAL_DIR = "higgsfield/reports"  # the only plugin-specific line: each plugin sets its own folder
+CLIENT_ID_FILE = ".config/revxl/client_id"  # relative to HOME; a short slug like acme-coaching, never a person
 VAULT_KEY_FILE = ".config/revxl/vault_api_key"  # relative to HOME
 KEY_FILES = [VAULT_KEY_FILE, ".config/openrouter/api_key"]  # scrubbed from reports; other plugins extend this list
 RELAY_URL = "https://n8n.engineforimpact.com/webhook/revxl-client-report"  # env REVXL_RELAY_URL overrides
@@ -26,7 +31,8 @@ USER_AGENT = "revxl-report/0.1"  # Cloudflare blocks the default Python-urllib U
 BODY_MAX = 51200
 MARKER = "\n\n…[truncated by report_to_joe.py]"
 LIMITS = {"plugin": 64, "plugin_version": 32, "summary": 200, "body": None,
-          "client_label": 100, "error_code": 64, "created_at": 64}
+          "client_label": 100, "error_code": 64, "created_at": 64,
+          "skill": 64, "step": 100, "error_line": 300, "client_id": 64}
 REQUIRED = ("plugin", "plugin_version", "summary", "body")
 HOME = Path.home()      # the selftest points this at a temp dir
 USE_REGISTRY = True     # also scan the Windows user environment, like hf_rest.py's creds()
@@ -205,6 +211,18 @@ def _clean_once(raw, secrets):
     return out
 
 
+def client_id(given=None):
+    """--client-id, else env REVXL_CLIENT_ID, else ~/.config/revxl/client_id. Reduced to a folder-safe slug
+    (a-z 0-9 . _ -), so whatever is in the file can only ever name one Drive folder."""
+    raw = given or os.environ.get("REVXL_CLIENT_ID") or ""
+    if not raw:
+        try:
+            raw = (HOME / CLIENT_ID_FILE).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            raw = ""
+    return re.sub(r"[^a-z0-9._-]+", "-", raw.strip().lower()).strip("-.")[:64] or None
+
+
 def vault_key():
     key = (os.environ.get("VAULT_API_KEY") or "").strip()
     if not key:
@@ -243,6 +261,10 @@ def save_local(payload, local_dir, reason, fp, now=None):
     reason = scrub(reason)
     text = (f"# {payload['summary']}\n\n"
             f"- **Plugin:** {payload['plugin']} {payload['plugin_version']}\n"
+            f"- **Skill:** {payload.get('skill') or '(not given)'}\n"
+            f"- **Step:** {payload.get('step') or '(not given)'}\n"
+            f"- **Error line:** {payload.get('error_line') or '(none)'}\n"
+            f"- **Client id:** {payload.get('client_id') or '(not given)'}\n"
             f"- **Client:** {payload.get('client_label') or '(not given)'}\n"
             f"- **Key fingerprint:** {fp}\n"
             f"- **Error code:** {payload.get('error_code') or '(none)'}\n"
@@ -307,6 +329,8 @@ def cmd_draft(a):
             return 2
     payload = clean({"plugin": a.plugin, "plugin_version": a.plugin_version, "summary": a.summary,
                      "body": body, "client_label": a.client_label, "error_code": a.error_code,
+                     "skill": a.skill, "step": a.step, "error_line": a.error_line,
+                     "client_id": client_id(a.client_id),
                      "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")})
     if missing(payload):
         print(f"ERROR: empty required field(s): {', '.join(missing(payload))}", file=sys.stderr)
@@ -323,6 +347,10 @@ def cmd_draft(a):
     print("----- PREVIEW: exactly what would be sent to Joe -----")
     print(f"Plugin: {payload['plugin']} {payload['plugin_version']}")
     print(f"Summary: {payload['summary']}")
+    print(f"Skill: {payload.get('skill', '(not given)')}")
+    print(f"Step: {payload.get('step', '(not given)')}")
+    print(f"Error line: {payload.get('error_line', '(none)')}")
+    print(f"Client id: {payload.get('client_id', '(not given)')}")
     print(f"Client: {payload.get('client_label', '(not given)')}")
     print(f"Error code: {payload.get('error_code', '(none)')}")
     print(f"Created at: {payload['created_at']}")
@@ -363,7 +391,8 @@ def cmd_send(a):
     else:
         (data, reason), fp = post(payload, key), fingerprint(key)
     if data:
-        print(f"SENT: {data.get('name', '(no name)')} (Drive id {data.get('id', '?')})")
+        print(f"SENT: {data.get('name', '(no name)')} (Drive id {data.get('id', '?')})"
+              + (f" in {data['folder']}" if data.get("folder") else ""))
         Path(a.draft).unlink()
         return 0
     reason = scrub(reason)
@@ -397,6 +426,10 @@ def main(argv):
     g = d.add_mutually_exclusive_group(required=True)
     g.add_argument("--body-file")
     g.add_argument("--body-stdin", action="store_true")
+    d.add_argument("--skill")
+    d.add_argument("--step")
+    d.add_argument("--error-line")
+    d.add_argument("--client-id")
     d.add_argument("--client-label")
     d.add_argument("--error-code")
     d.add_argument("--local-dir", default=DEFAULT_LOCAL_DIR)
@@ -781,6 +814,25 @@ def selftest():
     dt = time.perf_counter() - t0
     check(f"R4 timing: 1 MB 'eyJ' body {dt:.3f}s < 3 s (target 3), result within the byte limit",
           dt < 3 and len(big["body"].encode("utf-8")) <= BODY_MAX)
+
+    # S. standard fields: pass through, scrubbed, cut; client id from arg / env / file, slugged
+    code, out, p = draft("standard fields", "b", "--skill", "vault-note-builder", "--step", "3 write note",
+                         "--error-line", "PermissionError token=vk_stdFieldLeak12345 " + "x" * 400,
+                         "--client-id", "Acme Coaching!")
+    dj = json.loads(p.read_text(encoding="utf-8"))
+    check("S  skill / step / client id carried, client id slugged",
+          dj.get("skill") == "vault-note-builder" and dj.get("step") == "3 write note" and dj.get("client_id") == "acme-coaching")
+    check("S  error line scrubbed and cut to 300", "vk_stdFieldLeak12345" not in dj["error_line"] and len(dj["error_line"]) == 300)
+    check("S  preview shows the new fields", "Skill: vault-note-builder" in out and "Client id: acme-coaching" in out)
+    code, out, md = send(p, "503")
+    check("S  local .md carries the new fields", md and "**Step:** 3 write note" in md and "**Client id:** acme-coaching" in md)
+    (HOME / CLIENT_ID_FILE).write_text("Fileclient_01\n", encoding="utf-8")
+    check("S  client id read from ~/.config/revxl/client_id", client_id() == "fileclient_01")
+    os.environ["REVXL_CLIENT_ID"] = "env-client"
+    check("S  env REVXL_CLIENT_ID wins over the file", client_id() == "env-client")
+    del os.environ["REVXL_CLIENT_ID"]
+    (HOME / CLIENT_ID_FILE).unlink()
+    check("S  no client id anywhere -> left out (relay uses the key fingerprint)", client_id() is None)
 
     # 6. filename collision
     pl = {"plugin": "a/b", "plugin_version": "1", "summary": 'same: "name"?', "body": "x"}

@@ -4,6 +4,21 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.86] ... 2026-10-15
+
+### Added
+- **Client failure reporting is a standard.** `docs/client-reporting.md` sets out the failure report
+every client plugin and skill that can fail must offer: what a report carries (plugin, version,
+skill, failed step, error line, client id), what it never carries (credentials, client content),
+and the block to paste into each SKILL.md. `scripts/templates/report_to_joe.py` is the shared
+reporter each plugin copies, changing only `DEFAULT_LOCAL_DIR`; its `--selftest` runs 125 checks
+and never touches the real relay. Reports go through the n8n relay `revxl-client-report-relay`
+into Drive `REVXL Client Reports/<plugin>/<client_id>/`. Linked from `docs/plugin-conventions.md`.
+
+### Changed
+- **higgsfield-superengine v0.1.6** ... uses the shared reporter, and the hf-generate and
+higgsfield-setup failure reports now say which skill and step failed and quote the error line.
+
 ## [Unreleased] ... 2026-10-14
 
 ### Added

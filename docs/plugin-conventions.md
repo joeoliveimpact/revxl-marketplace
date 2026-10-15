@@ -120,6 +120,7 @@ Each plugin folder must contain:
 - `README.md` — describes the plugin, its skills, install, dependencies, audience
 - `CHANGELOG.md` — versioned change history
 - `LICENSE` — MIT (or document why otherwise)
+- `scripts/report_to_joe.py` + the Failure report block in each skill that can fail — see [Client Failure Reporting](client-reporting.md)
 
 Optional but recommended:
 - `agents/{name}.md` — agents (Claude Code only)
