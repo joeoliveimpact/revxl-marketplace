@@ -144,9 +144,9 @@ Send the closing message from the output contract. Offer: "Want to make your fir
 Tell the client what went wrong in plain words, then offer: "Want me to send Joe a short report so he can fix it? You'll see exactly what's in it first."
 
 1. With the Write tool, put the details in `higgsfield/reports/report-body.md`: what the client was doing, which step failed, the output's `class` and `message`. Never the key.
-2. Draft it (PowerShell tool). Keep the summary short, in single quotes, with no apostrophes and no script names:
+2. Draft it (PowerShell tool). Keep the summary short. Put the summary, step and error line in single quotes, drop any apostrophe from them, and use no script names:
 
-`& (Get-Content -Raw -Encoding UTF8 higgsfield\.python) "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin higgsfield-superengine --plugin-version 0.1.3 --summary 'Setup failed at the key check' --body-file higgsfield/reports/report-body.md --error-code invalid_credentials`
+`& (Get-Content -Raw -Encoding UTF8 higgsfield\.python) "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin higgsfield-superengine --plugin-version 0.1.6 --skill higgsfield-setup --step '<step that failed>' --error-line '<the error line>' --summary 'Setup failed at the key check' --body-file higgsfield/reports/report-body.md --error-code invalid_credentials`
 
 3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
 4. Send, using the path after `DRAFT:`:

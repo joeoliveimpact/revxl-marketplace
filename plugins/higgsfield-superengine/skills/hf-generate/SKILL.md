@@ -111,9 +111,9 @@ Then offer: "Want a variation?" Any new or changed request starts again at step 
 Tell the client what went wrong in plain words, and whether anything was charged. Then offer: "Want me to send Joe a short report so he can fix it? You'll see exactly what's in it first."
 
 1. With the Write tool, put the details in `higgsfield/reports/report-body.md`: what the client asked for, the model and endpoint, the prompt text, the step that failed, and the output's `class`, `message`, `request_id` and `correlation_id`. Never the key.
-2. Draft it. Keep the summary short, in single quotes, with no apostrophes and no script names:
+2. Draft it. Keep the summary short. Put the summary, step and error line in single quotes, drop any apostrophe from them, and use no script names:
 
-`& (Get-Content -Raw -Encoding UTF8 higgsfield\.python) "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin higgsfield-superengine --plugin-version 0.1.5 --summary 'Video job failed on Seedance' --body-file higgsfield/reports/report-body.md --error-code job_failed`
+`& (Get-Content -Raw -Encoding UTF8 higgsfield\.python) "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin higgsfield-superengine --plugin-version 0.1.6 --skill hf-generate --step '<step that failed>' --error-line '<the error line>' --summary 'Video job failed on Seedance' --body-file higgsfield/reports/report-body.md --error-code job_failed`
 
 3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
 4. Send, using the path after `DRAFT:`:

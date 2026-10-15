@@ -2,6 +2,13 @@
 
 All notable changes to this plugin. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.1.6 — 2026-10-15
+
+### Changed
+
+- `scripts/report_to_joe.py` is now the shared REVXL reporter (`scripts/templates/report_to_joe.py`, standard in `docs/client-reporting.md`), with `DEFAULT_LOCAL_DIR` kept at `higgsfield/reports`. Reports carry the skill, the failed step, the error line and a client id (`--client-id`, else env `REVXL_CLIENT_ID`, else `~/.config/revxl/client_id`), and the relay files them under `REVXL Client Reports/higgsfield-superengine/<client_id>/`.
+- hf-generate and higgsfield-setup: the failure report call passes `--skill`, `--step` and `--error-line`, and both send `--plugin-version 0.1.6` (higgsfield-setup still sent 0.1.3).
+
 ## 0.1.5 — 2026-10-08
 
 ### Added
