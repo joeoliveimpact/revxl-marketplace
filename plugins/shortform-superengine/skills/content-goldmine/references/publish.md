@@ -31,15 +31,16 @@ Artifact
 Store the link the tool returns as `goldmine.dashboard_url` in state, then give it to
 the client.
 
-## A later pull (the link is in state)
+## An update (the link is in state)
 
-Update the same Artifact, so the client keeps one link:
+A later pull, and the rebuild after this pull's comment read (SKILL.md Step 12), both update the
+same Artifact, so the client keeps one link:
 
 ```
 Artifact
   url:        <goldmine.dashboard_url>
   file_path:  <the new path printed after "Dashboard saved:">
-  label:      Pull of <MM.DD.YY>
+  label:      <a later pull: "Pull of <today, MM.DD.YY>"; the rebuild: "Comment read added">
 ```
 
 - Leave out `icon` and `capabilities`: an update keeps what the page has.
