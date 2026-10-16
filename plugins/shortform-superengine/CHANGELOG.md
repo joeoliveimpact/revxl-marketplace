@@ -2,6 +2,43 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.2] ... 2026-10-15
+
+### Added
+- **Comment read.** After the Goldmine page is published, Claude sorts this pull's comments
+  into the five groups only it can judge: counterarguments, skeptics, tool and resource asks,
+  stuck points and wins. A check grades a fixed sample of up to 30 per group against an 85%
+  bar, removes the tags it finds wrong, and allows one re-read of a group that falls short.
+  The page then shows who checked it: a separate reader, or Claude in the same chat. It runs
+  on every pull with comments, with no ask. New runner steps `comment-read` and
+  `check-comments`, and `references/comment-read.md`.
+- **Reply drafts in the client's own words.** Offered once per run as a yes or no. On a yes,
+  questions, tool asks and stuck points under competitors' breakout posts get a reply built
+  only from the client's own lines in their call transcripts (brand-brain's
+  `voc/transcripts/`) or their written answers (`reel-build/reply-answers/`), checked word
+  for word. A question with no answer on file comes back as a content idea instead, never in
+  an invented voice. New runner steps `reply-candidates` and `check-replies`, and
+  `references/reply-drafts.md`. A no is recorded (`reply-candidates --decline`), so it is
+  not asked again for that pull.
+- **Failure report.** content-goldmine offers the standard failure report
+  (`scripts/report_to_joe.py`, drafts kept in `shortform-superengine/reports/`). The client
+  sees the exact report before it is sent. Other skills follow in a later release.
+
+### Changed
+- **Dashboard v0.2.2.** The pinned Content Goldmine Dashboard moves to v0.2.2. Clients see an
+  honest check line on Comment Mining (it says an independent reader checked only when one
+  did, and an old pull's check never shows on a new pull), a plain notice instead of a blank
+  Lead magnet board, engagement asks tagged on the Benchmark, and a Reply Queue that keeps
+  every weekly run instead of only the newest.
+- **Page first, then the read.** The page is built and published exactly as before. The
+  comment read and reply drafts run after it, then the page is rebuilt and published again
+  to the same link, so a read that stops halfway never holds back this week's page. A run
+  that stops resumes at the read, never past it.
+
+### Fixed
+- **En dash comment asks.** A caption that puts an en dash between the comment ask and the
+  keyword, spaced or not, is now caught as a comment ask, as an em dash already was.
+
 ## [0.6.1] ... 2026-10-08
 
 ### Fixed

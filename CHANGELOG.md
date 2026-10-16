@@ -4,6 +4,18 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.87] ... 2026-10-15
+
+### Changed
+- **shortform-superengine v0.6.2** ... the Content Goldmine now reads the comments and can draft
+replies. The page moves to dashboard v0.2.2: an honest check line, a notice instead of a blank
+Lead magnet board, engagement asks tagged on the Benchmark, and a Reply Queue that keeps every
+weekly run. After the page is published, Claude sorts this pull's comments into five more groups
+and checks a sample, then the page is published again. On a yes, reply drafts answer questions
+under competitors' posts in the client's own words only, checked word for word. content-goldmine
+offers the standard failure report, and an en dash between a comment ask and its keyword is now
+caught.
+
 ## [0.1.86] ... 2026-10-15
 
 ### Added

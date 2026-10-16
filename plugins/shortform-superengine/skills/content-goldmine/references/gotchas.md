@@ -36,6 +36,21 @@ network. A half-finished unpack is cleaned up and redone on the next run.
   and nothing was changed. Do not retry, and change nothing on the computer. Stop and say the
   plugin's maintainer needs to know.
 
+## Comment read and reply drafts
+
+These run after the page is published, so none of them takes this week's page away. Every
+other stop is in the "When something stops" table of `./comment-read.md` or `./reply-drafts.md`.
+
+| Message | What happened | Tell the client | Then |
+|---|---|---|---|
+| `comment read: N comments with no category list (null) treated as no category.` (dashboard step) | A batch file held `null` where a list of categories belongs. The step read it as no category, so the page still builds | Nothing. | Carry on. |
+| `ERROR:` ... `no owner label is set`, or ... `is spoken by` (reply-candidates, exit 2) | Call transcripts exist, but the runner does not know which speaker is the client, or no line carries the name it was given. The line lists the most frequent speaker names (names only) | Which of these is you? (with the names the line lists) | Run it again with `--owner "<the name they pick>"`. Never guess one. The yes to drafts is kept, so never ask that again. |
+| `ERROR: Finish the <date> reply drafts first` (exit 2) | An earlier set of drafts has not passed check-replies | Nothing. | Run `check-replies`, fix what it names in the pending file until PASS, then run reply-candidates again. |
+| `ERROR: no call transcripts in` ... `so nothing was saved` (reply-candidates, exit 2) | No transcripts in the folder it looked in and no written answers: usually the wrong folder. Nothing was kept | Do you have call transcripts? (once) | Yes: run it again from their workspace folder (the one holding `voc/`) or with `--workspace`. None: run it again with `--no-sources-ok`. |
+| `No call transcripts or written answers yet, ...` (reply-candidates with `--no-sources-ok`, exit 0) | No transcripts and no written answers to draft from | That line, once, in plain words. | Fill every real question as `no_match` with a content idea. If they paste answers, save them for them (`./reply-drafts.md`). |
+| `ERROR: the verdicts file ... is missing or not valid JSON` (check-comments, exit 2) | The saved verdicts are not one JSON list (text around the code fence, or a cut-off reply) | Nothing. | Save just the list (one code fence around it is fine), then run `--verdicts` again. |
+| `ERROR: this pull has no saved page yet` (record-publish, exit 2) | record-publish ran before the dashboard step saved this pull's page | Nothing. | Run the dashboard step, publish, then `record-publish`. |
+
 ## The first-run window
 
 A first run is "no `reel-build/goldmine-run.json`", never "no `history/` folder": any
