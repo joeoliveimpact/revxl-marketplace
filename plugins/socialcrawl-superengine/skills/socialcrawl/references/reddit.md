@@ -19,7 +19,7 @@
 | /search/comments | `query` | 1 | Search Reddit comments |
 | /subreddits/search | `query` | **1-26** | Find subreddits by topic |
 | /search/media | `query` | 1 | Search Reddit image and video posts |
-| /post/transcript | `url` | 10 | Get a Reddit video post transcript — ⚠️ **Gated in this plugin: 10 credits per post — 100 of them = 1000 credits. The credit guard ASKS before this runs (it no longer hard-denies). Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.** |
+| /post/transcript | `url` | 10 | Get a Reddit video post transcript — ⚠️ **Gated in this plugin: 10 credits per post — 100 of them = 1000 credits. Run it only on an explicit yes; the credit guard counts it and never asks. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.** |
 | /omni-search | `query` | **5-9** | Reddit VoC sweep: one keyword → threads across all of Reddit with subreddit attribution and top comments inline. |
 
 ### Parameter legend
@@ -280,7 +280,7 @@ curl "https://www.socialcrawl.dev/v1/reddit/search/media?query=<query>" \
 
 Returns the transcript for a Reddit video post or direct `v.redd.it` URL when Reddit exposes a VTT caption file. Includes raw WebVTT in `raw_vtt` plus a parsed plain-text transcript. When Reddit doesn't expose captions, `transcript` is `null` and `transcriptNotAvailable` is `true`: credits are only deducted when a transcript is returned.
 
-> ⚠️ **Gated in this plugin: 10 credits per post — 100 of them = 1000 credits. The credit guard ASKS before this runs (it no longer hard-denies). Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.**
+> ⚠️ **Gated in this plugin: 10 credits per post — 100 of them = 1000 credits. Run it only on an explicit yes; the credit guard counts it and never asks. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.**
 
 **Parameters**
 
@@ -324,7 +324,7 @@ curl "https://www.socialcrawl.dev/v1/reddit/omni-search?query=<query>" \
 | A subreddit's posts / its details | `/subreddit` · `/subreddit/details` | 1 |
 | One post | `/post` | 1 |
 | That post's comments | `/post/comments` | 5 |
-| Transcript | ⚠️ `/post/transcript` — gated: **10cr per post**, the guard asks first. Cheaper: pull the media URL (1–5cr) and transcribe it yourself | **10** |
+| Transcript | ⚠️ `/post/transcript` — gated: **10cr per post**, run only on an explicit yes. Cheaper: pull the media URL (1–5cr) and transcribe it yourself | **10** |
 
 ### `/omni-search` is the best value in the API for voice-of-customer — but it is metered
 

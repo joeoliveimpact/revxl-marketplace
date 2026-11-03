@@ -4,6 +4,19 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.88] ... 2026-11-03
+
+### Changed
+- **socialcrawl-superengine v0.4.0** ... the credit guard never raises a prompt: every paid call
+is counted silently against one limit, the session budget set in the new Budget pane or else the
+automatic cap, for every session, Desktop routine and `claude -p` run alike. A mod adds a band
+with this session's spending, the Budget, Endpoints, Suggested and Round-up tabs, a balance
+status line and a toast per counted call. All three skills offer the standard failure report.
+
+### Fixed
+- **validate.py** ... a hook script name now ends at a word boundary, so a `.json` or `.jsonl`
+name in a hooks.json description no longer reads as a missing `.js` script.
+
 ## [0.1.87] ... 2026-10-15
 
 ### Changed

@@ -283,6 +283,8 @@ try {
 
 const prompt = input && typeof input.prompt === "string" ? input.prompt : "";
 if (!prompt.trim()) silent();
+// A press in the mod's Endpoints or Combos tab (5b): the person's priced pick, already routed. No suggestion.
+if (prompt.startsWith("[SocialCrawl launcher]")) silent();
 
 try {
   const lower = prompt.toLowerCase();

@@ -926,4 +926,37 @@ export default [
       killedBy('  if (!on) return "jev: off";', '  if (false) return "jev: off";', probe, "say jev: on without a key");
     },
   },
+
+  // ---------------------------------------------------------------- S29-S30: the mod's launcher (5b A15)
+  {
+    id: "S29-launcher-prompt-is-silent",
+    desc: "5b A15: a prompt that starts `[SocialCrawl launcher]` (a press in the mod's Endpoints or Combos tab, the person's priced pick) gets no suggestion, though it names SocialCrawl and carries a URL",
+    fn() {
+      const url = "https://www." + "social" + "crawl.dev/v1/instagram/profile?handle=nike";   // assembled, never one literal
+      const p = `[SocialCrawl launcher] My pick from the Endpoints tab, priced 1 cr: make exactly one SocialCrawl call, GET ${url}. Use one plain curl in the Bash tool with the API key header from the socialcrawl skill, save the reply with -o /tmp/sc-instagram-profile.json, then summarise it.`;
+      const c = '[SocialCrawl launcher] My pick from the Combos tab, priced 25–120 cr: run the research-plays option "Voice-of-Customer mining" (packages.json row people_saying, option voice-of-customer, curated voice-of-customer). Ask me only for what it can\'t run without, show the price gate, then run it.';
+      for (const q of [p, c]) assertSilent(ask(q, { roster: [] }), "a launcher prompt");
+      killedBy(
+        '\nif (prompt.startsWith("[SocialCrawl launcher]")) silent();',
+        "",
+        (path) => assertSilent(ask(p, { roster: [], hook: path }), "mutant"),
+        "drop the launcher skip"
+      );
+    },
+  },
+  {
+    id: "S30-launcher-word-elsewhere-still-fires",
+    desc: "5b A15/B15: only the leading `[SocialCrawl launcher]` is silent: a typed prompt naming SocialCrawl, with \"launcher\" or the tag anywhere but the start, still fires",
+    fn() {
+      const prompts = ["socialcrawl the launcher page for @nike", "research @nike for my [SocialCrawl launcher] test", " [SocialCrawl launcher] socialcrawl @nike"];
+      const probe = (hook) => { for (const q of prompts) assertFires(ask(q, { roster: [], hook }), `still fires: ${q}`); };
+      probe();
+      killedBy(
+        'if (prompt.startsWith("[SocialCrawl launcher]")) silent();',
+        "if (/launcher/i.test(prompt)) silent();",
+        probe,
+        "skip any prompt holding \"launcher\""
+      );
+    },
+  },
 ];

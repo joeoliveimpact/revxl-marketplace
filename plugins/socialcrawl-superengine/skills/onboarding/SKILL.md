@@ -117,10 +117,11 @@ Tell the user, in beginner voice:
 > "Every SocialCrawl call costs credits — most cost 1, some cost 5, and a handful of
 > heavy research reports cost 15–50 **per call**. My rules with your credits: I tell you
 > the price before a run, and the option you pick is the go-ahead. After that a built-in
-> guard keeps a running count and stays quiet until the session's total reaches a cap —
-> the smaller of 500 credits or a quarter of your balance — then checks with you once
-> before each further step of that size. Calls it can't price up front always get a check,
-> and so does any command that carries a SocialCrawl link but isn't a plain API call, like a
+> guard keeps a running count and never stops to ask you: it lets calls through quietly up
+> to a limit for each session or scheduled run — your own budget if you set one with /socialcrawl-budget (or the Budget button on the SocialCrawl band, once a paid call has drawn it), otherwise the smaller of 500
+> credits or a quarter of your balance (500 if the balance can't be read) — and refuses any
+> call that would go past it. It also refuses any command that carries a SocialCrawl link but
+> isn't a plain API call, like a
 > loop or a note. The big reports never run in batches. Two more things: repeat calls
 > within a few minutes are usually free (cached), and transcripts from this API are
 > **priced per item** — 3 credits a video on YouTube, about 10 credits an item elsewhere —
@@ -199,3 +200,30 @@ handles, and a competitor or two?"* Put each answer through the roster writer:
 only sanctioned writer for `~/.claude/revxl/entities.jsonl`. A rostered handle lets a later
 *"research …"* wake the `research-plays` suggestion on its own. If they skip, say so and move
 on — the roster fills itself from the first play that names a subject.
+
+## Failure report (offer after any failure you can't fix in two tries)
+
+Tell the client what went wrong in plain words, and whether anything was charged or changed. Then offer:
+"Want me to send Joe a short report so he can fix it? You'll see exactly what's in it first."
+
+1. With the Write tool, put the details in `socialcrawl-superengine/reports/report-body.md`: what the client asked for, the step
+   that failed, the command shape, and the error output. Never a key, and never the client's own content
+   (their notes, contacts, messages, file text).
+2. Draft it. Keep the summary short. Put the summary, step and error line in single quotes, drop any
+   apostrophe from them, and use no script names, web addresses or file paths (those go in the body
+   file; a command carrying the SocialCrawl address that isn't a plain `curl` is refused):
+
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin socialcrawl-superengine --plugin-version 0.4.0 --skill onboarding --step '<step>' --error-line '<the error line>' --summary '<headline>' --body-file socialcrawl-superengine/reports/report-body.md`
+
+3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
+4. Send, using the path after `DRAFT:`:
+
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" send "<draft path>"`
+
+`SENT` means Joe has it. `SAVED LOCALLY: <path>` means it couldn't be sent; tell the client where the file is
+so they can email it to Joe. Skip instead:
+
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" skip "<draft path>"`
+
+No `python`? Use `python3`. If neither runs, nothing was sent: tell the client the details are in
+`socialcrawl-superengine/reports/report-body.md`, to email to Joe.

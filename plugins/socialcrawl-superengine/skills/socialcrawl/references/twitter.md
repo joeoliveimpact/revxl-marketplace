@@ -12,7 +12,7 @@
 | /tweet | `url` | 1 | Get Twitter tweet details |
 | /community | `url` | 1 | Get Twitter community details |
 | /community/tweets | `url` | 1 | List Twitter community tweets |
-| /tweet/transcript | `url` | 10 | Get Twitter video transcript — ⚠️ **Gated in this plugin: 10 credits per tweet — 100 of them = 1000 credits. The credit guard ASKS before this runs (it no longer hard-denies). Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.** |
+| /tweet/transcript | `url` | 10 | Get Twitter video transcript — ⚠️ **Gated in this plugin: 10 credits per tweet — 100 of them = 1000 credits. Run it only on an explicit yes; the credit guard counts it and never asks. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.** |
 | /ai-search | `query` | 5 | AI-powered X (Twitter) search via xAI Grok |
 | /search/tweets | `query` | **1-9** | Search Twitter tweets |
 | /tweet/replies | `url` | **1-5** | List Twitter tweet replies |
@@ -126,7 +126,7 @@ curl "https://www.socialcrawl.dev/v1/twitter/community/tweets?url=<url>" \
 
 Returns the spoken words from a video attached to a tweet, auto-generated captions included. Costs 10 credits per call, the most expensive endpoint on this platform: `twitter/tweet` returns the media attachment itself for 1 credit, and this returns what is said in it. A tweet with no video, or a video with no captions available, is a 404 and is not charged.
 
-> ⚠️ **Gated in this plugin: 10 credits per tweet — 100 of them = 1000 credits. The credit guard ASKS before this runs (it no longer hard-denies). Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.**
+> ⚠️ **Gated in this plugin: 10 credits per tweet — 100 of them = 1000 credits. Run it only on an explicit yes; the credit guard counts it and never asks. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.**
 
 **Parameters**
 
@@ -311,7 +311,7 @@ curl "https://www.socialcrawl.dev/v1/twitter/profile/full?handle=<handle>" \
 | A community and its tweets | `/community` · `/community/tweets` | 1 |
 | **Search X by natural-language question** | `/ai-search` | 5 |
 | Profile + posts + analytics in one call | `/profile/full` | 5 |
-| Transcript | ⚠️ `/tweet/transcript` — gated: **10cr per tweet**, the guard asks first. Cheaper: pull the media URL (1–5cr) and transcribe it yourself | **10** |
+| Transcript | ⚠️ `/tweet/transcript` — gated: **10cr per tweet**, run only on an explicit yes. Cheaper: pull the media URL (1–5cr) and transcribe it yourself | **10** |
 
 ### There is no plain keyword search
 

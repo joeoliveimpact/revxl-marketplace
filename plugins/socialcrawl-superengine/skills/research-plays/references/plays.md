@@ -55,7 +55,7 @@ voc-profile artifact.
 **Pre-flight estimate:** a one-competitor teardown ≈ 15–65cr. Say it before step 1.
 **Output:** ad teardown table — hook / creative format / offer / CTA / landing URL per ad,
 with a "what to steal" line each. For spoken ad copy, `facebook/adlibrary/ad/transcript`
-bills **10cr per ad** and the guard asks before it runs — quote that, offer the cheaper
+bills **10cr per ad** — quote that, offer the cheaper
 route (pull the ad's media URL at 1–5cr and transcribe it locally for free), and run the
 paid call only on an explicit yes.
 

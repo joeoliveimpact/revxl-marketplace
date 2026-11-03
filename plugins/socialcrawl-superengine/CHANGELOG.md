@@ -1,5 +1,253 @@
 # Changelog — socialcrawl-superengine
 
+## 0.4.0 - 2026-11-03
+
+### Added
+- **A mod: the band above the prompt shows this session's spending.** In the terminal and Desktop,
+  once SocialCrawl has been used in a session (a line for it in the call record, or its session
+  file), one row above the prompt shows a 10-cell gauge and `<spent> / <limit> cr this session`
+  (`<spent> cr this session · automatic cap` while no limit is known). The numbers are the guard's
+  own: `spent` from the session file, the limit from the session's newest call-record line, else a
+  valid `sessionBudget` in the budget file. With 10% of the limit or less left it adds
+  `⚠ <n> cr left`; after a refused call, `⚠ last call refused (<kind>)`. Its buttons, **Budget** (`d`), **Endpoints**
+  (`p`) and **Round-up** (`r`), open their panes (below); other plugins' bands draw below it, and it steps aside for a
+  survey.
+- **The status line shows the account's total balance:** `SC Total Balance: 4,210 cr (2 min ago)`.
+  It is read when a person is at the prompt (an interactive start, or the Desktop app or a phone
+  attaching) and every 15 minutes after, and the age is kept current each minute. It adds
+  `⚠ your <n> budget is above it` when a valid session budget is above the balance, and
+  `⚠ not updated for <age>` once the newest good read is over 30
+  minutes old. With no key the line is left off; any other failure before a first good read shows
+  `SC Total Balance: unavailable · ⚠ last check failed`.
+- **The balance is read by a local helper, so the key never enters the mod.** `hooks/mod/helper.mjs`
+  runs as its own Node process: it finds the key the way the guard does (`ledger.mjs`), asks for the
+  balance (0 credits, a 5-second timeout) and prints only the number. The mod never reads the key
+  file or `SOCIALCRAWL_API_KEY` and never fetches, because a mod's file reads and fetches are events
+  another plugin can see.
+- **A toast after each counted call:** `SocialCrawl: <paths> · up to <worst> cr · <committed> /
+  <limit> cr this session`, from this session's new line in the call record. A refused call gets
+  none.
+- **The heartbeat file.** Each session start writes
+  `<revxl>/heartbeat/socialcrawl-superengine/<session>.json`
+  (`{v, plugin, version, pane_command: "/socialcrawl-budget", session_id, ts}`), replaced whole each time, and
+  deletes this plugin's own heartbeat files older than 7 days. A failure is skipped silently.
+- **Nothing draws in `claude -p`, and it makes no balance read there.** A headless run writes the
+  heartbeat and nothing else.
+- **The Budget pane: one budget per run, set with buttons.** The band's **Budget** button (`d`) and
+  `/socialcrawl-budget` open the pane "SocialCrawl Budget". It shows the balance and this session's
+  spend, and the budget per run (250, 500, 1,000, 2,000 or Automatic, a quarter of the balance up to
+  500): "The most one session, Desktop routine run or claude -p run may spend." A number set by
+  hand that isn't a preset shows as `Current: <n>` and is kept until a button changes it. It is buttons only, so it works in the phone app too.
+- **Only Save writes.** Pressing a preset changes the pane's pending choice and shows `Unsaved
+  changes`; nothing is written until **Save**. Automatic deletes `sessionBudget`, and every save
+  deletes an old `routines` block, which nothing reads. Before saving, the pane warns `⚠ This is above
+  your <n> balance. Allowed; SocialCrawl stops at zero.` for a budget above the last balance, and
+  `⚠ This session has already spent <s> cr; a budget this low stops further paid calls in this
+  session.` for a budget at or below this session's spend.
+- **A save is atomic and read back.** Save runs `helper.mjs budget-write`, which checks every number
+  again by the guard's rule (a whole number from 1 to 20,000; anything else saves nothing), keeps
+  every key in the file the pane doesn't own, stamps `updatedAt` and `updatedBy`, writes a temporary
+  file beside the budget file and renames it over it, then reads it back. A half-written budget file
+  would read as no budget (the looser automatic cap), so none is ever left; a failed save leaves the
+  old file as it was. The pane says `Saved. Every open session uses it from its next paid call.` only
+  when the file reads back as chosen, else `Not saved: <reason>.`, keeping the choice. A UTF-16 file,
+  or one with a byte order mark, is saved as UTF-8; one that isn't a JSON object is replaced by a fresh file
+  of the pane's own keys.
+- **Claude can't change the budget.** The guard refuses Claude's own commands that name the budget
+  file or the pane's save step (`budget-write`), and the save step runs only from the pane's Save
+  button: the mod registers no tool Claude can call, sends a prompt only when a person presses in the Endpoints, Combos or Suggested tab (their pick, as their own prompt) or presses Round-up's Summarize (built from the pane's own facts), makes no model call but the Suggested tab's Haiku call (only once that tab is opened), and
+  `/socialcrawl-budget` only opens the pane.
+- **The band and the Budget pane use the REVXL Lantern look (paper cards)**, with plain-text versions in the terminal and on the phone.
+- **The Endpoints and Combos tabs.** `/socialcrawl-endpoints` or the band's **Endpoints** button (`p`) opens them: 29 one-click calls with one target box, and every research-plays package option, each priced; a press sends that priced pick as your own prompt, one at a time.
+- **The Suggested tab.** The Endpoints pane's **Suggested** button opens it: up to six of the Endpoints and Combos buttons, each with a one-line reason. Haiku picks them from the brand's `business-config.md`, the person's last five prompts and this session's call paths. It is asked only after the tab is opened in a session, and then only when one of those changes; a dim line shows the tokens used. A suggestion is a button the other tabs already draw, pressed the same way, so Haiku's words never reach a prompt.
+- **The Round-up tab.** The band's **Round-up** button (`r`) or `/socialcrawl-roundup` opens it. It shows:
+  - this session's total (the Budget pane's own);
+  - its paid calls (time, paths, the guard's worst-case quote);
+  - its refused calls, apart and never counted;
+  - the files its counted calls saved;
+  - the last routine (when it ran, what it spent, what it refused);
+  - **Summarize**, which sends a request built only from those facts as the person's own prompt.
+
+  It writes nothing.
+- **What 0.4.0 needs.** The band and its tabs are a mod: Claude Code 2.1.286 or later with mods on. Without them the guard still runs, at the automatic limit or a budget file already set. It counts calls made in the Bash tool, which on Windows needs Git for Windows; a SocialCrawl call through PowerShell is denied.
+- **Failure report.** onboarding, research-plays and socialcrawl offer the standard failure report (`scripts/report_to_joe.py`; drafts kept in `socialcrawl-superengine/reports/` in the project folder). The client sees the exact report before it is sent. It scrubs keys, `~/.config/socialcrawl/api_key` included. It needs `python` or `python3`; without either, the details stay in that folder's `report-body.md` for the client to email. The mod (the band and its tabs) has no report of its own: its helper's failures already show as "unavailable" and never block a call.
+
+### Changed
+- **The credit guard never raises a permission prompt (D28).** Every decision is a silent pass or a
+  deny whose message names the fix. A SocialCrawl command that isn't a plain `curl` in the Bash tool (a loop, a pipe into a program, a wrapper, a
+  variable, a heredoc, a mention such as `echo` or `grep`, or anything through PowerShell) is
+  denied before any session, budget or balance is read, and the message says to write one plain
+  `curl` per call in the Bash tool, or to use the Read or Grep tool for a mere mention. Transcript,
+  unreadable, uncomputable and unpriced calls are no longer stopped: each is counted at its known
+  worst case and passes within the limit. In a session whose committed total was lost, every paid
+  call is denied, with "start a new session". An error of the guard's own still passes attended
+  and denies unattended or in a routine. A deny reads the same attended and unattended, and
+  nothing it denies is counted.
+- **The limit is hard, not a step.** A command that would take the session's committed total past
+  its limit is denied; reaching the limit exactly passes. The limit is the session budget when one
+  is set, else the automatic cap, the smaller of 500 and a quarter of the balance, else 500 when the
+  balance can't be read, for every session, Desktop routine and `claude -p` run alike. A balance of
+  0 to 3 gives a limit of 0.
+- **A budget file: `<revxl>/socialcrawl-budget.json`** (`<revxl>` is `SC_REVXL_HOME`, else
+  `~/.claude/revxl`), set by the person, never by Claude. `sessionBudget`, the one field the guard
+  reads, sets the limit; an old `routines` block is ignored. A number counts only as a whole number
+  from 1 to 20,000; anything else is unset, and an unset `sessionBudget` falls back to the automatic cap. A file that is missing, a folder, not JSON or
+  not a JSON object reads as no file. A file that is there but can't be read is tried again, and
+  if it still can't be read, a paid call is denied rather than held to a looser limit; it is read
+  however long the guard has already run. With a valid `sessionBudget` the balance is not read.
+- **A passing read error no longer costs the session.** A session file that is there but can't be
+  read (EBUSY, EPERM or EACCES while another program holds it) is tried again, up to 5 times within
+  the guard's time limit; if it still can't be read, the call is denied and the file is never saved
+  over, where before it was saved as a lost total. A damaged file (empty, not JSON) is still a lost
+  total.
+- **A call whose worst case is 0 is never denied for the limit.** A free GET twin or an unpriced call
+  passes even when the committed total is already above a lowered limit.
+- **New denies**, the same attended and unattended and logged `error` unattended: the session file
+  can't be read right now; the budget file exists but can't be read right now.
+- **The guard runs before a command only.** Its PostToolUse and PostToolUseFailure entries are
+  removed from `hooks.json`, and with them the pending quote: a call's worst case is committed when
+  it passes. A Post input from an older registration passes untouched, and a session file that
+  still holds an older build's pending quote reads as a whole session, the quote ignored.
+- **Claude can't change the guard's own files.** The credit guard now also runs on Write, Edit,
+  MultiEdit and NotebookEdit. A write-type call to the budget file, the old routine day file, the
+  unattended log `credit-guard-unattended.jsonl` or the call record `socialcrawl-calls.jsonl` (a
+  lock, temporary or rotated copy of one included: the name, a `.` and more) in a revxl location (a
+  folder of its path named `revxl`, or `<revxl>` itself), or to a session file
+  (`socialcrawl-<session id>.json` or `.json.lock`) in `revxl/sessions` or `<revxl>/sessions`, and a
+  Bash or PowerShell command that names one of them with a revxl location, is denied before
+  anything else, a SocialCrawl URL in the
+  same command included. The message says the person sets the budget in the SocialCrawl Budget tab,
+  and that Claude can look with the Read tool, which is not matched. The deny reads the same attended
+  and unattended, is not logged, and reads and writes nothing. Every other write-type call passes
+  untouched.
+- **A byte order mark no longer voids a file.** One leading byte order mark (PowerShell 5.1's
+  `Set-Content -Encoding UTF8` writes one) is dropped before the budget file or a session file is
+  read, so a budget saved that way is the limit, and a session file saved that way is not a lost total. Anything else that isn't
+  JSON reads as before.
+- **A per-call record: `<revxl>/socialcrawl-calls.jsonl`.** Each decision the guard makes once it
+  holds the session lock (a pass at the commit, and every deny from the lock on) adds one
+  JSON line, attended and unattended, with exactly `ts`, `sid`, `paths`, `worst`, `committed`,
+  `decision`, `kind`, `limit`, `balance`, `balanceAt` and `routine` (true in a Desktop routine
+  run), in that order. `paths` are the unattended
+  log's own (each call's `/v1/` path, no query string, any `sc_` run masked), so a line never holds a
+  key, a command, a header or a query value; `worst` and `committed` are the guard's worst-case
+  figures, not the vendor's billing. The session file now keeps `balanceAt`, the time its cached
+  balance was read; an older session file without it still reads. At 1 MiB the record is moved to
+  `socialcrawl-calls.jsonl.1` (an older `.1` is replaced) and started again. Writing it is best
+  effort: a line that can't be written, moved or measured is dropped, with no wait, and changes no
+  decision. Nothing is recorded for a run that never holds the session lock (a command that isn't a
+  SocialCrawl call, a guard-file deny, a write-type call, a command that isn't plain, a free plain
+  call, or a session lock it can't take) or on an error of the guard's own. The unattended log is
+  unchanged.
+- **Claude can't delete or move the revxl folder.** A Bash or PowerShell command with a delete, move or
+  rename verb (`rm`, `rmdir`, `rd`, `del`, `erase`, `mv`, `move`, `ren`, `rename`, `Remove-Item`,
+  `Move-Item`, `Rename-Item`, `ri`, `mi`, `rni`, after any character that isn't a letter, a digit, `_`
+  or `-`, with or without `.exe`, so `"rm"`, `\rm`, `/bin/rm`, `rm.exe`, a verb inside
+  `bash -c "..."` or backticks and a module-qualified `...\Remove-Item` count) and the revxl folder
+  itself is denied the same way, naming the revxl folder: a deleted folder would restart the session's
+  count and lose its cached balance. The folder itself is any of: `revxl` or `revxl/sessions` with no
+  real file or folder after it (a `.` or `..` segment, a glob, a trailing slash, or punctuation such as
+  `>`, `,` or `{` counts as none); a path under revxl with a `..` segment in it; the `.claude` folder
+  itself; or `<revxl>` itself, resolved, with either slash and with or without `sessions`, so an
+  `SC_REVXL_HOME` not named revxl is covered too. A file in a brand folder below revxl is left to the
+  command, and a command that names one of the guard's files still gets that file's name. For those
+  files, a revxl location in a command is now `revxl` not run on into a longer name (so
+  `revxl-marketplace` is not one) or `<revxl>` itself with either slash.
+- **A stream or a short name no longer hides a guard file from a write-type call.** Its name is read
+  without a stream (`socialcrawl-budget.json::$DATA`), and a name holding `~`
+  (an 8.3 short name such as `SOCIAL~1.JSO`) is read as its long name, the one file lookup a write-type
+  call makes.
+- **A UTF-16 budget or session file is read.** A file that starts with the UTF-16LE byte order
+  mark (PowerShell 5.1's `>` and `Out-File` write one) is read as UTF-16LE, so a budget saved that way
+  is the limit instead of reading as no file. UTF-16BE is still unreadable, and the guard still writes
+  UTF-8 with no mark.
+- **The skills and references describe the never-ask guard.** `skills/_shared/references/credit-guard.md`
+  is the one full statement of the guard (the limit, how each kind of call is counted, the denies,
+  the guard's own files, the call record) and of what a run with nobody there may spend, a Desktop
+  routine and `claude -p` alike. The socialcrawl,
+  research-plays and onboarding skills, the research-router agent, the README and the generated
+  platform references point to it, and no longer describe an ask, a pause or a cap step.
+- **research-plays: the Jev route's steps moved to `references/jev-route.md`**, word for word, to make room for the failure report; the skill points to it.
+
+### Known limits
+- An unpriced call (the cohorts surface), and a call with a null price range and no stated maximum
+  (POST `prism/jobs`, POST `web/batch-scrape`, POST `web/monitors`), is counted at 0, so its spend
+  is not held to the limit.
+- A per-unit price is counted as a floor: a transcript call counts one unit's price, so a call that
+  bills many units is counted low.
+- shortform-superengine's SocialCrawl spend is unseen by this guard until shortform 0.7.0: its
+  Goldmine fetch carries no SocialCrawl address in the command.
+- A Desktop routine whose permission picker is set to Manual stalls on every Bash step, its
+  SocialCrawl calls included: the guard passes a call silently and never returns `allow`, so the
+  picker decides.
+- There is no daily total: each run is held to the one budget, so several runs in a day can spend
+  that many times it.
+- A routine run's count lives in its own session file: a deleted session file restarts that run's
+  count.
+- One number caps every kind of run at once: a budget set for a routine also caps attended sessions
+  and `claude -p` runs while it is set.
+- The guard's own files are kept from Claude's Bash, PowerShell and write-type tools only. It can't
+  stop an MCP tool's shell or file writes, a glob (`socialcrawl-b*`), a path built at runtime, a `cd`
+  into revxl followed by a bare file name in a later command, a script on disk, or another mod's own
+  file writes (`$.fs`).
+- Every Write, Edit, MultiEdit and NotebookEdit call now starts the guard: a Node start of about 50
+  to 100 ms each.
+- Two sessions moving the call record to `.1` at the same moment can lose a line or a `.1`.
+- A short name for a guard file that doesn't exist yet can't be read as its long name, so a
+  write-type call that creates the file by its short name isn't stopped.
+- A `cd` into revxl followed by a bare `rm -rf sessions` in a later command isn't seen as the revxl
+  folder's delete.
+- A delete or move run by a program rather than named in the command, such as
+  `python -c "shutil.rmtree(...)"` or `find ... -delete`, isn't seen.
+- A Bash or PowerShell command whose text only mentions a revxl location and a guard file's name,
+  such as a `git commit -m` message or a `grep`, is denied as if it changed the file.
+- A Bash or PowerShell command that only mentions `budget-write`, such as a `grep`, an `echo`, a `cat` of a file of that name or a `git commit -m` message, is refused as if it ran the Budget pane's save step.
+- A symlink or junction that points into revxl isn't followed: a write through it under another
+  path isn't seen.
+- The folder rule sees an `SC_REVXL_HOME` not named revxl only where a command spells its resolved
+  path; another spelling (`$SC_REVXL_HOME`, a `~`-relative path) isn't seen.
+- The folder rule sees a glob that stops at the folder (`~/.claude/*`, `~/.claude/revxl/*`), but not
+  one that only matches its name (`~/.claude/rev*`).
+- A delete or move of a folder above `.claude`, such as `rm -rf ~`, isn't seen as the revxl
+  folder's.
+- A Bash or PowerShell command that names a guard file or the `.claude` folder by its 8.3 short name
+  (`SOCIAL~1.JSO`, `CLAUDE~1`) isn't seen.
+- If `socialcrawl-calls.jsonl.1` is a folder, a record at 1 MiB can't be moved, and every later line
+  is dropped; no decision changes.
+- Over-blocks, the safe direction: the folder rule has no left boundary and reads the whole command,
+  so these are denied too: `rm -rf /tmp/foorevxl`, `cd ~/.claude/revxl && rm old.md`,
+  `git rm -r --cached revxl`, `echo rm ~/.claude/revxl`, a commit message that says "move the revxl
+  folder", a verb and the folder in unrelated parts of one command
+  (`ls ~/.claude/revxl && rm -rf build`), and a project's own `.claude` folder (`rm -rf .claude`,
+  `git rm -r --cached .claude`; `rm -rf .claude/commands` passes).
+- Another plugin can rewrite what any mod draws: this one's band, status line and toast included.
+- The toast can name the wrong call when Bash calls run side by side: the call record carries no
+  tool-use id, so the toast shows this session's newest line, can show it twice, and Round-up can keep the other call's saved file.
+- A free call, and a tamper, not-plain or not-Bash deny, writes no call-record line, so it moves
+  neither the band's refused warning nor a toast.
+- A script Claude writes itself, a name built at runtime, a name split up with shell quoting (`budget"-"write`), or another plugin's mod (`$.fs`) can still
+  write the budget file; the guard can't see those.
+- The Budget pane's save runs as a `$.process.run` that another plugin hooking `process.run` can see.
+  It carries the revxl folder and the budget numbers only, never the key.
+- Two Budget panes saving at the same moment: the later save wins whole.
+- A target typed into the Endpoints tab that holds `budget-write`, or a guard file's name together with `revxl`, gets the guard's 'guard file left alone' refusal when Claude runs the call: nothing is spent, but the message is about the budget, not the target.
+- A target holding `&deep_scan=true` or `&include=transcript` is counted at the higher price those flags carry (15 or 10 credits), not the button's label. It errs high, as the guard always has.
+- A target holding a lone UTF-16 surrogate makes the press do nothing: no prompt is sent and no note is shown.
+- Whether the mod's pane state (Round-up's saved files, the Suggested tab's recent prompts and whether it was opened) is kept per session when one app runs several sessions is unconfirmed. If it is shared, one session's saved files can show in another's Round-up, and one session's prompts can feed another's suggestions.
+- Round-up keeps every file this session's counted calls saved, with no cap; past roughly 700 the Summarize button can be pushed out of the pane (Summarize itself lists at most 20).
+- Round-up finds saved files from a command's `-o`, `>` and `>>` targets only: `tee`, `--output`, `>|`, `&>`, a numbered redirect and some heredoc or backtick shapes are missed, and a command such as `-d '-o' …` can list a file that isn't one. It is display only; Summarize leaves out anything unsafe.
+- On Desktop, the band's pill shows a thin sliver of colour at 0 credits spent once a limit is known.
+- After the call record moves to `socialcrawl-calls.jsonl.1` at 1 MiB, the band shows the session budget or the automatic cap, and no refused warning, until this session's next line in the new record.
+- A line of this session's in the call record that lacks a field shows `undefined` in its toast, its Round-up row or the band's refused warning. The guard writes every field.
+- When the budget file is there but can't be read just now, the Budget pane still highlights Automatic, and its top line can say "automatic cap", beside the line saying the file couldn't be read.
+- In the terminal the band writes its numbers without commas (`1200 / 2000 cr`), while the panes and the Desktop pill write `1,200 / 2,000`.
+- For developers: the Summarize text's mirror of the research suggester's patterns is pinned for the four it has today; a synonym added inside one, an inline pattern or a normalisation step there isn't caught. Two Round-up behaviours are right but untested: a saved path holding `"` is left out of Summarize, and a call record whose size didn't change gives no toast. Guard fixture P2-A16 can time out under machine load. The mod's 15-minute balance refresh test can time out under load too. `tsc_mod.mjs` type-checks against the Claude Code type file with the newest file time, not the highest version. The 3e lint that checks the guard's wording is untuned: it reads words, not meaning.
+- A failure report whose summary names the budget, day or calls file can't be sent or skipped when the project's own path holds a folder named `revxl`: the guard reads it as one of its files. The draft stays in `socialcrawl-superengine/reports/` for the client to email.
+- On Windows with only the `py` launcher (the python.org default), `python` and `python3` can be the Microsoft Store stand-ins, so the failure report falls back to the body file in `socialcrawl-superengine/reports/` for the client to email.
+- The failure report's body file and drafts stay in the project folder's `socialcrawl-superengine/reports/` after a send; in a git project, add that folder to `.gitignore`.
+- The research ledger is tested against fixtures and has never been reconciled against a live charge: where its figures and the account's own balance disagree, believe the balance.
+- Names and reasons drawn by the band and its tabs show zero-width joiners and direction marks as a space, so an emoji built from several parts, or Persian or Indic text, can show a gap. Display only.
+
 ## 0.3.1 - 2026-10-08
 
 ### Changed
