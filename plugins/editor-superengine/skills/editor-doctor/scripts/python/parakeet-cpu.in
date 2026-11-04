@@ -1,0 +1,4 @@
+# Windows without NVIDIA, Apple Silicon on macOS 14+: Parakeet on onnxruntime (CPU).
+-r align.in
+onnx-asr[hub]==0.12.0
+onnxruntime==1.24.4

@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{creator}}'s reel teardown</title>
+<meta name="description" content="Teardown of the {{topic}} reel: hook, re-hooks, shares, saves, profile visits, comments, and a rebuilt script from the same footage.">
+<meta name="robots" content="noindex">
+<style>
+:root{
+  --clay-50:#FAF9F5;--clay-100:#F5F4EE;--clay-150:#EFEDE3;--clay-200:#E7E4D8;--clay-300:#D7D3C4;--clay-400:#BBB5A2;--clay-500:#938C7B;--clay-600:#6E685A;--clay-700:#4C483E;--clay-800:#2B2A25;--clay-900:#1A1915;
+  --coral-50:#FBEEE8;--coral-100:#F6D9CC;--coral-400:#DD8A6B;--coral-500:#D96A3C;--coral-700:#A04A2C;
+  --page:var(--clay-100);--card:#fff;--sunken:var(--clay-150);--ink:var(--clay-900);--ink-2:var(--clay-700);--muted:var(--clay-500);--line:var(--clay-200);--line-2:var(--clay-300);--accent:var(--coral-500);--accent-ink:var(--coral-700);
+  --serif:ui-serif,Georgia,Cambria,"Times New Roman",serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--page);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.6}
+.wrap{max-width:760px;margin:0 auto;padding:0 16px 96px}
+a{color:var(--accent-ink)}
+.eyebrow{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+h1{font-family:var(--serif);font-weight:700;font-size:clamp(34px,7vw,52px);line-height:1.08;letter-spacing:-.02em;margin:0 0 20px}
+h1 em,h2 em,.pull em{font-style:italic;color:var(--accent);font-weight:inherit}
+h2{font-family:var(--serif);font-weight:700;font-size:clamp(26px,5vw,34px);line-height:1.15;letter-spacing:-.015em;margin:0 0 14px}
+h3{font-family:var(--sans);font-weight:600;font-size:19px;line-height:1.3;margin:28px 0 8px}
+p{margin:0 0 16px}
+strong{font-weight:600}
+.hero{padding:56px 0 32px;border-bottom:1.5px solid var(--line)}
+.meta{color:var(--ink-2);font-size:15px;margin:0 0 6px}
+.meta a{text-decoration:none;border-bottom:1px solid var(--line-2)}
+section{padding:40px 0 8px;border-bottom:1.5px solid var(--line)}
+section:last-of-type{border-bottom:0}
+.lead{font-family:var(--serif);font-size:20px;line-height:1.55}
+.scores{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:22px 0 8px}
+@media (max-width:600px){.scores{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.score{min-width:0;overflow-wrap:anywhere;background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:14px 8px;text-align:center}
+.score b{display:block;font-family:var(--serif);font-size:34px;line-height:1;letter-spacing:-.02em}
+.score span{display:block;font-size:12px;color:var(--muted);margin-top:6px;letter-spacing:.04em;text-transform:uppercase;font-weight:600}
+.score.low b{color:var(--accent)}
+.score small{display:block;font-size:12px;color:var(--muted);margin-top:4px}
+.note{font-size:14px;color:var(--muted);margin-top:8px}
+figure{margin:20px 0}
+figure img{display:block;width:100%;height:auto;border-radius:8px;border:1.5px solid var(--line)}
+figcaption{font-size:14px;color:var(--ink-2);margin-top:8px}
+.frame0{display:grid;grid-template-columns:150px 1fr;gap:18px;align-items:start;background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:16px;margin:20px 0}
+.frame0 img{width:100%;border-radius:6px;border:1px solid var(--line)}
+@media (max-width:480px){.frame0{grid-template-columns:110px 1fr}}
+table{width:100%;border-collapse:collapse;font-size:15px;margin:16px 0 20px;background:var(--card);border:1.5px solid var(--line);border-radius:10px;overflow:hidden}
+th,td{padding:10px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--sunken)}
+tr:last-child td{border-bottom:0}
+td.t{white-space:nowrap;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px;padding:0 16px}
+.tscroll table{min-width:560px}
+ol.levers{counter-reset:l;list-style:none;padding:0;margin:16px 0}
+ol.levers li{counter-increment:l;position:relative;padding:0 0 0 40px;margin:0 0 8px}
+ol.levers li::before{content:counter(l);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:50%;background:var(--ink);color:var(--clay-50);font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center}
+.lever,.opt{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:20px 20px 6px;margin:18px 0}
+.lever h3,.opt h3{margin-top:0}
+.tag{display:inline-block;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-ink);background:var(--coral-50);border-radius:999px;padding:3px 10px;margin-left:8px;vertical-align:middle}
+.opt.picked{border-color:var(--accent);box-shadow:0 0 0 1.5px var(--accent)}
+.lbl{font-weight:600}
+ul{padding-left:22px;margin:0 0 16px}
+li{margin:0 0 6px}
+.hook{background:var(--ink);color:var(--clay-50);border-radius:12px;padding:22px 20px;margin:18px 0;font-family:var(--serif);font-weight:700;font-size:clamp(22px,4.6vw,28px);line-height:1.2;letter-spacing:-.01em}
+.hook small{display:block;font-family:var(--sans);font-weight:600;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--clay-400);margin-bottom:12px}
+.hook em{color:var(--coral-400);font-style:italic}
+.script{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:8px 22px;margin:20px 0;font-family:var(--serif);font-size:19px;line-height:1.6}
+.script p{margin:18px 0}
+.script .card{font-family:var(--sans);font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-ink);background:var(--coral-50);display:inline-block;padding:4px 10px;border-radius:6px}
+.script .card.big{font-size:15px;display:block;background:var(--ink);color:var(--clay-50);padding:12px 14px;line-height:1.4;text-transform:none;letter-spacing:0}
+.fill{background:var(--sunken);border:1px dashed var(--line-2);padding:0 6px;border-radius:4px;font-family:var(--sans);font-size:15px}
+.pull{font-family:var(--serif);font-size:22px;line-height:1.45;border-left:3px solid var(--accent);padding:4px 0 4px 18px;margin:24px 0}
+.top3 li{margin-bottom:12px}
+.sig{margin-top:56px;padding-top:24px;border-top:1.5px solid var(--line);color:var(--ink-2);font-size:15px}
+.sig b{color:var(--ink)}
+.method{font-size:13px;color:var(--muted);margin-top:24px}
+
+@media (max-width:600px){
+  .tscroll{margin:0;padding:0}
+  .tscroll table{min-width:0;display:block;border:0;background:transparent}
+  .tscroll tbody{display:block}
+  .tscroll tr{display:block;background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:6px 14px;margin:0 0 10px}
+  .tscroll tr:first-child{display:none}
+  .tscroll td{display:block;padding:6px 0;border-bottom:1px solid var(--line);white-space:normal}
+  .tscroll td:last-child{border-bottom:0}
+  .tscroll td::before{content:attr(data-label);display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:2px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- 1. Verdict and the four craft scores (before) -->
+<header class="hero">
+  <p class="eyebrow">Reel teardown &middot; {{MM.DD.YY}}</p>
+  <h1>Headline verdict goes here, with one <em>italic phrase.</em></h1>
+  <p class="meta"><a href="{{reel_url}}" target="_blank" rel="noopener">"{{reel title or first on-screen line}}"</a> &middot; {{handle}} &middot; {{length}} s &middot; {{format}}</p>
+  <!-- Stats line: only for a pulled reel. A local file with no link or stats: leave this line out, and drop the link from the line above. -->
+  <p class="meta">At pull: {{views}} views &middot; {{likes}} likes &middot; {{comments}} comments &middot; {{caption state}}</p>
+</header>
+
+<section>
+  <p class="lead">Verdict paragraph goes here, addressed to {{creator}}: what already works, in their own words, then the one structural problem, then what the same footage becomes.</p>
+  <div class="scores">
+    <div class="score"><b>{{hook}}</b><span>Hook</span></div>
+    <div class="score"><b>{{body}}</b><span>Body</span></div>
+    <div class="score low"><b>{{cta}}</b><span>CTA</span></div>
+    <div class="score"><b>{{overall}}</b><span>Overall</span></div>
+  </div>
+  <p class="note">Craft scores out of 100. They measure the writing, never predict views.</p>
+</section>
+
+<!-- 2. What is on screen: frame 0, two strips, timed table. Mark every time "estimated" when the transcript was pasted. -->
+<section>
+  <h2>What is actually <em>on screen</em></h2>
+  <div class="frame0">
+    <img src="img/frame0.jpg" alt="Frame 0 of the reel">
+    <div>
+      <p><strong>Frame 0.</strong> What is on screen at the first frame goes here.</p>
+      <p>Whether it changes, and why that matters, goes here.</p>
+    </div>
+  </div>
+  <figure>
+    <img src="img/frames-open.jpg" alt="Frames from the opening seconds">
+    <figcaption>Opening strip caption goes here.</figcaption>
+  </figure>
+  <figure>
+    <img src="img/frames-body.jpg" alt="Frames from the body of the reel">
+    <figcaption>Body strip caption goes here.</figcaption>
+  </figure>
+  <div class="tscroll">
+  <table>
+    <tr><th>Time</th><th>Spoken</th><th>On screen</th></tr>
+    <tr><td class="t" data-label="Time">{{time}} s</td><td data-label="Spoken">"{{spoken line}}"</td><td data-label="On screen">{{on-screen text or change}}</td></tr>
+    <tr><td class="t" data-label="Time">{{time}} s</td><td data-label="Spoken">"{{spoken line}}"</td><td data-label="On screen">{{on-screen text or change}}</td></tr>
+  </table>
+  </div>
+</section>
+
+<!-- 3. The six levers -->
+<section>
+  <h2>How the algorithm <em>reads</em> this reel</h2>
+  <p>Short framing paragraph goes here: the order we build for, using only what you can stand behind.</p>
+  <ol class="levers">
+    <li><strong>Scroll stop</strong> (the hook), so the view starts</li>
+    <li><strong>Re-hooks</strong>, so the view continues to the end</li>
+    <li><strong>Share</strong> and <strong>save</strong> triggers inside the content</li>
+    <li><strong>Profile visit</strong> reasons</li>
+    <li><strong>Comment</strong> and <strong>like</strong> asks</li>
+  </ol>
+
+  <div class="lever">
+    <h3>1. Scroll stop: the hook <span class="tag">{{n}} of 4 killers fire</span></h3>
+    <p><span class="lbl">What you did.</span> Lever text goes here.</p>
+    <p><span class="lbl">Why it leaks.</span> Lever text goes here.</p>
+    <p><span class="lbl">The fix, using your own material.</span> Lever text goes here.</p>
+  </div>
+  <div class="lever">
+    <h3>2. Re-hooks: keeping the view <span class="tag">{{count}} in {{length}} s</span></h3>
+    <p><span class="lbl">What you did.</span> Lever text goes here.</p>
+    <p><span class="lbl">Why it leaks.</span> Lever text goes here.</p>
+    <p><span class="lbl">The fix.</span> Lever text goes here.</p>
+  </div>
+  <div class="lever">
+    <h3>3. Share trigger <span class="tag">{{short status}}</span></h3>
+    <p><span class="lbl">What you did.</span> Lever text goes here.</p>
+    <p><span class="lbl">Why it leaks.</span> Lever text goes here.</p>
+    <p><span class="lbl">The fix.</span> Lever text goes here.</p>
+  </div>
+  <div class="lever">
+    <h3>4. Save trigger <span class="tag">{{short status}}</span></h3>
+    <p><span class="lbl">What you did.</span> Lever text goes here.</p>
+    <p><span class="lbl">Why it leaks.</span> Lever text goes here.</p>
+    <p><span class="lbl">The fix.</span> Lever text goes here.</p>
+  </div>
+  <div class="lever">
+    <h3>5. Profile visit <span class="tag">{{short status}}</span></h3>
+    <p><span class="lbl">What you did.</span> Lever text goes here.</p>
+    <p><span class="lbl">Why it leaks.</span> Lever text goes here.</p>
+    <p><span class="lbl">The fix.</span> Lever text goes here.</p>
+  </div>
+  <div class="lever">
+    <h3>6. Comments and likes <span class="tag">{{short status}}</span></h3>
+    <p><span class="lbl">What you did.</span> Lever text goes here.</p>
+    <p><span class="lbl">Why it leaks.</span> Lever text goes here.</p>
+    <p><span class="lbl">The fix.</span> Lever text goes here.</p>
+  </div>
+
+  <p class="pull">Pick <em>one.</em> The one CTA, chosen by your metric, and why, goes here.</p>
+  <!-- Diagnosis only: this pull quote is one line naming the current CTA and its fix. It does not write a rebuilt CTA. -->
+</section>
+
+<!-- Diagnosis-only teardown: replace sections 4 to 7 with one section holding a plain note that the rebuilt script comes from shortform-superengine, which isn't installed yet. -->
+
+<!-- 4. Hook options, the client's pick marked -->
+<section>
+  <h2>Hook options, <em>one picked</em></h2>
+  <div class="opt picked">
+    <h3>Option 1 <span class="tag">Picked</span></h3>
+    <div class="hook"><small>Text hook, frame 0</small>On-screen hook line goes here.</div>
+    <p><span class="lbl">Spoken.</span> Spoken opening goes here.</p>
+    <p><span class="lbl">Visual.</span> Visual goes here.</p>
+  </div>
+  <div class="opt">
+    <h3>Option 2</h3>
+    <p><span class="lbl">On screen.</span> On-screen hook line goes here.</p>
+    <p><span class="lbl">Spoken.</span> Spoken opening goes here.</p>
+  </div>
+</section>
+
+<!-- 5. Rebuilt beat map and read-through script -->
+<section>
+  <h2>The rebuilt beat map, <em>same footage</em></h2>
+  <p>Target length and what is new (order, seams, one ask) goes here.</p>
+  <div class="tscroll">
+  <table>
+    <tr><th>Beat</th><th>Time</th><th>Spoken</th><th>On screen</th><th>Job</th></tr>
+    <tr><td data-label="Beat">{{beat}}</td><td class="t" data-label="Time">{{start}} to {{end}} s</td><td data-label="Spoken">"{{line}}"</td><td data-label="On screen">{{text}}</td><td data-label="Job">{{job}}</td></tr>
+    <tr><td data-label="Beat">{{beat}}</td><td class="t" data-label="Time">{{start}} to {{end}} s</td><td data-label="Spoken">"{{line}}"</td><td data-label="On screen">{{text}}</td><td data-label="Job">{{job}}</td></tr>
+  </table>
+  </div>
+
+  <h3>The script, read-through</h3>
+  <p>Everything here is your own material, re-ordered. Marked lines are on-screen text. Where a real number belongs, it is marked, not invented.</p>
+  <div class="script">
+    <p><span class="card big">On-screen hook goes here.</span></p>
+    <p>Script paragraph goes here.</p>
+    <p><span class="card">Beat card</span></p>
+    <p>Script paragraph goes here, with a fill-in where a real number belongs: <span class="fill">your real number, on screen</span></p>
+    <p>The one CTA goes here.</p>
+  </div>
+  <p class="note">About {{words}} words spoken, roughly {{seconds}} seconds at your pace.</p>
+</section>
+
+<!-- 6. Re-hook map: typed re-hooks and the pay-off check -->
+<section>
+  <h2>Re-hook map, <em>every loop closed</em></h2>
+  <div class="tscroll">
+  <table>
+    <tr><th>Time</th><th>Type</th><th>Re-hook</th><th>Opens</th><th>Pays off at</th></tr>
+    <tr><td class="t" data-label="Time">{{time}} s</td><td data-label="Type">{{type}}</td><td data-label="Re-hook">"{{line}}"</td><td data-label="Opens">{{loop}}</td><td data-label="Pays off at">{{time}} s</td></tr>
+    <tr><td class="t" data-label="Time">{{time}} s</td><td data-label="Type">{{type}}</td><td data-label="Re-hook">"{{line}}"</td><td data-label="Opens">{{loop}}</td><td data-label="Pays off at">{{time}} s</td></tr>
+  </table>
+  </div>
+</section>
+
+<!-- 7. Craft scores after -->
+<section>
+  <h2>Craft scores, <em>after</em></h2>
+  <div class="scores">
+    <div class="score"><b>{{hook}}</b><span>Hook</span><small>was {{before}}</small></div>
+    <div class="score"><b>{{body}}</b><span>Body</span><small>was {{before}}</small></div>
+    <div class="score"><b>{{cta}}</b><span>CTA</span><small>was {{before}}</small></div>
+    <div class="score"><b>{{overall}}</b><span>Overall</span><small>was {{before}}</small></div>
+  </div>
+  <p class="note">Same rubric as before. Craft, never a forecast.</p>
+</section>
+
+<!-- 8. Production notes -->
+<section>
+  <h2>Production notes, <em>not a re-shoot</em></h2>
+  <ul>
+    <li><strong>Note headline goes here.</strong> Note detail goes here.</li>
+    <li><strong>Note headline goes here.</strong> Note detail goes here.</li>
+  </ul>
+</section>
+
+<!-- 9. The three fixes and the signature -->
+<section>
+  <h2>The three fixes that <em>matter most</em></h2>
+  <ol class="top3">
+    <li><strong>Fix one goes here.</strong> Why it comes first.</li>
+    <li><strong>Fix two goes here.</strong> Why.</li>
+    <li><strong>Fix three goes here.</strong> Why.</li>
+  </ol>
+  <div class="sig">
+    <p><b>{{client name}}</b><br>{{client business}}</p>
+    <p class="method">Method: how the transcript was made ({{measured or estimated}}), the frame times, the four hook killers (delay, confusion, irrelevance, disinterest), a line-level craft rubric and CTA-by-goal scaffolds. Scores are craft, never a forecast.</p>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

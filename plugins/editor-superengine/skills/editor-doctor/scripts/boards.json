@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "note": "The board whitelist (H-R6). board_server.py serves and saves only these boards; board_sync.py copies each template that exists. writes lists the Send output files a board may save in its reel folder through __save. A later step adds a board's template folder, never server code.",
+  "boards": {
+    "cut-board": {"skill": "reel-first-cuts", "template": "skills/reel-first-cuts/boards/cut-board", "writes": ["selection.json"]},
+    "tweak-board": {"skill": "reel-first-cuts", "template": "skills/reel-first-cuts/boards/tweak-board", "writes": ["selection.json"]},
+    "sound-board": {"skill": "reel-sound-pass", "template": "skills/reel-sound-pass/boards/sound-board", "writes": ["selection.json"]},
+    "beat-map": {"skill": "reel-canvas-build", "template": "skills/reel-canvas-build/boards/beat-map", "writes": []},
+    "sketches": {"skill": "reel-canvas-build", "template": "skills/reel-canvas-build/boards/sketches", "writes": []},
+    "grade-board": {"skill": "reel-grade", "template": "skills/reel-grade/boards/grade-board", "writes": ["selection.json"]},
+    "hub": {"skill": "editor-hub", "template": "skills/editor-hub/boards/hub", "writes": []},
+    "look-picker": {"skill": "reel-captions", "template": "skills/reel-captions/boards/look-picker", "writes": []},
+    "cover-picker": {"skill": "reel-cover", "template": "skills/reel-cover/boards/cover-picker", "writes": []}
+  }
+}

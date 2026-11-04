@@ -1,0 +1,15 @@
+<template>
+  <div id="scene-root" data-composition-id="scene" data-width="540" data-height="960" data-duration="2">
+    <style>
+      @font-face { font-family: "SelfTest Sans"; src: url("../fonts/selftest-font.woff2"); }
+      #scene-label { position: absolute; left: 40px; top: 300px; color: #f4f4f5; font-size: 72px; font-family: "SelfTest Sans"; opacity: 0; }
+    </style>
+    <h1 id="scene-label" class="clip" data-start="0" data-duration="2" data-track-index="0">Self-test</h1>
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tlS = gsap.timeline({ paused: true });
+      tlS.to("#scene-label", { opacity: 1, y: 120, duration: 2 }, 0);
+      window.__timelines["scene"] = tlS;
+    </script>
+  </div>
+</template>

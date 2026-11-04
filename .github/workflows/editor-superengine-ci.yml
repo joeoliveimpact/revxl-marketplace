@@ -1,0 +1,244 @@
+name: editor-superengine CI
+
+# Scratch-branch CI for editor-superengine. Never runs on main or on PRs
+# (validate-plugins.yml owns those).
+
+on:
+  push:
+    branches: ['scratch/editor-superengine-**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  net-off-proof:
+    # Proves "network off" can be applied to ONE program (node) while other
+    # programs and node's own loopback keep working. The offline render test
+    # builds on this.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      # Single quotes only inside the JS, so no shell or PowerShell escaping.
+      # exitCode, not process.exit(): exit() right after fetch can trip a libuv
+      # UV_HANDLE_CLOSING assert on Windows (seen on Node 24), faking a failure.
+      PROBE_REMOTE: >-
+        fetch('https://example.com', {signal: AbortSignal.timeout(15000)})
+        .then(r => { console.log('remote ok', r.status); process.exitCode = 0; },
+        e => { console.log('remote failed:', (e.cause && e.cause.code) || e.name); process.exitCode = 1; });
+      PROBE_LOOPBACK: >-
+        const s = require('http').createServer((q, r) => r.end('ok'));
+        s.listen(0, '127.0.0.1', async () => {
+        try { const t = await (await fetch('http://127.0.0.1:' + s.address().port, {signal: AbortSignal.timeout(10000)})).text();
+        console.log('loopback says', t); process.exitCode = t === 'ok' ? 0 : 1; }
+        catch (e) { console.log('loopback failed:', (e.cause && e.cause.code) || e.name); process.exitCode = 1; }
+        s.close(); });
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Proof (Windows Firewall rule on node.exe only)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          function Fail($m) { Write-Output "::error::$m"; exit 1 }
+          $node = (Get-Command node).Source
+          Get-NetFirewallProfile | Format-Table Name, Enabled, DefaultOutboundAction
+          # A rule only bites if the profile is on.
+          Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled True
+
+          node -e $env:PROBE_REMOTE
+          if ($LASTEXITCODE -ne 0) { Fail 'control: node could not reach https://example.com before the rule' }
+          Write-Output 'PROOF: control - node reaches https://example.com with no rule'
+
+          New-NetFirewallRule -DisplayName ci-block-node -Direction Outbound -Program $node -Action Block | Out-Null
+
+          node -e $env:PROBE_REMOTE
+          if ($LASTEXITCODE -eq 0) { Fail "node fetch still succeeded with an outbound block rule on $node" }
+          Write-Output "PROOF: node ($node) is blocked from https://example.com"
+
+          curl.exe -sSI --max-time 20 https://example.com
+          if ($LASTEXITCODE -ne 0) { Fail 'curl.exe (a different program) was blocked too' }
+          Write-Output 'PROOF: curl.exe still reaches https://example.com'
+
+          node -e $env:PROBE_LOOPBACK
+          if ($LASTEXITCODE -ne 0) { Fail 'node could not reach its own loopback server under the rule' }
+          Write-Output 'PROOF: node still reaches its own 127.0.0.1 server under the rule'
+
+      - name: Remove the firewall rule
+        if: always() && runner.os == 'Windows'
+        shell: pwsh
+        run: Remove-NetFirewallRule -DisplayName ci-block-node -ErrorAction SilentlyContinue
+
+      - name: Proof (macOS sandbox-exec, remote outbound denied, loopback allowed)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          fail() { echo "::error::$1"; exit 1; }
+          PROFILE='(version 1)
+          (allow default)
+          (deny network-outbound (remote ip "*:*"))
+          (allow network-outbound (remote ip "localhost:*"))'
+
+          node -e "$PROBE_REMOTE" || fail 'control: node fetch outside the sandbox failed'
+          echo 'PROOF: node reaches https://example.com outside the sandbox'
+
+          if sandbox-exec -p "$PROFILE" node -e "$PROBE_REMOTE"; then
+            fail 'node fetch succeeded inside the sandbox'
+          fi
+          echo 'PROOF: node is blocked from https://example.com inside the sandbox'
+
+          sandbox-exec -p "$PROFILE" node -e "$PROBE_LOOPBACK" || fail 'loopback failed inside the sandbox'
+          echo 'PROOF: node reaches its own 127.0.0.1 server inside the sandbox'
+
+  macos-script-level:
+    runs-on: macos-latest
+    steps:
+      - name: Runner facts
+        run: |
+          sw_vers
+          echo "arch: $(uname -m)"
+          python3 --version
+          node --version || echo 'node: not present'
+          if command -v ffmpeg >/dev/null; then ffmpeg -hide_banner -version | head -1; else echo 'ffmpeg: not present'; fi
+
+      - name: UTF-8 file with a non-ASCII name
+        run: |
+          python3 - <<'EOF'
+          import tempfile, unicodedata
+          from pathlib import Path
+          nfc = lambda s: unicodedata.normalize("NFC", s)
+          p = Path(tempfile.mkdtemp()) / "café-ñ-日本.txt"
+          p.write_text("héllo ✓", encoding="utf-8")
+          assert p.read_text(encoding="utf-8") == "héllo ✓"
+          assert nfc(p.name) in [nfc(x.name) for x in p.parent.iterdir()]
+          print("PROOF: wrote and read", p)
+          EOF
+
+  selftest-offline:
+    # Installs the editor (parakeet-cpu), proves a killed download resumes, then cuts the editor's own
+    # programs off from the internet and runs offline_selftest.py (render + transcribe). Failure detail
+    # goes to ::error:: annotations and the step summary (B11).
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    env:
+      PROBE_REMOTE: >-
+        fetch('https://example.com', {signal: AbortSignal.timeout(15000)})
+        .then(r => { console.log('remote ok', r.status); process.exitCode = 0; },
+        e => { console.log('remote failed:', (e.cause && e.cause.code) || e.name); process.exitCode = 1; });
+      PROBE_LOOPBACK: >-
+        const s = require('http').createServer((q, r) => r.end('ok'));
+        s.listen(0, '127.0.0.1', async () => {
+        try { const t = await (await fetch('http://127.0.0.1:' + s.address().port, {signal: AbortSignal.timeout(10000)})).text();
+        console.log('loopback says', t); process.exitCode = t === 'ok' ? 0 : 1; }
+        catch (e) { console.log('loopback failed:', (e.cause && e.cause.code) || e.name); process.exitCode = 1; }
+        s.close(); });
+      # Unverified TLS on purpose: the managed Python has no CA bundle, so a verified probe would fail
+      # even with the network on and prove nothing.
+      PROBE_PY: >-
+        import ssl, urllib.request;
+        urllib.request.urlopen('https://example.com', timeout=15, context=ssl._create_unverified_context());
+        print('remote ok')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the editor (parakeet-cpu)
+        shell: bash
+        run: |
+          fail() { echo "::error::$1"; echo "- ✗ $1" >> "$GITHUB_STEP_SUMMARY"; exit 1; }
+          set +e  # report failures ourselves (the default shell is bash -eo pipefail)
+          T="$RUNNER_TEMP"; W="$GITHUB_WORKSPACE"
+          if command -v cygpath >/dev/null; then T="$(cygpath -m "$T")"; W="$(cygpath -m "$W")"; fi
+          export EDITOR_SE_HOME="$T/state"
+          echo "EDITOR_SE_HOME=$EDITOR_SE_HOME" >> "$GITHUB_ENV"
+          sh plugins/editor-superengine/skills/editor-doctor/scripts/install.sh --engine parakeet-cpu 2>&1 | tee "$T/install.out"
+          rc=${PIPESTATUS[0]}
+          [ "$rc" = 0 ] || fail "install.sh exited $rc: $(grep '✗' "$T/install.out" | tail -1)"
+          VPY="$EDITOR_SE_HOME/venv/Scripts/python.exe"; [ -x "$VPY" ] || VPY="$EDITOR_SE_HOME/venv/bin/python"
+          echo "SE_PY=$VPY" >> "$GITHUB_ENV"
+          "$VPY" -X utf8 -I -c "import sys; sys.path.insert(0, '$W/plugins/editor-superengine/skills/_shared'); import runtime as rt
+          for k, v in (('SE_NODE', rt.tool('node')), ('SE_CHROME', rt.tool('chrome')), ('SE_FFMPEG', rt.tool('ffmpeg')), ('SE_PYBASE', sys._base_executable)): print(f'{k}={v}')" >> "$GITHUB_ENV" \
+            || fail "could not read the installed program paths"
+          echo "- ✓ install.sh --engine parakeet-cpu" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Resume test (kill a download, resume it)
+        shell: bash
+        run: |
+          set +e
+          "$SE_PY" -X utf8 -I tests/editor/resume_test.py 2>&1 | tee "$RUNNER_TEMP/resume.out"
+          rc=${PIPESTATUS[0]}
+          if [ "$rc" != 0 ]; then
+            m="resume test exited $rc: $(grep '✗' "$RUNNER_TEMP/resume.out" | tail -1)"
+            echo "::error::$m"; echo "- ✗ $m" >> "$GITHUB_STEP_SUMMARY"; exit 1
+          fi
+          echo "- ✓ resume test" >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice title=resume test::a killed download resumed from its .part (Range matched, sha256 ok, no .part left)"
+
+      - name: Offline self-test (Windows Firewall blocks the editor's programs)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          function Fail($m) { Write-Output "::error::$m"; Add-Content $env:GITHUB_STEP_SUMMARY "- ✗ $m"; exit 1 }
+          Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled True
+          # The venv python.exe is a launcher; the interpreter that opens sockets is the base python.exe.
+          foreach ($p in @($env:SE_NODE, $env:SE_CHROME, $env:SE_FFMPEG, $env:SE_PY, $env:SE_PYBASE)) {
+            New-NetFirewallRule -DisplayName "ci-se-offline $p" -Group ci-se-offline -Direction Outbound -Program ($p -replace '/', '\') -Action Block | Out-Null
+          }
+
+          & $env:SE_NODE -e $env:PROBE_REMOTE
+          if ($LASTEXITCODE -eq 0) { Fail 'control: the editor node still reaches https://example.com' }
+          & $env:SE_PY -I -c $env:PROBE_PY
+          if ($LASTEXITCODE -eq 0) { Fail 'control: the editor python still reaches https://example.com' }
+          $ff = & $env:SE_FFMPEG -hide_banner -i https://example.com/x.mp4 2>&1 | Out-String
+          if ($LASTEXITCODE -eq 0 -or $ff -match 'Server returned') { Fail 'control: the editor ffmpeg still reaches https://example.com' }
+          curl.exe -sSI --max-time 20 https://example.com | Out-Null
+          if ($LASTEXITCODE -ne 0) { Fail 'control: curl.exe (not blocked) could not reach https://example.com' }
+          & $env:SE_NODE -e $env:PROBE_LOOPBACK
+          if ($LASTEXITCODE -ne 0) { Fail 'control: the editor node could not reach its own 127.0.0.1 server' }
+          Add-Content $env:GITHUB_STEP_SUMMARY '- ✓ network-off controls: node, python, ffmpeg blocked; curl.exe open; loopback works'
+          Write-Output "::notice title=network-off controls::node, python, ffmpeg blocked; curl.exe open; loopback works"
+
+          # System dirs only: no Git, no hosted-tool node or python.
+          $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot;$env:SystemRoot\System32\Wbem;$env:SystemRoot\System32\WindowsPowerShell\v1.0"
+          & $env:SE_PY -X utf8 -I plugins/editor-superengine/skills/editor-doctor/scripts/offline_selftest.py
+          if ($LASTEXITCODE -ne 0) { Fail 'offline_selftest.py failed (its ✗ lines are in the table above)' }
+
+      - name: Remove the firewall rules
+        if: always() && runner.os == 'Windows'
+        shell: pwsh
+        run: Remove-NetFirewallRule -Group ci-se-offline -ErrorAction SilentlyContinue
+
+      - name: Offline self-test (macOS sandbox-exec, remote outbound denied, loopback allowed)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          fail() { echo "::error::$1"; echo "- ✗ $1" >> "$GITHUB_STEP_SUMMARY"; exit 1; }
+          PROFILE='(version 1)
+          (allow default)
+          (deny network-outbound (remote ip "*:*"))
+          (allow network-outbound (remote ip "localhost:*"))'
+          sb() { sandbox-exec -p "$PROFILE" "$@"; }
+
+          sb "$SE_NODE" -e "$PROBE_REMOTE" && fail 'control: the editor node still reaches https://example.com in the sandbox'
+          sb "$SE_PY" -I -c "$PROBE_PY" && fail 'control: the editor python still reaches https://example.com in the sandbox'
+          ff="$(sb "$SE_FFMPEG" -hide_banner -i https://example.com/x.mp4 2>&1)" && fail 'control: the editor ffmpeg opened https://example.com in the sandbox'
+          case "$ff" in *'Server returned'*) fail 'control: the editor ffmpeg still reaches https://example.com in the sandbox' ;; esac
+          curl -sSI --max-time 20 https://example.com >/dev/null || fail 'control: curl outside the sandbox could not reach https://example.com'
+          sb "$SE_NODE" -e "$PROBE_LOOPBACK" || fail 'control: the editor node could not reach its own 127.0.0.1 server in the sandbox'
+          echo '- ✓ network-off controls: node, python, ffmpeg blocked; curl outside open; loopback works' >> "$GITHUB_STEP_SUMMARY"
+          echo '::notice title=network-off controls::node, python, ffmpeg blocked in the sandbox; curl outside open; loopback works'
+
+          sb "$SE_PY" -X utf8 -I plugins/editor-superengine/skills/editor-doctor/scripts/offline_selftest.py \
+            || fail 'offline_selftest.py failed (its ✗ lines are in the table above)'

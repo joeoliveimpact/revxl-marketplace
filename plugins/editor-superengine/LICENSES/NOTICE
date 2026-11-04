@@ -1,0 +1,42 @@
+editor-superengine third-party notices
+=======================================
+
+skills/_shared/win_encoding.py
+  Copied from claude-code-video-toolkit, tools/win_encoding.py
+  (Digital Samba). Change: line endings converted from CRLF to LF; no other edit.
+  License: MIT, full text below.
+
+MIT License
+
+Copyright (c) 2024 Digital Samba
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+runtime/gsap/gsap.min.js
+  GSAP 3.15.0 (gsap.min.js from the npm package gsap@3.15.0), unmodified, header kept.
+  Copyright 2026 GreenSock (Webflow). Subject to the terms at https://gsap.com/standard-license
+
+runtime/fonts/Inter-Regular.woff2
+  Inter 4.1, web/Inter-Regular.woff2 from https://github.com/rsms/inter/releases/download/v4.1/Inter-4.1.zip, unmodified.
+  Copyright (c) 2016 The Inter Project Authors. SIL Open Font License 1.1, full text in LICENSES/OFL-Inter.txt.
+
+skills/editor-doctor/selftest/speech10s.flac
+  11.6 s excerpt (60.10-71.70 s) of "The Art of War" by Sun Tzu, tr. Lionel Giles, chapter 2 "Waging War",
+  read by Phil Chenevert, https://archive.org/details/artofwar3_pc_librivox
+  (artofwar_02_tzu_64kb.mp3). Public domain (LibriVox). Re-encoded to 16 kHz mono FLAC.

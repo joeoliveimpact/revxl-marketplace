@@ -1,0 +1,8 @@
+# Backup engine (Intel Macs, older macOS, or when Parakeet fails to install).
+# onnxruntime 1.23.2 is the last release with macOS x86_64 wheels.
+-r align.in
+faster-whisper==1.2.1
+# av 19.0.0 dropped av.open(metadata_errors=...), which faster-whisper 1.2.1 passes (audio.py:46).
+av==18.1.0
+ctranslate2==4.7.1
+onnxruntime==1.23.2
