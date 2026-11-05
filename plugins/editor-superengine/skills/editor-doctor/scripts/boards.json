@@ -7,8 +7,8 @@
     "sound-board": {"skill": "reel-sound-pass", "template": "skills/reel-sound-pass/boards/sound-board", "writes": ["sound-selection.json"], "tab": {"label": "Sound Board", "stages": ["sound"], "order": 50}},
     "beat-map": {"skill": "reel-canvas-build", "template": "skills/reel-canvas-build/boards/beat-map", "writes": ["beat-map-selection.json"], "tab": {"label": "Beat Map", "stages": ["motion"], "order": 20}},
     "sketches": {"skill": "reel-canvas-build", "template": "skills/reel-canvas-build/boards/sketches", "writes": ["sketches-selection.json"], "tab": {"label": "Sketches", "stages": ["motion"], "order": 30}},
-    "grade-board": {"skill": "reel-grade", "template": "skills/reel-grade/boards/grade-board", "writes": ["selection.json"], "tab": {"label": "Grade Board", "stages": ["grade"], "order": 60}},
-    "hub": {"skill": "editor-hub", "template": "skills/editor-hub/boards/hub", "writes": []},
+    "grade-board": {"skill": "reel-grade", "template": "skills/reel-grade/boards/grade-board", "writes": ["grade-selection.json"], "tab": {"label": "Grade Board", "stages": ["grade"], "order": 60}},
+    "hub": {"skill": "editor-hub", "template": "skills/editor-hub/boards/hub", "writes": ["review.json"]},
     "look-picker": {"skill": "reel-captions", "template": "skills/reel-captions/boards/look-picker", "writes": [], "tab": {"label": "Look Picker", "stages": ["captions"], "order": 70}},
     "cover-picker": {"skill": "reel-cover", "template": "skills/reel-cover/boards/cover-picker", "writes": [], "tab": {"label": "Cover Picker", "stages": ["cover"], "order": 80}}
   }

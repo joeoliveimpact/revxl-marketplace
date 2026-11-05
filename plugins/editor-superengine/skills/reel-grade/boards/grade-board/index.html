@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Grade Board</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- Grade Board (reel-grade). Served by the editor board server (board_server.py): open it as
+     /editor/grade-board/?reel=<reel>. Reads /videos/<reel>/grade/grade-config.json and the frames make_grade.py
+     wrote; saves its work to /videos/<reel>/grade-board.state.json; Send writes /videos/<reel>/grade-selection.json.
+     It opens at the identity (white 1.000, no look): nothing changes until the client picks something. -->
+<style>
+:root{--bg:#141311;--ink:#ece7df;--mute:#9a938a;--line:#2c2a26;--card:#1d1b18;--acc:#e0694f;--ok:#7cc47f;--b:#5aa9e6}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,Segoe UI,sans-serif}
+header{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--card)}
+header h1{font-size:20px;margin:0 6px 0 0;font-weight:600}
+button,select,input[type=text]{font:inherit;border:1px solid var(--line);background:#26231f;color:var(--ink);border-radius:6px;padding:4px 10px;cursor:pointer}
+button.send{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+button.on{background:var(--ink);color:#111;border-color:var(--ink)}
+button.b.on{background:var(--b);border-color:var(--b);color:#08131c}
+button:disabled{opacity:.4;cursor:default}
+main{display:grid;grid-template-columns:1fr 360px;gap:14px;padding:14px 16px;align-items:start}
+canvas#gl{width:100%;display:block;background:#000;border-radius:6px}
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.bar .k{font-size:12px;color:var(--mute)}
+input[type=range]{accent-color:var(--acc);height:18px}
+.sl{display:grid;grid-template-columns:74px 1fr 56px;gap:8px;align-items:center;margin:3px 0;font-size:12.5px}
+.sl label{color:var(--mute)}.sl .v{font-variant-numeric:tabular-nums;text-align:right;color:var(--ink)}
+.sl input[type=range]{width:100%}
+h2{font-size:13px;margin:14px 0 6px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+h2:first-child{margin-top:0}
+#rail{display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:56vh;overflow:auto;padding-right:4px}
+#rail figure{margin:0;cursor:pointer;border:1px solid var(--line);border-radius:5px;overflow:hidden;background:#0d0c0b}
+#rail figure:hover{border-color:var(--acc)}
+#rail figure.on{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+#rail figure.bad{opacity:.5;cursor:not-allowed}
+#rail canvas{width:100%;display:block}
+#rail figcaption{font-size:11px;color:var(--mute);padding:2px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#sheet{position:fixed;inset:0;background:#0b0a09f2;z-index:9;overflow:auto;padding:16px;display:none}
+#sheet.open{display:block}
+#sheet img{max-width:100%;display:block;margin-top:10px;border-radius:6px}
+.pend{color:var(--acc);font-weight:600}
+.msg{color:var(--mute);font-size:12px}
+pre{white-space:pre-wrap;font-size:11.5px;color:var(--mute);border-top:1px solid var(--line);padding-top:8px;margin-top:12px}
+#rail figure:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+@media (max-width:1000px){main{grid-template-columns:minmax(0,1fr)}}
+</style>
+<style id="editor-theme">/* Editor Hub look, theme layer only. Delete this block to undo. */
+:root{color-scheme:dark;--et-bg:#0A0A0B;--et-tile:#111113;--et-tile2:#17171A;--et-hair:rgba(255,255,255,.08);--et-hair2:rgba(255,255,255,.18);
+  --et-ink:#F3F2EF;--et-ink2:rgba(243,242,239,.68);--et-mute:rgba(243,242,239,.44);--et-you:#FF5A3C;
+  --et-sans:"Geist","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;--et-mono:"Geist Mono",ui-monospace,Consolas,monospace}
+html,body{background:var(--et-bg)!important;color:var(--et-ink)}
+body{font-family:var(--et-sans)!important;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--et-sans)!important;font-weight:300!important;letter-spacing:-.02em}
+h1 em{font-style:normal!important;color:var(--et-you)!important}
+input,select,textarea{background:var(--et-tile2)!important;color:var(--et-ink)!important;border:1px solid var(--et-hair2)!important;border-radius:8px}
+video{border-radius:12px}
+::selection{background:rgba(255,90,60,.35)}
+
+:root{--bg:#0A0A0B;--ink:#F3F2EF;--mute:rgba(243,242,239,.48);--line:rgba(255,255,255,.10);--card:#111113;--acc:#FF5A3C;--ok:#62D69A;--b:#5CD3D9}
+
+:root{--et-ease:cubic-bezier(.2,.8,.2,1)}
+:focus-visible{outline:1.5px solid var(--et-ink);outline-offset:3px}
+header{position:sticky;top:0;z-index:8;background:rgba(10,10,11,.72)!important;backdrop-filter:blur(16px) saturate(1.4);-webkit-backdrop-filter:blur(16px) saturate(1.4);
+  border-bottom:1px solid var(--et-hair)!important;padding:10px 18px!important;gap:12px!important;font-size:12.5px;color:var(--et-ink2)}
+header h1{font:300 22px/1.1 var(--et-sans)!important;letter-spacing:-.025em!important;margin:0 8px 0 0!important;color:var(--et-ink)}
+button{background:transparent!important;color:var(--et-ink)!important;border:1px solid var(--et-hair2)!important;border-radius:999px!important;
+  min-height:30px;padding:0 14px;font:400 13px var(--et-sans);cursor:pointer;
+  transition:border-color .25s var(--et-ease),background-color .25s var(--et-ease),color .25s var(--et-ease),opacity .25s var(--et-ease)}
+button:hover{border-color:var(--et-ink)!important}
+button.on{background:rgba(243,242,239,.14)!important;color:var(--et-ink)!important;border-color:var(--et-ink)!important}   /* toggled on: soft fill, so Send stays the one solid */
+button:disabled{opacity:.4;cursor:default}
+button:disabled:hover{border-color:var(--et-hair2)!important}
+#send{background:var(--et-ink)!important;color:var(--et-bg)!important;border-color:var(--et-ink)!important;font-weight:500!important;padding:0 18px!important;min-height:34px}
+#send:hover{background:#fff!important}
+select,input[type=text],input:not([type]){min-height:30px;padding:0 10px;border-radius:10px!important;transition:border-color .25s var(--et-ease)}
+textarea{border-radius:10px!important;transition:border-color .25s var(--et-ease)}
+select:hover,select:focus,input:hover,input:focus,textarea:hover,textarea:focus{border-color:var(--et-ink)!important;outline:0}
+input[type=range]{accent-color:var(--et-ink)}
+#dirty{display:inline-flex;align-items:center;gap:7px;font:500 11px var(--et-mono)!important;letter-spacing:.12em;text-transform:uppercase;color:var(--et-you)!important}
+#dirty::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--et-you);box-shadow:0 0 12px var(--et-you);flex:none;animation:et-pulse 2.4s var(--et-ease) infinite}
+#dirty[hidden]{display:none!important}
+#saved{font:400 12px var(--et-mono)}
+@keyframes et-pulse{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+main>div,main>aside{position:relative;isolation:isolate;background:var(--et-tile)!important;border:1px solid var(--et-hair)!important;transition:border-color .3s var(--et-ease),box-shadow .3s var(--et-ease),opacity .3s var(--et-ease)}
+main>div::before,main>aside::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .3s var(--et-ease);background:radial-gradient(420px circle at var(--mx,50%) var(--my,50%),rgba(255,255,255,.06),transparent 60%)}
+main>div:hover,main>aside:hover{border-color:var(--et-hair2)!important}
+main>div:hover::before,main>aside:hover::before{opacity:1}
+
+.k{font-family:var(--et-mono)!important;font-size:11.5px!important;color:var(--et-mute)!important}
+button.b.on{background:var(--b)!important;color:#08131c!important;border-color:var(--b)!important}   /* showing B keeps its own colour */
+#frames button{min-height:28px;font-size:12px}
+main{padding:16px 18px!important}
+main>div,main>aside{border-radius:18px!important;padding:16px!important;min-width:0}
+canvas#gl{border-radius:12px!important}
+.bar{gap:10px!important}
+#tc{font:500 13px var(--et-mono);font-variant-numeric:tabular-nums}
+h2{font:500 11px/1.4 var(--et-mono)!important;letter-spacing:.14em!important;text-transform:uppercase;color:var(--et-mute)!important;margin:20px 0 10px!important}
+h2:first-child{margin-top:0!important}
+h2 .k{text-transform:none;letter-spacing:0}
+.sl label{color:var(--et-ink2)!important}
+.sl .v{font-family:var(--et-mono);font-size:12px}
+#rail figure{border:1px solid var(--et-hair)!important;border-radius:10px!important;transition:border-color .25s var(--et-ease)}
+#rail figure:hover{border-color:var(--et-ink)!important}
+#rail figure.on{border-color:rgba(255,90,60,.6)!important;box-shadow:0 0 0 1px rgba(255,90,60,.3),0 0 22px -6px rgba(255,90,60,.4)}
+#rail figcaption{font-family:var(--et-mono);font-size:10.5px!important}
+#sheet{background:rgba(5,5,6,.92)!important;backdrop-filter:blur(8px)}
+.msg,pre{font-family:var(--et-mono)!important}
+pre{color:var(--et-ink2)!important;border-top:1px solid var(--et-hair)!important}
+@media (max-width:600px){header{padding:10px 16px!important}main{padding:14px 16px!important}}
+#saved.err{color:var(--et-you)!important;font-weight:500}
+</style>
+<script id="editor-theme-js">document.addEventListener("pointermove",function(e){var t=e.target.closest&&e.target.closest("main>div,main>aside");if(!t)return;var b=t.getBoundingClientRect();t.style.setProperty("--mx",(e.clientX-b.left)+"px");t.style.setProperty("--my",(e.clientY-b.top)+"px");},{passive:true});</script>
+</head><body>
+<header>
+ <h1 id="title">Grade Board</h1>
+ <span class="k" id="src">frame</span>
+ <span>frame <span id="frames"></span></span>
+ <span>wipe <input id="wipe" type="range" min="0" max="1" step="0.005" value="0" style="width:110px"><span class="k" id="wipev">off</span></span>
+ <span id="ab"><button id="holdB" title="Keep a copy of the current grade as B, so you can flip back to it and compare">hold as B</button> <button id="toggleAB" class="b" disabled title="Flip between the grade you are editing (A) and the copy you kept (B)">show B</button></span>
+ <button id="sheetBtn" title="The face frame through every look, as one picture">contact sheet</button>
+ <span style="margin-left:auto"></span>
+ <button id="send" class="send">send to Claude</button>
+ <span id="saved" style="color:var(--ok)"></span> <span id="dirty" class="pend" hidden>changes not sent</span>
+</header>
+<main>
+ <div>
+  <canvas id="gl"></canvas>
+  <div class="bar" id="playbar" hidden>
+   <button id="play">play</button>
+   <input id="seek" type="range" min="0" max="1" step="0.001" value="0" style="flex:1">
+   <span class="k" id="tc">0:00.00</span>
+  </div>
+  <h2 title="A first fix to brightness and skin colour, applied before the look">correction <span class="k" id="corrNote"></span></h2>
+  <div class="bar"><button id="suggest" title="Set black, white and the skin hue to what was measured on this reel">Suggested fix</button><span class="k">double-click a slider to put it back</span></div>
+  <div id="corr"></div>
+  <h2 title="Small moves on top of the correction, before the look">fine tune</h2>
+  <div id="tune"></div>
+  <pre id="measured"></pre>
+ </div>
+ <aside>
+  <h2>looks <span class="k" id="lookNote"></span></h2>
+  <div id="rail"></div>
+  <div id="strengthBox"></div>
+ </aside>
+</main>
+<div id="sheet"><div class="bar"><b>contact sheet</b> <span class="k">the face frame through every look · Esc closes</span><span style="margin-left:auto"></span><button id="sheetClose">close</button></div><div id="sheetBody"></div></div>
+<video id="v" muted playsinline loop preload="auto" style="display:none"></video>
+<script src="./board-client.js"></script>
+<script src="grade_math.js"></script>
+<script>
+const $=s=>document.querySelector(s), GM=window.GradeMath;
+// state and Send go through the editor boards; the reel comes from this page's own ?reel= (works inside the hub's iframe too)
+const REEL=new URLSearchParams(location.search).get('reel')||'', BASE='/videos/'+encodeURIComponent(REEL)+'/', GDIR=BASE+'grade/';
+const reelUrl=p=>BASE+String(p).split('/').map(encodeURIComponent).join('/');   // paths in grade-config.json are relative to the reel folder
+let bc=null; try{ bc=BoardClient.create({board:'grade-board'}); }catch(e){ bc=null; }
+let C=null, gl=null, P=null, U={}, TEXSRC=null, PRE=[], TUNE=[];
+let S={A:null,B:null,cur:'A',frame:null}, srcReady=false, faceImg=null, faceSrcEl=null;
+const MAXSLOT=4, fmt=t=>`${Math.floor(t/60)}:${(t%60).toFixed(2).padStart(5,'0')}`;
+const clone=o=>JSON.parse(JSON.stringify(o)), st=()=>S[S.cur];
+const esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function setSaved(msg,bad){ const el=$('#saved'); el.textContent=msg; el.className=bad?'err':''; }
+
+/* ---- state ------------------------------------------------------------------------------- */
+// The identity: every number at grade_math.json's own default and no look. What make_grade.py measured is only
+// ever offered (the Suggested fix button), never applied on open.
+function blankState(){ return {correction:GM.defaults(PRE.concat(TUNE)), look:{id:'none',strength:1}}; }
+// grade-board.state.json on disk is the source of truth (any port, any browser); BoardClient keeps this browser's copy as the fallback
+let diskT=null;
+function persist(){
+  const j=JSON.stringify(S);
+  clearTimeout(diskT); diskT=setTimeout(()=>bc.save(JSON.parse(j)).then(r=>{ if(!r.ok) setSaved(r.status?'AUTO-SAVE FAILED ('+r.status+'): only this browser has your changes':'AUTO-SAVE FAILED: no answer from the editor boards, only this browser has your changes',true); }),400);
+  markDirty();
+}
+// Ctrl+Z: snapshots taken before a look pick or the Suggested fix
+const UNDO=[];
+function snapshot(){ UNDO.push(clone({A:S.A,B:S.B,cur:S.cur})); if(UNDO.length>20) UNDO.shift(); }
+function undo(){ const u=UNDO.pop(); if(!u){ note('nothing to undo'); return; }
+  S.A=u.A; S.B=u.B; S.cur=u.cur; syncAB(); renderAll(); persist(); note('undone'); }
+const TIPS={exposure:'brightness of the whole picture',black:'black point: how dark the darkest parts get',white:'white point: how bright the brightest parts get',
+  skin_hue:'the skin colour the face fix aims at',skin_rot:'skin rotation: turns skin tones warmer or cooler without moving the wall',
+  skin_band:'skin band: how wide a range of colours counts as skin',
+  temp:'warmer (orange) or cooler (blue)',tint:'greener or more magenta',con:'contrast: the gap between darks and brights',
+  sat:'saturation: how strong the colours are',mat:'matte: lifts the blacks for a faded film look'};
+
+/* ---- the looks: tune numbers from looks.json (via grade-config.json), scaled by strength like bake_grade.py --- */
+const lookOf=id=>(C.looks||[]).find(l=>l.id===id);
+function lookSlots(look){
+  const l=look&&lookOf(look.id); if(!l) return [];
+  const s=+look.strength;
+  return l.stack.map(slot=>{ const o={}; TUNE.forEach(k=>{ o[k]=(+slot[k]||0)*s; }); return o; });
+}
+// the slots the page runs, in the bake's order: the fine tune (only when it moves something), then the look's
+function slotsOf(state){
+  const t={}; TUNE.forEach(k=>{ t[k]=state.correction[k]; });
+  return (TUNE.some(k=>t[k])?[t]:[]).concat(lookSlots(state.look)).slice(0,MAXSLOT);
+}
+
+/* ---- GL ---------------------------------------------------------------------------------- */
+const VS=`#version 300 es
+out vec2 vUv; out vec2 vTex;
+void main(){
+  vec2 p = vec2(float((gl_VertexID & 1) << 2) - 1.0, float((gl_VertexID & 2) << 1) - 1.0);
+  vUv = (p + 1.0) * 0.5; vTex = vec2(vUv.x, 1.0 - vUv.y);
+  gl_Position = vec4(p, 0.0, 1.0);
+}`;
+// A look is tune numbers only (no LUT file), so a slot is gm_slotTune straight on the colour: the same maths the
+// bake runs on its lattice. There is no 3D texture on this page and so no half-texel offset to get right here.
+function fragSrc(){ return `#version 300 es
+precision highp float;
+in vec2 vUv; in vec2 vTex; out vec4 fragColor;
+uniform sampler2D uSrc;
+uniform vec3 uT0[${MAXSLOT}];      // temp, tint, con
+uniform vec3 uT1[${MAXSLOT}];      // sat, mat, active
+uniform float uExposure, uBlack, uWhite, uSkinHue, uSkinRot, uSkinBand, uWipe, uLineW;
+${GM.glsl()}
+void main(){
+  vec3 raw = texture(uSrc, vTex).rgb;
+  vec3 c = gm_prePass(raw, uExposure, uBlack, uWhite, uSkinHue, uSkinRot, uSkinBand);
+  for (int i = 0; i < ${MAXSLOT}; i++){
+    if (uT1[i].z > 0.5) c = gm_slotTune(c, uT0[i].x, uT0[i].y, uT0[i].z, uT1[i].x, uT1[i].y);
+  }
+  vec3 o = vUv.x < uWipe ? raw : c;
+  if (uWipe > 0.0 && abs(vUv.x - uWipe) < uLineW) o = vec3(0.85);
+  fragColor = vec4(o, 1.0);
+}`; }
+function sh(type,src){ const s=gl.createShader(type); gl.shaderSource(s,src); gl.compileShader(s);
+  if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; }
+function initGL(){
+  gl=$('#gl').getContext('webgl2',{preserveDrawingBuffer:true,antialias:false});
+  if(!gl) throw new Error('this browser has no WebGL2, which the Grade Board needs to show the grade');
+  P=gl.createProgram(); gl.attachShader(P,sh(gl.VERTEX_SHADER,VS)); gl.attachShader(P,sh(gl.FRAGMENT_SHADER,fragSrc()));
+  gl.linkProgram(P); if(!gl.getProgramParameter(P,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(P));
+  gl.useProgram(P);
+  for(const n of ['uSrc','uT0','uT1','uExposure','uBlack','uWhite','uSkinHue','uSkinRot','uSkinBand','uWipe','uLineW'])
+    U[n]=gl.getUniformLocation(P,n);
+  TEXSRC=gl.createTexture(); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,TEXSRC);
+  for(const p of [[gl.TEXTURE_MIN_FILTER,gl.LINEAR],[gl.TEXTURE_MAG_FILTER,gl.LINEAR],
+                  [gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE]])
+    gl.texParameteri(gl.TEXTURE_2D,p[0],p[1]);
+  gl.uniform1i(U.uSrc,0);
+}
+function srcEl(){ return S.frame==='video' ? $('#v') : faceSrcEl; }
+function resize(el){
+  const cv=$('#gl'), w=Math.max(320,Math.round(cv.clientWidth));
+  const iw=el.videoWidth||el.naturalWidth||16, ih=el.videoHeight||el.naturalHeight||9, h=Math.round(w*ih/iw);
+  if(cv.width!==w||cv.height!==h){ cv.width=w; cv.height=h; cv.style.height=h+'px'; }
+}
+function draw(){
+  if(!srcReady||!gl) return;
+  const el=srcEl();
+  if(!el || (S.frame==='video' && el.readyState<2) || (S.frame!=='video' && !el.complete)) return;
+  resize(el);
+  const cv=$('#gl'), s=st();
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,TEXSRC);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGB8,gl.RGB,gl.UNSIGNED_BYTE,el);
+  const t0=new Float32Array(MAXSLOT*3), t1=new Float32Array(MAXSLOT*3);
+  slotsOf(s).forEach((sl,i)=>{
+    t0[i*3]=sl.temp; t0[i*3+1]=sl.tint; t0[i*3+2]=sl.con;
+    t1[i*3]=sl.sat; t1[i*3+1]=sl.mat; t1[i*3+2]=1;
+  });
+  gl.uniform3fv(U.uT0,t0); gl.uniform3fv(U.uT1,t1);
+  const p=s.correction;
+  gl.uniform1f(U.uExposure,p.exposure); gl.uniform1f(U.uBlack,p.black); gl.uniform1f(U.uWhite,p.white);
+  gl.uniform1f(U.uSkinHue,p.skin_hue); gl.uniform1f(U.uSkinRot,p.skin_rot); gl.uniform1f(U.uSkinBand,p.skin_band);
+  gl.uniform1f(U.uWipe,+$('#wipe').value); gl.uniform1f(U.uLineW,1.2/cv.width);
+  gl.viewport(0,0,cv.width,cv.height);
+  gl.drawArrays(gl.TRIANGLES,0,3);
+}
+function loop(){ if(S.frame==='video' && !$('#v').paused){ draw(); syncTime(); } requestAnimationFrame(loop); }
+
+/* ---- looks rail: the face frame through each look, painted with grade_math.js on the CPU ------------------ */
+function basePixels(w,h){
+  if(!faceImg||!faceImg.complete||!faceImg.naturalWidth) return null;
+  const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+  const ctx=cv.getContext('2d'); ctx.drawImage(faceImg,0,0,w,h);
+  const d=ctx.getImageData(0,0,w,h), s=st(), p=s.correction, tune=slotsOf({correction:p,look:null}), out=new Float32Array(w*h*3);
+  // the correction and fine tune once, so every tile shows the look on top of what the client is holding
+  for(let i=0,n=w*h;i<n;i++){
+    let c=GM.prePass([d.data[i*4]/255,d.data[i*4+1]/255,d.data[i*4+2]/255],p);
+    tune.forEach(t=>{ c=GM.slotTune(c,t); });
+    out[i*3]=c[0]; out[i*3+1]=c[1]; out[i*3+2]=c[2];
+  }
+  return {w,h,rgb:out};
+}
+function paintThumb(cv,base,id){
+  cv.width=base.w; cv.height=base.h;
+  const ctx=cv.getContext('2d'), img=ctx.createImageData(base.w,base.h), slots=lookSlots({id,strength:1});
+  for(let i=0,n=base.w*base.h;i<n;i++){
+    let c=[base.rgb[i*3],base.rgb[i*3+1],base.rgb[i*3+2]];
+    slots.forEach(t=>{ c=GM.slotTune(c,t); });
+    img.data[i*4]=c[0]*255; img.data[i*4+1]=c[1]*255; img.data[i*4+2]=c[2]*255; img.data[i*4+3]=255;
+  }
+  ctx.putImageData(img,0,0);
+}
+let thumbTimer=0;
+function renderRail(){
+  clearTimeout(thumbTimer);
+  thumbTimer=setTimeout(()=>{
+    const tw=160, th=Math.max(1,Math.round(tw*(faceImg&&faceImg.naturalHeight||9)/(faceImg&&faceImg.naturalWidth||16)));
+    const base=basePixels(tw,th); if(!base) return;
+    $('#rail').querySelectorAll('canvas').forEach(cv=>paintThumb(cv,base,cv.dataset.look));
+  },160);
+}
+function buildRail(){
+  const r=$('#rail'); r.innerHTML='';
+  [{id:'none',name:'None',why:'the footage as it is, no look'}].concat(C.looks||[]).forEach(l=>{
+    const bad=l.guard&&l.guard.ok===false, fig=document.createElement('figure');
+    fig.dataset.look=l.id; if(bad) fig.classList.add('bad');
+    fig.title=bad?`${l.name} fails the skin check on this reel, so it can't be used`:(l.why||l.name);
+    fig.innerHTML=`<canvas data-look="${esc(l.id)}"></canvas><figcaption>${esc(l.name)}${bad?' · skin check failed':''}</figcaption>`;
+    fig.onclick=()=>pickLook(l.id); keyable(fig,()=>pickLook(l.id));
+    r.appendChild(fig);
+  });
+  renderLook(); renderRail();
+}
+function pickLook(id){
+  const l=lookOf(id);
+  if(l&&l.guard&&l.guard.ok===false){ note(`${l.name} fails the skin check on this reel`); return; }
+  if(st().look.id===id) return;
+  snapshot(); st().look={id,strength:st().look.strength}; renderLook(); draw(); persist();
+}
+function renderLook(){
+  const s=st(), box=$('#strengthBox'); box.innerHTML='';
+  $('#rail').querySelectorAll('figure').forEach(f=>f.classList.toggle('on',f.dataset.look===s.look.id));
+  const l=lookOf(s.look.id);
+  $('#lookNote').textContent=l?`${l.name}: ${l.why||''}`:'click one to try it';
+  if(!l) return;
+  const d=document.createElement('div'); d.className='sl';
+  d.innerHTML=`<label title="how much of the look: 0 is none, 1 is the look as made">strength</label><input id="strength" type="range" min="0" max="1" step="0.01" value="${s.look.strength}" title="double-click to reset"><span class="v">${(+s.look.strength).toFixed(2)}</span>`;
+  const inp=d.querySelector('input');
+  inp.oninput=()=>{ s.look.strength=+inp.value; d.querySelector('.v').textContent=(+inp.value).toFixed(2); draw(); persist(); };
+  inp.ondblclick=()=>{ inp.value=1; inp.oninput(); };
+  box.appendChild(d);
+}
+function openSheet(){
+  const b=$('#sheetBody'); b.innerHTML='';
+  const img=new Image(); img.alt='the face frame through every look';
+  img.onerror=()=>{ b.innerHTML='<span class="msg">No contact sheet for this reel yet. Ask Claude to make the looks sheet.</span>'; };
+  img.src=GDIR+'looks-sheet.jpg?'+Date.now(); b.appendChild(img);
+  $('#sheet').classList.add('open');
+}
+function closeSheet(){ $('#sheet').classList.remove('open'); }
+// Enter / Space works the element like a click, and the page's Space-to-play stays out of it
+function keyable(el,fn){ el.tabIndex=0; el.setAttribute('role','button');
+  el.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); e.stopPropagation(); fn(); } }); }
+function note(t){ $('#lookNote').textContent=t; setTimeout(()=>{ if($('#lookNote').textContent===t) renderLook(); },2600); }
+
+/* ---- sliders ----------------------------------------------------------------------------- */
+function mkSlider(name,val,on){
+  const [lo,hi,step,def]=GM.spec().ranges[name];
+  const d=document.createElement('div'); d.className='sl';
+  const tip=(TIPS[name]||name)+' · double-click to reset', dp=step<0.01?3:2;
+  d.innerHTML=`<label title="${tip}">${name.replace('_',' ')}</label><input type="range" data-k="${name}" min="${lo}" max="${hi}" step="${step}" value="${val}" title="${tip}"><span class="v">${(+val).toFixed(dp)}</span>`;
+  const inp=d.querySelector('input');
+  inp.oninput=()=>{ const v=+inp.value; d.querySelector('.v').textContent=v.toFixed(dp); on(v); };
+  inp.ondblclick=()=>{ inp.value=def; inp.oninput(); };
+  return d;
+}
+function renderCorr(){
+  const p=st().correction, onv=k=>v=>{ p[k]=v; persist(); draw(); renderRail(); };
+  const a=$('#corr'), b=$('#tune'); a.innerHTML=''; b.innerHTML='';
+  PRE.forEach(k=>a.appendChild(mkSlider(k,p[k],onv(k))));
+  TUNE.forEach(k=>b.appendChild(mkSlider(k,p[k],onv(k))));
+}
+function renderAll(){ renderCorr(); renderLook(); renderRail(); draw(); }
+function syncAB(){ $('#toggleAB').disabled=!S.B; $('#toggleAB').textContent=S.cur==='A'?'show B':'show A'; $('#toggleAB').classList.toggle('on',S.cur==='B');
+  $('#title').textContent=`Grade Board · ${C.reel}`+(S.cur==='B'?' · B':''); }
+
+/* ---- frames, playback -------------------------------------------------------------------- */
+function setFrame(id,quiet){
+  S.frame=id;
+  $('#src').textContent = id==='video' ? 'live video' : id;
+  $('#frames').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.f===id));
+  if(id==='video'){ srcReady=$('#v').readyState>=2; draw(); }
+  else {
+    srcReady=false;
+    const img=new Image(); img.onload=()=>{ if(S.frame!==id) return; faceSrcEl=img; srcReady=true; draw(); }; img.src=GDIR+encodeURIComponent(id);
+    $('#v').pause(); $('#play').textContent='play';
+  }
+  if(!quiet) persist();
+}
+function syncTime(){ const v=$('#v'); $('#tc').textContent=fmt(v.currentTime||0); $('#seek').value=(v.currentTime||0)/C.duration; }
+
+/* ---- send -------------------------------------------------------------------------------- */
+// what Send writes, minus the time stamp: compared with the last Send to light "changes not sent"
+const sig=p=>{ const q={...p}; delete q.saved_at; return JSON.stringify(q); };
+function markDirty(){ if(C) $('#dirty').hidden=!S.sent||sig(payloadOf(null))===S.sent; }
+function payloadOf(at){
+  const s=st();
+  return {reel:C.reel, video:C.video, frame:S.frame, held:S.cur, math_version:C.math_version, saved_at:at,
+          correction:{...s.correction}, look:{id:s.look.id, strength:+s.look.strength}};
+}
+async function send(){
+  const payload=payloadOf(new Date().toISOString());
+  let r;
+  try{ r=await fetch(BASE+'__save?board=grade-board&name=grade-selection.json',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload,null,1)}); }
+  catch(e){ setSaved('SEND FAILED: no answer from the editor boards (are they running?). Nothing reached Claude; your grade is still on this page.',true); return; }
+  if(!r.ok){ setSaved('SEND FAILED (the board server answered '+r.status+'). Nothing reached Claude; your grade is still on this page.',true); return; }
+  S.sent=sig(payload); persist();
+  setSaved('saved grade-selection.json '+new Date().toLocaleTimeString());
+}
+
+/* ---- boot -------------------------------------------------------------------------------- */
+(bc?Promise.all([
+  fetch('grade_math.json').then(r=>r.json()),
+  fetch(GDIR+'grade-config.json',{cache:'no-store'}).then(r=>{ if(!r.ok) throw new Error('no grade set up for this reel yet (grade/grade-config.json, HTTP '+r.status+'). Ask Claude to set up the grade'); return r.json(); }),
+  bc.load(),
+  fetch(BASE+'grade-selection.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null)
+]):Promise.reject(new Error('open this board with ?reel=<reel> in its address'))).then(async([spec,cfg,disk,sent])=>{
+  GM.init(spec); C=cfg;
+  PRE=spec.pre_pass.params.slice(); TUNE=spec.slot.params.filter(k=>k!=='mix');
+  $('#title').textContent=`Grade Board · ${C.reel}`;
+  const m=C.measured||{};
+  $('#measured').textContent=
+    `measured on 3 frames: black ${m.black} (${m.black_pct} pct) · white ${m.white} (${m.white_pct} pct)\n`+
+    `skin hue ${m.skin_hue}° sat ${m.skin_sat} · per-frame hue ${(m.per_frame_hue||[]).join(', ')}°\n`+
+    `Suggested fix: black ${C.suggested&&C.suggested.black} · white ${C.suggested&&C.suggested.white} · skin hue ${C.suggested&&C.suggested.skin_hue}°\n`+
+    `maths grade_math.json v${C.math_version} · the bake runs the same numbers`;
+  $('#corrNote').textContent='opens at the raw footage · the skin rotation moves the face, not the wall';
+  $('#suggest').disabled=!C.suggested;
+
+  const okState=o=>o&&o.correction&&o.look&&typeof o.look.id==='string';
+  const fill=o=>({correction:{...blankState().correction,...o.correction}, look:{id:lookOf(o.look.id)?o.look.id:'none', strength:Math.min(1,Math.max(0,+(o.look.strength??1)||0))}});
+  S.A=blankState();
+  if(disk&&okState(disk.A)){ S={A:fill(disk.A),B:okState(disk.B)?fill(disk.B):null,cur:disk.cur==='B'&&okState(disk.B)?'B':'A',frame:disk.frame||null,sent:disk.sent}; }
+  else if(okState(sent)){ S.A=fill(sent); if(sent.frame) S.frame=sent.frame; }   // a sent grade restores on a fresh browser too
+  if(!S.sent&&sent){ S.sent=sig(sent); }
+  const files=(C.frames||[]).map(f=>f.file);
+  if(S.frame!=='video'&&!files.includes(S.frame)) S.frame=null;
+  if(S.frame==='video'&&!C.video_rel) S.frame=null;
+  // open on the face frame, not the video: a still is up at once, a long video has not decoded a frame yet
+  if(!S.frame) S.frame=C.face_frame;
+
+  $('#frames').innerHTML=(C.video_rel?`<button data-f="video">video</button>`:'')+
+    (C.frames||[]).map(f=>`<button data-f="${esc(f.file)}">${esc(f.label||(f.pct+'%'))}${f.file===C.face_frame?' ★':''}</button>`).join('');
+  $('#frames').onclick=e=>{ const b=e.target.closest('button'); if(b) setFrame(b.dataset.f); };
+  const v=$('#v');
+  if(C.video_rel){ $('#playbar').hidden=false; v.src=reelUrl(C.video_rel); }
+  v.addEventListener('loadeddata',()=>{ if(S.frame==='video'){ srcReady=true; draw(); } });
+  $('#play').onclick=()=>{ if(S.frame!=='video') setFrame('video');
+    if(v.paused){ v.play(); $('#play').textContent='pause'; } else { v.pause(); $('#play').textContent='play'; } };
+  $('#seek').oninput=()=>{ if(S.frame!=='video') setFrame('video'); v.currentTime=(+$('#seek').value)*C.duration; };
+  v.addEventListener('seeked',()=>{ draw(); syncTime(); });
+  $('#wipe').oninput=()=>{ const w=+$('#wipe').value; $('#wipev').textContent=w<=0?'off':`raw ${(w*100).toFixed(0)}%`; draw(); };
+  $('#holdB').onclick=()=>{ S.B=clone(st()); syncAB(); persist(); note('held as B · toggle to compare'); };
+  $('#toggleAB').onclick=()=>{ if(!S.B) return; S.cur=S.cur==='A'?'B':'A'; syncAB(); renderAll(); persist(); };
+  $('#suggest').onclick=()=>{ if(!C.suggested) return; snapshot();
+    Object.keys(C.suggested).forEach(k=>{ if(PRE.includes(k)) st().correction[k]=+C.suggested[k]; });
+    renderAll(); persist(); note('Suggested fix applied · Ctrl+Z undoes'); };
+  $('#sheetBtn').onclick=openSheet; $('#sheetClose').onclick=closeSheet;
+  $('#send').onclick=send;
+  document.addEventListener('keydown',e=>{
+    if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&e.key.toLowerCase()==='z'){ e.preventDefault(); undo(); return; }
+    if(e.target.tagName==='INPUT') return;
+    if(e.key==='Escape'){ closeSheet(); }
+    else if(e.key===' '&&C.video_rel){ e.preventDefault(); $('#play').click(); }
+  });
+  window.addEventListener('resize',()=>draw());
+
+  initGL();
+  faceImg=new Image();
+  faceImg.onload=()=>renderRail();
+  faceImg.src=GDIR+encodeURIComponent(C.face_frame);
+  syncAB(); renderCorr(); buildRail();
+  setFrame(S.frame,true); markDirty(); loop();
+  window.GB={get C(){return C},get S(){return S},get ready(){return srcReady},st,draw,setFrame,send};  // a handle for the tests
+}).catch(e=>{ document.body.insertAdjacentHTML('afterbegin',`<pre style="color:#FF5A3C;padding:16px">Grade Board could not start: ${esc(e.message)}</pre>`); });
+</script></body></html>

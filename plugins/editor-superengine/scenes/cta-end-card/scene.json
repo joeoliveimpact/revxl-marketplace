@@ -1,5 +1,6 @@
 {
   "id": "cta-end-card",
+  "category": "cta-end-card",
   "kind": "takeover",
   "slots": {
     "headline": {"maxChars": 36, "default": "Want more like this?", "hint": "the closing line"},

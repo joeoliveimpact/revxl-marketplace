@@ -1,5 +1,6 @@
 {
   "id": "hook-title",
+  "category": "hook-title",
   "kind": "takeover",
   "slots": {
     "kicker": {"maxChars": 32, "default": "Part 1", "hint": "a small line above the title"},
@@ -8,7 +9,8 @@
   "dur": [1.5, 5],
   "params": {
     "accent": {"type": "color", "default": "#4f8cff"},
-    "font": {"type": "string", "default": "Inter"}
+    "font": {"type": "string", "default": "Inter"},
+    "entrance": {"type": "string", "default": "fade", "enum": ["fade", "none"], "hint": "none = complete on its first frame (for a reel that opens on it)"}
   },
   "source": "editor-superengine original (PB-34)",
   "licence": "own"

@@ -43,6 +43,12 @@ reel folder (`sfx/`, `beds/`), probes every sound, computes the waveforms, and w
   they sit right, then judge.
 - Decisions survive a reload. Send writes `sound-selection.json`; undecided cues go in its `undecided` list and
   are never mixed.
+- **Beat-sync (off by default):** a checkbox on the music row, greyed out with "no steady beat found in this track"
+  when the bed's `grid` is null. On, the track start (`offset_s`) snaps to its nearest beat whenever it changes,
+  faint beat ticks show on the cue strip, and "Snap cues to the beat" moves only the cues within
+  `min(period/8, 80 ms)` of a beat onto it. Turning it off moves nothing back. Send carries `bed.beat_sync`.
+- **Peak offsets:** a sound with `peak_s` in its library row starts `peak_s` early, in the preview, the loop and
+  the bake, so its hit lands on the marker; every sent cue carries `peak_s` (0 when unknown). Speech never moves.
 
 ## Things that matter
 

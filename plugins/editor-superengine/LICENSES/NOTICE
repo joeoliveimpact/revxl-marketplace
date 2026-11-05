@@ -143,3 +143,21 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 Starter sound pack (sound effects and music beds): every file and its source is listed in LICENSES/SOUND-PACK-CREDITS.md.
+
+scenes/hf-lower-third/scene.html, scenes/hf-callout/scene.html, scenes/hf-list/scene.html,
+scenes/hf-quote/scene.html, scenes/hf-stat-card/scene.html, scenes/hf-hook-title/scene.html,
+scenes/hf-cta-end-card/scene.html
+  Adapted from HyperFrames (HeyGen, https://github.com/heygen-com/hyperframes, tag v0.8.184,
+  commit d15a274c198cf18bc1df177cbe20df95392a8947), one registry item each:
+    scenes/hf-lower-third/scene.html   from registry/blocks/lt-clean-bar/lt-clean-bar.html
+    scenes/hf-callout/scene.html       from registry/blocks/mk-callout-highlight/mk-callout-highlight.html
+    scenes/hf-list/scene.html          from registry/blocks/mk-specs-list/mk-specs-list.html
+    scenes/hf-quote/scene.html         from registry/components/testimonial-proof-card/testimonial-proof-card.html
+    scenes/hf-stat-card/scene.html     from registry/blocks/mk-progress-stat/mk-progress-stat.html
+    scenes/hf-hook-title/scene.html    from registry/blocks/yt-prism-title/yt-prism-title.html
+    scenes/hf-cta-end-card/scene.html  from registry/components/cta-close/cta-close.html
+  Changes (each file says so in its header comment): rewritten for portrait 1080x1920; GSAP 3.14.2 from a
+  CDN replaced by the local runtime/gsap copy (3.15.0); every font remapped to Inter Regular 400; settings
+  moved to HyperFrames variables (slots and params); one paused timeline; exit animations removed. Source
+  blob ids and sha256s are in scenes/registry-allow.json. Each folder's scene.json and preview.png are ours.
+  Copyright 2026 HeyGen, Inc. License: Apache License 2.0, full text in LICENSES/Apache-2.0-HyperFrames.txt.

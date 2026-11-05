@@ -19,6 +19,19 @@ Score by **direction**, not information content: a line carrying zero informatio
 **Only backward-facing lines are free cuts.** In the reference build, two of four proposed
 "restatement" cuts were the reel's strongest rehooks.
 
+`line_score.py` ranks the table, so that rule holds every time:
+
+1. With the Write tool, put every trim candidate in `work/line-labels.json` with its direction (`forward`,
+   `backward` or `neutral`) and why:
+   `{"lines": [{"id": "L04", "text": "<the line>", "src_in": 12.40, "src_out": 15.10, "direction": "backward", "why": "restates the opening claim"}]}`
+2. Run:
+   `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/line_score.py" videos/<reel>`
+   It prints the ranked table and writes it to `work/line-table.md`: free cuts (backward) first, then
+   "your call" (neutral), then keeps (forward). A forward line is never a free cut. It writes no EDL and
+   no selection. Exit 2 means it refused and wrote nothing: a line has no id, no direction or no why, an
+   unknown direction, or a repeated id. Fix the lines it names and run it again.
+3. Show the client the table, then stop for their pick.
+
 With several recordings, pick one take for the whole cut: render.py takes one raw file.
 
 ## Stage 3 by hand: the EDL

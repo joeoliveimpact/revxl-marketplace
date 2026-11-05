@@ -7,7 +7,8 @@
 Inputs : the teleprompter script (one line per spoken unit), one or more takes (an edit map from build_edit_map.py
          and the 16 kHz mono wav it was built on), a shots vocabulary.
 Output : <o>/cut-board.config.json - every script line with every attempt found in every take, the default pick,
-         sub-retakes inside an attempt (a repeated phrase: the last one is kept), and the legal boundary set
+         sub-retakes inside an attempt (a repeated phrase: the last one is kept), reworded retakes inside an
+         attempt for review (never struck: the client keeps the first, the second or both), and the legal boundary set
          (silence islands). Each take records its wav and edit map as paths relative to the reel folder (<o>), which
          the board loads from /videos/<reel>/<path>.
 Default pick: the main take is the take holding the most lines (a tie goes to the higher take). Each line takes its
@@ -30,6 +31,10 @@ from win_encoding import ensure_utf8_output  # noqa: E402
 # islands(), the board sequence and the word-list hash have one home: build_edit_map.py in this folder (H-R16)
 sys.path.insert(0, str(HERE))
 from build_edit_map import audio_sha256, board_hash, board_sequence, validate, wav_duration  # noqa: E402
+# the reworded-retake finder has one home: repeat_check.loose(), next to this file. Its folder goes on the path
+# again here so this import never leans on the build_edit_map block above.
+sys.path.append(str(HERE))
+import repeat_check  # noqa: E402
 
 LET = re.compile(r"[^a-z0-9]+")
 BEAT_MS = 300
@@ -112,6 +117,25 @@ def sub_retakes(words, lo, hi, n=4, within=12.0):
         else:
             merged.append([a0, b0])
     return merged
+
+
+def review_hits(words, lo, hi):
+    """Reworded retakes inside one attempt: repeat_check's loose() (tier "review") over the attempt's own words, as
+    [{first: [board i...], second: [board i...], why}]. Never struck by default: the client picks on the board.
+    A pair that spans two attempts or two lines is not looked for here; picking the attempt settles it."""
+    W = [dict(w=words[k]["word"], n=repeat_check.norm(words[k]["word"]), s=words[k]["start"], e=words[k]["end"],
+              id=words[k]["id"]) for k in range(lo, hi) if not words[k]["word"].startswith("[")]
+    W = [w for w in W if w["n"]]
+    at = {words[k]["id"]: k for k in range(lo, hi)}   # loose() indexes its own filtered list: back to board i by word id
+    out = []
+    for h in repeat_check.loose(W, repeat_check.find(W)):   # a pair the strict finder already joins is not flagged
+        spans = [(at[W[h["first"]]["id"]], at[W[h["first"] + h["n"] - 1]["id"]]),
+                 (at[W[h["second"]]["id"]], at[W[h["second"] + h["m"] - 1]["id"]])]
+        first, second = ([k for k in range(a, b + 1) if not words[k]["word"].startswith("[")] for a, b in spans)
+        out.append(dict(first=first, second=second,
+                        why=f"The second sentence says the first one again in other words "
+                            f"({round(h['jaccard'] * 100)}% of the main words match)."))
+    return out
 
 
 def gap_island(isl, lo_t, hi_t, which="last"):
@@ -292,7 +316,8 @@ def main():
                                       text=" ".join(w["word"].strip() for w in words[x:y]),
                                       src_from=in_point(words, x, isl)[0],
                                       src_to=in_point(words, y, isl)[0] if y < len(words) else out_point(words, y - 1, isl, tk["duration"])[0])
-                                 for x, y in sub_retakes(words, wi, hi)]))
+                                 for x, y in sub_retakes(words, wi, hi)],
+                    review=review_hits(words, wi, hi)))
 
     # the default ruling never mixes takes: the main take holds the most lines, a tie goes to the higher take
     held = {int(n): sum(1 for ln in lines if any(x["take"] == int(n) for x in ln["attempts"])) for n in takes}
@@ -310,7 +335,9 @@ def main():
                gap_default_ms=150, beat_ms=beat_default(), speed_options=[1.0, 1.1, 1.15, 1.2], speed_default=1.0,
                shots=shots, lines=lines,
                takes={n: {k: v for k, v in t.items() if k != "anchors"} for n, t in takes.items()})
-    cfg["board_hash"] = board_hash(cfg)   # what a ruling indexes: word lists, attempts, silences
+    # what a ruling indexes: word lists, attempts, silences. attempts[].review is not in it: the keep choice is
+    # stored as rm word indices, which the word lists already cover
+    cfg["board_hash"] = board_hash(cfg)
     out.mkdir(parents=True, exist_ok=True)
     (out / "cut-board.config.json").write_text(json.dumps(cfg, indent=1), encoding="utf-8")
     miss = [ln["id"] for ln in lines if not ln["attempts"]]

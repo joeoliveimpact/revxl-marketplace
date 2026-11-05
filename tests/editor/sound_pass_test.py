@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """S5 check for reel-sound-pass (part A): the mix pipeline, the Auphonic cost ask, the sound library, room tone,
-the quiet gate and the stem bake. Synthetic media only, made with ffmpeg here; no network (Auphonic is faked
-in-process, the pack comes from a file:// URL).
+the quiet gate, the stem bake, and (N2) the beat grid, the beat-synced bed, the cue pre-fill and the hit offsets.
+Synthetic media only, made with ffmpeg here; no network (Auphonic is faked in-process, the pack comes from a file://
+URL).
 
 usage: EDITOR_SE_HOME=<installed state> <state python> -X utf8 -I tests/editor/sound_pass_test.py
            [--case free_master|cost_ask|pack|ingest_trim|room_tone|quiet_gate|bake_exact|music_level|music_seam|
-                   music_licence|music_absent|music_strongest] [--scratch <dir>]
+                   music_licence|music_absent|music_strongest|beat_grid|beat_grid_hard|beat_fit|edl_hash|
+                   prefill|peak_offset] [--scratch <dir>]
            [--plugin <plugin root>]
 Each case finishes in well under 150 s. Prints PASS/FAIL per check, then "N passed, M failed"; exit 1 on any fail.
 """
@@ -778,10 +780,410 @@ def case_music_strongest(scratch):
     ck("music_strongest: a track shorter than the cut starts at 0", e == 0.0, e)
 
 
+# ------------------------------------------------------------------ beat grid, bed fit, cue pre-fill, peak offset (N2)
+def click_track(seconds, bpm, phase, accent=0, seed=0):
+    """F-16 click track: a pitch-dropping kick burst on every beat (the beat with k % 4 == accent louder), a quieter
+    hi-hat halfway between beats, light noise underneath. (stereo float32, the true beat times in s)."""
+    rng = np.random.default_rng(seed)
+    n = int(seconds * SR)
+    x = rng.normal(0, 0.003, n)
+    p = 60 / bpm
+    tk = np.arange(int(0.15 * SR)) / SR
+    kick = (np.sin(2 * np.pi * (50 * tk + 3 * (1 - np.exp(-tk / 0.03)))) * np.exp(-tk / 0.06)
+            * np.minimum(1, tk / 0.001))
+    th = np.arange(int(0.03 * SR)) / SR
+    hat = np.diff(rng.normal(0, 1, len(th) + 1)) * np.exp(-th / 0.008) * 0.5
+    true, k = [], 0
+    while phase + k * p < seconds - 0.05:
+        i = int(round((phase + k * p) * SR))
+        x[i:i + len(kick)] += (0.9 if k % 4 == accent else 0.6) * kick[:n - i]
+        j = int(round((phase + (k + 0.5) * p) * SR))
+        if j < n:
+            x[j:j + len(hat)] += 0.15 * hat[:n - j]
+        true.append(i / SR)
+        k += 1
+    return np.stack([x, x], 1).astype(np.float32), np.array(true)
+
+
+def trap_track(seconds, bpm, phase, seed=0):
+    """A trap-like bar: a long 808 kick on 1 and the and-of-2, a snare on 2 and 4, hats in triplets with a roll in the
+    last beat of every other bar, light noise. Its kick pattern repeats every 1.5 beats, which a plain self-match
+    reads as 2/3 of the tempo. (stereo float32, the true beat times in s)."""
+    rng = np.random.default_rng(seed)
+    n = int(seconds * SR)
+    x = rng.normal(0, 0.003, n)
+    p = 60 / bpm
+
+    def put(t, s, g):
+        i = int(round(t * SR))
+        if 0 <= i < n:
+            x[i:i + len(s)] += g * s[:n - i]
+    tk = np.arange(int(0.5 * SR)) / SR
+    kick = np.sin(2 * np.pi * (45 * tk + 4 * (1 - np.exp(-tk / 0.02)))) * np.exp(-tk / 0.25) * np.minimum(1, tk / 0.001)
+    ts = np.arange(int(0.18 * SR)) / SR
+    snare = (rng.normal(0, 1, len(ts)) * 0.7 + np.sin(2 * np.pi * 190 * ts)) * np.exp(-ts / 0.05)
+    th = np.arange(int(0.025 * SR)) / SR
+    hat = np.diff(rng.normal(0, 1, len(th) + 1)) * np.exp(-th / 0.006)
+    true, b = [], 0
+    while phase + 4 * b * p < seconds:
+        t0 = phase + 4 * b * p
+        true += [int(round((t0 + q * p) * SR)) / SR for q in range(4) if t0 + q * p < seconds - 0.05]
+        put(t0, kick, 0.8)
+        put(t0 + 1.5 * p, kick, 0.7)
+        put(t0 + p, snare, 0.5)
+        put(t0 + 3 * p, snare, 0.5)
+        for h in range(12):                                 # triplet eighths; a 4-note roll on each of the last 3
+            if b % 2 and h >= 9:
+                for r in range(4):
+                    put(t0 + (h + r / 4) * p / 3, hat, 0.25)
+            else:
+                put(t0 + h * p / 3, hat, 0.3 if h % 3 == 0 else 0.22)
+        b += 1
+    return np.stack([x, x], 1).astype(np.float32), np.array(true)
+
+
+def grid_lines(g, until):
+    k = np.arange(int(max(0.0, until - g["phase_s"]) / g["period_s"]) + 1)
+    t = g["phase_s"] + k * g["period_s"]
+    return t[t <= until]
+
+
+def frame_gap(g, true, fps):
+    """The worst distance in frames, both ways: true click to its nearest grid line, grid line to its nearest click."""
+    lines = grid_lines(g, true[-1] + g["period_s"] / 2)
+    a = np.abs(np.rint(true[:, None] * fps) - np.rint(lines[None, :] * fps))
+    return float(max(a.min(1).max(), a.min(0).max()))
+
+
+def phase_off(g, at):
+    """How far (s) the grid's nearest beat is from time at."""
+    d = (g["phase_s"] - at) % g["period_s"]
+    return min(d, g["period_s"] - d)
+
+
+TEMPOS = [(72, 0.137, 50, 0), (98, 0.41, 40, 1), (123.4, 0.25, 60, 2), (140, 0.033, 45, 3), (174, 0.29, 55, 0)]
+
+
+def case_beat_grid(scratch):
+    import beat_grid
+    d = Path(scratch) / "beat_grid"
+    d.mkdir(parents=True, exist_ok=True)
+    for bpm, phase, sec, acc in TEMPOS:
+        x, true = click_track(sec, bpm, phase, acc, seed=int(bpm))
+        f = d / ("click-%g.wav" % bpm)
+        M.write_wav(f, x)
+        g = beat_grid.grid(f)
+        ck("beat_grid %g BPM: a grid is found with no tempo hint" % bpm, g is not None, g)
+        if not g:
+            continue
+        print("INFO %g BPM -> %s" % (bpm, g))
+        ck("beat_grid %g BPM: BPM within 0.5 %%" % bpm, abs(g["bpm"] - bpm) / bpm <= 0.005, g["bpm"])
+        for fps in (30, 30000 / 1001):
+            gap = frame_gap(g, true, fps)
+            ck("beat_grid %g BPM: every grid line within 2 frames of the true click at %.2f fps, all %.0f s"
+               % (bpm, fps, sec), gap <= 2, gap)
+        ck("beat_grid %g BPM: the bar starts on the accented beat" % bpm,
+           abs(g["downbeat_s"] - true[acc]) < g["period_s"] / 8, (g["downbeat_s"], true[acc]))
+    x, true = click_track(50, 72, 0.137, 0, seed=72)
+    wrong = {"phase_s": float(true[0]), "period_s": 60 / (72 * 1.01)}
+    gap = frame_gap(wrong, true, 30)
+    ck("beat_grid: reverse, a grid at the true BPM + 1 % fails the 2-frame check", gap > 2, gap)
+    rng = np.random.default_rng(3)
+    nz = rng.normal(0, 0.2, 45 * SR)
+    M.write_wav(d / "noise.wav", np.stack([nz, nz], 1))
+    ck("beat_grid: steady noise has no grid", beat_grid.grid(d / "noise.wav") is None)
+    p = script(Path(scratch), "beat_grid.py", d / "noise.wav")
+    ck("beat_grid: the command says so plainly, exit 1", p.returncode == 1 and "No steady beat" in p.stdout
+       and "Traceback" not in p.all, p.all[-300:])
+    p = script(Path(scratch), "beat_grid.py", d / "click-98.wav")
+    ok = p.returncode == 0 and abs(json.loads(p.stdout or "{}").get("bpm", 0) - 98) < 0.5
+    ck("beat_grid: the command prints the grid as JSON, exit 0", ok, p.all[-300:])
+
+
+def case_beat_grid_hard(scratch):
+    """Real-music shape: a trap bar (kick on 1 and the and-of-2, snare on 2 and 4, triplet hats and rolls) must read at
+    its own tempo, not 2/3 or 4/3 of it, and still clear the confidence cut-off."""
+    import beat_grid
+    d = Path(scratch) / "beat_grid_hard"
+    d.mkdir(parents=True, exist_ok=True)
+    for bpm, phase, sec, seed in ((130, 0.21, 45, 0), (130, 0.07, 60, 1), (140, 0.33, 50, 2)):
+        x, true = trap_track(sec, bpm, phase, seed)
+        f = d / ("trap-%g-%d.wav" % (bpm, seed))
+        M.write_wav(f, x)
+        g = beat_grid.grid(f)
+        ck("beat_grid_hard trap %g BPM (seed %d): a grid is found with no tempo hint" % (bpm, seed), g is not None, g)
+        if not g:
+            continue
+        print("INFO trap %g BPM -> %s" % (bpm, g))
+        ck("beat_grid_hard trap %g BPM (seed %d): BPM within 0.5 %% (not 2/3 or 4/3 of it)" % (bpm, seed),
+           abs(g["bpm"] - bpm) / bpm <= 0.005, g["bpm"])
+        for fps in (30, 30000 / 1001):
+            gap = frame_gap(g, true, fps)
+            ck("beat_grid_hard trap %g BPM (seed %d): every grid line within 2 frames of the true beat at %.2f fps"
+               % (bpm, seed, fps), gap <= 2, gap)
+
+
+def case_beat_fit(scratch):
+    import beat_grid
+    ws = workspace(scratch, "beat_fit")
+    r = reel_with_picture(scratch, ws, "reel-bf", 27.4)
+    (r / "beds").mkdir()
+    x, true = click_track(40, 123.4, 0.25, 0, seed=4)
+    M.write_wav(r / "beds" / "clicks.wav", x)
+    track_s, entry = len(x) / SR, 1.0
+    N = int(round(M.probe(r / "locked.mp4")["dur"] * SR))
+
+    def bake_with(offset, sync):
+        selection(r, [], bed_sel("clicks.wav", entry_s=entry, exit_s=27.4, offset_s=offset, beat_sync=sync,
+                                 fade_in_s=0.3, fade_out_s=0.8))
+        p = script(ws, "bake.py", "--reel", "reel-bf", "--video", r / "locked.mp4")
+        pb = json.loads((r / "sound" / "placement.json").read_text(encoding="utf-8"))["bed"] if p.returncode == 0 else {}
+        return p, pb, beat_grid.grid(r / "sound" / "music.wav")
+
+    p, pb, g = bake_with(3.37, True)
+    ck("beat_fit: bake exits 0 with beat-sync on", p.returncode == 0, p.all[-400:])
+    ck("beat_fit: the music stem is the picture's length N", len(M.decode(r / "sound" / "music.wav")) == N)
+    bt = pb.get("beat") or {}
+    ck("beat_fit: placement.json records the beat detail", bt.get("offset_from_s") == 3.37
+       and all(k in bt for k in ("bpm", "period_s", "phase_s", "downbeat_s", "offset_s"))
+       and pb.get("offset_s") == bt.get("offset_s"), pb.get("beat"))
+    off = phase_off(g, entry) if g else None
+    print("INFO beat-sync at 3.37 s -> offset %s, stem grid %s, kick phase vs entry %s s" % (pb.get("offset_s"), g, off))
+    ck("beat_fit: the stem's kicks sit on the entry (phase <= 25 ms)", off is not None and off <= 0.025, off)
+
+    p0 = bt.get("period_s") or 60 / 123.4
+    far = bt.get("phase_s", 0.25) + round((30.0 - bt.get("phase_s", 0.25)) / p0) * p0     # on a beat, as the board sends it
+    p, pb, g = bake_with(far, True)
+    bt = pb.get("beat") or {}
+    bars = (far - bt.get("offset_s", far)) / (4 * p0)
+    ck("beat_fit: a track start near the end steps back whole bars (4 beats, within 2 ms)",
+       p.returncode == 0 and round(bars) >= 1 and abs(bars - round(bars)) * 4 * p0 <= 0.002, (far, bt, p.all[-300:]))
+    ck("beat_fit: ... with one plain line", "bars earlier so it lasts the whole reel" in p.stdout, p.stdout[-300:])
+    st = M.decode(r / "sound" / "music.wav").astype(np.float64)
+    dur = N / SR
+    ck("beat_fit: ... and the music plays to the cut's end", abs(pb.get("exit_s", 0) - dur) < 1e-3
+       and entry + track_s - bt.get("offset_s", far) >= dur - 1e-3
+       and win_rms(st, dur - 2.8, dur - 0.8) >= win_rms(st, 5.0, 15.0) - 3,
+       (pb.get("exit_s"), round(win_rms(st, dur - 2.8, dur - 0.8), 1), round(win_rms(st, 5.0, 15.0), 1)))
+    off = phase_off(g, entry) if g else None
+    ck("beat_fit: ... still on the beat (phase <= 25 ms)", off is not None and off <= 0.025, off)
+
+    p, pb, g = bake_with(3.37, False)
+    off = phase_off(g, entry) if g else None
+    print("INFO beat-sync off at 3.37 s -> kick phase vs entry %s s" % off)
+    ck("beat_fit: reverse, beat-sync off at 3.37 s leaves the kicks off the entry (> 25 ms)",
+       p.returncode == 0 and pb.get("beat") is None and off is not None and off > 0.025, off)
+
+    M.write_wav(r / "beds" / "steady.wav", steady_bed(30.0))           # sines only: no beat to find
+    selection(r, [], bed_sel("steady.wav", exit_s=27.4, offset_s=1.23, beat_sync=True))
+    p = script(ws, "bake.py", "--reel", "reel-bf", "--video", r / "locked.mp4")
+    pb = json.loads((r / "sound" / "placement.json").read_text(encoding="utf-8"))["bed"] if p.returncode == 0 else {}
+    ck("beat_fit: beat-sync on a track with no steady beat says so plainly and places it as the board set it",
+       p.returncode == 0 and "No steady beat" in p.stdout and pb.get("beat") is None and pb.get("offset_s") == 1.23,
+       (p.all[-300:], pb.get("offset_s")))
+
+
+def whoosh(seconds, seed=2):
+    """A noise swell that peaks in its middle (a transition sound), under 6 kHz (AAC would strip white noise's top)."""
+    rng = np.random.default_rng(seed)
+    n = int(seconds * SR)
+    X = np.fft.rfft(rng.normal(0, 0.3, n))
+    X[np.fft.rfftfreq(n, 1 / SR) > 6000] = 0
+    x = np.fft.irfft(X, n) * np.sin(np.pi * np.arange(n) / n) ** 2
+    return np.stack([x, x], 1).astype(np.float32)
+
+
+def beat_map(r, fps, layouts, beat_f, marks):
+    """beat-map-selection.json (the S6a Send) with beats of beat_f frames each."""
+    beats = [{"id": "b_%03d" % (i + 1), "start_f": i * beat_f, "end_f": (i + 1) * beat_f,
+              "speech_anchor": {"text": "line %d" % (i + 1), "w0": 0, "w1": 0}, "layout": lay, "value": None,
+              "scene": None, "broll": None, "transition": None} for i, lay in enumerate(layouts)]
+    doc = {"schema": 1, "reel": r.name, "fps": fps, "words": "work/edit_map.cut.json", "beats": beats,
+           "word_marks": marks, "proposed": {}, "notes": {}, "needs": "", "sent_at": "2026-11-05T10:00:00Z"}
+    (r / "beat-map-selection.json").write_bytes(json.dumps(doc, indent=1).encode())
+
+
+def cut_words(r, starts):
+    words = [{"id": "w_%04d" % i, "word": "word%d" % i, "start": round(s, 3), "end": round(s + 0.2, 3)}
+             for i, s in enumerate(starts)]
+    (r / "work" / "edit_map.cut.json").write_bytes(json.dumps({"words": words}, indent=1).encode())
+
+
+def case_prefill(scratch):
+    import prefill_cues
+    ws = workspace(scratch, "prefill")
+    r = ws / "videos" / "reel-p"
+    (r / "work").mkdir(parents=True)
+    lib = ws / "editor" / "sound"
+    for name, x in (("whoosh-soft.wav", whoosh(0.4)), ("swoosh-fast.wav", whoosh(0.5, 3)),
+                    ("sweep-long.wav", whoosh(1.2, 4)), ("air-puff.wav", whoosh(0.3, 5)),
+                    ("hit-low.wav", tone(0.4, 90, 0.7, 5)), ("tick.wav", tone(0.2, 1800)),
+                    ("pop-a.wav", tone(0.15, 900)), ("chime.wav", tone(0.8, 1200, 0.4, 3))):
+        M.write_wav(lib / name, x)
+    starts = [0.3 + 0.25 * i for i in range(60)]
+    starts[3], starts[14], starts[15], starts[23], starts[50], starts[54] = 1.05, 4.0, 4.03, 6.02, 12.8, 13.3
+    starts = sorted(starts)
+    cut_words(r, starts)
+    w = {round(s, 2): i for i, s in enumerate(starts)}
+    marks = [{"w": w[1.05], "mark": "num"}, {"w": w[4.0], "mark": "key"}, {"w": w[4.03], "mark": "emph"},
+             {"w": w[6.02], "mark": "key"}, {"w": w[12.8], "mark": "emph"}, {"w": w[13.3], "mark": "cta"}]
+    beat_map(r, 30, ["full", "split", "full", "pip", "full"], 90, marks)     # beats every 3 s, the closer at 12 s
+    out = ws / "cues.json"
+    before = sorted(f.relative_to(ws).as_posix() for f in ws.rglob("*"))
+    p = script(ws, "prefill_cues.py", "--reel", "reel-p", "--out", out)
+    ck("prefill: exits 0", p.returncode == 0 and out.is_file(), p.all[-400:])
+    after = sorted(f.relative_to(ws).as_posix() for f in ws.rglob("*"))
+    ck("prefill: ... and writes nothing but --out", sorted(set(after) - set(before)) == ["cues.json"],
+       sorted(set(after) ^ set(before)))
+    cues = json.loads(out.read_text(encoding="utf-8")) if out.is_file() else []
+    print("INFO prefill: %s" % [(c["time"], c["short"], c["candidates"]) for c in cues])
+    seconds = {f.name: len(M.decode(f)) / SR for f in lib.iterdir()}
+
+    def at(t):
+        return [c for c in cues if abs(c["time"] - t) <= 0.05]
+
+    def no_closer(cs):
+        return not [c for c in cs if c["time"] >= 12.0]
+
+    ck("prefill: a cue at each of the 3 layout changes before the closer (3, 6, 9 s)",
+       all(len(at(t)) == 1 for t in (3.0, 6.0, 9.0)), [c["time"] for c in cues])
+    ck("prefill: ... the change at 6 s and the marked word 0.02 s later are one cue, the word's",
+       len(at(6.0)) == 1 and at(6.0)[0]["time"] == 6.02 and at(6.0)[0]["short"].startswith("hit"), at(6.0))
+    ck("prefill: the two marks 0.03 s apart are one cue", len(at(4.015)) == 1, at(4.015))
+    ck("prefill: the num mark has its hit", len(at(1.05)) == 1 and at(1.05)[0]["short"].startswith("hit"), at(1.05))
+    ck("prefill: nothing at or after the closer's start (12 s)", no_closer(cues), [c["time"] for c in cues])
+    ck("prefill: every cue has 2-3 candidates, all in the library",
+       cues and all(2 <= len(c["candidates"]) <= 3 and set(c["candidates"]) <= set(seconds) for c in cues), cues)
+    tr = [c for c in cues if c["short"].startswith("whoosh")]
+    ck("prefill: transition candidates are 0.6 s or shorter (the 1.2 s sweep is never offered)",
+       tr and all(seconds[f] <= 0.6 for c in tr for f in c["candidates"]), tr)
+    ck("prefill: hit candidates are hit sounds by name", all(set(c["candidates"]) <= {"hit-low.wav", "tick.wav", "pop-a.wav"}
+                                                             for c in cues if c["short"].startswith("hit")), cues)
+    ck("prefill: no state field (they arrive undecided)", cues and all(set(c) == {"id", "beat", "short", "why", "time",
+                                                                                   "candidates"} for c in cues), cues)
+    sel = json.loads((r / "beat-map-selection.json").read_text(encoding="utf-8"))
+    words = json.loads((r / "work" / "edit_map.cut.json").read_text(encoding="utf-8"))["words"]
+    prefill_cues.CLOSER_SILENT = False
+    try:
+        flipped = prefill_cues.propose(sel, words, prefill_cues.library(lib))
+    finally:
+        prefill_cues.CLOSER_SILENT = True
+    ck("prefill: reverse, with the closer rule off a cue lands in the closer and the check fails",
+       not no_closer(flipped), [c["time"] for c in flipped])
+
+    (r / "beat-map-selection.json").unlink()
+    out.unlink()
+    p = script(ws, "prefill_cues.py", "--reel", "reel-p", "--out", out)
+    ck("prefill: no Beat Map Send is one plain line, exit 2, nothing written", p.returncode == 2 and not out.exists()
+       and "Beat Map" in p.stdout and "Traceback" not in p.all, p.all[-300:])
+    beat_map(r, 30, ["full", "split"], 90, [])
+    p = script(ws, "prefill_cues.py", "--reel", "reel-p", "--out", out, "--sfx", ws / "no-sounds-here")
+    ck("prefill: an empty library is one plain line, exit 2, nothing written", p.returncode == 2 and not out.exists()
+       and "library" in p.stdout, p.all[-300:])
+
+
+def riser(seconds=1.2, at=0.8):
+    """A rising tone that tapers off 10 ms before a sharp burst centred exactly at `at`, then a short tail."""
+    t = np.arange(int(seconds * SR)) / SR
+    x = np.where(t < at - 0.01, (0.02 + 0.25 * t / at) * np.sin(2 * np.pi * 300 * t + 1.0)
+                 * np.clip((at - 0.01 - t) / 0.01, 0, 1), 0.0)
+    x += 0.9 * np.exp(-0.5 * ((t - at) / 0.003) ** 2) * np.cos(2 * np.pi * 2000 * (t - at))
+    x += np.where(t > at + 0.01, 0.15 * np.sin(2 * np.pi * 150 * (t - at)) * np.exp(-(t - at) / 0.1), 0.0)
+    return np.stack([x, x], 1).astype(np.float32)
+
+
+def case_peak_offset(scratch):
+    import measure_sfx
+    ws = workspace(scratch, "peak_offset")
+    r = reel_with_picture(scratch, ws, "reel-k", 8.0)
+    (r / "sfx").mkdir()
+    M.write_wav(r / "sfx" / "riser.wav", riser())
+    ps = measure_sfx.measure(r / "sfx" / "riser.wav")["peak_s"]
+    ck("peak_offset: the riser's peak_s is 0.80 +-0.005", ps is not None and abs(ps - 0.8) <= 0.005, ps)
+    ps = ps or 0.8
+
+    def bake(cues):
+        selection(r, cues)
+        p = script(ws, "bake.py", "--reel", "reel-k", "--video", r / "locked.mp4")
+        sfx = np.abs(M.decode(r / "sound" / "sfx.wav")[:, 0]) if p.returncode == 0 else np.zeros(1)
+        P = json.loads((r / "sound" / "placement.json").read_text(encoding="utf-8")) if p.returncode == 0 else {}
+        return p, sfx, P
+
+    p, sfx, P = bake([cue(1, 5.0, "riser.wav", 0.0, peak_s=ps), cue(2, 0.3, "riser.wav", 0.0, peak_s=ps)])
+    ck("peak_offset: bake exits 0", p.returncode == 0, p.all[-400:])
+    hit = (int(np.argmax(sfx[3 * SR:])) + 3 * SR) / SR
+    ck("peak_offset: a cue at 5.0 s with peak_s 0.8 has its peak at 5.000 +-0.001 s", abs(hit - 5.0) <= 0.001, hit)
+    ck("peak_offset: ... its file starts peak_s earlier", int(np.flatnonzero(sfx[3 * SR:] > 1e-6)[0]) + 3 * SR
+       == int(round((5.0 - ps) * SR)))
+    early = int(np.argmax(sfx[:2 * SR])) / SR
+    ck("peak_offset: a cue at 0.3 s with peak_s 0.8 has its head trimmed and its peak at 0.3 s",
+       abs(early - 0.3) <= 0.001 and sfx[0] > 1e-6, (early, float(sfx[0])))
+    ck("peak_offset: placement.json clip rows carry peak_s", [c.get("peak_s") for c in P.get("cues", [])] == [ps, ps],
+       P.get("cues"))
+    p, sfx, P = bake([cue(1, 5.0, "riser.wav", 0.0)])
+    first = int(np.flatnonzero(sfx > 1e-6)[0]) if sfx.any() else -1
+    ck("peak_offset: the same cue without peak_s starts its file at 5.0 s (as before)", p.returncode == 0
+       and first == int(round(5.0 * SR)) and abs(int(np.argmax(sfx)) / SR - 5.8) <= 0.001, (first, p.all[-300:]))
+
+
+def edl_hash(r):
+    """H-N2-6: sha256 of work/cuts.json + work/edit_map.cut.json (the speech cuts)."""
+    h = hashlib.sha256()
+    for f in ("cuts.json", "edit_map.cut.json"):
+        h.update((r / "work" / f).read_bytes())
+    return h.hexdigest()
+
+
+def case_edl_hash(scratch):
+    ws = workspace(scratch, "edl_hash")
+    lib = ws / "editor" / "sound"
+    for name, x in (("whoosh-soft.wav", whoosh(0.4)), ("swoosh-fast.wav", whoosh(0.5, 3)),
+                    ("hit-low.wav", tone(0.4, 90, 0.7, 5)), ("tick.wav", tone(0.3, 1800)), ("pop-a.wav", tone(0.3, 900))):
+        M.write_wav(lib / name, x)
+    M.write_wav(lib / "beds" / "clicks.wav", click_track(30, 120, 0.21, 0, seed=8)[0] * np.float32(0.5))
+    licensed(ws, "clicks.wav")
+    r = reel_with_picture(scratch, ws, "reel-h", 10.0)
+    (r / "work" / "cuts.json").write_bytes(json.dumps({"fps": 30, "cuts": [{"in_f": 0, "out_f": 300}]}, indent=1).encode())
+    cut_words(r, [0.3 + 0.3 * i for i in range(30)])
+    beat_map(r, 30, ["full", "split", "full", "pip"], 75, [{"w": 3, "mark": "num"}, {"w": 12, "mark": "emph"},
+                                                          {"w": 27, "mark": "key"}])
+    h0 = edl_hash(r)
+    cues_json = ws / "cues.json"
+    p = script(ws, "prefill_cues.py", "--reel", "reel-h", "--out", cues_json)
+    ck("edl_hash: prefill exits 0", p.returncode == 0, p.all[-300:])
+    p = script(ws, "new_board.py", "--reel", "reel-h", "--video", r / "locked.mp4", "--cues", cues_json)
+    ck("edl_hash: new_board takes the pre-filled cues", p.returncode == 0, p.all[-400:])
+    cfg = json.loads((r / "config.json").read_text(encoding="utf-8")) if p.returncode == 0 else {}
+    rows = {x["file"]: x for x in cfg.get("library", [])}
+    bed = next((b for b in cfg.get("beds", []) if b["file"] == "clicks.wav"), {})
+    g = bed.get("grid")
+    ck("edl_hash: config.json carries peak_s on library rows and the bed's grid", rows
+       and all(isinstance(x.get("peak_s"), float) for x in rows.values()) and g and abs(g["bpm"] - 120) < 0.6,
+       (list(rows.values())[:1], g))
+    ck("edl_hash: the pre-filled cues arrive undecided (no state field)", cfg.get("cues")
+       and not any("state" in c for c in cfg["cues"]), cfg.get("cues"))
+    g = g or {"phase_s": 0.21, "period_s": 0.5}
+    cues = [cue(i + 1, c["time"], c["candidates"][0], -6, peak_s=rows[c["candidates"][0]]["peak_s"])
+            for i, c in enumerate(cfg.get("cues", []))]
+    o = g["phase_s"] + max(0, round((bed.get("suggest_entry_s", 0) - g["phase_s"]) / g["period_s"])) * g["period_s"]
+    selection(r, cues, bed_sel("clicks.wav", exit_s=10, offset_s=round(o, 4), beat_sync=True), {"music_request": None})
+    p = script(ws, "mix.py", "--reel", "reel-h", "--voice", "free", "--video", r / "locked.mp4")
+    ck("edl_hash: bake + mix with beat-sync on exits 0", p.returncode == 0, p.all[-600:])
+    pb = json.loads((r / "sound" / "placement.json").read_text(encoding="utf-8")) if p.returncode == 0 else {}
+    ck("edl_hash: the bed was beat-synced and every clip row carries peak_s", (pb.get("bed") or {}).get("beat")
+       and all("peak_s" in c for c in pb.get("cues", [])) and len(pb.get("cues", [])) == len(cues), pb.get("bed"))
+    ck("edl_hash: the speech cuts are byte-identical after prefill, board, bake and mix", edl_hash(r) == h0)
+    doc = json.loads((r / "work" / "cuts.json").read_text(encoding="utf-8"))
+    (r / "work" / "cuts.json").write_bytes(json.dumps(doc).encode())          # planted: a step rewrites cuts.json
+    ck("edl_hash: reverse, a planted rewrite of cuts.json (same data, new bytes) is caught", edl_hash(r) != h0)
+
+
 CASES = {"free_master": case_free_master, "cost_ask": case_cost_ask, "pack": case_pack, "ingest_trim": case_ingest_trim,
          "room_tone": case_room_tone, "quiet_gate": case_quiet_gate, "bake_exact": case_bake_exact,
          "music_level": case_music_level, "music_seam": case_music_seam, "music_licence": case_music_licence,
-         "music_absent": case_music_absent, "music_strongest": case_music_strongest}
+         "music_absent": case_music_absent, "music_strongest": case_music_strongest, "beat_grid": case_beat_grid,
+         "beat_grid_hard": case_beat_grid_hard, "beat_fit": case_beat_fit, "edl_hash": case_edl_hash,
+         "prefill": case_prefill, "peak_offset": case_peak_offset}
 
 
 def main():

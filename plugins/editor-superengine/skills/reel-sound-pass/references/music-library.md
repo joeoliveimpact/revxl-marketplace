@@ -40,6 +40,11 @@ that box is ticked and sent, the final refuses it. The tick is kept in the libra
 - **Where the track starts:** each bed's `suggest_entry_s` is a position in the track (seconds into the song) where
   its strongest section starts. It goes in the bed's track start (`offset_s`), never in the reel time the bed
   comes in.
+- **Beat-sync** (off by default, the client's button): each bed row's `grid` is its measured beat (`beat_grid.py`:
+  bpm, beat length, first beat and bar start in track seconds; null when no steady beat is found, and the board
+  then greys the option out). On, the track start snaps to the nearest beat; if the track would then run out
+  before the reel ends, it starts whole bars (4 beats) earlier, never before the first bar, and the mix says so.
+  It assumes one steady tempo in 4/4. The grid is cached in `work/beats/`; placement.json's `bed.beat` records it.
 - The bed never loops. A track shorter than the reel fades out before it ends.
 
 ## The licence check

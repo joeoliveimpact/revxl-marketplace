@@ -1,5 +1,6 @@
 {
   "id": "list",
+  "category": "list",
   "kind": "overlay",
   "slots": {
     "title": {"maxChars": 30, "default": "Three quick tips", "hint": "what the list is about"},

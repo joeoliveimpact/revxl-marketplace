@@ -24,6 +24,43 @@ def free_port():
         return s.getsockname()[1]
 
 
+def server_pid(p):
+    """The pid of the live server that p started: p itself, or, on Windows, p's one live child. A Windows venv's
+    python.exe is a launcher that re-runs the real interpreter as a child, so there p.pid is not the server."""
+    assert p.poll() is None, f"the server process {p.pid} is not running"
+    if os.name != "nt":
+        return p.pid
+    import ctypes
+    from ctypes import wintypes
+
+    class Entry(ctypes.Structure):  # PROCESSENTRY32W
+        _fields_ = [("dwSize", wintypes.DWORD), ("cntUsage", wintypes.DWORD), ("th32ProcessID", wintypes.DWORD),
+                    ("th32DefaultHeapID", ctypes.c_size_t), ("th32ModuleID", wintypes.DWORD),
+                    ("cntThreads", wintypes.DWORD), ("th32ParentProcessID", wintypes.DWORD),
+                    ("pcPriClassBase", ctypes.c_long), ("dwFlags", wintypes.DWORD), ("szExeFile", ctypes.c_wchar * 260)]
+
+    k = ctypes.WinDLL("kernel32", use_last_error=True)
+    k.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+    k.CreateToolhelp32Snapshot.argtypes = (wintypes.DWORD, wintypes.DWORD)
+    k.Process32FirstW.argtypes = k.Process32NextW.argtypes = (wintypes.HANDLE, ctypes.POINTER(Entry))
+    k.CloseHandle.argtypes = (wintypes.HANDLE,)
+    snap = k.CreateToolhelp32Snapshot(2, 0)  # TH32CS_SNAPPROCESS: every live process
+    assert snap not in (None, ctypes.c_void_p(-1).value), f"couldn't list processes (error {ctypes.get_last_error()})"
+    kids, e = [], Entry()
+    e.dwSize = ctypes.sizeof(Entry)
+    try:
+        ok = k.Process32FirstW(snap, ctypes.byref(e))
+        while ok:
+            # conhost.exe: the console Windows gives p when the test itself runs without one, never the server
+            if e.th32ParentProcessID == p.pid and e.szExeFile.lower() != "conhost.exe":
+                kids.append(e.th32ProcessID)
+            ok = k.Process32NextW(snap, ctypes.byref(e))
+    finally:
+        k.CloseHandle(snap)
+    assert len(kids) <= 1, f"the server process {p.pid} has more than one child process: {kids}"
+    return kids[0] if kids else p.pid
+
+
 def workspace(td, name, port):
     ws = td / name
     check_deps.atomic_write(rt.config_path(ws), json.dumps({"ports": {"board": port}}))
@@ -98,7 +135,9 @@ def server_checks(td):
     p, got = start(ws)
     assert got == port, (got, port)
     info = json.loads((ws / "editor" / ".board-server.json").read_text(encoding="utf-8"))
-    assert info["port"] == port and info["url"] == f"http://127.0.0.1:{port}/" and info["pid"] == p.pid
+    assert info["port"] == port and info["url"] == f"http://127.0.0.1:{port}/"
+    want = server_pid(p)
+    assert info["pid"] == want, f".board-server.json names pid {info['pid']}, but the running server is pid {want}"
     st = f"/videos/reel-1/__state?name=cut-board"
 
     # Host gate on every request

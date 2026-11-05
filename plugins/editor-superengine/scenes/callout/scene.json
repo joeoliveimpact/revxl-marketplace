@@ -1,5 +1,6 @@
 {
   "id": "callout",
+  "category": "callout",
   "kind": "overlay",
   "slots": {
     "text": {"maxChars": 32, "default": "Watch this part", "hint": "a short pointer to what is on screen"}

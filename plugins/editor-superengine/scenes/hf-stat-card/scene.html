@@ -1,0 +1,70 @@
+<!doctype html>
+<!-- Adapted from HyperFrames registry/blocks/mk-progress-stat (https://github.com/heygen-com/hyperframes, tag v0.8.184, d15a274c), Apache License 2.0, Copyright 2026 HeyGen, Inc. Modified by editor-superengine: portrait 1080x1920, local GSAP 3.15.0, Inter 400 (was 600/500), scene contract. -->
+<html lang="en" data-composition-variables='[
+  {"id":"label","type":"string","label":"Label","default":"Goals reached"},
+  {"id":"caption","type":"string","label":"Caption","default":"Great job, we are getting closer!"},
+  {"id":"value","type":"number","label":"Final value","default":22},
+  {"id":"decimals","type":"number","label":"Decimals","default":0},
+  {"id":"suffix","type":"string","label":"Suffix","default":""},
+  {"id":"max","type":"number","label":"Track full mark","default":30},
+  {"id":"dark","type":"boolean","label":"Dark scheme","default":true},
+  {"id":"accent","type":"color","label":"Accent","default":"#7d5cff"},
+  {"id":"font","type":"string","label":"Font family","default":"Inter"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="./vendor/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Inter"; src: url("./fonts/Inter-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; }
+      #hf-stat-card { position: relative; width: 1080px; height: 1920px; z-index: 400; font-family: "Inter"; font-weight: 400; color: #f5f5f7; --accent: #7d5cff; }
+      #hf-stat-card .group { position: absolute; left: 90px; top: 340px; width: 840px; }
+      #hf-stat-card .num { display: block; font-size: 120px; line-height: 1; letter-spacing: -0.03em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+      #hf-stat-card .label { display: block; margin-top: 14px; font-size: 52px; line-height: 1.2; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+      #hf-stat-card .track { position: relative; margin-top: 32px; width: 640px; height: 8px; border-radius: 4px; background: rgba(245, 245, 247, 0.18); overflow: hidden; }
+      #hf-stat-card .fill { position: absolute; left: 0; top: 0; right: 0; bottom: 0; border-radius: 4px; background: var(--accent); transform-origin: left center; }
+      #hf-stat-card .caption { display: block; margin-top: 26px; font-size: 36px; line-height: 1.3; color: #a1a1a6; overflow-wrap: anywhere; }
+      #hf-stat-card.light { color: #1d1d1f; }
+      #hf-stat-card.light .track { background: rgba(29, 29, 31, 0.1); }
+      #hf-stat-card.light .caption { color: #6e6e73; }
+    </style>
+  </head>
+  <body>
+    <div id="hf-stat-card" data-composition-id="hf-stat-card" data-start="0" data-duration="4" data-fps="30" data-width="1080" data-height="1920">
+      <div class="group">
+        <span class="num">0</span>
+        <span class="label slot" data-slot="label"></span>
+        <div class="track plate"><div class="fill plate"></div></div>
+        <span class="caption slot" data-slot="caption"></span>
+      </div>
+    </div>
+    <script>
+      (function () {
+        const v = window.__hyperframes.getVariables();
+        const root = document.getElementById("hf-stat-card");
+        const q = (s) => root.querySelector(s);
+        const num = q(".num");
+        root.style.setProperty("--accent", v.accent);
+        root.style.fontFamily = JSON.stringify(v.font);
+        if (!v.dark) root.classList.add("light");
+        root.querySelectorAll("[data-slot]").forEach((el) => { el.textContent = v[el.dataset.slot]; });
+        const d = Math.max(0, Math.min(2, Math.round(Number(v.decimals) || 0)));
+        const fmt = (n) => Number(n).toFixed(d).replace(/^(-?\d+)/, (m) => m.replace(/\B(?=(\d{3})+$)/g, ",")) + v.suffix;
+        const value = Number(v.value);
+        const share = Math.max(0, Math.min(1, value / Number(v.max)));
+        // GSAP sets the count through this getter/setter while it renders, so a seek to any frame shows that frame's number.
+        const counter = { n: function (x) { if (x === undefined) return this._n; this._n = x; num.textContent = fmt(x); } };
+        counter._n = 0;
+        num.textContent = fmt(0);
+        const tl = gsap.timeline({ paused: true });
+        tl.fromTo(q(".group"), { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" }, 0.3);
+        tl.fromTo(counter, { n: 0 }, { n: value, duration: 1.6, ease: "power2.out" }, 0.5);
+        tl.fromTo(q(".fill"), { xPercent: -100 }, { xPercent: 100 * share - 100, duration: 1.6, ease: "power2.out" }, 0.5);
+        window.__timelines = window.__timelines || {};
+        window.__timelines["hf-stat-card"] = tl;
+      })();
+    </script>
+  </body>
+</html>

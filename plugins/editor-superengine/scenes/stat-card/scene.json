@@ -1,5 +1,6 @@
 {
   "id": "stat-card",
+  "category": "stat-card",
   "kind": "overlay",
   "slots": {
     "stat": {"maxChars": 8, "default": "3x", "hint": "the number as said, e.g. 3x, 47%, $1.2k; it must be in the transcript"},

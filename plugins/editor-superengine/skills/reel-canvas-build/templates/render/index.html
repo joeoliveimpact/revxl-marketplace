@@ -1,0 +1,37 @@
+<!doctype html>
+<!-- The reel's main composition. compose.py fills every double-braced field and writes the result as the render
+     project's index.html; nothing here is used as is. Layers stack by CSS z-index only (H-R5 bands):
+     a-roll 100, scenes 400 (the underlay sits on the band floor), the hook title 450. Every move lives on
+     the one paused root timeline below; no CSS animations or transitions. -->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width={{W}}, height={{H}}" />
+    <script src="./vendor/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Inter"; src: url("./fonts/Inter-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: {{W}}px; height: {{H}}px; overflow: hidden; background: #000000; }
+      #main { position: relative; width: {{W}}px; height: {{H}}px; overflow: hidden; }
+      .band { position: absolute; left: 0; top: 0; width: {{W}}px; height: {{H}}px; }
+      .band video { position: absolute; left: 0; top: 0; width: {{W}}px; height: {{H}}px; object-fit: cover; }
+      .underlay { position: absolute; left: 0; top: 0; width: {{W}}px; height: {{H}}px; background: {{UNDERLAY}}; z-index: 400; }
+      #hook { position: absolute; left: {{HOOK_X}}px; top: {{HOOK_Y}}px; width: {{HOOK_W}}px; z-index: 450;
+              font-family: "Inter"; font-weight: 400; font-size: {{HOOK_SIZE}}px; line-height: 1.15; color: #ffffff;
+              text-align: center; overflow-wrap: anywhere; text-shadow: {{HOOK_SHADOW}}; }
+    </style>
+  </head>
+  <body>
+    <div id="main" data-composition-id="main" data-start="0" data-duration="{{DURATION}}" data-width="{{W}}" data-height="{{H}}">
+{{LAYERS}}
+    </div>
+    <script>
+      (function () {
+        const tl = gsap.timeline({ paused: true });
+{{TIMELINE}}
+        window.__timelines = window.__timelines || {};
+        window.__timelines["main"] = tl;
+      })();
+    </script>
+  </body>
+</html>

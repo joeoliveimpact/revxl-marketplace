@@ -12,6 +12,8 @@
 //   {do: "sleep", ms}
 //   {do: "read"}                  push the board's rows + status lines onto reads
 //   {do: "fetchState"}            push /videos/<reel>/sound-board.state.json (null on 404) onto reads
+//   {do: "eval", js}              evaluate the expression js in the current frame, push its value onto reads
+//   {do: "waitTrue", js}          wait until the expression js is truthy in the current frame
 // Prints {reads, errors, dialogs} as JSON. On a timeout or error: also {error, last} and exit code 1.
 "use strict";
 const fs = require("fs");
@@ -37,7 +39,10 @@ function readBoard() {
       gainDb: typeof bedGainDb === "function" ? bedGainDb() : null,   // the gain the bed preview plays at
       ticks: [...document.querySelectorAll("#musiclist input.mrights")].map((c) => c.checked),
       request: [...document.querySelectorAll("#mfree.on, #mown.on")].map((b) => b.id),
-      note: t("#mreqnote")},
+      note: t("#mreqnote"),
+      sync: {checked: document.getElementById("bsync").checked, disabled: document.getElementById("bsync").disabled,
+             note: t("#bsyncnote"), snapDisabled: document.getElementById("bsnap").disabled},
+      beatTicks: document.querySelectorAll("#tl .btick").length},
   };
 }
 
@@ -102,6 +107,10 @@ function readBoard() {
           const r = await fetch("/videos/" + encodeURIComponent(reel) + "/sound-board.state.json", {cache: "no-store"});
           return r.ok ? r.json() : null;
         }));
+      } else if (a.do === "eval") {
+        out.reads.push(await ctx.evaluate(a.js));
+      } else if (a.do === "waitTrue") {
+        await ctx.waitForFunction(a.js, {polling: 100});
       } else {
         throw new Error("unknown action");
       }

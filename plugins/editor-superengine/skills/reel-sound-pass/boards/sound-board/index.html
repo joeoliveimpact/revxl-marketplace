@@ -53,6 +53,7 @@ button:disabled{opacity:.4;cursor:default}
 .tl .cue{position:absolute;top:0;bottom:14px;width:2px;background:var(--coral)}
 .tl .cue.rej{background:var(--line2)}
 .tl .cue.keep{background:var(--green);width:3px}
+.tl .btick{position:absolute;top:0;bottom:0;width:1px;background:var(--line2);pointer-events:none}
 .tl .ph{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:var(--ink);pointer-events:none}
 .tl .ph::before{content:"";position:absolute;top:-1px;left:-5px;width:12px;height:12px;
   border-radius:50%;background:var(--ink)}
@@ -385,6 +386,11 @@ textarea{border-radius:12px!important;font-family:var(--et-mono)!important}
         <span class="flexlbl">start track at <input type="number" id="boffset" class="tiny" step="0.1" value="0"> s</span>
       </div>
       <div class="row">
+        <label class="flexlbl" title="start the music on a beat"><input type="checkbox" id="bsync"> Beat-sync</label>
+        <button class="mini" id="bsnap" title="move every cue that sits close to a beat onto it">Snap cues to the beat</button>
+        <span class="pk" id="bsyncnote"></span>
+      </div>
+      <div class="row">
         <span class="flexlbl">fade in <input type="number" id="bfin" class="tiny" step="0.1" min="0" max="5" value="0.5"> s</span>
         <span class="flexlbl">fade out <input type="number" id="bfout" class="tiny" step="0.1" min="0" max="5" value="1.5"> s</span>
         <span class="pk">drag the lower waveform to slide the track. voice sits above it, aligned to the reel.</span>
@@ -456,7 +462,7 @@ var bedNode = null, bedGainNode = null;
 var placing = null;          // cue being duplicated while the overlay is up
 var userCount = 0;           // numbering for "user added sound N"
 var WAVES = null;            // waveforms.json: voice + per-bed peak arrays
-var BED = { entry: 0, exit: null, offset: 0, fadeIn: 0.5, fadeOut: 1.5, stops: [] };   /* stops: [{a, b, label}] reel seconds */
+var BED = { entry: 0, exit: null, offset: 0, fadeIn: 0.5, fadeOut: 1.5, stops: [], beatSync: false };   /* stops: [{a, b, label}] reel seconds */
 var STOP_FO = 0.3, STOP_FI = 0.5;   /* default fades into / out of a music stop, s */
 function stopFo(s){ return Math.max(0.01, s.fo != null ? s.fo : STOP_FO); }
 function stopFi(s){ return Math.max(0.01, s.fi != null ? s.fi : STOP_FI); }
@@ -480,7 +486,7 @@ function stateJson(){
     userCount: userCount,
     bed: {file: $("bedsel").value, gain: +$("bedvol").value,
           entry: BED.entry, exit: BED.exit, offset: BED.offset,
-          fadeIn: BED.fadeIn, fadeOut: BED.fadeOut, stops: BED.stops, duck: +$("bedduck").value},
+          fadeIn: BED.fadeIn, fadeOut: BED.fadeOut, stops: BED.stops, duck: +$("bedduck").value, beatSync: BED.beatSync},
     music_request: MREQ, rights: RIGHTS,
     latency: +$("lat").value || 0,
     vvol: +$("vvol").value
@@ -520,7 +526,7 @@ function restore(json){
   $("bedsel").value = s.bed.file || "";
   $("bedvol").value = s.bed.gain; $("bedvoll").textContent = s.bed.gain + " dB";
   BED.entry = s.bed.entry; BED.exit = s.bed.exit; BED.offset = s.bed.offset;
-  BED.fadeIn = s.bed.fadeIn; BED.fadeOut = s.bed.fadeOut; BED.stops = s.bed.stops;
+  BED.fadeIn = s.bed.fadeIn; BED.fadeOut = s.bed.fadeOut; BED.stops = s.bed.stops; BED.beatSync = !!s.bed.beatSync;
   setDuck(s.bed.duck); MREQ = s.music_request; RIGHTS = Object.assign({}, s.rights);
   $("lat").value = s.latency;
   $("vvol").value = s.vvol; $("vvol").oninput();
@@ -580,7 +586,8 @@ function loadBuf(url){
   }).then(function(buf){ buffers[url] = buf; return buf; });
 }
 /* play a buffer at an absolute AudioContext time.
-   opts: {len, endMode, fade} - len caps playback (hard cut), fade rolls the tail off. */
+   opts: {len, endMode, fade, from} - len caps playback (hard cut, measured from the file start), fade rolls the
+   tail off, from skips the file's head (s) so a cue joined late still lands its hit on time. */
 function fire(url, gainDb, when, opts){
   opts = opts || {};
   return loadBuf(url).then(function(buf){
@@ -592,15 +599,17 @@ function fire(url, gainDb, when, opts){
     g.gain.value = lin;
     src.connect(g).connect(a.destination);
     var t0 = (when === undefined) ? a.currentTime : Math.max(when, a.currentTime);
-    var dur = buf.duration;
-    if(opts.len && opts.len > 0 && opts.len < dur) dur = opts.len;
+    var end = buf.duration, from = Math.max(0, opts.from || 0);
+    if(opts.len && opts.len > 0 && opts.len < end) end = opts.len;
+    var dur = end - from;
+    if(dur <= 0) return src;                         /* joined after the sound ended: nothing to play */
     if(opts.endMode === "fade"){
       var f = Math.min(Math.max(opts.fade || 0.25, 0.02), dur);
       g.gain.setValueAtTime(lin, t0 + dur - f);
       g.gain.linearRampToValueAtTime(0.0001, t0 + dur);
     }
-    src.start(t0);
-    if(dur < buf.duration - 0.01) src.stop(t0 + dur);
+    src.start(t0, from);
+    if(end < buf.duration - 0.01) src.stop(t0 + dur);
     return src;
   });
 }
@@ -609,6 +618,11 @@ function cueOpts(c){ return {len: c.len, endMode: c.endMode, fade: c.fade}; }
 /* ---------- cue state ---------- */
 function cueUrl(c){ return c.pick ? reelUrl("sfx/" + c.pick) : null; }
 function libRow(file){ return LIB[file] || null; }
+/* peak_s: seconds from the file start to its hit (config library rows); 0 when unknown. The file starts at
+   time - peak_s, so the hit lands on the marker, in the preview and in the bake alike. */
+function peakOf(c){ var p = +((libRow(c.pick) || {}).peak_s); return p > 0 ? p : 0; }
+function cueStart(c){ return c.time - peakOf(c); }
+var SCHED = {};              // cue id -> reel time its file was last scheduled to start (the board test reads it)
 
 function payload(){
   return {
@@ -629,7 +643,8 @@ function payload(){
                 fade_out_s: stopFo(s), fade_in_s: stopFi(s)};   /* fade out ends at start_s; fade in starts at end_s */
       }),
       duck_db: +$("bedduck").value,
-      rights_confirmed: !!(bedRow($("bedsel").value) && (bedRow($("bedsel").value).rights_confirmed === true || RIGHTS[$("bedsel").value]))
+      rights_confirmed: !!(bedRow($("bedsel").value) && (bedRow($("bedsel").value).rights_confirmed === true || RIGHTS[$("bedsel").value])),
+      beat_sync: syncOn()   /* true: offset_s is already on a beat of the track */
     },
     music_request: MREQ,
     unassigned: CUES.filter(function(c){ return c.state === "keep" && !c.pick; })
@@ -645,14 +660,15 @@ function payload(){
         end_mode: c.endMode || "hard",
         fade_out_s: (c.endMode === "fade") ? c.fade : null,
         source_peak_dbfs: (libRow(c.pick)||{}).peak_dbfs,
-        duration: (libRow(c.pick)||{}).duration
+        duration: (libRow(c.pick)||{}).duration,
+        peak_s: peakOf(c)
       };
     }),
     rejected: CUES.filter(function(c){ return c.state === "rej"; })
                   .map(function(c){ return {beat:c.beat, file:c.pick}; }),
     /* every cue the client has not kept or rejected, so a Send never drops one */
     undecided: CUES.filter(function(c){ return c.state !== "keep" && c.state !== "rej"; }).map(function(c){
-      return {id: c.id, beat: c.beat, time: +c.time.toFixed(3), file: c.pick || null, gain_db: +c.gain};
+      return {id: c.id, beat: c.beat, time: +c.time.toFixed(3), file: c.pick || null, gain_db: +c.gain, peak_s: peakOf(c)};
     })
   };
 }
@@ -908,8 +924,13 @@ function renderCues(){
 
 function draw(){
   var tl = $("tl");
-  Array.prototype.slice.call(tl.querySelectorAll(".cue,.lab")).forEach(function(n){ n.remove(); });
+  Array.prototype.slice.call(tl.querySelectorAll(".cue,.lab,.btick")).forEach(function(n){ n.remove(); });
   var dur = CFG.dur;
+  reelBeats().forEach(function(r){   /* faint beat ticks while beat-sync is on */
+    var d = document.createElement("div");
+    d.className = "btick"; d.style.left = (r / dur * 100) + "%";
+    tl.appendChild(d);
+  });
   CUES.forEach(function(c){
     var d = document.createElement("div");
     d.className = "cue" + (c.state === "keep" ? " keep" : c.state === "rej" ? " rej" : "");
@@ -931,7 +952,7 @@ function audition(c){
   /* MUST open the AudioContext here. This is a user gesture, and without it the
      tick loop's scheduling branch is skipped and the cue fires silently nowhere. */
   audio();
-  loopWin = { a: Math.max(0, c.time - 1.6), b: Math.min(CFG.dur, c.time + 1.4), cue: c.id };
+  loopWin = { a: Math.max(0, cueStart(c) - 1.6), b: Math.min(CFG.dur, c.time + 1.4), cue: c.id };   /* lead-in before the file starts */
   scheduled = {};
   v.currentTime = loopWin.a;
   v.play();
@@ -960,10 +981,13 @@ function tick(){
     list.forEach(function(c){
       if(!c.pick) return;
       if(scheduled[c.id]) return;
-      var dt = c.time - t;
-      if(dt >= -0.05 && dt < look){
+      var dt = cueStart(c) - t;   /* the file starts peak_s before the hit */
+      if(c.time - t >= -0.05 && dt < look){
         scheduled[c.id] = true;
-        fire(cueUrl(c), c.gain, ctx.currentTime + Math.max(0, dt) + lat, cueOpts(c));
+        var o = cueOpts(c);
+        o.from = dt < -0.05 ? -dt : 0;   /* joined after the file's start (a seek, a head before 0): skip its head, the hit stays on time */
+        SCHED[c.id] = t + Math.max(0, dt) - o.from;
+        fire(cueUrl(c), c.gain, ctx.currentTime + Math.max(0, dt) + lat, o);
       }
     });
   }
@@ -1092,7 +1116,7 @@ function CV(name, dflt){ var v = getComputedStyle(document.documentElement).getP
 /* the board as seeded from config.json: boot uses it, and "start over" goes back to it */
 function seedFromConfig(cfg){
   userCount = 0;
-  BED.entry = 0; BED.exit = null; BED.offset = 0; BED.fadeIn = 0.5; BED.fadeOut = 1.5;
+  BED.entry = 0; BED.exit = null; BED.offset = 0; BED.fadeIn = 0.5; BED.fadeOut = 1.5; BED.beatSync = false;
   $("bedsel").value = ""; $("bedvol").value = -18; $("bedvoll").textContent = "-18 dB";
   setDuck(6); MREQ = null; RIGHTS = {};   /* reset clears the music request and the rights tick */
   BED.stops = (cfg.bed_stops || []).map(function(s){   /* seeded stops; a saved session overrides them */
@@ -1135,6 +1159,36 @@ function speechSpans(){
   return ((CFG && CFG.speech_spans) || []).map(function(s){ return Array.isArray(s) ? [+s[0], +s[1]] : [+s.start_s, +s.end_s]; });
 }
 function bedRow(f){ return BEDS.filter(function(b){ return b.file === f; })[0] || null; }
+/* beat-sync: config beds[i].grid = {bpm, period_s, phase_s, downbeat_s, confidence} in TRACK seconds, null when the
+   track has no steady beat. Beats sit at phase_s + k*period_s; with offset o and entry e, track beat b plays at
+   reel time e + (b - o). Off by default; snapping never touches the speech, only the music start and the cues. */
+var BEAT_SNAP_OFF = false;   // test hook: the board test's reverse run turns every snap off with it
+function bedGrid(){ var r = bedRow($("bedsel").value), g = r && r.grid; return (g && +g.period_s > 0) ? g : null; }
+function syncOn(){ return !!(BED.beatSync && bedGrid()); }
+function snapOffset(){   /* the track starts on its nearest beat */
+  var g = bedGrid();
+  if(!syncOn() || BEAT_SNAP_OFF) return;
+  var p = +g.period_s, ph = +g.phase_s, k = Math.round((BED.offset - ph) / p);
+  if(ph + k * p < 0) k++;
+  BED.offset = ph + k * p;
+  $("boffset").value = BED.offset.toFixed(2);
+}
+function reelBeats(){   /* reel times of the track's beats inside the bed window [entry, exit) */
+  if(!syncOn()) return [];
+  var g = bedGrid(), p = +g.period_s, ph = +g.phase_s, out = [];
+  var e = BED.entry, x = Math.min(bedExit(), CFG.dur), o = BED.offset, len = (bedRow($("bedsel").value) || {}).duration;
+  for(var k = Math.ceil((o - ph) / p - 1e-9); ; k++){
+    var b = ph + k * p, r = e + (b - o);
+    if(r >= x || (len != null && b >= len)) break;
+    if(r >= e - 1e-9) out.push(r);
+  }
+  return out;
+}
+function renderSync(){
+  var g = bedGrid();
+  $("bsync").disabled = !g; $("bsync").checked = syncOn(); $("bsnap").disabled = !syncOn();
+  $("bsyncnote").textContent = $("bedsel").value && !g ? "no steady beat found in this track" : "";
+}
 /* the bake's bed gain: (voice LUFS - bed LUFS) + level, voice taken as -14 when the config has no voice_lufs;
    bed LUFS = play_lufs (the stretch that plays) when present, else lufs; with neither, the level alone */
 function bedGainDb(){
@@ -1210,6 +1264,7 @@ function renderMusic(){
   $("mfree").classList.toggle("on", MREQ === "free");
   $("mown").classList.toggle("on", MREQ === "own");
   $("mreqnote").textContent = MREQ ? "Press Send and Claude will walk you through it." : "";
+  renderSync();
 }
 
 /* ---------- boot ---------- */
@@ -1285,6 +1340,7 @@ function renderMusic(){
         if(Array.isArray(saved.bed.stops)) BED.stops = saved.bed.stops;
       }
       if(saved.bed.duck !== undefined) setDuck(saved.bed.duck);
+      if(saved.bed.beatSync !== undefined) BED.beatSync = !!saved.bed.beatSync;
     }
     if(saved.music_request !== undefined) MREQ = saved.music_request;
     if(saved.rights) RIGHTS = Object.assign({}, saved.rights);
@@ -1532,7 +1588,8 @@ function bedStateToInputs(){
   renderStops(); renderMusic();
 }
 function bedChanged(){
-  drawWaves();
+  snapOffset(); renderSync();     /* beat-sync on: every placement change lands the track start on a beat */
+  drawWaves(); draw();
   stopBed(); startBed();          /* re-schedule with the new placement if playing */
   refreshOut(); saveState();
 }
@@ -1580,8 +1637,9 @@ $("bedduck").oninput = function(){ setDuck(+$("bedduck").value); bedChanged(); }
 });
 $("bedsel").onchange = function(){
   audio();
+  snapOffset();
   renderMusic();
-  drawWaves();
+  drawWaves(); draw();
   stopBed(); startBed();
   refreshOut(); saveState();
 };
@@ -1603,6 +1661,17 @@ $("bexithead").onclick = function(){
   if(t > BED.entry){ BED.exit = t; bedStateToInputs(); bedChanged(); }
 };
 window.addEventListener("resize", drawWaves);
+$("bsync").onchange = function(){ BED.beatSync = $("bsync").checked; bedChanged(); };   /* off moves nothing back */
+$("bsnap").onclick = function(){   /* cues within min(period/8, 80 ms) of a beat move onto it; the rest stay */
+  var beats = reelBeats();
+  if(!beats.length || BEAT_SNAP_OFF) return;
+  var win = Math.min(+bedGrid().period_s / 8, 0.08);
+  CUES.forEach(function(c){
+    var near = beats.reduce(function(a, r){ return Math.abs(r - c.time) < Math.abs(a - c.time) ? r : a; });
+    if(Math.abs(near - c.time) <= win + 1e-9){ c.time = +near.toFixed(3); delete scheduled[c.id]; }
+  });
+  mutated();
+};
 
 $("keepall").onclick = function(){
   CUES.forEach(function(c){ c.state = "keep"; }); mutated();

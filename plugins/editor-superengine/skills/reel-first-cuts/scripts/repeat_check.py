@@ -16,14 +16,15 @@ words.json: work/edit_map.cut.json or tx-cut.json ({"words": [{"word","start","e
 [{"text","start","end"}].
 It finds:
 - a word or phrase said twice in a row: "and fixes and fixes", "the the", "so to so to"
-- a cut-off start: "Man- ManyChat" (a short word that is the start of the next word)
+- a cut-off start: "Sched- Schedule" (a short word that is the start of the next word)
 - a restart: the same 2+ words again within --gap seconds, with up to 2 words between ("it is, it's live")
 - a retake: the same sentence (5+ words, one word may differ) said again within 15 s: drop the first take
 For each one it prints the time span to DROP (the FIRST copy, so the clean take stays) and exits 1 if it found any.
 It also flags reworded retakes for review: two sentences starting within 15 s that share at least --jaccard of their
 content words (shared / all) but don't pass the strict retake rule. A person picks which one stays (the Cut Board),
 so these are never in the drop list (--json), never in the "N repeat(s) found" count and never change the exit code;
---review writes them as [{kind: "loose-retake", tier: "review", text, at, first, second, n, jaccard}].
+--review writes them as [{kind: "loose-retake", tier: "review", text, at, first, second, n, m, jaccard}]
+(n and m: the word counts of the first and the second sentence).
 A transcriber often merges repeats into one copy ("and fixes and fixes" came back as "and fixes"). So --audio
 re-transcribes the voice in short overlapping windows (3 s, step 1.5 s) where the engine has no context to tidy the
 repeat away, finds repeats in each window and maps them back to the file's time line. The engine is the one
@@ -92,7 +93,7 @@ def find(W, gap=1.5):
             if n >= 5 and k >= 5 and j >= i + n - 1:
                 hits.append(dict(kind='retake', text=' '.join(W[x]['w'] for x in range(i, i + n)) + ' | ' + ' '.join(W[x]['w'] for x in range(j, j + k)),
                                  drop=[round(W[i]['s'], 3), round(W[j]['s'], 3)], first=i, second=j, n=n)); break
-    for i in range(N - 1):                       # cut-off start: "Man-" then "ManyChat"
+    for i in range(N - 1):                       # cut-off start: "Sched-" then "Schedule"
         a, b = W[i]['n'], W[i + 1]['n']
         if i in used or len(a) < 2 or len(a) >= len(b): continue
         if b.startswith(a) and (W[i]['w'].endswith('-') or W[i]['e'] - W[i]['s'] < 0.18):
@@ -124,7 +125,7 @@ def loose(W, hits, jaccard=0.5, span=15.0):
             if jac < jaccard or any(i0 <= h['first'] <= i1 and j0 <= h['second'] <= j1 for h in hits): continue
             out.append(dict(kind='loose-retake', tier='review',
                             text=' '.join(W[x]['w'] for x in range(i0, i1 + 1)) + ' | ' + ' '.join(W[x]['w'] for x in range(j0, j1 + 1)),
-                            at=[round(W[i0]['s'], 3), round(W[j0]['s'], 3)], first=i0, second=j0, n=i1 - i0 + 1, jaccard=round(jac, 3)))
+                            at=[round(W[i0]['s'], 3), round(W[j0]['s'], 3)], first=i0, second=j0, n=i1 - i0 + 1, m=j1 - j0 + 1, jaccard=round(jac, 3)))
             break
     return out
 

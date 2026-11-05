@@ -5,7 +5,7 @@
 The voice control is the PROCESSED voice (cleaned and re-gained, the one that went into the mix): the raw voice
 stem would false-fail, because a clean-up changes the quiet stretches by tens of dB. Each track's level is solved by
 least squares (mix = gv*voice + sum gl*lane + gb*music), so nothing has to be taken on trust.
-  cue survival: in each cue's first 0.5 s, what is left after everything else is taken away must match the cue
+  cue survival: in each cue's first 0.5 s (from where its sound starts: time - peak_s, not before 0), what is left after everything else is taken away must match the cue
                 (correlation >= 0.9).
   music ratio:  in 0.5 s windows where the voice speaks under audible music, the music-to-voice level is solved
                 again; its spread (10th to 90th percentile) must stay under 1 dB, so nothing dynamic re-levelled it.
@@ -59,7 +59,7 @@ def check(final, voice_path, sound):
 
     cues = []
     for c, one in zip(P["cues"], alone):
-        s = int(round(c["time"] * SR))
+        s = int(round(max(0.0, c["time"] - c.get("peak_s", 0)) * SR))    # where the cue's sound starts
         e = min(N, s + int(min(c["seconds"], 0.5) * SR))
         own = (g[1 + c["lane"]] * one)[s:e]
         rest = (y - model)[s:e] + own                 # everything else taken away

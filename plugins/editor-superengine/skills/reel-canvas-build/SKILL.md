@@ -1,40 +1,45 @@
 ---
 name: editor-superengine:reel-canvas-build
-description: Plans and designs what plays on screen over a reel once the spoken cut is signed off. Builds the Beat Map (what the screen shows on each line - full screen, split, stack, picture-in-picture or an overlay - plus the numbers and key words to show), opens the Sketches board for picking one direction for the opening visuals, and runs the design loop for hook and intro comps. Use for "build the beat map", "plan what goes on screen", "pick a layout", "show me a few looks for the opening visuals", "design the hook", "comp the intro", "will the Instagram buttons cover this", or to plan where B-roll and graphics will go (placing them isn't built yet). Not for cutting the spoken take (reel-first-cuts) and not for the post caption (caption-writer).
+description: Plans, designs and renders what plays on screen over a reel once the spoken cut is signed off. For the plan, the Beat Map (what the screen shows on each line, plus the numbers and key words to show) and the Sketches board for picking one direction. For the design loop, a few looks for the hook and the intro, tweaked until one lands. For the render, a 720p preview to watch, then the final video once the client OKs it, with the finished sound. Use for "build the beat map", "plan what goes on screen", "pick a layout", "show me a few looks for the opening visuals", "design the hook", "comp the intro", "motion comps", "ladder the blur", "direction options", "iterate this visual", "will the Instagram buttons cover this", "render it", "make the preview", "make the final video", "export the reel", or to plan where B-roll and graphics will go (placing them isn't built yet). Not for cutting the spoken take (reel-first-cuts) and not for the post caption (caption-writer).
 ---
 
 # reel-canvas-build: the reel's visuals
 
 ## Output contract (every run, in this order)
 
-1. One plain line on where the reel's visuals stand: no beat map yet, a beat map waiting for the client's review, or what they sent.
-2. When a board is involved: the board open in the Browser pane, and one line on what to do there, e.g. "Change any layout, tap words to mark them, then press Send to Claude."
-3. After a Send: a short plain summary of what the client changed (layouts, numbers, marked words, notes, the picked direction) and the next step.
-4. On any failure you can't fix in two tries: what went wrong in plain words, then the failure report offer below.
+1. One plain line on where the reel's visuals stand, e.g. no Beat Map yet, a Beat Map waiting for the client, a preview waiting for their OK, or the final video made.
+2. When a board or a video is involved: open it in the Browser pane, with one line on what to do there.
+3. After a Send or a render: a short plain summary of what changed or what was made, and the next step.
+4. On any failure you can't fix in two tries: the failure report below.
 
-## Re-invoke guard (read before step 1)
+## Re-invoke guard
 
 - If the conversation was compacted since this skill loaded, invoke this skill again before going on.
-- The spoken cut must be signed off first. The Beat Map points at the cut's words by their number in the cut's word list, so a new cut needs a new beat map. Words are never renumbered.
-- Never replace a beat map or a sketches page the client has edited without asking them first. The beat map builder refuses, and when told to replace it keeps the old one beside it.
-- Re-opening a board is always safe: its work is saved on disk after every change.
+- The spoken cut must be signed off first. A new cut needs a new beat map file and a new preview: beats point at word numbers in the cut, and words are never renumbered.
+- Never replace a board the client has edited without asking them first: their edits live in it.
+- Re-opening a board is safe: its work is saved on disk after every change.
+- The final video is made only after the client OKs the latest preview, recorded only by `compose.py ok` (`${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/build.md`, section 3).
 
 ## Ground rules
 
 - **The client never types a command.** Claude runs each command in the Bash tool, from the client's workspace folder, as one command.
 - `<editor python>` is the editor's own Python. Windows: `"$(H="$LOCALAPPDATA/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/Scripts/python.exe"`. macOS: `"$(H="$HOME/Library/Application Support/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/bin/python"`. Keep the quotes. If it's missing, run `editor-superengine:editor-doctor` first.
+- `<reel>` is the reel's folder name, and `<reel folder>` is that folder inside the videos folder that `paths.videos` names in `editor/editor.config.json`.
 - Plain English for a busy coach. Gloss a term once, e.g. "beat (one stretch of the reel with one look on screen)". Never show the client file names, paths or JSON.
 - Layouts, looks and directions are the client's taste: propose them, never impose them. Never invent a number for the screen; a number shown is one the client says in the cut.
-- Boards run on the editor's board server: start or restart it with `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/board-server.md`.
+- Boards and videos open from the editor's board server: start or restart it with `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/board-server.md`.
+- `deps.json` lists what `editor-superengine:editor-doctor` installs for this skill. The cutout's RVM path uses torch, torchvision and numpy only when transcription setup already installed them; otherwise it uses the backup method.
 
 ## Areas: open only the one the task needs
 
 | The client wants | Read |
 |---|---|
-| A plan of what's on screen for each line, the layout per beat, numbers and key words marked, or picks on rough sketches and opening directions (the Beat Map and Sketches boards) | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/beat-map.md` |
-| A few looks for the hook or the opening visuals, a visual tweaked, or a check that Instagram's buttons won't cover the text (the design loop) | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/design-loop.md` |
+| The plan and picks: what's on screen for each line, the layout per beat, numbers and key words marked, or picks on rough sketches and opening directions (the Beat Map and Sketches boards) | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/beat-map.md` |
+| The design loop: a few looks for the hook or the opening visuals, a visual tweaked, or a check that Instagram's buttons won't cover the text | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/design-loop.md` |
+| The render: the 720p preview (a smaller, quicker copy to watch), the client's OK, then the final video at full size with the finished sound | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/build.md` |
+| Graphics behind the speaker: the cutout (the speaker cut out of the background) | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/build.md`, section 7 |
 
-**Not built yet in this version:** the final render, zoom styles, placing graphics around the face, scenes (lower thirds, counters, lists), transitions, B-roll and the before-posting check. When the client asks for one of these, say plainly that this part of the editor is coming. If the reel has a Beat Map, the client can leave a note on that beat for later. Don't build it any other way.
+**Not built yet:** use the single list in `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/SKILL.md`, "Not built yet". When the client asks for one of these, say "That part of the editor isn't built yet; it's coming in a later update." One follow-up is allowed: "If the reel has a Beat Map, I can leave a note on that moment for later." Don't build it any other way: a hand-built version skips the Beat Map checks and the preview OK.
 
 ## Failure report (offer after any failure you can't fix in two tries)
 
@@ -47,7 +52,7 @@ Tell the client what went wrong in plain words, and whether anything was charged
 2. Draft it. Keep the summary short. Put the summary, step and error line in single quotes, drop any
    apostrophe from them, and use no script names:
 
-`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.1.0 --skill reel-canvas-build --step '<beat map, sketches or design loop>' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
+`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.1.0 --skill reel-canvas-build --step '<the plan, the design loop, the render or the cutout>' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
 
 3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
 4. Send, using the path after `DRAFT:`:

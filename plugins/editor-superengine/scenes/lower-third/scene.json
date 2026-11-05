@@ -1,5 +1,6 @@
 {
   "id": "lower-third",
+  "category": "lower-third",
   "kind": "overlay",
   "slots": {
     "name": {"maxChars": 28, "default": "Alex Rivera", "hint": "who is speaking"},

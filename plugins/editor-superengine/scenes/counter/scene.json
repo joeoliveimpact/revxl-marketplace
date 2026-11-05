@@ -1,5 +1,6 @@
 {
   "id": "counter",
+  "category": "counter",
   "kind": "overlay",
   "slots": {
     "label": {"maxChars": 30, "default": "happy customers", "hint": "what the number counts"}

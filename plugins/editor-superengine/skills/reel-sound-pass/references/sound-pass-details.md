@@ -32,7 +32,10 @@ Packages: the scripts need numpy and ffmpeg, which the editor install puts in th
    picture's real frame rate. Gains, length caps and fades come straight from the Send, and so do music stops
    (the music is silent inside each stop; its fade-out ends where the stop starts and its fade-in starts where
    the stop ends, while the track keeps running underneath). Float overs are not clamped; the limiter handles
-   peaks. Checks: the sum is exactly voice + effects + music; the effects track is exactly its cues; every cue's
+   peaks. Each cue's file starts `peak_s` (where its hit lands) before the cue's time, so the hit lands on the
+   time; a start before 0 trims the file's head instead. With beat-sync on, the music's track start snaps to a
+   beat and steps back whole bars until the track lasts the reel; the speech cuts never move. Checks: the sum is
+   exactly voice + effects + music; the effects track is exactly its cues; every cue's
    own sound is present in its window; the voice is bit-exact to the picture's sound; the music is silent in
    every stop. Each cue is also written as its own clip with a `placement.json` (frame, lane), for an editor
    that places clips on frames. Without a Send (or a library) the stems are voice only.

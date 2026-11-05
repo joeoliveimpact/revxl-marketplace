@@ -71,7 +71,6 @@ import json
 import math
 import os
 import re
-import shutil
 import subprocess
 import sys
 import wave
@@ -160,8 +159,9 @@ def parakeet(wav, out):
 
 
 # ------------------------------------------------------------------- audio and guards
-def ff(*args):
-    return subprocess.run([str(x) for x in args], capture_output=True, text=True,
+def ff(tool, *args):
+    """tool is "ffmpeg" or "ffprobe": the editor's install (_shared/runtime.py), never PATH."""
+    return subprocess.run([rt.tool(tool)] + [str(x) for x in args], capture_output=True, text=True,
                           encoding="utf-8", errors="replace")
 
 
@@ -374,7 +374,11 @@ def main():
               "doctor so it sets up the multilingual transcriber." % language, file=sys.stderr)
         return 3
     for t in ("ffmpeg", "ffprobe"):
-        if not shutil.which(t):
+        try:
+            found = Path(rt.tool(t)).exists()
+        except (KeyError, OSError, ValueError):
+            found = False
+        if not found:
             print("ERROR: %s is missing. Run the editor doctor to repair the setup." % t, file=sys.stderr)
             return 3
 

@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Master review (test fixture)</title>
+<!-- Test fixture only, never shipped (S13 builds the real page): render_engine_test.py (hub-review) copies it to
+     <workspace>/editor/hub/review.html. It plays the preview named in ?preview= from the reel's renders/ folder, and
+     Approve sends review.json through the board server (board "hub"), the shape compose.py ok --from-review reads:
+     {"approve": true, "preview": "<file name>", "note": "", "sent_at": "<ISO>"}. -->
+<style>
+body{margin:0;font:14px system-ui,sans-serif;padding:12px}
+video{width:360px;height:640px;background:#000;display:block}
+</style>
+</head>
+<body>
+<video id="v" controls muted playsinline preload="metadata"></video>
+<p><button id="approve">Approve</button></p>
+<p id="sendmsg"></p>
+<script>
+var q = new URLSearchParams(location.search), reel = q.get("reel") || "", preview = q.get("preview") || "";
+var base = "/videos/" + encodeURIComponent(reel) + "/";
+document.getElementById("v").src = base + "renders/" + encodeURIComponent(preview);
+document.getElementById("approve").onclick = function () {
+  var msg = document.getElementById("sendmsg");
+  fetch(base + "__save?board=hub&name=review.json", {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({approve: true, preview: preview, note: "", sent_at: new Date().toISOString()})
+  }).then(function (r) {
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  }).then(function (j) {
+    msg.textContent = "written to " + j.wrote;
+  }).catch(function (e) {
+    msg.textContent = "SEND FAILED: " + e.message;
+  });
+};
+</script>
+</body>
+</html>

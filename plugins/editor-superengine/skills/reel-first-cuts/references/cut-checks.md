@@ -5,11 +5,19 @@ Four commands run on every render, after it and before the silence budget (SKILL
 Ground rules.
 
 ## Contents
+- Render rules (Stage 6)
 - 1. Re-transcribe the cut
 - 2. Fix misheard words, then check the call to action
 - 3. Repeats, restarts and retakes
 - 4. Silence-only trims and murmurs
 - What the client hears
+
+## Render rules (Stage 6)
+
+No `--speed`: `cuts.json` holds the latest board's ruling (the Tweak Board's after Stage 9); never re-run gaps.py to match a speed.
+render.py reads only `work/cuts.json`, asserts the frame count, conforms to
+1080×1920 SDR with a dense GOP, and writes the review page. Never build from an intermediate (rule 2 of
+`${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/house-rules.md`).
 
 ## 1. Re-transcribe the cut
 

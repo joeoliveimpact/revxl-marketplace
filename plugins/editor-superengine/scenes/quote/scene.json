@@ -1,5 +1,6 @@
 {
   "id": "quote",
+  "category": "quote",
   "kind": "overlay",
   "slots": {
     "quote": {"maxChars": 90, "default": "Simple beats clever when people are scrolling fast.", "hint": "the line, word for word"},

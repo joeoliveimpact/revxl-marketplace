@@ -9,6 +9,7 @@ The cut comes only from work/cuts.json (gaps.py writes it): whole frames at the
 master's fps, and the speed. The rendered frame count must equal its last out_out_f.
 
   python render.py work/ RAW.mp4 --speed 1.15 --master --scrub
+  python render.py work/ RAW.mp4 --grade videos/<reel>/grade.json   # the reel's grade, baked in the same encode
 
 Master : 1080x1920, CRF 14 slow, keyframe every second
 Scrub  : 1080x1920, CRF 20, keyframe every half second - for TIMING only, never picture
@@ -20,7 +21,7 @@ the review page, work/cut-review.html.
 Dense GOP is not optional on anything a human will scrub. preset slow defaults to
 a 250-frame GOP; seeks measured 678-1527ms and dragging the playhead felt dead.
 """
-import argparse, json, subprocess, sys
+import argparse, hashlib, json, subprocess, sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -76,6 +77,30 @@ def conform(video):
               "tonemap=tonemap=mobius:desat=0" + (":peak=1" if tr == "arib-std-b67" else ""),
               "zscale=t=bt709:m=bt709:r=tv", "format=yuv420p"]
     return ",".join(f)
+
+
+def grade_filter(grade_json):
+    """--grade: ONE lut3d, the cube grade.json names (its path is relative to the reel folder, grade.json's own),
+    added after the conform, so the graded plate comes from the raw in the same one generation. A cube whose sha256
+    isn't grade.json's cube_sha is refused before anything renders. The path is quoted the way reel-grade's
+    apply_grade.py quotes it: forward slashes, the drive colon escaped, the whole path single-quoted. The lut3d gets
+    16-bit planar RGB: left to pick its own, ffmpeg hands it packed rgb24, and that round trip alone darkens every
+    colour by 2-3 levels (an identity cube moved mid-grey 128 to 125 on ffmpeg 8.1.2; through gbrp16le, 0 levels)."""
+    g = Path(grade_json)
+    try:
+        doc = json.loads(g.read_text(encoding="utf-8"))
+        cube, sha = (g.parent / doc["cube"]).resolve(), doc["cube_sha"]
+    except (OSError, ValueError, KeyError, TypeError):
+        die("%s isn't a saved grade (it needs a cube and its cube_sha): save the grade in reel-grade, then render again" % g)
+    if not cube.is_file():
+        die("the grade's cube %s is missing: save the grade in reel-grade again, then render again" % cube)
+    if hashlib.sha256(cube.read_bytes()).hexdigest() != sha:
+        die("the grade's cube %s doesn't match grade.json (it changed after the grade was saved), so nothing was "
+            "rendered: save the grade in reel-grade again, then render again" % cube.name)
+    p = str(cube)
+    if "'" in p:
+        die("the cube's folder path has an apostrophe, which ffmpeg can't read: %s. Move it, then render again." % p)
+    return "format=gbrp16le,lut3d=file='" + p.replace("\\", "/").replace(":", "\\:") + "'"
 
 
 def build_graph(cuts, sr, vfilter, astream=0):
@@ -157,6 +182,7 @@ def main():
     ap.add_argument("--master", action="store_true")
     ap.add_argument("--scrub", action="store_true")
     ap.add_argument("--tag", default=None)
+    ap.add_argument("--grade", default=None, help="videos/<reel>/grade.json: bake its cube into this render (one lut3d)")
     a = ap.parse_args()
     ensure_utf8_output()
 
@@ -175,6 +201,8 @@ def main():
     probe = json.loads((work / "probe.json").read_text(encoding="utf-8"))
     fps_flag = probe.get("fps_flag", "-fps_mode")
     vfilter = conform(probe.get("video"))
+    if a.grade:
+        vfilter += "," + grade_filter(a.grade)
     astream = int(probe.get("audio_stream", 0))
     sr = sample_rate(a.raw, astream)
     if not (a.master or a.scrub):

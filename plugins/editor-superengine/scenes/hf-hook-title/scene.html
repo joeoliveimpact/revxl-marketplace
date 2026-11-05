@@ -1,0 +1,60 @@
+<!doctype html>
+<!-- Adapted from HyperFrames registry/blocks/yt-prism-title (https://github.com/heygen-com/hyperframes, tag v0.8.184, d15a274c), Apache License 2.0, Copyright 2026 HeyGen, Inc. Modified by editor-superengine: portrait 1080x1920, local GSAP 3.15.0, Inter 400, scene contract. -->
+<html lang="en" data-composition-variables='[
+  {"id":"title","type":"string","label":"Title","default":"Nobody tells you this about editing"},
+  {"id":"accent","type":"color","label":"Accent","default":"#35c8d9"},
+  {"id":"font","type":"string","label":"Font family","default":"Inter"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="./vendor/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Inter"; src: url("./fonts/Inter-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; }
+      #hf-hook-title { position: relative; width: 1080px; height: 1920px; z-index: 400; font-family: "Inter"; font-weight: 400; --accent: #35c8d9; }
+      /* the bow is the 900x1250 safe box, tilted back like the source's perspective bow */
+      #hf-hook-title .bow { position: absolute; left: 60px; top: 220px; width: 900px; height: 1250px; display: flex; align-items: center; justify-content: center; transform: perspective(950px) rotateX(6deg); }
+      #hf-hook-title .line { position: relative; width: 640px; font-size: 120px; line-height: 1.05; letter-spacing: -0.02em; text-align: center; overflow-wrap: anywhere; }
+      #hf-hook-title .copy { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; }
+      #hf-hook-title .copy.r { color: #ff2a4d; }
+      #hf-hook-title .copy.b { color: #2a7fff; }
+      #hf-hook-title .main { position: relative; display: block; color: var(--accent); }
+    </style>
+  </head>
+  <body>
+    <div id="hf-hook-title" data-composition-id="hf-hook-title" data-start="0" data-duration="4" data-fps="30" data-width="1080" data-height="1920">
+      <div class="bow">
+        <div class="line">
+          <span class="copy r slot" data-slot="title"></span>
+          <span class="copy b slot" data-slot="title"></span>
+          <span class="main slot" data-slot="title"></span>
+        </div>
+      </div>
+    </div>
+    <script>
+      (function () {
+        const v = window.__hyperframes.getVariables();
+        const root = document.getElementById("hf-hook-title");
+        root.style.setProperty("--accent", v.accent);
+        root.style.fontFamily = JSON.stringify(v.font);
+        root.querySelectorAll("[data-slot]").forEach((el) => { el.textContent = v[el.dataset.slot]; });
+        const q = (s) => root.querySelector(s);
+        const DUR = 4, IN = 0.32, O = 4, REST_BLUR = 2.5;
+        const tl = gsap.timeline({ paused: true });
+        // entrance: focus in from heavy blur, red/blue fringe settles from wide to resting
+        tl.fromTo(q(".bow"), { opacity: 0 }, { opacity: 1, duration: IN * 1.4, ease: "power2.out" }, 0.1);
+        tl.fromTo(q(".bow"), { filter: "blur(18px)" }, { filter: "blur(" + REST_BLUR + "px)", duration: IN * 2.4, ease: "power2.out" }, 0.1);
+        tl.fromTo(q(".copy.r"), { x: -O * 4.5, opacity: 0.45 }, { x: -O, opacity: 0.85, duration: IN * 2.4, ease: "power2.out" }, 0.1);
+        tl.fromTo(q(".copy.b"), { x: O * 4.5, opacity: 0.45 }, { x: O, opacity: 0.85, duration: IN * 2.4, ease: "power2.out" }, 0.1);
+        // held: slow scale breath and a fringe wobble that returns to rest by the end
+        tl.fromTo(q(".line"), { scale: 1 }, { scale: 1.035, duration: DUR - 1, ease: "sine.out" }, 0.4);
+        tl.to(q(".copy.r"), { x: -O - 1.4, duration: (DUR - 1.4) / 2, ease: "sine.inOut", yoyo: true, repeat: 1 }, 1.4);
+        tl.to(q(".copy.b"), { x: O + 1.4, duration: (DUR - 1.4) / 2, ease: "sine.inOut", yoyo: true, repeat: 1 }, 1.4);
+        window.__timelines = window.__timelines || {};
+        window.__timelines["hf-hook-title"] = tl;
+      })();
+    </script>
+  </body>
+</html>

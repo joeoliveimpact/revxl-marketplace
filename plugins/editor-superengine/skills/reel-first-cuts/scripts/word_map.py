@@ -3,25 +3,36 @@
 
     <editor python> -X utf8 -I word_map.py <reel_dir>
 
-Reads : <reel>/work/cuts.json (gaps.py snap_cuts: fps, speed, frame segments) and
-        <reel>/work/edit_map.json (build_edit_map.py: the source word times)
+Reads : the edit map the cut was made from (build_edit_map.py: the source word times). With
+        <reel>/cut-board.config.json and <reel>/cut-selection.json both present, that is cfg.takes[take].edit_map
+        (relative to the reel folder) for the one take the kept lines picked, the map selection_to_edl.py hands
+        gaps.py; otherwise work/edit_map.json. And that take's cuts.json (gaps.py snap_cuts: fps, speed, frame
+        segments), which sits in the edit map's folder: work/cuts.json for the first take, work/take2/cuts.json for
+        take 2 (SKILL.md Stage 0: each take has its own folder, passed to selection_to_edl.py as -o). With no edit
+        map there (no word alignment on this computer, e.g. a Mac), that folder's tx.json word times stand in. With
+        no word times at all it says so, writes nothing and exits 0: the cut can still render.
 Writes: <reel>/work/word_map.json
-        {version, cuts_sha256, edit_map_sha256, fps, speed,
-         words: [{id, word, seg, src_start, src_end, out_start, out_end}]}
+        {version, cuts, cuts_sha256, edit_map, edit_map_sha256, fps, speed,
+         words: [{id, word, seg, src_start, src_end, out_start, out_end, parakeet_start, out_anchor}]}
+        (cuts and edit_map are the paths relative to the reel; edit_map is work/tx.json when tx.json stood in)
 
 A word is kept when its source `start` falls inside a segment's source span: src_in_f/fps <= start < src_out_f/fps.
 `start` (the edit map's aligned start) is the anchor gaps.py places cuts from: overlaps() (gaps.py:146-147) and
 keep_edge_words() (gaps.py:160-183) test the edit map's start/end, never parakeet_start, and words with status
 "unresolved" (not in the audio) are dropped before any of that (gaps.py:433), so they are dropped here too.
 Output time of a source time t in its segment: out_in_f/fps + (t - src_in_f/fps) / speed, speed from cuts.json
-(1.0 when absent). A word whose start sits in two segments (overlapping segments) is listed once per segment, so
-map_check.py can block it. The two sha256 fields are of the input files' bytes: the map is stale once either changes.
+(1.0 when absent). out_anchor is the same formula on parakeet_start, the board anchor the Cut Board, the
+80 ms drift guard and make_tweaks.py place words from; out_start (the aligned start) is the render map. A word whose start sits in two segments (overlapping segments) is listed once per segment, so
+map_check.py can block it. The two sha256 fields are of the input files' bytes: the map is stale once either changes,
+and it is stale too once the board points the cut at another edit map or another take's cuts.json.
 """
 import hashlib, json, sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "_shared"))
 from win_encoding import ensure_utf8_output  # noqa: E402
+
+NO_TIMES = "No word timings on this computer, so the word check was skipped; the cut can still render"
 
 
 def sha(path):
@@ -39,16 +50,80 @@ def build(cuts, edit_map):
             if s0 <= w["start"] < s1:
                 out.append(dict(id=w["id"], word=w["word"].strip(), seg=k, src_start=w["start"], src_end=w["end"],
                                 out_start=round(c0 + (w["start"] - s0) / speed, 6),
-                                out_end=round(c0 + (w["end"] - s0) / speed, 6)))
+                                out_end=round(c0 + (w["end"] - s0) / speed, 6), parakeet_start=w["parakeet_start"],
+                                out_anchor=round(c0 + (w["parakeet_start"] - s0) / speed, 6)))
     return dict(version=1, fps=fps, speed=speed, words=out)
 
 
+def board(reel_dir):
+    """(cut-board.config.json, cut-selection.json) parsed, or None when the reel has no board ruling."""
+    cfg_p, sel_p = Path(reel_dir) / "cut-board.config.json", Path(reel_dir) / "cut-selection.json"
+    if not (cfg_p.exists() and sel_p.exists()):
+        return None
+    return json.loads(cfg_p.read_text(encoding="utf-8")), json.loads(sel_p.read_text(encoding="utf-8"))
+
+
+def pick_map(reel_dir):
+    """The edit map the cut was made from, relative to the reel folder: the board take's map, else work/edit_map.json.
+    Raises ValueError (plain words) when the ruling mixes takes or names a take or map the board doesn't have."""
+    b = board(reel_dir)
+    if b is None:
+        return "work/edit_map.json"
+    cfg, sel = b
+    by_id = {ln["id"]: ln for ln in cfg["lines"]}
+    takes = set()
+    for l in sel["lines"]:
+        if l.get("drop") or l.get("pick") is None:
+            continue
+        att = by_id[l["id"]]["attempts"][l["pick"]]
+        rm = set(l.get("rm", {}).get(str(l["pick"]), []))
+        if any(w["i"] not in rm for w in att["words"]):   # a fully struck line plays nothing (selection_to_edl.py)
+            takes.add(str(att["take"]))
+    if len(takes) != 1:
+        raise ValueError("the picked lines come from takes %s; a cut uses exactly one take" % (sorted(takes) or "none"))
+    take = takes.pop()
+    if take not in cfg["takes"] or not cfg["takes"][take].get("edit_map"):
+        raise ValueError("the Cut Board has no edit map for take %s" % take)
+    return Path(cfg["takes"][take]["edit_map"]).as_posix()
+
+
+def tx_map(tx):
+    """An edit map's words from a tx.json, for a computer without word alignment (e.g. a Mac). tx.json has one time
+    per word, so the aligned start is its start and the board anchor (parakeet_start) is that same time. Ids follow
+    align_words.py (w_<index in tx.json>); "[...]" events and words without a start and an end are left out."""
+    out = []
+    for i, w in enumerate(tx.get("words") or []):
+        t = str(w.get("word", w.get("text", "")))
+        if not t.strip().startswith("[") and all(isinstance(w.get(k), (int, float)) for k in ("start", "end")):
+            out.append(dict(id="w_%04d" % i, word=t, start=w["start"], end=w["end"], parakeet_start=w["start"]))
+    return {"words": out}
+
+
+def sources(reel_dir, rel):
+    """(cuts, words, edit map) for the edit map path pick_map gave: the take's cuts.json and the word list, both
+    relative to the reel folder, and that word list as an edit map. The cut sits in the edit map's folder. With no
+    edit map there, that folder's tx.json stands in; words and edit map are None when neither has word times."""
+    reel, folder = Path(reel_dir), Path(rel).parent
+    cuts = (folder / "cuts.json").as_posix()
+    if (reel / rel).exists():
+        return cuts, rel, json.loads((reel / rel).read_text(encoding="utf-8"))
+    tx = (folder / "tx.json").as_posix()
+    if (reel / tx).exists():
+        em = tx_map(json.loads((reel / tx).read_text(encoding="utf-8")))
+        if em["words"]:
+            return cuts, tx, em
+    return cuts, None, None
+
+
 def write(reel_dir):
-    work = Path(reel_dir) / "work"
-    cuts_p, em_p = work / "cuts.json", work / "edit_map.json"
-    m = build(json.loads(cuts_p.read_text(encoding="utf-8")), json.loads(em_p.read_text(encoding="utf-8")))
-    m = dict(version=m.pop("version"), cuts_sha256=sha(cuts_p), edit_map_sha256=sha(em_p), **m)
-    (work / "word_map.json").write_bytes(json.dumps(m, ensure_ascii=False, indent=1).encode("utf-8"))
+    """Writes work/word_map.json and returns it; None (nothing written) when there are no word times."""
+    cuts, src, em = sources(reel_dir, pick_map(reel_dir))
+    if src is None:
+        return None
+    cuts_p, em_p = Path(reel_dir) / cuts, Path(reel_dir) / src
+    m = build(json.loads(cuts_p.read_text(encoding="utf-8")), em)
+    m = dict(version=m.pop("version"), cuts=cuts, cuts_sha256=sha(cuts_p), edit_map=src, edit_map_sha256=sha(em_p), **m)
+    (Path(reel_dir) / "work" / "word_map.json").write_bytes(json.dumps(m, ensure_ascii=False, indent=1).encode("utf-8"))
     return m
 
 
@@ -56,13 +131,20 @@ def main():
     ensure_utf8_output()
     if len(sys.argv) != 2:
         raise SystemExit("usage: word_map.py <reel_dir>")
-    work = Path(sys.argv[1]) / "work"
-    for need in ("cuts.json", "edit_map.json"):
-        if not (work / need).exists():
-            raise SystemExit("ERROR: %s is missing: run gaps.py (cuts.json) and build_edit_map.py first" % (work / need))
-    m = write(sys.argv[1])
-    print("word_map.json: %d kept words in %d segments, speed %s" % (
-        len(m["words"]), len({w["seg"] for w in m["words"]}), m["speed"]))
+    reel = Path(sys.argv[1])
+    try:
+        rel = pick_map(reel)
+    except (ValueError, KeyError, IndexError, TypeError) as e:
+        raise SystemExit("ERROR: can't tell which edit map the cut was made from (%s)" % e)
+    cuts, src, _ = sources(reel, rel)
+    if src is None:
+        print(NO_TIMES)
+        return
+    if not (reel / cuts).exists():
+        raise SystemExit("ERROR: %s is missing: run gaps.py first" % (reel / cuts))
+    m = write(reel)
+    print("word_map.json: %d kept words in %d segments, speed %s, cut %s, edit map %s" % (
+        len(m["words"]), len({w["seg"] for w in m["words"]}), m["speed"], cuts, src))
 
 
 if __name__ == "__main__":

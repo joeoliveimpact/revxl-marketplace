@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Stub hub (test fixture)</title>
-<!-- Test fixture only, never shipped: sound_board_test.py and boards_test.py copy it to <workspace>/editor/hub/index.html.
+<!-- Test fixture only, never shipped: sound_board_test.py, grade_board_test.py and boards_test.py copy it to <workspace>/editor/hub/index.html.
      A board tab loads the board into an iframe, the way the old hub page shows a board. With boards.json next to it
      (boards_test.py copies it), the strip is rebuilt from boards.json: one tab per board that has a tab, sorted by order. -->
 <style>
@@ -13,7 +13,7 @@ body{margin:0;font:14px system-ui,sans-serif}
 </style>
 </head>
 <body>
-<div class="tabs" role="tablist"><button role="tab" id="tab-sound" data-board="sound-board" aria-selected="false">Sound</button></div>
+<div class="tabs" role="tablist"><button role="tab" id="tab-sound" data-board="sound-board" aria-selected="false">Sound</button><button role="tab" id="tab-grade" data-board="grade-board" aria-selected="false">Grade</button></div>
 <section class="boards" id="boards"></section>
 <script>
 var reel = new URLSearchParams(location.search).get("reel") || "";
@@ -23,6 +23,7 @@ function show(tab) {
   document.getElementById("boards").innerHTML = '<div class="frame"><iframe src="' + path + '" title="' + tab.textContent + '"></iframe></div>';
 }
 document.getElementById("tab-sound").onclick = function () { show(this); };
+document.getElementById("tab-grade").onclick = function () { show(this); };
 fetch("./boards.json", {cache: "no-store"}).then(function (r) { return r.ok ? r.json() : null; }).then(function (m) {
   if (!m) return;
   var strip = document.querySelector(".tabs");

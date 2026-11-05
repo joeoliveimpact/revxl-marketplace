@@ -26,6 +26,7 @@ Speak the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-th
   If only the recording or its clock changed and the words are the same, copy the old Send and board
   config aside before the rebuild, then carry the Send over: `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/port_selection.py" <old cut-selection.json> <old cut-board.config.json> cut-board.config.json -o cut-selection.json`.
   If it refuses, ask for a new Send.
+- If the reel already has a Sound Board (`config.json`) or a Beat Map Send, a new cut means redoing the sound picks and the visuals plan. Tell the client before re-cutting.
 - Never skip a ⛔ stage, on a re-run either.
 
 ## Ground rules
@@ -34,7 +35,7 @@ Speak the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-th
   workspace folder (the scripts read `editor/editor.config.json` there). A path below that doesn't start
   with `videos/` is in the reel's folder: put `videos/<reel>/` in front (`<reel>` is its folder name).
   RAW.mp4 is the raw; CUT.mp4 the master render, `work/renders/master-<speed>x.mp4` (1.15x → `115x`).
-- `<editor python>` is the editor's own Python. Windows: `"$(H="$LOCALAPPDATA/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/Scripts/python.exe"`. macOS: `"$(H="$HOME/Library/Application Support/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/bin/python"`. If it doesn't exist, run `editor-superengine:editor-doctor` first. Every command runs as `<editor python> -X utf8 -I "<script>" ...`, never a bare `python`.
+- `<editor python>` is the editor's own Python. Windows: `"$(H="$LOCALAPPDATA/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/Scripts/python.exe"`. macOS: `"$(H="$HOME/Library/Application Support/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/bin/python"`. If it doesn't exist, run `editor-superengine:editor-doctor` first. Every script runs as `<editor python> -X utf8 -I "<script>" ...`, never a bare `python`; the failure report's commands run exactly as written.
 - No board available, or the client asks to do it in chat: run Stages 2, 3 and 5 as
   `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/no-board-path.md` says.
 
@@ -54,7 +55,7 @@ A rendered cut where:
 | 0 | Probe & calibrate | `clock_fix.py` (joined clips only), `probe.py` |
 | 1 | Transcribe (words, edit map) | `transcribe_words.py` |
 | 2 | ⛔ Cut Board — RULING | `make_board.py`, `selection_to_edl.py` |
-| 3 | ⛔ Boundary audit — HARD FAIL | `boundary_audit.py` |
+| 3 | ⛔ Boundary audit + map check — HARD FAIL | `boundary_audit.py`, `word_map.py`, `map_check.py` |
 | 4 | Tighten gaps | `gaps.py` |
 | 5 | Speed (ruled on the boards) | — |
 | 6 | Render once, from the raw | `render.py` |
@@ -92,14 +93,17 @@ its folder to `selection_to_edl.py` as `-o`; from then on it is `work/` and its 
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/transcribe_words.py" RAW.mp4 -o work/tx.json --probe work/probe.json --edit-map work/edit_map.json`
 
-It uses the doctor's engine, writes `work/tx.16k.wav` and the edit map, and hard-fails on an empty
-word list. Pass on, word for word, the backup engine's warning and the stop for a nearly silent track.
+It writes `work/tx.16k.wav` and the edit map. Pass on, word for word, the backup engine's warning and the stop for a nearly silent track.
 Engines and guards:
 `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/transcription-contract.md`.
 
 If it says word alignment isn't available on this Mac, there's no edit map and no Cut Board: run Stages
 2, 3 and 5 by the no-board path, using `work/tx.json` wherever a command says `work/edit_map.json`.
 Skip cut checks 2 and 3 (both read the cut's edit map), and say so.
+
+**Script check** (only if the client names their script file): run `script_diff.py` before any Cut Board,
+as `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/map-and-script-checks.md` says. It fixes
+misheard brand names, warns under 25 % match and lists the rest for review.
 
 ### 2 · ⛔ Cut Board — RULING
 With the Write tool, put the approved script in `script.md` (one spoken line per line) and the shots in
@@ -108,19 +112,20 @@ With the Write tool, put the approved script in `script.md` (one spoken line per
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/make_board.py" --script script.md --take 1:work/edit_map.json:work/tx.16k.wav [--take 2:work/take2/edit_map.json:work/take2/tx.16k.wav] --shots shots.json --reel <reel> -o videos/<reel>`
 
 It writes `cut-board.config.json` (every attempt of every line in every take; default: the last attempt
-wins, never mixing takes). Give the client probe.json's duplicate-frame % per speed (the board shows
+wins). Give the client probe.json's duplicate-frame % per speed (the board shows
 the length). Start the board server and open the Cut Board (its hub tab, order 10) at `/editor/cut-board/?reel=<reel>` in the Browser pane, as
 `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/board-server.md` says. The client picks lines and
 takes, strikes words, sets "Pause after commas" (0.20-0.40 s) and the speed, then presses Send (it
-writes `cut-selection.json`). Then:
+writes `cut-selection.json`). A line said twice in different words shows Keep first / Keep second /
+Keep both: the client picks; never cut one yourself. Then:
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/selection_to_edl.py" cut-selection.json cut-board.config.json`
 
-It writes `work/edl.json` and prints the gaps.py command (`--words`, `--beat`, `--speed`); Stage 4
+It writes `work/edl.json` and prints the gaps.py command; Stage 4
 runs that line. `REFUSED` (exit 3: a board word time drifted over 80 ms from the edit map; or mixed
 takes, or a stale board): rebuild the board and ask for a new Send.
 
-### 3 · ⛔ Boundary audit — HARD FAIL
+### 3 · ⛔ Boundary audit + map check — HARD FAIL
 After every gaps.py run, before anything renders:
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/boundary_audit.py" work/ work/edit_map.json`
@@ -128,9 +133,12 @@ After every gaps.py run, before anything renders:
 Exit 1 names each boundary inside a word or next to speech energy: re-derive it, never ship it.
 Not optional: word times are estimates (transcription-contract.md).
 
+Then `word_map.py`, then `map_check.py` (map-and-script-checks.md). Any block means no render: say its
+line to the client in plain words (also in `work/map_check.json`).
+
 ### 4 · Tighten gaps — in source coordinates, no render
 Run the gaps.py command Stage 2 (or 9) printed, exactly as printed. It writes `work/cuts.json` (whole
-frames, the one list render.py reads; `segments.json` is derived for the old path), `work/gap-plan.txt` and `work/listen.txt`. Each deletion is proven free of *sustained*
+frames; `segments.json` is derived for the old path), `work/gap-plan.txt` and `work/listen.txt`. Each deletion is proven free of *sustained*
 speech; a silent runt is absorbed, a speech-bearing runt reverts its deletion. Rule on every borderline
 it surfaces; never resolve one silently.
 
@@ -141,24 +149,19 @@ it surfaces; never resolve one silently.
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/render.py" work/ RAW.mp4 --master --scrub`
 
-No `--speed`: `cuts.json` holds the latest board's ruling (the Tweak Board's after Stage 9); never re-run gaps.py to match a speed.
-render.py reads only `work/cuts.json`, asserts the frame count, conforms to
-1080×1920 SDR with a dense GOP, and writes the review page. Never build from an intermediate (rule 2 of
-`${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/house-rules.md`).
+If the client approved a grade (reel-grade step 4), add `--grade videos/<reel>/grade.json`, so a new cut keeps the colour.
+Read `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/cut-checks.md`, "Render rules (Stage 6)".
 
 ### 7 · Verify + cut checks
 Run the four checks in `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/cut-checks.md`, in its
-order: re-transcribe the cut (Stage 7b names its gaps from that transcript), fix misheard words and check
-the call to action, repeats, then silence-only trims and murmurs. It gives each one's exit codes, limits
-and what to do with each hit.
+order, and act on each hit as it says.
 
 ### 7b · Silence budget — HARD FAIL
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/silence_budget.py" CUT.mp4 --probe work/probe.json --words work/cut/tx-cut.json`
 
 The share of the **rendered** cut where nobody talks: budget **12%**, exit 1 when over, the offending
-gaps ranked with the words either side. A cut can pass every local gate and still drag; this one is the
-**sum**. `silencedetect` logs at **info**: never pass it `-v error`. **Within budget is not approval.**
+gaps ranked with the words either side. `silencedetect` logs at **info**: never pass it `-v error`. **Within budget is not approval.**
 
 ### 8 · ⛔ Ear pass + Tweak Board — RULING
 Hand over the review page, `work/cut-review.html` (raw and cut side by side, the 20 largest cuts),

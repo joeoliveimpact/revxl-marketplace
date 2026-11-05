@@ -109,11 +109,39 @@ ck("spans_from_beats: a-roll moves at 60 and 150 only, each move_f long",
    moves == [(60, 68, "b1->b2"), (150, 158, "b3->b4")], moves)
 ov = [s for s in got if s["layer"] == "overlay"]
 ck("spans_from_beats: overlay span 30-90", ov == [{"layer": "overlay", "start_f": 30, "end_f": 90, "id": "ov"}], ov)
+got0 = eg.spans_from_beats(beats, 0)
+ck("spans_from_beats: move_f 0 gives no a-roll moves (no zero-length spans), overlay kept",
+   got0 == [{"layer": "overlay", "start_f": 30, "end_f": 90, "id": "ov"}], got0)
 try:
-    eg.spans_from_beats(beats, 0)
-    ck("spans_from_beats: move_f 0 raises ValueError", False, "no error")
+    eg.spans_from_beats(beats, -1)
+    ck("spans_from_beats: move_f -1 raises ValueError", False, "no error")
 except ValueError:
-    ck("spans_from_beats: move_f 0 raises ValueError", True)
+    ck("spans_from_beats: move_f -1 raises ValueError", True)
+
+# scene_kind (G2-a): a beat with a scene is ONE span of the scene's layer, instead of its layout's overlay span
+sc = [dict(beats[0], scene={"id": "lower-third", "slots": {}, "params": {}}),
+      dict(beats[1], scene={"id": "hook-title", "slots": {}, "params": {}}),
+      dict(beats[2], scene={"id": "cta-end-card", "slots": {}, "params": {}})] + beats[3:]
+KINDS = {"lower-third": "overlay", "hook-title": "takeover", "cta-end-card": "takeover"}
+want = [{"layer": "overlay", "start_f": 0, "end_f": 60, "id": "b1"},
+        {"layer": "takeover", "start_f": 30, "end_f": 90, "id": "ov"},
+        {"layer": "takeover", "start_f": 60, "end_f": 120, "id": "b2"}]
+for label, kinds in (("dict", KINDS), ("callable", KINDS.get)):
+    got = eg.spans_from_beats(sc, 0, scene_kind=kinds)
+    ck(f"spans_from_beats scene_kind ({label}): one span per scene beat, the overlay beat's own span replaced",
+       got == want, got)
+got = eg.spans_from_beats(sc, 8, scene_kind=KINDS)
+ck("spans_from_beats scene_kind: layout moves still come from the tiled beats",
+   sorted((s["start_f"], s["end_f"]) for s in got if s["layer"] == "aroll_transform") == [(60, 68), (150, 158)], got)
+ck("spans_from_beats scene_kind=None: scenes ignored, same as before",
+   eg.spans_from_beats(sc, 8) == eg.spans_from_beats(beats, 8), eg.spans_from_beats(sc, 8))
+try:
+    eg.spans_from_beats(sc, 0, scene_kind={"lower-third": "overlay"})
+    ck("spans_from_beats: a scene with no kind raises a plain ValueError", False, "no error")
+except ValueError as e:
+    ck("spans_from_beats: a scene with no kind raises a plain ValueError", "hook-title" in str(e), e)
+ck("gate on scene spans: the two takeovers overlapping 60-90 block",
+   any("overlaps" in p for p in eg.check(want, [], "30", 200)), eg.check(want, [], "30", 200))
 
 for script in ("effect_gate.py", "fps.py"):
     p = run(SCRIPTS / script, "--selftest")

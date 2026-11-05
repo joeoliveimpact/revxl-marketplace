@@ -1,0 +1,163 @@
+<!doctype html>
+<!-- Adapted from HyperFrames registry/components/testimonial-proof-card (https://github.com/heygen-com/hyperframes, tag v0.8.184, d15a274c), Apache License 2.0, Copyright 2026 HeyGen, Inc. Modified by editor-superengine: portrait 1080x1920, local GSAP 3.15.0, Inter 400, scene contract. -->
+<html lang="en" data-composition-variables='[
+  {"id":"quote","type":"string","label":"Quote","default":"We shipped our launch video in a single afternoon"},
+  {"id":"name","type":"string","label":"Name","default":"Maya Chen"},
+  {"id":"role","type":"string","label":"Role","default":"Head of Product"},
+  {"id":"company","type":"string","label":"Company","default":"NORTHWIND"},
+  {"id":"emphasis","type":"string","label":"Emphasis","default":"single afternoon"},
+  {"id":"accent","type":"color","label":"Accent","default":"#71f5a7"},
+  {"id":"font","type":"string","label":"Font family","default":"Inter"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="./vendor/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Inter"; src: url("./fonts/Inter-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; }
+      #hf-quote { position: relative; width: 1080px; height: 1920px; z-index: 400; font-family: "Inter"; font-weight: 400; color: #f8fafc; --accent: #71f5a7; }
+      #hf-quote .card { position: absolute; left: 510px; top: 845px; width: 860px; padding: 56px 60px; border-radius: 24px; border: 2px solid rgba(52, 58, 70, 0.6); background: rgba(20, 23, 28, 0.88); }
+      #hf-quote .glyph { font-size: 96px; line-height: 0.6; color: var(--accent); margin-bottom: 26px; }
+      #hf-quote .quote { line-height: 1.28; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+      /* Soft per-line mask: the padding gives descenders and the underline room, the negative margin cancels it. */
+      #hf-quote .mask { overflow: hidden; padding: 0.12em 0.24em 0.3em; margin: -0.12em -0.24em -0.3em; }
+      #hf-quote .card, #hf-quote .line, #hf-quote .byline { will-change: opacity; }
+      #hf-quote .word { display: inline-block; max-width: 100%; }
+      #hf-quote .em { position: relative; display: inline-block; max-width: 100%; }
+      #hf-quote .em-text { position: relative; z-index: 401; }
+      #hf-quote .mark { position: absolute; left: -2%; bottom: -0.14em; width: 104%; height: 0.24em; overflow: visible; z-index: 402; }
+      #hf-quote .byline { display: flex; align-items: center; gap: 30px; margin-top: 54px; }
+      #hf-quote .avatar { width: 104px; height: 104px; flex: none; border-radius: 50%; display: grid; place-items: center; border: 2px solid rgba(52, 58, 70, 0.7); background: color-mix(in srgb, var(--accent) 16%, #14171c); }
+      #hf-quote .initials { font-size: 36px; letter-spacing: 0.08em; }
+      #hf-quote .person { flex: 1 1 0; min-width: 0; display: grid; gap: 8px; overflow-wrap: anywhere; }
+      #hf-quote .name { font-size: 32px; line-height: 1.2; letter-spacing: 0.02em; }
+      #hf-quote .role { font-size: 26px; line-height: 1.2; color: #94a3b8; }
+      #hf-quote .company { flex: 0 1 auto; max-width: 240px; font-size: 24px; line-height: 1.2; letter-spacing: 0.3em; text-transform: uppercase; text-align: right; color: #94a3b8; overflow-wrap: anywhere; }
+    </style>
+  </head>
+  <body>
+    <div id="hf-quote" data-composition-id="hf-quote" data-start="0" data-duration="4.5" data-fps="30" data-width="1080" data-height="1920">
+      <figure class="card plate">
+        <div class="glyph" aria-hidden="true">&#8220;</div>
+        <blockquote class="quote slot" data-slot="quote"></blockquote>
+        <figcaption class="byline">
+          <div class="avatar plate"><span class="initials"></span></div>
+          <div class="person">
+            <span class="name slot" data-slot="name"></span>
+            <span class="role slot" data-slot="role"></span>
+          </div>
+          <span class="company slot" data-slot="company"></span>
+        </figcaption>
+      </figure>
+    </div>
+    <script>
+      (function () {
+        const v = window.__hyperframes.getVariables();
+        const root = document.getElementById("hf-quote");
+        const q = (s) => root.querySelector(s);
+        const str = (x) => String(x == null ? "" : x).trim().replace(/\s+/g, " ");
+        root.style.setProperty("--accent", v.accent);
+        root.style.fontFamily = JSON.stringify(v.font);
+        const quote = str(v.quote), name = str(v.name), emphasis = str(v.emphasis);
+        ["name", "role", "company"].forEach((k) => {
+          const el = root.querySelector('[data-slot="' + k + '"]');
+          el.textContent = str(v[k]);
+          if (!el.textContent) el.style.display = "none";
+        });
+        q(".initials").textContent = name.split(" ").filter(Boolean).slice(0, 2).map((p) => Array.from(p)[0].toUpperCase()).join("");
+
+        // Emphasis: first case-insensitive match in the quote, widened to whole words, becomes one token.
+        let a = -1, b = -1;
+        if (emphasis) {
+          const i = quote.toLowerCase().indexOf(emphasis.toLowerCase());
+          if (i >= 0) { a = quote.lastIndexOf(" ", i) + 1; b = quote.indexOf(" ", i + emphasis.length); if (b < 0) b = quote.length; }
+        }
+        const words = (t) => t.split(" ").filter(Boolean).map((w) => ({ text: w, em: false }));
+        const tokens = a >= 0 ? words(quote.slice(0, a)).concat([{ text: quote.slice(a, b), em: true }], words(quote.slice(b))) : words(quote);
+
+        // Font size rides 1/sqrt(chars), as in the source. Lines are split by character count, not by measuring
+        // the layout, so the split never depends on when the font finishes loading (F-13). A line that runs
+        // wider than estimated wraps inside its own mask.
+        const chars = Math.max(1, Array.from(quote).length);
+        const px = Math.max(46, Math.min(76, 540 / Math.sqrt(chars)));
+        q(".quote").style.fontSize = px.toFixed(2) + "px";
+        const split = (cap) => {
+          const rows = [];
+          tokens.forEach((t) => {
+            const row = rows[rows.length - 1];
+            if (row && row.len + 1 + t.text.length <= cap) { row.items.push(t); row.len += 1 + t.text.length; }
+            else rows.push({ items: [t], len: t.text.length });
+          });
+          return rows;
+        };
+        const cap = Math.max(1, Math.floor(740 / (0.56 * px)));
+        const n = split(cap).length;
+        let c = Math.max(1, Math.ceil(chars / n));
+        while (split(c).length > n) c++; // balance: the shortest line length that keeps the same line count
+        const rows = split(c);
+
+        const quoteEl = q(".quote");
+        quoteEl.setAttribute("aria-label", quote);
+        let path = null;
+        const lines = rows.map((row) => {
+          const mask = document.createElement("div");
+          mask.className = "mask";
+          const line = document.createElement("div");
+          line.className = "line";
+          row.items.forEach((t, i) => {
+            if (i > 0) line.appendChild(document.createTextNode(" "));
+            const span = document.createElement("span");
+            if (t.em) {
+              span.className = "em";
+              // The HTML parser puts <svg> in the SVG namespace, so no namespace URL is needed.
+              span.innerHTML = '<svg class="mark" viewBox="0 0 100 12" preserveAspectRatio="none" aria-hidden="true">' +
+                '<path d="M 2 7 C 20 4.5, 46 8.5, 66 6 C 80 4.5, 92 7.5, 98 5.5" fill="none" stroke-width="4.5" ' +
+                'stroke-linecap="round" stroke-linejoin="round"></path></svg><span class="em-text"></span>';
+              path = span.querySelector("path");
+              path.style.stroke = v.accent;
+              span.querySelector(".em-text").textContent = t.text;
+            } else {
+              span.className = "word";
+              span.textContent = t.text;
+            }
+            line.appendChild(span);
+          });
+          mask.appendChild(line);
+          quoteEl.appendChild(mask);
+          return line;
+        });
+
+        // The source's envelope; HOLD is the only elastic span, a short duration compresses every phase together.
+        const D = Math.max(0.001, parseFloat(root.dataset.duration));
+        const CARD = 0.5, LINE = 0.6, STAG = 0.18, LINES_AT = 0.15, BYLINE = 0.5, DRAW = 0.55;
+        const quoteEnd = LINES_AT + Math.max(0, lines.length - 1) * STAG + LINE;
+        const bylineAt = Math.max(0, quoteEnd - 0.15);
+        const drawAt = quoteEnd + 0.1;
+        const s = Math.min(1, D / Math.max(CARD, bylineAt + BYLINE, path ? drawAt + DRAW : 0));
+
+        const card = q(".card"), byline = q(".byline");
+        const tl = gsap.timeline({ paused: true });
+        tl.set(card, { xPercent: -50, yPercent: -50 }, 0);
+        tl.fromTo(card, { opacity: 0, y: 77 }, { opacity: 1, y: 0, duration: CARD * s, ease: "power3.out" }, 0);
+        lines.forEach((line, i) => {
+          tl.fromTo(line, { yPercent: 130, opacity: 0 }, { yPercent: 0, opacity: 1, duration: LINE * s, ease: "power3.out" }, (LINES_AT + i * STAG) * s);
+        });
+        tl.fromTo(byline, { opacity: 0, y: 48 }, { opacity: 1, y: 0, duration: BYLINE * s, ease: "power3.out" }, bylineAt * s);
+        if (path) {
+          // Both dash endpoints explicit so any seek is right; the ink stays hidden until its cue
+          // (at full offset the round cap would still paint a dot).
+          const len = path.getTotalLength();
+          path.style.strokeDasharray = String(len);
+          gsap.set(path, { strokeDashoffset: len, opacity: 0 });
+          tl.set(path, { opacity: 1 }, drawAt * s);
+          tl.fromTo(path, { strokeDashoffset: len }, { strokeDashoffset: 0, duration: DRAW * s, ease: "power2.inOut" }, drawAt * s);
+        }
+        // HOLD: dead still until the cut. No exit.
+        window.__timelines = window.__timelines || {};
+        window.__timelines["hf-quote"] = tl;
+      })();
+    </script>
+  </body>
+</html>

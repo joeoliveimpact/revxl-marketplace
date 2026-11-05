@@ -1,16 +1,22 @@
-"""The scene validator (G2-a, stdlib only): checks the shipped scenes and one beat's scene fill.
+"""The scene validator (G2-a, G2-b registry rules; stdlib only): checks the shipped scenes and one beat's scene fill.
 
 The scene contract. A scene is a folder scenes/<id>/ holding exactly what a beat's `scene:{id, slots, params}`
 needs to render it:
-  scene.json   {id, kind, slots, dur, params, source, licence}
+  scene.json   {id, category, kind, slots, dur, params, source, licence}
                id       = the folder name
+               category = what the scene is, one of lower-third, callout, counter, list, quote, stat-card,
+                          hook-title, cta-end-card (an own scene's category is its id; a vendored scene names
+                          the category it fills, e.g. hf-counter is "counter")
                kind     = "overlay" (sits over the a-roll, leaves most of the frame clear) or
                           "takeover" (may fill the frame)
                slots    = {<name>: {maxChars: int >= 1, default: sample text, hint?}}: the words a beat fills in
                dur      = [min_s, max_s], 0 < min <= max
-               params   = {<name>: {type: number|string|boolean|color, default, min?, max?, maxChars?, hint?}}
-               source, licence = where it came from and under what terms (never empty)
-  scene.html   a 1080x1920 HyperFrames composition of our own:
+               params   = {<name>: {type: number|string|boolean|color, default, min?, max?, maxChars?, enum?, hint?}}
+                          enum = the only values a fill may give: a non-empty list of the param's type, holding
+                          the default
+               source, licence = where it came from and under what terms (never empty); licence "own" =
+                          written by us, anything else = vendored (see registry-allow.json below)
+  scene.html   a 1080x1920 HyperFrames composition of our own (or our rewrite of a vendored block):
                - root element data-composition-id="<id>" with data-duration inside dur, CSS z-index in the
                  scene band 400-499 (nothing in the scene outside it), and no background on html, body or the
                  root (only the scene's own cards and plates are filled; their class is "plate")
@@ -27,13 +33,30 @@ needs to render it:
                  xPercent/yPercent, never CSS translate(-50%...) or translate: -50%
   preview.png  a real 9:16 PNG thumbnail rendered from the scene (tests/editor/scene_render_test.py
                --write-previews), never hand-made
+Assets: any other file in a scene folder that is not a font (.woff2 .woff .ttf .otf), and any non-font file
+scene.html references (src/href/poster/url(...) or a quoted image, audio or video file name; not ./vendor/gsap.min.js,
+./fonts/*, #fragments or data: URIs), must be listed by file name in that scene's registry-allow.json `files`
+(and a file in the folder must match that entry's sha256), or the scene FAILs as an unconfirmed asset. An own
+scene has no entry, so it may hold no asset at all.
+
+scenes/registry-allow.json: the vetted registry items, a JSON list of entries (or {"items": [...]}), one per item,
+  {id, category, source: "registry/<path>", tag, tag_commit, files: [{path, blob, sha256}],
+   ours_sha256, changed, licence, verdict: "allowed"|"refused", reason}
+It is required only when a vendored scene (licence not "own") exists; a tree of own scenes needs none. A vendored
+scene FAILs unless its id has exactly one entry with verdict "allowed" and the scene's category, the sha256 of its
+scene.html equals ours_sha256, and scene.html carries the header comment on line 2, right after a line-1
+<!doctype html> (or on line 1 when there is no doctype; a header any further down FAILs)
+  <!-- Adapted from HyperFrames <source> (https://github.com/heygen-com/hyperframes, tag <tag>, <first 8 of
+  tag_commit>), Apache License 2.0, Copyright 2026 HeyGen, Inc. Modified by editor-superengine: <what changed>. -->
+(whitespace may wrap; the URL in this one comment is not a reach to the internet). A refused item ships no folder.
 
 A fill is one beat's `scene` object {id, slots, params} (a whole beat holding one is accepted too). Every slot
 is given (use "" to leave one empty), no slot is longer than its maxChars, no unknown slot or param, every param
 has its type and range. The counter's display (prefix + value with commas and decimals + suffix) fits its
 maxChars, and so does its start (prefix + from + suffix); from lies between 0 and the value, so no number shown
 mid-count is longer than the final one. On a whole beat the counter's value equals the beat's value.
-Never invent numbers (VES-3 f): for the counter and the stat card, params.value and every number written in
+The counter rules apply to every scene of category "counter" (each rule only where the scene has that param).
+Never invent numbers (VES-3 f): for categories counter and stat-card, params.value and every number written in
 the slot text must appear in the transcript. "Appears" means some number said in the transcript is equal
 in value: commas are dropped, so "1,200" and "1200" match; a k/m/b or thousand/million/billion right after a
 number scales it, so "1.2k" and "1.2 thousand" read as 1200 (and also match the bare 1.2, so a counter showing
@@ -47,6 +70,7 @@ Prints one "OK <id>" or one "FAIL <id>: <reason>" per problem; exit 0 only when 
 something fails, 2 when the check itself could not run.
 """
 import argparse
+import hashlib
 import json
 import re
 import shutil
@@ -67,10 +91,21 @@ SCENES = P / "scenes"
 FONTS = P / "runtime" / "fonts"
 GSAP_SRC = "./vendor/gsap.min.js"
 FILES = ("scene.html", "scene.json", "preview.png")
-KEYS = ("id", "kind", "slots", "dur", "params", "source", "licence")
+KEYS = ("id", "category", "kind", "slots", "dur", "params", "source", "licence")
+CATEGORIES = ("lower-third", "callout", "counter", "list", "quote", "stat-card", "hook-title", "cta-end-card")
 KINDS = ("overlay", "takeover")
 PARAM_TYPES = ("number", "string", "boolean", "color")
-NUMBER_SCENES = ("counter", "stat-card")  # scenes that show a number, so VES-3 f applies
+NUMBER_SCENES = ("counter", "stat-card")  # categories that show a number, so VES-3 f applies
+ALLOW = "registry-allow.json"
+ENTRY_KEYS = ("id", "category", "source", "tag", "tag_commit", "files", "ours_sha256", "changed", "licence",
+              "verdict", "reason")
+FONT_EXT = (".woff2", ".woff", ".ttf", ".otf")
+HEADER = ("Adapted from HyperFrames {source} (https://github.com/heygen-com/hyperframes, tag {tag}, {commit}), "
+          "Apache License 2.0, Copyright 2026 HeyGen, Inc. Modified by editor-superengine: ")
+LEAD_COMMENT = re.compile(r"\A(?:<!doctype html>\n)?<!--(.*?)-->", re.S)  # line 1, or line 2 after <!doctype html>
+ASSET_REFS = (re.compile(r"\b(?:src|href|poster)\s*=\s*[\"']([^\"']+)[\"']", re.I),
+              re.compile(r"url\(\s*[\"']?([^\"')]+)", re.I),
+              re.compile(r"[\"']([^\"'\s<>]+\.(?:png|jpe?g|gif|webp|avif|svg|mp3|wav|ogg|m4a|aac|flac|mp4|mov|webm))[\"']", re.I))
 BAND = (400, 499)
 W, H = 1080, 1920
 BANNED = [
@@ -129,6 +164,8 @@ def spec_problems(sid, spec):
         return out
     if spec["id"] != sid:
         out.append(f"scene.json id {show(spec['id'])} is not the folder name {show(sid)}")
+    if spec["category"] not in CATEGORIES:
+        out.append(f"category {show(spec['category'])} must be one of {', '.join(CATEGORIES)}")
     if spec["kind"] not in KINDS:
         out.append(f"kind {show(spec['kind'])} must be overlay or takeover")
     if not isinstance(spec["slots"], dict) or not spec["slots"]:
@@ -152,8 +189,16 @@ def spec_problems(sid, spec):
                 out.append(f"{show(name)} is both a slot and a param; rename one")
             if not isinstance(p, dict) or p.get("type") not in PARAM_TYPES:
                 out.append(f"param {show(name)} needs a type: {', '.join(PARAM_TYPES)}")
-            elif "default" not in p or value_problem(name, p, p["default"]):
+            elif "default" not in p or value_problem(name, {k: x for k, x in p.items() if k != "enum"}, p["default"]):
                 out.append(f"param {show(name)} needs a default of its own type and range")
+            elif "enum" in p:
+                e = p["enum"]
+                if not (isinstance(e, list) and e):
+                    out.append(f"param {show(name)} has an enum that isn't a non-empty list of allowed values")
+                elif any(value_problem(name, {"type": p["type"]}, x) for x in e):
+                    out.append(f"param {show(name)} has an enum value that isn't a {p['type']}")
+                elif p["default"] not in e:
+                    out.append(f"param {show(name)} has the default {show(p['default'])}, which isn't in its enum")
     for k in ("source", "licence"):
         if not (isinstance(spec[k], str) and spec[k].strip()):
             out.append(f"{k} must say where the scene came from and under what terms (it is empty)")
@@ -177,6 +222,8 @@ def value_problem(name, p, v):
             return f"param {name} is {len(v)} characters; it fits {p['maxChars']} at most"
     elif t == "color" and not (isinstance(v, str) and HEX.fullmatch(v)):
         return f"param {name} must be a hex colour like #4f8cff, not {show(v)}"
+    if isinstance(p.get("enum"), list) and v not in p["enum"]:
+        return f"param {name} can't be {show(v)}; it must be one of {', '.join(json.dumps(x) for x in p['enum'])}"
     return None
 
 
@@ -237,9 +284,11 @@ def html_problems(sid, spec, html):
     if "__hyperframes.getVariables()" not in html:
         out.append("the script never reads window.__hyperframes.getVariables(), so fills can't reach the scene")
 
-    # offline: no remote URL, GSAP local and never inlined
+    # offline: no remote URL, GSAP local and never inlined (the vendored header comment's licence URL is no reach)
+    lead = LEAD_COMMENT.match(html)
+    net = html[lead.end():] if lead and lead.group(1).strip().startswith("Adapted from HyperFrames ") else html
     for rx in (REMOTE, re.compile(r"\bhttps?://|\b(?:src|href)\s*=\s*[\"']?\s*//", re.I)):
-        for mm in rx.finditer(html):
+        for mm in rx.finditer(net):
             out.append(f"scene.html reaches the internet ({show(mm.group(0), 50)}); a scene must work offline")
     srcs = re.findall(r"<script\b[^>]*\bsrc\s*=\s*[\"']([^\"']*)[\"']", html, re.I)
     if srcs != [GSAP_SRC]:
@@ -323,6 +372,98 @@ def png_problem(path):
     return None
 
 
+def read_allow(scenes):
+    """(entries by id, None), or (None, None) when there is no registry-allow.json, or (None, reason) when broken."""
+    path = Path(scenes) / ALLOW
+    if not path.is_file():
+        return None, None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        return None, f"{ALLOW} can't be read as JSON ({e})"
+    items = data.get("items") if isinstance(data, dict) else data
+    if not (isinstance(items, list) and all(isinstance(e, dict) for e in items)):
+        return None, f"{ALLOW} must be a list of entries (or {{\"items\": [...]}})"
+    ids = [e.get("id") for e in items]
+    dup = sorted({i for i in ids if ids.count(i) > 1}, key=str)
+    if dup:
+        return None, f"{ALLOW} lists {', '.join(map(show, dup))} more than once"
+    return {e.get("id"): e for e in items}, None
+
+
+def sha256(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def asset_refs(html):
+    """Local non-font files scene.html points at (GSAP, ./fonts, #fragments, data: and remote URLs left out)."""
+    refs = set()
+    for rx in ASSET_REFS:
+        for r in rx.findall(html):
+            r = r.strip().split("#")[0].split("?")[0]
+            low = r.lower()
+            if (not r or r == GSAP_SRC or low.startswith(("./fonts/", "fonts/", "data:", "http:", "https:", "//"))
+                    or low.endswith(FONT_EXT)):
+                continue
+            refs.add(r)
+    return refs
+
+
+def registry_problems(d, spec, allow, why):
+    """The G2-b rules: a vendored scene's allowed entry, sha256 and header; no unconfirmed asset in any scene."""
+    sid, out = d.name, []
+    entry = (allow or {}).get(sid)
+    if entry is not None and entry.get("verdict") != "allowed":
+        out.append(f"{ALLOW} gives {sid} the verdict {show(entry.get('verdict'))} ({entry.get('reason')}); a refused "
+                   "item ships no scene folder")
+        entry = None
+    if spec["licence"] != "own":
+        if why:
+            out.append(why)
+        elif allow is None:
+            out.append(f"licence is {show(spec['licence'])}, so it needs an allowed entry in scenes/{ALLOW}, and there "
+                       f"is no {ALLOW}")
+        elif entry is None:
+            if sid not in allow:
+                out.append(f"licence is {show(spec['licence'])}, so it needs an allowed entry in scenes/{ALLOW}; "
+                           f"there is none for {sid}")
+        else:
+            gone = [k for k in ENTRY_KEYS if k not in entry]
+            if gone:
+                out.append(f"its {ALLOW} entry is missing {', '.join(gone)}")
+            else:
+                if entry["category"] != spec["category"]:
+                    out.append(f"its {ALLOW} entry says category {show(entry['category'])} but scene.json says "
+                               f"{show(spec['category'])}")
+                ours = sha256(d / "scene.html")
+                if ours != entry["ours_sha256"]:
+                    out.append(f"scene.html sha256 {ours[:12]}... is not the ours_sha256 {show(entry['ours_sha256'], 20)}"
+                               f" in {ALLOW}; re-vet the change and record the new hash")
+                want = HEADER.format(source=entry["source"], tag=entry["tag"], commit=str(entry["tag_commit"])[:8])
+                lead = LEAD_COMMENT.match((d / "scene.html").read_text(encoding="utf-8"))
+                text = " ".join(lead.group(1).split()) if lead else ""
+                if not (text.startswith(want) and text[len(want):].strip(" .")):
+                    out.append(f"scene.html must open with the header comment <!-- {want}<what changed>. --> "
+                               "(Apache-2.0 4(b): a changed file says so)")
+    listed = {}
+    if entry is not None and isinstance(entry.get("files"), list):
+        listed = {Path(str(f.get("path", ""))).name: f.get("sha256") for f in entry["files"] if isinstance(f, dict)}
+    for f in sorted(p for p in d.rglob("*") if p.is_file()):
+        rel = f.relative_to(d).as_posix()
+        if rel in FILES or f.suffix.lower() in FONT_EXT:
+            continue
+        if f.name not in listed:
+            out.append(f"unconfirmed asset {rel}: it is not in this scene's {ALLOW} files, so its origin is not on "
+                       "record (Q3)")
+        elif sha256(f) != listed[f.name]:
+            out.append(f"unconfirmed asset {rel}: its sha256 is not the one {ALLOW} records for it")
+    for r in sorted(asset_refs((d / "scene.html").read_text(encoding="utf-8"))):
+        if Path(r).name not in listed:
+            out.append(f"unconfirmed asset {r} (referenced by scene.html): it is not in this scene's {ALLOW} files, "
+                       "so its origin is not on record (Q3)")
+    return out
+
+
 def scene_problems(d):
     sid = d.name
     missing = [f for f in FILES if not (d / f).is_file()]
@@ -336,6 +477,7 @@ def scene_problems(d):
     if out:
         return out
     out += html_problems(sid, spec, (d / "scene.html").read_text(encoding="utf-8"))
+    out += registry_problems(d, spec, *read_allow(d.parent))
     p = png_problem(d / "preview.png")
     return out + ([p] if p else [])
 
@@ -347,6 +489,10 @@ def cmd_check(scenes):
         print(f"FAIL {scenes.name}: no scene folders in {scenes}")
         return 1
     bad = 0
+    why = read_allow(scenes)[1]
+    if why:
+        bad += 1
+        print(f"FAIL {ALLOW}: {why}")
     for d in dirs:
         probs = scene_problems(d)
         bad += bool(probs)
@@ -402,19 +548,21 @@ def fill_problems(sid, fill, scenes=SCENES, words=None):
     if "font" in params and params["font"] not in font_faces(html):
         out.append(f"font {show(params['font'])} has no @font-face in this scene, so the render would use another "
                    f"font; it has {', '.join(font_faces(html))}")
-    if sid == "counter":
+    cat = spec.get("category")
+    if cat == "counter" and "value" in merged:  # each counter rule only where the scene has that param
+        cap = spec["params"]["value"].get("maxChars")
         for k in ("value", "from"):  # the count runs from -> value, so both ends must fit the display
-            shown = display(dict(merged, value=merged[k]))
-            if len(shown) > spec["params"]["value"]["maxChars"]:
+            shown = display(dict(merged, value=merged[k])) if k in merged else ""
+            if cap is not None and len(shown) > cap:
                 out.append(f"the counter would show {show(shown)} ({k}), {len(shown)} characters; it fits "
                            f"{spec['params']['value']['maxChars']} (prefix + number + suffix), so shorten it (F-11)")
         lo, hi = sorted((0, merged["value"]))
-        if not lo <= merged["from"] <= hi:
+        if "from" in merged and not lo <= merged["from"] <= hi:
             out.append(f"the counter counts from {merged['from']} to {merged['value']}; from must lie between 0 and "
                        f"the value, so every number shown mid-count fits the display (F-11)")
         if isinstance(beat_value, (int, float)) and not isinstance(beat_value, bool) and merged["value"] != beat_value:
             out.append(f"the counter ends on {merged['value']} but the beat's value is {beat_value}; they must match")
-    if sid in NUMBER_SCENES:
+    if cat in NUMBER_SCENES:
         claims = ([merged["value"]] if "value" in merged else []) + [v for t in slots.values() for v, _ in numbers(t)]
         if words is None:
             out.append(f"the {sid} shows a number, so it needs the transcript (--transcript <words.json>) to prove the "
@@ -475,6 +623,17 @@ def selftest():
         expect("counter without transcript fails", any("transcript" in p for p in fill_problems("counter", fill, SCENES)))
         long = {"id": "callout", "slots": {"text": "x" * 33}, "params": {}}
         expect("over maxChars fails", any("F-11" in p for p in fill_problems("callout", long, SCENES)))
+        hook = {"id": "hook-title", "slots": {"kicker": "Part 1", "title": "Hi"}, "params": {"entrance": "none"}}
+        expect("enum value allowed passes", fill_problems("hook-title", hook, SCENES) == [])
+        bad = fill_problems("hook-title", dict(hook, params={"entrance": "slide"}), SCENES)
+        expect("enum value outside fails, naming the allowed values", len(bad) == 1 and '"fade", "none"' in bad[0])
+        js = good / "hook-title" / "scene.json"
+        spec = json.loads(js.read_text(encoding="utf-8"))
+        for label, enum, why in (("empty", [], "non-empty list"), ("wrong type", ["fade", 1], "isn't a string"),
+                                 ("no default", ["none"], "isn't in its enum"), ("not a list", "fade", "non-empty list")):
+            spec["params"]["entrance"]["enum"] = enum
+            js.write_text(json.dumps(spec), encoding="utf-8")
+            expect(f"enum {label} fails check", any(why in p for p in scene_problems(good / "hook-title")))
     for f in fails:
         print(f"selftest FAILED: {f}")
     if not fails:

@@ -234,13 +234,15 @@ def main():
     shutil.rmtree(t, ignore_errors=True)
     t.mkdir()
     ff(c, PK, "-i", clip, "-map", "0:a:0", "-af", "apad=pad_dur=3", "-ac", "1", "-ar", "16000", t / "tail.wav")
-    os.environ["PATH"] = os.pathsep.join([str(Path(rt.tool("ffmpeg", PK)).parent), os.environ.get("PATH", "")])
     sys.path.insert(0, str(c.scripts))
     import transcribe_words as tw
     import wave
     with wave.open(str(t / "tail.wav")) as wf:
         dur = wf.getnframes() / wf.getframerate()
+    prev = os.environ.get("EDITOR_SE_HOME")
+    os.environ["EDITOR_SE_HOME"] = str(PK)  # FT.1b: sound_end's ffmpeg is runtime.tool()'s, so PK's state
     end = tw.sound_end(t / "tail.wav", dur)
+    os.environ.pop("EDITOR_SE_HOME") if prev is None else os.environ.update(EDITOR_SE_HOME=prev)
     planted = [dict(x) for x in pk_words] + [{"word": "subscribe", "start": round((end or dur) + 1.5, 3),
                                               "end": round((end or dur) + 1.9, 3)}]
     kept, dropped = tw.trim_tail(planted, end)

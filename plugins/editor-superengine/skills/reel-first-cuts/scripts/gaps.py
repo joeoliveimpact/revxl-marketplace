@@ -18,6 +18,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "_shared"))
 import runtime as rt  # noqa: E402
 from win_encoding import ensure_utf8_output  # noqa: E402
+# the Cut Board's cut time per word has one home: make_board.in_point over build_edit_map.board_sequence (H-N1-11)
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from build_edit_map import board_sequence  # noqa: E402
+from make_board import in_point  # noqa: E402
 
 # F-1: a silence right after one of these words is a beat: capped at the beat length, never at --internal
 BEAT_PUNCT = (",", ";", ":", ".", "?", "!", "\u2026", "\u2014")
@@ -157,28 +161,81 @@ def clear_of(words, a, b, guard):
     return max(parts, key=lambda p: p[1] - p[0])
 
 
-def keep_edge_words(edl, env, words, guard, fps, log):
-    """F-2: an EDL edge inside a word moves outward to keep the whole word. The new edge sits at the envelope
-    minimum within guard past the word, or between the two words when the neighbour starts sooner. Half a frame
-    of margin (when there is room) keeps the frame snap from moving it back into the word."""
+def board_cuts(em):
+    """{word id: the Cut Board's cut time for that word} (make_board.in_point over the edit map's own silences), or
+    None when a word has no parakeet_start (a tx.json word list): then keep_edge_words keeps its old rule."""
+    if not em["words"] or not all("parakeet_start" in w and "id" in w for w in em["words"]):
+        return None
+    seq = board_sequence(dict(words=em["words"], events=em.get("events", [])))
+    isl = [[x["start"], x["end"]] for x in em.get("silences", [])]
+    return {x["id"]: in_point(seq, k, isl)[0] for k, x in enumerate(seq)}
+
+
+def keep_edge_words(edl, env, words, guard, fps, log, cin=None):
+    """F-2: an EDL edge inside a word moves to that word's edge. The new edge sits at the envelope minimum within
+    guard past (or before) the word, or between the two words when the neighbour starts sooner. Half a frame of
+    margin (when there is room) keeps the frame snap from moving it back into the word.
+    H-N1-11: cin is board_cuts(). A word is picked for an EDL cut when its board cut time lies inside the cut's own
+    [src_in, src_out): the board's rule (selection_to_edl.py). A straddled picked word is kept whole (the edge moves
+    outward); a straddled word that is not picked is left out (the edge moves inward past it). A picked word always
+    stays whole: where a word that is not picked overlaps one, it still plays (in part or whole) and gap-plan.txt
+    logs the conflict. cin=None (no parakeet_start, the tx.json word list) keeps the old rule: every straddled word
+    is kept."""
     hf, out = 0.5 / fps, []
+
+    def place(lo, hi):
+        lo, hi = (lo + hf, hi - hf) if hi - lo > 2 * hf else ((lo + hi) / 2,) * 2
+        return env.quietest(lo, hi)
+
+    def before(k):
+        hi = words[k]["start"]
+        return place(hi - guard if k == 0 else min(hi, max(hi - guard, words[k - 1]["end"])), hi)
+
+    def after(k):
+        lo = words[k]["end"]
+        return place(lo, lo + guard if k + 1 == len(words) else max(lo, min(lo + guard, words[k + 1]["start"])))
+
+    def inside(t):
+        return [j for j, w in enumerate(words) if w["start"] < t < w["end"]]
+
+    def start(j):
+        return words[j]["start"]
+
+    def end(j):
+        return words[j]["end"]
+
     for i, c in enumerate(edl):
         c = dict(c)
+        a, b = c["src_in"], c["src_out"]
+
+        def picked(j):
+            return cin is None or a <= cin.get(words[j]["id"], -1.0) < b
+
         for side in ("src_out", "src_in"):
-            k = next((j for j, w in enumerate(words) if w["start"] < c[side] < w["end"]), None)
-            if k is None:
+            old, S, head = c[side], inside(c[side]), side == "src_in"
+            if not S:
                 continue
-            w = words[k]
-            if side == "src_out":
-                lo = w["end"]
-                hi = lo + guard if k + 1 == len(words) else max(lo, min(lo + guard, words[k + 1]["start"]))
+            keep = [j for j in S if picked(j)]
+            if keep:
+                k = S[0] if cin is None else (min(keep, key=start) if head else max(keep, key=end))
+                c[side] = before(k) if head else after(k)
+                what = "keep '%s'" % words[k]["word"].strip()
             else:
-                hi = w["start"]
-                lo = hi - guard if k == 0 else min(hi, max(hi - guard, words[k - 1]["end"]))
-            lo, hi = (lo + hf, hi - hf) if hi - lo > 2 * hf else ((lo + hi) / 2,) * 2
-            old, c[side] = c[side], env.quietest(lo, hi)
-            log.append("  cut%-3d %8.3f  EDGE moved to keep '%s' (%s %.3f -> %.3f)"
-                       % (i + 1, old, w["word"].strip(), side, old, c[side]))
+                k = max(S, key=end) if head else min(S, key=start)
+                new = after(k) if head else before(k)
+                clip = [j for j in range(len(words)) if picked(j) and
+                        (start(j) < new and end(j) > old if head else end(j) > new and start(j) < old)]
+                if clip:   # moving past the word would clip a picked word: that one stays whole
+                    new = before(min(clip, key=start)) if head else after(max(clip, key=end))
+                c[side] = new
+                what = "leave out '%s' (not picked)" % words[k]["word"].strip()
+            log.append("  cut%-3d %8.3f  EDGE moved to %s (%s %.3f -> %.3f)" % (i + 1, old, what, side, old, c[side]))
+            # A word not picked plays (in part or whole) when it sits under the new edge, or under the old edge that
+            # moved outward to keep a picked word whole: both are logged.
+            for j in sorted(set(S if keep else ()) | set(inside(c[side]))) if cin is not None else ():
+                if not picked(j):
+                    log.append("  cut%-3d %8.3f  EDGE conflict: '%s' was not picked but overlaps a picked word kept "
+                               "whole, so it plays (in part or whole)" % (i + 1, c[side], words[j]["word"].strip()))
         out.append(c)
     return out
 
@@ -438,7 +495,7 @@ def main():
             pre.append("  beat %.3fs clamped to %.3fs (0.20-0.40)" % (beat, min(0.40, max(0.20, beat))))
             print(pre[-1].strip())
             beat = min(0.40, max(0.20, beat))
-        edl = keep_edge_words(edl, env, words, a.guard, fps, pre)
+        edl = keep_edge_words(edl, env, words, a.guard, fps, pre, board_cuts(em))
     caps = {"internal": a.internal, "join": a.join, "beat_join": a.beat_join,
             "lead": a.lead, "tail": a.tail, "min_gap": a.min_gap}
     protect = []

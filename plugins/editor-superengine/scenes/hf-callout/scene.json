@@ -1,0 +1,16 @@
+{
+  "id": "hf-callout",
+  "category": "callout",
+  "kind": "overlay",
+  "slots": {
+    "text": {"maxChars": 80, "default": "Functionality was our goal from the very beginning", "hint": "the spoken sentence; its words light up one by one as the sweep crosses them"}
+  },
+  "dur": [2, 8],
+  "params": {
+    "sweep": {"type": "number", "default": 2.4, "min": 0.5, "max": 7, "hint": "seconds the highlight takes to cross the sentence; it starts at 0.8 s, so match it to how long the line is spoken"},
+    "accent": {"type": "color", "default": "#f5f5f7"},
+    "font": {"type": "string", "default": "Inter"}
+  },
+  "source": "HyperFrames registry/blocks/mk-callout-highlight (v0.8.184)",
+  "licence": "Apache-2.0"
+}

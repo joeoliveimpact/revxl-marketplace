@@ -148,16 +148,30 @@ def underlay(spans, fps, merge_gap_s=0.6):
     return out
 
 
-def spans_from_beats(beats, move_f):
+def spans_from_beats(beats, move_f, scene_kind=None):
     """Gate spans from S6a beats: overlay beats as overlays, and an a-roll move of move_f frames at each
-    boundary where the layout changes (starting on the boundary). No takeovers yet (G2-a adds them)."""
-    if not (_is_int(move_f) and move_f >= 1):
-        raise ValueError(f"move_f {move_f!r} is not a move length; use a whole number of frames >= 1")
-    out = [{"layer": "overlay", "start_f": b["start_f"], "end_f": b["end_f"], "id": b["id"]}
-           for b in beats if b.get("layout") == "overlay"]
+    boundary where the layout changes (starting on the boundary; move_f 0 = no moves).
+
+    scene_kind (a dict or a callable: scene id -> "overlay" | "takeover") turns on G2-a scenes: a beat with a
+    scene gives ONE span of that layer over [start_f, end_f), instead of the overlay span its layout would give.
+    A scene id with no kind raises ValueError with a plain line. None = scenes are ignored."""
+    if not (_is_int(move_f) and move_f >= 0):
+        raise ValueError(f"move_f {move_f!r} is not a move length; use a whole number of frames >= 0")
+    kind_of = scene_kind.get if isinstance(scene_kind, dict) else scene_kind
+    out = []
+    for b in beats:
+        sid = (b.get("scene") or {}).get("id") if kind_of else None
+        if sid is not None:
+            layer = kind_of(sid)
+            if layer not in ("overlay", "takeover"):
+                raise ValueError(f"beat {b['id']} uses scene {sid!r}, which has no kind (overlay or takeover); "
+                                 f"pick a scene from the scenes folder")
+            out.append({"layer": layer, "start_f": b["start_f"], "end_f": b["end_f"], "id": b["id"]})
+        elif b.get("layout") == "overlay":
+            out.append({"layer": "overlay", "start_f": b["start_f"], "end_f": b["end_f"], "id": b["id"]})
     solid = sorted((b for b in beats if b.get("layout") != "overlay"), key=lambda b: b["start_f"])
     for a, b in zip(solid, solid[1:]):
-        if a["layout"] != b["layout"]:
+        if move_f and a["layout"] != b["layout"]:
             out.append({"layer": "aroll_transform", "start_f": b["start_f"], "end_f": b["start_f"] + move_f,
                         "id": f"{a['id']}->{b['id']}"})
     return out

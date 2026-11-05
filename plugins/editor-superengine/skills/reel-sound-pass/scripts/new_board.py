@@ -22,6 +22,8 @@ not level matched and written tables go stale.
 speech_spans (where the voice speaks, in the cut's time) comes from work/cut/tx-cut.json when the cut was transcribed.
 voice_lufs is the picture's sound measured as bake.py measures voice.wav: the music level is set against it.
 Each bed row's play_lufs is its loudness from suggest_entry_s for the reel's length (bake.py measures the bed the same way).
+Each bed row's grid is its beat grid (music_fit.bed_grid, TRACK seconds), null when it has no steady beat; each library
+row's peak_s is where its hit lands (measure_sfx), so the board can start the file that much before a cue's time.
 """
 import argparse, json, math, shutil, sys
 from pathlib import Path
@@ -109,6 +111,7 @@ def main(argv=None):
         pl = music_fit.bed_loudness(reel / "beds" / b["file"], b["suggest_entry_s"],
                                     min(dur, (b["duration"] or 0) - b["suggest_entry_s"]))[0]
         b["play_lufs"] = round(pl, 2) if math.isfinite(pl) else None    # what the board sets the level against
+        b["grid"] = music_fit.bed_grid(reel, b["file"])                   # null: the board's beat-sync is off for it
 
     cues = load_list(a.cues)
     for c in cues:

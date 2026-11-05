@@ -3,7 +3,7 @@
   EDITOR_SE_HOME=<state> python -X utf8 -I tests/editor/sound_board_test.py [--case <name>]
 
 <state> is an installed editor state folder (node, chrome-headless-shell, puppeteer-core, ffmpeg); it is only read.
-Cases: send, reload, reject_all, reset, writes_guard, tips, hub_tab, music (default: all). Each case builds its own reel
+Cases: send, reload, reject_all, reset, writes_guard, tips, hub_tab, music, beat_sync (default: all). Each case builds its own reel
 by hand (config.json, waveforms.json, a tiny mp4) and opens its own browser, so any one can run alone.
 Prints one "✓ <case>" / "✗ <case>: <why>" line per case, then "N passed, M failed". Exit 0 only when all pass.
 """
@@ -38,6 +38,17 @@ BEDS = [{"file": "pack-bed.wav", "duration": 4.0, "peak_dbfs": -3.0, "rms_dbfs":
          "mood": "upbeat", "origin": "own", "licence_ok": True, "rights_confirmed": False, "suggest_entry_s": 1.5,
          "play_lufs": -14.0}]
 KEEP, REJ = ROW + " td:last-child > button:nth-child(1)", ROW + " td:last-child > button:nth-child(2)"
+# beat_sync: the shapes new_board.py writes (beds[i].grid, library[i].peak_s), built by hand to the shared interface
+GRID = {"bpm": 120.0, "period_s": 0.5, "phase_s": 0.12, "downbeat_s": 0.12, "confidence": 0.95}
+SYNC_LIB = [{"file": "tick.wav", "duration": 0.5, "peak_dbfs": -3.0, "rms_dbfs": -20.0, "peak_s": 0.25},
+            {"file": "long-swoosh.wav", "duration": 2.4, "peak_dbfs": -2.0, "rms_dbfs": -18.0}]
+SYNC_BEDS = [dict(BEDS[0], file="grid-bed.wav", title="Grid Bed", duration=8.0, suggest_entry_s=0.5, grid=GRID),
+             dict(BEDS[0], file="flat-bed.wav", title="Flat Bed", duration=8.0, suggest_entry_s=0.5, grid=None)]
+# entry 0 with the offset on a beat puts the reel beats on k * 0.5 s: c01 sits 0.03 s after one (inside the
+# min(period/8, 80 ms) = 62.5 ms window), c02 0.2 s after one (outside), c03 exactly on one
+SYNC_CUES = [{"id": "c01", "beat": "Hit", "short": "hit", "why": "near a beat", "time": 1.03, "candidates": ["tick.wav"]},
+             {"id": "c02", "beat": "Off", "short": "off", "why": "between beats", "time": 1.7, "candidates": ["long-swoosh.wav"]},
+             {"id": "c03", "beat": "On", "short": "on", "why": "on a beat", "time": 2.0, "candidates": ["long-swoosh.wav"]}]
 
 
 class Fail(Exception):
@@ -86,7 +97,7 @@ def load(p):
 
 def main():
     ensure_utf8_output()
-    names = ["send", "reload", "reject_all", "reset", "writes_guard", "tips", "hub_tab", "music"]
+    names = ["send", "reload", "reject_all", "reset", "writes_guard", "tips", "hub_tab", "music", "beat_sync"]
     ap = argparse.ArgumentParser(description="Sound Board done-test")
     ap.add_argument("--case", choices=names + ["all"], default="all")
     pick = ap.parse_args().case
@@ -318,6 +329,78 @@ def main():
         got = (reset["bed"], reset["vol"], reset["duck"], reset["ticks"], reset["request"])
         need(got == ("", "-18", "6", [False], []), f"after reset the music shows {got}")
 
+    def c_beat_sync():
+        def make(name):
+            d = reel(name, library=SYNC_LIB, beds=SYNC_BEDS, cues=SYNC_CUES)
+            for sub, f, secs in (("beds", "grid-bed.wav", 8), ("beds", "flat-bed.wav", 8), ("sfx", "tick.wav", 0.5)):
+                (d / sub).mkdir(exist_ok=True)  # real files, so the loop and the bed decode and play
+                p = run([tools["ffmpeg"], "-v", "error", "-y", "-f", "lavfi", "-i", f"sine=f=220:d={secs}", str(d / sub / f)])
+                need(p.returncode == 0, f"ffmpeg could not make {f}: {p.stderr.strip()[-300:]}")
+            return d
+        hub = ws / "editor/hub"
+        hub.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(STUB_HUB, hub / "index.html")  # test fixture only
+        tab = [{"do": "goto", "noRows": True}, {"do": "click", "sel": "#tab-sound"}, {"do": "frame", "sel": ".frame iframe"}]
+        flat, grid = LINE % 2 + " button.muse", LINE % 1 + " button.muse"
+        to_snap = [{"do": "click", "sel": flat}, {"do": "read"},                       # null grid
+                   {"do": "click", "sel": grid}, {"do": "read"},                       # grid, beat-sync still off
+                   {"do": "click", "sel": "#bsync"}, {"do": "read"},                   # on: the offset snaps
+                   {"do": "set", "sel": "#boffset", "value": 1.0}, {"do": "read"},     # a typed offset snaps too
+                   {"do": "click", "sel": "#bsnap"}, {"do": "waitSaved"}, {"do": "read"}]
+
+        def times(read):
+            return [r["time"] for r in read["rows"]]
+
+        def cues_snapped(read):  # the assert the reverse run must trip
+            need(times(read) == ["1.000", "1.700", "2.000"],
+                 f"after Snap cues to the beat the cue times are {times(read)} (wanted c01 1.03 -> 1.000, the rest put)")
+
+        d = make("sync-reel")
+        loop = (ROW % 1) + " td:last-child > button:nth-child(3)"   # loop with picture / stop loop
+        out = browse("sync-reel", tab + to_snap + [
+            {"do": "click", "sel": KEEP % 1}, {"do": "click", "sel": loop},
+            {"do": "waitTrue", "js": "SCHED.c01 != null"}, {"do": "eval", "js": "SCHED.c01"},
+            {"do": "click", "sel": loop}, {"do": "waitSaved"}, {"do": "click", "sel": "#send"}, {"do": "waitSent"}],
+            page="editor/hub/")
+        r_flat, r_off, r_on, r_typed, r_snap = (r["music"] for r in out["reads"][:5])
+        need(r_flat["sync"] == {"checked": False, "disabled": True, "note": "no steady beat found in this track",
+                                "snapDisabled": True}, f"with a null grid beat-sync shows {r_flat['sync']}")
+        need(r_off["sync"]["disabled"] is False and r_off["sync"]["checked"] is False and r_off["offset"] == "0.50"
+             and r_off["beatTicks"] == 0,
+             f"grid bed, beat-sync off: {r_off['sync']}, offset {r_off['offset']}, {r_off['beatTicks']} ticks")
+        need(r_on["sync"]["checked"] and r_on["offset"] == "0.62",
+             f"toggled on: offset {r_on['offset']} (wanted the nearest beat 0.62), {r_on['sync']}")
+        need(r_typed["offset"] == "1.12", f"typed 1.0 with beat-sync on: offset {r_typed['offset']} (wanted 1.12)")
+        need(r_snap["beatTicks"] == 6, f"{r_snap['beatTicks']} beat ticks on the timeline (wanted 6: 0, 0.5 ... 2.5)")
+        cues_snapped(out["reads"][4])
+        start = out["reads"][5]
+        need(isinstance(start, (int, float)) and abs(start - (1.0 - 0.25)) < 1e-3,
+             f"c01 (peak_s 0.25 at 1.0 s) was scheduled to start at {start} s, wanted 0.75")
+        doc = load(d / "sound-selection.json")
+        need(set(doc) == PAYLOAD_KEYS, f"payload keys {sorted(doc)}")
+        bed = doc["bed"]
+        got = (bed["file"], bed["beat_sync"], bed["offset_s"])
+        need(got == ("grid-bed.wav", True, 1.12), f"sent bed (file, beat_sync, offset_s) = {got}")
+        sent = [(c["id"], c["time"], c["peak_s"]) for c in doc["cues"] + doc["undecided"]]
+        need(sent == [("c01", 1.0, 0.25), ("c02", 1.7, 0), ("c03", 2.0, 0)], f"sent (id, time, peak_s) = {sent}")
+        r = browse("sync-reel", tab + [{"do": "read"}, {"do": "click", "sel": "#bsync"}, {"do": "waitSaved"}, {"do": "read"}],
+                   page="editor/hub/")["reads"]
+        back, off = r[0], r[1]
+        got = (back["music"]["bed"], back["music"]["sync"]["checked"], back["music"]["offset"], times(back))
+        need(got == ("grid-bed.wav", True, "1.12", ["1.000", "1.700", "2.000"]), f"after a reload: {got}")
+        got = (off["music"]["sync"]["checked"], off["music"]["offset"], times(off), off["music"]["beatTicks"])
+        need(got == (False, "1.12", ["1.000", "1.700", "2.000"], 0), f"turned off, nothing moves back: {got}")
+        # reverse: the same clicks with every snap turned off by the page flag; the cue assert must fail
+        make("sync-rev")
+        rev = browse("sync-rev", tab + [{"do": "eval", "js": "window.BEAT_SNAP_OFF = true"}] + to_snap,
+                     page="editor/hub/")["reads"][-1]
+        try:
+            cues_snapped(rev)
+        except Fail:
+            pass
+        else:
+            raise Fail(f"with snapping off the cue check still passed: {times(rev)}")
+
     fns = {"send": ("send: decide one cue, Send writes sound-selection.json with every undecided cue", c_send),
            "reload": ("reload: decisions come back from disk in a new browser", c_reload),
            "reject_all": ("reject_all: Cancel changes nothing, OK rejects every cue", c_reject_all),
@@ -326,7 +409,9 @@ def main():
            "tips": ("tips: long sound, doubled sound and closer-over-speech tips show and Send still works", c_tips),
            "hub_tab": ("hub_tab: inside the hub's iframe, a gain and nudge adjust saves and goes out on Send", c_hub_tab),
            "music": ("music: inside the hub's iframe, pick, preview, level, dip, rights tick and a free-track request "
-                     "go out on Send and come back on reload", c_music)}
+                     "go out on Send and come back on reload", c_music),
+           "beat_sync": ("beat_sync: inside the hub's iframe, beat-sync snaps the music start and near cues to a beat, "
+                         "a hit plays peak_s early, Send and reload carry it, a null grid disables it", c_beat_sync)}
     try:
         for n in want:
             case(*fns[n])

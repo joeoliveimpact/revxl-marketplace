@@ -1,13 +1,11 @@
 # Design loop: comps, ladders and rulings
 
-The 0.1.0 `reel-motion-comps` skill, moved here when it merged into reel-canvas-build, with
-small fixes (the script path, a code block, and the safe-zone and preview notes). Use it to design or iterate a visual (the hook, an opening look, a
+Use it to design or iterate a visual (the hook, an opening look, a
 treatment) before anything is rendered for real. `<editor python>` is the editor's own
 Python, as in SKILL.md's Ground rules.
 
-The loop that landed a reel hook in 12 rungs without a wasted round, after the same
-session burned roughly 590k tokens learning it the wrong way first. Two laws above
-everything: **the reviewer rules from frames, never prose** · **iteration is parametric,
+Two laws above
+everything: **the reviewer (the client) rules from frames, never prose** · **iteration is parametric,
 not conversational.**
 
 Before the first comp, read
@@ -16,34 +14,34 @@ governing docs first, and show divergent directions before one finished thing).
 
 ## The loop
 
-1. **Directions first, divergent in APPROACH.** 2–4 options per open decision, low-fi,
+1. **Directions first, divergent in APPROACH.** 2–4 directions per open decision, low-fi,
    over the REAL plates (never a proxy — check plate resolution before comping; a 2x
    upscale is a picture judgment on a proxy). Nothing that is the dictionary
-   illustration of its word. Each option's label strip names its approach and tradeoff.
+   illustration of its word. Each direction's label strip names its approach and tradeoff.
    The hook direction is also bound by
    `${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/frame-zero-hook.md`: the complete
    visual text hook is readable at 0.000s, and only the secondary pieces may animate in.
 2. **Build one CSS/param factory per element under iteration.** A hook treatment exposed
    as `hook_white_css(halo, lift, blur, alpha)` is the pattern: every craft variable is a
    parameter. First build may be an agent; **every subsequent tweak is a main-thread
-   parameter change + re-render** — seconds, near-free. Five agent dispatches for one
-   chip treatment is the measured failure mode this rule exists to prevent.
+   parameter change + re-render** — seconds, near-free.
 3. **Tweaks ship as LADDERS, not single attempts.** Spread / blur / opacity / stroke:
    render 3–4 rungs plus ONE stacked comparison image (crop to the element region) so the
    reviewer judges the whole axis in a single look. Measure don't opine: the counter-flood
    % (accent colour remaining in letter bowls) is the lift-vs-glow discriminator; opacity
    in chained drop-shadows is NON-linear (−40% alpha bought −15pp, −20% bought −5.5pp).
-4. **The reviewer's picks are rulings.** Number them, write them into the plan's rulings
-   table the same turn, and cite them on every artboard label strip that implements them.
+4. **The reviewer's picks are rulings.** Number them, write them down the same turn, and cite
+   them on every artboard label strip that implements them.
    Rulings come off rendered frames, never off a description:
    `${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/preview-before-render.md`.
 
-## Measurement kit (all caught real defects)
+Done when the client's pick is a numbered ruling; a rejected ladder goes back to step 3.
 
-- **Ink measured on rendered Ranges**, never block boxes (caught a 104px overrun).
-- **SVG ink bbox measured, never the declared viewBox** (one brand wordmark SVG's box is
-  47% air; applying its correction to a different wordmark would CLIP — verify which file
-  a viewBox belongs to before using it).
+## Measurement kit
+
+- **Ink measured on rendered Ranges**, never block boxes.
+- **SVG ink bbox measured, never the declared viewBox** (a viewBox correction applied to a
+  different wordmark would clip it — verify which file a viewBox belongs to before using it).
 - **SVG clips its own filter output** — `overflow:visible` on any svg carrying a
   drop-shadow, or the shadow slices at the letter edge.
 - **Unmasked font control**: a loaded face must NOT measure the same width as its
@@ -59,8 +57,8 @@ governing docs first, and show divergent directions before one finished thing).
   It finds text-bearing elements by the hex constants at the top of the script (`TEXTISH`,
   `ANNOTATION_FILLS`), which come from one sketch convention. On comps that use other colours it
   detects nothing and reports clean, so before the first run set those constants to the comp's
-  own text and annotation colours. Pre-check only, never proof. The safe-zone check that counts
-  is the final render's own check, not this one; until it ships, look at the rendered frame.
+  own text and annotation colours. The safe-zone check that counts
+  is the final video's own check, not this one; until it ships, look at the rendered frame.
 
 ## Conventions
 
@@ -69,19 +67,18 @@ governing docs first, and show divergent directions before one finished thing).
 - The approved script copy verbatim, always. UI mock content (thread questions,
   filenames) is allowed but labeled "UI CONTENT, not script" on the artboard.
 - Comp animations = one infinite CSS keyframe timeline per element (cues as % of loop);
-  JS class-toggle restarts silently fail in embedded previews. Comps are previews only: the
-  final render never loops and never uses CSS keyframe animation, so a comp's timeline is
+  JS class-toggle restarts silently fail in the Browser pane. Comps are mock-ups only: the
+  final video never loops and never uses CSS keyframe animation, so a comp's timeline is
   never ported as-is.
-- Design comps preview CHOREOGRAPHY, never the clock — stamp LANDS ON onset, pop FIRES
-  ON onset re-verify against the word map at the port into the animation tool.
-- Word maps: consume by WORD index only, never segment index; skip empty-text tokens.
+- Design comps show choreography, never the clock — a stamp lands on its word's onset
+  and a pop fires on its onset; re-check both against the word list when porting
+  to the render.
+- Word lists: consume by word number only, never segment number; skip empty-text tokens.
 
 ## Token discipline (the melt rules)
 
-- Checker/audit passes only on spec-bearing steps (timing derivations, word maps,
+- Checker/audit passes only on spec-bearing steps (timing derivations, word lists,
   governing docs). A recolor gets a look, not a 120k audit.
-- Kill a runaway agent as soon as its useful work has landed; salvage and finish
-  main-thread (a 356k-token agent was killed mid-font-work; everything after cost
-  ~nothing).
+- Kill a runaway agent as soon as its useful work has landed; salvage and finish main-thread.
 - **One review surface** — a single canvas the reviewer comments on. Never mirror every
   iteration into a second copy.

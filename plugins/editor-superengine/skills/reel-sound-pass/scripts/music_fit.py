@@ -3,6 +3,7 @@ fixed dip under speech. Standard library + numpy; bake.py and new_board.py call 
 
   suggest_entry(src, sr, cut_len)  the track position (s) where its strongest section starts
   place(reel, bed, N, dur, voice)  (music stem, placement detail) for the board's bed pick
+  bed_grid(reel, file)             the bed's beat grid (beat_grid.grid), cached in work/beats/; None: no steady beat
 
 Level: the board's level is relative to the voice, so the applied gain is
 (the voice stem's integrated LUFS - the bed's integrated LUFS) + level_db (-18 suggested), both measured the same
@@ -13,14 +14,19 @@ The bed is never looped: when the track runs out it has already faded out. The c
 The dip is a fixed gain envelope from the transcript's speech spans (-duck_db inside speech, 80 ms in, 300 ms out,
 linear in dB), never a signal-driven compressor. Its exact breakpoints go into placement.json so an editor can
 rebuild it as volume keyframes on the original bed file.
+Beat-sync (the board's option, off by default): the track start (offset_s) snaps to the nearest beat of the bed's
+grid, and when the track would run out before the cut ends it steps back whole bars (4 beats) until it lasts, but
+never before the first bar start. A track beat b then plays at reel time entry_s + (b - offset_s). The cut never
+moves; only the music does.
 """
-import json, sys
+import hashlib, json, sys
 from pathlib import Path
 
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _media import SR, decode, loudness  # noqa: E402
+from _media import SR, decode, loudness, write_json  # noqa: E402
+import beat_grid  # noqa: E402
 
 REF_LUFS, LEVEL_DB = -14.0, -18.0
 DUCK_DB, DUCK_MIN = 6.0, 4.0
@@ -117,6 +123,43 @@ def bed_loudness(path, offset, length):
     return loudness(path)[0], "whole"
 
 
+def bed_grid(reel, file):
+    """The beat grid of <reel>/beds/<file>, or None (no steady beat, or it couldn't be read). Cached in
+    <reel>/work/beats/<file>.json, keyed by the file's sha256, so the board and the bake read the same grid."""
+    path = Path(reel) / "beds" / file
+    cache = Path(reel) / "work" / "beats" / (file + ".json")
+    try:
+        sha = hashlib.sha256(path.read_bytes()).hexdigest()
+        c = json.loads(cache.read_text(encoding="utf-8")) if cache.is_file() else {}
+        if c.get("sha256") == sha:
+            return c.get("grid")
+        g = beat_grid.grid(path)
+    except Exception:  # noqa: BLE001  (no grid is the answer to anything unreadable; never a crash)
+        return None
+    write_json(cache, {"sha256": sha, "grid": g})
+    return g
+
+
+def snap(reel, b, entry, offset, track_s, cut_end):
+    """(track start, beat detail or None) for beat-sync: the nearest beat, then whole bars back until the track lasts
+    to cut_end (or the first bar start is reached). Prints a plain line when it moved by bars or found no beat."""
+    g = bed_grid(reel, b["file"])
+    if not g:
+        print("No steady beat was found in %s, so the music starts where the board set it." % b["file"])
+        return offset, None
+    p, ph, down = g["period_s"], g["phase_s"], g["downbeat_s"]
+    o = ph + max(0, round((offset - ph) / p)) * p
+    bars = 0
+    while entry + track_s - o < cut_end - 1e-6 and o - 4 * p >= down - 1e-6:
+        o -= 4 * p
+        bars += 1
+    if bars:
+        print("The music starts %d bar%s earlier so it lasts the whole reel." % (bars, "" if bars == 1 else "s"))
+    o = round(o, 4)
+    return o, {"bpm": g["bpm"], "period_s": p, "phase_s": ph, "downbeat_s": down, "offset_from_s": offset,
+               "offset_s": o}
+
+
 def place(reel, b, N, dur, voice=None):
     """(music stem float32 N x 2, placement detail dict or None). Entry/exit/offset/fades/stops as the board played
     them, then the level (against the voice stem file `voice`) and the dip. Prints a plain line for a raised dip, a
@@ -128,6 +171,9 @@ def place(reel, b, N, dur, voice=None):
     src = decode(path)
     t = np.arange(N) / SR
     entry, offset = b.get("entry_s") or 0, b.get("offset_s") or 0
+    beat = None
+    if b.get("beat_sync"):
+        offset, beat = snap(reel, b, entry, offset, len(src) / SR, min(b.get("exit_s") or dur, dur))
     exit_ = min(b.get("exit_s") or dur, dur, entry + len(src) / SR - offset)   # the track's end: never looped
     bed_lufs, scope = bed_loudness(path, offset, exit_ - entry)
     if not np.isfinite(bed_lufs):
@@ -174,5 +220,6 @@ def place(reel, b, N, dur, voice=None):
             "level": {"level_db": level, "voice_lufs": voice_lufs, "bed_lufs": bed_lufs,
                       "bed_lufs_scope": scope, "gain_db_applied": round(gain, 3)},
             "duck": {"depth_db": depth, "attack_s": ATTACK_S, "release_s": RELEASE_S, "spans": spans or [],
-                     "keyframes": kf}}
+                     "keyframes": kf},
+            "beat": beat}
     return stem, info

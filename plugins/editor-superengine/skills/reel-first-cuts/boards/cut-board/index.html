@@ -23,6 +23,7 @@ main{max-width:1080px;margin:0 auto;padding:16px 18px 80px}
 .sil.on{border-color:var(--acc);color:var(--acc);background:#fdf1ec}.sil.open{outline:2px solid var(--acc)}
 .chips{display:inline-flex;gap:4px;margin:0 4px;vertical-align:1px}.chips button{padding:1px 7px;font-size:12px}.chips button.on{background:var(--acc);border-color:var(--acc);color:#fff}
 .sub{font-size:12px;color:var(--warn);margin-top:4px}.sub label{cursor:pointer}
+.sub.review{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.sub.review .why{color:var(--mute)}
 .hint{font-size:12px;color:var(--mute);margin:2px 0 0 8px}
 .gap{display:flex;gap:6px;align-items:center;margin:6px 0 10px 8px;font-size:12px;color:var(--mute)}
 .foot{display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap}.foot input{font:inherit;border:1px solid var(--line);border-radius:6px;padding:4px 8px;flex:1;min-width:200px}
@@ -173,6 +174,14 @@ function seedRm(l){
   l.attempts.forEach((a,j)=>{ const ids=a.words.filter(w=>a.sub_retakes.some(sr=>w.s>=sr.src_from-0.01&&w.s<sr.src_to-0.01)).map(w=>w.i); if(ids.length) rm[String(j)]=ids; });
   return rm;
 }
+// reworded retakes (make_board's attempts[].review) are never struck by default; the client's keep is stored as rm,
+// so it rides the Send and comes back on reload. Nothing struck = both kept.
+function keepOf(rm,h){ const f=h.first.some(x=>rm.includes(x)), sc=h.second.some(x=>rm.includes(x));
+  return !f&&h.second.every(x=>rm.includes(x))?'first':!sc&&h.first.every(x=>rm.includes(x))?'second':!f&&!sc?'both':null; }
+function reviewHTML(i,j,a,s){ const rm=(s.rm||{})[String(j)]||[];
+  return (a.review||[]).map((h,r)=>{ const k=keepOf(rm,h);
+    return `<div class="sub review" data-review="${i}:${j}:${r}"><b class="rflag">Said twice in different words: pick one</b> <span class="why">${esc(h.why)}</span>`+
+      [['first','Keep first'],['second','Keep second'],['both','Keep both']].map(([v,n])=>`<button data-keep="${i}:${j}:${r}:${v}" class="${k===v?'on':''}" aria-pressed="${k===v}">${n}</button>`).join('')+'</div>'; }).join(''); }
 function fresh(){
   return { v:2, reel:C.reel, gap_default_ms:C.gap_default_ms, speed:C.speed_default, beat_ms:C.beat_ms,
     // the board this ruling is made on, fixed when the ruling starts and never re-stamped at save (R1)
@@ -297,7 +306,7 @@ function render(first){
     L.attempts.forEach((a,j)=>{
       const on=s.pick===j, row=document.createElement('div'); row.className='att'+(on?' pick':'');
       row.innerHTML=`<div class="tag"><b>take ${a.take}</b> #${a.attempt}<br>${a.src_in.toFixed(2)}–${a.src_out.toFixed(2)}${a.snapped.every(x=>x)?'':' <span class="unsnap" title="some word edges in this read have no silence to sit in: a cut there lands mid-speech and gets waveform-checked at Stage 3">unsnapped</span>'}</div>
-        <div class="txt">${attemptHTML(i,j,a,s,on)}${a.sub_retakes.length?`<div class="sub">repeated phrase: first read removed, last kept (${a.sub_retakes.map(sr=>(sr.src_to-sr.src_from).toFixed(1)+'s').join(', ')}) - click any word to put it back</div>`:''}</div>
+        <div class="txt">${attemptHTML(i,j,a,s,on)}${a.sub_retakes.length?`<div class="sub">repeated phrase: first read removed, last kept (${a.sub_retakes.map(sr=>(sr.src_to-sr.src_from).toFixed(1)+'s').join(', ')}) - click any word to put it back</div>`:''}${reviewHTML(i,j,a,s)}</div>
         <div class="ctl"><button data-play="${i}:${j}">▶</button>${on&&kept?`<button data-play="cut:${i}" data-label="▶ as cut">▶ as cut</button>`:''}<button data-pick="${i}:${j}" class="${on?'on':''}">${on?'picked':'use'}</button></div>`;
       d.appendChild(row);
     });
@@ -334,6 +343,8 @@ document.addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b) return; let v;
   if((v=b.dataset.play)){ if(v.startsWith('cut:')) playCut(+v.slice(4)); else { const [i,j]=v.split(':').map(Number), a=C.lines[i].attempts[j]; play(v,a.take,a.src_in,a.src_out); } }
   else if((v=b.dataset.pick)){ const [i,j]=v.split(':').map(Number); S.lines[i].pick=j; S.lines[i].drop=false; S.lines[i].flag=null; render(); }
+  else if((v=b.dataset.keep)){ const [i,j,r,k]=v.split(':'), h=C.lines[+i].attempts[+j].review[+r], s=S.lines[+i], both=h.first.concat(h.second);
+    s.rm[j]=(s.rm[j]||[]).filter(x=>!both.includes(x)).concat(k==='first'?h.second:k==='second'?h.first:[]); render(); }
   else if((v=b.dataset.drop)){ const s=S.lines[+v]; s.drop=!s.drop; if(!s.drop) s.flag=null; render(); }
   else if((v=b.dataset.gap)){ const ms=msOf(b.dataset.ms); S.lines[+v].gap_after= ms==='default'?{mode:'default'}:{mode:'override',ms}; openGap=null; render(); }
   else if((v=b.dataset.silset)){ const [i,j,k]=v.split(':').map(Number); const st=S.lines[i].sil[String(j)]||(S.lines[i].sil[String(j)]={}); const ms=msOf(b.dataset.ms); if(ms==='default') delete st[k]; else st[k]=ms; openSil=null; render(); }

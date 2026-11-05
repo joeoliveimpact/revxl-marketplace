@@ -1,0 +1,77 @@
+<!doctype html>
+<!-- Adapted from HyperFrames registry/blocks/mk-specs-list (https://github.com/heygen-com/hyperframes, tag v0.8.184, d15a274c), Apache License 2.0, Copyright 2026 HeyGen, Inc. Modified by editor-superengine: portrait 1080x1920, local GSAP 3.15.0, Inter 400, scene contract. -->
+<html lang="en" data-composition-variables='[
+  {"id":"label1","type":"string","label":"Row 1 label","default":"Design"},
+  {"id":"value1","type":"string","label":"Row 1 value","default":"Minimal, clean lines"},
+  {"id":"label2","type":"string","label":"Row 2 label (empty hides it)","default":"Typography"},
+  {"id":"value2","type":"string","label":"Row 2 value","default":"Inter Regular"},
+  {"id":"label3","type":"string","label":"Row 3 label (empty hides it)","default":"Motion"},
+  {"id":"value3","type":"string","label":"Row 3 value","default":"Restrained, no bounce"},
+  {"id":"label4","type":"string","label":"Row 4 label (empty hides it)","default":"Color"},
+  {"id":"value4","type":"string","label":"Row 4 value","default":"Stage + one accent"},
+  {"id":"label5","type":"string","label":"Row 5 label (empty hides it)","default":"Shapes"},
+  {"id":"value5","type":"string","label":"Row 5 value","default":"Capsules & rounded cards"},
+  {"id":"underline","type":"boolean","label":"Accent underline sweep","default":true},
+  {"id":"scrim","type":"number","label":"Left-edge scrim (0-1)","default":1},
+  {"id":"accent","type":"color","label":"Accent","default":"#7d5cff"},
+  {"id":"font","type":"string","label":"Font family","default":"Inter"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="./vendor/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Inter"; src: url("./fonts/Inter-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; }
+      #hf-list { position: relative; width: 1080px; height: 1920px; overflow: hidden; z-index: 400; font-family: "Inter"; font-weight: 400; --accent: #7d5cff; }
+      #hf-list .scrim { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: linear-gradient(90deg, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 62%); }
+      #hf-list .col { position: absolute; left: 100px; top: 845px; width: 820px; }
+      #hf-list .label { display: block; font-size: 56px; line-height: 1.15; letter-spacing: -0.015em; color: #f5f5f7; overflow-wrap: anywhere; }
+      #hf-list .value { display: block; margin-top: 8px; font-size: 42px; line-height: 1.2; letter-spacing: -0.01em; color: #a1a1a6; overflow-wrap: anywhere; }
+      #hf-list .line { position: relative; margin-top: 20px; height: 2px; border-radius: 2px; overflow: hidden; background: rgba(255, 255, 255, 0.18); }
+      #hf-list .scrim, #hf-list .row { will-change: opacity; }
+      #hf-list .fill { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: var(--accent); transform-origin: left center; }
+    </style>
+  </head>
+  <body>
+    <div id="hf-list" data-composition-id="hf-list" data-start="0" data-duration="4" data-fps="30" data-width="1080" data-height="1920">
+      <div class="scrim plate"></div>
+      <div class="col">
+        <div class="row"><span class="label slot" data-slot="label1"></span><span class="value slot" data-slot="value1"></span><div class="line plate"><div class="fill plate"></div></div></div>
+        <div class="row"><span class="label slot" data-slot="label2"></span><span class="value slot" data-slot="value2"></span><div class="line plate"><div class="fill plate"></div></div></div>
+        <div class="row"><span class="label slot" data-slot="label3"></span><span class="value slot" data-slot="value3"></span><div class="line plate"><div class="fill plate"></div></div></div>
+        <div class="row"><span class="label slot" data-slot="label4"></span><span class="value slot" data-slot="value4"></span><div class="line plate"><div class="fill plate"></div></div></div>
+        <div class="row"><span class="label slot" data-slot="label5"></span><span class="value slot" data-slot="value5"></span><div class="line plate"><div class="fill plate"></div></div></div>
+      </div>
+    </div>
+    <script>
+      (function () {
+        const v = window.__hyperframes.getVariables();
+        const root = document.getElementById("hf-list");
+        root.style.setProperty("--accent", v.accent);
+        root.style.fontFamily = JSON.stringify(v.font);
+        root.querySelectorAll("[data-slot]").forEach((el) => { el.textContent = v[el.dataset.slot]; });
+        // A row shows when its label is filled; an empty value hides just the value; underline false hides the sweeps.
+        const rows = Array.from(root.querySelectorAll(".row")).filter((r) => {
+          if (r.querySelector(".label").textContent === "") { r.style.display = "none"; return false; }
+          if (r.querySelector(".value").textContent === "") r.querySelector(".value").style.display = "none";
+          if (!v.underline) r.querySelector(".line").style.display = "none";
+          return true;
+        });
+        rows.forEach((r, i) => { if (i > 0) r.style.marginTop = "44px"; });
+        const scrim = Math.max(0, Math.min(1, Number(v.scrim)));
+        const tl = gsap.timeline({ paused: true });
+        tl.set(root.querySelector(".col"), { yPercent: -50 }, 0);
+        tl.fromTo(root.querySelector(".scrim"), { opacity: 0 }, { opacity: scrim, duration: 0.5, ease: "power2.out" }, 0);
+        rows.forEach((r, i) => {
+          const t0 = 0.3 + i * 0.18;
+          tl.fromTo(r, { opacity: 0, x: -36 }, { opacity: 1, x: 0, duration: 0.7, ease: "power3.out" }, t0);
+          if (v.underline) tl.fromTo(r.querySelector(".fill"), { scaleX: 0 }, { scaleX: 1, duration: 0.8, ease: "power2.inOut" }, t0 + 0.15);
+        });
+        window.__timelines = window.__timelines || {};
+        window.__timelines["hf-list"] = tl;
+      })();
+    </script>
+  </body>
+</html>

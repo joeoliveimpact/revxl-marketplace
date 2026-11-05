@@ -1,4 +1,5 @@
-"""Measure every sound file a board uses: duration, peak, RMS, and integrated loudness for music beds.
+"""Measure every sound file a board uses: duration, peak, RMS, integrated loudness for music beds, and for sound
+effects peak_s, where the hit lands (seconds from the file start).
 
   measure_sfx.py --dir <reel folder>
 
@@ -6,13 +7,16 @@ Reads <dir>/sfx and <dir>/beds, writes <dir>/sfx_measured.json.
 
 Why this exists: sound libraries are not level matched, and written duration tables go stale. Everything here
 comes from the file. Peak uses astats, not volumedetect, because volumedetect clamps float and reads an overshoot
-as -0.0 dB.
+as -0.0 dB. peak_s is the centre of the file's loudest 10 ms (3 decimals): the board and the bake start the file
+peak_s before the cue's time, so the hit lands on it.
 """
 import argparse, json, os, re, subprocess, sys
 from pathlib import Path
 
+import numpy as np
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _media import ffmpeg, ffprobe, write_json  # noqa: E402
+from _media import SR, decode, ffmpeg, ffprobe, write_json  # noqa: E402
 
 SOUND_EXT = (".mp3", ".wav")
 
@@ -52,11 +56,26 @@ def levels(path, want_lufs):
     return peak, rms, lufs
 
 
+def peak_time(path):
+    """Seconds from the file start to the centre of its loudest 10 ms, 3 decimals; None when it can't be read."""
+    try:
+        e = (decode(path).astype(np.float64) ** 2).sum(1)
+    except RuntimeError:
+        return None
+    w = int(0.010 * SR)
+    if len(e) <= w:
+        return round(len(e) / 2 / SR, 3)
+    c = np.concatenate([[0.0], np.cumsum(e)])
+    return round((int(np.argmax(c[w:] - c[:-w])) + w / 2) / SR, 3)
+
+
 def measure(path, want_lufs=False):
     peak, rms, lufs = levels(path, want_lufs)
     row = {"file": Path(path).name, "duration": duration(path), "peak_dbfs": peak, "rms_dbfs": rms}
     if want_lufs:
         row["lufs"] = lufs
+    else:
+        row["peak_s"] = peak_time(path)
     return row
 
 

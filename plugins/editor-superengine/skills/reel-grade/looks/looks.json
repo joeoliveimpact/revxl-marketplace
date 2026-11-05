@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "note": [
+    "The five looks. Each is a stack of tune-only slots in grade_math units (temp, tint, con, sat, mat; see",
+    "../boards/grade-board/grade_math.json), so a look is the same maths on the Grade Board and in the bake.",
+    "No look uses a LUT file. 'none' (the identity) is not listed: it is the empty stack, and there is no default",
+    "look. strength 0-1 scales every tune number linearly, so strength 0 is the identity and 1 is the look as",
+    "written. neutral: true marks a look that removes colour on purpose; the skin guard checks only skin",
+    "brightness for it."
+  ],
+  "looks": [
+    {"id": "natural", "name": "Natural", "why": "a touch of contrast and colour, nothing you'd notice as a look",
+     "stack": [{"con": 0.06, "sat": 0.06}]},
+    {"id": "warm", "name": "Warm", "why": "warmer light, gentle contrast",
+     "stack": [{"temp": 0.25, "con": 0.04, "sat": 0.04}]},
+    {"id": "punchy", "name": "Punchy", "why": "deeper contrast and richer colour",
+     "stack": [{"con": 0.2, "sat": 0.15}]},
+    {"id": "soft-matte", "name": "Soft matte", "why": "lifted blacks, softer contrast, calmer colour",
+     "stack": [{"con": -0.1, "sat": -0.1, "mat": 0.35}]},
+    {"id": "mono", "name": "Mono", "why": "black and white with a little contrast", "neutral": true,
+     "stack": [{"sat": -1.0, "con": 0.1}]}
+  ]
+}

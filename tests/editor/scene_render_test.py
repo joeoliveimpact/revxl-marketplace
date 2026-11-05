@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""G2-a heavy check: every shipped scene lints clean and renders offline with alpha, text inside the safe box.
+"""G2-a/G2-b heavy check: every shipped scene lints clean and renders offline with alpha, text inside the safe box.
 
 usage (heavy job, one scene per call keeps each run short; EDITOR_SE_HOME = a state folder with node, chrome,
 ffmpeg and hyperframes installed):
   python -I "C:/Workspaces/Content Studio/output/scripts/heavy_lock.py" --min-gb 3 -- \
-    python -X utf8 -I tests/editor/scene_render_test.py [--scene <id> ...] [--write-previews]
-Default = all 8 scenes. For each scene, in a temp project built the offline_selftest way (scene.html as
+    python -X utf8 -I tests/editor/scene_render_test.py [--scene <id> ...] [--part all|base|counter|seek]
+      [--write-previews]
+Default = every scene folder present (the 8 own ones and any vendored hf-*). For each scene, in a temp project built the offline_selftest way (scene.html as
 index.html + the shipped GSAP in ./vendor and the shipped fonts in ./fonts, cold font cache, Node network guard,
 proxies to a dead port):
   - `hyperframes lint --json`: exit 0, 0 errors, 0 warnings
@@ -15,8 +16,18 @@ proxies to a dead port):
     TEXT-ONLY variant: the test injects one stylesheet that makes every `.plate` element (cards, bars, backdrops)
     paint nothing, so every pixel whose alpha is above 0 in any frame is text; all of them must lie inside the
     900x1250 safe box (x 60..959, y 220..1469; ig-safe-zones.py), and some must exist (a blank render fails)
-  - counter only: last frame of value 47 counting up == (or PSNR >= 45 dB vs) the animate:false frame for 47,
-    and PSNR < 40 dB vs the animate:false frame for 46
+  - counter part, every scene of category "counter" (counter, hf-counter): last frame of value 47 counting up ==
+    (or PSNR >= 45 dB vs) the animate:false frame for 47, and PSNR < 40 dB vs the animate:false frame for 46
+  - seek part (in `all` for every vendored scene, licence not "own", which moved from GSAP 3.14.2 to 3.15.0; any
+    scene with --part seek). Jump method: a different worker split (the pin's dist/docs/rendering.md documents
+    only `-w, --workers` for this; it documents no range render). The default fill is rendered twice: --workers 1
+    (one page plays frames 0..F-1 in order) and --workers 2 (the pinned CLI's distributeFrames gives worker 1 the
+    contiguous chunk starting at ceil(F/2), so its fresh page jumps from load straight to that frame). Both
+    renders run with PRODUCER_FORCE_SCREENSHOT=true (a pinned-CLI env switch, not in the docs) and must report
+    "screenshot capture": by default 1 worker takes the drawElement path and 2 workers the screenshot path, and
+    those two paths differ by a few antialiased pixels on every frame, jump or not (lower-third: 166 px, 62.9 dB),
+    which would hide the jump. Frame N = ceil(F/2) of the two renders, decoded in the stream's own pixel format,
+    must be byte-identical, and not blank (some alpha above 0)
 --write-previews  also writes scenes/<id>/preview.png (270x480, RGBA) from the default render's last frame.
 Prints PASS/FAIL per check; exit 0 = all passed. Refuses to start below 10 GB free disk.
 """
@@ -37,7 +48,8 @@ W, H, FPS = 1080, 1920, 30
 SAFE = (60, 220, 960, 1470)  # x0, y0, x1, y1 (exclusive), the 900x1250 box
 TEXT_ONLY_CSS = ("<style>.plate{background:transparent!important;border-color:transparent!important;"
                  "box-shadow:none!important;outline:none!important}</style>")
-WORST_NUMBERS = {"counter": {"value": 8888}}  # "WW" + "8,888" + "WW" = the counter's 9-character display cap
+WORST_NUMBERS = {"counter": {"value": 8888},  # by category, each key only where the scene has that param;
+                 "stat-card": {"value": 9999, "decimals": 2}}  # "WW"+"8,888"+"WW" = 9 chars; "9,999.00"+"WW" = 10
 MIN_FREE_GB = 10
 fails = []
 
@@ -56,7 +68,7 @@ def fills(spec, sid):
     worst.update({k: "W" * s["maxChars"] for k, s in spec["slots"].items()})
     worst.update({k: "W" * p["maxChars"] for k, p in spec["params"].items()
                   if p["type"] == "string" and "maxChars" in p})
-    worst.update(WORST_NUMBERS.get(sid, {}))
+    worst.update({k: v for k, v in WORST_NUMBERS.get(spec.get("category"), {}).items() if k in spec["params"]})
     return default, worst
 
 
@@ -97,13 +109,17 @@ def project(tmp, name, html):
     return proj
 
 
-def render(proj, fill, out, env):
+def render(proj, fill, out, env, workers=2, seen=None):
+    """seen: a list that gets the render log's lines naming workers (the seek part shows them)."""
     vf = out.with_suffix(".vars.json")
     vf.write_bytes(json.dumps(fill).encode("utf-8"))
     t0 = time.perf_counter()
-    rc, o, e = ost.run(rt.hyperframes_cmd("render", proj, "--format", "mov", "--workers", "2", "--strict-variables",
-                                          "--variables-file", vf, "-o", out), env, timeout=600)
+    rc, o, e = ost.run(rt.hyperframes_cmd("render", proj, "--format", "mov", "--workers", str(workers),
+                                          "--strict-variables", "--variables-file", vf, "-o", out), env, timeout=600)
     kill_warm()
+    if seen is not None:
+        seen.extend(l.strip()[:160] for l in (o + e).splitlines()
+                    if re.search(r"\d workers\b|\bcapture ·", l) and "Capturing frame" not in l)
     print(f"  rendered {out.name} in {time.perf_counter() - t0:.0f} s", flush=True)
     return rc == 0 and out.exists(), f"exit {rc}: {ost.tail(o + e)}"
 
@@ -170,8 +186,10 @@ def scene_test(sid, tmp, env, log, write_preview, part):
     proj = project(tmp, sid, html)
     if part in ("all", "base"):
         base_checks(sid, d, html, spec, frames, dur, default, worst, proj, tmp, env, write_preview)
-    if sid == "counter" and part in ("all", "counter"):
-        counter_checks(default, frames, proj, tmp, env)
+    if spec.get("category") == "counter" and part in ("all", "counter"):
+        counter_checks(sid, spec, default, frames, proj, tmp, env)
+    if part == "seek" or part == "all" and spec.get("licence") != "own":
+        seek_checks(sid, frames, default, proj, tmp, env)
     n = sum(1 for _ in open(log, encoding="utf-8")) if log.exists() else 0
     ck(f"{sid}: no network attempts during lint and renders ({n} logged)", n == 0)
 
@@ -214,27 +232,51 @@ def base_checks(sid, d, html, spec, frames, dur, default, worst, proj, tmp, env,
 
 
 
-def counter_checks(default, frames, proj, tmp, env):
+def counter_checks(sid, spec, default, frames, proj, tmp, env):
+    if not ck(f"{sid}: has the counter params value and animate", {"value", "animate"} <= set(spec["params"])):
+        return
     last = {}
     for tag, val, anim in (("count47", 47, True), ("static47", 47, False), ("static46", 46, False)):
         f = dict(default, value=val, animate=anim)
-        out = tmp / f"counter-{tag}.mov"
+        out = tmp / f"{sid}-{tag}.mov"
         ok, why = render(proj, f, out, env)
-        if ck(f"counter: renders {tag}", ok, "" if ok else why):
+        if ck(f"{sid}: renders {tag}", ok, "" if ok else why):
             last[tag] = raw(out, "format=rgba", "rgba", frames - 1)
     if len(last) == 3:
         same, diff = psnr(last["count47"], last["static47"]), psnr(last["count47"], last["static46"])
-        ck(f"counter: last frame counting to 47 matches the static 47 frame (PSNR {same:.2f} dB, needs >= 45)",
+        ck(f"{sid}: last frame counting to 47 matches the static 47 frame (PSNR {same:.2f} dB, needs >= 45)",
            same >= 45)
-        ck(f"counter: and differs from the static 46 frame (PSNR {diff:.2f} dB, needs < 40)", 0 <= diff < 40)
+        ck(f"{sid}: and differs from the static 46 frame (PSNR {diff:.2f} dB, needs < 40)", 0 <= diff < 40)
+
+
+def seek_checks(sid, frames, default, proj, tmp, env):
+    """Frame N of a sequential render (--workers 1) == frame N reached after a jump (--workers 2's second chunk),
+    both on the screenshot capture path so only the jump differs."""
+    n = math.ceil(frames / 2)
+    got, alpha = {}, b""
+    senv = dict(env, PRODUCER_FORCE_SCREENSHOT="true")
+    for tag, w in (("sequential", 1), ("jump", 2)):
+        seen = []
+        out = tmp / f"{sid}-seek-{tag}.mov"
+        ok, why = render(proj, default, out, senv, workers=w, seen=seen)
+        shot = any("screenshot capture" in l for l in seen)
+        if ck(f"{sid}: seek render {tag} (--workers {w}, screenshot capture)", ok and shot,
+              why if not ok else " | ".join(seen[:3])):
+            got[tag] = raw(out, "null", probe(out).get("pix_fmt") or "yuva444p10le", n)
+            alpha = raw(out, "alphaextract", "gray", n) if w == 2 else alpha
+    if len(got) == 2:
+        ck(f"{sid}: frame {n} ({n / FPS:.2f} s) is not blank", any(alpha))
+        ck(f"{sid}: frame {n} of the sequential render == frame {n} after the jump, byte for byte "
+           f"({len(got['sequential'])} vs {len(got['jump'])} bytes)", bool(got["jump"]) and got["sequential"] == got["jump"])
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--scene", action="append", help="scene id (repeatable); default every scene folder")
     ap.add_argument("--write-previews", action="store_true", help="write scenes/<id>/preview.png from the render")
-    ap.add_argument("--part", choices=("all", "base", "counter"), default="all",
-                    help="base = lint + default + worst-case renders; counter = the counter's 47/46 frame proof")
+    ap.add_argument("--part", choices=("all", "base", "counter", "seek"), default="all",
+                    help="base = lint + default + worst-case renders; counter = the 47/46 frame proof (category "
+                         "counter); seek = frame N sequential vs after a jump (all = these, seek on vendored only)")
     a = ap.parse_args()
     free = shutil.disk_usage(tempfile.gettempdir()).free / 2 ** 30
     if free < MIN_FREE_GB:

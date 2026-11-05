@@ -5,7 +5,8 @@
 Reads <reel>/sound-selection.json (the board's Send) and the sounds the board used (<reel>/sfx/, <reel>/beds/).
 No selection yet (or no sound library): voice only. Writes into <reel>/sound/:
   voice.wav  the picture's own sound, untouched (room tone fills any stretch where it is shorter than the picture)
-  sfx.wav    every kept cue, placed to the sample
+  sfx.wav    every kept cue, placed to the sample: its file starts peak_s (the cue's, else 0) before the cue's
+             time, so the hit lands on the time; a start before 0 trims the file's head instead
   music.wav  the bed (music_fit.place): entry, exit, slide, fades, level, music stops and the speech dip baked in
   sum.wav    voice + sfx + music at unity
   cues/      one clip per cue (gain, length cap and fade baked in, silence up to the exact sample), for an editor
@@ -49,7 +50,9 @@ def fps_of(reel, picture):
 
 
 def cue_clip(reel, c, fps):
-    """(first frame, clip with sub-frame silence in front, sound only) for one kept cue."""
+    """(first frame, first sample, clip with sub-frame silence in front, sound only) for one kept cue. The sound starts
+    at time - peak_s (the hit lands on time); before 0, its head is trimmed. length_s and the fade count from the
+    file's own start."""
     x = decode(reel / "sfx" / c["file"])
     n = len(x)
     if c.get("length_s") and 0 < c["length_s"] * SR < n:
@@ -58,9 +61,12 @@ def cue_clip(reel, c, fps):
     if c.get("end_mode") == "fade":
         f = int(round(min(max(c.get("fade_out_s") or 0.25, 0.02) * SR, n)))
         x[n - f:] *= np.linspace(1, 0, f, dtype=np.float32)[:, None]
-    f0 = int(np.floor(c["time"] * fps + 1e-9))               # the frame the clip sits on
+    t0 = c["time"] - float(c.get("peak_s") or 0)              # where the file starts
+    if t0 < 0:
+        x, t0 = x[int(round(-t0 * SR)):], 0.0
+    f0 = int(np.floor(t0 * fps + 1e-9))                       # the frame the clip sits on
     s0 = int(round(f0 / fps * SR))
-    pad = int(round(c["time"] * SR)) - s0                     # sub-frame offset as silence
+    pad = int(round(t0 * SR)) - s0                            # sub-frame offset as silence
     return f0, s0, np.vstack([np.zeros((pad, 2), np.float32), x]), x
 
 
@@ -95,7 +101,8 @@ def bake(reel, picture):
             sfx[s0:e] += clip[:e - s0]
         own.append((s0, clip[:max(0, e - s0)]))
         place.append({"id": c.get("id"), "beat": c.get("beat", ""), "file": "cues/" + name.strip(), "frame": f0,
-                      "start_sample": s0, "lane": lane, "time": c["time"], "seconds": round(len(clip) / SR, 4),
+                      "start_sample": s0, "lane": lane, "time": c["time"],
+                      "peak_s": float(c.get("peak_s") or 0), "seconds": round(len(clip) / SR, 4),
                       "peak_dbfs": round(float(20 * np.log10(np.abs(x).max() + 1e-12)), 2)})
 
     b = sel.get("bed") or {}

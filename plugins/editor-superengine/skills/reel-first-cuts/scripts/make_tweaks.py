@@ -9,9 +9,10 @@ The map comes from work/cuts.json exactly, one row per segment: [cut_in, cut_out
 [out_in_f/fps, out_out_f/fps, src_in_f/fps, src_out_f/fps]. A word at source time s in a segment sits at
 cut_in + (s - src_in) / speed in the cut. The cut and the edit map are stored relative to the reel folder (<o>);
 the board loads them from /videos/<reel>/<path>. The board's speed list opens at the cut's own speed (cuts.json).
-Writes <o>/tweak-board.config.json. Peaks: 40 bins/s, max |sample| per bin, normalised.
+Writes <o>/tweak-board.config.json. Peaks: 40 bins/s, max |sample| per bin, normalised. cuts_sha256 is the sha256 of
+the cuts.json bytes it read: map_check.py checks the board's word times only while that cuts.json is unchanged.
 """
-import argparse, json, subprocess, sys, wave
+import argparse, hashlib, json, subprocess, sys, wave
 from pathlib import Path
 
 import numpy as np
@@ -81,7 +82,8 @@ def main():
                    (Path(a.cut), "render the cut first")):
         if not p.is_file():
             die("%s is missing: %s" % (p.as_posix(), why))
-    cuts = json.loads((Path(a.work) / "cuts.json").read_text(encoding="utf-8"))
+    cb = (Path(a.work) / "cuts.json").read_bytes()
+    cuts = json.loads(cb.decode("utf-8"))
     cfg = json.loads(Path(a.config).read_text(encoding="utf-8"))
     if str(a.take) not in cfg.get("takes", {}):
         die("take %s is not on this Cut Board (takes: %s)" % (a.take, ", ".join(cfg.get("takes", {})) or "none"))
@@ -101,6 +103,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     (out / "tweak-board.config.json").write_text(json.dumps(dict(
         reel=cfg["reel"], version=a.version, video=reel_rel(a.cut, out), edit_map=edit_map, take=int(a.take),
+        cuts_sha256=hashlib.sha256(cb).hexdigest(),
         duration=round(cmap[-1][1], 6), fps=fps, ship_speed=speed, speed_options=sorted(set(SPEEDS + [speed])),
         bins_per_s=40, peaks=pk, map=cmap, words=cut_words, listen=listen,
         presets=[["Tight", 0], ["150", 150], ["250", 250], ["500", 500], ["Breathe", 800]],

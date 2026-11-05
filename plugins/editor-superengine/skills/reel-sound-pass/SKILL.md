@@ -9,9 +9,9 @@ description: Finishes the sound of a picture-locked reel. Use on "sound pass", "
 
 1. What will happen, in one or two plain lines: the free voice clean-up, or the Auphonic plan (what runs, what it costs) and the question "Say yes to go ahead."
 2. When there is a sound library: the Sound Board, open in the Browser pane, with the cues Claude proposes. The client decides.
-3. The delivered file, `videos/<reel>/sound/final.mp4`, in plain words: how loud it is, that the picture is untouched, and that every sound effect came through (or which one didn't).
+3. The delivered file, `videos/<reel>/sound/final.mp4`, in plain words: how loud it is, that the picture is untouched, and that every sound effect came through (or which one didn't). When the reel has visuals (`videos/<reel>/beat-map.state.json` exists) and every check passed, also say the finished video with the visuals will use this sound as long as the cut and its colour stay the same. With no visuals planned, this file is the finished reel.
 4. A short listening list (the loudest hits, the music stops, the closer).
-5. "The mix is yours. Listen, then say ship or name the moment to change."
+5. "The mix is yours. Listen, then say ship or name the moment to change." On ship: with visuals, the next step is the final video (reel-canvas-build); without, the reel is done.
 
 Speak to the client the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-the-coach-hears.md` says: no file names, paths, script names or raw check output.
 
@@ -48,13 +48,15 @@ Read the cut and propose cues: each a moment with 2-3 candidate sounds, more tha
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-sound-pass/scripts/new_board.py" --reel <reel> --cues <cues.json> [--stops <stops.json>] [--bed <bed file>]`
 
+When the client sent the Beat Map (`videos/<reel>/beat-map-selection.json` exists), pre-fill the cues instead of writing them by hand: `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-sound-pass/scripts/prefill_cues.py" --reel <reel> --out <cues.json>` proposes a transition at each look change and a hit on each marked word, never in the closer. Review them (keep more than should ship), then pass them to `new_board.py --cues`; they arrive undecided.
+
 Start the board server and open `/editor/sound-board/?reel=<reel>` in the Browser pane, as `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/board-server.md` says. The client auditions each cue against the picture, keeps or rejects, slides the music, sets stops and fades, then presses Send (it writes `sound-selection.json`; undecided cues are kept, never mixed).
 
 Taste tips to offer, never rules: keep it subtle; long swooshes and echo tails rarely help; let the closer land in silence; one sound per moment, not two doubled. The board shows these too, and never blocks a choice.
 
 ### 2b. Music
 
-The board's music row lists every track (Starter pack, Free library, Your track) with its level (-18 dB suggested) and the dip under the voice (6 dB suggested); both are options, never rules. After the Send:
+The board's music row lists every track (Starter pack, Free library, Your track) with its level (-18 dB suggested) and the dip under the voice (6 dB suggested); both are options, never rules. Beat-sync on the music row is an option too (off by default): it starts the music on a beat and offers to snap cues to it; speech cuts never move. After the Send:
 
 - `music_request` is `"free"` or `"own"`: walk the client through adding the track as `${CLAUDE_PLUGIN_ROOT}/skills/reel-sound-pass/references/music-library.md` says (`music_pick.py`, run like the `pick` line below: `add-free` records exactly the licence the download page shows; `add-own` for their own track), then run step 2's `new_board.py` command again with `--video "videos/<reel>/<picture_url>"` (`picture_url` is in `videos/<reel>/config.json`, a path inside the reel folder) and reopen the board.
 - `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-sound-pass/scripts/music_pick.py" pick <reel>` writes the reel's licence row (`music.json`), plus `credits.txt` when the licence asks for a credit: give the client that line for the post caption.
@@ -71,7 +73,7 @@ Free is the default (`voice_cleanup` in `editor/editor.config.json`). If the cli
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-sound-pass/scripts/mix.py" --reel <reel> [--voice free|auphonic] [--yes]`
 
-It stops on a nearly silent recording, bakes the stems from the board's Send, cleans the voice, keeps the board's levels, masters to -14 LUFS and a -1 dBTP peak, puts the sound on the picture, and checks the delivered file. Pass `--video "<file>"` whenever the locked picture isn't the one the board was made on. The board remembers its own picture, so a newer render is never picked up by itself.
+It stops on a nearly silent recording, bakes the stems from the board's Send, cleans the voice, keeps the board's levels, masters to -14 LUFS and a -1 dBTP peak, puts the sound on the picture, and checks the delivered file. If reel-first-cuts rendered again after the board was made (the cut master is newer than `videos/<reel>/config.json`), the board's cue times are stale: tell the client, propose the cues again on the new cut, rebuild the board (Re-invoke guard) and wait for a new Send before mixing. `--video` is only for exit 2.
 
 - Exit 0: delivered. Tell the client in plain words.
 - Exit 1: a check stopped it; the line says which. Nearly silent: ask whether the right microphone was recording. A sound effect that didn't come through: ask about that cue (often its level on the board).
@@ -102,7 +104,7 @@ Tell the client what went wrong in plain words, and whether anything was charged
 2. Draft it. Keep the summary short. Put the summary, step and error line in single quotes, drop any
    apostrophe from them, and use no script names:
 
-`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.1.0 --skill reel-sound-pass --step '<library, board, music, mix, auphonic or master>' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
+`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.1.0 --skill reel-sound-pass --step '<library, prefill, board, music, mix, auphonic or master>' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
 
 3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
 4. Send, using the path after `DRAFT:`:

@@ -1,0 +1,15 @@
+{
+  "id": "hf-hook-title",
+  "kind": "overlay",
+  "category": "hook-title",
+  "slots": {
+    "title": {"maxChars": 40, "default": "Nobody tells you this about editing", "hint": "the hook, as said; wraps to at most 8 lines"}
+  },
+  "dur": [2, 6],
+  "params": {
+    "accent": {"type": "color", "default": "#35c8d9", "hint": "the title fill; the red/blue fringe stays fixed"},
+    "font": {"type": "string", "default": "Inter"}
+  },
+  "source": "HyperFrames registry/blocks/yt-prism-title (v0.8.184)",
+  "licence": "Apache-2.0"
+}

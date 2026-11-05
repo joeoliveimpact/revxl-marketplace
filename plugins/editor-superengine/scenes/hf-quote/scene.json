@@ -1,0 +1,19 @@
+{
+  "id": "hf-quote",
+  "category": "quote",
+  "kind": "overlay",
+  "slots": {
+    "quote": {"maxChars": 90, "default": "We shipped our launch video in a single afternoon", "hint": "the testimonial line, word for word"},
+    "name": {"maxChars": 24, "default": "Maya Chen", "hint": "who said it; also gives the avatar initials"},
+    "role": {"maxChars": 32, "default": "Head of Product", "hint": "their role; empty hides the line"},
+    "company": {"maxChars": 12, "default": "NORTHWIND", "hint": "company mark at the byline end; empty hides it"}
+  },
+  "dur": [3, 10],
+  "params": {
+    "emphasis": {"type": "string", "default": "single afternoon", "maxChars": 40, "hint": "words from the quote to underline; empty or no match draws nothing"},
+    "accent": {"type": "color", "default": "#71f5a7"},
+    "font": {"type": "string", "default": "Inter"}
+  },
+  "source": "HyperFrames registry/components/testimonial-proof-card (v0.8.184)",
+  "licence": "Apache-2.0"
+}

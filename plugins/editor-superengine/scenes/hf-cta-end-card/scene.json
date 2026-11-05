@@ -1,0 +1,16 @@
+{
+  "id": "hf-cta-end-card",
+  "kind": "takeover",
+  "category": "cta-end-card",
+  "slots": {
+    "action_line": {"maxChars": 20, "default": "Make it happen", "hint": "two to four words that close the video"},
+    "button_label": {"maxChars": 18, "default": "Start now", "hint": "the action, on the capsule"}
+  },
+  "dur": [2, 8],
+  "params": {
+    "accent": {"type": "color", "default": "#71f5a7"},
+    "font": {"type": "string", "default": "Inter"}
+  },
+  "source": "HyperFrames registry/components/cta-close (v0.8.184)",
+  "licence": "Apache-2.0"
+}
