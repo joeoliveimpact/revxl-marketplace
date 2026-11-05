@@ -1,6 +1,6 @@
 ---
 name: editor-superengine:caption-writer
-description: Writes or audits the Instagram caption for a finished reel, built for search. Use on "write the caption", "caption this reel", "is my caption optimized", "what should the caption say", "fix my caption", "give me hook lines for the caption", "alt text for this reel", or "which hashtags". It lands real search keywords in the first two sentences, writes hook-line options, the body, alt text, emoji and hashtag picks, and checks every number, bold word and the call to action against the reel before the client sees it. NOT for scripting a reel from scratch, and NOT for the burned-in captions on the video itself.
+description: Writes or audits the caption under a finished reel's post. Use on "write the caption", "post caption", "is my caption optimized", "fix my caption", "hook lines for the caption", "alt text" or "which hashtags". NOT for the words shown on the video itself, and NOT for scripting a reel (that's shortform-superengine's reel-scripter).
 ---
 
 # caption-writer: the caption under a finished reel
@@ -30,7 +30,7 @@ Speak to the client the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/refe
 ## Ground rules
 
 - **The client never types a command.** Claude runs every command with the Bash tool, from the client's workspace folder.
-- `<editor python>` is the editor's own Python. Windows: `"$LOCALAPPDATA/revxl/editor-superengine/venv/Scripts/python.exe"`. macOS: `"$HOME/Library/Application Support/revxl/editor-superengine/venv/bin/python"`. If it doesn't exist, run `editor-superengine:editor-doctor` first.
+- `<editor python>` is the editor's own Python. Windows: `"$(H="$LOCALAPPDATA/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/Scripts/python.exe"`. macOS: `"$(H="$HOME/Library/Application Support/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/bin/python"`. Keep the quotes. If it doesn't exist, run `editor-superengine:editor-doctor` first.
 
 ## Hard rules (correctness, always on)
 
@@ -51,20 +51,20 @@ Ask once, in one question, which of these the client wants, with the one-line wh
 - **Length bands:** under about 300 characters (the CTA rides on the video) or over about 1,000 (the caption stands as value alone). Skip 301-600, where weak reels cluster. Never pad to reach a band.
 - **One 👇 at the end of the CTA**, and no other emoji.
 - **Hashtags:** 3-5 specific niche tags, or none.
-- **Keyword count:** 2-3 keywords, each used naturally 2-3 times. Only the count is optional: the main keyword by the end of sentence 2, and every keyword inside a sentence, is the method and always applies.
+- **Keyword count:** 2-3 keywords, each used naturally 2-3 times. Only the count is optional; where keywords go is the method below, and it always applies.
 
 ## Inputs
 
 1. **The finished reel's transcript** (from reel-first-cuts' final check if the editor cut it) and its **on-screen text**.
-2. **The CTA**: the comment word and the deliverable's exact name.
-3. **Search terms:** the main one, or 2-3 with the keyword-count option on. Harvest real phrases: type the broad topic into Instagram or TikTok search (or a search-suggestion site) and read the autocompletes back. Those are strings people really type. Don't invent them.
+2. **The CTA**: the trigger word (the word people comment) and the deliverable's exact name.
+3. **Search terms:** the main one, or 2-3 with the keyword-count option on. Use the client's stored keywords if they have them. Otherwise ask the client to type the broad topic into Instagram or TikTok search and paste back what it suggests: those are phrases people really search. Never make keywords up.
 4. **Brand voice and stored keywords:** read the client's own files if they have any (ask where, don't assume a path). Voice sets tone, not substance; substance comes from the reel and what the client says.
 
 ## The method
 
 **Instagram works as a search engine now.** The caption is where search words count most, ahead of on-screen text and then audio (spoken words and the song).
 
-**Keyword in the first two sentences (always).** The main keyword lands by the end of sentence 2, in the words the audience already searches, and every keyword sits inside a sentence. Sentence 1 may be the CTA instead. How many keywords, and how often, is the keyword-count option. In the study (`${CLAUDE_PLUGIN_ROOT}/skills/caption-writer/references/caption-evidence.md`), a keyword by sentence 2 separated outlier reels more than opening with the CTA, and the gain stopped at sentence 2.
+**Keyword in the first two sentences (always).** The main keyword lands by the end of sentence 2, in the words the audience already searches. Sentence 1 may be the CTA instead. How many keywords, and how often, is the keyword-count option. In the study (`${CLAUDE_PLUGIN_ROOT}/skills/caption-writer/references/caption-evidence.md`), a keyword by sentence 2 separated outlier reels more than opening with the CTA, and the gain stopped at sentence 2.
 
 **Three kinds of word, three jobs.** They compete for the same opening, so know which you are placing.
 
@@ -75,14 +75,14 @@ Ask once, in one question, which of these the client wants, with the one-line wh
 | Audience qualifier | `coaches`, `new moms` | tells the right person it's for them |
 
 - A trigger word has no search value. Strip it before judging keyword coverage, even when it's the same word as a keyword.
-- Keywords earn reach, qualifiers earn lead quality. Keywords in sentences 1-2, qualifiers in 3-4. A bare generic word (like `ai` in its niche) measured worse than none.
+- Keywords earn reach, qualifiers earn lead quality. Qualifiers go in sentences 3-4, after the keyword. A bare generic word (like `ai` in its niche) measured worse than none.
 - Pick specific, searched terms, not more terms. Outliers used no more words, just better ones.
 
 **No keyword block at the bottom.** A tail of comma-separated keywords, YouTube-tags style, reads as keyword stuffing to Instagram. Keywords go in sentences, never in a block.
 
 ## Writing it
 
-**A. Hook line.** Two options. The main keyword lands by sentence 2 at the latest; an option that reaches sentence 3 without it scores 0 on placement. It complements the reel's spoken hook, a second angle, never a repeat.
+**A. Hook line.** Two options. An option that misses the keyword placement in the method scores 0 on placement. It complements the reel's spoken hook, a second angle, never a repeat.
 
 **B. Body.** Real substance from the reel, in the client's voice. One CTA, never "comment AND DM AND save".
 

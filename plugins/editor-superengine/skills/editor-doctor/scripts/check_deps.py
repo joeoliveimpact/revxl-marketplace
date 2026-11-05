@@ -6,6 +6,8 @@ Claude runs it with the editor's own Python from the client's workspace folder (
 1. Machine test: OS, arch, macOS version, NVIDIA GPU, RAM total and free. decide_engine() (runtime.py) keeps the
    recorded engine unless the facts cached beside it in state.json changed (a failed GPU read is never a change:
    STATUS gpu warn) or --repick is given; else pick_engine() picks, reading `language` from editor.config.json.
+   The pick is cached per language (A2); all languages share one venv, so moving to a workspace whose language needs
+   the other engine reinstalls its packages (STATUS engine-switch warn, a known limit).
 2. Unless --no-install: the S1a installer ensures that engine (sh install.sh --engine auto [--repick] makes the same
    decide_engine() decision); when Parakeet won't install, it falls back to faster-whisper and the PB-11 warning shows.
 3. Read-only DaVinci Resolve detection (PB-40): installed, Studio, version >= 21.1, external scripting. Never
@@ -36,7 +38,7 @@ STAMP = "S1a+S1b"
 BLOCKS = ("grade", "scenes", "broll", "music", "transitions", "cover", "trial", "three")
 # H-R3: setup and machine settings only, no brand/look/style keys (those live in the saved style, H-B5).
 DEFAULTS = {"schema": 1, "engine": None, "language": None, "nle": "auto", "nle_source": "auto", "ports": {"board": 8747},
-            "voice_cleanup": "free", "paths": {"editor": "editor", "videos": "videos"}, **{b: {} for b in BLOCKS}}
+            "voice_cleanup": "free", "cuts": {"beat_ms": 300}, "paths": {"editor": "editor", "videos": "videos"}, **{b: {} for b in BLOCKS}}
 STYLE_SKELETON = ('{"schema":1,"style_id":null,"accent":null,"font":null,"look":null,'
                   '"transitions":{"allowed":[],"sfx_pair":null}}')
 RESOLVE_MIN = (21, 1)
@@ -45,6 +47,13 @@ PREFS = ("DaVinci Resolve > Preferences (Cmd+,)" if MAC else "DaVinci Resolve > 
 LINE = re.compile(r"^STATUS [a-z0-9-]+ (ok|warn|missing) \S.*$")
 GPU_FIX = ("Nothing is needed now. If this shows again, restart the computer (that resets the graphics driver), "
            "then Claude re-runs the doctor.")
+# A2 (hub H-A2-1): languages share one venv, so a workspace whose language needs the other engine swaps the packages.
+SWITCHING = "This workspace uses {}, so the transcription engine is switching to {}; this reinstalls about 1-3 GB once."
+SWITCH_FIX = ("Nothing is needed: the setup reinstalls it now. Workspaces in different languages share one transcriber "
+              "install, so moving between them switches it again each time (a known limit).")
+LANG_NAMES = {"en": "English", "es": "Spanish", "fr": "French", "de": "German", "it": "Italian", "pt": "Portuguese",
+              "nl": "Dutch", "sv": "Swedish", "pl": "Polish", "tr": "Turkish", "ru": "Russian", "ar": "Arabic",
+              "hi": "Hindi", "ja": "Japanese", "ko": "Korean", "zh": "Chinese"}
 BAD_CONFIG = ("editor/editor.config.json isn't valid JSON, so the doctor left it as it is",
               "Claude repairs the JSON in editor/editor.config.json (keeping the client's values), then re-runs the doctor.")
 
@@ -133,7 +142,8 @@ def run_installer(engine, repick=False):
         print("✗ Editor setup: no shell was found to run the setup.")
         return 127
     sys.stdout.flush()
-    return subprocess.run([sh, INSTALL_SH.as_posix(), "--engine", engine] + (["--repick"] if repick else [])).returncode
+    return subprocess.run([sh, INSTALL_SH.as_posix(), "--engine", engine] + (["--repick"] if repick else []),
+                          env=dict(os.environ, EDITOR_SE_HOME=str(rt.state_dir()))).returncode  # follows the pointer
 
 
 # ---- 3. Resolve detection (read-only, never starts Resolve) --------------------------------------------
@@ -261,6 +271,23 @@ def engine_line(picked, reason, inst, state_reason):
     return "ok", f"{inst} ({reason})", None
 
 
+def lang_name(language):
+    """The language in words with its code ("Spanish (es)"); the code alone when it isn't in LANG_NAMES; unset = English."""
+    if not language:
+        return "English"
+    name = LANG_NAMES.get(rt.lang_key(language))
+    return f"{name} ({language})" if name else str(language)
+
+
+def switch_line(state, picked, language):
+    """The engine-switch detail when this workspace's language needs another engine than the venv holds (A2), else None."""
+    was = state.get("python_packages", {}).get("engine")
+    if picked in rt.ENGINES and was in rt.ENGINES and picked != was and \
+            rt.lang_key((state.get("pick_facts") or {}).get("language")) != rt.lang_key(language):
+        return SWITCHING.format(lang_name(language), picked)
+    return None
+
+
 def run_checks(rep, st, picked, reason):
     """Adds one STATUS line per component; returns the engine that is really installed (or None)."""
     st = Path(st)
@@ -352,6 +379,19 @@ def run_checks(rep, st, picked, reason):
     if "cutout-model" in needs:
         ok, detail = model_check(st, "u2net")
         add("cutout-model", ok, f"u2net_human_seg: {detail}")
+        if not rt.align_supported():
+            rep.add("rvm", "warn", "the cutout uses the backup method (remove-background) on this Mac",
+                    "Nothing to do: cutouts still work, with the backup method.", required=False)
+        else:
+            try:
+                rvm = run([vpy, "-c", "import torch, torchvision"], env=rt.python_env(st)).returncode == 0
+            except (OSError, subprocess.SubprocessError):
+                rvm = False
+            if rvm:
+                rep.add("rvm", "ok", "RVM cutout ready (torch + torchvision)", required=False)
+            else:
+                rep.add("rvm", "warn", "the RVM cutout isn't ready, so cutouts use the backup method (remove-background)",
+                        fix, required=False)
     if tr:
         add("transcriber", tr[0] == "ok", tr[1])
         model = install.ENGINE_MODEL.get(inst or setup_engine)
@@ -442,16 +482,23 @@ def doctor(cwd, st, do_install=True, run_install=run_installer, repick=False):
     rep = Report()
     cfg = rt.read_config(cwd)
     language = cfg.get("language")
+    state = rt.load_state(st)
     try:
-        picked, reason, pf, kept = rt.decide_engine(rt.load_state(st), language, repick)
+        picked, reason, pf, kept = rt.decide_engine(state, language, repick)
     except RuntimeError as e:
         rep.add("machine", "missing", f"{describe(machine_test(rt.has_nvidia_gpu()))}: {e}", "Use the editor on a Windows PC or a Mac.")
         print("\n".join(rep.lines()))
         return 1
     facts = machine_test(None if kept else pf["gpu"])
     rep.add("machine", "ok", describe(facts))
+    if not os.environ.get("EDITOR_SE_HOME") and rt.pointed_home():  # H-S1a-path-2
+        rep.add("state-folder", "ok", f"the editor is installed in {st.as_posix()} instead of the usual folder")
     if kept:
         rep.add("gpu", "warn", rt.GPU_KEPT.format(picked), GPU_FIX, required=False)
+    switching = switch_line(state, picked, language) if do_install else None
+    if switching:
+        print("⚠ " + switching)
+        rep.add("engine-switch", "warn", switching, SWITCH_FIX, required=False)
     rc = run_install("auto", repick) if do_install else None  # the installer makes the same decision, then ensures it
     fell_back = str(rt.load_state(st).get("engine_reason", "")).startswith("backup")
     inst = run_checks(rep, st, picked, reason)
@@ -604,12 +651,17 @@ def selftest():
             for bad in (["failed", None], ["no-smi", None]):  # timeout/non-zero/garbled, or nvidia-smi gone: kept
                 read[:] = bad
                 assert rt.decide_engine(st0, None) == (e, why, f, True)
-                assert rt.decide_engine(st0, "es", repick=True) == (e, why, f, True)
+                assert rt.decide_engine(st0, None, repick=True) == (e, why, f, True)
+                assert rt.decide_engine(st0, "es")[:2] == rt.pick_engine("auto", "es")  # A2: es never keeps en's pick
             read[:] = ["yes", "RTX 4060"]
             assert rt.decide_engine(st0, None) == (e, why, f, False)  # unchanged: no re-pick
             assert rt.decide_engine(dict(st0, engine="faster-whisper"), None)[0] == "faster-whisper"
             assert rt.decide_engine(dict(st0, engine="faster-whisper"), None, repick=True)[0] == "parakeet-gpu"
             assert rt.decide_engine(st0, "es")[0] == "faster-whisper"  # the language changed
+            # BL1.1: the language compares by its cache key, so an old pick saved with None or "en-US" is kept for "en"
+            for was, now in ((None, "en"), (None, "en-US"), ("en-US", "en"), ("en", None)):
+                old = {"picks": {"en": {"engine": "faster-whisper", "engine_reason": why, "pick_facts": dict(f, language=was)}}}
+                assert rt.decide_engine(old, now)[::3] == ("faster-whisper", False), (was, now)
             read[:] = ["yes", "RTX 5090"]
             assert rt.decide_engine(st0, None)[2]["gpu_name"] == "RTX 5090"  # a new card is a change (re-picked)
             read[:] = ["no", None]  # a successful no-GPU read (the gpu mask) is a change
@@ -670,6 +722,61 @@ def selftest():
                 assert ("Parakeet would not install" in out) == repick and ("⚠ " + rt.BACKUP_WARNING) in out, out
             rt.platform_key, rt.gpu_read = saved_rt[0], saved_gpu[0]
             n += 1
+            # A2: one pick per language. Workspaces en and es share one state folder (one venv). Each keeps its own
+            # language's engine, a re-run in the same workspace installs nothing, a flaky GPU read keeps that language's
+            # engine, and only a move to the other language swaps the packages (the known limit: engine-switch line).
+            # The real decide_engine(), switch_line() and Setup.transcription(); the package install is a one-venv stub.
+            rt.platform_key, read = (lambda: "win-x64"), ["yes", "RTX 4060"]
+            rt.gpu_read = lambda: tuple(read)
+            rs, installs = td / "two", []
+            for name, lang in (("ws-en", None), ("ws-es", "es")):
+                atomic_write(rt.config_path(td / name), json.dumps({"language": lang}))
+            for name, flaky, want, swaps in (("ws-en", 0, "parakeet-gpu", 1), ("ws-en", 0, "parakeet-gpu", 0),
+                                             ("ws-en", 1, "parakeet-gpu", 0), ("ws-es", 0, "faster-whisper", 1),
+                                             ("ws-es", 0, "faster-whisper", 0), ("ws-es", 1, "faster-whisper", 0),
+                                             ("ws-en", 1, "parakeet-gpu", 1), ("ws-en", 0, "parakeet-gpu", 0),
+                                             ("ws-es", 1, "faster-whisper", 1), ("ws-es", 1, "faster-whisper", 0)):
+                os.chdir(td / name)
+                read[:] = ["failed", None] if flaky else ["yes", "RTX 4060"]
+                lang, state, before = rt.read_config().get("language"), rt.load_state(rs), len(installs)
+                picked, _, _, kept = rt.decide_engine(state, lang)
+                line = switch_line(state, picked, lang)
+                s = install.Setup(rs, "auto")
+
+                def one_venv(e, s=s):
+                    if s.state.get("python_packages", {}).get("engine") != e:
+                        installs.append(e)
+                        s.state["python_packages"] = {"engine": e}
+                    return True
+                s.python_packages = one_venv
+                with contextlib.redirect_stdout(io.StringIO()):
+                    s.transcription(set())
+                s.log.close()
+                got = (picked, s.state["engine"], len(installs) - before, kept, line)
+                assert got == (want, want, swaps, bool(flaky), SWITCHING.format(lang_name(lang), want) if swaps and before else None), (name, flaky, got)
+            os.chdir(td)
+            picks = rt.load_state(rs)["picks"]
+            assert {k: v["engine"] for k, v in picks.items()} == {"en": "parakeet-gpu", "es": "faster-whisper"}, picks
+            assert installs == ["parakeet-gpu", "faster-whisper", "parakeet-gpu", "faster-whisper"], installs
+            assert rt.lang_key("es-MX") == "es" and rt.lang_key("en_GB") == "en" and rt.lang_key(None) == "en"
+            assert (lang_name("es"), lang_name("pt-BR"), lang_name(None), lang_name("xx")) == \
+                ("Spanish (es)", "Portuguese (pt-BR)", "English", "xx")
+            # A2 round 2: the doctor itself prints the swap as a STATUS line (+ its FIX). The venv holds parakeet-gpu
+            # (installed for English); this workspace is Spanish. Offline: installer stubbed, Resolve masked.
+            sw = td / "sw"
+            atomic_write(sw / "state.json", json.dumps({"engine": "parakeet-gpu", "engine_reason": "Windows with an NVIDIA GPU",
+                                                        "pick_facts": rt.pick_facts(None)[0], "python_packages": {"engine": "parakeet-gpu"}}))
+            atomic_write(rt.config_path(td / "ws-sw"), json.dumps({"language": "es"}))
+            os.environ["EDITOR_SE_MASK"] = "resolve"
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                doctor(td / "ws-sw", sw, run_install=lambda engine, repick: 0)
+            out = buf.getvalue().splitlines()
+            want = ("STATUS engine-switch warn This workspace uses Spanish (es), so the transcription engine is switching "
+                    "to faster-whisper; this reinstalls about 1-3 GB once.")
+            assert want in out and out[out.index(want) + 1] == "FIX engine-switch " + SWITCH_FIX, out
+            rt.platform_key, rt.gpu_read = saved_rt[0], saved_gpu[0]
+            n += 3
         finally:
             os.chdir(here)
             rt.platform_key, rt.mac_major, rt.sys = saved_rt

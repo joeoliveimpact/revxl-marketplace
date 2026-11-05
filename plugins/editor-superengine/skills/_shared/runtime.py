@@ -6,7 +6,10 @@ everything here is found from this file's own location and from the OS rule for 
     Windows  %LOCALAPPDATA%/revxl/editor-superengine
     macOS    ~/Library/Application Support/revxl/editor-superengine
     Linux    ${XDG_DATA_HOME:-~/.local/share}/revxl/editor-superengine
-    EDITOR_SE_HOME overrides all three (tests).
+    EDITOR_SE_HOME overrides all three. When the Windows default is too long (over 115 characters, H-S1a-path),
+    the setup runs with a short EDITOR_SE_HOME and then leaves home-pointer.txt in the default folder: one line,
+    the folder it used. state_dir() order: EDITOR_SE_HOME, then that pointer (only if it names a folder holding
+    state.json), then the default.
 
 The installer (skills/editor-doctor/scripts/install.sh) fills the state folder and writes
 state.json; tool() reads binary paths from it. Every HyperFrames call goes through
@@ -16,7 +19,7 @@ The client workspace (the cwd) holds editor/editor.config.json and editor/.platf
 
 TEST-ONLY MASKS (the one place they are documented): EDITOR_SE_MASK is a comma list for tests, never set for
 a client. gpu = gpu_read() answers "no GPU" (a successful read); parakeet = install.py treats the Parakeet packages as uninstallable;
-resolve = the doctor's Resolve detection finds nothing. Example: EDITOR_SE_MASK=gpu,parakeet,resolve
+resolve = the doctor's Resolve detection finds nothing; torch = cutout.py's --engine auto uses remove-background, not RVM. Example: EDITOR_SE_MASK=gpu,parakeet,resolve
 """
 import json, os, platform, re, shutil, subprocess, sys
 from pathlib import Path
@@ -60,15 +63,43 @@ def is_english(language):
     return not language or str(language).strip().lower().replace("_", "-").split("-")[0] in ("en", "english")
 
 
-def state_dir():
-    if os.environ.get("EDITOR_SE_HOME"):
-        return Path(os.environ["EDITOR_SE_HOME"])
+HOME_POINTER = "home-pointer.txt"  # H-S1a-path-2: in the default folder, one line naming the install folder used instead
+
+
+def default_state_dir():
+    """The OS rule for the state folder (no override, no pointer)."""
     if sys.platform == "win32":
         return Path(os.environ["LOCALAPPDATA"]) / "revxl" / "editor-superengine"
     if sys.platform == "darwin":
         return Path.home() / "Library" / "Application Support" / "revxl" / "editor-superengine"
     base = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local" / "share")
     return Path(base) / "revxl" / "editor-superengine"
+
+
+def pointed_home():
+    """The folder home-pointer.txt names, when that folder holds an install (state.json); else None."""
+    try:
+        p = Path((default_state_dir() / HOME_POINTER).read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return None
+    return p if p.is_absolute() and (p / "state.json").is_file() else None
+
+
+def state_dir():
+    if os.environ.get("EDITOR_SE_HOME"):
+        return Path(os.environ["EDITOR_SE_HOME"])
+    return pointed_home() or default_state_dir()
+
+
+def write_home_pointer(st):
+    """After a successful setup: point the default folder at st, or drop a stale pointer when st is the default."""
+    d = default_state_dir()
+    f = d / HOME_POINTER
+    if os.path.normcase(os.path.abspath(st)) == os.path.normcase(os.path.abspath(d)):
+        f.unlink(missing_ok=True)
+        return
+    d.mkdir(parents=True, exist_ok=True)
+    f.write_bytes((Path(os.path.abspath(st)).as_posix() + "\n").encode("utf-8"))  # LF only: shells read it too
 
 
 def platform_key():
@@ -121,17 +152,42 @@ def pick_facts(language, cached=None):
             "gpu": got == "yes", "gpu_name": name if got == "yes" else None, "language": language}, answered
 
 
+def lang_key(language):
+    """The engine-pick cache key (A2): "en" for English or unset, else the language's main code ("es-MX" -> "es")."""
+    return "en" if is_english(language) else str(language).strip().lower().replace("_", "-").split("-")[0]
+
+
+def pick_record(state, language):
+    """This language's cached pick {engine, engine_reason, pick_facts} from state.json `picks` (A2: `language` is per
+    workspace, so each language keeps its own pick). An install from before A2 has only the top-level record."""
+    rec = state.get("picks", {}).get(lang_key(language))
+    if rec is None and state.get("pick_facts") and lang_key(state["pick_facts"].get("language")) == lang_key(language):
+        rec = {k: state.get(k) for k in ("engine", "engine_reason", "pick_facts")}
+    return rec or {}
+
+
+def record_pick(state, language, engine, reason, facts):
+    """Saves the pick at the top level (what the one shared venv now holds) and under this language's key."""
+    rec = {"engine": engine, "engine_reason": reason, "pick_facts": facts}
+    state.update(rec)
+    state.setdefault("picks", {})[lang_key(language)] = dict(rec)
+
+
 def decide_engine(state, language, repick=False):
-    """(engine, reason, facts, kept) for --engine auto. state.json keeps `pick_facts` beside the recorded `engine`.
-    Re-picks only on the first run (nothing cached), when a successful read shows the facts changed, or on repick.
+    """(engine, reason, facts, kept) for --engine auto. state.json keeps one pick per language (pick_record), each
+    with the `pick_facts` it used. Re-picks only on that language's first run (nothing cached), when a successful read
+    shows the facts changed, or on repick.
     kept = True: the GPU read failed, so the recorded engine stays (print GPU_KEPT); no packages change."""
-    cached, recorded = state.get("pick_facts"), state.get("engine")
+    rec = pick_record(state, language)
+    cached, recorded = rec.get("pick_facts"), rec.get("engine")
     facts, answered = pick_facts(language, cached)
     if cached and recorded:
         if not answered:
-            return recorded, state.get("engine_reason", ""), facts, True
-        if facts == cached and not repick:
-            return recorded, state.get("engine_reason", ""), facts, False
+            return recorded, rec.get("engine_reason", ""), facts, True
+        # the language compares by its cache key: None, "en" and "en-US" are the same pick (BL1.1)
+        if dict(facts, language=lang_key(facts.get("language"))) == dict(cached, language=lang_key(cached.get("language"))) \
+                and not repick:
+            return recorded, rec.get("engine_reason", ""), facts, False
     return (*pick_engine("auto", language, gpu=facts["gpu"]), facts, False)
 
 

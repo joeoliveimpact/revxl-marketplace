@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"stat","type":"string","label":"Stat","default":"3x"},
+  {"id":"label","type":"string","label":"Label","default":"more replies in one week"},
+  {"id":"accent","type":"color","label":"Accent","default":"#4f8cff"},
+  {"id":"font","type":"string","label":"Font family","default":"Inter"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="./vendor/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Inter"; src: url("./fonts/Inter-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; }
+      #stat-card { position: relative; width: 1080px; height: 1920px; z-index: 400; font-family: "Inter"; font-weight: 400; color: #ffffff; --accent: #4f8cff; }
+      #stat-card .card { position: absolute; left: 510px; top: 620px; width: 860px; padding: 44px 40px 50px; border-radius: 32px; background: rgba(12, 14, 18, 0.84); text-align: center; }
+      #stat-card .ring { position: absolute; left: 16px; right: 16px; top: 16px; bottom: 16px; border: 3px solid var(--accent); border-radius: 22px; }
+      #stat-card .stat { display: block; font-size: 150px; line-height: 1.05; color: var(--accent); overflow-wrap: anywhere; }
+      #stat-card .label { display: block; margin-top: 12px; font-size: 46px; line-height: 1.2; overflow-wrap: anywhere; }
+    </style>
+  </head>
+  <body>
+    <div id="stat-card" data-composition-id="stat-card" data-start="0" data-duration="3" data-fps="30" data-width="1080" data-height="1920">
+      <div class="card plate">
+        <div class="ring plate"></div>
+        <span class="stat slot" data-slot="stat"></span>
+        <span class="label slot" data-slot="label"></span>
+      </div>
+    </div>
+    <script>
+      (function () {
+        const v = window.__hyperframes.getVariables();
+        const root = document.getElementById("stat-card");
+        root.style.setProperty("--accent", v.accent);
+        root.style.fontFamily = JSON.stringify(v.font);
+        root.querySelectorAll("[data-slot]").forEach((el) => { el.textContent = v[el.dataset.slot]; });
+        const q = (s) => root.querySelector(s);
+        const tl = gsap.timeline({ paused: true });
+        tl.set(q(".card"), { xPercent: -50, yPercent: -50 }, 0);
+        tl.fromTo(q(".card"), { opacity: 0, y: 50 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, 0);
+        tl.fromTo(q(".stat"), { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.8)" }, 0.2);
+        tl.fromTo(q(".label"), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 0.45);
+        window.__timelines = window.__timelines || {};
+        window.__timelines["stat-card"] = tl;
+      })();
+    </script>
+  </body>
+</html>

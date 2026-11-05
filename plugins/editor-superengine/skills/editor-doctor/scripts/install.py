@@ -119,7 +119,10 @@ class Setup:
             self.download(f["url"], a, f["sha256"], label)
             try:
                 self.extract(a, target)
-            except (OSError, zipfile.BadZipFile, tarfile.TarError):
+            except (OSError, zipfile.BadZipFile, tarfile.TarError) as e:
+                if getattr(e, "winerror", None) == 206:  # Windows: the file name or path is too long
+                    raise Fail(f"unpacking {label} failed because the install folder's path is too long for Windows. "
+                               "Re-run the setup with EDITOR_SE_HOME set to a shorter folder, such as C:\\revxl-es.")
                 raise Fail(f"unpacking {label} failed. Check the disk has free space, then run the setup again.")
             a.unlink()
         if not all((self.st / b).exists() for b in bins.values()):
@@ -258,16 +261,16 @@ class Setup:
             engine, reason, facts, kept = rt.decide_engine(self.state, language, self.repick)
             if kept:
                 print("⚠ " + rt.GPU_KEPT.format(engine))
-            backup = f"backup: {engine} failed to install"
-            if not self.repick and self.state.get("engine") == "faster-whisper" and self.state.get("engine_reason") == backup:
+            backup, rec = f"backup: {engine} failed to install", rt.pick_record(self.state, language)
+            if not self.repick and rec.get("engine") == "faster-whisper" and rec.get("engine_reason") == backup:
                 engine, reason = "faster-whisper", backup  # D7: a failed Parakeet isn't retried on re-runs, only on --repick
         else:
             engine, reason = rt.pick_engine(self.requested)
-            facts = rt.pick_facts(language, self.state.get("pick_facts"))[0]
+            facts = rt.pick_facts(language, rt.pick_record(self.state, language).get("pick_facts"))[0]
         if engine == "none":  # H-S1a-1/2: old macOS; skip the engine install, don't fail
             print(f"⚠ {reason}")
-            self.state.update(engine="none", engine_reason=reason, pick_facts=facts,
-                              align_words="off (no transcription on this macOS)")
+            rt.record_pick(self.state, language, "none", reason, facts)
+            self.state["align_words"] = "off (no transcription on this macOS)"
             self.save()
             return
         print(f"Transcription engine: {engine} ({reason})")
@@ -279,7 +282,7 @@ class Setup:
                     raise Fail("installing the transcriber's Python packages failed. Check the internet connection, then run the setup again.")
             else:
                 raise Fail("installing the transcriber's Python packages failed. Check the internet connection, then run the setup again.")
-        self.state.update(engine=engine, engine_reason=reason, pick_facts=facts)
+        rt.record_pick(self.state, language, engine, reason, facts)
         self.save()
         if "transcribe" in needs:
             self.hf_model(ENGINE_MODEL[engine])
@@ -341,6 +344,7 @@ def main():
     try:
         s = Setup(st, a.engine, a.repick)
         s.go()
+        rt.write_home_pointer(st)  # H-S1a-path-2: later runs with no EDITOR_SE_HOME find this folder
         return 0
     except Fail as e:
         print(f"✗ Editor setup: {e}")

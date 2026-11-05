@@ -5,6 +5,14 @@ The reference for `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/SKILL.md`. The cod
 `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/scripts/install.sh` and `install.py` (the setup),
 `${CLAUDE_PLUGIN_ROOT}/skills/_shared/runtime.py` (paths, the engine pick, the test-only masks).
 
+## Contents
+- STATUS lines
+- The engine
+- Where the files live
+- editor.config.json
+- DaVinci Resolve check
+- Tests
+
 ## STATUS lines (stable; S13 Health and the Cockpit parse them)
 
 ```
@@ -21,6 +29,7 @@ FIX <component> <plain fix for this OS>        <- right after every warn or miss
 |---|---|
 | `machine` | OS, arch, macOS version, NVIDIA GPU, RAM total and free (always ok; missing only on Linux) |
 | `gpu` | only when the NVIDIA check didn't answer: a warn saying the current engine was kept (see "The engine") |
+| `state-folder` | only when the setup's pointer is in use: the folder the editor is installed in instead of the usual one (see "Where the files live") |
 | `python` | the editor's own Python 3.12 and its venv, built from the state folder's managed Python |
 | `ffmpeg` | ffmpeg + ffprobe present; zscale, tonemap, psnr and the needed encoders |
 | `node` | Node.js at the pinned version |
@@ -31,6 +40,7 @@ FIX <component> <plain fix for this OS>        <- right after every warn or miss
 | `model-parakeet` / `model-faster-whisper` | the engine's model files by sha256 |
 | `align` | align_words: torch + transformers load and wav2vec2 matches by sha256 (warn on Intel Macs: skipped) |
 | `engine` | which engine and why; on the backup, the retake warning as its FIX |
+| `engine-switch` | only when this workspace's `language` needs the other engine than the one installed: a warn saying it is switching and reinstalling (see "The engine") |
 | `resolve-installed`, `resolve-edition`, `resolve-version`, `resolve-scripting` | the Resolve requirements, all optional (warn, never missing) |
 | `nle` | `resolve` or `none` from detection, or the client's own choice ("chosen by you"), as written to the config |
 | `config` | editor.config.json written (missing if it holds broken JSON, which the doctor leaves alone) |
@@ -46,7 +56,7 @@ FIX <component> <plain fix for this OS>        <- right after every warn or miss
 | Apple Silicon below macOS 14, Intel Mac on macOS 12 or older | none: "Transcription needs macOS 14 (Intel: 13) or newer on this Mac. Update macOS to turn it on." The setup skips the engine and doesn't fail. Parts that don't need transcription keep working, and the `engine` line names the parts that are off. |
 | Linux | not supported: the setup prints "Linux isn't supported yet (Windows and macOS are)." and exits 0 with nothing downloaded |
 
-Parakeet v2 understands English only. When `language` in editor.config.json is set to anything other than English, the pick is faster-whisper, which handles many languages. Unset counts as English. When Parakeet won't install, the setup falls back to faster-whisper and keeps it on later runs.
+Parakeet v2 understands English only. When `language` in editor.config.json is set to anything other than English, the pick is faster-whisper, which handles many languages. Unset counts as English. When Parakeet won't install, the setup falls back to faster-whisper and keeps it on later runs. After a fallback, `--repick` retries Parakeet; if it still won't install, the setup falls back again and the retake warning shows.
 
 **The pick is kept (S1b-fix).** `state.json` in the state folder records `pick_facts` beside `engine`: `{"os", "arch", "macos_major", "gpu", "gpu_name", "language"}` (`gpu_name` from `nvidia-smi -L`). Doctor and setup runs keep the recorded engine. They pick again only when:
 
@@ -55,10 +65,16 @@ Parakeet v2 understands English only. When `language` in editor.config.json is s
 
 A GPU read that fails is never a change: `nvidia-smi` times out, exits non-zero, prints no GPU line, or is missing where a GPU was recorded. The engine stays, no packages are installed or swapped, the setup prints the same warning, and STATUS shows `gpu warn` with its fix. With nothing cached (the first run, or a state folder from before this change) the pick runs as before. The `gpu` test mask counts as a successful "no GPU" read.
 
+**One pick per language (A2).** `language` lives in each workspace, but the state folder is shared by the whole computer. So `state.json` keeps one cached pick per language under `picks` (`en` for English or unset, else the language's main code, e.g. `es`), and the top-level `engine` is what is installed now. Each language's pick stays stable, and a failed GPU read keeps that language's engine. A re-run in the same workspace installs nothing.
+
+**Known limit: one shared venv.** All languages share one set of transcriber packages. Moving to a workspace whose language needs the other engine (English uses Parakeet, other languages faster-whisper) reinstalls the packages, and moving back reinstalls them again. The doctor says so before the setup starts, and STATUS shows it:
+
+`STATUS engine-switch warn This workspace uses Spanish (es), so the transcription engine is switching to faster-whisper; this reinstalls about 1-3 GB once.`
+
 ## Where the files live
 
 - **In the workspace (the cwd):** `editor/editor.config.json` and `editor/.platform.json`.
-- **In the state folder:** the machine-level toolchain and models, plus the saved style `styles/default.json`. The state folder is `%LOCALAPPDATA%\revxl\editor-superengine` on Windows and `~/Library/Application Support/revxl/editor-superengine` on macOS.
+- **In the state folder:** the machine-level toolchain and models, plus the saved style `styles/default.json`. The state folder is `%LOCALAPPDATA%\revxl\editor-superengine` on Windows and `~/Library/Application Support/revxl/editor-superengine` on macOS. When that Windows path is over 115 characters, the setup installs into a shorter folder (`EDITOR_SE_HOME`) and leaves `home-pointer.txt` in the usual one, naming it; the scripts follow it.
 
 ## editor.config.json (setup and machine settings only; taste lives in the saved style)
 
@@ -72,6 +88,7 @@ A GPU read that fails is never a change: `nvidia-smi` times out, exits non-zero,
 | `ports.board` | 8747 | default | the boards' free-port fallback (S4a) |
 | `voice_cleanup` | `free` (or `auphonic`) | default | voice clean-up (S5) |
 | `paths.editor`, `paths.videos` | `editor`, `videos` (relative to the workspace) | default | boards and the Cockpit |
+| `cuts.beat_ms` | 300 | default | the Cut Board's "Pause after commas" starting value (make_board.py) and gaps.py's beat (S4b) |
 | `grade`, `scenes`, `broll`, `music`, `transitions`, `cover`, `trial`, `three` | `{}` | added by later steps | their own steps |
 
 On every run the doctor adds missing keys and keeps every existing value. It sets only `engine`, `nle` and `nle_source`, and keeps a `manual` nle.

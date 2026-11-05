@@ -6,7 +6,9 @@ For every board in boards.json whose template folder exists (skills/<owning-skil
 template plus assets/board-client.js into <root>/<paths.editor>/<board>/ and stamps .board-version (plugin version +
 content hash). A current stamp changes nothing. A stale or missing stamp overwrites only the template's own files and
 board-client.js, then re-stamps; state files, *.prev and the client's own files are never touched or deleted.
-It also keeps <root>/<paths.editor>/.gitignore ignoring .board-server.json, *.prev and *.tmp.
+It also keeps <root>/<paths.editor>/.gitignore ignoring .board-server.json, *.prev and *.tmp, and, when the videos
+folder exists, <root>/<paths.videos>/.gitignore ignoring *selection.json, *.state.json and *.prev (a board's Send
+outputs and saved work). Only missing lines are added; a user's own lines are never removed or reordered.
 Prints one plain line per board. Never writes editor.config.json (the doctor owns it).
 """
 import argparse, hashlib, json, os, sys
@@ -20,6 +22,7 @@ import runtime as rt  # noqa: E402
 CLIENT = "board-client.js"
 STAMP = ".board-version"
 IGNORE = (".board-server.json", "*.prev", "*.tmp")
+VIDEOS_IGNORE = ("*selection.json", "*.state.json", "*.prev")
 
 
 def load_manifest(plugin_root=rt.PLUGIN_ROOT):
@@ -55,11 +58,11 @@ def stamp_for(src, files, client_bytes, version):
     return {"version": version, "hash": h.hexdigest()}
 
 
-def write_gitignore(editor_dir):
-    p = editor_dir / ".gitignore"
+def write_gitignore(folder, lines=IGNORE):
+    p = folder / ".gitignore"
     old = p.read_bytes() if p.exists() else b""
     have = {ln.strip() for ln in old.decode("utf-8", "replace").splitlines()}
-    missing = [ln for ln in IGNORE if ln not in have]
+    missing = [ln for ln in lines if ln not in have]
     if missing:
         sep = b"\n" if old and not old.endswith(b"\n") else b""
         p.write_bytes(old + sep + "".join(ln + "\n" for ln in missing).encode("utf-8"))
@@ -93,13 +96,15 @@ def is_real(p):
 def sync(root, plugin_root=rt.PLUGIN_ROOT):
     """Returns one plain line per board."""
     root, plugin_root = Path(os.path.realpath(root)), Path(plugin_root)  # links above the workspace are fine
-    editor_dir, _ = workspace_paths(root)
+    editor_dir, videos_dir = workspace_paths(root)
     version = json.loads((plugin_root / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["version"]
     client = (plugin_root / "skills" / "editor-doctor" / "assets" / CLIENT).read_bytes()
     editor_dir.mkdir(parents=True, exist_ok=True)
     if not is_real(editor_dir):
         return [f"⚠ boards: skipped, the {editor_dir.name} folder is a link to somewhere else (left as it is)"]
     write_gitignore(editor_dir)
+    if videos_dir.is_dir() and is_real(videos_dir):  # never created here, never written through a link
+        write_gitignore(videos_dir, VIDEOS_IGNORE)
     notes = []
     for board, entry in load_manifest(plugin_root).items():
         src = plugin_root / entry["template"]

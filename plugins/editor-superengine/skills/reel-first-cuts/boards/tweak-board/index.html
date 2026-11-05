@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Tweak Board</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--bg:#141311;--ink:#ece7df;--mute:#9a938a;--line:#2c2a26;--card:#1d1b18;--acc:#e0694f;--cut:#e0694f;--tight:#5aa9e6;--loose:#7cc47f;--note:#e6c35a;--ok:#7cc47f}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,Segoe UI,sans-serif}
+header{display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--card)}
+header h1{font-size:18px;margin:0 8px 0 0;font-weight:600}
+button,select,input{font:inherit;border:1px solid var(--line);background:#26231f;color:var(--ink);border-radius:6px;padding:4px 10px;cursor:pointer}
+button.send{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}button.on{background:var(--ink);color:#111}
+main{display:grid;grid-template-columns:1fr 380px;gap:14px;padding:14px 16px}
+video{width:100%;background:#000;border-radius:6px}
+#wave{width:100%;height:120px;background:#0d0c0b;border:1px solid var(--line);border-radius:6px;cursor:crosshair;display:block}
+.tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}.tools .k{font-size:12px;color:var(--mute)}
+.tools button b{display:inline-block;min-width:16px;padding:0 4px;margin-right:6px;border-radius:4px;background:#000;font-family:ui-monospace,monospace;font-size:12px}
+.pend{color:var(--cut);font-weight:600}
+aside h2{font-size:13px;margin:0 0 8px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+.mark{border:1px solid var(--line);border-left:4px solid var(--mute);border-radius:6px;padding:8px 10px;margin:0 0 8px;background:var(--card)}
+.mark.cut{border-left-color:var(--cut)}.mark.tight{border-left-color:var(--tight)}.mark.loose{border-left-color:var(--loose)}.mark.note{border-left-color:var(--note)}
+.mark .t{font-variant-numeric:tabular-nums;font-weight:600;cursor:pointer}.mark .w{color:var(--mute);font-size:12.5px;margin:2px 0 6px}
+.mark .row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.mark .row button{padding:1px 7px;font-size:12px}
+.mark input{width:100%;margin-top:6px;padding:3px 6px}
+.chips button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+pre{white-space:pre-wrap;font-size:12px;color:var(--mute);border-top:1px solid var(--line);padding-top:8px;margin-top:12px}
+/* UI audit */
+main>*{min-width:0}
+.mark .row .del{margin-left:auto}
+.mark select{padding:1px 6px;font-size:12px}
+#listenh{margin-top:16px}
+@media(max-width:820px){main{grid-template-columns:1fr}}
+</style>
+<style id="editor-theme">/* Editor Hub look, theme layer only. Delete this block to undo. */
+:root{color-scheme:dark;--et-bg:#0A0A0B;--et-tile:#111113;--et-tile2:#17171A;--et-hair:rgba(255,255,255,.08);--et-hair2:rgba(255,255,255,.18);
+  --et-ink:#F3F2EF;--et-ink2:rgba(243,242,239,.68);--et-mute:rgba(243,242,239,.44);--et-you:#FF5A3C;
+  --et-sans:"Geist","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;--et-mono:"Geist Mono",ui-monospace,Consolas,monospace}
+html,body{background:var(--et-bg)!important;color:var(--et-ink)}
+body{font-family:var(--et-sans)!important;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--et-sans)!important;font-weight:300!important;letter-spacing:-.02em}
+h1 em{font-style:normal!important;color:var(--et-you)!important}
+input,select,textarea{background:var(--et-tile2)!important;color:var(--et-ink)!important;border:1px solid var(--et-hair2)!important;border-radius:8px}
+video{border-radius:12px}
+::selection{background:rgba(255,90,60,.35)}
+
+:root{--bg:#0A0A0B;--ink:#F3F2EF;--mute:rgba(243,242,239,.48);--line:rgba(255,255,255,.10);--card:#111113;--acc:#FF5A3C;--cut:#FF5A3C;
+  --tight:#5CD3D9;--loose:#62D69A;--note:#F2CD52;--ok:#62D69A}
+
+:root{--et-ease:cubic-bezier(.2,.8,.2,1)}
+:focus-visible{outline:1.5px solid var(--et-ink);outline-offset:3px}
+header{position:sticky;top:0;z-index:8;background:rgba(10,10,11,.72)!important;backdrop-filter:blur(16px) saturate(1.4);-webkit-backdrop-filter:blur(16px) saturate(1.4);
+  border-bottom:1px solid var(--et-hair)!important;padding:10px 18px!important;gap:12px!important;font-size:12.5px;color:var(--et-ink2)}
+header h1{font:300 22px/1.1 var(--et-sans)!important;letter-spacing:-.025em!important;margin:0 8px 0 0!important;color:var(--et-ink)}
+button{background:transparent!important;color:var(--et-ink)!important;border:1px solid var(--et-hair2)!important;border-radius:999px!important;
+  min-height:30px;padding:0 14px;font:400 13px var(--et-sans);cursor:pointer;
+  transition:border-color .25s var(--et-ease),background-color .25s var(--et-ease),color .25s var(--et-ease),opacity .25s var(--et-ease)}
+button:hover{border-color:var(--et-ink)!important}
+button.on{background:rgba(243,242,239,.14)!important;color:var(--et-ink)!important;border-color:var(--et-ink)!important}   /* toggled on: soft fill, so Send stays the one solid */
+button:disabled{opacity:.4;cursor:default}
+button:disabled:hover{border-color:var(--et-hair2)!important}
+#send{background:var(--et-ink)!important;color:var(--et-bg)!important;border-color:var(--et-ink)!important;font-weight:500!important;padding:0 18px!important;min-height:34px}
+#send:hover{background:#fff!important}
+select,input[type=text],input:not([type]){min-height:30px;padding:0 10px;border-radius:10px!important;transition:border-color .25s var(--et-ease)}
+textarea{border-radius:10px!important;transition:border-color .25s var(--et-ease)}
+select:hover,select:focus,input:hover,input:focus,textarea:hover,textarea:focus{border-color:var(--et-ink)!important;outline:0}
+input[type=range]{accent-color:var(--et-ink)}
+#dirty{display:inline-flex;align-items:center;gap:7px;font:500 11px var(--et-mono)!important;letter-spacing:.12em;text-transform:uppercase;color:var(--et-you)!important}
+#dirty::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--et-you);box-shadow:0 0 12px var(--et-you);flex:none;animation:et-pulse 2.4s var(--et-ease) infinite}
+#dirty[hidden]{display:none!important}
+#saved{font:400 12px var(--et-mono)}
+kbd{display:inline-block;min-width:20px;text-align:center;background:rgba(255,255,255,.04);border:1px solid var(--et-hair2);border-bottom-width:2px;
+  border-radius:6px;padding:0 6px;margin:0 1px;font:500 11px/18px var(--et-mono);color:var(--et-ink)}
+@keyframes et-pulse{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+main>div,.mark{position:relative;isolation:isolate;background:var(--et-tile)!important;border:1px solid var(--et-hair)!important;transition:border-color .3s var(--et-ease),box-shadow .3s var(--et-ease),opacity .3s var(--et-ease)}
+main>div::before,.mark::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .3s var(--et-ease);background:radial-gradient(420px circle at var(--mx,50%) var(--my,50%),rgba(255,255,255,.06),transparent 60%)}
+main>div:hover,.mark:hover{border-color:var(--et-hair2)!important}
+main>div:hover::before,.mark:hover::before{opacity:1}
+
+#tc{font:500 20px/1 var(--et-mono)!important;letter-spacing:-.01em;color:var(--et-ink)}
+.pend{font:500 11px var(--et-mono);letter-spacing:.1em;text-transform:uppercase}
+main{padding:16px 18px!important}
+main>div{border-radius:18px!important;padding:14px!important}
+video{border-radius:12px!important}
+#wave{border:1px solid var(--et-hair)!important;border-radius:12px!important;margin-top:10px}
+.tools{gap:8px!important;margin:12px 0 2px!important}
+.tools button{padding:0 12px 0 6px;font-size:12.5px}
+.tools .k{font-size:12px!important;line-height:2.2;color:var(--et-mute)!important}
+.tools button b,.tools .k b{display:inline-block;min-width:20px;text-align:center;background:rgba(255,255,255,.04)!important;border:1px solid var(--et-hair2);border-bottom-width:2px;
+  border-radius:6px!important;padding:0 5px!important;margin:0 6px 0 0!important;font:500 11px/18px var(--et-mono)!important;color:var(--et-ink)}
+.tools .k b{margin:0 2px!important}
+aside h2,#listenh{font:500 11px/1 var(--et-mono)!important;letter-spacing:.14em!important;text-transform:uppercase;color:var(--et-mute)!important;margin:4px 0 12px!important}
+#listenh{margin-top:20px!important}
+#n{color:var(--et-ink2)}
+/* marks as tiles; the type is the inset stripe */
+.mark{border-radius:14px!important;padding:12px 14px!important;margin:0 0 10px!important;box-shadow:inset 3px 0 0 var(--et-mute)}
+.mark.cut{box-shadow:inset 3px 0 0 var(--cut)}.mark.tight{box-shadow:inset 3px 0 0 var(--tight)}.mark.loose{box-shadow:inset 3px 0 0 var(--loose)}.mark.note{box-shadow:inset 3px 0 0 var(--note)}
+.mark .t{font:500 15px var(--et-mono)!important;font-variant-numeric:tabular-nums;transition:color .2s var(--et-ease)}
+.mark .t:hover{color:var(--et-you)}
+.mark .w{color:var(--et-mute)!important;margin:3px 0 8px!important}
+.mark .row button{min-height:26px;padding:0 10px!important;font-size:12px}
+.mark select{min-height:26px;padding:0 8px!important;font-size:12px!important}
+.mark input{margin-top:8px!important;padding:0 10px!important}
+.mark .row .del:hover{border-color:var(--et-you)!important;color:var(--et-you)!important}
+pre{font:400 12px/1.6 var(--et-mono)!important;color:var(--et-ink2)!important;border-top:1px solid var(--et-hair)!important}
+@media (max-width:600px){header{padding:10px 16px!important}main{padding:14px 16px!important}}
+/* waveform canvas colours (read by draw() via cssVar) */
+:root{--wv-bg:#0A0A0B;--wv-join:rgba(255,255,255,.10);--wv-peak:rgba(243,242,239,.55);--wv-head:#FFFFFF;--wv-tick:rgba(243,242,239,.40)}
+</style>
+<script id="editor-theme-js">document.addEventListener("pointermove",function(e){var t=e.target.closest&&e.target.closest("main>div,.mark");if(!t)return;var b=t.getBoundingClientRect();t.style.setProperty("--mx",(e.clientX-b.left)+"px");t.style.setProperty("--my",(e.clientY-b.top)+"px");},{passive:true});</script>
+</head><body>
+<header>
+ <h1 id="title">Tweak Board</h1>
+ <span id="tc" style="font-variant-numeric:tabular-nums;font-weight:600">0:00.00</span>
+ <span>zoom <select id="zoom"><option value="0">full</option><option value="20">20 s</option><option value="6" selected>6 s</option><option value="2">2 s</option></select></span>
+ <span>speed <select id="speed"></select></span>
+ <span style="margin-left:auto"></span>
+ <button id="send" class="send">send to Claude</button> <span id="saved" style="color:var(--ok)"></span> <span id="dirty" class="pend" hidden>changes not sent</span>
+</header>
+<main>
+ <div>
+  <video id="v" controls preload="auto"></video>
+  <canvas id="wave" height="120"></canvas>
+  <div class="tools">
+   <button data-step="-1"><b>←</b>frame</button><button data-step="1"><b>→</b>frame</button>
+   <button data-step="-3"><b>⇧←</b>0.1 s</button><button data-step="3"><b>⇧→</b>0.1 s</button>
+   <span class="k">·</span>
+   <button data-add="cut"><b>C</b>cut in / out</button>
+   <button data-add="tight"><b>T</b>tighten pause</button>
+   <button data-add="loose"><b>L</b>loosen pause</button>
+   <button data-add="note"><b>N</b>note</button>
+   <span class="k">· <b>space</b> play/pause · <b>[</b> <b>]</b> previous / next mark · <b>Esc</b> cancels a half-set cut · <b>Ctrl+Z</b> undo · <b>Ctrl+Shift+Z</b> redo · click the waveform to seek</span>
+   <span id="pend" class="pend" hidden></span>
+  </div>
+ </div>
+ <aside>
+  <h2>marks <span id="n"></span></h2>
+  <div id="marks"></div>
+  <h2 id="listenh" hidden>what to listen for</h2>
+  <pre id="listen"></pre>
+ </aside>
+</main>
+<script src="./board-client.js"></script>
+<script>
+// state and Send go through the editor boards; the reel comes from this page's own ?reel= (works inside the hub's iframe too)
+const REEL = new URLSearchParams(location.search).get('reel') || '', BASE = '/videos/' + encodeURIComponent(REEL) + '/';
+let bc = null; try { bc = BoardClient.create({board: 'tweak-board'}); } catch (e) { bc = null; }
+const reelUrl = p => BASE + String(p).split('/').map(encodeURIComponent).join('/');   // config paths are relative to the reel folder
+let C, S={marks:[]}, pendingCut=null, seq=1, aroundH=null;
+const $=s=>document.querySelector(s), v=()=>$('#v');
+const fmt=t=>`${Math.floor(t/60)}:${(t%60).toFixed(2).padStart(5,'0')}`;
+// transcript words and note text are data, never markup (UI audit T3)
+const esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const wordsAt=(t,n=3)=>{ const b=C.words.filter(w=>w.t<=t).slice(-n).map(w=>w.w), a=C.words.filter(w=>w.t>t).slice(0,2).map(w=>w.w); return esc(b.join(' ')+' | '+a.join(' ')); };
+const LABEL={cut:'cut',tight:'tighten pause',loose:'loosen pause',note:'note'};
+const cssVar=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();   // waveform colours = the sidebar's (theme-mapped)
+function setSaved(msg,bad){ const el=$('#saved'); el.textContent=msg; el.style.color=bad?'var(--acc)':'var(--ok)'; }
+function flash(msg){ const p=$('#pend'); p.textContent=msg; p.hidden=false; clearTimeout(flash.t); flash.t=setTimeout(()=>{ if(pendingCut==null) p.hidden=true; },2500); }
+// "changes not sent" = the marks differ from the last Send (tweak-selection.json); before any Send, from how the board opened (UI audit #8)
+const canon=o=>JSON.stringify(o,(k,x)=>(x&&typeof x==='object'&&!Array.isArray(x))?Object.fromEntries(Object.keys(x).sort().map(y=>[y,x[y]])):x);
+let sentCanon=null, baseCanon=null;
+function markDirty(){ $('#dirty').hidden= canon(S.marks)===(sentCanon??baseCanon); }
+// undo / redo: in-memory snapshots of the marks and the speed, taken at every save (UI audit E)
+let hist=[], fut=[], snap=null, snapKey=null;
+const undoSnap=()=>JSON.stringify({marks:S.marks, speed:S.speed??null});
+// tweak-board.state.json on disk is the source of truth (any port, any browser); BoardClient keeps this browser's copy as the fallback
+let diskT=null;
+function persist(key){ const j=JSON.stringify(S), mj=undoSnap();
+  if(snap!=null&&mj!==snap){ if(!(key&&key===snapKey)){ hist.push(snap); if(hist.length>50) hist.shift(); } fut=[]; snapKey=key||null; }   // typing one note is one undo step
+  snap=mj;
+  clearTimeout(diskT); diskT=setTimeout(()=>bc.save(JSON.parse(j)).then(r=>{ if(!r.ok) setSaved(r.status?'AUTO-SAVE FAILED ('+r.status+'): only this browser has your changes':'AUTO-SAVE FAILED: no answer from the editor boards, only this browser has your changes',true); }),400);
+  markDirty(); }
+function applySnap(j){ const o=JSON.parse(j); S.marks=o.marks; S.speed=o.speed; if(o.speed!=null){ setSpeed(o.speed); $('#speed').value=String(o.speed); } snap=j; snapKey=null; render(); }
+function undo(){ if(!hist.length){ flash('nothing to undo'); return; } fut.push(snap); applySnap(hist.pop()); }
+function redo(){ if(!fut.length){ flash('nothing to redo'); return; } hist.push(snap); applySnap(fut.pop()); }
+function seek(t){ v().currentTime=Math.max(0,Math.min(C.duration,t)); }
+// the cut is rendered at its own speed (C.ship_speed): it plays at x / that, so it sounds at the chosen ship speed
+function setSpeed(x){ const vid=v(), r=x/(+C.ship_speed||1); vid.preservesPitch=true; vid.defaultPlaybackRate=r; vid.playbackRate=r; }   // default rate survives the video's own load reset
+function draw(){
+  const cv=$('#wave'), W=cv.width=cv.clientWidth, H=cv.height, g=cv.getContext('2d');
+  const span=+$('#zoom').value||C.duration, cur=v().currentTime||0;
+  let t0= span>=C.duration?0:Math.max(0,Math.min(C.duration-span,cur-span/2)); const t1=t0+span;
+  g.fillStyle=cssVar('--wv-bg')||'#0d0c0b'; g.fillRect(0,0,W,H);
+  const px=t=>(t-t0)/span*W;
+  const col={cut:cssVar('--cut'),tight:cssVar('--tight'),loose:cssVar('--loose'),note:cssVar('--note')};
+  // segment joins
+  g.strokeStyle=cssVar('--wv-join')||'#3a3630'; C.map.forEach(m=>{ const x=px(m[0]); if(x>0&&x<W){ g.beginPath(); g.moveTo(x,0); g.lineTo(x,H); g.stroke(); } });
+  // marks
+  S.marks.forEach(m=>{ if(m.type==='cut'&&m.b!=null){ const a=Math.min(m.a,m.b), b=Math.max(m.a,m.b); g.globalAlpha=.28; g.fillStyle=col.cut; g.fillRect(px(a),0,Math.max(2,px(b)-px(a)),H); g.globalAlpha=1; }
+    g.fillStyle=col[m.type]; g.fillRect(px(m.a)-1,0,2,H); if(m.type==='cut'&&m.b!=null) g.fillRect(px(m.b)-1,0,2,H); });
+  if(pendingCut!=null){ g.fillStyle=col.cut; g.fillRect(px(pendingCut)-1,0,2,H); }
+  // peaks
+  const b0=Math.floor(t0*C.bins_per_s), b1=Math.ceil(t1*C.bins_per_s); g.fillStyle=cssVar('--wv-peak')||'#b8b0a4';
+  for(let b=b0;b<b1;b++){ const p=C.peaks[b]||0, x=px(b/C.bins_per_s), w=Math.max(1,W/(b1-b0)); const h=p*(H-8); g.fillRect(x,(H-h)/2,w,h); }
+  // playhead
+  g.fillStyle=cssVar('--wv-head')||'#fff'; g.fillRect(px(cur)-1,0,2,H);
+  // time ticks
+  g.fillStyle=cssVar('--wv-tick')||'#6b665e'; g.font='11px system-ui'; const step= span>60?10:span>15?2:0.5; for(let t=Math.ceil(t0/step)*step;t<=t1;t+=step){ g.fillText(fmt(t),px(t)+3,11); }
+  $('#tc').textContent=fmt(cur);
+}
+function add(type){
+  const t=+v().currentTime.toFixed(3); let id=null;
+  if(type==='cut'){ if(pendingCut==null){ pendingCut=t; const p=$('#pend'); p.textContent='cut start set: press C again at the end · Esc cancels'; p.hidden=false; draw(); return; }
+    const a=Math.min(pendingCut,t), b=Math.max(pendingCut,t); pendingCut=null; $('#pend').hidden=true;
+    if(b-a<0.02){ flash('cut ignored: start and end were under 0.02 s apart. Move the playhead between the two C presses.'); draw(); return; }
+    S.marks.push({id:seq++,type:'cut',a,b}); }
+  else if(type==='note'){ id=seq++; S.marks.push({id,type:'note',a:t,text:''}); }
+  else S.marks.push({id:seq++,type,a:t,ms:type==='tight'?150:500});
+  S.marks.sort((x,y)=>x.a-y.a); render();
+  if(id!=null){ const el=document.querySelector(`[data-text="${id}"]`); if(el) el.focus(); }   // N goes straight to typing the note
+}
+function render(first){
+  if(first){ snap=undoSnap(); markDirty(); } else persist();   // opening the board is not a change
+  const box=$('#marks'); box.innerHTML=''; $('#n').textContent=S.marks.length?`(${S.marks.length})`:'';
+  S.marks.forEach(m=>{
+    const d=document.createElement('div'); d.className='mark '+m.type;
+    const range=m.type==='cut'?`${fmt(m.a)} → ${fmt(m.b)} <span style="color:var(--mute)">(−${(m.b-m.a).toFixed(2)}s)</span>`:fmt(m.a);
+    let ctl=`<select data-type="${m.id}" title="change what this mark asks for">${Object.entries(LABEL).map(([k,l])=>`<option value="${k}"${k===m.type?' selected':''}>${l}</option>`).join('')}</select>`;
+    if(m.type==='cut') ctl+=`<button data-nudge="${m.id}:a:-1" title="start one frame earlier">start −f</button><button data-nudge="${m.id}:a:1" title="start one frame later">start +f</button><button data-tohead="${m.id}:a" title="move the start to the playhead">set start</button>`
+      +`<button data-nudge="${m.id}:b:-1" title="end one frame earlier">end −f</button><button data-nudge="${m.id}:b:1" title="end one frame later">end +f</button><button data-tohead="${m.id}:b" title="move the end to the playhead">set end</button>`;
+    else ctl+=`<button data-nudge="${m.id}:a:-1" title="one frame earlier">−f</button><button data-nudge="${m.id}:a:1" title="one frame later">+f</button>`;
+    ctl+=`<button data-play="${m.id}" title="play from 1.5 s before to 1.5 s after">▶ around</button>`;
+    if(m.type==='tight'||m.type==='loose') ctl+=`<span class="chips">${C.presets.map(([n,ms])=>`<button data-ms="${m.id}:${ms}" class="${m.ms===ms?'on':''}">${n}</button>`).join('')}</span>`;
+    ctl+=`<button class="del" data-del="${m.id}" title="delete (Ctrl+Z brings it back)">✕</button>`;
+    d.innerHTML=`<div class="t" data-seek="${m.a}">${range}</div><div class="w">${wordsAt(m.a)}</div><div class="row">${ctl}</div>${m.type==='note'?`<input data-text="${m.id}" placeholder="what should change here" value="${esc(m.text||'')}">`:''}`;
+    box.appendChild(d);
+  });
+  draw();
+}
+const byId=id=>S.marks.find(m=>m.id===+id);
+function stopAround(){ if(aroundH){ v().removeEventListener('timeupdate',aroundH); aroundH=null; } }
+function playAround(m){ const vid=v(), end=(m.type==='cut'&&m.b!=null?m.b:m.a)+1.5; stopAround();
+  seek(Math.max(0,m.a-1.5)); vid.play();
+  aroundH=()=>{ if(vid.currentTime>=end) vid.pause(); }; vid.addEventListener('timeupdate',aroundH); vid.addEventListener('pause',stopAround,{once:true}); }
+document.addEventListener('click',e=>{
+  const b=e.target.closest('button'), s=e.target.closest('[data-seek]'); let x;
+  if(s&&!b){ seek(+s.dataset.seek); return; }
+  if(!b) return;
+  if((x=b.dataset.step)){ const f=1/C.fps; seek(v().currentTime+(Math.abs(x)===3?Math.sign(x)*0.1:x*f)); }
+  else if((x=b.dataset.add)) add(x);
+  else if((x=b.dataset.nudge)){ const [id,k,dir]=x.split(':'); const m=byId(id); m[k]=+(m[k]+dir/C.fps).toFixed(3); if(m.type==='cut'&&m.b<m.a){ [m.a,m.b]=[m.b,m.a]; } render(); }
+  else if((x=b.dataset.tohead)){ const [id,k]=x.split(':'), m=byId(id), old={a:m.a,b:m.b};
+    m[k]=+v().currentTime.toFixed(3); if(m.b<m.a) [m.a,m.b]=[m.b,m.a];
+    if(m.b-m.a<0.02){ Object.assign(m,old); flash('cut not changed: start and end would be under 0.02 s apart'); return; }
+    S.marks.sort((p,q)=>p.a-q.a); render(); }
+  else if((x=b.dataset.ms)){ const [id,ms]=x.split(':'); byId(id).ms=+ms; render(); }
+  else if((x=b.dataset.del)){ S.marks=S.marks.filter(m=>m.id!==+x); render(); }
+  else if((x=b.dataset.play)) playAround(byId(x));
+});
+// mark type dropdown: switching to cut gives it an end half a second after its start (UI audit F)
+document.addEventListener('change',e=>{ const id=e.target.dataset.type; if(!id) return; const m=byId(id), t=e.target.value;
+  m.type=t;
+  if(t==='cut') m.b=+Math.min(C.duration,m.a+0.5).toFixed(3); else delete m.b;
+  if((t==='tight'||t==='loose')&&m.ms==null) m.ms=t==='tight'?150:500;
+  if(t==='note'&&m.text==null) m.text='';
+  render(); });
+document.addEventListener('input',e=>{ const id=e.target.dataset.text; if(id){ byId(id).text=e.target.value; persist('text:'+id); } });
+document.addEventListener('keydown',e=>{
+  const t=e.target; if(/^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)||t.isContentEditable||!C) return;
+  const k=e.key.toLowerCase();
+  if((e.ctrlKey||e.metaKey)&&!e.altKey&&k==='z'){ e.preventDefault(); if(!e.repeat){ if(e.shiftKey) redo(); else undo(); } return; }
+  if(e.ctrlKey||e.altKey||e.metaKey) return;   // Ctrl+C / Ctrl+L / Ctrl+T / Ctrl+N belong to the browser (UI audit #11)
+  if(k==='arrowleft'){ e.preventDefault(); seek(v().currentTime-(e.shiftKey?0.1:1/C.fps)); }   // arrows may repeat: holding one scrubs
+  else if(k==='arrowright'){ e.preventDefault(); seek(v().currentTime+(e.shiftKey?0.1:1/C.fps)); }
+  else if(e.repeat) return;   // a held key adds one mark, not twenty
+  else if(k==='c'){ e.preventDefault(); add('cut'); } else if(k==='t'){ e.preventDefault(); add('tight'); } else if(k==='l'){ e.preventDefault(); add('loose'); } else if(k==='n'){ e.preventDefault(); add('note'); }
+  else if(k===' '){ e.preventDefault(); if(t.tagName==='BUTTON') t.blur(); v().paused?v().play():v().pause(); }
+  else if(k==='['||k===']'){ const cur=v().currentTime, pts=S.marks.map(m=>m.a).sort((p,q)=>p-q);
+    const to= k===']'?pts.find(a=>a>cur+0.01):pts.reverse().find(a=>a<cur-0.01); if(to!=null) seek(to); }
+  else if(k==='escape'){ pendingCut=null; $('#pend').hidden=true; draw(); }
+});
+$('#wave').addEventListener('click',e=>{ const cv=$('#wave'), span=+$('#zoom').value||C.duration, cur=v().currentTime||0; const t0= span>=C.duration?0:Math.max(0,Math.min(C.duration-span,cur-span/2)); seek(t0+e.offsetX/cv.clientWidth*span); });
+$('#zoom').addEventListener('change',draw);
+$('#speed').addEventListener('change',e=>{ setSpeed(+e.target.value); S.speed=+e.target.value; persist(); });
+$('#send').onclick=async()=>{
+  const prev=S.saved_at; S.saved_at=new Date().toISOString(); S.reel=C.reel; S.version=C.version; S.video=C.video;
+  try{
+    const r=await fetch(BASE+'__save?board=tweak-board&name=tweak-selection.json',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(S,null,1)});
+    if(!r.ok) throw new Error('the board server answered '+r.status);
+    sentCanon=canon(S.marks); setSaved('saved tweak-selection.json '+new Date().toLocaleTimeString());
+  }catch(err){ S.saved_at=prev; setSaved('SEND FAILED: '+(err instanceof TypeError?'no answer from the editor boards (are they running?)':err.message)+'. Nothing reached Claude; your marks are still on this page.',true); }
+  persist();
+};
+(bc?Promise.all([fetch(BASE+'tweak-board.config.json').then(r=>{ if(!r.ok) throw new Error('no tweak-board.config.json for this reel (HTTP '+r.status+')'); return r.json(); }), bc.load(),
+  fetch(BASE+'tweak-selection.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null)]):Promise.reject(new Error('open this board with ?reel=<reel> in its address'))).then(([c,disk,sent])=>{
+  C=c; $('#title').textContent=`Tweak Board · ${C.reel} · ${C.version} · ${fmt(C.duration)}`; v().src=reelUrl(C.video); $('#listen').textContent=C.listen||''; $('#listenh').hidden=!C.listen;
+  // a saved state stamped with another reel or version is not this cut's ruling
+  const mine=st=>!st.reel||!st.version||(st.reel===C.reel&&st.version===C.version);
+  try{ const st=disk; if(st){
+    if(mine(st)){ S=st; S.marks=S.marks||[]; seq=Math.max(1,...S.marks.map(m=>m.id+1)); } else setSaved(`stored marks were made on ${st.reel} ${st.version}, not this cut: started empty`,true); } }catch(e){}
+  S.reel=C.reel; S.version=C.version;
+  try{ if(sent){ const o=sent; if(o.reel===C.reel&&o.version===C.version) sentCanon=canon(o.marks||[]); } }catch(e){}
+  baseCanon=canon(S.marks);
+  // speeds come from tweak-board.config.json; the board opens at the cut's own speed unless the saved state has one (UI audit F)
+  const ship=+C.ship_speed||1, sp=S.speed||ship;
+  const opts=[...new Set([...(C.speed_options||[]),ship,sp].map(Number))].sort((p,q)=>p-q);
+  $('#speed').innerHTML=opts.map(x=>`<option value="${x}"${x===+sp?' selected':''}>${Number.isInteger(x)?x.toFixed(1):x}x</option>`).join('');
+  setSpeed(+sp); S.speed=+sp;
+  v().addEventListener('timeupdate',draw); v().addEventListener('seeked',draw); v().addEventListener('loadedmetadata',draw); window.addEventListener('resize',draw);
+  render(true);
+}).catch(err=>{ $('#title').textContent='Tweak Board: '+err.message; });
+</script></body></html>

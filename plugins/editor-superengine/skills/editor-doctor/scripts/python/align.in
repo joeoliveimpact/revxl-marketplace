@@ -3,4 +3,6 @@
 numpy
 pillow==13.0.0
 torch==2.12.0; sys_platform != "darwin" or platform_machine != "x86_64"
+# the RVM cutout (reel-canvas-build) needs it; CPU wheel, pinned to match torch 2.12.0 (torchvision 0.27.0 requires torch==2.12.0, PyPI has cp312 win_amd64 + macosx_14_0_arm64 wheels)
+torchvision==0.27.0; sys_platform != "darwin" or platform_machine != "x86_64"
 transformers==4.57.6; sys_platform != "darwin" or platform_machine != "x86_64"

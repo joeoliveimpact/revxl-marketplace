@@ -6,6 +6,19 @@
 > empty.** Entries are authored per workspace; with none, `list` says so and exits 0,
 > `index` writes an empty index, and `validate --all` exits 1 (nothing to pass).
 
+## Contents
+- What a design system is here
+- Two kinds, and the one hard rule
+- Entry shape
+- Roles — 36, of which 10 required
+- One length unit
+- Fonts are a correctness gate
+- Enclaves
+- Hand-authored, not parsed
+- Reporting
+- The look-map + `validate-map`
+- Exit codes
+
 ## What a design system is here
 
 An editing style owns cut timing, caption grouping, beat structure and motion. A

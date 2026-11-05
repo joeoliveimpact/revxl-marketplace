@@ -1,13 +1,12 @@
 ---
 name: editor-superengine:reel-teardown
-description: Tears down a reel that is already posted and shows what the same footage would look like rebuilt, as one page the coach can read or send to the creator. Use when someone says "tear down this reel", "review this reel", "what would we fix on this", "why did this get no comments", "why did this flop", "make a page I can send them", or drops in a posted reel's video or link. Works from a video file first, and from a reel link only when SocialCrawl is already set up. Not for a reel that hasn't been recorded yet (that is shortform-superengine's reel-scripter), not for cutting raw footage (that is reel-first-cuts), and it never publishes the page.
+description: Tears down a reel that is already posted and shows the same footage rebuilt, as one page to read or send the creator. Use on "tear down this reel", "review this reel", "what would we fix", "why did this flop", "make a page I can send them", or a posted reel's video or link. NOT for an unrecorded reel (shortform-superengine's reel-scripter), raw footage (reel-first-cuts) or copying a style (style-decoder).
 ---
 
 # Reel teardown
 
 Posted reel, then transcript and frames, then the diagnosis, then a rebuilt script, then one
-page the client can read or send. **One page per reel. The client picks the hook. Nothing is
-deployed.**
+page the client can read or send. **One page per reel. The client picks the hook.**
 
 ## Output contract
 
@@ -35,14 +34,12 @@ names, paths, JSON or script names, ever.
 - If the conversation was compacted since this skill loaded, invoke this skill again before
   going on. Re-running is safe: finished files in the teardown folder are reused, not redone.
 - Never re-run a SocialCrawl pull that already succeeded; it costs a credit each time.
-- The three rebuild skills always run cold. If a rebuild subagent saw the diagnosis or another
-  skill's output, throw its result away and run it again.
 
 ## Before you start
 
 - `<editor python>` is the editor's own Python. Windows:
-  `"$LOCALAPPDATA/revxl/editor-superengine/venv/Scripts/python.exe"`. macOS:
-  `"$HOME/Library/Application Support/revxl/editor-superengine/venv/bin/python"`. Keep the
+  `"$(H="$LOCALAPPDATA/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/Scripts/python.exe"`. macOS:
+  `"$(H="$HOME/Library/Application Support/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/bin/python"`. Keep the
   quotes. If it doesn't exist, invoke `editor-superengine:editor-doctor` first.
 - **Full run or diagnosis only.** A full run needs shortform-superengine: the skills
   `shortform-superengine:hook`, `shortform-superengine:viral` and
@@ -62,7 +59,7 @@ names, paths, JSON or script names, ever.
   save-for-later; shares: send-to-someone; comments: a question to answer).
 - Whether the script is frozen. Default: not frozen (a rebuild is the point).
 - Anything the creator supplied: insights, a retention graph, client results with their
-  qualifier. **If none, none. Nothing is invented downstream, ever.**
+  qualifier. **If none, none.**
 - The client's own name and business, for the page's signature.
 
 ## Stages (do not reorder)
@@ -76,15 +73,15 @@ names, paths, JSON or script names, ever.
   SocialCrawl. That's 1 credit for the details plus the video download. Go ahead?" **Wait for a
   yes. This is a money step: no yes, no call.** No key: ask the client to download the reel from
   the app and drop the video file in. Never ask them to type a command.
-- **Transcribe:** run reel-first-cuts' transcription stage (Stage 1 of
-  `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/SKILL.md`) exactly as that SKILL.md shows, with
-  `<editor python>` in place of `python`, on `work/reel.mp4`, writing into `work/`. Keep its word
-  list with start and end times.
+- **Transcribe:** from the client's workspace folder (not the teardown folder), run
+  `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/transcribe_words.py" "teardowns/<folder>/work/reel.mp4" -o "teardowns/<folder>/work/tx.json"`
+  (`<folder>` is `<creator> <MM.DD.YY>`). The word list, with start and end times, is `work/tx.json`.
+  Exit 3: the transcriber isn't set up, or is set up for another language: invoke `editor-superengine:editor-doctor`, then run it again. Exit 1: the video isn't there, or its sound can't be read.
 - **Last resort:** if the transcriber isn't set up or fails twice, ask the client to paste the
   transcript. Pace is then the word count over the reel's length, and **every timing on the page
-  is labelled "estimated"**.
-- Measured pace = spoken words over (last word end minus first word start), so silences don't
-  flatter it. List sentence onsets (a sentence starts at the first word after `.?!`).
+  and in `teardown.md` is labelled "estimated"**.
+- List sentence onsets (a sentence starts at the first word after `.?!`). The measured pace
+  formula is in `teardown-details.md`.
 - Write `transcript.md`: a header (creator, posted date and stats if pulled, length, how it was
   timed) and the transcript with sentence onsets.
 
@@ -106,8 +103,7 @@ B-roll, and framing changes.
   the frame-0 text. Name which fire.
 - Craft scores Hook / Body / CTA / Overall, 0 to 100, on the Story Locks rubric. When
   reel-scripter's references aren't available, use the fallback rubric in
-  `${CLAUDE_PLUGIN_ROOT}/skills/reel-teardown/references/teardown-details.md`. **Craft only,
-  never a view prediction.**
+  `${CLAUDE_PLUGIN_ROOT}/skills/reel-teardown/references/teardown-details.md`.
 - The six levers, each as "what they did / why it leaks / the fix, in their own words": scroll
   stop, re-hooks, share, save, profile visit, comments and likes.
 
@@ -120,7 +116,8 @@ skill, which it invokes with the Skill tool and follows (its method file's `## W
 is the shape of its answer, `## Ask the creator for` is what the brief must carry), and a brief
 written from `${CLAUDE_PLUGIN_ROOT}/skills/reel-teardown/references/cold-run-brief.md`. **It
 never sees this skill, the diagnosis, or another skill's output** except the one input the
-table hands it. Save each result in `work/` as `01 hook.md`, `02 viral.md`, `03 rehooks.md`.
+table hands it. If one did, throw its result away and run it again: a warm run isn't a test of
+the skill. Save each result in `work/` as `01 hook.md`, `02 viral.md`, `03 rehooks.md`.
 
 | Order | Skill | It gets | Gate before the next |
 |---|---|---|---|
@@ -138,7 +135,7 @@ Story Locks on the rebuilt script: the four craft scores again, beside stage 2's
 three results into one beat map (time, beat, spoken, on screen, job): hook's picked opening,
 viral's body and CTA, rehooks' typed re-hooks at rehooks' timings. Where they disagree, viral's
 line wins inside a beat and rehooks' placement wins between beats. Write the full read-through
-script. Where a real number belongs, leave a marked fill-in. **Never invent it.**
+script.
 
 ### 5. Page
 
@@ -156,8 +153,9 @@ script. Where a real number belongs, leave a marked fill-in. **Never invent it.*
   `preview_start` by that name. At 375 px wide, with JavaScript:
   `document.documentElement.scrollWidth == 375`, every visible row inside `.tscroll` (header rows
   are hidden on mobile) computes `display: block` (tables stacked into cards), and no console
-  errors. Fix and re-check until all three hold. The client never types anything.
-- **Show the screenshot. Wait.** Deploying is a separate ask from the client.
+  errors, and no unfilled placeholders: `document.documentElement.outerHTML` contains no `{{`
+  (the title and meta lines included) and `document.body.innerText` contains no "goes here". A
+  failed check means fix the page, never deploy it. Re-check until all four hold.
 
 ## Guardrails
 
@@ -167,7 +165,6 @@ script. Where a real number belongs, leave a marked fill-in. **Never invent it.*
 - One CTA on the rebuilt reel, chosen by the metric. Say why.
 - Second person on the page, but keep the creator's "we" where viral kept it on purpose, and say so.
 - Scores are craft. Never a view prediction.
-- The skills always run cold. A warm run isn't a test of the skill.
 - Option (house style, the client turns it on): no em dashes or en dashes on the page.
 
 Common mistakes and the fix for each: `${CLAUDE_PLUGIN_ROOT}/skills/reel-teardown/references/teardown-details.md`.

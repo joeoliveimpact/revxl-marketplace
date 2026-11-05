@@ -1,6 +1,6 @@
 ---
 name: editor-superengine:style-decoder
-description: Decodes the editing style of a reel the client already has as a video file into a reusable style system — a machine style-spec.json, evidence contact sheets, a runbook and a held-out check — that later edits can follow. Use when someone says "decode this reel's style", "break down how this is edited", "make this editing style repeatable", "add this reel to my style X", or "build a template from this style". Local video files only; it never downloads and never takes a link. One reel per run; a second reel refines the same style.
+description: Decodes the editing style of a reel saved on the client's computer into a reusable style later edits follow. Use on "decode this reel's style", "make this editing style repeatable", "add this reel to my style X" or "build a template from this style". NOT for a content or hook teardown of a posted reel (that's reel-teardown).
 ---
 
 # Style Decoder: a reel file → a reusable editing style
@@ -36,10 +36,8 @@ motion, structure) by reading frames, and every judgment goes into the spec with
 `evidence[]`, `confidence` and `observed_in`. `UNKNOWN` is a legal value: never guess.
 The client never types a command; you run everything.
 
-- `<editor python>` is the editor's own Python. Windows:
-  `"$LOCALAPPDATA/revxl/editor-superengine/venv/Scripts/python.exe"`. macOS:
-  `"$HOME/Library/Application Support/revxl/editor-superengine/venv/bin/python"`.
-  Keep the quotes. Run every script from the client's workspace folder.
+- `<editor python>` is the editor's own Python. Windows: `"$(H="$LOCALAPPDATA/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/Scripts/python.exe"`. macOS: `"$(H="$HOME/Library/Application Support/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/bin/python"`. Keep the quotes.
+  Run every script from the client's workspace folder.
 - Every command below is a script in `${CLAUDE_PLUGIN_ROOT}/skills/style-decoder/scripts/`.
   Run it as `<editor python> "<that folder>/<script>.py" <arguments>`, quoting the path.
 - The full rules (schema, merge, the confirmation ladder):
@@ -57,7 +55,7 @@ The client never types a command; you run everything.
 | 5 | Review | `contact-sheet` | **client reviews** |
 | 6 | Confirm | `heldout`, then blind reconstruction | fix every fail |
 | 7 | Publish | set `approved`, `index` | **client approves** |
-| 8 | Template (optional) | `styletemplate` plan → build | needs a look + GSAP file |
+| 8 | Template (optional) | `styletemplate` plan → build | needs a look |
 
 ### 1. Intake: a local file only
 
@@ -91,7 +89,9 @@ the captions sit outside 33–72 % of the frame height, re-run
 
 ### 3. Decode (your judgment)
 
-Budget: about 120 frames *read* (config `style.frame_budget`).
+Budget: about 120 frames *read* (config `style.frame_budget`). Before writing audio
+rules, read `references/styleaudio-contract.md`; before minting colour tokens, read
+`references/stylepalette-contract.md`.
 
 1. Read the **base frames fully**. Classify each into layout modes and write
    `sources/src-01/layout_timeline.json` (contiguous `{t_start, t_end, mode_id}`
@@ -165,12 +165,10 @@ client only the conflicts and new rules, and record each ruling in
 ### 8. Template build (optional)
 
 Needs a design-system entry (the look; the registry starts empty, see
-`references/designsystem-contract.md`) and a **local `gsap.min.js` file the client
-already has**. Never download GSAP and never point at a link; without the file, skip
-this stage and say why.
+`references/designsystem-contract.md`). GSAP ships with the plugin; never download it.
 
 `styletemplate.py plan <slug> --inputs <inputs.json> --stamp MM.DD.YY`
-`styletemplate.py build <plan dir> --inputs <inputs.json> --gsap "<path to gsap.min.js>"`
+`styletemplate.py build <plan dir> --inputs <inputs.json> --gsap "${CLAUDE_PLUGIN_ROOT}/runtime/gsap/gsap.min.js"`
 
 Exit 2 = a human ruling is needed; show it to the client. The build stops with an
 error naming the field when the default caption role or its size or position is

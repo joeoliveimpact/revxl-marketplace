@@ -40,3 +40,106 @@ skills/editor-doctor/selftest/speech10s.flac
   11.6 s excerpt (60.10-71.70 s) of "The Art of War" by Sun Tzu, tr. Lionel Giles, chapter 2 "Waging War",
   read by Phil Chenevert, https://archive.org/details/artofwar3_pc_librivox
   (artofwar_02_tzu_64kb.mp3). Public domain (LibriVox). Re-encoded to 16 kHz mono FLAC.
+
+tests/editor/test_portrait_detection.py (repository test, not part of the installed plugin)
+  Adapted from video-use, tests/test_render_orientation.py (Browser Use, https://github.com/browser-use/video-use,
+  commit 43cfc566). Changes: it tests reel-first-cuts' scripts/probe.py instead of helpers/render.py, and the
+  plugin root can be set by environment variable. License: MIT, full text below.
+
+tests/editor/test_render_fps.py (repository test, not part of the installed plugin)
+  Adapted from video-use, tests/test_render_fps.py (Browser Use, https://github.com/browser-use/video-use).
+  Changes: it tests reel-canvas-build's scripts/fps.py, drops the r_frame_rate and 24-fps fallbacks (a failed
+  probe now raises), and adds real-ffprobe checks on synthetic clips. License: MIT, full text below.
+
+MIT License
+
+Copyright (c) 2026 Browser Use
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+skills/reel-sound-pass/scripts/auphonic.py
+  Copied from shorts-studio (Claude Video Studio contributors), scripts/auphonic.py. Changes: it cleans the voice
+  track only and no longer puts the sound back on the video; the key comes from the environment or a key file and
+  goes only into a request header (urllib instead of curl); plan and run steps with a yes gate and a paid-jobs
+  ledger; gaps from the alignment are filled with room tone. License: MIT, full text below.
+
+skills/reel-sound-pass/scripts/_sync.py
+  Copied from shorts-studio (Claude Video Studio contributors), scripts/_sync.py. Change: ffmpeg comes from the
+  editor install instead of the PATH. License: MIT, full text below.
+
+skills/reel-sound-pass/scripts/mix.py
+  Copied from shorts-studio (Claude Video Studio contributors), scripts/mix.py. Changes: rewritten into the sound
+  pass's one entry point (quiet gate, stems, free or Auphonic voice clean-up, ratio-keeping sum, master, sound onto
+  the picture last, delivery and cue checks); the looped-music path was removed; the free voice filter is kept.
+  License: MIT, full text below.
+
+skills/reel-sound-pass/scripts/_media.py
+  Copied from shorts-studio (Claude Video Studio contributors), scripts/_media.py. Changes: ffprobe and ffmpeg come
+  from the editor install; it reads the video stream's own length; audio read/write, loudness and workspace helpers
+  added; the frame-comparison helpers removed. License: MIT, full text below.
+
+skills/reel-first-cuts/scripts/silence_budget.py
+  The fallback silence threshold (22 dB under the 90th percentile of 50 ms windows, never below -55 dB) is
+  ported from Shorts Studio, gate/check.py (Claude Video Studio contributors), rewritten in standard-library
+  Python. License: MIT, full text below.
+
+skills/reel-first-cuts/scripts/fix_words.py
+  Ported from Shorts Studio, scripts/fix_words.py (Claude Video Studio contributors). Changes: it reads S3's
+  edit map or a tx.json (`word` or `text`); fixes come from <paths.editor>/word-fixes.json or --map instead of
+  --fix; matching is case-insensitive; phrase fixes replace only the last word of a matching sequence; --at
+  takes the list index; an edit map's word_list_hash is recomputed and validated; one <name>.prev is kept;
+  --cta-check added. License: MIT, full text below.
+
+skills/reel-first-cuts/scripts/repeat_check.py
+  Ported from Shorts Studio, scripts/repeat_check.py (Claude Video Studio contributors). The repeat, cut-off,
+  restart and retake finder is kept as it was. Changes: it also reads S3's edit map; deep mode uses the
+  editor's own transcriber from state.json through transcribe_words.py's route() instead of npx hyperframes,
+  and loads the model once per run; ffmpeg comes from the editor's install; windows are sliced with the wave
+  module; argparse and UTF-8 output; the temp folder is removed. License: MIT, full text below.
+
+skills/reel-first-cuts/scripts/cut_qa.py
+  Rebuilt from Shorts Studio, scripts/qa.py, its "cuts remove only silence" and "no murmur between words"
+  checks (Claude Video Studio contributors). Changes: it runs on the gap plan instead of a rendered final
+  (cuts.json frames at their own fps, the EDL, probe.py's source envelope and S3's edit map); only silence
+  trims inside one EDL cut are checked; murmurs are searched in the kept audio; standalone script with
+  --json and an exit code. License: MIT, full text below.
+
+MIT License
+
+Copyright (c) 2026 Claude Video Studio contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Starter sound pack (sound effects and music beds): every file and its source is listed in LICENSES/SOUND-PACK-CREDITS.md.

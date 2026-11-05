@@ -60,8 +60,10 @@ for name, m in s['models'].items():
         n += 1
         if h(os.path.join(rt.state_dir(), m['dir'], f)) != sha: bad.append(f)
 print(n > 0 and not bad, sorted(s['models']), bad)" | tr -d '\r' | cut -d' ' -f1)" True
-ck "with no override the state folder follows the OS rule" \
-  "$(iso env -u EDITOR_SE_HOME "$VPY" -X utf8 -I -c "import sys; sys.path.insert(0, r'$P/skills/_shared'); import runtime; print(runtime.state_dir())" | tr -d '\r')" \
+ck "with no override, state_dir() follows the setup's pointer to this install" \
+  "$(iso env -u EDITOR_SE_HOME "$VPY" -X utf8 -I -c "import sys; sys.path.insert(0, r'$P/skills/_shared'); import runtime; print(runtime.state_dir().as_posix())" | tr -d '\r')" "$ST"
+ck "the default state folder follows the OS rule" \
+  "$(iso env -u EDITOR_SE_HOME "$VPY" -X utf8 -I -c "import sys; sys.path.insert(0, r'$P/skills/_shared'); import runtime; print(runtime.default_state_dir())" | tr -d '\r')" \
   "$(vp "print(os.path.join(os.environ.get('LOCALAPPDATA') or os.path.expanduser('~/Library/Application Support'), 'revxl', 'editor-superengine'))" | tr -d '\r')"
 vp "s = rt.load_state(); print('models:', {k: sorted(v.get('files', {'u2net_human_seg.onnx': 1})) for k, v in s['models'].items()})"
 EN="$(vp "print(rt.load_state()['engine'])" | tr -d '\r')"

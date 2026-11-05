@@ -518,6 +518,29 @@ def _doc_mds(plugin: Path):
             yield from sorted(d.rglob("*.md"))
 
 
+RX_MOD_COMMAND = re.compile(
+    r"""\$\.command\.register\(\s*\{[^}]*?\bname\s*:\s*(['"])([^'"]+)\1""")
+
+
+def _mod_commands(plugin: Path) -> set[str]:
+    """Slash-commands the plugin's mod registers by a literal name.
+
+    Read from each module hooks/hooks.json lists under `modules` (paths
+    relative to hooks/): every `$.command.register({ ... name: '<x>' ... })`.
+    A missing or broken hooks.json gives none (its validity is check 6's job).
+    """
+    try:
+        mods = json.loads(_read(plugin / "hooks" / "hooks.json")).get("modules")
+    except Exception:
+        return set()
+    out: set[str] = set()
+    for m in mods if isinstance(mods, list) else []:
+        f = plugin / "hooks" / str(m)
+        if f.is_file():
+            out |= {g[1] for g in RX_MOD_COMMAND.findall(_read(f))}
+    return out
+
+
 def check_plugin_integrity() -> list[str]:
     """Mechanical integrity of every published plugin.
 
@@ -604,8 +627,15 @@ def check_plugin_integrity() -> list[str]:
         for text in sources:
             for rx in (RX_CMD_TICK, RX_CMD_BOLD, RX_CMD_BULLET):
                 advertised |= set(rx.findall(text))
+        # a command this plugin's own mod registers resolves for this plugin
+        # only; a commands/<cmd>.md beside it would shadow it
+        mod_cmds = _mod_commands(d)
+        for cmd in sorted(mod_cmds):
+            if (d / "commands" / f"{cmd}.md").exists():
+                emit("advertised_cmd", f"plugins/{name}/commands/{cmd}.md",
+                     f"commands/{cmd}.md would shadow the mod's /{cmd}")
         for cmd in sorted(advertised):
-            if cmd in EXTERNALLY_PROVIDED_COMMANDS:
+            if cmd in EXTERNALLY_PROVIDED_COMMANDS or cmd in mod_cmds:
                 continue
             # skills surface as slash-invocables; commands/ routers are optional
             if (d / "commands" / f"{cmd}.md").exists():

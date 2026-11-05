@@ -242,3 +242,45 @@ jobs:
 
           sb "$SE_PY" -X utf8 -I plugins/editor-superengine/skills/editor-doctor/scripts/offline_selftest.py \
             || fail 'offline_selftest.py failed (its ✗ lines are in the table above)'
+
+  install-deep-root:
+    # H-S1a-path: on Windows, install.sh refuses an install folder over 115 characters with one plain line
+    # (exit 1) before creating anything; a 115-character folder gets past the guard.
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Long install folder is refused early (241 and 116 characters; 115 gets past the guard)
+        shell: bash
+        run: |
+          set +e  # report failures ourselves (the default shell is bash -eo pipefail)
+          O="$RUNNER_TEMP/deep-root.out"
+          bash tests/editor/deep-root-test.sh "$RUNNER_TEMP/deep-root" > "$O" 2>&1
+          rc=$?
+          cat "$O"
+          grep '^FAIL' "$O" | while IFS= read -r l; do echo "::error title=deep-root::$l"; done
+          if [ "$rc" != 0 ]; then echo "::error title=deep-root::deep-root-test.sh exited $rc"; echo "- ✗ deep-root-test.sh exited $rc" >> "$GITHUB_STEP_SUMMARY"; exit 1; fi
+          echo "::notice title=deep-root::$(grep -c '^PASS' "$O") checks passed: 241 and 116 characters refused with the plain line, 115 gets past the guard"
+          echo "- ✓ deep-root-test.sh: long install folders refused early" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: "Install-folder pointer: home_pointer_test.py (H-S1a-path-2/-3)"
+        shell: bash
+        run: |
+          set +e  # report failures ourselves (the default shell is bash -eo pipefail)
+          O="$RUNNER_TEMP/home-pointer.out"
+          python -I -B tests/editor/home_pointer_test.py > "$O" 2>&1
+          rc=$?
+          cat "$O"
+          grep '^FAIL' "$O" | while IFS= read -r l; do echo "::error title=home-pointer::$l"; done
+          if [ "$rc" != 0 ]; then echo "::error title=home-pointer::home_pointer_test.py exited $rc"; echo "- ✗ home_pointer_test.py exited $rc" >> "$GITHUB_STEP_SUMMARY"; exit 1; fi
+          echo "::notice title=home-pointer::$(grep -c '^PASS' "$O") checks passed: a setup with a short EDITOR_SE_HOME leaves the pointer, later runs with no EDITOR_SE_HOME follow it"
+          echo "- ✓ home_pointer_test.py: later runs find the short install folder" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: "Scene validator: scene_check_test.py (G2-a)"
+        shell: bash
+        run: python -X utf8 -I -B tests/editor/scene_check_test.py && echo "::notice title=scene-check::scene_check_test.py passed"

@@ -1,6 +1,6 @@
 ---
 name: editor-superengine:editor-doctor
-description: Sets up and checks the editor's tools on the client's computer. Use for first-time setup, "is the editor ready", "check my setup", a missing or broken tool, after a plugin update, or when another editor-superengine skill says the setup is missing. Also starts or restarts the editor boards ("start my editor boards", "restart my editor boards", or a pasted "Restart my editor boards ..." line from a board). Installs everything unattended (a private Python, Node, ffmpeg, HyperFrames, Chrome, the transcriber and its models), runs the machine test that picks the transcription engine, checks DaVinci Resolve without opening it, and reports one plain line per part. The client never types a command.
+description: Sets up and checks the editor's tools, and starts or restarts the editor boards. Use for first-time setup, "is the editor ready", "check the editor's setup or tools", a missing or broken tool, after a plugin update, when another editor-superengine skill says the setup is missing, or "start my editor boards" / "restart my editor boards" (or a pasted "Restart my editor boards ..." line). NOT for checking the camera, light or sound before filming (that's recording-preflight).
 ---
 
 # editor-doctor: set up and check the editor's tools
@@ -24,7 +24,7 @@ description: Sets up and checks the editor's tools on the client's computer. Use
 ## Ground rules
 
 - **The client never types a command.** Claude runs each command below in the Bash tool, from the client's workspace folder, as one command. Windows and macOS run the same commands.
-- `<editor python>` is the editor's own Python. Windows: `"$LOCALAPPDATA/revxl/editor-superengine/venv/Scripts/python.exe"`. macOS: `"$HOME/Library/Application Support/revxl/editor-superengine/venv/bin/python"`. Keep the quotes.
+- `<editor python>` is the editor's own Python. Windows: `"$(H="$LOCALAPPDATA/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/Scripts/python.exe"`. macOS: `"$(H="$HOME/Library/Application Support/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/bin/python"`. Keep the quotes.
 - The first setup downloads up to about 5 GB. That can take 10 to 40 minutes on a slow connection. Run it with `run_in_background` and wait for it to finish. Tell the client it is working and roughly how long it takes.
 - Plain English for a busy coach. Gloss a term once, e.g. "transcriber (turns speech into timed words)".
 - Details (the STATUS format, every component, the config keys, where files live, how Resolve is checked): `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/doctor-details.md`.
@@ -67,7 +67,7 @@ Tell the client what went wrong in plain words, and whether anything was charged
 2. Draft it. Keep the summary short. Put the summary, step and error line in single quotes, drop any
    apostrophe from them, and use no script names:
 
-`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.1.0 --skill editor-doctor --step '<setup or doctor>' --error-line '<the error line from step 1 or 2>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
+`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.1.0 --skill editor-doctor --step '<setup, doctor or boards>' --error-line '<the error line from step 1 or 2>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
 
 3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
 4. Send, using the path after `DRAFT:`:
@@ -79,6 +79,6 @@ so they can email it to Joe. Skip instead:
 
 `<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" skip "<draft path>"`
 
-**If setup failed before the editor's Python existed** (`<editor python>` is missing), use `python3` in its place, or `python` if `python3` doesn't run. First check it with `-c "import sys"`. A Windows Store stub that prints an install message doesn't count. The report script needs only plain Python. If neither runs, skip the draft. The details are already saved in `editor-superengine/reports/report-body.md`, so tell the client where that file is so they can email it to Joe.
+**If setup failed before the editor's Python existed** (`<editor python>` is missing), use `python3` in its place, or `python` if `python3` doesn't run. First check it with `-c "import sys"`. A Windows Store stub that prints an install message doesn't count. The report script needs only plain Python. If neither runs, skip the draft. The details are already saved in `editor-superengine/reports/report-body.md`, so tell the client where that file is so they can email it to the plugin's support.
 
 **Start or restart my editor boards** (also a pasted "Restart my editor boards and save this ... state" line from a board): follow `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/board-server.md`.

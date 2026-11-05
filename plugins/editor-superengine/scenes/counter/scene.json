@@ -1,0 +1,20 @@
+{
+  "id": "counter",
+  "kind": "overlay",
+  "slots": {
+    "label": {"maxChars": 30, "default": "happy customers", "hint": "what the number counts"}
+  },
+  "dur": [2, 6],
+  "params": {
+    "from": {"type": "number", "default": 0, "min": -999999, "max": 9999999, "hint": "where the count starts; between 0 and value"},
+    "value": {"type": "number", "default": 250, "maxChars": 9, "hint": "the beat's number; prefix + value (with commas and decimals) + suffix is at most 9 characters"},
+    "decimals": {"type": "number", "default": 0, "min": 0, "max": 2},
+    "prefix": {"type": "string", "default": "", "maxChars": 2, "hint": "e.g. $"},
+    "suffix": {"type": "string", "default": "", "maxChars": 2, "hint": "e.g. % or k"},
+    "animate": {"type": "boolean", "default": true, "hint": "false shows the final value from the first frame"},
+    "accent": {"type": "color", "default": "#4f8cff"},
+    "font": {"type": "string", "default": "Inter"}
+  },
+  "source": "editor-superengine original (PB-34)",
+  "licence": "own"
+}

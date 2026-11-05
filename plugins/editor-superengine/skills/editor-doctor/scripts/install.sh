@@ -33,11 +33,23 @@ elif [ "$OS" = win ]; then
 elif [ "$OS" = mac ]; then STATE="$HOME/Library/Application Support/revxl/editor-superengine"
 else STATE="${XDG_DATA_HOME:-$HOME/.local/share}/revxl/editor-superengine"
 fi
+# H-S1a-path-3 (hub 11.04.26): with no EDITOR_SE_HOME, follow the home-pointer.txt an earlier setup left in the default
+# folder when it names a folder holding an install (runtime.state_dir() does the same), so a re-run isn't refused.
+if [ -z "${EDITOR_SE_HOME:-}" ] && [ -f "$STATE/home-pointer.txt" ]; then
+  P=$(tr -d '\r\n' < "$STATE/home-pointer.txt")
+  if [ -n "$P" ] && [ -f "$P/state.json" ]; then STATE=$P; fi
+fi
 if [ "$OS" = win ] && command -v cygpath >/dev/null 2>&1; then
   STATE=$(cygpath -m "$STATE"); HERE=$(cygpath -m "$HERE")
 fi
 # H-S1a-3 (hub 11.04.26): Linux keeps its state-folder rule above but gets no downloads; a plain line, a clean exit.
 if [ "$OS" = linux ]; then say "Linux isn't supported yet (Windows and macOS are)."; exit 0; fi
+# H-S1a-path (hub 11.04.26): Windows stops at 259 characters without long-path support, and the deepest file the
+# setup unpacks (Node.js 22.23.4's npm) sits 143 below the state folder, so a folder over 115 breaks the install.
+# Refuse it before anything is created. Re-measure when the Node pin changes.
+if [ "$OS" = win ] && [ "${#STATE}" -gt 115 ]; then
+  fail "this install folder is ${#STATE} characters long, and Windows only allows 115 here. Re-run the setup with EDITOR_SE_HOME set to a shorter folder, such as C:\\revxl-es."
+fi
 
 case "$OS-$ARCH" in
   win-x86_64) UV_ASSET=uv-x86_64-pc-windows-msvc.zip

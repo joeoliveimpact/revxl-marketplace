@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Stub hub (test fixture)</title>
+<!-- Test fixture only, never shipped: sound_board_test.py and boards_test.py copy it to <workspace>/editor/hub/index.html.
+     A board tab loads the board into an iframe, the way the old hub page shows a board. With boards.json next to it
+     (boards_test.py copies it), the strip is rebuilt from boards.json: one tab per board that has a tab, sorted by order. -->
+<style>
+body{margin:0;font:14px system-ui,sans-serif}
+.frame{height:900px}
+.frame iframe{width:100%;height:100%;border:0;display:block}
+</style>
+</head>
+<body>
+<div class="tabs" role="tablist"><button role="tab" id="tab-sound" data-board="sound-board" aria-selected="false">Sound</button></div>
+<section class="boards" id="boards"></section>
+<script>
+var reel = new URLSearchParams(location.search).get("reel") || "";
+function show(tab) {
+  [].forEach.call(document.querySelectorAll(".tabs [role=tab]"), function (b) { b.setAttribute("aria-selected", String(b === tab)); });
+  var path = "/editor/" + tab.getAttribute("data-board") + "/?reel=" + encodeURIComponent(reel);
+  document.getElementById("boards").innerHTML = '<div class="frame"><iframe src="' + path + '" title="' + tab.textContent + '"></iframe></div>';
+}
+document.getElementById("tab-sound").onclick = function () { show(this); };
+fetch("./boards.json", {cache: "no-store"}).then(function (r) { return r.ok ? r.json() : null; }).then(function (m) {
+  if (!m) return;
+  var strip = document.querySelector(".tabs");
+  strip.innerHTML = "";
+  Object.keys(m.boards).filter(function (k) { return m.boards[k].tab; })
+    .sort(function (x, y) { return m.boards[x].tab.order - m.boards[y].tab.order; })
+    .forEach(function (k) {
+      var t = document.createElement("button"), tab = m.boards[k].tab;
+      t.setAttribute("role", "tab"); t.id = "tab-" + k; t.setAttribute("data-board", k);
+      t.setAttribute("data-stages", tab.stages.join(" ")); t.setAttribute("aria-selected", "false");
+      t.textContent = tab.label; t.onclick = function () { show(t); };
+      strip.appendChild(t);
+    });
+  strip.setAttribute("data-built", "boards.json");
+}).catch(function () {});
+</script>
+</body>
+</html>

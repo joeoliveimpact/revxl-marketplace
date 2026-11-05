@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"text","type":"string","label":"Text","default":"Watch this part"},
+  {"id":"accent","type":"color","label":"Accent","default":"#4f8cff"},
+  {"id":"font","type":"string","label":"Font family","default":"Inter"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="./vendor/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Inter"; src: url("./fonts/Inter-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; }
+      #callout { position: relative; width: 1080px; height: 1920px; z-index: 400; font-family: "Inter"; font-weight: 400; color: #ffffff; --accent: #4f8cff; }
+      #callout .pill { position: absolute; left: 510px; top: 560px; width: max-content; max-width: 860px; padding: 24px 40px 26px; border-radius: 28px; background: rgba(12, 14, 18, 0.86); border: 4px solid var(--accent); text-align: center; }
+      #callout .tip { position: absolute; left: 50%; bottom: -30px; width: 0; height: 0; margin-left: -22px; border-left: 22px solid transparent; border-right: 22px solid transparent; border-top: 26px solid var(--accent); }
+      #callout .text { display: block; font-size: 56px; line-height: 1.2; overflow-wrap: anywhere; }
+    </style>
+  </head>
+  <body>
+    <div id="callout" data-composition-id="callout" data-start="0" data-duration="3" data-fps="30" data-width="1080" data-height="1920">
+      <div class="pill plate">
+        <span class="text slot" data-slot="text"></span>
+        <div class="tip plate"></div>
+      </div>
+    </div>
+    <script>
+      (function () {
+        const v = window.__hyperframes.getVariables();
+        const root = document.getElementById("callout");
+        root.style.setProperty("--accent", v.accent);
+        root.style.fontFamily = JSON.stringify(v.font);
+        root.querySelectorAll("[data-slot]").forEach((el) => { el.textContent = v[el.dataset.slot]; });
+        const pill = root.querySelector(".pill");
+        const tl = gsap.timeline({ paused: true });
+        tl.set(pill, { xPercent: -50, yPercent: -50 }, 0);
+        tl.fromTo(pill, { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.45, ease: "back.out(2)" }, 0);
+        tl.fromTo(pill, { y: 0 }, { y: -14, duration: 0.6, ease: "sine.inOut", repeat: 3, yoyo: true }, 0.5);
+        window.__timelines = window.__timelines || {};
+        window.__timelines["callout"] = tl;
+      })();
+    </script>
+  </body>
+</html>

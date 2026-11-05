@@ -1,0 +1,4 @@
+{
+  "modules": ["./mod/register.ts"],
+  "description": "The Editor Cockpit mod (quick-menu pane, progress band, status-line baton, /editor); a helper only, every skill works without it"
+}

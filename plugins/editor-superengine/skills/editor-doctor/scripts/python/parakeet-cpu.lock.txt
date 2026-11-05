@@ -1,5 +1,5 @@
 # parakeet-cpu.lock.txt: hash-locked by `uv pip compile --universal --python-version 3.12 --generate-hashes
-#   --only-binary :all: --no-header --no-annotate parakeet-cpu.in` (uv 0.8.3, 11.03.26). Do not edit by hand.
+#   --only-binary :all: --no-header --no-annotate parakeet-cpu.in` (uv 0.8.3, 11.04.26). Do not edit by hand.
 # Installed with `uv pip sync --require-hashes`.
 certifi==2026.10.23 \
     --hash=sha256:a9895e6e2758b371e0545e321a3a8fd1fcfd9829ada8824a936dfb16aaaf36cd \
@@ -943,6 +943,35 @@ torch==2.12.0 ; platform_machine != 'x86_64' or sys_platform != 'darwin' \
     --hash=sha256:dd37188ea325042cb1f6cafa56822b11ada2520c04791a52629b0af25bdfbfd9 \
     --hash=sha256:e2ad3eb85d39c3cab62dfa93ed5a73516e6a53c6713cb97d004004fe089f0f1f \
     --hash=sha256:f7dfae4a519197dfa050e98d8e36378a0fb5899625a875c2b54445005a2e404e
+torchvision==0.27.0 ; platform_machine != 'x86_64' or sys_platform != 'darwin' \
+    --hash=sha256:0822b58d2c5d325cd0c7152b744acbd15f898c07572e2cfb70b075a865a4f6f9 \
+    --hash=sha256:1a6dd742a150645126df9e0b2e449874c1d635897c773b322c2e067e98382dfe \
+    --hash=sha256:1c01f0d1091ae22b9dfc082b0a0fe5faaf053686a29b4fb082ba7691375c73cf \
+    --hash=sha256:1c2db4bde82bc48ebff73436a6adf34d4f809448268a70d9a1285f5c8f92313d \
+    --hash=sha256:2664d06acd64d328aa7689b0d0c81ee31e240e9977d8768816b4be7c66c03211 \
+    --hash=sha256:2c037709072ca9b19750c0cbe9e8bb6f91c9a1be1befa26df33e281deccbd8c7 \
+    --hash=sha256:2c4099a15150143b9b034730b404a56d572efe0b79489b4c765d929cb4eac7f3 \
+    --hash=sha256:419c98a9275b27660cdce6d09080fd5974d1ec1d4a225f71439ebacb3b0c4e64 \
+    --hash=sha256:41d6dae73e1af09fa82ded597ae57f2a2314285acde54b25890a8f8e51b999d7 \
+    --hash=sha256:5bb82fc3c55daf1788621e504310b0a286f1069627a8742f692aebb075ef25a7 \
+    --hash=sha256:65772ff3ec4f4f5d680e30019835555dd239e7fefee4b0a846375fe1cb1592ef \
+    --hash=sha256:70f071c6f74b60d5fe8851636d8d4cd5f4fa29d57fd9348a87a6f17b990b95ba \
+    --hash=sha256:72bf547e58ddb948689734eed6f4b6a2031f979dba4fb08e3690688b392e929f \
+    --hash=sha256:7a9966a088d06b4cf6c610e03be62de469efa6f2cd2e7c7eed8e925ed6af59ac \
+    --hash=sha256:91f61b9865423037c327eb56afa207cc72de874e458c361840db9dcf5ce0c0eb \
+    --hash=sha256:9bb9251f64b854124efed95d02953a89f7e2726c3ca662d7ea0151129157297f \
+    --hash=sha256:a49e55055a39a8506fe7e59850522cab004efb2c3839f6057658889c1d69c815 \
+    --hash=sha256:aaafa6962c9d91f42503de1957d6fa349907d028c06f335bd95da7a5bc57147d \
+    --hash=sha256:aee384a2782c89517c4ab9061d2720ba59fd2ffe5ef89d0a149cc2d43abdf521 \
+    --hash=sha256:b4aacff70ea4b7377f996f9048989c850d221fef33658ddbcae42aa5bd4ca11a \
+    --hash=sha256:b4c6bb0a670dcba017b3643e21902c9b8a1cc1c127d602f1488fa29ec3c6e865 \
+    --hash=sha256:c1fac0fc2a7adf29481fc1938a0e7845c57ba1147a986784109c4d98f434ea8c \
+    --hash=sha256:c5121f1b9ab09a7f73e837871deb8321551f7eaeb19d87aa00de9191968eae44 \
+    --hash=sha256:c9f44e35e6ec01caedacce9e941a5bf21fe424403321efac2507a201273653c5 \
+    --hash=sha256:cbf89764fc76f3f17fbf80c12d5a89c691e91cb9d82c38412aaf0568655ffb19 \
+    --hash=sha256:dadea3c5ecfd05bbb2a3312ab0374f213c58bf6459cb059122e2f4dfe13d10ed \
+    --hash=sha256:df0c166b6bdf7c47f88e81e8b43bc085451d5c50d0c5d1691bc474c1227d6fed \
+    --hash=sha256:f44453f107c296d5446a79f7ac59733ad8bf5ddfa04c53805dfbae298a42a798
 tqdm==4.70.1 \
     --hash=sha256:c293e525e6fef9c20e8728fd4612df02a0aa31bb5fe91ecd93e123b1b7bffa73 \
     --hash=sha256:cefd0eca11b2a37a3aee776544d4f4ae913f02688135b5556b8788dfa474afc4

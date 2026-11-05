@@ -1,12 +1,15 @@
 [
   {"ask": "I just installed this editor thing, is it ready to go on my laptop?", "expect": "editor-superengine:editor-doctor"},
   {"ask": "I'm about to film tomorrow's reel, can you check my mic and lighting first with a quick test clip?", "expect": "editor-superengine:recording-preflight"},
-  {"ask": "I stitched three takes together into one video and now every cut after the first take chops my words off", "expect": "editor-superengine:master-clock-fix"},
+  {"ask": "I stitched three takes together into one video and now every cut after the first take chops my words off", "expect": "editor-superengine:reel-first-cuts"},
   {"ask": "Here's my raw talking-head recording, cut out the ums and dead air and give me a first pass", "expect": "editor-superengine:reel-first-cuts"},
   {"ask": "The pause after my second point drags, can you tighten that up?", "expect": "editor-superengine:reel-first-cuts"},
-  {"ask": "The cut's signed off. Can you show me a few looks for the opening visuals?", "expect": "editor-superengine:reel-motion-comps"},
+  {"ask": "The cut's signed off. Can you show me a few looks for the opening visuals?", "expect": "editor-superengine:reel-canvas-build"},
   {"ask": "Write me something to post with this reel, plus the hashtags", "expect": "editor-superengine:caption-writer"},
   {"ask": "This reel I posted last week flopped, what would you fix?", "expect": "editor-superengine:reel-teardown"},
   {"ask": "Can you break down my client's latest reel and make a page I can send her?", "expect": "editor-superengine:reel-teardown"},
-  {"ask": "Add some background music under my voice", "expect": "not-built"}
+  {"ask": "Clean up my voice and add some sound effects", "expect": "editor-superengine:reel-sound-pass"},
+  {"ask": "Add some background music under my voice", "expect": "not-built"},
+  {"ask": "Can you work out how this creator edits her reels so I can copy the style?", "expect": "editor-superengine:style-decoder"},
+  {"ask": "Put my words on screen as I talk, like subtitles", "expect": "not-built"}
 ]

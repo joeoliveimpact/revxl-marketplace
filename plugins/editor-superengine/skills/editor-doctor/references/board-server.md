@@ -1,4 +1,4 @@
-# Editor boards: starting, recovering and extending the board server
+# Editor boards: starting and recovering the board server
 
 The boards (Cut, Tweak, Sound, Beat Map, Sketches, Grade, Hub, Look Picker, Cover Picker) are web pages the
 client clicks through in the Browser pane. One small local server per workspace serves them and saves each
@@ -43,49 +43,6 @@ reads `Restart my editor boards and save this <board> state for reel <reel>: <JS
 
 A line without JSON (`Restart my editor boards (the <board> for reel <reel> lost its connection).`) means
 nothing was unsaved: start the boards and reopen that board.
-
-## Endpoints (for the boards that later steps port)
-
-The URLs stay the same whatever folders `paths.editor` and `paths.videos` name on disk.
-
-| Request | What it does |
-|---|---|
-| `GET /editor/<board>/<file>` | The board's shared copy, from `<paths.editor>/<board>/` |
-| `GET /videos/<reel>/<file>` | The reel's files, from `<paths.videos>/<reel>/`. HTTP Range answers 206, so video seeking works |
-| `GET /videos/<reel>/<board>.state.json` | The board's saved state (404 until the first save) |
-| `POST /videos/<reel>/__state?name=<board>` | Saves the JSON body as `<board>.state.json` in the reel folder; the previous file becomes `<board>.state.json.prev` (one kept). The reel folder must already exist |
-| `POST /videos/<reel>/__save?board=<board>&name=<file>` | A Send output: saves the JSON body as `<file>` in the reel folder (no `.prev`). `<file>` must be in that board's `writes` list in `boards.json`. The reel folder must already exist |
-| `POST /heartbeat` | Keeps the server running; body `{}` |
-
-- Every request needs Host `127.0.0.1:<port>` or `localhost:<port>`. Every POST needs the page's own Origin,
-  `Content-Type: application/json` and a JSON body of at most 2 MB. Anything else is refused (403, 400 or 413).
-- Only the boards listed in `scripts/boards.json` are served or saved, and `__save` writes only names in a board's
-  `writes` list. Dotfiles, `..` and symlinks that lead out of
-  a board or reel folder are refused. JSON, HTML and JS are never cached.
-- Send outputs (what a board hands to Claude, e.g. `selection.json`) use `__save`, never `__state`. A board that
-  needs a new output file adds its name to its `writes` list in `boards.json`; never change the server.
-- Boards load `./board-client.js`, which does the loading, saving, heartbeat, the banner and `mergeCues`:
-  `const bc = BoardClient.create({board: "cut-board"}); const saved = await bc.load(); bc.save(state);`
-  `BoardClient.mergeCues(saved.cues, freshCues)` refills cues by beat and keeps a saved cue whose beat is gone,
-  flagged `unmatched`.
-
-## Adding a board (later steps)
-
-Put the board's files in `skills/<owning-skill>/boards/<board>/` (its page is `index.html`). The folder name must
-be one of the nine boards in `skills/editor-doctor/scripts/boards.json`, which also names each board's owning
-skill and template folder. Never change the server: the next start or `board_sync.py` copies the new template.
-
-## Porting an old Content board (S4b, S5, G1)
-
-The old boards lived in each reel's folder and used relative URLs. In the shared copy:
-
-- The folder is the whitelisted name (`cut-board`, `tweak-board`, `sound-board`, `grade-board`), and the page is `index.html`.
-- State goes through `BoardClient`, never relative URLs: `bc.load()` replaces `fetch('cut.state.json')`, and
-  `bc.save(S)` replaces `fetch('__state?name=cut', ...)`. The file becomes `<board>.state.json`
-  (`/videos/<reel>/__state?name=<board>`), and its backup is `<board>.state.json.prev` (it was `.state.prev.json`).
-- A bare `fetch('__save', ...)` becomes `fetch('/videos/' + encodeURIComponent(reel) + '/__save?board=<board>&name=selection.json', ...)`
-  with the same JSON Content-Type.
-- Other reel files (config, audio, video, waveforms) load from `/videos/<reel>/<file>`; the reel comes from `?reel=`.
 
 ## When it fails
 

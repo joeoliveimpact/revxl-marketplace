@@ -32,7 +32,7 @@ open(p, 'w', encoding='utf-8', newline='\n').write(re.sub(r'(?m)^home = .*$', la
 doc() {
   local st="$1" ws="$2"; shift 2; local envs=(); while [ "$1" != "--" ]; do envs+=("$1"); shift; done; shift
   [ -n "${KEEP:-}" ] || { rm -rf "$ws"; mkdir -p "$ws"; }  # KEEP=1 doc ...: re-run in the same workspace
-  (cd "$ws" && env EDITOR_SE_HOME="$st" "${envs[@]}" "$(vpy "$A")" -B -X utf8 -I "$D" "$@")
+  (cd "$ws" && env EDITOR_SE_HOME="$st" LOCALAPPDATA="$LADW" "${envs[@]}" "$(vpy "$A")" -B -X utf8 -I "$D" "$@")
 }
 cfg() { "$(vpy "$A")" -B -I -c "import json, sys; print(json.load(open(sys.argv[1], encoding='utf-8'))[sys.argv[2]])" "$1/editor/editor.config.json" "$2" | tr -d '\r'; }
 # st STATE: the recorded engine and the cached GPU fact from state.json (S1b-fix)
@@ -52,6 +52,8 @@ fake_smi() {
 }
 
 A="$S/state-gpu"; B="$S/state-fw"
+# doc()'s LOCALAPPDATA: a setup run by the doctor leaves home-pointer.txt here, never in the real app data
+mkdir -p "$S/lad"; LADW="$(command -v cygpath >/dev/null && cygpath -w "$S/lad" || echo "$S/lad")"
 echo "copying $GSRC -> $A and $FSRC -> $B ..."
 copy "$GSRC" "$A" && copy "$FSRC" "$B" || { echo "FAIL could not copy the state folders"; exit 1; }
 
@@ -123,7 +125,7 @@ ck "real change (a successful no-GPU read) re-picked: state.json engine + cached
 # S1b-fix: --repick forces a re-pick. An explicit setup records parakeet-gpu with the same facts (GPU masked); a plain
 # doctor run keeps it, the same run with --repick picks again (parakeet-cpu).
 rm -rf "$S/ws-repick"; mkdir -p "$S/ws-repick"
-(cd "$S/ws-repick" && env EDITOR_SE_HOME="$A" EDITOR_SE_MASK=gpu sh "$INS" --engine parakeet-gpu) > "$S/repick-setup.log" 2>&1; rc=$?; cat "$S/repick-setup.log"
+(mkdir -p "$S/lad" "$S/home" && cd "$S/ws-repick" && env EDITOR_SE_HOME="$A" LOCALAPPDATA="$(command -v cygpath >/dev/null && cygpath -w "$S/lad" || echo "$S/lad")" HOME="$S/home" EDITOR_SE_MASK=gpu sh "$INS" --engine parakeet-gpu) > "$S/repick-setup.log" 2>&1; rc=$?; cat "$S/repick-setup.log"
 ck "explicit setup --engine parakeet-gpu (GPU masked) exits 0" "$rc $(st "$A")" "0 parakeet-gpu False"
 KEEP=1 doc "$A" "$S/ws-repick" EDITOR_SE_MASK=gpu -- > "$S/norepick.log" 2>&1; rc=$?; cat "$S/norepick.log"
 ck "same facts, no --repick: the engine is kept (parakeet-gpu)" "$rc $(cfg "$S/ws-repick" engine) $(grep -c '^Installing the Python packages' "$S/norepick.log")" "0 parakeet-gpu 0"

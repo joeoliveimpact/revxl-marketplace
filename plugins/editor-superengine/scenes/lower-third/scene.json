@@ -1,0 +1,15 @@
+{
+  "id": "lower-third",
+  "kind": "overlay",
+  "slots": {
+    "name": {"maxChars": 28, "default": "Alex Rivera", "hint": "who is speaking"},
+    "title": {"maxChars": 40, "default": "Founder, Sample Studio", "hint": "their role or a short line"}
+  },
+  "dur": [2, 8],
+  "params": {
+    "accent": {"type": "color", "default": "#4f8cff"},
+    "font": {"type": "string", "default": "Inter"}
+  },
+  "source": "editor-superengine original (PB-34)",
+  "licence": "own"
+}

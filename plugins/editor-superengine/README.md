@@ -28,7 +28,7 @@ The router. Names the pipeline order, sends you to the right skill for the ask, 
 
 Raw recording to finished spoken cut in one build pass: probe and calibrate, transcribe with word timestamps, line-selection ruling, waveform-verified EDL, gap tightening, speed ruling, one render from the raw, round-trip verification, silence budget, ear pass, and the ear-driven correction loop. Three stages stop for a human. Ships four analysis scripts plus a bundled word-timestamp transcriber.
 
-### `reel-motion-comps`
+### `reel-canvas-build`
 **Triggers:** "design the hook", "motion comps", "direction comps for the reel", "hook treatment options", "ladder the blur", "iterate this visual", "reel design pass", "comp the intro".
 
 The design-iteration loop for reel visuals: divergent directions over the real plates, a parameter factory per element, ladders instead of single attempts, a measurement kit that has caught real defects, and safe-zone pre-checks against Instagram's UI reserves.
@@ -72,7 +72,7 @@ Settings > Extensions > Browse, add the `joeoliveimpact/revxl-marketplace` marke
 
 ## What ships in 0.1.0 and what does not
 
-**Ships:** `editor-start-here`, `reel-first-cuts`, `reel-motion-comps`, plus four shared references (house rules, the frame-zero hook standard, preview-before-render, and the art-director design prompt).
+**Ships:** `editor-start-here`, `reel-first-cuts`, `reel-canvas-build`, plus four shared references (house rules, the frame-zero hook standard, preview-before-render, and the art-director design prompt).
 
 **Deferred to 0.2:**
 - `reel-sound-pass` ... music, SFX spotting and mastering levels.

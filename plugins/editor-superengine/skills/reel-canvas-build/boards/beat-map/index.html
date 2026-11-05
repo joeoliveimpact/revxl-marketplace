@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beat map</title>
+<style>
+  :root { --bg:#14161b; --panel:#1d2028; --line:#2c313c; --text:#e7e9ee; --muted:#9aa3b2; --accent:#7aa7ff;
+          --full:#4f7fd8; --split:#36a47a; --stack:#c9892b; --pip:#9a6ad6; --overlay:#d35c7c; --bad:#ff8a8a; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1240px; margin: 0 auto; padding: 20px 20px 110px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 0 0 10px; }
+  .muted { color: var(--muted); }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin: 16px 0; }
+  :focus-visible { outline: 3px solid #ffd166; outline-offset: 2px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  #strip { display: flex; height: 34px; border-radius: 6px; overflow: hidden; background: var(--line); gap: 2px; }
+  #strip div { flex-basis: 0; min-width: 2px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; list-style: none; padding: 0; margin: 10px 0 0; color: var(--muted); font-size: 13px; }
+  .legend span { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+  .l-full { background: var(--full); } .l-split { background: var(--split); } .l-stack { background: var(--stack); }
+  .l-pip { background: var(--pip); } .l-overlay { background: var(--overlay); }
+  .tablewrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; }
+  tr.changed td:first-child { box-shadow: inset 4px 0 0 var(--accent); }
+  .chip { display: none; margin-top: 6px; font-size: 12px; padding: 1px 8px; border-radius: 999px; background: #2b3b5c; color: #cfe0ff; white-space: nowrap; }
+  tr.changed .chip { display: inline-block; }
+  .time { white-space: nowrap; color: var(--muted); }
+  .say { min-width: 220px; max-width: 360px; }
+  .word { border-radius: 4px; padding: 1px 2px; cursor: pointer; }
+  .word:hover { background: #2a2f3a; }
+  .word[data-mark] { background: #2b3550; }
+  .word[data-mark]::after { margin-left: 4px; font-size: 11px; padding: 0 5px; border-radius: 999px; background: var(--accent); color: #0d1320; vertical-align: 1px; }
+  .word[data-mark=num]::after { content: "number"; }
+  .word[data-mark=key]::after { content: "key word"; }
+  .word[data-mark=emph]::after { content: "stress"; }
+  .word[data-mark=cta]::after { content: "call to action"; }
+  select, input, textarea, button { font: inherit; color: var(--text); background: #12141a; border: 1px solid #3a4150; border-radius: 6px; }
+  select, input { padding: 6px 8px; }
+  input[name=value] { width: 90px; }
+  input[aria-invalid=true] { border-color: var(--bad); }
+  .err { color: var(--bad); font-size: 13px; margin: 4px 0 0; }
+  textarea { width: 100%; min-height: 60px; padding: 8px; resize: vertical; }
+  td textarea { min-width: 160px; }
+  .shows { min-width: 180px; }
+  .shows .why { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  label.block { display: block; font-weight: 600; margin-bottom: 6px; }
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; background: #0f1116; border-top: 1px solid var(--line);
+         display: flex; gap: 14px; align-items: center; justify-content: flex-end; padding: 12px 20px; }
+  #status { margin: 0; color: var(--muted); flex: 1; }
+  #status[data-state=error] { color: var(--bad); }
+  #status[data-state=sent] { color: #8fe0b0; }
+  button { cursor: pointer; padding: 9px 18px; }
+  #send { background: var(--accent); color: #0d1320; border-color: var(--accent); font-weight: 600; }
+  #send:disabled { opacity: .5; cursor: default; }
+  @media (max-width: 760px) {
+    main { padding: 14px 12px 130px; }
+    thead { display: none; }
+    table, tbody, tr, td { display: block; width: 100%; }
+    tr { border: 1px solid var(--line); border-radius: 8px; margin-bottom: 12px; padding: 4px 0; }
+    td { border: 0; padding: 6px 12px; }
+    td::before { content: attr(data-label); display: block; color: var(--muted); font-size: 12px; }
+    .say { max-width: none; }
+    .bar { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Beat map</h1>
+  <p class="muted">Each row is one beat of your video. Check the layout and the number for each one, tap words to mark them, and leave notes. Your changes save by themselves.</p>
+
+  <p id="empty" class="panel" hidden>No beat map yet. Ask Claude to build it from your cut.</p>
+
+  <div id="board" hidden>
+    <section class="panel" aria-labelledby="strip-h">
+      <h2 id="strip-h">The whole video at a glance</h2>
+      <div id="strip" role="list" aria-label="Beats in order, sized by length"></div>
+      <ul class="legend" id="legend"></ul>
+    </section>
+
+    <section class="panel" aria-labelledby="beats-h">
+      <h2 id="beats-h">Beats</h2>
+      <p class="muted">Tap a word to mark it: number, key word, stress, call to action, then off again.</p>
+      <p id="words-note" class="err" hidden>The words couldn't load, so word marks are off for now.</p>
+      <div class="tablewrap">
+        <table id="beats">
+          <thead><tr><th>#</th><th>Time</th><th>What you say</th><th>Layout</th><th>Number shown</th><th>What's on screen / why</th><th>Your note</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <label class="block" for="needs">Anything you need from Claude?</label>
+      <textarea id="needs" rows="3"></textarea>
+    </section>
+  </div>
+</main>
+
+<div class="bar">
+  <p id="status" role="status" aria-live="polite" data-state="empty"></p>
+  <button type="button" id="send">Send to Claude</button>
+</div>
+
+<script src="./board-client.js"></script>
+<script>
+"use strict";
+const LAYOUTS = [["full", "Full screen"], ["split", "Split"], ["stack", "Stack"], ["pip", "Picture-in-picture"], ["overlay", "Overlay"]];
+const LAYOUT_NAME = Object.fromEntries(LAYOUTS);
+const MARKS = ["num", "key", "emph", "cta"];
+const MARK_NAME = {num: "number", key: "key word", emph: "stress", cta: "call to action"};
+const $ = (s) => document.querySelector(s);
+const statusEl = $("#status"), sendBtn = $("#send");
+let bc = null, doc = null, words = null, timer = null, seq = 0;
+const invalid = new Set();   // beat ids whose number box holds something that isn't a number
+
+function el(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  for (const k in attrs || {}) {
+    if (k === "class") e.className = attrs[k];
+    else if (k === "text") e.textContent = attrs[k];
+    else e.setAttribute(k, attrs[k]);
+  }
+  for (const c of kids) if (c != null) e.append(c);   // strings become text nodes, never markup
+  return e;
+}
+function setStatus(state, msg) { statusEl.dataset.state = state; statusEl.textContent = msg; }
+function secs(f) { return (f / doc.fps).toFixed(1); }
+function encPath(rel) {
+  if (typeof rel !== "string" || !rel.trim() || rel.includes("\\") || rel.startsWith("/") ||
+      /^[A-Za-z]:/.test(rel) || rel.split("/").includes("..")) return null;
+  return rel.split("/").map(encodeURIComponent).join("/");
+}
+function reelUrl() { return "/videos/" + encodeURIComponent(new URLSearchParams(location.search).get("reel")) + "/"; }
+
+function isChanged(b) {
+  const p = doc.proposed && doc.proposed[b.id];
+  return !!p && (b.layout !== p.layout || b.value !== p.value);
+}
+
+function renderStrip() {
+  const strip = $("#strip");
+  strip.replaceChildren();
+  doc.beats.filter((b) => b.layout !== "overlay").forEach((b) => {
+    const n = doc.beats.indexOf(b) + 1;
+    strip.append(el("div", {"data-beat": b.id, role: "listitem", class: "l-" + b.layout,
+      style: "flex-grow:" + Math.max(0, b.end_f - b.start_f),
+      title: "Beat " + n + ", " + (LAYOUT_NAME[b.layout] || "No layout") + ", " + secs(b.start_f) + "–" + secs(b.end_f) + " s",
+      "aria-label": "Beat " + n + ", " + (LAYOUT_NAME[b.layout] || "No layout")}));
+  });
+}
+
+function setMark(span, w, mark) {
+  doc.word_marks = (doc.word_marks || []).filter((m) => m.w !== w);
+  if (mark) {
+    doc.word_marks.push({w: w, mark: mark});
+    doc.word_marks.sort((a, b) => a.w - b.w);
+    span.dataset.mark = mark;
+  } else delete span.dataset.mark;
+  span.setAttribute("aria-label", span.textContent + (mark ? ", marked " + MARK_NAME[mark] : ", not marked"));
+}
+
+function wordCell(b) {
+  const td = el("td", {class: "say", "data-label": "What you say"});
+  const a = b.speech_anchor || {};
+  if (!words) { td.textContent = a.text || ""; return td; }
+  const marks = new Map((doc.word_marks || []).map((m) => [m.w, m.mark]));
+  for (let w = a.w0; w <= a.w1 && w < words.length; w++) {
+    const span = el("span", {class: "word", "data-w": w, tabindex: "0", role: "button", text: words[w].trim()});
+    setMark(span, w, marks.get(w) || null);
+    const cycle = () => {
+      const cur = span.dataset.mark || null;
+      const next = cur === null ? MARKS[0] : (MARKS[MARKS.indexOf(cur) + 1] || null);
+      setMark(span, w, next);
+      edited();
+    };
+    span.addEventListener("click", cycle);
+    span.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); cycle(); } });
+    td.append(span, " ");
+  }
+  return td;
+}
+
+function row(b, i) {
+  const tr = el("tr", {"data-beat": b.id});
+  const mark = () => tr.classList.toggle("changed", isChanged(b));
+  const fid = (k) => k + "-" + i;
+
+  const sel = el("select", {name: "layout", id: fid("layout")});
+  LAYOUTS.forEach(([v, name]) => sel.append(el("option", {value: v, text: name})));
+  sel.value = b.layout;
+  sel.addEventListener("change", () => { b.layout = sel.value; mark(); renderStrip(); edited(); });
+
+  const val = el("input", {name: "value", id: fid("value"), type: "text", inputmode: "decimal", autocomplete: "off"});
+  val.value = b.value == null ? "" : String(b.value);
+  const err = el("p", {class: "err", hidden: "", text: "Type a number, like 3 or 2.5, or leave it empty."});
+  val.addEventListener("input", () => {
+    const t = val.value.trim();
+    if (t !== "" && !/^[-+]?(\d+(\.\d*)?|\.\d+)$/.test(t)) {
+      invalid.add(b.id); err.hidden = false; val.setAttribute("aria-invalid", "true");
+      return;   // not a number: shown, not saved
+    }
+    invalid.delete(b.id); err.hidden = true; val.removeAttribute("aria-invalid");
+    b.value = t === "" ? null : Number(t);
+    mark(); edited();
+  });
+
+  const note = el("textarea", {name: "note", id: fid("note"), rows: "2"});
+  note.value = (doc.notes && doc.notes[b.id]) || "";
+  note.addEventListener("input", () => {
+    doc.notes = doc.notes || {};
+    if (note.value.trim() === "") delete doc.notes[b.id]; else doc.notes[b.id] = note.value;
+    edited();
+  });
+
+  const p = (doc.proposed && doc.proposed[b.id]) || {};
+  tr.append(
+    el("td", {"data-label": "#"}, String(i + 1), el("br"), el("span", {class: "chip", text: "You changed this"})),
+    el("td", {class: "time", "data-label": "Time", text: secs(b.start_f) + "–" + secs(b.end_f) + " s"}),
+    wordCell(b),
+    el("td", {"data-label": "Layout"}, el("label", {class: "sr", for: fid("layout"), text: "Layout for beat " + (i + 1)}), sel),
+    el("td", {"data-label": "Number shown"}, el("label", {class: "sr", for: fid("value"), text: "Number shown in beat " + (i + 1)}), val, err),
+    el("td", {class: "shows", "data-label": "What's on screen / why"},
+      el("div", {text: p.shows || "—"}), el("div", {class: "why", text: p.why || ""})),
+    el("td", {"data-label": "Your note"}, el("label", {class: "sr", for: fid("note"), text: "Your note on beat " + (i + 1)}), note));
+  mark();
+  return tr;
+}
+
+function render() {
+  doc.beats = (doc.beats || []).slice().sort((a, b) => a.start_f - b.start_f);
+  $("#legend").replaceChildren(...LAYOUTS.map(([v, name]) => el("li", {}, el("span", {class: "l-" + v}), name)));
+  renderStrip();
+  $("#words-note").hidden = !!words;
+  $("#beats tbody").replaceChildren(...doc.beats.map(row));
+  const needs = $("#needs");
+  needs.value = doc.needs || "";
+  needs.addEventListener("input", () => { doc.needs = needs.value; edited(); });
+}
+
+function edited() {
+  const mine = ++seq;
+  setStatus("saving", "Saving…");
+  clearTimeout(timer);
+  timer = setTimeout(() => save(mine), 400);
+}
+
+async function save(mine) {
+  const r = await bc.save(doc);
+  if (mine !== seq) return;   // a newer edit is on its way
+  if (r.ok) setStatus("saved", "All changes saved.");
+  else setStatus("error", "Couldn't save just now. Your work is kept in this browser. Try again in a moment; if it keeps failing, tell Claude.");
+}
+
+function problem() {
+  if (invalid.size) return "One of the numbers isn't a number yet. Fix the box marked in red first.";
+  const ok = new Set(LAYOUTS.map((l) => l[0]));
+  for (let i = 0; i < doc.beats.length; i++) {
+    const b = doc.beats[i];
+    if (typeof b.id !== "string" || !b.id.trim()) return "Beat " + (i + 1) + " is missing its label. Ask Claude to rebuild the beat map.";
+    if (!ok.has(b.layout)) return "Beat " + (i + 1) + " needs a layout. Pick one in its row.";
+    if (!(b.start_f <= b.end_f)) return "Beat " + (i + 1) + " ends before it starts. Ask Claude to rebuild the beat map.";
+  }
+  let prev = -1;
+  for (const m of doc.word_marks || []) {
+    if (!Number.isInteger(m.w) || m.w <= prev || !MARKS.includes(m.mark))
+      return "The word marks got mixed up. Ask Claude to check the beat map.";
+    prev = m.w;
+  }
+  return null;
+}
+
+async function send() {
+  clearTimeout(timer);
+  const bad = problem();
+  if (bad) { setStatus("error", bad); return; }
+  sendBtn.disabled = true;
+  ++seq;
+  setStatus("saving", "Sending…");
+  try {
+    doc.sent_at = new Date().toISOString();
+    const s = await bc.save(doc);
+    if (!s.ok) { setStatus("error", "Couldn't save just now. Your work is kept in this browser. Try again in a moment; if it keeps failing, tell Claude."); return; }
+    const r = await fetch(reelUrl() + "__save?board=beat-map&name=beat-map-selection.json",
+      {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(doc)});
+    const j = await r.json().catch(() => null);
+    if (r.ok && j && j.ok) setStatus("sent", "Sent. Tell Claude: the beat map is ready.");
+    else setStatus("error", "Couldn't send. Your work is saved; try Send again in a moment.");
+  } catch (e) {
+    setStatus("error", "Couldn't send. Your work is saved; try Send again in a moment.");
+  } finally {
+    sendBtn.disabled = false;
+  }
+}
+
+async function init() {
+  try { bc = BoardClient.create({board: "beat-map"}); }
+  catch (e) { setStatus("error", "This board needs to be opened by Claude. Ask Claude to open the beat map."); sendBtn.disabled = true; return; }
+  doc = await bc.load();
+  if (!doc) {
+    $("#empty").hidden = false;
+    $("#board").hidden = true;
+    sendBtn.disabled = true;
+    setStatus("empty", "Nothing to send yet.");
+    return;
+  }
+  const p = encPath(doc.words);
+  if (p) {
+    try {
+      const r = await fetch(reelUrl() + p, {cache: "no-store"});
+      const j = r.ok ? await r.json() : null;
+      if (j && Array.isArray(j.words)) words = j.words.map((w) => String((w && w.word) || ""));
+    } catch (e) { words = null; }
+  }
+  $("#board").hidden = false;
+  render();
+  if (doc.sent_at) setStatus("sent", "Last sent " + new Date(doc.sent_at).toLocaleString());
+  else setStatus("saved", "All changes saved.");
+  sendBtn.addEventListener("click", send);
+}
+init();
+</script>
+</body>
+</html>

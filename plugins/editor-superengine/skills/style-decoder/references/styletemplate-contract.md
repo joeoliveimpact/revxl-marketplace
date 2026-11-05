@@ -10,6 +10,21 @@ styletemplate.py build <plan_dir> --inputs inputs.json --gsap <local gsap.min.js
 styletemplate.py check <build_dir>
 ```
 
+## Contents
+- Exit codes
+- The load-bearing claim
+- Read-only on the style directory
+- Provenance tagging
+- OBS / PARAM partition — the highest-consequence guard
+- Effective parameters — one value per field
+- Ingredient gate — runs first
+- `artifact` rules — acknowledge and exclude
+- Caption engine
+- `build`
+- `check`
+- Fixed constants (not read from the spec yet)
+- Still to build
+
 ## Exit codes
 
 `0` ok · `1` hard fail · `2` **written, but a human gate is required** (the

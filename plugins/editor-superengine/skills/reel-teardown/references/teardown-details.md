@@ -1,8 +1,20 @@
 # Reel teardown: commands, fallback rubric and common mistakes
 
 Detail for `editor-superengine:reel-teardown`. Claude runs every command with the Bash tool,
-from the teardown folder (`teardowns/<creator> <MM.DD.YY>/`, named that way from the start). The client never types one and
-never sees one.
+from the teardown folder (`teardowns/<creator> <MM.DD.YY>/`, named that way from the start),
+except the transcription, which runs from the client's workspace folder (SKILL.md stage 0); go
+back to the teardown folder after it.
+
+## Contents
+
+- The editor's ffmpeg and ffprobe
+- Stage 0: pull a reel link
+- Stage 0: length
+- Stage 1: frames and strips
+- Pace for the 90 s gate
+- Fallback craft rubric
+- Check the page: the launch entry
+- Common mistakes
 
 ## The editor's ffmpeg and ffprobe
 
@@ -35,7 +47,7 @@ curl -sL "<cdn_url>" -o work/reel.mp4
 ```
 
 A failed pull (an error in the reply, no `download_media_urls`) is a failure at step `pull`.
-Say whether the credit was spent. Never retry a pull that succeeded.
+Say whether the credit was spent.
 
 ## Stage 0: length
 
@@ -43,12 +55,9 @@ Say whether the credit was spent. Never retry a pull that succeeded.
 "$FP" -v error -show_entries format=duration -of default=nw=1:nk=1 work/reel.mp4
 ```
 
-Then run reel-first-cuts' transcription stage exactly as its SKILL.md shows, with
-`<editor python>` in place of `python`, on `work/reel.mp4`, output in `work/`. Pace and
-sentence onsets come from its word list.
-
-A pasted transcript: pace = pasted word count / the duration above. Onsets are estimated at
-that pace, and every timing on the page and in `teardown.md` says "estimated".
+Then transcribe with the command in SKILL.md stage 0, run from the client's workspace folder so
+the workspace language is read. It takes no `--probe` and no `--edit-map`: a teardown has neither.
+Pace and sentence onsets come from the word list in `work/tx.json`.
 
 ## Stage 1: frames and strips
 
@@ -66,18 +75,18 @@ i=0; for t in $BODY; do "$FF" -v error -y -ss $t -i work/reel.mp4 -frames:v 1 -v
 "$FF" -v error -y -i work/b_0.png -i work/b_1.png -i work/b_2.png -i work/b_3.png -i work/b_4.png -i work/b_5.png -filter_complex hstack=inputs=6 -q:v 3 site/img/frames-body.jpg
 ```
 
-Then look at both strips and frame 0 before writing a word about them. The strip captions
-and the method line name the real times used.
+The strip captions and the method line name the real times used.
 
 ## Pace for the 90 s gate
 
-Measured pace = spoken words / (last word end minus first word start), in words per second.
+Measured pace = spoken words / (last word end minus first word start), in words per second,
+so silences don't flatter it.
 A rebuilt script's length = its spoken word count / that pace. Under 90 s passes.
 
 ## Fallback craft rubric (when reel-scripter's references aren't available)
 
-Score each part 0 to 100 on the writing alone. **Craft only, never a view prediction.** The
-anchors below are rough points; score between them.
+Score each part 0 to 100 on the writing alone. The anchors below are rough points; score
+between them.
 
 | Part | About 20 | About 50 | About 80 |
 |---|---|---|---|
@@ -112,8 +121,7 @@ replace that entry only.
 ```
 
 Then `preview_start` with the name `teardown-<folder>`, set the width to 375 px and run the
-checks: `document.documentElement.scrollWidth == 375`; every `.tscroll tr` that isn't hidden
-computes `display: block` (header rows are hidden on mobile by design); no console errors.
+four checks in SKILL.md stage 5.
 
 ## Common mistakes
 
@@ -123,7 +131,5 @@ computes `display: block` (header rows are hidden on mobile by design); no conso
 | Re-hooks placed by feel at round times | The first lands before the clock allows, none are typed, loops aren't tracked | rehooks places and types them; its pay-off check shows every loop closing |
 | An unsupported line sold as "the share line" | A skeptic hears it, and the creator repeats it as fact | viral's skeptic check catches it; mark it as a question for the creator |
 | Running rehooks on the original | It refuses anything over 90 s and names no next step | Run it third, on viral's result |
-| A number or time the creator never said, written in | The page puts words in their mouth | Whole-sentence edits only; a marked fill-in where a number belongs |
 | Rebuilding by hand when shortform-superengine is missing | A fake rebuild that looks like the real one | Diagnosis-only page, with the install offer |
 | A screenshot as the only proof | The pane can time out and nothing gets checked | The JavaScript checks first, the screenshot second |
-| Deploying because the page was ready | Nobody asked | Page only; deploying is its own ask |

@@ -1,6 +1,6 @@
 ---
 name: editor-superengine:recording-preflight
-description: Checks the client's camera, light and sound before they record a reel, using a 10-second test clip. Use on "I'm about to record", "check my setup before I film", "is my lighting ok", "does my mic sound ok", "test my camera", "why does my video look choppy", or "my audio sounds distorted". Gives set-up suggestions, then reads the test clip and says good to record, or the one or two fixes. NOT for editing or cutting a finished recording (that is reel-first-cuts), and NOT for checking the editor's own tools (that is editor-doctor).
+description: Checks the client's camera and sound before they record a reel, using a 10-second test clip. Use on "I'm about to record", "check my setup before I film", "does my mic sound ok", "test my camera", "why does my video look choppy", or "my audio sounds distorted". NOT for editing a finished recording (that's reel-first-cuts) or the editor's own tools (that's editor-doctor).
 ---
 
 # recording-preflight: a 10-second check before the real take
@@ -23,11 +23,11 @@ Speak to the client the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/refe
 ## Ground rules
 
 - **The client never types a command.** Claude runs the check with the Bash tool.
-- `<editor python>` is the editor's own Python. Windows: `"$LOCALAPPDATA/revxl/editor-superengine/venv/Scripts/python.exe"`. macOS: `"$HOME/Library/Application Support/revxl/editor-superengine/venv/bin/python"`. If it doesn't exist, run `editor-superengine:editor-doctor` first.
+- `<editor python>` is the editor's own Python. Windows: `"$(H="$LOCALAPPDATA/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/Scripts/python.exe"`. macOS: `"$(H="$HOME/Library/Application Support/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/bin/python"`. If it doesn't exist, run `editor-superengine:editor-doctor` first.
 
 ## 1. Set-up suggestions (options, never rules)
 
-- **Light in front of you**, not behind. A window behind you turns you into a silhouette.
+- **Light in front of you**, not behind. A window behind you turns you into a silhouette. The check can't see light, so look at the test clip yourself.
 - **Mic close:** a clip-on mic, or the phone about an arm's length away. A quiet room.
 - **Framing:** head and shoulders, some space above your head, and the lower part of the frame kept clear. Captions and the app's buttons sit there (the safe zone).
 - **Phone settings:** 1080p or 4K, 30 fps (frames per second), exposure and focus locked, Do Not Disturb on, lens wiped.
@@ -40,10 +40,10 @@ Speak to the client the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/refe
 It checks, in plain words:
 - picture size and whether the phone was upright (it reads the phone's rotation tag)
 - the real frame rate, and whether it's VFR (variable frame rate: the phone changes speed mid-clip). VFR is a note, not a problem: the editor evens it out.
-- freezes (a gap of 150 ms or more between frames) and repeated frames: the recorder dropped frames, so close other apps
+- freezes and repeated frames: the recorder dropped frames, so close other apps
 - HDR: a note, the editor converts it
-- sound: none recorded is ✗; a peak at or above -0.5 dBFS is likely clipping (distortion that can't be fixed later); a level below about -40 dB is too quiet, so move the mic closer
-- length: under 3 seconds is too short to judge
+- sound: none recorded is ✗; too loud is likely clipping (distortion that can't be fixed later); too quiet means move the mic closer
+- length: a test too short to judge
 
 Exit 0 means nothing is ✗. Exit 1 means a ✗ line, or a line saying the clip isn't there. `The editor's setup isn't finished yet.` means no video tools were found: run `editor-superengine:editor-doctor`, then the check again.
 

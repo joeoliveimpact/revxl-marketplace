@@ -5,6 +5,19 @@
 > `style-spec.json`. Siblings: `styleframes-contract.md` (measurement),
 > `designsystem-contract.md` (the look layer), `styletemplate-contract.md` (builds).
 
+## Contents
+- What a style system is
+- Library layout
+- Sources — local files only
+- Schema (field groups)
+- Layer + resolution (the templatizer fields)
+- Merge (refine with a second reel)
+- The confirmation ladder
+- Determinism requirements
+- Consuming a style system
+- Validation gates (fail-closed)
+- Retention
+
 ## What a style system is
 
 A decoded **editing design system**: every rule needed to recreate a reel's editing

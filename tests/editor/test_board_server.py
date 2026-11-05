@@ -135,19 +135,20 @@ def server_checks(td):
     assert post(port, "/videos/reel-1/__state?name=../x")[0] == 403
     assert post(port, "/videos/%2e%2e/__state?name=cut-board")[0] in (403, 404)
     # __save: a Send output listed in the board's boards.json "writes"
-    sv = "/videos/reel-1/__save?board=cut-board&name=selection.json"
+    sv = "/videos/reel-1/__save?board=cut-board&name=cut-selection.json"
     assert post(port, sv, body=b'{"sent": 1}')[0] == 200
-    assert (reel / "selection.json").read_bytes() == b'{"sent": 1}' and not list(reel.glob("*.tmp"))
+    assert (reel / "cut-selection.json").read_bytes() == b'{"sent": 1}' and not list(reel.glob("*.tmp"))
     assert post(port, sv, origin="http://evil.example")[0] == 403, "forged Origin on __save"
     assert post(port, sv, ctype="text/plain")[0] == 403
-    for q in ("board=cut-board&name=other.json", "board=hub&name=selection.json", "board=nope&name=selection.json",
+    for q in ("board=cut-board&name=other.json", "board=cut-board&name=selection.json", "board=hub&name=selection.json", "board=nope&name=selection.json",
               "board=cut-board&name=../selection.json", "board=cut-board&name=%2e%2e%2fselection.json",
               "board=cut-board&name=sub/selection.json", "board=cut-board&name=.selection.json",
               "board=cut-board&name=.board-version", "name=selection.json", "board=cut-board",
               "board=cut-board&name=selection.json&name=x.json"):
         assert post(port, "/videos/reel-1/__save?" + q)[0] == 403, q
-    assert post(port, "/videos/no-such-reel/__save?board=cut-board&name=selection.json")[0] == 404
-    assert not (ws / "videos" / "no-such-reel").exists() and (reel / "selection.json").read_bytes() == b'{"sent": 1}'
+    assert post(port, "/videos/no-such-reel/__save?board=cut-board&name=cut-selection.json")[0] == 404
+    assert not (ws / "videos" / "no-such-reel").exists() and (reel / "cut-selection.json").read_bytes() == b'{"sent": 1}'
+    assert not (reel / "selection.json").exists(), "no shared selection.json"
     assert post(port, "/videos/reel-1/__nope?name=cut-board")[0] == 404
     # GET only inside whitelisted board folders and reel folders
     assert req(port, "GET", "/editor/cut-board/")[0] == 200
@@ -229,12 +230,15 @@ def sync_checks(td):
     (tpl / "lib" / "math.js").write_bytes(b"// v1")
     ws = workspace(td, "ws-sync", free_port())
     (ws / "editor" / ".gitignore").write_bytes(b"mine.log")
+    (ws / "videos" / ".gitignore").write_bytes(b"raw/")
     notes = board_sync.sync(ws, plug)
     assert "cut-board: copied (your saved work is untouched)" in notes, notes
     assert "sound-board: not built yet, nothing to copy" in notes and len(notes) == 9, notes
     assert not (ws / "editor" / "sound-board").exists()
     gi = (ws / "editor" / ".gitignore").read_bytes()
     assert gi == b"mine.log\n.board-server.json\n*.prev\n*.tmp\n", gi
+    gv = (ws / "videos" / ".gitignore").read_bytes()
+    assert gv == b"raw/\n*selection.json\n*.state.json\n*.prev\n", gv
     board = ws / "editor" / "cut-board"
     assert (board / "board-client.js").read_bytes() == (rt.PLUGIN_ROOT / "skills/editor-doctor/assets/board-client.js").read_bytes()
     stamp = json.loads((board / ".board-version").read_text(encoding="utf-8"))
