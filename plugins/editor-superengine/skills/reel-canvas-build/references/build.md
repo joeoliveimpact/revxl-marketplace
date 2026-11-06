@@ -89,7 +89,7 @@ means a missing input, e.g. no Beat Map Send or no cut yet: go to that step.
 
 - The cut's picture plays untouched underneath, and section 1's hook text opens the reel.
 - A beat that carries a scene gets it over its frames: a first-beat scene opens complete, and back-to-back
-  full-screen scenes get a dark panel between them. Picking scenes for beats isn't built yet.
+  full-screen scenes get a dark panel between them. The client picks scenes with Add a scene on the Beat Map.
 - The sound is copied, never re-encoded: the finished sound when it was made on this cut, otherwise the cut's own.
 - If the client asks about quality: the picture is compressed twice in all since the camera, once for the cut
   and once here.
@@ -98,7 +98,7 @@ means a missing input, e.g. no Beat Map Send or no cut yet: go to that step.
 
 ## 6. What a beat can ask for that isn't built yet
 
-Each part of a beat that isn't built yet (layout, B-roll, transition) gets a `note:` line: tell the client what
+Each part of a beat that isn't built yet (B-roll, transition) gets a `note:` line: tell the client what
 SKILL.md's Not built yet rule says.
 
 ## 7. The cutout

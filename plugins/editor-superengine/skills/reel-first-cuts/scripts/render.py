@@ -56,7 +56,7 @@ def find_tools():
     FFMPEG, FFPROBE = ffmpeg, ffprobe
 
 
-def conform(video):
+def conform(video, crop=None):
     """9:16 at 1080x1920, and HDR to SDR, inside the encode the cut already does.
 
     Scale to cover, then crop exact: the crop never asks x264 for an odd width (a
@@ -71,6 +71,22 @@ def conform(video):
     peak=1 it passes (3.9), but mobius sits closer (1.2), so mobius is used."""
     f = ["scale=%d:%d:force_original_aspect_ratio=increase:force_divisible_by=2:flags=lanczos"
          % CANVAS, "crop=%d:%d" % CANVAS, "setsar=1"]
+    if crop is not None:
+        import importlib.util
+        path = Path(__file__).resolve().parents[2] / "reel-canvas-build" / "scripts" / "face_crop.py"
+        spec = importlib.util.spec_from_file_location("face_crop", path)
+        face = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(face)
+        try:
+            width = face.cover_scaled_width(video)
+            if crop["scaled_w"] != width:
+                print("note: The face crop was measured on a different source; keeping the centred crop.")
+            elif type(crop.get("x")) is not int or crop["x"] % 2 or not 0 <= crop["x"] <= width - CANVAS[0]:
+                die("work/crop.json needs an even crop x inside the scaled picture; run the face crop step again")
+            else:
+                f[1] += ":%d:0" % crop["x"]
+        except (KeyError, TypeError, ValueError):
+            die("work/crop.json or the source picture size is incomplete; run the face crop step again")
     tr = (video or {}).get("color_transfer")
     if tr in ("arib-std-b67", "smpte2084"):
         f += ["zscale=t=linear:npl=100", "format=gbrpf32le", "zscale=p=bt709",
@@ -199,8 +215,16 @@ def main():
     segs = [(s["src_in_f"] / fps, s["src_out_f"] / fps) for s in cuts["segments"]]
     frames = cuts["segments"][-1]["out_out_f"]
     probe = json.loads((work / "probe.json").read_text(encoding="utf-8"))
+    crop = None
+    if (work / "crop.json").exists():
+        try:
+            crop = json.loads((work / "crop.json").read_text(encoding="utf-8"))
+            if not isinstance(crop, dict):
+                die("work/crop.json needs a crop object; run the face crop step again")
+        except (OSError, ValueError):
+            die("work/crop.json can't be read; run the face crop step again")
     fps_flag = probe.get("fps_flag", "-fps_mode")
-    vfilter = conform(probe.get("video"))
+    vfilter = conform(probe.get("video"), crop) if crop is not None else conform(probe.get("video"))
     if a.grade:
         vfilter += "," + grade_filter(a.grade)
     astream = int(probe.get("audio_stream", 0))

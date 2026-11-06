@@ -35,15 +35,18 @@ MARKS = ("num", "key", "emph", "cta")  # H-M20's fixed set, meanings below
 BEAT_KEYS = ("id", "start_f", "end_f", "speech_anchor", "layout", "value", "scene", "broll", "transition")
 ANCHOR_KEYS = ("text", "w0", "w1")
 MARK_KEYS = ("w", "mark")
-MAP_KEYS = ("schema", "reel", "fps", "words", "beats", "word_marks", "proposed", "notes", "needs", "sent_at")
+MAP_KEYS = ("schema", "reel", "fps", "words", "beats", "word_marks", "proposed", "notes", "needs", "sent_at",
+            "edit_style")
+OPTIONAL_MAP_KEYS = ("edit_style",)  # H-S6b-23: the reel's editing style; styles.py checks the inside
 PROPOSED_KEYS = ("layout", "value", "shows", "why")  # Claude's original pick per beat; the board highlights changes
 DEFAULT_WORDS = "work/edit_map.cut.json"  # H-S4b-5: re-transcribed cut words, S3 edit-map shape, index from 0
-SKETCHES_KEYS = ("schema", "reel", "rough", "directions", "pick", "sketches", "note", "sent_at", "locked_at")
+SKETCHES_KEYS = ("schema", "reel", "rough", "directions", "pick", "sketches", "note", "sent_at", "locked_at", "scenes")
 DIRECTION_KEYS = ("id", "name", "why", "frames", "note")  # the coach picks ONE direction
 SKETCH_KEYS = ("id", "beat", "title", "media", "note")  # one per-beat preview
 SHOW_MAX = 60  # longest bad value quoted in a message, so one bad blob can't flood the output
-# scene / broll / transition: S6a only checks "null or object". Their owners tighten them later:
-#   scene      (G2-a) {id, slots, params}
+# scene is null or {id: non-empty str, slots: {str: str}, params?: {str: number|str|bool}}.
+# Scene files, transcript numbers and duration are checked by scene_check, independently of this shape.
+# broll / transition still check "null or object". Their owners tighten them later:
 #   broll      (G3-a) {src, in, out, fit, ledger_id}
 #   transition (G5)   {type, at_cut_frame, dur_frames}
 
@@ -69,12 +72,12 @@ def _is_num(v):
     return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
 
 
-def _keys(obj, wanted, where):
+def _keys(obj, wanted, where, optional=()):
     """Missing and unknown keys of an object, or 'not an object'. Empty list = keys are right."""
     if not isinstance(obj, dict):
         return [f"{where} {_show(obj)} is not an object; use {{{', '.join(wanted)}}}"]
     out = []
-    missing = [k for k in wanted if k not in obj]
+    missing = [k for k in wanted if k not in obj and k not in optional]
     unknown = [k for k in obj if k not in wanted]
     if missing:
         out.append(f"{where} is missing {', '.join(missing)}; add them")
@@ -105,6 +108,32 @@ def _nonempty_str(v, where, what="a non-empty string"):
     if isinstance(v, str) and v.strip():
         return []
     return [f"{where} {_show(v)} is not {what}; set it"]
+
+
+def scene_problems(scene, where="scene", *, nullable=True):
+    """The saved fill shape only; no dependency on the scene catalog."""
+    if scene is None and nullable:
+        return []
+    out = _keys(scene, ("id", "slots", "params"), where, ("params",))
+    if not isinstance(scene, dict):
+        return out
+    if "id" in scene:
+        out += _nonempty_str(scene["id"], f"{where}.id")
+    for field in ("slots", "params"):
+        if field not in scene:
+            continue
+        values = scene[field]
+        if not isinstance(values, dict):
+            out.append(f"{where}.{field} is not an object; use name and value pairs")
+            continue
+        for key, value in values.items():
+            if not isinstance(key, str):
+                out.append(f"{where}.{field} has a non-text name; use text names")
+            valid = isinstance(value, str) if field == "slots" else isinstance(value, (str, bool)) or _is_num(value)
+            if not valid:
+                kind = "text" if field == "slots" else "a number, text or boolean"
+                out.append(f"{where}.{field}[{_show(key)}] is not {kind}; change it")
+    return out
 
 
 def beat_problems(beat, words=None, *, where="beat"):
@@ -149,7 +178,9 @@ def beat_problems(beat, words=None, *, where="beat"):
         out.append(f"{where}.layout {_show(b['layout'])} is not a layout; use one of {', '.join(LAYOUTS)}")
     if "value" in b and not (b["value"] is None or _is_num(b["value"])):
         out.append(f"{where}.value {_show(b['value'])} is not a number; use a number or null")
-    for k in ("scene", "broll", "transition"):
+    if "scene" in b:
+        out += scene_problems(b["scene"], f"{where} ({_show(b.get('id'))}).scene")
+    for k in ("broll", "transition"):
         if k in b and not (b[k] is None or isinstance(b[k], dict)):
             out.append(f"{where}.{k} {_show(b[k])} is not an object; use an object or null")
     return out
@@ -228,7 +259,7 @@ def _note_value_problems(v, where):
 
 def beat_map_problems(doc, words=None):
     """Problems with a whole beat map document. `words` = the cut's word list (see load_words)."""
-    out = _keys(doc, MAP_KEYS, "beat map")
+    out = _keys(doc, MAP_KEYS, "beat map", OPTIONAL_MAP_KEYS)
     if not isinstance(doc, dict):
         return out
     if "schema" in doc and not (_is_int(doc["schema"]) and doc["schema"] == SCHEMA):
@@ -243,6 +274,8 @@ def beat_map_problems(doc, words=None):
         out += _iso_problems(doc["sent_at"], "sent_at")
     if "word_marks" in doc:
         out += _marks_problems(doc["word_marks"], words)
+    if "edit_style" in doc and not isinstance(doc["edit_style"], dict):
+        out.append(f"edit_style {_show(doc['edit_style'])} is not an object; use {{\"style\": ...}} or leave it out")
     if "needs" in doc and not isinstance(doc["needs"], str):
         out.append(f"needs {_show(doc['needs'])} is not text; use a string (may be empty)")
     beats = doc.get("beats")
@@ -287,7 +320,7 @@ def _beat_map_beats_problems(beats, words):
 
 def sketches_problems(doc, beat_map=None):
     """Problems with a sketches document. Pass the beat map to check each sketch's beat id exists."""
-    out = _keys(doc, SKETCHES_KEYS, "sketches doc")
+    out = _keys(doc, SKETCHES_KEYS, "sketches doc", ("scenes",))
     if not isinstance(doc, dict):
         return out
     if "schema" in doc and not (_is_int(doc["schema"]) and doc["schema"] == SCHEMA):
@@ -306,6 +339,9 @@ def sketches_problems(doc, beat_map=None):
     beat_ids = None
     if isinstance(beat_map, dict) and isinstance(beat_map.get("beats"), list):
         beat_ids = {b["id"] for b in beat_map["beats"] if isinstance(b, dict) and isinstance(b.get("id"), str)}
+    if "scenes" in doc:
+        out += _beat_keyed_problems(doc["scenes"], "scenes", beat_ids,
+                                   lambda v, where: scene_problems(v, where, nullable=False))
     direction_ids = None
     for name, keys in (("directions", DIRECTION_KEYS), ("sketches", SKETCH_KEYS)):
         if name not in doc:
@@ -435,7 +471,7 @@ def selftest():
             {"id": "b_001", "start_f": 0, "end_f": 30, "speech_anchor": {"text": "three big wins", "w0": 0, "w1": 2},
              "layout": "full", "value": 3, "scene": None, "broll": None, "transition": None},
             {"id": "b_002", "start_f": 10, "end_f": 50, "speech_anchor": {"text": "today", "w0": 3, "w1": 3},
-             "layout": "overlay", "value": None, "scene": {}, "broll": None, "transition": None},
+             "layout": "overlay", "value": None, "scene": {"id": "callout", "slots": {"text": "today"}}, "broll": None, "transition": None},
             {"id": "b_003", "start_f": 30, "end_f": 60, "speech_anchor": {"text": "Go now", "w0": 4, "w1": 5},
              "layout": "split", "value": 2.5, "scene": None, "broll": None, "transition": {"type": "cut"}},
         ],
@@ -464,8 +500,19 @@ def selftest():
         d["beats"][0][k] = v
 
     cases = [  # (name, problems, substring a failure must contain; None = must pass)
+        ("scene params", scene_problems({"id": "x", "slots": {"s": ""},
+                                         "params": {"n": 3, "s": "x", "b": True}}), None),
+        ("scene missing id", beat_map_problems(m(lambda d: both(d, "scene", {"slots": {}}))), "b_001').scene is missing id"),
+        ("scene non-string slot", beat_map_problems(m(lambda d: both(d, "scene", {"id": "x", "slots": {"s": 1}}))), ".slots['s']"),
+        ("scene unknown key", beat_map_problems(m(lambda d: both(d, "scene", {"id": "x", "slots": {}, "extra": 1}))), "unknown keys extra"),
+        ("sketches scene", sketches_problems(dict(sketches, scenes={"b_001": {"id": "x", "slots": {}}}), good), None),
+        ("sketches scene unknown beat", sketches_problems(dict(sketches, scenes={"b_999": {"id": "x", "slots": {}}}), good), "scenes key 'b_999'"),
         ("valid map", beat_map_problems(good, words), None),
         ("valid map, no words", beat_map_problems(good), None),
+        ("map with an edit_style object", beat_map_problems(m(lambda d: d.update(edit_style={"style": "punch-in"})),
+                                                            words), None),
+        ("edit_style not an object", beat_map_problems(m(lambda d: d.update(edit_style="punch-in")), words),
+         "edit_style 'punch-in' is not an object"),
         ("beat with no id", beat_map_problems(m(drop_id), words), "missing id"),
         ("unknown layout", beat_map_problems(m(lambda d: both(d, "layout", "grid")), words),
          "beats[0].layout 'grid' is not a layout; use one of full, split, stack, pip, overlay"),

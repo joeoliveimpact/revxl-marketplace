@@ -50,6 +50,19 @@
   .shows { min-width: 180px; }
   .shows .why { color: var(--muted); font-size: 13px; margin-top: 4px; }
   label.block { display: block; font-weight: 600; margin-bottom: 6px; }
+  .scene-controls { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 14px; }
+  .scene-picker { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+  .scene-choice { padding: 8px; text-align: left; overflow-wrap: anywhere; }
+  .scene-choice img { display: block; height: 120px; max-width: 100%; margin: 0 auto 8px; }
+  .scene-choice span { display: block; }
+  .scene-choice:disabled { opacity: .45; cursor: default; }
+  .slot-count { display: block; color: var(--muted); font-size: 12px; }
+  .scene-controls .bad { color: var(--bad); border-color: var(--bad); }
+  .scene-controls input, .scene-controls select { font: inherit; color: var(--text); background: #12141a;
+    border: 1px solid #3a4150; border-radius: 6px; padding: 8px; width: 100%; }
+  .remove-scene { margin-top: 12px; }
+  .style-options { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 12px; }
+  #punch-scale { width: 100px; }
   .bar { position: fixed; left: 0; right: 0; bottom: 0; background: #0f1116; border-top: 1px solid var(--line);
          display: flex; gap: 14px; align-items: center; justify-content: flex-end; padding: 12px 20px; }
   #status { margin: 0; color: var(--muted); flex: 1; }
@@ -82,6 +95,36 @@
       <h2 id="strip-h">The whole video at a glance</h2>
       <div id="strip" role="list" aria-label="Beats in order, sized by length"></div>
       <ul class="legend" id="legend"></ul>
+    </section>
+
+    <section class="panel" aria-labelledby="style-h">
+      <h2 id="style-h">Editing style</h2>
+      <label for="edit-style">Style</label>
+      <select id="edit-style">
+        <option value="">Ask me before the preview</option>
+        <option value="punch-in">Punch-ins on jump cuts</option>
+        <option value="layout-switch">Layout switches</option>
+      </select>
+      <div id="punch-options" hidden>
+        <div class="style-options">
+          <label for="punch-scale">Punch level</label>
+          <input id="punch-scale" type="number" min="1.00" max="1.30" step="0.01" value="1.12" aria-describedby="punch-level-note">
+          <label><input id="opening-settle" type="checkbox"> Settle in at the start</label>
+          <label><input id="follow-cam" type="checkbox"> Follow my face</label>
+        </div>
+        <p id="punch-level-note" class="muted" hidden>This saved punch level is outside the usual range; it stays as set.</p>
+        <div class="style-options">
+          <label for="word-punches">Word punches</label>
+          <select id="word-punches"><option value="">Off</option><option value="dramatic">Strong</option><option value="subtle">Gentle</option><option value="ratchet">Steps (ratchet)</option><option value="custom" hidden>Custom (set by Claude)</option></select>
+          <span id="punch-shape-options" hidden>
+            <label for="punch-shape">How they land</label>
+            <select id="punch-shape"><option value="eased">Smooth</option><option value="hard-cut">Snap</option></select>
+          </span>
+        </div>
+        <label for="camera-move">Camera move</label>
+        <select id="camera-move"><option value="">Off</option><option value="push">Slow push in</option><option value="ken_burns">Slow drift (Ken Burns)</option><option value="reframe">Keep the top of the frame</option><option value="custom" hidden>Custom (set by Claude)</option></select>
+        <p id="punch-hint" class="muted" hidden>Mark the words to stress first; the punches land on them.</p>
+      </div>
     </section>
 
     <section class="panel" aria-labelledby="beats-h">
@@ -118,6 +161,7 @@ const MARK_NAME = {num: "number", key: "key word", emph: "stress", cta: "call to
 const $ = (s) => document.querySelector(s);
 const statusEl = $("#status"), sendBtn = $("#send");
 let bc = null, doc = null, words = null, timer = null, seq = 0;
+let sceneCatalog = [], sceneSuggestions = {}, sketchScenes = {}, sceneFieldId = 0;
 const invalid = new Set();   // beat ids whose number box holds something that isn't a number
 
 function el(tag, attrs, ...kids) {
@@ -139,9 +183,210 @@ function encPath(rel) {
 }
 function reelUrl() { return "/videos/" + encodeURIComponent(new URLSearchParams(location.search).get("reel")) + "/"; }
 
+function mediaUrl(rel) { const p = encPath(rel); return p ? reelUrl() + p : null; }
+
+async function reelJson(rel) {
+  const url = mediaUrl(rel);
+  if (!url) return null;
+  try { const r = await fetch(url, {cache: "no-store"}); return r.ok ? await r.json() : null; }
+  catch (e) { return null; }
+}
+function counterValue(spec, param) { return spec.category === "counter" && param.name === "value"; }
+function sceneSpec(id) { return sceneCatalog.find((s) => s.id === id); }
+function refreshScenes() {
+  document.querySelectorAll(".scene-controls").forEach((e) => e.replaceWith(sceneControls(e.dataset.beat)));
+}
+function sceneControls(beat) {
+  const wrap = el("div", {class: "scene-controls", "data-beat": beat});
+  const b = doc.beats.find((b) => b.id === beat);
+  const fill = b.scene, spec = fill && sceneSpec(fill.id);
+  const add = el("button", {type: "button", class: "add-scene", text: "Add a scene", "aria-expanded": "false"});
+  const picker = el("div", {class: "scene-picker", hidden: ""});
+  const available = sceneSuggestions[beat] || {};
+  const ordered = [...sceneCatalog].sort((a, b) => Number(!!available[b.id]) - Number(!!available[a.id]));
+  for (const item of ordered) {
+    const choice = el("button", {type: "button", class: "scene-choice", "data-scene": item.id});
+    const url = mediaUrl(item.preview);
+    if (url) choice.append(el("img", {src: url, alt: item.id + " preview"}));
+    choice.append(el("span", {text: item.id}), el("span", {class: "muted", text: item.kind + " · " + item.category}));
+    if (!available[item.id]) {
+      choice.disabled = true;
+      choice.append(el("span", {text: "doesn't fit this beat's words or length"}));
+    } else choice.addEventListener("click", () => {
+      b.scene = JSON.parse(JSON.stringify(available[item.id]));
+      refreshScenes(); edited();
+    });
+    picker.append(choice);
+  }
+  add.disabled = !sceneCatalog.length;
+  add.addEventListener("click", () => { picker.hidden = !picker.hidden; add.setAttribute("aria-expanded", String(!picker.hidden)); });
+  wrap.append(add, picker);
+  if (!sceneCatalog.length) wrap.append(el("p", {class: "none", text: "Scene choices aren't ready yet. Ask Claude to prepare them."}));
+  if (!fill && sketchScenes[beat] && sceneSpec(sketchScenes[beat].id)) {
+    const use = el("button", {type: "button", class: "use-sketch-scene",
+      text: sketchScenes[beat].id + " - picked in Sketches"});
+    use.addEventListener("click", () => {
+      b.scene = JSON.parse(JSON.stringify(sketchScenes[beat])); refreshScenes(); edited();
+    });
+    wrap.append(use);
+  }
+  if (fill) {
+    wrap.append(el("p", {text: fill.id}));
+    if (spec) {
+      for (const slot of spec.slots) {
+        const id = "scene-field-" + (++sceneFieldId);
+        const input = el("textarea", {id, rows: "2", "data-slot": slot.name});
+        input.value = (fill.slots || {})[slot.name] || "";
+        const count = el("span", {class: "slot-count", id: id + "-count"});
+        input.setAttribute("aria-describedby", id + "-count");
+        function showCount() {
+          const n = Array.from(input.value).length, bad = n > slot.maxChars;
+          count.textContent = n + " / " + slot.maxChars;
+          count.classList.toggle("bad", bad); input.classList.toggle("bad", bad);
+          input.setAttribute("aria-invalid", String(bad));
+        }
+        input.addEventListener("input", () => {
+          // The test flag proves the same overflow assertion fails without this guard.
+          if (!window.__testSkipSceneMaxChars) input.value = Array.from(input.value).slice(0, slot.maxChars).join("");
+          fill.slots[slot.name] = input.value;
+          showCount(); edited();
+        });
+        showCount();
+        wrap.append(el("label", {class: "block", for: id, text: slot.name}), input, count);
+      }
+      for (const param of spec.params) {
+        if (param.name === "accent" || param.name === "font" || (!param.enum && param.type !== "number")) continue;
+        const id = "scene-field-" + (++sceneFieldId);
+        const control = el(param.enum ? "select" : "input", {id, "data-param": param.name});
+        const value = Object.hasOwn(fill.params || {}, param.name) ? fill.params[param.name] : param.default;
+        if (param.enum) {
+          param.enum.forEach((v, i) => control.append(el("option", {value: String(i), text: String(v)})));
+          control.value = String(param.enum.indexOf(value));
+        } else {
+          control.type = "number"; control.step = "any";
+          if (param.min != null) control.min = param.min;
+          if (param.max != null) control.max = param.max;
+          control.value = value;
+        }
+        const locked = counterValue(spec, param);
+        if (locked) control.readOnly = true;
+        control.addEventListener(param.enum ? "change" : "input", () => {
+          if (locked) return;
+          if (!fill.params) fill.params = {};
+          fill.params[param.name] = param.enum ? param.enum[Number(control.value)] :
+            (control.value.trim() === "" ? null : Number(control.value));
+          const bad = !control.checkValidity() || fill.params[param.name] == null;
+          control.classList.toggle("bad", bad); control.setAttribute("aria-invalid", String(bad)); edited();
+        });
+        wrap.append(el("label", {class: "block", for: id, text: param.name + (locked ? " (from the beat's number)" : "")}), control);
+      }
+    }
+    const remove = el("button", {type: "button", class: "remove-scene", text: "Remove scene"});
+    remove.addEventListener("click", () => { b.scene = null; refreshScenes(); edited(); });
+    wrap.append(remove);
+  }
+  return wrap;
+}
+
+function sceneProblem() {
+  for (const b of doc.beats) {
+    const fill = b.scene;
+    if (fill == null) continue;
+    const spec = fill && sceneSpec(fill.id);
+    if (!spec) return "A saved scene isn't in the catalog. Remove it or ask Claude to prepare the scenes.";
+    for (const slot of spec.slots) {
+      const text = (fill.slots || {})[slot.name];
+      if (typeof text !== "string" || Array.from(text).length > slot.maxChars)
+        return "Shorten the " + slot.name + " scene text to " + slot.maxChars + " characters before sending.";
+    }
+    for (const param of spec.params) {
+      const value = Object.hasOwn(fill.params || {}, param.name) ? fill.params[param.name] : param.default;
+      if (counterValue(spec, param)) {
+        if (typeof b.value !== "number" || value !== b.value)
+          return "The counter must match the beat's number. Change the beat's number or pick the scene again.";
+      }
+      if ((param.enum && !param.enum.includes(value)) || (param.type === "number" &&
+          (typeof value !== "number" || !Number.isFinite(value) || (param.min != null && value < param.min) ||
+           (param.max != null && value > param.max)))) return "Check the " + param.name + " scene value before sending.";
+    }
+  }
+  return null;
+}
+
 function isChanged(b) {
   const p = doc.proposed && doc.proposed[b.id];
   return !!p && (b.layout !== p.layout || b.value !== p.value);
+}
+
+function stressWords() {
+  return (doc.word_marks || []).filter((m) => m.mark === "emph").map((m) => m.w);
+}
+
+let savedWordMoves = {}, savedCameraMoves = {}, wordMoveChanged = false, cameraMoveChanged = false;
+
+function styleVisibility() {
+  const punch = $("#edit-style").value === "punch-in", words = $("#word-punches").value, on = !!words;
+  $("#punch-options").hidden = !punch;
+  $("#punch-shape-options").hidden = !["dramatic", "subtle"].includes(words);
+  $("#punch-hint").hidden = !punch || !on || stressWords().length > 0;
+  const scale = Number($("#punch-scale").value);
+  $("#punch-level-note").hidden = !(scale < 1 || scale > 1.30);
+}
+
+function loadEditStyle() {
+  const es = doc.edit_style || {}, moves = es.moves || {}, wp = moves.word_punches;
+  savedWordMoves = Object.fromEntries(["ratchet", "word_punches"].filter((k) => k in moves).map((k) => [k, moves[k]]));
+  savedCameraMoves = Object.fromEntries(["push", "ken_burns", "reframe"].filter((k) => k in moves).map((k) => [k, moves[k]]));
+  wordMoveChanged = cameraMoveChanged = false;
+  $("#edit-style").value = es.style || "";
+  // Number inputs display saved values beyond min/max without clamping them.
+  $("#punch-scale").value = es.punch_scale ?? 1.12;
+  $("#opening-settle").checked = moves.opening_settle ?? false;
+  $("#follow-cam").checked = moves.follow_cam ?? false;
+  const ratchet = moves.ratchet;
+  const customWords = ratchet && (ratchet.levels !== 3 || wp);
+  $("#word-punches option[value=custom]").hidden = !customWords;
+  $("#word-punches").value = customWords ? "custom" : ratchet ? "ratchet" : wp ? wp.preset : "";
+  $("#punch-shape").value = wp ? wp.shape : "eased";
+  const cameras = Object.keys(savedCameraMoves).filter((k) => savedCameraMoves[k] != null);
+  let camera = "";
+  if (cameras.length) {
+    camera = "custom";
+    if (cameras.length === 1) {
+      const k = cameras[0], m = moves[k];
+      if (m.segments === "all" && (k === "reframe" ? m.edge === "top" :
+          (m.to ?? (k === "push" ? 1.06 : 1.08)) === (k === "push" ? 1.06 : 1.08))) camera = k;
+    }
+  }
+  $("#camera-move option[value=custom]").hidden = camera !== "custom";
+  $("#camera-move").value = camera;
+  $("#word-punches").addEventListener("change", () => { wordMoveChanged = true; });
+  $("#camera-move").addEventListener("change", () => { cameraMoveChanged = true; });
+  for (const id of ["edit-style", "opening-settle", "follow-cam", "word-punches", "punch-shape", "camera-move"])
+    $("#" + id).addEventListener("change", edited);
+  $("#punch-scale").addEventListener("input", edited);
+  styleVisibility();
+}
+
+function readEditStyle() {
+  const style = $("#edit-style").value;
+  if (!style) delete doc.edit_style;
+  else if (style === "layout-switch") doc.edit_style = {style};
+  else {
+    const value = $("#punch-scale").value.trim();
+    const words = $("#word-punches").value, camera = $("#camera-move").value;
+    const wordMoves = words === "custom" || !wordMoveChanged && savedWordMoves.ratchet ? savedWordMoves : {
+      word_punches: ["dramatic", "subtle"].includes(words) ? {preset: words,
+        shape: $("#punch-shape").value, picks: stressWords()} : null,
+      ...(words === "ratchet" ? {ratchet: {picks: stressWords(), levels: 3}} : {})};
+    const cameraMoves = camera === "custom" || !cameraMoveChanged ? savedCameraMoves : (camera === "push" ? {push: {segments: "all", to: 1.06}} :
+      camera === "ken_burns" ? {ken_burns: {segments: "all", to: 1.08}} :
+      camera === "reframe" ? {reframe: {segments: "all", edge: "top"}} : {});
+    doc.edit_style = {style, punch_scale: value === "" ? null : Number(value), moves: {
+      opening_settle: $("#opening-settle").checked, follow_cam: $("#follow-cam").checked,
+      ...wordMoves, ...cameraMoves}};
+  }
+  styleVisibility();
 }
 
 function renderStrip() {
@@ -208,6 +453,12 @@ function row(b, i) {
     }
     invalid.delete(b.id); err.hidden = true; val.removeAttribute("aria-invalid");
     b.value = t === "" ? null : Number(t);
+    const spec = b.scene && sceneSpec(b.scene.id);
+    if (spec && spec.category === "counter" && spec.params.some((p) => p.name === "value")) {
+      if (!b.scene.params) b.scene.params = {};
+      b.scene.params.value = b.value;
+      refreshScenes();
+    }
     mark(); edited();
   });
 
@@ -227,7 +478,7 @@ function row(b, i) {
     el("td", {"data-label": "Layout"}, el("label", {class: "sr", for: fid("layout"), text: "Layout for beat " + (i + 1)}), sel),
     el("td", {"data-label": "Number shown"}, el("label", {class: "sr", for: fid("value"), text: "Number shown in beat " + (i + 1)}), val, err),
     el("td", {class: "shows", "data-label": "What's on screen / why"},
-      el("div", {text: p.shows || "—"}), el("div", {class: "why", text: p.why || ""})),
+      el("div", {text: p.shows || "—"}), el("div", {class: "why", text: p.why || ""}), sceneControls(b.id)),
     el("td", {"data-label": "Your note"}, el("label", {class: "sr", for: fid("note"), text: "Your note on beat " + (i + 1)}), note));
   mark();
   return tr;
@@ -239,12 +490,14 @@ function render() {
   renderStrip();
   $("#words-note").hidden = !!words;
   $("#beats tbody").replaceChildren(...doc.beats.map(row));
+  loadEditStyle();
   const needs = $("#needs");
   needs.value = doc.needs || "";
   needs.addEventListener("input", () => { doc.needs = needs.value; edited(); });
 }
 
 function edited() {
+  readEditStyle();
   const mine = ++seq;
   setStatus("saving", "Saving…");
   clearTimeout(timer);
@@ -252,6 +505,7 @@ function edited() {
 }
 
 async function save(mine) {
+  readEditStyle();
   const r = await bc.save(doc);
   if (mine !== seq) return;   // a newer edit is on its way
   if (r.ok) setStatus("saved", "All changes saved.");
@@ -260,6 +514,9 @@ async function save(mine) {
 
 function problem() {
   if (invalid.size) return "One of the numbers isn't a number yet. Fix the box marked in red first.";
+  if (doc.edit_style?.style === "punch-in" && (!Number.isFinite(doc.edit_style.punch_scale) ||
+      doc.edit_style.punch_scale < 1 || doc.edit_style.punch_scale > 4))
+    return "Check the punch level before sending. Choose a number from 1.00 to 1.30, or keep your saved level up to 4.";
   const ok = new Set(LAYOUTS.map((l) => l[0]));
   for (let i = 0; i < doc.beats.length; i++) {
     const b = doc.beats[i];
@@ -273,11 +530,12 @@ function problem() {
       return "The word marks got mixed up. Ask Claude to check the beat map.";
     prev = m.w;
   }
-  return null;
+  return sceneProblem();
 }
 
 async function send() {
   clearTimeout(timer);
+  readEditStyle();
   const bad = problem();
   if (bad) { setStatus("error", bad); return; }
   sendBtn.disabled = true;
@@ -303,6 +561,7 @@ async function init() {
   try { bc = BoardClient.create({board: "beat-map"}); }
   catch (e) { setStatus("error", "This board needs to be opened by Claude. Ask Claude to open the beat map."); sendBtn.disabled = true; return; }
   doc = await bc.load();
+  if (!doc) doc = await reelJson("beat-map-selection.json");
   if (!doc) {
     $("#empty").hidden = false;
     $("#board").hidden = true;
@@ -318,6 +577,11 @@ async function init() {
       if (j && Array.isArray(j.words)) words = j.words.map((w) => String((w && w.word) || ""));
     } catch (e) { words = null; }
   }
+  const [catalog, suggestions, sketchesState, sketchesSend] = await Promise.all(
+    ["scenes/catalog.json", "scenes/suggest.json", "sketches.state.json", "sketches-selection.json"].map(reelJson));
+  sceneCatalog = Array.isArray(catalog) ? catalog : [];
+  sceneSuggestions = suggestions && typeof suggestions === "object" ? suggestions : {};
+  sketchScenes = {...((sketchesSend && sketchesSend.scenes) || {}), ...((sketchesState && sketchesState.scenes) || {})};
   $("#board").hidden = false;
   render();
   if (doc.sent_at) setStatus("sent", "Last sent " + new Date(doc.sent_at).toLocaleString());

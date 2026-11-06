@@ -131,6 +131,11 @@ def run(reel_dir, plan_path, words_rel, cuts_rel, replace):
             raise Fail(REFUSE)
         os.replace(out, reel / PREV_NAME)
     out.write_bytes((json.dumps(doc, indent=1, ensure_ascii=False) + "\n").encode("utf-8"))
+    try:
+        import scene_fill
+        scene_fill.write_catalog(reel, doc["beats"], words, fps)
+    except Exception:  # the beat map stays usable even when scenes couldn't be prepared
+        print("Couldn't prepare the scene list for the boards, so the boards won't offer scenes; the beat map is fine.")
     print(f"✓ Beat map ready: {len(doc['beats'])} beats, {len(doc['word_marks'])} word marks.")
     return 0
 
@@ -217,6 +222,16 @@ def selftest():
                 fails.append("reel/fps/needs/notes/sent_at fields wrong")
             if b"\r" in out.read_bytes():
                 fails.append("output has CR line endings")
+            catalog_path, fills_path = r / "scenes/catalog.json", r / "scenes/suggest.json"
+            if not catalog_path.is_file() or not fills_path.is_file():
+                fails.append("scene catalog and suggestions were not written")
+            else:
+                cat = json.loads(catalog_path.read_text(encoding="utf-8"))
+                fills = json.loads(fills_path.read_text(encoding="utf-8"))
+                if not cat or not all((r / s["preview"]).is_file() for s in cat):
+                    fails.append("scene catalog has no scenes or missing preview copies")
+                if not fills.get("b_001", {}).get("callout"):
+                    fails.append("scene suggestions do not include the opening callout")
 
             before = out.read_bytes()
             code, said = quiet(["--reel-dir", str(r), "--plan", str(planf)])
@@ -238,6 +253,15 @@ def selftest():
         code, said = quiet(["--reel-dir", str(r2), "--plan", str(bad)])
         if code != 1 or (r2 / OUT_NAME).exists() or "'grid' is not a layout" not in said:
             fails.append(f"unknown layout: exit {code}, output {said!r}")
+
+        from unittest.mock import patch
+        import scene_fill
+        r3 = reel("catalog-failure")
+        with patch.object(scene_fill, "write_catalog", side_effect=OSError("secret/full/path: raw OS detail")):
+            code, said = quiet(["--reel-dir", str(r3), "--plan", str(planf)])
+        line = "Couldn't prepare the scene list for the boards, so the boards won't offer scenes; the beat map is fine."
+        if code != 0 or said.splitlines()[0] != line or "secret" in said or not (r3 / OUT_NAME).is_file():
+            fails.append("catalog failure must be a plain line and leave a usable beat map")
 
     if fails:
         for f in fails:

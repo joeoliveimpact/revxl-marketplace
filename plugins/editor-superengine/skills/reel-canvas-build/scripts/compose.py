@@ -8,7 +8,12 @@ Run from the client's workspace folder with the editor's own Python:
 Exit 0 done, 1 stopped by a check (the plain lines say why and what to do), 2 bad or missing input. The last line
 of a successful render is one JSON summary {tier, out, frames, fps, audio, scenes, seconds}.
 
-What a render does: the cut master (work/renders/master-<tag>.mp4) untouched as the a-roll; every beat's G2 scene
+What a render does: the editing style's plan first (styles.py, in this process with the master's own frame rate;
+no style in the Send or the saved style = stop with the ask line, before anything renders), written to
+work/scale_track.json; the cut master (work/renders/master-<tag>.mp4) as the a-roll, untouched, inside a box that
+takes each key's layout (layouts/<layout>.html, set hard on its frame; the beat's card plate shows over the beat's
+frames) and a wrapper that takes the style's punch-ins and moves (the video element itself is never animated);
+every beat's G2 scene
 rendered on its own as an alpha MOV and placed over its frames (a scene on the first beat that has the `entrance`
 param gets entrance "none", so it is complete at frame 0); a still hook title at frame 0 when the first beat
 has no scene; the VES-1 effect gate before anything renders; `hyperframes lint` before every render; then ONE audio
@@ -19,6 +24,7 @@ import argparse
 import html
 import importlib.util
 import json
+import math
 import os
 import re
 import shutil
@@ -41,6 +47,7 @@ import runtime as rt  # noqa: E402
 import beat_schema  # noqa: E402
 import effect_gate  # noqa: E402
 import fps as fpsmod  # noqa: E402
+import styles  # noqa: E402  (S6c: the editing style's plan)
 import scene_check  # noqa: E402  (P/scripts: the G2-a scene contract)
 import licence_rows  # noqa: E402  (G4's licence check, as mix.py imports it)
 
@@ -64,6 +71,8 @@ NO_MIX = "the sound pass hasn't run; the final will pick up its sound once it ha
 STALE_MIX = "the sound was mixed on an older cut; run the sound pass again"
 FAILED_MIX = "the last sound mix didn't pass its check; run the sound pass again"
 TEMPLATE = SKILL / "templates" / "render" / "index.html"
+LAYOUTS = SKILL / "layouts"  # split, stack, pip, overlay; "full" is the whole frame with no card
+PLATE_Z = Z_SCENE - 1        # a layout's card plate sits on the scene band's floor, under the beat's own scene
 
 
 class Stop(Exception):
@@ -81,6 +90,52 @@ def ts(f, rate):
     if round(float(s) * rate) != f:
         raise ValueError(f"time for frame {f} at {rate} fps doesn't round back")
     return s
+
+
+def us(f, rate):
+    """Frame f's time in whole microseconds, rounded DOWN from the exact Fraction: HyperFrames seeks frame n to
+    n / fps, so a set or a move placed here takes effect on frame f itself, never a frame late."""
+    return math.floor(Fraction(f) / rate * 1_000_000)
+
+
+def secs(n):
+    return f"{n // 1_000_000}.{n % 1_000_000:06d}".rstrip("0").rstrip(".")
+
+
+def at(f, rate):
+    """Frame f as timeline seconds for a style key or move (see us)."""
+    return secs(us(f, rate))
+
+
+def layout(name, s):
+    """A layout at scale s (render width / 1080): {box [x, y, w, h], radius, shadow, z, plate (markup)}."""
+    if name == "full":
+        return {"box": [0, 0, round(1080 * s, 2), round(1920 * s, 2)], "radius": 0, "shadow": "none", "z": Z_AROLL,
+                "plate": ""}
+    text = re.sub(r"<!--.*?-->", "", (LAYOUTS / f"{name}.html").read_text(encoding="utf-8"), flags=re.S).strip()
+    text = re.sub(r"(\d+(?:\.\d+)?)px", lambda m: f"{round(float(m.group(1)) * s, 2):g}px", text)
+
+    def attr(k, default):
+        m = re.search(r'\bdata-%s="([^"]*)"' % k, text)
+        return m.group(1) if m else default
+    return {"box": [round(float(v) * s, 2) for v in attr("box", "").split()],
+            "radius": round(float(attr("box-radius", "0")) * s, 2), "shadow": attr("box-shadow", "none"),
+            "z": Z_PIP if name == "pip" else Z_AROLL, "plate": text}  # the pip box paints above its card plate
+
+
+def geom(lay):
+    """The box rectangle as GSAP vars: position as x/y transforms (the box sits at left 0, top 0), so a layout move
+    never tweens left/top (lint gsap_non_transform_motion); width/height stay box sizes (the video re-covers them)."""
+    x, y, w, h = lay["box"]
+    return f"x: {x:g}, y: {y:g}, width: {w:g}, height: {h:g}, borderRadius: {lay['radius']:g}"
+
+
+def chrome(lay):
+    return f"zIndex: {lay['z']}, boxShadow: {json.dumps(lay['shadow'])}"
+
+
+def origin(ox, oy):
+    return f"{round(ox * 100, 3):g}% {round(oy * 100, 3):g}%"
 
 
 def out_names(reel, day):
@@ -142,8 +197,8 @@ def hook_box(w, h):
 
 
 def build_spans(beats, kinds, hook_f, extra_spans=None):
-    """Gate spans: the scenes (spans_from_beats, no layout moves before S6c) + the compose hook as an overlay
-    + extra_spans (internal: S6c passes its camera moves here, so they face the same VES-1 check)."""
+    """Gate spans: the scenes (spans_from_beats; the a-roll's own moves are not made here) + the compose hook as an
+    overlay + extra_spans (the editing style's moves from styles.py, so they face the same VES-1 check)."""
     spans = effect_gate.spans_from_beats(beats, 0, scene_kind=kinds)
     if hook_f:
         spans.append({"layer": "overlay", "start_f": 0, "end_f": hook_f, "id": "hook title"})
@@ -286,9 +341,6 @@ def plan(inp, hook_text, extra_spans=None):
     """Notes, scene checks, the hook, and the effect gate; raises Stop before anything renders."""
     beats, rate = inp["beats"], inp["rate"]
     for b in beats:
-        if b["layout"] != "full":
-            print(f"note: beat {b['id']} asks for {b['layout']}; layouts come with the editing styles step, "
-                  f"so it shows full screen for now")
         if b["broll"] is not None:
             print(f"note: beat {b['id']} has B-roll; B-roll is not built yet, skipped")
         if b["transition"] is not None:
@@ -429,11 +481,42 @@ def safe_id(bid, i):
 
 
 def main_html(inp, w, h, scene_files):
-    rate = inp["rate"]
-    layers = [f'      <div class="band" style="z-index: {Z_AROLL}"><video id="aroll" class="clip" src="media/aroll.mp4" '
-              f'data-start="0" data-duration="{ts(inp["total"], rate)}" data-track-index="0" muted playsinline '
-              f'preload="auto"></video></div>']
+    rate, s = inp["rate"], w / 1080
+    track = inp.get("track") or {"keys": [], "tweens": [], "style": {}}
+    lays = {}
+
+    def lay(name):
+        if name not in lays:
+            lays[name] = layout(name, s)
+        return lays[name]
+    # the box takes the layout, the wrapper takes the style's scale and zoom centre; the video is never animated
+    layers = [f'      <div id="aroll-box" class="band" style="z-index: {Z_AROLL}; overflow: hidden">'
+              f'<div id="aroll-move" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%">'
+              f'<video id="aroll" class="clip" src="media/aroll.mp4" data-start="0" '
+              f'data-duration="{ts(inp["total"], rate)}" data-track-index="0" muted playsinline preload="auto" '
+              f'style="width: 100%; height: 100%"></video></div></div>']
     tl = []
+    for k in track["keys"]:  # a key = the whole a-roll state, set hard on its frame
+        t, imm = at(k["f"], rate), "true" if k["f"] == 0 else "false"
+        tl.append(f'        tl.set("#aroll-move", {{ scale: {k["scale"]}, transformOrigin: "{origin(k["ox"], k["oy"])}", '
+                  f'immediateRender: {imm} }}, {t});')
+        tl.append(f'        tl.set("#aroll-box", {{ {geom(lay(k["layout"]))}, {chrome(lay(k["layout"]))}, '
+                  f'immediateRender: {imm} }}, {t});')
+    for m in track["tweens"]:  # a move = one fromTo, starting AND ending on whole frames (F-13)
+        t0 = at(m["start_f"], rate)
+        end = (f'duration: {secs(us(m["end_f"], rate) - us(m["start_f"], rate))}, ease: "{m["ease"]}", '
+               f'immediateRender: false }}, {t0});')
+        if m["prop"] == "scale":
+            tl.append(f'        tl.fromTo("#aroll-move", {{ scale: {m["from"]} }}, {{ scale: {m["to"]}, {end}')
+        elif m["prop"] == "origin":
+            tl.append(f'        tl.fromTo("#aroll-move", {{ transformOrigin: "{origin(*m["from"])}" }}, '
+                      f'{{ transformOrigin: "{origin(*m["to"])}", {end}')
+        else:  # a layout move: the geometry moves; stacking and ring are the pip side's for the whole move
+            a, b = lay(m["from"]), lay(m["to"])
+            tl.append(f'        tl.set("#aroll-box", {{ {chrome(a if a["z"] > b["z"] else b)}, immediateRender: false }}, '
+                      f'{t0});')
+            tl.append(f'        tl.fromTo("#aroll-box", {{ {geom(a)} }}, {{ {geom(b)}, {end}')
+            tl.append(f'        tl.set("#aroll-box", {{ {chrome(b)}, immediateRender: false }}, {at(m["end_f"], rate)});')
     for i, (b, name) in enumerate(scene_files):
         z = Z_SCENE + i
         if z >= Z_PIP:
@@ -457,8 +540,16 @@ def main_html(inp, w, h, scene_files):
                       f"immediateRender: false }}, {ts(u['end_f'] - f, rate)});")
         else:
             tl.append(f"        tl.set({el}, {{ opacity: 0 }}, {ts(u['end_f'], rate)});")
+    if track["style"].get("style") == "layout-switch":  # each non-full beat's card plate over the beat's frames
+        for k, b in enumerate(b for b in inp["beats"] if b["layout"] != "full"):
+            el = f'"#plate-{k}"'
+            layers.append(f'      <div id="plate-{k}" class="band" style="z-index: {PLATE_Z}; opacity: 0; '
+                          f'visibility: hidden">{lay(b["layout"])["plate"]}</div>')
+            tl.append(f"        tl.set({el}, {{ autoAlpha: 1, immediateRender: {'true' if b['start_f'] == 0 else 'false'} "
+                      f"}}, {at(b['start_f'], rate)});")
+            if b["end_f"] < inp["total"]:
+                tl.append(f"        tl.set({el}, {{ autoAlpha: 0, immediateRender: false }}, {at(b['end_f'], rate)});")
     x, y, bw, size = hook_box(w, h)
-    s = w / 1080
     if inp["hook_f"]:
         layers.append(f'      <div id="hook">{html.escape(inp["hook_text"])}</div>')
         # complete and still from frame 0: set (never tweened) at 0 and rendered at once, then a hard cut out
@@ -477,7 +568,7 @@ def main_html(inp, w, h, scene_files):
 
 
 def render(reel, tier, hook_text, extra_spans=None):
-    """One preview or Master. extra_spans (internal, no CLI flag): more gate spans, e.g. S6c's camera moves."""
+    """One preview or Master. extra_spans (internal, no CLI flag): more gate spans, e.g. a test's planted move."""
     t_start = time.perf_counter()
     tmp = reel / "work" / "render-tmp"
     if tmp.exists() and not remove_tree(tmp):  # an earlier run that crashed can leave it behind
@@ -494,7 +585,15 @@ def render(reel, tier, hook_text, extra_spans=None):
         if line:
             raise Stop(1, f"✗ {line}")
     probe_inputs(inp)
-    plan(inp, hook_text, extra_spans)
+    try:  # H-R36: no editing style anywhere = the ask line, and nothing renders
+        track = styles.plan(reel, fps=inp["fps"])
+    except styles.Stop as e:
+        raise Stop(e.code, *e.lines) from None
+    for line in track["warnings"]:
+        print(f"note: {line}")
+    plan(inp, hook_text, track["spans"] + list(extra_spans or []))
+    inp["track"] = track
+    styles.write_json(reel / styles.TRACK, track)  # S7 reads it
     audio, audio_src = choose_audio(reel, inp, tier)
     w, h = TIERS[tier]
     name = out_names(reel.name, datetime.now().strftime("%m.%d.%y"))[0 if tier == "preview" else 1]
@@ -512,7 +611,7 @@ def render(reel, tier, hook_text, extra_spans=None):
             sproj = tmp / "scenes" / name_i
             scene_project(sproj, b, inp["rate"])
             vf = tmp / "scenes" / f"{name_i}.vars.json"
-            vf.write_bytes(json.dumps({**b["scene"]["slots"], **b["scene"]["params"]}).encode("utf-8"))
+            vf.write_bytes(json.dumps({**b["scene"]["slots"], **(b["scene"].get("params") or {})}).encode("utf-8"))
             mov = proj / "media" / f"{name_i}.mov"
             hf_render(sproj, mov, env, f"scene {sid} (beat {b['id']})",
                       ["--format", "mov", "--fps", inp["fps"], "--strict-variables", "--variables-file", vf,
@@ -584,6 +683,16 @@ def selftest():
         if not ok:
             fails.append(name)
 
+    for rate in (Fraction(25), Fraction(30000, 1001), Fraction(24000, 1001)):
+        expect(f"style times at {rate}: never after the frame, on the frame",
+               all(Fraction(at(f, rate)) <= f / rate and round(float(at(f, rate)) * rate) == f for f in range(0, 5000, 7)))
+    want = {"split": [0, 960, 1080, 960], "stack": [0, 0, 1080, 844], "pip": [738, 28, 312, 555],
+            "overlay": [0, 0, 1080, 1920], "full": [0, 0, 1080, 1920]}
+    expect("layout boxes on the 1080x1920 grid", all(layout(n, 1)["box"] == b for n, b in want.items()))
+    expect("split's plate is the top half, at 720 wide too",
+           "top: 0px; width: 720px; height: 640px; background: #0a0c12" in layout("split", 720 / 1080)["plate"]
+           and layout("split", 720 / 1080)["box"] == [0, 640, 720, 640])
+    expect("only pip's box paints above the plates", [n for n in want if layout(n, 1)["z"] > PLATE_Z] == ["pip"])
     prev, mast = out_names("Reel 7", "11.05.26")
     expect("names", (prev, mast) == ("Reel 7 Preview 720p - 11.05.26.mp4", "Reel 7 Master - 11.05.26.mp4"))
     expect("Master rule: preview fails, Master passes, a partial fails",
@@ -660,6 +769,23 @@ def selftest():
                and "@keyframes" not in page and "onComplete" not in page and "xPercent: -50" in page)
         expect("page: underlay from frame 0 is opaque at 0", 'tl.set("#underlay-0", { opacity: 1, immediateRender: true }, 0)'
                in page)
+        trk = {"style": {"style": "layout-switch"},
+               "keys": [{"f": 0, "scale": 1.0, "ox": 0.5, "oy": 0.38, "layout": "full"},
+                        {"f": 50, "scale": 1.0, "ox": 0.5, "oy": 0.38, "layout": "pip"}],
+               "tweens": [{"start_f": 60, "end_f": 75, "prop": "layout", "from": "pip", "to": "split",
+                           "ease": "power2.inOut", "id": "layout b3"}]}
+        sb = [beat("b1", 0, 50), beat("b2", 50, 60, "pip"), beat("b3", 60, 100, "split")]
+        page = main_html(dict(inp, track=trk, beats=sb), 720, 1280, [])
+        pip = 'x: 492, y: 18.67, width: 208, height: 370, borderRadius: 9.33'
+        expect("page: the layout is set hard on the cut frame, the move is one fromTo of whole frames",
+               f'tl.set("#aroll-box", {{ {pip}, zIndex: 500' in page
+               and page.split(f'tl.set("#aroll-box", {{ {pip}')[1].split("\n")[0].endswith(", 2);")
+               and f'tl.fromTo("#aroll-box", {{ {pip} }}, {{ x: 0, y: 640, width: 720, height: 640, borderRadius: 0, '
+                   f'duration: 0.6, ease: "power2.inOut", immediateRender: false }}, 2.4);' in page)
+        expect("page: no move tweens left/top (they snap to whole pixels; lint gsap_non_transform_motion)",
+               not any(("left:" in l or "top:" in l) for l in page.splitlines() if "tl.fromTo(" in l or "tl.to(" in l))
+        expect("page: the video element is never animated; one plate per non-full beat",
+               '"#aroll"' not in page and page.count('class="layout-card"') == 2 and 'id="plate-1"' in page)
     for f in fails:
         print(f"selftest FAILED: {f}")
     if not fails:

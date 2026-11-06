@@ -41,8 +41,8 @@ with the Write tool, put the plan in `<reel folder>/work/beat-plan.json`:
   starts at frame 0 and each runs until the next one starts.
 - `layout` is one of `full` (the client full screen), `split`, `stack`, `pip` (picture-in-picture) or
   `overlay`. An `overlay` beat sits on top of the others for just its own words. Propose layouts;
-  the client changes any they don't like. Only `full` renders yet; when you propose another layout,
-  tell the client it shows full screen for now.
+  the client changes any they don't like. A layout other than full shows only when the editing style is
+  **Layout switches** (style.md). With Punch-ins every beat stays full screen, whatever its layout.
 - `value` is a number the beat's scene would show, and only one the client says in those words.
   Otherwise `null`.
 - `shows` and `why`: one plain line each, what would be on screen and why it helps that line.
@@ -65,9 +65,25 @@ straight after a replace: an open board still holds the old beat map file and wo
 
 ## 3. Open the Beat Map
 
+The Editing style panel offers Steps (ratchet) and Camera move choices for punch-ins; custom saved settings stay as set until that control changes.
+
 Start the boards (`${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/board-server.md`), then open
 `{url}editor/beat-map/?reel=<reel>` with `Claude_Browser:preview_start`. Tell the client: change any layout, type a
 number to show, tap words to mark them, add notes, then press Send to Claude. Their work saves as they go.
+
+Use **Add a scene** on a beat, or on its Sketches card, to choose a thumbnail. Suggestions come first,
+filled from that beat's cut words in `scenes/suggest.json`; grey choices explain why they don't fit.
+Edit the slots within their character limits and the scene values within their bounds. A counter's value
+comes from the beat's number: change that number on the Beat Map. Remove scene clears the choice.
+When the beat has no scene, the Beat Map offers a scene picked in Sketches in one click.
+The render reads the Beat Map's Send (`beat-map-selection.json`), so use the Sketches pick there and Send.
+
+### Editing style
+
+Choose **Punch-ins on jump cuts** for alternating closer views, or **Layout switches** for the beat layouts.
+Punch-ins also offers the punch level, a settle at the start, following the face and punches on words marked stress.
+**Ask me before the preview** leaves this reel's choice open; a saved default still applies, otherwise Claude asks.
+Changes save as you go; press **Send to Claude** to use them in the preview. See [style.md](style.md) for the rules.
 
 ## 4. Read what the client sent
 
@@ -107,9 +123,12 @@ new directions unless they unlock it. When there's more to show, add it to the p
   `layout`, `value`, `shows`, `why`), `notes` (the client's, per beat), `needs`, `sent_at` (`null`, or
   the time of the last Send).
 - **Beat:** `{id, start_f, end_f, speech_anchor: {text, w0, w1}, layout, value, scene, broll, transition}`.
-  Frames are the cut's frames at `fps`; `end_f` is where the next beat starts. `scene`, `broll` and
-  `transition` stay `null` in this version.
+  Frames are the cut's frames at `fps`; `end_f` is where the next beat starts. `scene` is `null` or
+  `{id, slots: {<name>: "<text>"}, params?: {<name>: <number|string|bool>}}`; every slot is given,
+  with `""` to leave it empty. Scene-specific limits, transcript numbers and duration are checked before render.
+  `broll` and `transition` stay `null` in this version.
 - **Sketches** (`sketches.state.json`, and `sketches-selection.json` on Send): `schema` 1, `reel`,
   `rough` (a whole-reel rough video, or `null`), `directions` (`{id, name, why, frames, note}`),
   `pick` (a direction id, or `null`), `sketches` (`{id, beat, title, media, note}`; `beat` is a beat
-  id), `note`, `sent_at`, `locked_at` (`null`, or when the client locked the pick). Every file path is relative to the reel folder.
+  id), `note`, `sent_at`, `locked_at` (`null`, or when the client locked the pick), and optional
+  `scenes: {<beat id>: <scene object>}` with the same scene shape. Every file path is relative to the reel folder.

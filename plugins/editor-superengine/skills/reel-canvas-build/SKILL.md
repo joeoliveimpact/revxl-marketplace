@@ -1,6 +1,6 @@
 ---
 name: editor-superengine:reel-canvas-build
-description: Plans, designs and renders what plays on screen over a reel once the spoken cut is signed off. For the plan, the Beat Map (what the screen shows on each line, plus the numbers and key words to show) and the Sketches board for picking one direction. For the design loop, a few looks for the hook and the intro, tweaked until one lands. For the render, a 720p preview to watch, then the final video once the client OKs it, with the finished sound. Use for "build the beat map", "plan what goes on screen", "pick a layout", "show me a few looks for the opening visuals", "design the hook", "comp the intro", "motion comps", "ladder the blur", "direction options", "iterate this visual", "will the Instagram buttons cover this", "render it", "make the preview", "make the final video", "export the reel", or to plan where B-roll and graphics will go (placing them isn't built yet). Not for cutting the spoken take (reel-first-cuts) and not for the post caption (caption-writer).
+description: Plans, designs and renders what plays on screen over a reel once the spoken cut is signed off. For the plan, the Beat Map (what the screen shows on each line, plus the numbers and key words to show) and the Sketches board for picking one direction. For the design loop, a few looks for the hook and the intro, tweaked until one lands. For the render, a 720p preview to watch, then the final video once the client OKs it, with the finished sound. Use for "build the beat map", "plan what goes on screen", "add a scene", "lower third", "counter", "end card", "title card", "pick a layout", "punch-ins", "zoom in on that word", "layout switches", "follow my face", "slow push", "ken burns", "ratchet zoom", "show me a few looks for the opening visuals", "design the hook", "comp the intro", "motion comps", "ladder the blur", "direction options", "iterate this visual", "will the Instagram buttons cover this", "render it", "make the preview", "make the final video", "export the reel", or to plan where B-roll will go (placing B-roll isn't built yet). Not for cutting the spoken take (reel-first-cuts) and not for the post caption (caption-writer).
 ---
 
 # reel-canvas-build: the reel's visuals
@@ -15,7 +15,7 @@ description: Plans, designs and renders what plays on screen over a reel once th
 ## Re-invoke guard
 
 - If the conversation was compacted since this skill loaded, invoke this skill again before going on.
-- The spoken cut must be signed off first. A new cut needs a new beat map file and a new preview: beats point at word numbers in the cut, and words are never renumbered.
+- The spoken cut must be signed off first. A new cut needs a new beat map file and a new preview, and the face step again (style.md): beats point at word numbers in the cut, and words are never renumbered.
 - Never replace a board the client has edited without asking them first: their edits live in it.
 - Re-opening a board is safe: its work is saved on disk after every change.
 - The final video is made only after the client OKs the latest preview, recorded only by `compose.py ok` (`${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/build.md`, section 3).
@@ -34,7 +34,8 @@ description: Plans, designs and renders what plays on screen over a reel once th
 
 | The client wants | Read |
 |---|---|
-| The plan and picks: what's on screen for each line, the layout per beat, numbers and key words marked, or picks on rough sketches and opening directions (the Beat Map and Sketches boards) | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/beat-map.md` |
+| The plan and picks: what's on screen for each line, the layout per beat, numbers and key words marked, or picks on rough sketches and opening directions (the Beat Map and Sketches boards), or a scene (a ready-made graphic such as a title card, counter, list or end card) on a beat | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/beat-map.md` |
+| Punch-ins on jump cuts or layout switches, a zoom on a word, the camera following their face, or saving their editing style as the default | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/style.md` |
 | The design loop: a few looks for the hook or the opening visuals, a visual tweaked, or a check that Instagram's buttons won't cover the text | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/design-loop.md` |
 | The render: the 720p preview (a smaller, quicker copy to watch), the client's OK, then the final video at full size with the finished sound | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/build.md` |
 | Graphics behind the speaker: the cutout (the speaker cut out of the background) | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/build.md`, section 7 |

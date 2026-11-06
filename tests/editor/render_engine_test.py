@@ -6,15 +6,18 @@ node, chrome and hyperframes installed; run with that state's Python):
   python -I "<heavy_lock.py>" --wait 600 -- <editor python> -X utf8 -I tests/editor/render_engine_test.py --case <name>
     [--take <a real talking-head take>] [--out <folder for kept outputs>]
 cases: selftest, preview, master-refused, master, gate-block, bad-input, joi-frames, colour, frame0, frame0-scene,
-cut-span-block, lint, audio, licence, master-older, hook-limits, hub-review, rvm-info (default: all, in that order)
+cut-span-block, scene-no-params, lint, audio, licence, master-older, hook-limits, hub-review, ask, style-cut, style-143, layout-cut,
+layout-move, split-top, pip-above, style-fps, rvm-info (default: all, in that order)
 joi-frames and rvm-info need a real take: --take or env EDITOR_SE_TEST_TAKE (read only, never copied into the repo).
 rvm-info is information only (it never fails the run). frame0 and frame0-scene keep their frame-0 PNGs in --out
 (default: render-out next to the fixtures).
 Fixtures live in a temp folder next to the state folder (EDITOR_SE_HOME's parent; --tmp to override) and are
 deleted at the end, also on failure: a reel with a 4 s 1080x1920 25 fps test pattern + 1 kHz tone cut master
 (render.py's encode settings), a 2-segment work/cuts.json (one interior cut at frame 50), a cut word list and a
-Beat Map Send (beat 1 full 0-50, beat 2 full 50-100 with a lower-third scene). Some cases swap the picture (a flat
-known-colour patch, a static dark frame) or drop the scene.
+Beat Map Send (beat 1 full 0-50, beat 2 full 50-100 with a lower-third scene) whose edit_style is the identity
+(punch-in at 1.0, no moves), so those cases render exactly as before the editing styles. Some cases swap the picture
+(a flat known-colour patch, a static dark frame) or drop the scene. The S6c cases (style-cut ... style-fps) use a 6 s
+3-segment reel (cuts at 50 and 100) with a real edit_style; ask has no style anywhere.
 Prints PASS/FAIL per check; exit 0 only if all pass. Refuses to start below 10 GB free disk.
 """
 import argparse, contextlib, http.client, importlib.util, io, json, math, os, re, shutil, socket, subprocess, sys
@@ -47,6 +50,14 @@ PATCH = (360, 1100, 360, 360)  # x, y, w, h at 1080x1920: well below the hook ti
 COLOUR_SRC = ("color=c=0x808080:s=1080x1920:r=25:d=4,format=rgb24,drawbox=x=%d:y=%d:w=%d:h=%d:color=0x%02X%02X%02X:t=fill,"
               "scale=out_color_matrix=bt709:out_range=tv,format=yuv420p" % (PATCH + PATCH_RGB))
 STATIC_SRC = "color=c=0x1c2230:s=1080x1920:r=25:d=4"  # one flat dark colour, no motion
+IDENTITY = {"style": "punch-in", "punch_scale": 1.0,  # test fixture: a style that changes nothing
+            "moves": {"opening_settle": False, "follow_cam": False, "word_punches": None}}
+MARKS = ((240, 900), (840, 1400))  # MARK_SRC's two 60 px white squares (centres, 1080x1920), below the hook title
+MARK_SRC = ("color=c=0x303030:s=1080x1920:r=%s:d=%s," + ",".join(
+    "drawbox=x=%d:y=%d:w=60:h=60:color=white:t=fill" % (x - 30, y - 30) for x, y in MARKS))
+SEGS3 = [(0, 50), (50, 100), (100, 150)]
+PLATE = (10, 12, 18)  # the layouts' card plate colour #0a0c12
+GREY_SRC = "color=c=0x808080:s=1080x1920:r=25:d=6"  # flat mid grey: video vs plate can't be confused
 TAKE_PIECES = [[1.0, 4.2], [5.0, 8.1], [9.0, 12.0]]  # raw seconds kept from the real take, about 10 s in all
 TEXT_PIXELS = 1000  # frame0: at least this many bright (> 230 luma) pixels inside the hook box at 720x1280
 TITLE_BOX = (90, 545, 930, 1145)  # frame0-scene: the hook-title scene's text block at 1080x1920 (x0, y0, x1, y1)
@@ -106,18 +117,7 @@ def beat(bid, s, e, w0, w1, scene=None, layout="full"):
 def make_reel(root, gate_block=False, src=TESTSRC, scene=True):
     """A workspace with videos/<REEL>/ ready for compose.py. Returns (workspace, reel).
     src = the cut master's picture (a lavfi source); scene=False drops beat 2's lower-third."""
-    ws = Path(tempfile.mkdtemp(prefix="render-engine-", dir=root))
-    reel = ws / "videos" / REEL
-    (reel / "work" / "renders").mkdir(parents=True)
-    master = reel / "work" / "renders" / "master-100x.mp4"
-    rc, out = run([rt.tool("ffmpeg"), "-v", "error", "-y", "-f", "lavfi", "-i", src,
-                   "-f", "lavfi", "-i", "sine=frequency=1000:sample_rate=48000:duration=4", "-map", "0:v", "-map", "1:a",
-                   "-c:v", "libx264", "-crf", "14", "-preset", "slow", "-g", "25", "-keyint_min", "25", "-sc_threshold", "0",
-                   "-pix_fmt", "yuv420p", "-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709",
-                   "-color_range", "tv", "-fps_mode", "cfr", "-r", "25", "-c:a", "aac", "-b:a", "192k",
-                   "-movflags", "+faststart", master], timeout=300)
-    if rc != 0 or not master.is_file():
-        raise RuntimeError(f"couldn't make the synthetic master: {out[-300:]}")
+    ws, reel = new_reel(root, src, 25, 100)
     wj(reel / "work" / "cuts.json", {"fps": 25, "speed": 1.0, "segments": [
         {"src_in_f": 0, "src_out_f": 50, "out_in_f": 0, "out_out_f": 50},
         {"src_in_f": 60, "src_out_f": 110, "out_in_f": 50, "out_out_f": 100}]})
@@ -137,13 +137,45 @@ def make_reel(root, gate_block=False, src=TESTSRC, scene=True):
     return ws, reel
 
 
-def write_send(reel, beats, fps):
-    """The cut word list and the Beat Map Send for these beats."""
+def new_reel(root, src, rate, frames):
+    """A workspace with videos/<REEL>/work/renders/master-100x.mp4: `frames` frames of src at `rate` + a 1 kHz tone
+    (render.py's encode settings). Returns (workspace, reel)."""
+    ws = Path(tempfile.mkdtemp(prefix="render-engine-", dir=root))
+    reel = ws / "videos" / REEL
+    (reel / "work" / "renders").mkdir(parents=True)
+    master = reel / "work" / "renders" / "master-100x.mp4"
+    secs = float(frames / Fraction(rate))
+    rc, out = run([rt.tool("ffmpeg"), "-v", "error", "-y", "-f", "lavfi", "-i", src,
+                   "-f", "lavfi", "-i", f"sine=frequency=1000:sample_rate=48000:duration={secs}", "-map", "0:v", "-map", "1:a",
+                   "-c:v", "libx264", "-crf", "14", "-preset", "slow", "-g", "25", "-keyint_min", "25", "-sc_threshold", "0",
+                   "-pix_fmt", "yuv420p", "-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709",
+                   "-color_range", "tv", "-fps_mode", "cfr", "-r", str(rate), "-frames:v", str(frames), "-c:a", "aac",
+                   "-b:a", "192k", "-movflags", "+faststart", master], timeout=300)
+    if rc != 0 or not master.is_file():
+        raise RuntimeError(f"couldn't make the synthetic master: {out[-300:]}")
+    return ws, reel
+
+
+def style_reel(root, src, style, layouts=("full", "full", "full"), rate="25", cut_fps=25):
+    """The S6c reel: 150 frames of src in 3 segments (cuts at 50 and 100), one beat per segment with these layouts,
+    no scenes, the Send's edit_style = style."""
+    ws, reel = new_reel(root, src, rate, 150)
+    wj(reel / "work" / "cuts.json", {"fps": cut_fps, "speed": 1.0, "segments": [
+        {"src_in_f": a + 10 * i, "src_out_f": e + 10 * i, "out_in_f": a, "out_out_f": e} for i, (a, e) in enumerate(SEGS3)]})
+    beats = [beat(f"b_00{i + 1}", a, e, w0, w1, layout=lay)
+             for i, ((a, e), (w0, w1), lay) in enumerate(zip(SEGS3, ((0, 4), (5, 6), (7, 7)), layouts))]
+    write_send(reel, beats, cut_fps, style)
+    return ws, reel
+
+
+def write_send(reel, beats, fps, edit_style=IDENTITY):
+    """The cut word list and the Beat Map Send for these beats (edit_style None = no style in the Send)."""
     words = [{"id": f"w_{i:04d}", "word": w, "start": st, "end": round(st + 0.3, 2)} for i, (w, st) in enumerate(WORDS)]
     wj(reel / "work" / "edit_map.cut.json", {"words": words})
     wj(reel / "beat-map-selection.json", {"schema": 1, "reel": REEL, "fps": fps, "words": "work/edit_map.cut.json",
                                           "beats": beats, "word_marks": [], "proposed": {}, "notes": {}, "needs": "",
-                                          "sent_at": "2026-11-05T10:00:00Z"})
+                                          "sent_at": "2026-11-05T10:00:00Z",
+                                          **({} if edit_style is None else {"edit_style": edit_style})})
 
 
 def wj(path, obj):
@@ -266,6 +298,42 @@ def hook_rect(w, h, margin=0):
     """The hook title's box at the tier size (compose.hook_box, three lines tall), grown by margin pixels."""
     x, y, bw, sz = compose_mod().hook_box(w, h)
     return x - bw / 2 - margin, y - margin, x + bw / 2 + margin, y + sz * 1.15 * 3 + margin
+
+
+def markers(gray, w, h):
+    """Centres of MARK_SRC's two squares in a w x h luma frame: the upper-left one looked for in x < w/2,
+    0.39h <= y < 0.70h, the lower-right one in x >= w/2, y >= 0.70h (both clear of the hook title)."""
+    out = []
+    for x0, x1, y0, y1 in ((0, w // 2, int(h * 0.39), int(h * 0.70)), (w // 2, w, int(h * 0.70), h)):
+        sx = sy = n = 0
+        for y in range(y0, y1):
+            for i, v in enumerate(gray[y * w + x0:y * w + x1]):
+                if v > 128:
+                    sx, sy, n = sx + x0 + i, sy + y, n + 1
+        out.append((sx / n, sy / n) if n else None)
+    return out
+
+
+def scale_between(ref, got, origin):
+    """(measured scale of got against ref, worst distance in px of got from ref scaled about origin)."""
+    if None in ref or None in got:
+        return None, math.inf
+    k = math.dist(*got) / math.dist(*ref)
+    off = max(math.dist(g, (origin[0] + k * (r[0] - origin[0]), origin[1] + k * (r[1] - origin[1])))
+              for r, g in zip(ref, got))
+    return k, off
+
+
+def check_scales(f, frames_want, w=720, h=1280):
+    """Measure each frame's scale against the first one; frames_want = [(frame, expected scale vs the first)]."""
+    fr = grab(f, [n for n, _ in frames_want])
+    ref = markers(fr[frames_want[0][0]], w, h)
+    o = (0.5 * w, 0.38 * h)  # the default zoom centre (no head samples in these reels)
+    for n, want in frames_want[1:]:
+        k, off = scale_between(ref, markers(fr[n], w, h), o)
+        ck(f"frame {n}: scale {k if k is None else round(k, 4)} vs frame {frames_want[0][0]} = {want} within 1 %, about "
+           f"the zoom centre (worst point {off:.1f} px off)", k is not None and abs(k / want - 1) <= 0.01 and off <= 3,
+           (k, off))
 
 
 def in_process(fn, *args, **kw):
@@ -568,6 +636,22 @@ def c_frame0_scene(root):
     return ws
 
 
+def c_scene_no_params(root):
+    """An optional scene params key stays optional through the scene variables write."""
+    ws, reel = make_reel(root, src=STATIC_SRC, scene=False)
+    send = reel / "beat-map-selection.json"
+    bm = json.loads(send.read_text(encoding="utf-8"))
+    # The first-beat entrance override inserts params for hook-title, masking this bug.
+    bm["beats"][1]["scene"] = {"id": "hook-title", "slots": {"kicker": "", "title": "Meet Alex today"}}
+    ck("scene fixture omits params", "params" not in bm["beats"][1]["scene"])
+    wj(send, bm)
+    rc, out = compose(ws, "preview", "--reel-dir", f"videos/{REEL}")
+    no_traceback("scene-no-params", out)
+    ck("preview exits 0 without scene params", rc == 0, out[-400:])
+    ck("preview file exists without scene params", (reel / "renders" / names()[0]).is_file())
+    return ws
+
+
 def c_cut_span_block(root):
     """VES-1: an a-roll move planted across the cut (compose's internal extra_spans) stops the render."""
     ws, reel = make_reel(root, scene=False)
@@ -840,14 +924,15 @@ def c_hub_review(root):
         return ws
     hub = ws / cfg["editor"] / "hub"
     hub.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(FIXTURES / "review-host.html", hub / "index.html")  # test fixtures only
-    shutil.copyfile(FIXTURES / "master-review.html", hub / "review.html")
     home = ws / "home"
     home.mkdir()
     env = dict(os.environ, HOME=str(home), USERPROFILE=str(home))
     ck("no review.json before the click", not (reel / "review.json").exists())
     srv, port = start_server(DOCTOR / "board_server.py", ws, env, "this worktree's plugin")
     try:
+        # Startup board_sync installs the real hub; overlay the test fixtures only after it finishes.
+        shutil.copyfile(FIXTURES / "review-host.html", hub / "index.html")
+        shutil.copyfile(FIXTURES / "master-review.html", hub / "review.html")
         pup = rt.state_dir() / "hyperframes" / "node_modules" / "puppeteer-core" / "lib" / "puppeteer" / "puppeteer-core.js"
         q = f"?reel={REEL}&preview={prev.name.replace(' ', '%20')}"
         dur_js = ("new Promise((res) => { const v = document.getElementById('v'); if (v.error) return res(-1); "
@@ -903,9 +988,10 @@ def c_hub_review(root):
     shutil.copytree(PLUGIN, copy, ignore=shutil.ignore_patterns("__pycache__"))
     bj = copy / "skills" / "editor-doctor" / "scripts" / "boards.json"
     text = bj.read_text(encoding="utf-8")
-    line = '"template": "skills/editor-hub/boards/hub", "writes": ["review.json"]}'
+    line = ('"template": "skills/editor-doctor/boards/hub", '
+            '"writes": ["review.json", "reel-notes.json", "hub-requests.json"]}')
     ck("the copy's boards.json has the hub line once", text.count(line) == 1)
-    bj.write_bytes(text.replace(line, line.replace('["review.json"]', "[]")).encode("utf-8"))
+    bj.write_bytes(text.replace(line, line.replace('"review.json", ', "")).encode("utf-8"))
     before = rv.read_bytes() if rv.is_file() else b""
     srv, port = start_server(copy / "skills" / "editor-doctor" / "scripts" / "board_server.py", ws, env,
                              "a plugin copy without the hub writes line")
@@ -949,12 +1035,185 @@ def c_rvm_info(root):
     return d
 
 
+def c_ask(root):
+    """H-R36: no edit_style in the Send and none saved: compose stops with the ask line before rendering anything."""
+    try:
+        saved = json.loads((rt.state_dir() / "styles" / "default.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        saved = {}
+    if not ck("the state's saved style has no edit_style (precondition)", "edit_style" not in saved, saved):
+        return None
+    ws, reel = make_reel(root, scene=False)
+    write_send(reel, [beat("b_001", 0, 50, 0, 4), beat("b_002", 50, 100, 5, 7)], 25, edit_style=None)
+    rc, out = compose(ws, "preview", "--reel-dir", f"videos/{REEL}")
+    no_traceback("ask", out)
+    ck("no style anywhere: exit 1, the last line is the ask line",
+       rc == 1 and out.strip().splitlines()[-1] == compose_mod().styles.ASK, out[-300:])
+    ck("nothing rendered, no scale_track.json", not videos_under(reel / "renders", reel / "work" / "render-tmp")
+       and not (reel / "work" / "scale_track.json").exists())
+    return ws
+
+
+def preview_of(ws, reel):
+    rc, out = compose(ws, "preview", "--reel-dir", f"videos/{REEL}")
+    no_traceback("preview", out)
+    f = reel / "renders" / names()[0]
+    ck("preview exits 0", rc == 0 and f.is_file(), out[-400:])
+    return f if f.is_file() else None, out
+
+
+def c_style_cut(root):
+    """Punch-in 1.12: frame cut-1 unscaled, frame cut scaled 1.12 about the zoom centre (hard set, no move)."""
+    ws, reel = style_reel(root, MARK_SRC % (25, 6), {"style": "punch-in", "punch_scale": 1.12})
+    f, _ = preview_of(ws, reel)
+    if f:
+        check_scales(f, [(49, 1.0), (50, 1.12), (75, 1.12), (99, 1.12), (100, 1.0)])
+    return ws
+
+
+def c_style_143(root):
+    """Segment 1.10 x a planted 1.30 word punch (hard cut) = 1.43 on the hold frame (A5: never max, never capped)."""
+    ws, reel = style_reel(root, MARK_SRC % (25, 6), {"style": "punch-in", "punch_scale": 1.10, "moves": {
+        "word_punches": {"preset": "dramatic", "shape": "hard-cut", "picks": [5]}}})
+    c = compose_mod()
+    keep = c.styles.PRESETS["dramatic"]
+    c.styles.PRESETS["dramatic"] = dict(keep, peak=1.30)  # the plant: only this process's planner sees it
+    try:
+        _, stop, text = in_process(c.render, reel, "preview", None)
+    finally:
+        c.styles.PRESETS["dramatic"] = keep
+    no_traceback("style-143", text)
+    f = reel / "renders" / names()[0]
+    if not ck("preview rendered", stop is None and f.is_file(), text[-300:]):
+        return ws
+    track = json.loads((reel / "work" / "scale_track.json").read_text(encoding="utf-8"))
+    on = round((Fraction("2.10") - Fraction(1, 20)) * 25)
+    ck(f"scale_track.json: 1.43 set on the onset frame {on}", any(k["f"] == on and k["scale"] == 1.43
+                                                                   for k in track["keys"]), track["keys"])
+    check_scales(f, [(49, 1.0), (50, 1.10), (on + 4, 1.43)])
+    return ws
+
+
+def c_layout_cut(root):
+    """Layout-switch full -> split exactly on the cut frame 50: frame 49 full, frame 50 split, no in-between."""
+    ws, reel = style_reel(root, TESTSRC.replace("duration=4", "duration=6"), {"style": "layout-switch"},
+                          ("full", "split", "full"))
+    f, _ = preview_of(ws, reel)
+    if not f:
+        return ws
+    cut, w = reel / "work" / "renders" / "master-100x.mp4", 720
+    fr, ref = grab(f, [49, 50], "rgb24"), grab(cut, [49, 50], "rgb24", scale=(720, 1280))
+    low = slice(400 * w * 3, None)  # below the hook title
+    ck(f"frame 49 is full screen (PSNR {psnr(fr[49][low], ref[49][low]):.2f} dB vs the cut master >= 25; Chrome's scaler vs ffmpeg's caps it near 30)",
+       psnr(fr[49][low], ref[49][low]) >= 25)
+    top, bottom = fr[50][:632 * w * 3], fr[50][640 * w * 3:]  # 8 rows clear of the edge
+    ck(f"frame 50 top half (rows 0-631) is the card plate (max channel {max(top)} <= 40, mean {tuple(round(v, 1) for v in mean_rgb(top))})",
+       max(top) <= 40)
+    want = ref[50][320 * w * 3:960 * w * 3]  # the box shows the video's middle at object-fit: cover
+    ck(f"frame 50 bottom half is the video (PSNR {psnr(bottom, want):.2f} dB vs the cut master's middle >= 25)",
+       psnr(bottom, want) >= 25)
+    return ws
+
+
+def c_layout_move(root):
+    """Layout-switch full -> split in mid-segment (beat edge 75, no cut there): one 15-frame move of the box that
+    passes the lint (x/y transforms, never left/top) and renders: the lower-right marker slides down from its full
+    place (frame 74) to its split place (frames 90-99) through in-between places, and the cut at 100 is full again."""
+    ws, reel = new_reel(root, MARK_SRC % (25, 6), "25", 150)
+    wj(reel / "work" / "cuts.json", {"fps": 25, "speed": 1.0, "segments": [
+        {"src_in_f": a + 10 * i, "src_out_f": e + 10 * i, "out_in_f": a, "out_out_f": e} for i, (a, e) in enumerate(SEGS3)]})
+    write_send(reel, [beat("b_001", 0, 50, 0, 4), beat("b_002", 50, 75, 5, 5), beat("b_003", 75, 100, 6, 6, layout="split"),
+                      beat("b_004", 100, 150, 7, 7)], 25, {"style": "layout-switch"})
+    f, out = preview_of(ws, reel)
+    ck("the preview's lint: 0 errors", "info: lint preview (720x1280): 0 errors," in out, out[-400:])
+    tp = reel / "work" / "scale_track.json"
+    tw = json.loads(tp.read_text(encoding="utf-8"))["tweens"] if tp.is_file() else []
+    ck("scale_track.json plans the move: layout full -> split, frames 75-90",
+       [(m["prop"], m["start_f"], m["end_f"], m["from"], m["to"]) for m in tw] == [("layout", 75, 90, "full", "split")], tw)
+    if not f:
+        return ws
+    w, h, ns = 720, 1280, (74, 75, 80, 85, 90, 99, 100)
+    fr = grab(f, ns)
+
+    def marker_y(g):  # the lower-right square (x 560 at 720 wide) in the bottom half, clear of the card plate
+        ys = [y for y in range(h // 2, h) for v in g[y * w + 500:y * w + 620] if v > 128]
+        return sum(ys) / len(ys) if ys else None
+    y = {n: marker_y(fr[n]) for n in ns}
+    full, split = 1400 * h / 1920, 1400 * h / 1920 + 320  # split: the box's video is the frame's middle, 320 px lower
+    ck(f"frames 74, 75 and 100: the marker at its full place {full:.0f} (within 2 px): {y[74]}, {y[75]}, {y[100]}",
+       all(y[n] is not None and abs(y[n] - full) <= 2 for n in (74, 75, 100)), y)
+    ck(f"frames 90 and 99: the marker at its split place {split:.0f} (within 2 px): {y[90]}, {y[99]}",
+       all(y[n] is not None and abs(y[n] - split) <= 2 for n in (90, 99)), y)
+    ck(f"frames 80 and 85 are in between and in order: {y[80]}, {y[85]}",
+       None not in (y[80], y[85]) and full + 2 < y[80] < y[85] < split - 2, y)
+    return ws
+
+
+def c_split_top(root):
+    """Split (hard rule): the card plate fills the top half, the video the bottom half (pixel probes, frame 125)."""
+    ws, reel = style_reel(root, GREY_SRC, {"style": "layout-switch"}, ("full", "full", "split"))
+    f, _ = preview_of(ws, reel)
+    if not f:
+        return ws
+    w, n = 720, 125
+    fr = grab(f, [n], "rgb24")[n]
+    ref = grab(reel / "work" / "renders" / "master-100x.mp4", [n], "rgb24", scale=(720, 1280))[n]
+
+    def px(img, x, y):
+        return tuple(img[(y * w + x) * 3:(y * w + x) * 3 + 3])
+    probes = [(x, y) for y in (4, 160, 320, 480, 628) for x in (4, 360, 715)]
+    plate = [px(fr, x, y) for x, y in probes]
+    ck(f"{len(probes)} probes in the top half (rows 4-628) show the plate {PLATE} (each channel within 12)",
+       all(abs(a - b) <= 12 for p in plate for a, b in zip(p, PLATE)), plate)
+    vid = [(px(fr, x, y), px(ref, x, y - 320)) for y in (652, 800, 960, 1120, 1275) for x in (40, 360, 680)]
+    ck("15 probes in the bottom half (rows 652-1275) show the video (each channel within 12 of the cut master)",
+       all(abs(a - b) <= 12 for g, r in vid for a, b in zip(g, r)), vid)
+    return ws
+
+
+def c_pip_above(root):
+    """Pip: the pill's box paints above its card plate: pixels inside the pill are video, around it the plate."""
+    ws, reel = style_reel(root, GREY_SRC, {"style": "layout-switch"}, ("full", "pip", "full"))
+    f, _ = preview_of(ws, reel)
+    if not f:
+        return ws
+    n, s = 75, 720 / 1080
+    x, y, bw, bh = (v * s for v in (738, 28, 312, 555))
+    cx, cy = round(x + bw / 2), round(y + bh / 2)
+    inside = mean_rgb(grab(f, [n], "rgb24", crop=(cx - 40, cy - 60, 80, 120))[n])
+    video = mean_rgb(grab(reel / "work" / "renders" / "master-100x.mp4", [n], "rgb24", scale=(720, 1280),
+                          crop=(cx - 40, cy - 60, 80, 120))[n])
+    around = mean_rgb(grab(f, [n], "rgb24", crop=(100, 700, 200, 200))[n])
+    ck(f"inside the pill: video {tuple(round(v, 1) for v in inside)} (cut master {tuple(round(v, 1) for v in video)}, "
+       f"each channel within 6), not the plate", all(abs(a - b) <= 6 for a, b in zip(inside, video)), (inside, video))
+    ck(f"around the pill: the card plate {tuple(round(v, 1) for v in around)} (within 6 of {PLATE})",
+       all(abs(a - b) <= 6 for a, b in zip(around, PLATE)), around)
+    return ws
+
+
+def c_style_fps(root):
+    """A 30000/1001 master under a 29.97 cut list: scale_track.json fps == compose's fps string, and the punch-in
+    still lands exactly on the cut frame (style times come from the exact Fraction)."""
+    ws, reel = style_reel(root, MARK_SRC % ("30000/1001", 5.005), {"style": "punch-in", "punch_scale": 1.12},
+                          rate="30000/1001", cut_fps=29.97)
+    f, out = preview_of(ws, reel)
+    tp = reel / "work" / "scale_track.json"
+    track = json.loads(tp.read_text(encoding="utf-8")) if tp.is_file() else {}
+    ck(f"scale_track.json fps {track.get('fps')!r} == compose's {summary(out).get('fps')!r} == '30000/1001'",
+       track.get("fps") == summary(out).get("fps") == "30000/1001", (track.get("fps"), summary(out)))
+    if f:
+        check_scales(f, [(49, 1.0), (50, 1.12), (99, 1.12), (100, 1.0)])
+    return ws
+
+
 CASES = {"selftest": c_selftest, "preview": c_preview, "master-refused": c_master_refused, "master": c_master,
          "gate-block": c_gate_block, "bad-input": c_bad_input, "joi-frames": c_joi_frames, "colour": c_colour,
          "frame0": c_frame0, "frame0-scene": c_frame0_scene, "cut-span-block": c_cut_span_block, "lint": c_lint,
-         "audio": c_audio,
+         "scene-no-params": c_scene_no_params, "audio": c_audio,
          "licence": c_licence, "master-older": c_master_older, "hook-limits": c_hook_limits,
-         "hub-review": c_hub_review, "rvm-info": c_rvm_info}
+         "hub-review": c_hub_review, "ask": c_ask, "style-cut": c_style_cut, "style-143": c_style_143,
+         "layout-cut": c_layout_cut, "layout-move": c_layout_move, "split-top": c_split_top, "pip-above": c_pip_above, "style-fps": c_style_fps,
+         "rvm-info": c_rvm_info}
 
 
 def main():

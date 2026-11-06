@@ -1,6 +1,6 @@
 ---
 name: editor-superengine:editor-doctor
-description: Sets up and checks the editor's tools, and starts or restarts the editor boards. Use for first-time setup, "is the editor ready", "check the editor's setup or tools", a missing or broken tool, after a plugin update, when another editor-superengine skill says the setup is missing, or "start my editor boards" / "restart my editor boards" (or a pasted "Restart my editor boards ..." line). NOT for checking the camera, light or sound before filming (that's recording-preflight).
+description: Sets up and checks the editor's tools, and starts or restarts the editor boards. Use for first-time setup, "is the editor ready", "check the editor's setup or tools", a missing or broken tool, after a plugin update, when another editor-superengine skill says the setup is missing, "open my editor hub", or "start my editor boards" / "restart my editor boards" (or a pasted "Restart my editor boards ..." line). NOT for checking the camera, light or sound before filming (that's recording-preflight).
 ---
 
 # editor-doctor: set up and check the editor's tools
@@ -82,3 +82,9 @@ so they can email it to Joe. Skip instead:
 **If setup failed before the editor's Python existed** (`<editor python>` is missing), use `python3` in its place, or `python` if `python3` doesn't run. First check it with `-c "import sys"`. A Windows Store stub that prints an install message doesn't count. The report script needs only plain Python. If neither runs, skip the draft. The details are already saved in `editor-superengine/reports/report-body.md`, so tell the client where that file is so they can email it to the plugin's support.
 
 **Start or restart my editor boards** (also a pasted "Restart my editor boards and save this ... state" line from a board): follow `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/board-server.md`.
+
+## Open my editor hub
+
+For "Open my editor hub", refresh its data, start or reuse the board server and open `editor/hub/` in the Browser
+pane. Follow `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/hub.md` for the commands and Send handling.
+Claude runs the commands; the client never types them.

@@ -6,7 +6,7 @@
 Prints one "✓ <case>" / "✗ <case>: <why>" line per case, then "N passed, M failed". Exit 0 only when all pass.
 The browser work runs through canvas_boards_click.js (puppeteer-core, headless shell, a fresh profile per browser).
 """
-import base64, copy, datetime, http.client, json, os, shutil, socket, subprocess, sys, tempfile, threading
+import base64, contextlib, copy, datetime, http.client, io, json, os, shutil, socket, subprocess, sys, tempfile, threading
 from pathlib import Path
 
 PLUGIN = Path(__file__).resolve().parents[2] / "plugins/editor-superengine"
@@ -34,6 +34,220 @@ PLAN = {"beats": [{"w0": 0, "w1": 3, "layout": "full", "shows": "the title", "wh
         "word_marks": [{"w": 0, "mark": "num"}, {"w": 13, "mark": "cta"}],
         "needs": ""}
 D1, D2 = "d_bold", "d_calm"
+
+# Kept here because this work order permits no change to canvas_boards_click.js.
+# Uses the same puppeteer install, run(), fixture and board server as the existing cases.
+SCENE_BROWSER = r"""
+const fs = require('fs'), {pathToFileURL} = require('url');
+(async () => {
+  const [pup, chrome, jobPath] = process.argv.slice(1);
+  const job = JSON.parse(fs.readFileSync(jobPath, 'utf8'));
+  const {default: puppeteer} = await import(pathToFileURL(pup).href);
+  const browser = await puppeteer.launch({executablePath: chrome, headless: 'shell',
+    args: ['--no-sandbox'], userDataDir: job.userDataDir});
+  const errors = [];
+  let step = 'open';
+  const need = (ok, why) => { if (!ok) throw new Error(why); };
+  try {
+    const page = await browser.newPage();
+    page.setDefaultTimeout(15000);
+    page.on('pageerror', e => errors.push(String(e)));
+    async function open() {
+      await page.goto(job.url, {waitUntil: 'load'});
+      await page.waitForSelector('.tabs[data-built]');
+      await page.click('#tab-sketches');
+      const handle = await page.waitForSelector('iframe');
+      const frame = await handle.contentFrame();
+      await frame.waitForSelector('#status[data-state=saved], #status[data-state=sent]');
+      return frame;
+    }
+    let frame = await open();
+    async function click(selector) {
+      await frame.$eval(selector, e => {
+        e.scrollIntoView({block:'center'});
+        // A fixed footer inside the 900px fixture also needs the outer page to scroll.
+        parent.scrollBy(0, window.frameElement.getBoundingClientRect().top + e.getBoundingClientRect().top - parent.innerHeight / 2);
+      });
+      try { await frame.click(selector); }
+      catch (e) {
+        const geometry = await frame.$eval(selector, e => ({rect:e.getBoundingClientRect().toJSON(),
+          innerHeight, parentHeight:parent.innerHeight, iframe:window.frameElement.getBoundingClientRect().toJSON(),
+          parentScroll:parent.scrollY, disabled:e.disabled}));
+        throw new Error(e.message + ': ' + JSON.stringify(geometry));
+      }
+    }
+    const row = '.scene-controls[data-beat="b_001"]';
+    const input = row + ' textarea[data-slot="text"]';
+    step = 'open picker'; await click(row + ' .add-scene');
+    await frame.waitForSelector(row + ' .scene-choice[data-scene="callout"]');
+    need(await frame.$eval(row + ' .scene-choice', e => !e.disabled), 'suggested scenes must be first');
+    need(await frame.$eval(row + ' .scene-choice[data-scene="counter"]', e => e.disabled &&
+      e.textContent.includes("doesn't fit this beat's words or length")), 'unfit scene must explain why');
+    await frame.waitForFunction(s => [...document.querySelectorAll(s + ' img')].every(i => i.complete && i.naturalWidth), {}, row);
+    step = 'pick callout'; await click(row + ' .scene-choice[data-scene="callout"]');
+    need(await frame.$eval(input, e => e.value) === 'Three big wins for', 'suggestion was not prefilled');
+    await frame.evaluate(skip => { window.__testSkipSceneMaxChars = skip; }, job.skipGuard);
+    async function type(text) {
+      await frame.focus(input);
+      await page.keyboard.down('Control'); await page.keyboard.press('KeyA'); await page.keyboard.up('Control');
+      await page.keyboard.press('Backspace'); await frame.type(input, text);
+    }
+    await type('x'.repeat(40));
+    need(await frame.$eval(input, e => e.value.length) === 32, 'overflow guard failed');
+    need(await frame.$eval(row + ' .slot-count', e => e.textContent) === '32 / 32', 'live counter is wrong');
+    async function send() {
+      step = 'send'; await click('#send'); await frame.waitForSelector('#status[data-state=sent]');
+      need(errors.length === 0, 'page errors: ' + errors.join('; '));
+    }
+    await send();
+    need(JSON.parse(fs.readFileSync(job.selection, 'utf8')).scenes.b_001.slots.text === 'x'.repeat(32),
+      'Send carried an overflow');
+    await type('Edited words'); await send();
+    step = 'reload'; frame = await open();
+    need(await frame.$eval(input, e => e.value) === 'Edited words', 'scene was not restored');
+    const sent = JSON.parse(fs.readFileSync(job.selection, 'utf8'));
+    need(JSON.stringify(sent.scenes.b_001) === JSON.stringify({id:'callout', slots:{text:'Edited words'}, params:{}}),
+      'sent scene shape differs');
+    step = 'remove'; await click(row + ' .remove-scene'); await send();
+    need(!('b_001' in JSON.parse(fs.readFileSync(job.selection, 'utf8')).scenes), 'removed scene was sent');
+    step = 'enum control';
+    await click(row + ' .add-scene'); await click(row + ' .scene-choice[data-scene="hook-title"]');
+    await frame.select(row + ' select[data-param="entrance"]', '1'); await send();
+    frame = await open();
+    need(await frame.$eval(row + ' select[data-param="entrance"]', e => e.selectedOptions[0].textContent) === 'none',
+      'enum param did not survive Send and reload');
+    need(JSON.parse(fs.readFileSync(job.selection, 'utf8')).scenes.b_001.params.entrance === 'none', 'enum param sent incorrectly');
+    await click(row + ' .remove-scene');
+    step = 'number control';
+    await click(row + ' .add-scene'); await click(row + ' .scene-choice[data-scene="hf-callout"]');
+    const number = row + ' input[data-param="sweep"]';
+    need(await frame.$eval(number, e => e.min === '0.5' && e.max === '7'), 'number bounds differ from catalog');
+    const beforeInvalid = fs.readFileSync(job.selection, 'utf8');
+    for (const value of ['0.1', '8']) {
+      await frame.$eval(number, (e, v) => { e.value = v; e.dispatchEvent(new Event('input', {bubbles:true})); }, value);
+      await click('#send'); await frame.waitForSelector('#status[data-state=error]');
+      need(fs.readFileSync(job.selection, 'utf8') === beforeInvalid, 'Send accepted an out-of-range number');
+    }
+    await frame.$eval(number, e => { e.value = '1.5'; e.dispatchEvent(new Event('input', {bubbles:true})); });
+    await send(); frame = await open();
+    need(await frame.$eval(number, e => e.value) === '1.5', 'number param was not restored');
+    need(JSON.parse(fs.readFileSync(job.selection, 'utf8')).scenes.b_001.params.sweep === 1.5, 'number param sent as wrong type');
+    await click(row + ' .remove-scene'); await send();
+    step = 'locked counter';
+    const counterRow = '.scene-controls[data-beat="b_002"]';
+    await click(counterRow + ' .add-scene'); await click(counterRow + ' .scene-choice[data-scene="counter"]');
+    const counterValue = counterRow + ' input[data-param="value"]';
+    need(await frame.$eval(counterValue, e => e.readOnly && e.value === '47'), 'counter is not locked to beat');
+    need(await frame.$eval(counterRow, e => e.textContent.includes("from the beat's number")), 'counter label missing');
+    await frame.evaluate(() => { doc.scenes.b_002.params.value = 48; });
+    await click('#send'); await frame.waitForSelector('#status[data-state=error]');
+    await frame.evaluate(() => { doc.scenes.b_002.params.value = 47; });
+    await send();
+    console.log(JSON.stringify({ok:true, sent, errors}));
+  } catch (e) { console.log(JSON.stringify({ok:false, error:e.message, step, errors})); process.exitCode = 1; }
+  finally { await browser.close(); }
+})().catch(e => { console.error(String(e.stack || e)); process.exit(1); });
+"""
+
+
+BEATMAP_BROWSER = r"""
+const fs = require('fs'), {pathToFileURL} = require('url');
+(async () => {
+  const [pup, chrome, jobPath] = process.argv.slice(1), job = JSON.parse(fs.readFileSync(jobPath, 'utf8'));
+  const {default: puppeteer} = await import(pathToFileURL(pup).href);
+  const browser = await puppeteer.launch({executablePath:chrome, headless:'shell', args:['--no-sandbox'],
+    userDataDir:job.userDataDir});
+  const need = (ok, why) => { if (!ok) throw new Error(why); }, errors = [];
+  let step = 'open';
+  try {
+    const page = await browser.newPage(); page.setDefaultTimeout(15000);
+    page.on('pageerror', e => errors.push(String(e)));
+    async function open() {
+      await page.goto(job.url, {waitUntil:'load'}); await page.waitForSelector('.tabs[data-built]');
+      await page.click('#tab-beat-map');
+      const frame = await (await page.waitForSelector('iframe')).contentFrame();
+      await frame.waitForSelector('#status[data-state=saved], #status[data-state=sent]'); return frame;
+    }
+    let frame = await open();
+    async function click(s) {
+      await frame.$eval(s, e => { e.scrollIntoView({block:'center'});
+        parent.scrollBy(0, window.frameElement.getBoundingClientRect().top + e.getBoundingClientRect().top - parent.innerHeight/2); });
+      await frame.click(s);
+    }
+    const row = '.scene-controls[data-beat="b_001"]', input = row + ' textarea[data-slot="text"]';
+    async function send() { await click('#send'); await frame.waitForSelector('#status[data-state=sent]'); }
+    async function text(value) {
+      await frame.$eval(input, (e, v) => { e.value = v; e.dispatchEvent(new Event('input', {bubbles:true})); }, value);
+    }
+    step = 'picker'; await click(row + ' .add-scene');
+    need(await frame.$eval(row + ' .scene-choice', e => !e.disabled), 'suggested scenes must be first');
+    need(await frame.$eval(row + ' .scene-choice[data-scene="counter"]', e => e.disabled &&
+      e.textContent.includes("doesn't fit this beat's words or length")), 'unfit scene reason missing');
+    await frame.waitForFunction(s => [...document.querySelectorAll(s + ' img')].every(i => i.complete && i.naturalWidth), {}, row);
+    await click(row + ' .scene-choice[data-scene="callout"]');
+    need(await frame.$eval(input, e => e.value) === 'Three big wins for', 'prefill missing');
+    step = 'overflow'; await frame.evaluate(skip => { window.__testSkipSceneMaxChars = skip; }, job.skipGuard);
+    await text('x'.repeat(40));
+    need(await frame.$eval(input, e => e.value.length) === 32, 'overflow guard failed');
+    need(await frame.$eval(row + ' .slot-count', e => e.textContent) === '32 / 32', 'counter wrong');
+    await send(); need(JSON.parse(fs.readFileSync(job.selection,'utf8')).beats[0].scene.slots.text.length === 32,
+      'overflow sent');
+    // A hand-planted overflow still cannot Send, even though no input event runs the guard.
+    const before = fs.readFileSync(job.selection,'utf8');
+    await frame.evaluate(() => { doc.beats[0].scene.slots.text = 'x'.repeat(40); });
+    await click('#send'); await frame.waitForSelector('#status[data-state=error]');
+    need(fs.readFileSync(job.selection,'utf8') === before, 'Send accepted planted overflow');
+    await text('Edited words'); await send();
+    const sent = JSON.parse(fs.readFileSync(job.selection,'utf8'));
+    need(JSON.stringify(sent.beats[0].scene) === JSON.stringify({id:'callout',slots:{text:'Edited words'},params:{}}), 'shape differs');
+    step = 'restore'; frame = await open(); need(await frame.$eval(input,e=>e.value) === 'Edited words', 'restore failed');
+    step = 'remove'; await click(row + ' .remove-scene'); await send();
+    need(JSON.parse(fs.readFileSync(job.selection,'utf8')).beats[0].scene === null, 'remove failed');
+    step = 'enum and bounds';
+    await click(row + ' .add-scene'); await click(row + ' .scene-choice[data-scene="hook-title"]');
+    await frame.select(row + ' select[data-param="entrance"]', '1'); await send(); frame = await open();
+    need(await frame.$eval(row + ' select[data-param="entrance"]',e=>e.selectedOptions[0].textContent) === 'none',
+      'enum was not restored');
+    await click(row + ' .remove-scene'); await click(row + ' .add-scene');
+    await click(row + ' .scene-choice[data-scene="hf-callout"]');
+    const sweep = row + ' input[data-param="sweep"]', previous = fs.readFileSync(job.selection,'utf8');
+    need(await frame.$eval(sweep,e=>e.min==='0.5' && e.max==='7'), 'catalog bounds missing');
+    for (const value of ['0.1','8']) {
+      await frame.$eval(sweep,(e,v)=>{e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}));},value);
+      await click('#send'); await frame.waitForSelector('#status[data-state=error]');
+      need(fs.readFileSync(job.selection,'utf8')===previous, 'Send accepted bad bounds');
+    }
+    await frame.$eval(sweep,e=>{e.value='1.5';e.dispatchEvent(new Event('input',{bubbles:true}));});
+    await send(); frame=await open(); need(await frame.$eval(sweep,e=>e.value)==='1.5', 'numeric param not restored');
+    await click(row + ' .remove-scene'); await send();
+    step = 'Sketches offer';
+    need(await frame.$eval(row + ' .use-sketch-scene',e=>e.textContent.includes('picked in Sketches')), 'Sketches offer missing');
+    await click(row + ' .use-sketch-scene'); need(await frame.$eval(input,e=>e.value) === 'From Sketches', 'Sketches fill lost');
+    await send(); await click(row + ' .remove-scene');
+    step = 'counter lock'; const cr = '.scene-controls[data-beat="b_002"]';
+    await click(cr + ' .add-scene'); await click(cr + ' .scene-choice[data-scene="counter"]');
+    const number = cr + ' input[data-param="value"]';
+    need(await frame.$eval(number,e=>e.readOnly && e.value === '47'), 'counter is not locked to beat');
+    need(await frame.$eval(cr,e=>e.textContent.includes("from the beat's number")), 'counter label missing');
+    await frame.evaluate(() => { doc.beats.find(b=>b.id==='b_002').scene.params.value = 48; });
+    await click('#send'); await frame.waitForSelector('#status[data-state=error]');
+    await frame.evaluate(() => { doc.beats.find(b=>b.id==='b_002').scene.params.value = 47; });
+    await send();
+    // Editing the beat updates its locked scene number.
+    await frame.$eval('#beats tr[data-beat="b_002"] input[name=value]', e => {
+      e.value='48'; e.dispatchEvent(new Event('input',{bubbles:true})); });
+    need(await frame.$eval(number,e=>e.value) === '48', 'beat edit did not update scene');
+    await frame.$eval('#beats tr[data-beat="b_002"] input[name=value]', e => {
+      e.value='47'; e.dispatchEvent(new Event('input',{bubbles:true})); });
+    step = 'numeric compositor fixture';
+    const label = cr + ' textarea[data-slot="label"]';
+    await frame.$eval(label,e=> { e.value='47 people'; e.dispatchEvent(new Event('input',{bubbles:true})); }); await send();
+    need(!errors.length, 'page errors: '+errors.join(';'));
+    console.log(JSON.stringify({ok:true, sent, errors}));
+  } catch(e) { console.log(JSON.stringify({ok:false,error:e.message,step,errors})); process.exitCode=1; }
+  finally { await browser.close(); }
+})().catch(e=>{console.error(String(e.stack||e));process.exit(1);});
+"""
 
 
 class Fail(Exception):
@@ -114,8 +328,166 @@ def reel_fixture(reel):
         "note": "", "sent_at": None, "locked_at": None})
 
 
+def scene_fill_case():
+    sys.path.insert(0, str(CANVAS))
+    sys.path.insert(0, str(PLUGIN / "scripts"))
+    import scene_fill
+    import scene_check
+    words = "We helped 47 people make their next reel with clear words and useful examples today".split()
+    beat = {"id": "b_001", "start_f": 0, "end_f": 120, "value": 47,
+            "speech_anchor": {"w0": 0, "w1": len(words) - 1}}
+
+    def honest(fill, b=beat, heard=words):
+        spec = load(scene_check.SCENES / fill["id"] / "scene.json")
+        need(not scene_check.fill_problems(fill["id"], dict(b, scene=fill), words=heard), "invalid suggestion")
+        remaining = heard[b["speech_anchor"]["w0"]:b["speech_anchor"]["w1"] + 1]
+        for name, slot in spec["slots"].items():
+            text = fill["slots"][name]
+            need(len(text) <= slot["maxChars"], "over maxChars")
+            if spec["category"] in ("stat-card", "stat") and name in ("stat", "value", "number"):
+                need(scene_check.said(b["value"], scene_check.numbers(text)), "stat slot lost the beat number")
+                continue
+            used = text.split()
+            need(used == remaining[:len(used)], "slot is not a word-boundary prefix/continuation")
+            remaining = remaining[len(used):]
+
+    with tempfile.TemporaryDirectory() as tmp:
+        reel = Path(tmp) / "demo"
+        reel_fixture(reel)
+        cat = scene_fill.catalog()
+        expected = {d.name for d in scene_check.SCENES.iterdir()
+                    if d.is_dir() and not scene_check.scene_problems(d)}
+        need({s["id"] for s in cat} == expected, "catalog must list every shippable scene")
+        for item in cat:
+            spec = load(scene_check.SCENES / item["id"] / "scene.json")
+            want = {k: spec[k] for k in ("id", "kind", "category", "dur")}
+            want["slots"] = [{"name": n, "maxChars": s["maxChars"]} for n, s in spec["slots"].items()]
+            want["params"] = [dict(name=n, **{k: p[k] for k in ("type", "min", "max", "enum", "default") if k in p})
+                              for n, p in spec["params"].items()]
+            want["preview"] = (scene_check.SCENES / item["id"] / "preview.png").as_posix()
+            need(item == want, f"catalog differs from scene.json: {item['id']}")
+            fill = scene_fill.suggest(item["id"], beat, words, FPS)
+            if fill is not None:
+                honest(fill)
+            short = dict(beat, end_f=1)
+            need(scene_fill.suggest(item["id"], short, words, FPS) is None, "short beat accepted")
+            need(scene_fill.suggest(item["id"], dict(beat, end_f=9999), words, FPS) is None, "long beat accepted")
+        counter = scene_fill.suggest("counter", beat, words, FPS)
+        need(counter is not None and counter["params"] == {"value": 47}, "said counter missing or wrong")
+        need(scene_fill.suggest("counter", dict(beat, value=48), words, FPS) is None, "unsaid counter accepted")
+        for item in cat:
+            if item["category"] != "stat-card":
+                continue
+            need(scene_fill.suggest(item["id"], dict(beat, value=48), words, FPS) is None,
+                 "unsaid stat-card accepted")
+            fill = scene_fill.suggest(item["id"], beat, words, FPS)
+            need(fill is not None, "said stat-card missing")
+            if "stat" in fill["slots"]:
+                need(fill["slots"]["stat"] == "47", "big-number slot lost the said number")
+        outside = ["47", "nothing", "numeric", "here"]
+        local = dict(beat, speech_anchor={"w0": 1, "w1": 3})
+        need(scene_fill.suggest("counter", local, outside, FPS) is None, "number outside beat accepted")
+        need(scene_fill.suggest("counter", beat, ["forty-seven"] * len(words), FPS) is None,
+             "spelled-out number accepted despite scene_check")
+        for planted in (dict(counter, slots={"label": "x" * 31}), dict(counter, params={"value": 48})):
+            try:
+                honest(planted)
+            except Fail:
+                pass
+            else:
+                raise Fail("the same honesty assertions accepted a planted bad fill")
+        scene_fill.write_catalog(reel, [beat], words, FPS)
+        saved = load(reel / "scenes/catalog.json")
+        fills = load(reel / "scenes/suggest.json")[beat["id"]]
+        need(fills["counter"] == counter, "written counter differs")
+        for item in saved:
+            need(item["preview"] == f"scenes/{item['id']}.png", "preview is not reel-relative")
+            need((reel / item["preview"]).read_bytes() ==
+                 (scene_check.SCENES / item["id"] / "preview.png").read_bytes(), "preview copy differs")
+        for fill in fills.values():
+            honest(fill)
+        # The CLI must use the newer board file, and always the cut transcript.
+        import make_beat_map
+        items = load(reel / "work/edit_map.cut.json")["words"]
+        state = make_beat_map.build_doc(reel, PLAN, WORDS, items, "work/edit_map.cut.json",
+                                       reel / "work/edit_map.cut.json", FPS, TOTAL_F)
+        state_path, send_path = reel / "beat-map.state.json", reel / "beat-map-selection.json"
+        write_json(state_path, state)
+        sent = copy.deepcopy(state)
+        sent["beats"][0]["speech_anchor"] = {"w0": 1, "w1": 3, "text": "big wins for"}
+        write_json(send_path, sent)
+        stamp = state_path.stat().st_mtime_ns
+        os.utime(send_path, ns=(stamp + 2000000000, stamp + 2000000000))
+
+        def cli(*args):
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                code = scene_fill.main(list(args))
+            return code, buf.getvalue().strip()
+
+        args = ("--reel-dir", str(reel), "--beat", "b_001", "--scene", "callout")
+        rc, out = cli("suggest", *args)
+        need(rc == 0 and json.loads(out)["slots"]["text"] == "big wins for", "CLI ignored the newer Send")
+        os.utime(state_path, ns=(stamp + 4000000000, stamp + 4000000000))
+        rc, out = cli("suggest", *args)
+        need(rc == 0 and json.loads(out)["slots"]["text"] == "Three big wins for", "CLI ignored the newer state")
+        rc, out = cli("catalog", "--reel-dir", str(reel))
+        need(rc == 0 and len(out.splitlines()) == 1, "catalog CLI did not print one summary line")
+        need(load(reel / "scenes/suggest.json")["b_001"]["callout"]["slots"]["text"] == "Three big wins for",
+             "catalog CLI did not use the cut transcript")
+        for bad_args in (("catalog", "--reel-dir", str(reel / "missing")),
+                         ("suggest", "--reel-dir", str(reel), "--beat", "absent", "--scene", "callout")):
+            rc, out = cli(*bad_args)
+            need(rc == 2 and len(out.splitlines()) == 1 and "Traceback" not in out, "CLI error is not one plain exit-2 line")
+        state_path.write_bytes(b"{broken\njson")
+        send_path.unlink()  # the deliberately corrupt state must be the file selected
+        rc, out = cli("catalog", "--reel-dir", str(reel))
+        need(rc == 2 and len(out.splitlines()) == 1, "unexpected CLI error was not flattened to one exit-2 line")
+
+
+def schema_scene_case():
+    sys.path.insert(0, str(CANVAS))
+    import beat_schema as bs
+    import make_beat_map
+    with tempfile.TemporaryDirectory() as tmp:
+        reel = Path(tmp) / "schema"
+        reel_fixture(reel)
+        items = load(reel / "work/edit_map.cut.json")["words"]
+        bm = make_beat_map.build_doc(reel, PLAN, WORDS, items, bs.DEFAULT_WORDS,
+                                    reel / bs.DEFAULT_WORDS, FPS, TOTAL_F)
+        sketches = load(reel / "sketches.state.json")
+        fills = [None, {"id": "callout", "slots": {"text": "Hi"}},
+                 {"id": "counter", "slots": {"label": ""}, "params": {"value": 3, "dark": True, "font": "Inter"}}]
+        for fill in fills:
+            bm["beats"][0]["scene"] = fill
+            bs.validate_beat_map(bm, WORDS)
+            if fill is not None:
+                bs.validate_sketches(dict(sketches, scenes={"b_001": fill}), bm)
+        for fill, field in [({}, "id"), ({"id": " ", "slots": {}}, "id"),
+                            ({"id": "x", "slots": {"text": 3}}, "slots"),
+                            ({"id": "x", "slots": {}, "other": 1}, "other"),
+                            ({"id": "x", "slots": {}, "params": {"x": []}}, "params")]:
+            bm["beats"][0]["scene"] = fill
+            for problems in [bs.beat_map_problems(bm),
+                             bs.sketches_problems(dict(sketches, scenes={"b_001": fill}), bm)]:
+                need(problems and any("b_001" in p and field in p and "\n" not in p for p in problems),
+                     f"scene error must name beat and field: {problems}")
+        problems = bs.sketches_problems(dict(sketches, scenes={"absent": fills[1]}), bm)
+        need(any("absent" in p and "beat id" in p for p in problems), "unknown sketches scene beat accepted")
+        need(bs.sketches_problems(dict(sketches, scenes=[]), bm), "non-object scenes accepted")
+        need(bs.sketches_problems(dict(sketches, scenes={"b_001": None}), bm), "null sketches scene accepted")
+
+
 def main():
     ensure_utf8_output()
+    if "--schema-scene-only" in sys.argv:
+        schema_scene_case()
+        print("schema_scene passed")
+        return 0
+    if "--scene-fill-only" in sys.argv:
+        scene_fill_case()
+        print("scene_fill passed")
+        return 0
     tools, missing = find_tools()
     if missing:
         print(f"✗ This test needs an installed editor state: set EDITOR_SE_HOME to one "
@@ -343,9 +715,111 @@ def main():
         need(status == 403, f"HTTP {status}, not 403")
         need(not (reel / "other.json").exists(), "other.json was written")
 
+    def sketches_scene(skip_guard=False):
+        name = "scene-reverse" if skip_guard else "scene-forward"
+        sr = videos / name
+        reel_fixture(sr)
+        scene_fixture(sr)
+        p = run(py + [str(SEED), "--reel-dir", str(sr), "--plan", str(sr / "work/plan.json")], env=env)
+        need(p.returncode == 0, f"scene fixture seed: {p.stdout} {p.stderr}")
+        hub = ws / rt.read_config(ws)["paths"]["editor"] / "hub"
+        hub.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(Path(__file__).parent / "fixtures/stub-hub.html", hub / "index.html")
+        shutil.copyfile(DOCTOR / "boards.json", hub / "boards.json")
+        S["browsers"] += 1
+        job = scratch / f"scene-job-{S['browsers']}.json"
+        write_json(job, {"url": url("hub", name), "userDataDir": str(scratch / f"profile-{S['browsers']}"),
+                         "selection": str(sr / "sketches-selection.json"), "skipGuard": skip_guard})
+        p = run([tools["node"], "-e", SCENE_BROWSER, tools["pup"], tools["chrome"], str(job)])
+        try:
+            result = json.loads(p.stdout.strip().splitlines()[-1])
+        except (IndexError, ValueError):
+            result = {"error": p.stderr[-500:]}
+        if skip_guard:
+            need(p.returncode != 0 and result.get("error") == "overflow guard failed",
+                 f"skipping the guard did not fail the overflow assertion: {result}")
+        else:
+            need(p.returncode == 0 and result.get("ok"), f"scene iframe: {result}")
+            sent = result["sent"]
+            import beat_schema
+            beat_schema.validate_sketches(sent, load(sr / "beat-map.state.json"))
+            beat_schema.validate_sketches(load(sr / "sketches-selection.json"), load(sr / "beat-map.state.json"))
+            need(sent["scenes"]["b_001"] == {"id": "callout", "slots": {"text": "Edited words"}, "params": {}},
+                 "sent scene differs")
+            need(sent["directions"] == load(sr / "sketches.state.json")["directions"], "existing directions changed")
+            need("b_001" not in load(sr / "sketches-selection.json")["scenes"], "scene removal not saved")
+
+    def scene_fixture(sr):
+        words = load(sr / "work/edit_map.cut.json")
+        words["words"][4]["word"] = "47"
+        write_json(sr / "work/edit_map.cut.json", words)
+        plan = copy.deepcopy(PLAN)
+        plan["beats"][1]["value"] = 47
+        write_json(sr / "work/plan.json", plan)
+
+    def beatmap_scene(skip_guard=False, source="state"):
+        name = "beatmap-" + ("reverse" if skip_guard else source)
+        sr = videos / name
+        reel_fixture(sr)
+        scene_fixture(sr)
+        p = run(py + [str(SEED), "--reel-dir", str(sr), "--plan", str(sr / "work/plan.json")], env=env)
+        need(p.returncode == 0, f"beatmap fixture seed: {p.stdout} {p.stderr}")
+        sk = load(sr / "sketches.state.json")
+        sk["scenes"] = {"b_001": {"id": "callout", "slots": {"text": "From Sketches"}, "params": {}}}
+        write_json(sr / ("sketches.state.json" if source == "state" else "sketches-selection.json"), sk)
+        hub = ws / rt.read_config(ws)["paths"]["editor"] / "hub"
+        hub.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(Path(__file__).parent / "fixtures/stub-hub.html", hub / "index.html")
+        shutil.copyfile(DOCTOR / "boards.json", hub / "boards.json")
+        S["browsers"] += 1
+        job = scratch / f"beatmap-job-{S['browsers']}.json"
+        write_json(job, {"url": url("hub", name), "userDataDir": str(scratch / f"profile-{S['browsers']}"),
+                         "selection": str(sr / "beat-map-selection.json"), "skipGuard": skip_guard})
+        p = run([tools["node"], "-e", BEATMAP_BROWSER, tools["pup"], tools["chrome"], str(job)])
+        try:
+            result = json.loads(p.stdout.strip().splitlines()[-1])
+        except (IndexError, ValueError):
+            result = {"error": p.stderr[-500:]}
+        if skip_guard:
+            need(p.returncode != 0 and result.get("error") == "overflow guard failed", f"reverse plant: {result}")
+            return
+        need(p.returncode == 0 and result.get("ok"), f"beatmap iframe: {result}")
+        import beat_schema, compose
+        from fractions import Fraction
+        heard = beat_schema.load_words(sr / beat_schema.DEFAULT_WORDS)
+        sent = load(sr / "beat-map-selection.json")
+        beat_schema.validate_beat_map(result["sent"], heard)
+        beat_schema.validate_beat_map(sent, heard)
+
+        def preflight(doc):
+            inp = {"beats": copy.deepcopy(doc["beats"]), "rate": Fraction(FPS), "words": heard,
+                   "total": TOTAL_F, "cut_frames": [120], "fps": "30/1"}
+            with contextlib.redirect_stdout(io.StringIO()):
+                compose.plan(inp, None)
+        preflight(sent)
+        # Run the actual Send through the compositor, then plant an unsaid slot number in that Send.
+        sent["beats"][1]["scene"]["slots"]["label"] = "999 people"
+        write_json(sr / "beat-map-selection.json", sent)
+        try:
+            preflight(load(sr / "beat-map-selection.json"))
+        except compose.Stop as e:
+            need(any("not said" in p or "not in" in p for p in e.lines), f"wrong compositor refusal: {e.lines}")
+        else:
+            raise Fail("compositor accepted an unsaid slot number")
+
     S["A"] = free_port()
     S["B"] = free_port(S["A"])
     try:
+        case("schema_scene: scene shapes and Sketches beat keys", schema_scene_case)
+        case("scene_fill: catalog, honest fills, timing and planted bad suggestions", scene_fill_case)
+        if "--scenes-only" in sys.argv:
+            start(S["A"])
+            case("sketches_scene: iframe picker, maxChars, Send, restore and remove", sketches_scene)
+            case("sketches_scene reverse: skipping maxChars fails the same overflow assertion", lambda: sketches_scene(True))
+            case("beatmap_scene: iframe picker, Sketches state, Send and compositor", beatmap_scene)
+            case("beatmap_scene: Sketches Send offered in one click", lambda: beatmap_scene(source="selection"))
+            case("beatmap_scene reverse: skipping maxChars fails", lambda: beatmap_scene(True))
+            return 0 if all(results) else 1
         case("1 seed: make_beat_map writes a valid map whose beats tile 0..end", c1)
         case("7 schema rejects a beat with no id, layout grid, start_f > end_f", c7)
         case("2 edit + reload: layout, value, note, word mark and needs survive a reload", c2)
@@ -356,6 +830,11 @@ def main():
         case("8 the board won't send a broken doc", c8)
         case("10 __save refuses a name outside the board's writes list", c10)
         case("9 seed refuses to overwrite; --replace keeps .prev", c9)
+        case("sketches_scene: iframe picker, maxChars, Send, restore and remove", sketches_scene)
+        case("sketches_scene reverse: skipping maxChars fails the same overflow assertion", lambda: sketches_scene(True))
+        case("beatmap_scene: iframe picker, Sketches state, Send and compositor", beatmap_scene)
+        case("beatmap_scene: Sketches Send offered in one click", lambda: beatmap_scene(source="selection"))
+        case("beatmap_scene reverse: skipping maxChars fails", lambda: beatmap_scene(True))
     finally:
         for p in procs:
             if p.poll() is None:

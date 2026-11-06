@@ -32,6 +32,17 @@
   label.block { display: block; font-weight: 600; margin: 8px 0 6px; font-size: 14px; }
   textarea, button { font: inherit; color: var(--text); background: #12141a; border: 1px solid #3a4150; border-radius: 6px; }
   textarea { width: 100%; min-height: 60px; padding: 8px; resize: vertical; }
+  .scene-controls { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 14px; }
+  .scene-picker { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+  .scene-choice { padding: 8px; text-align: left; overflow-wrap: anywhere; }
+  .scene-choice img { display: block; height: 120px; max-width: 100%; margin: 0 auto 8px; }
+  .scene-choice span { display: block; }
+  .scene-choice:disabled { opacity: .45; cursor: default; }
+  .slot-count { display: block; color: var(--muted); font-size: 12px; }
+  .scene-controls .bad { color: var(--bad); border-color: var(--bad); }
+  .scene-controls input, .scene-controls select { font: inherit; color: var(--text); background: #12141a;
+    border: 1px solid #3a4150; border-radius: 6px; padding: 8px; width: 100%; }
+  .remove-scene { margin-top: 12px; }
   #lightbox { position: fixed; inset: 0; background: rgba(0, 0, 0, .88); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 20px; }
   #lightbox img { max-width: 100%; max-height: 100%; border-radius: 8px; }
   #lightbox button { position: absolute; top: 14px; right: 14px; }
@@ -100,6 +111,7 @@
 const $ = (s) => document.querySelector(s);
 const statusEl = $("#status"), sendBtn = $("#send"), lockBtn = $("#lock"), box = $("#lightbox");
 let bc = null, doc = null, timer = null, seq = 0, opener = null;
+let sceneCatalog = [], sceneSuggestions = {}, sceneFieldId = 0, sceneBeats = [];
 
 function el(tag, attrs, ...kids) {
   const e = document.createElement(tag);
@@ -194,6 +206,125 @@ function direction(d, i) {
   return sec;
 }
 
+async function reelJson(rel) {
+  const url = mediaUrl(rel);
+  if (!url) return null;
+  try { const r = await fetch(url, {cache: "no-store"}); return r.ok ? await r.json() : null; }
+  catch (e) { return null; }
+}
+function counterValue(spec, param) { return spec.category === "counter" && param.name === "value"; }
+function sceneSpec(id) { return sceneCatalog.find((s) => s.id === id); }
+function refreshScenes() {
+  document.querySelectorAll(".scene-controls").forEach((e) => e.replaceWith(sceneControls(e.dataset.beat)));
+}
+function sceneControls(beat) {
+  const wrap = el("div", {class: "scene-controls", "data-beat": beat});
+  const fill = (doc.scenes || {})[beat], spec = fill && sceneSpec(fill.id);
+  const add = el("button", {type: "button", class: "add-scene", text: "Add a scene", "aria-expanded": "false"});
+  const picker = el("div", {class: "scene-picker", hidden: ""});
+  const available = sceneSuggestions[beat] || {};
+  const ordered = [...sceneCatalog].sort((a, b) => Number(!!available[b.id]) - Number(!!available[a.id]));
+  for (const item of ordered) {
+    const choice = el("button", {type: "button", class: "scene-choice", "data-scene": item.id});
+    const url = mediaUrl(item.preview);
+    if (url) choice.append(el("img", {src: url, alt: item.id + " preview"}));
+    choice.append(el("span", {text: item.id}), el("span", {class: "muted", text: item.kind + " · " + item.category}));
+    if (!available[item.id]) {
+      choice.disabled = true;
+      choice.append(el("span", {text: "doesn't fit this beat's words or length"}));
+    } else choice.addEventListener("click", () => {
+      if (!doc.scenes) doc.scenes = {};
+      doc.scenes[beat] = JSON.parse(JSON.stringify(available[item.id]));
+      refreshScenes(); edited();
+    });
+    picker.append(choice);
+  }
+  add.disabled = !sceneCatalog.length;
+  add.addEventListener("click", () => { picker.hidden = !picker.hidden; add.setAttribute("aria-expanded", String(!picker.hidden)); });
+  wrap.append(add, picker);
+  if (!sceneCatalog.length) wrap.append(el("p", {class: "none", text: "Scene choices aren't ready yet. Ask Claude to prepare them."}));
+  if (fill) {
+    wrap.append(el("p", {text: fill.id}));
+    if (spec) {
+      for (const slot of spec.slots) {
+        const id = "scene-field-" + (++sceneFieldId);
+        const input = el("textarea", {id, rows: "2", "data-slot": slot.name});
+        input.value = (fill.slots || {})[slot.name] || "";
+        const count = el("span", {class: "slot-count", id: id + "-count"});
+        input.setAttribute("aria-describedby", id + "-count");
+        function showCount() {
+          const n = Array.from(input.value).length, bad = n > slot.maxChars;
+          count.textContent = n + " / " + slot.maxChars;
+          count.classList.toggle("bad", bad); input.classList.toggle("bad", bad);
+          input.setAttribute("aria-invalid", String(bad));
+        }
+        input.addEventListener("input", () => {
+          // The test flag proves the same overflow assertion fails without this guard.
+          if (!window.__testSkipSceneMaxChars) input.value = Array.from(input.value).slice(0, slot.maxChars).join("");
+          fill.slots[slot.name] = input.value;
+          showCount(); edited();
+        });
+        showCount();
+        wrap.append(el("label", {class: "block", for: id, text: slot.name}), input, count);
+      }
+      for (const param of spec.params) {
+        if (param.name === "accent" || param.name === "font" || (!param.enum && param.type !== "number")) continue;
+        const id = "scene-field-" + (++sceneFieldId);
+        const control = el(param.enum ? "select" : "input", {id, "data-param": param.name});
+        const value = Object.hasOwn(fill.params || {}, param.name) ? fill.params[param.name] : param.default;
+        if (param.enum) {
+          param.enum.forEach((v, i) => control.append(el("option", {value: String(i), text: String(v)})));
+          control.value = String(param.enum.indexOf(value));
+        } else {
+          control.type = "number"; control.step = "any";
+          if (param.min != null) control.min = param.min;
+          if (param.max != null) control.max = param.max;
+          control.value = value;
+        }
+        const locked = counterValue(spec, param);
+        if (locked) control.readOnly = true;
+        control.addEventListener(param.enum ? "change" : "input", () => {
+          if (locked) return;
+          if (!fill.params) fill.params = {};
+          fill.params[param.name] = param.enum ? param.enum[Number(control.value)] :
+            (control.value.trim() === "" ? null : Number(control.value));
+          const bad = !control.checkValidity() || fill.params[param.name] == null;
+          control.classList.toggle("bad", bad); control.setAttribute("aria-invalid", String(bad)); edited();
+        });
+        wrap.append(el("label", {class: "block", for: id, text: param.name + (locked ? " (from the beat's number)" : "")}), control);
+      }
+    }
+    const remove = el("button", {type: "button", class: "remove-scene", text: "Remove scene"});
+    remove.addEventListener("click", () => { delete doc.scenes[beat]; refreshScenes(); edited(); });
+    wrap.append(remove);
+  }
+  return wrap;
+}
+
+function sceneProblem() {
+  for (const [beat, fill] of Object.entries(doc.scenes || {})) {
+    const spec = fill && sceneSpec(fill.id);
+    if (!spec) return "A saved scene isn't in the catalog. Remove it or ask Claude to prepare the scenes.";
+    for (const slot of spec.slots) {
+      const text = (fill.slots || {})[slot.name];
+      if (typeof text !== "string" || Array.from(text).length > slot.maxChars)
+        return "Shorten the " + slot.name + " scene text to " + slot.maxChars + " characters before sending.";
+    }
+    for (const param of spec.params) {
+      const value = Object.hasOwn(fill.params || {}, param.name) ? fill.params[param.name] : param.default;
+      if (counterValue(spec, param)) {
+        const b = sceneBeats.find((b) => b.id === beat);
+        if (!b || typeof b.value !== "number" || value !== b.value)
+          return "The counter must match the beat's number. Change the number on the Beat Map or pick the scene again.";
+      }
+      if ((param.enum && !param.enum.includes(value)) || (param.type === "number" &&
+          (typeof value !== "number" || !Number.isFinite(value) || (param.min != null && value < param.min) ||
+           (param.max != null && value > param.max)))) return "Check the " + param.name + " scene value before sending.";
+    }
+  }
+  return null;
+}
+
 function sketch(s, i) {
   const title = s.title || "Sketch " + (i + 1);
   const art = el("article", {class: "sketch", "data-id": s.id},
@@ -204,6 +335,7 @@ function sketch(s, i) {
     art.append(url ? el("video", {src: url, controls: "", preload: "metadata", "aria-label": title + " preview"}) : cantShow());
   }
   art.append(...noteBox("sk-note-" + i, "Your note on this sketch", s.note, (v) => { s.note = v; }));
+  if (doc.sketches.findIndex((row) => row.beat === s.beat) === i) art.append(sceneControls(s.beat));
   return art;
 }
 
@@ -245,11 +377,13 @@ function problem() {
   if (doc.pick != null && !(doc.directions || []).some((d) => d.id === doc.pick))
     return "The look you picked isn't on the page any more. Pick one again.";
   if (doc.locked_at && doc.pick == null) return "Nothing is picked, so there's no look to lock. Unlock, pick one, then lock it.";
-  return null;
+  return sceneProblem();
 }
 
 async function send() {
   clearTimeout(timer);
+  const latestBeats = await reelJson("beat-map.state.json") || await reelJson("beat-map-selection.json");
+  sceneBeats = (latestBeats && latestBeats.beats) || [];
   const bad = problem();
   if (bad) { setStatus("error", bad); return; }
   sendBtn.disabled = true;
@@ -281,6 +415,11 @@ async function init() {
     setStatus("empty", "Nothing to send yet.");
     return;
   }
+  [sceneCatalog, sceneSuggestions] = await Promise.all(["scenes/catalog.json", "scenes/suggest.json"].map(reelJson));
+  const beatMap = await reelJson("beat-map.state.json") || await reelJson("beat-map-selection.json");
+  sceneBeats = (beatMap && beatMap.beats) || [];
+  if (!Array.isArray(sceneCatalog)) sceneCatalog = [];
+  if (!sceneSuggestions || typeof sceneSuggestions !== "object") sceneSuggestions = {};
   $("#board").hidden = false;
   render();
   if (doc.sent_at) setStatus("sent", "Last sent " + new Date(doc.sent_at).toLocaleString());

@@ -50,7 +50,7 @@ The URLs stay the same whatever folders `paths.editor` and `paths.videos` name o
 - Only the boards listed in `boards.json` are served or saved, and `__save` writes only names in a board's
   `writes` list. Dotfiles, `..` and symlinks that lead out of
   a board or reel folder are refused. JSON, HTML and JS are never cached.
-- Send outputs (what a board hands to Claude, e.g. `selection.json`) use `__save`, never `__state`. A board that
+- Send outputs (what a board hands to Claude, e.g. `cut-selection.json`) use `__save`, never `__state`. A board that
   needs a new output file adds its name to its `writes` list in `boards.json`; never change the server.
 - Boards load `./board-client.js`, which does the loading, saving, heartbeat, the banner and `mergeCues`:
   `const bc = BoardClient.create({board: "cut-board"}); const saved = await bc.load(); bc.save(state);`
@@ -71,6 +71,6 @@ The old boards lived in each reel's folder and used relative URLs. In the shared
 - State goes through `BoardClient`, never relative URLs: `bc.load()` replaces `fetch('cut.state.json')`, and
   `bc.save(S)` replaces `fetch('__state?name=cut', ...)`. The file becomes `<board>.state.json`
   (`/videos/<reel>/__state?name=<board>`), and its backup is `<board>.state.json.prev` (it was `.state.prev.json`).
-- A bare `fetch('__save', ...)` becomes `fetch('/videos/' + encodeURIComponent(reel) + '/__save?board=<board>&name=selection.json', ...)`
+- A bare `fetch('__save', ...)` becomes `fetch('/videos/' + encodeURIComponent(reel) + '/__save?board=cut-board&name=cut-selection.json', ...)`
   with the same JSON Content-Type.
 - Other reel files (config, audio, video, waveforms) load from `/videos/<reel>/<file>`; the reel comes from `?reel=`.

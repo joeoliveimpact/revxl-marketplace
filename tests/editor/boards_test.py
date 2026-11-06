@@ -703,6 +703,7 @@ def case_port(S, a):
 def case_hub_roundtrip(S, a):
     d, cfg = reel("hub")
     hub = G["ws"] / "editor/hub"
+    server()                                                       # finish startup board_sync before the fixture
     hub.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(STUB_HUB, hub / "index.html")                      # test fixture only: the hub page is S13's
     shutil.copyfile(DOCTOR / "boards.json", hub / "boards.json")
