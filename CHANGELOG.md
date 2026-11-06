@@ -12,6 +12,8 @@ is counted silently against one limit, the session budget set in the new Budget 
 automatic cap, for every session, Desktop routine and `claude -p` run alike. A mod adds a band
 with this session's spending, the Budget, Endpoints, Suggested and Round-up tabs, a balance
 status line and a toast per counted call. All three skills offer the standard failure report.
+The optional Jev helper can run through a key-injecting proxy (`JEV_API_BASE`), and every Jev
+request asks for zero data retention.
 
 ### Fixed
 - **validate.py** ... a hook script name now ends at a word boundary, so a `.json` or `.jsonl`

@@ -168,6 +168,13 @@
   research-plays and onboarding skills, the research-router agent, the README and the generated
   platform references point to it, and no longer describe an ask, a pause or a cap step.
 - **research-plays: the Jev route's steps moved to `references/jev-route.md`**, word for word, to make room for the failure report; the skill points to it.
+- **Jev can run through a key-injecting proxy.** When `JEV_API_BASE` is set (for example Aperture's
+  OpenRouter connector), `hooks/jev.mjs` posts to `<JEV_API_BASE>/alpha/decisions` and reads and
+  sends no key, because the proxy adds it, and the suggest hook counts the proxy as a key (`jev: on`).
+  A value that isn't a plain http(s) URL is refused before any request. Without it, nothing changes:
+  your own `OPENROUTER_API_KEY` or `~/.config/openrouter/api_key`, and no key means the standard
+  planner. Every Jev request now asks for zero data retention and no data collection
+  (`provider: {zdr: true, data_collection: "deny"}`).
 
 ### Known limits
 - An unpriced call (the cohorts surface), and a call with a null price range and no stated maximum

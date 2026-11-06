@@ -46,7 +46,7 @@ export function ask(prompt, opts = {}) {
     }
     // HOME/USERPROFILE and OPENROUTER_API_KEY are scrubbed too, so the note's jev line never
     // depends on the machine (a real key file is never looked at); opts.env seeds a key.
-    const env = { ...process.env, SC_REVXL_HOME: dir, HOME: dir, USERPROFILE: dir, OPENROUTER_API_KEY: "", ...(opts.env || {}) };
+    const env = { ...process.env, SC_REVXL_HOME: dir, HOME: dir, USERPROFILE: dir, OPENROUTER_API_KEY: "", JEV_API_BASE: "", ...(opts.env || {}) };
     const stdin =
       opts.raw !== undefined
         ? opts.raw

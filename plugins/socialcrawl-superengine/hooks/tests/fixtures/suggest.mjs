@@ -900,7 +900,7 @@ export default [
         assert(!/sk-or-|FAKE-000/.test(r.raw), "the key must never appear in the note");
       };
       probe();
-      killedBy("  let on = Boolean(process.env.OPENROUTER_API_KEY);", "  let on = false;", probe, "ignore the env var");
+      killedBy("  let on = Boolean(process.env.OPENROUTER_API_KEY || process.env.JEV_API_BASE); // a key-injecting proxy counts as a key", "  let on = false;", probe, "ignore the env var");
       killedBy(
         '  return `jev: on — ask file: ${join(revxlDir(), "jev-ask.json")}`;',
         '  return `jev: on — ask file: ${join(revxlDir(), "jev-ask.json")}` + process.env.OPENROUTER_API_KEY;',
