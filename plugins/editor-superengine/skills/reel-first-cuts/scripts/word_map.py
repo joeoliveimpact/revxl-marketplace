@@ -16,6 +16,10 @@ Writes: <reel>/work/word_map.json
          words: [{id, word, seg, src_start, src_end, out_start, out_end, parakeet_start, out_anchor}]}
         (cuts and edit_map are the paths relative to the reel; edit_map is work/tx.json when tx.json stood in)
 
+Cuts with a takes entry read the merged work/cuts.json and each take's map, even for one take and regardless
+of the board ruling. edit_map and edit_map_sha256 then hold take-keyed dictionaries; words carry take and
+source_id, with id qualified as tN:<source_id>. Plain single-take fields and IDs keep their existing shape.
+
 A word is kept when its source `start` falls inside a segment's source span: src_in_f/fps <= start < src_out_f/fps.
 `start` (the edit map's aligned start) is the anchor gaps.py places cuts from: overlaps() (gaps.py:146-147) and
 keep_edge_words() (gaps.py:160-183) test the edit map's start/end, never parakeet_start, and words with status
@@ -42,6 +46,15 @@ def sha(path):
 def build(cuts, edit_map):
     """The word map's body from parsed cuts.json + edit_map.json (no file reads, no hashes)."""
     fps, speed = cuts["fps"], cuts.get("speed", 1.0)
+    if "takes" in edit_map:
+        out = []
+        for k, s in enumerate(cuts["segments"]):
+            n = str(s.get("take", 1))
+            one = build(dict(fps=fps, speed=speed, segments=[s]), edit_map["takes"][n])
+            for w in one["words"]:
+                w.update(seg=k, take=int(n), source_id=w["id"], id=word_id(n, w["id"]))
+                out.append(w)
+        return dict(version=1, fps=fps, speed=speed, words=out)
     words = [w for w in edit_map["words"] if w.get("status") != "unresolved"]
     out = []
     for w in words:
@@ -55,6 +68,15 @@ def build(cuts, edit_map):
     return dict(version=1, fps=fps, speed=speed, words=out)
 
 
+def word_id(take, ident):
+    """Edit-map IDs are local to a recording. Qualify them only for a mixed reel."""
+    return "t%s:%s" % (take, ident)
+
+
+def source_sha(reel, src):
+    return {n: sha(Path(reel) / p) for n, p in src.items()} if isinstance(src, dict) else sha(Path(reel) / src)
+
+
 def board(reel_dir):
     """(cut-board.config.json, cut-selection.json) parsed, or None when the reel has no board ruling."""
     cfg_p, sel_p = Path(reel_dir) / "cut-board.config.json", Path(reel_dir) / "cut-selection.json"
@@ -64,8 +86,14 @@ def board(reel_dir):
 
 
 def pick_map(reel_dir):
-    """The edit map the cut was made from, relative to the reel folder: the board take's map, else work/edit_map.json.
-    Raises ValueError (plain words) when the ruling mixes takes or names a take or map the board doesn't have."""
+    """The cut's takes maps first, else the board take's map, else work/edit_map.json, relative to the reel.
+    A takes cut or mixed ruling returns {take: map}; missing takes or maps raise a plain ValueError or KeyError."""
+    p = Path(reel_dir) / "work/cuts.json"
+    if p.exists():
+        cuts = json.loads(p.read_text(encoding="utf-8"))
+        if cuts.get("takes"):
+            return {n: t.get("edit_map", (Path(t["work"]) / "edit_map.json").as_posix())
+                    for n, t in cuts["takes"].items()}
     b = board(reel_dir)
     if b is None:
         return "work/edit_map.json"
@@ -79,8 +107,10 @@ def pick_map(reel_dir):
         rm = set(l.get("rm", {}).get(str(l["pick"]), []))
         if any(w["i"] not in rm for w in att["words"]):   # a fully struck line plays nothing (selection_to_edl.py)
             takes.add(str(att["take"]))
-    if len(takes) != 1:
-        raise ValueError("the picked lines come from takes %s; a cut uses exactly one take" % (sorted(takes) or "none"))
+    if not takes:
+        raise ValueError("the picked lines emit no words")
+    if len(takes) > 1:
+        return {n: Path(cfg["takes"][n]["edit_map"]).as_posix() for n in sorted(takes, key=int)}
     take = takes.pop()
     if take not in cfg["takes"] or not cfg["takes"][take].get("edit_map"):
         raise ValueError("the Cut Board has no edit map for take %s" % take)
@@ -103,6 +133,14 @@ def sources(reel_dir, rel):
     """(cuts, words, edit map) for the edit map path pick_map gave: the take's cuts.json and the word list, both
     relative to the reel folder, and that word list as an edit map. The cut sits in the edit map's folder. With no
     edit map there, that folder's tx.json stands in; words and edit map are None when neither has word times."""
+    if isinstance(rel, dict):
+        paths, maps = {}, {}
+        for n, path in rel.items():
+            _, src, em = sources(reel_dir, path)
+            if src is None:
+                raise ValueError("take %s has no word times; transcribe it before checking this mixed cut" % n)
+            paths[n], maps[n] = src, em
+        return "work/cuts.json", paths, {"takes": maps}
     reel, folder = Path(reel_dir), Path(rel).parent
     cuts = (folder / "cuts.json").as_posix()
     if (reel / rel).exists():
@@ -120,9 +158,10 @@ def write(reel_dir):
     cuts, src, em = sources(reel_dir, pick_map(reel_dir))
     if src is None:
         return None
-    cuts_p, em_p = Path(reel_dir) / cuts, Path(reel_dir) / src
+    cuts_p = Path(reel_dir) / cuts
     m = build(json.loads(cuts_p.read_text(encoding="utf-8")), em)
-    m = dict(version=m.pop("version"), cuts=cuts, cuts_sha256=sha(cuts_p), edit_map=src, edit_map_sha256=sha(em_p), **m)
+    m = dict(version=m.pop("version"), cuts=cuts, cuts_sha256=sha(cuts_p), edit_map=src,
+             edit_map_sha256=source_sha(reel_dir, src), **m)
     (Path(reel_dir) / "work" / "word_map.json").write_bytes(json.dumps(m, ensure_ascii=False, indent=1).encode("utf-8"))
     return m
 
@@ -148,4 +187,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        print("the word map could not be written: " + str(e).splitlines()[0], file=sys.stderr)
+        sys.exit(2)

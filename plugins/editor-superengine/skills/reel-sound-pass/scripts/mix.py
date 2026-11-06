@@ -98,7 +98,7 @@ def run(a):
         return 1
 
     if music_pick.pick(reel, workspace()[0]):                  # keeps music.json current, then the licence check
-        blocks = [r["msg"] for r in licence_rows.run({"reel_dir": reel, "fps": None, "cuts": None, "beats": None,
+        blocks = [r["msg"] for r in licence_rows.music({"reel_dir": reel, "fps": None, "cuts": None, "beats": None,
                                                      "render": None}) if r["level"] == "block"]
         if blocks:
             print("The final wasn't made: %s. Fix the music's licence row, or pick other music on the board."

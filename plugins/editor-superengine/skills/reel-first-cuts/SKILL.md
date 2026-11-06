@@ -1,6 +1,6 @@
 ---
 name: editor-superengine:reel-first-cuts
-description: Turns raw talking-head footage into a finished first cut. The client picks lines and takes on the Cut Board, then fixes the cut on the Tweak Board. Use on "cut this reel", "open the Cut Board", "fix it on the Tweak Board", "tighten the gaps", for several recordings, long recordings, or a master joined from several clips (words chopping only after the first clip). Not for captions or sound.
+description: Turns raw talking-head footage into a finished first cut. The client picks lines and takes on the Cut Board, then fixes the cut on the Tweak Board. Use on "cut this reel", "open the Cut Board", "fix it on the Tweak Board", "tighten the gaps", "several clips", "two recordings", "sync camera and mic", long recordings, or a master joined from several clips (words chopping only after the first clip). Not for captions or sound.
 ---
 
 # Reel First Cuts
@@ -85,9 +85,9 @@ It measures the true frame rate (never `r_frame_rate`), the source RMS envelope 
 per-file thresholds, the duplicate-frame table per speed (report it, never assert a rule), the picture
 and `audio_stream` (`--audio-stream N` picks another; with several, confirm it is the voice).
 
-**Several recordings:** each is a take. Run Stages 0 and 1 on each into its own folder (`work/` for the
-first, `work/take2/` and so on). The board never mixes takes; when the ruled take isn't the first, pass
-its folder to `selection_to_edl.py` as `-o`; from then on it is `work/` and its raw is RAW.mp4.
+**Several recordings:** each is a take; run Stages 0–1 in its own folder and log it with `footage_check.py add`.
+The client can pick any line from any take: a mixed ruling prints `takes.py`, then render reads every raw in one pass; `work/timemap.json` records the sources.
+Flow, limits and commands: `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/several-recordings.md`.
 
 ### 1 · Transcribe — a contract, not a vendor
 
@@ -121,9 +121,8 @@ Keep both: the client picks; never cut one yourself. Then:
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/selection_to_edl.py" cut-selection.json cut-board.config.json`
 
-It writes `work/edl.json` and prints the gaps.py command; Stage 4
-runs that line. `REFUSED` (exit 3: a board word time drifted over 80 ms from the edit map; or mixed
-takes, or a stale board): rebuild the board and ask for a new Send.
+It writes `work/edl.json` with each cut's take and prints the gaps.py command (takes.py for a mixed ruling);
+Stage 4 runs that line. `REFUSED` (exit 3: word times drifted over 80 ms, or a stale board): rebuild the board and ask for a new Send.
 
 ### 3 · ⛔ Boundary audit + map check — HARD FAIL
 After every gaps.py run, before anything renders:
@@ -137,7 +136,7 @@ Then `word_map.py`, then `map_check.py` (map-and-script-checks.md). Any block me
 line to the client in plain words (also in `work/map_check.json`).
 
 ### 4 · Tighten gaps — in source coordinates, no render
-Run the gaps.py command Stage 2 (or 9) printed, exactly as printed. It writes `work/cuts.json` (whole
+Run the gaps.py or takes.py command Stage 2 (or 9) printed, exactly as printed. It writes `work/cuts.json` (whole
 frames; `segments.json` is derived for the old path), `work/gap-plan.txt` and `work/listen.txt`. Each deletion is proven free of *sustained*
 speech; a silent runt is absorbed, a speech-bearing runt reverts its deletion. Rule on every borderline
 it surfaces; never resolve one silently.
@@ -164,6 +163,7 @@ The share of the **rendered** cut where nobody talks: budget **12%**, exit 1 whe
 gaps ranked with the words either side. `silencedetect` logs at **info**: never pass it `-v error`. **Within budget is not approval.**
 
 ### 8 · ⛔ Ear pass + Tweak Board — RULING
+A cut whose `work/cuts.json` has `takes` has no Tweak Board yet: follow `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/several-recordings.md`. Otherwise:
 Hand over the review page, `work/cut-review.html` (raw and cut side by side, the 20 largest cuts),
 **with the checklist** (`work/listen.txt`), and say plainly what the gates cannot see: they passed on
 all four defects the client caught in the reference build. Then:
@@ -179,6 +179,7 @@ the same way. The client marks cuts, tight and loose pauses and the speed, then 
 `${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/preview-before-render.md`.
 
 ### 9 · Gap corrections — the ear-driven loop
+Only for cuts without `takes`; otherwise follow Stage 8's Cut Board path.
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/tweaks_to_edl.py" tweak-selection.json work`
 

@@ -166,6 +166,8 @@ def outliers():
         (work / "renders/master-test.mp4").touch()
         measured = {10: (.48, .35), 20: (.49, .34), 30: (.5, .35), 50: (.51, .36), 60: (.52, .35),
                     70: None, 90: (.64, .22), 100: (.85, .1), 110: None}
+        measured = {f: None if p is None else m.HeadBand(p, (p[0] - .05, p[1] - .05, p[0] + .05, p[1] + .05))
+                    for f, p in measured.items()}
         with patch.object(m, "probe_video", return_value={"width": 3840, "height": 2160}), \
                 patch.object(m, "measure", return_value=(measured, "rvm")):
             for argv in (["crop", "--work", str(work), "--take", str(source)],
@@ -243,9 +245,11 @@ def anchors_shape():
     m = face()
     styles = module("face_styles_tested", SKILLS / "reel-canvas-build/scripts/styles.py")
     doc = m.anchors_result(CUTS, [(0, 10), (0, 20), (0, 30), (1, 42)],
-                           {10: (.27, .31), 20: None, 30: (.29, .33), 42: None})
+                           {10: m.HeadBand((.27, .31), (.2, .2, .4, .4)), 20: None,
+                            30: m.HeadBand((.29, .33), (.2, .2, .4, .4)), 42: None})
     assert doc == {"schema": 1, "fps": 25, "segments": [{"seg": 0, "samples": [
-        {"f": 10, "x": .27, "y": .31}, {"f": 30, "x": .29, "y": .33}]}]}
+        {"f": 10, "x": .27, "y": .31, "box": [.2, .2, .4, .4]},
+        {"f": 30, "x": .29, "y": .33, "box": [.2, .2, .4, .4]}]}]}
     with tempfile.TemporaryDirectory() as root:
         reel = styles.make_reel(root, {"style": "punch-in"})
         write(reel / "work/anchors.json", doc)
@@ -253,6 +257,51 @@ def anchors_shape():
         track = styles.plan(reel, tuning=Path(root) / "absent.json", fps="25")  # no master in this fixture
         assert (track["keys"][0]["ox"], track["keys"][0]["oy"]) == (.27, .31)
         assert (track["keys"][1]["ox"], track["keys"][1]["oy"]) == styles.ORIGIN
+
+
+def anchors_box():
+    """Written boxes follow the retained head band; styles still reads its centres."""
+    m = face()
+    styles = module("face_box_styles_tested", SKILLS / "reel-canvas-build/scripts/styles.py")
+    w, h = 200, 160
+
+    def silhouette(cx, opacity=255):
+        return bytearray(opacity if (x - cx) ** 2 + (y - 42) ** 2 <= 32 ** 2
+                         or (74 <= y < 92 and abs(x - cx) <= 10)
+                         or (60 <= y and 35 <= abs(x - cx) <= 45)
+                         or (92 <= y and abs(x - cx) <= 45) else 0
+                         for y in range(h) for x in range(w))
+
+    specked = silhouette(100)
+    specked[2 * w:2 * w + 8] = bytes([255]) * 8
+    planes = [silhouette(100), silhouette(100, 199), specked,
+              silhouette(100), silhouette(170), bytes(w * h)]
+    points = {f: m.head_band(alpha, w, h) for (_, f), alpha in zip(m.sample_frames(CUTS, "out"), planes)}
+    with tempfile.TemporaryDirectory() as root:
+        reel, work = Path(root), Path(root) / "work"
+        write(work / "cuts.json", CUTS)
+        (work / "renders").mkdir()
+        (work / "renders/master-test.mp4").touch()
+        with patch.object(m, "measure", return_value=(points, "rvm")), contextlib.redirect_stdout(io.StringIO()):
+            assert m.main(["anchors", "--reel-dir", str(reel)]) == 0
+        raw = (work / "anchors.json").read_bytes()
+        doc = json.loads(raw)
+        written = [p for seg in doc["segments"] for p in seg["samples"]]
+        assert [p["f"] for p in written] == [10, 30, 42], written
+        for p in written:
+            assert "box" in p, "a retained sample has no head box"
+            assert isinstance(p["box"], list) and len(p["box"]) == 4, p
+            x0, y0, x1, y1 = p["box"]
+            assert 0 <= x0 < x1 <= 1 and 0 <= y0 < y1 <= 1, p
+            assert x0 <= p["x"] <= x1 and y0 <= p["y"] <= y1, p
+            assert y1 >= p["y"], "the head box ends above the band's centroid"
+            assert y1 >= 74 / h, "the head box misses the planted chin"
+            assert y1 >= 92 / h, "the head box misses the planted neck"
+            assert p["box"] == [55 / w, 10 / h, 146 / w, 123 / h], p
+        assert b"\r" not in raw
+        assert styles.load_anchors(reel, [(0, 40), (40, 48)]) == {
+            0: [(p["f"], p["x"], p["y"]) for p in written[:2]],
+            1: [(42, written[2]["x"], written[2]["y"])]}
 
 
 def render_crop():
@@ -312,7 +361,7 @@ def pipeline():
 
         def measured(_work, selected, frames, rate, engine):
             assert selected == newest
-            return {f: (.25, .35) if f < 40 else None for f in frames}, "rvm"
+            return {f: m.HeadBand((.25, .35), (.2, .3, .3, .4)) if f < 40 else None for f in frames}, "rvm"
 
         with patch.object(m, "measure", side_effect=measured), contextlib.redirect_stdout(io.StringIO()):
             assert m.main(["anchors", "--reel-dir", str(reel)]) == 0
@@ -348,7 +397,7 @@ def pipeline():
 
 CASES = {"band": band, "conform-none": conform_none, "conform-crop": conform_crop, "crop-maths": crop_maths,
          "samples": samples, "anchors-shape": anchors_shape, "render-crop": render_crop, "pipeline": pipeline,
-         "outliers": outliers, "settle": settle, "ghost": ghost}
+         "outliers": outliers, "settle": settle, "ghost": ghost, "anchors-box": anchors_box}
 
 
 def main():

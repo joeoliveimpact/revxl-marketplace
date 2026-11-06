@@ -245,7 +245,7 @@ def build(root, plugin_root=rt.PLUGIN_ROOT):
         lanes = [lane("Picture", "picture", (reel / "work/cuts.json").is_file(), 1, board_for("cut")),
                  lane("Motion", "motion", bool(beat.get("sent_at")) + bool(sketches.get("locked_at")), 2, board_for("motion")),
                  lane("Captions", "captions", any(p.suffix in (".ass", ".srt", ".vtt") and "caption" in p.name.lower()
-                                                  for p in folders["work"] + folders["root"]), 1, board_for("captions")),
+                                                  for p in folders["work"] + folders["root"]) or (reel / "work/captions.json").is_file(), 1, board_for("captions")),
                  lane("Grade", "grade", (reel / "grade.json").is_file(), 1, board_for("grade")),
                  lane("Sound", "sound", sum(bool(c.get("state")) for c in cues), len(cues), board_for("sound")),
                  lane("Mix and master", "master", bool(masters), 1, "review")]

@@ -162,6 +162,8 @@ const $ = (s) => document.querySelector(s);
 const statusEl = $("#status"), sendBtn = $("#send");
 let bc = null, doc = null, words = null, timer = null, seq = 0;
 let sceneCatalog = [], sceneSuggestions = {}, sketchScenes = {}, sceneFieldId = 0;
+let brollClips = [];
+const invalidBroll = new Set();
 const invalid = new Set();   // beat ids whose number box holds something that isn't a number
 
 function el(tag, attrs, ...kids) {
@@ -432,6 +434,47 @@ function wordCell(b) {
   return td;
 }
 
+function brollControls(b, i) {
+  const wrap = el("div", {class: "broll-controls"});
+  const select = el("select", {name: "broll", id: "broll-" + i});
+  const fit = el("select", {name: "broll-fit", id: "broll-fit-" + i});
+  const start = el("input", {name: "broll-start", id: "broll-start-" + i, type: "number", min: "0", step: "any"});
+  fit.append(el("option", {value: "cover", text: "Cover"}), el("option", {value: "blur-fill", text: "Blurred fill"}));
+  if (!brollClips.length) {
+    select.append(el("option", {value: "", disabled: "", text: "Drop your clips in videos/<reel>/broll/ and ask Claude to add them"}));
+    select.disabled = true;
+  } else {
+    select.append(el("option", {value: "", text: "None"}));
+    brollClips.forEach((c) => select.append(el("option", {value: c.ledger_id, text: c.name + (c.origin === "ai" ? " (AI)" : "")})));
+    if (b.broll && !brollClips.some((c) => c.ledger_id === b.broll.ledger_id))
+      select.append(el("option", {value: b.broll.ledger_id, text: "Saved clip (add it again to change it)"}));
+  }
+  select.value = brollClips.length ? (b.broll?.ledger_id || "") : "";
+  fit.value = b.broll?.fit || "cover";
+  start.value = String((b.broll?.in || 0) / doc.fps);
+  const enabled = () => { fit.disabled = start.disabled = !b.broll || !brollClips.length; };
+  const update = () => {
+    invalidBroll.delete(b.id);
+    if (!select.value) b.broll = null;
+    else {
+      const clip = brollClips.find((c) => c.ledger_id === select.value);
+      const seconds = start.value.trim() === "" ? NaN : Number(start.value);
+      if (!clip || !Number.isFinite(seconds) || seconds < 0) { invalidBroll.add(b.id); edited(); return; }
+      const from = Math.round(seconds * doc.fps);
+      b.broll = {src: clip.src, in: from, out: from + b.end_f - b.start_f, fit: fit.value, ledger_id: clip.ledger_id};
+    }
+    enabled(); edited();
+  };
+  select.addEventListener("change", update);
+  fit.addEventListener("change", update);
+  start.addEventListener("input", update);
+  enabled();
+  wrap.append(el("label", {for: select.id, text: "B-roll"}), select,
+              el("label", {for: fit.id, text: "Fit"}), fit,
+              el("label", {for: start.id, text: "Starts at (seconds)"}), start);
+  return wrap;  // Loading never rewrites a saved choice.
+}
+
 function row(b, i) {
   const tr = el("tr", {"data-beat": b.id});
   const mark = () => tr.classList.toggle("changed", isChanged(b));
@@ -478,7 +521,7 @@ function row(b, i) {
     el("td", {"data-label": "Layout"}, el("label", {class: "sr", for: fid("layout"), text: "Layout for beat " + (i + 1)}), sel),
     el("td", {"data-label": "Number shown"}, el("label", {class: "sr", for: fid("value"), text: "Number shown in beat " + (i + 1)}), val, err),
     el("td", {class: "shows", "data-label": "What's on screen / why"},
-      el("div", {text: p.shows || "—"}), el("div", {class: "why", text: p.why || ""}), sceneControls(b.id)),
+      el("div", {text: p.shows || "—"}), el("div", {class: "why", text: p.why || ""}), sceneControls(b.id), brollControls(b, i)),
     el("td", {"data-label": "Your note"}, el("label", {class: "sr", for: fid("note"), text: "Your note on beat " + (i + 1)}), note));
   mark();
   return tr;
@@ -513,6 +556,7 @@ async function save(mine) {
 }
 
 function problem() {
+  if (invalidBroll.size) return "B-roll needs a start time of zero seconds or more.";
   if (invalid.size) return "One of the numbers isn't a number yet. Fix the box marked in red first.";
   if (doc.edit_style?.style === "punch-in" && (!Number.isFinite(doc.edit_style.punch_scale) ||
       doc.edit_style.punch_scale < 1 || doc.edit_style.punch_scale > 4))
@@ -520,6 +564,10 @@ function problem() {
   const ok = new Set(LAYOUTS.map((l) => l[0]));
   for (let i = 0; i < doc.beats.length; i++) {
     const b = doc.beats[i];
+    if (b.broll) {
+      const clip = brollClips.find((c) => c.ledger_id === b.broll.ledger_id && c.src === b.broll.src);
+      if (clip && b.broll.out > clip.frames) return "The B-roll clip is too short for beat " + (i + 1) + ". Choose another clip or an earlier start.";
+    }
     if (typeof b.id !== "string" || !b.id.trim()) return "Beat " + (i + 1) + " is missing its label. Ask Claude to rebuild the beat map.";
     if (!ok.has(b.layout)) return "Beat " + (i + 1) + " needs a layout. Pick one in its row.";
     if (!(b.start_f <= b.end_f)) return "Beat " + (i + 1) + " ends before it starts. Ask Claude to rebuild the beat map.";
@@ -580,6 +628,8 @@ async function init() {
   const [catalog, suggestions, sketchesState, sketchesSend] = await Promise.all(
     ["scenes/catalog.json", "scenes/suggest.json", "sketches.state.json", "sketches-selection.json"].map(reelJson));
   sceneCatalog = Array.isArray(catalog) ? catalog : [];
+  const clips = await reelJson("broll/clips.json");
+  brollClips = clips && Array.isArray(clips.clips) ? clips.clips : [];
   sceneSuggestions = suggestions && typeof suggestions === "object" ? suggestions : {};
   sketchScenes = {...((sketchesSend && sketchesSend.scenes) || {}), ...((sketchesState && sketchesState.scenes) || {})};
   $("#board").hidden = false;

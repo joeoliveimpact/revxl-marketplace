@@ -1,6 +1,6 @@
 ---
 name: editor-superengine:editor-start-here
-description: The router for editor-superengine. Use when someone says "edit my reel", "where do I start with editing", "cut this talking head", "first cut", "tighten the gaps", "design the hook", "motion comps", "add a scene", "lower third", "counter", "end card", "title card", "punch-ins", "zoom in on that word", "layout switches", "follow my face", "check my setup before I record", "write my post caption", "tear down this reel", "copy this creator's editing style", "make mine look like this reel", "sound pass", "add sound effects", "mix the sound", "clean up my voice", "add music", "pick a track", "grade this reel", "colour grade", "fix the colour", "make it warmer", "the skin looks off", "open the Grade Board", "render it", "make the final video", "open my editor hub", "is the editor ready", "check the editor's setup or tools", or "editor superengine", or any time it is not clear which editing skill an ask belongs to. Names the one skill the ask goes to, says why, and hands it over. Not a skill that edits, renders or installs anything itself.
+description: The router for editor-superengine. Use when someone says "edit my reel", "where do I start with editing", "cut this talking head", "first cut", "tighten the gaps", "design the hook", "motion comps", "add a scene", "lower third", "counter", "end card", "title card", "punch-ins", "zoom in on that word", "layout switches", "follow my face", "add captions", "subtitles", "pick a caption look", "add B-roll", "AI cutaway", "use my clip over this line", "two recordings", "sync camera and mic", "check my setup before I record", "write my post caption", "tear down this reel", "copy this creator's editing style", "make mine look like this reel", "sound pass", "add sound effects", "mix the sound", "clean up my voice", "add music", "pick a track", "grade this reel", "colour grade", "fix the colour", "make it warmer", "the skin looks off", "open the Grade Board", "render it", "make the final video", "open my editor hub", "is the editor ready", "check the editor's setup or tools", or "editor superengine", or any time it is not clear which editing skill an ask belongs to. Names the one skill the ask goes to, says why, and hands it over. Not a skill that edits, renders or installs anything itself.
 ---
 
 # Editor superengine: start here
@@ -30,9 +30,10 @@ recording-preflight      before recording: check the setup, test clip
    -> reel-first-cuts    the spoken edit (fixes a joined master first)
    -> PICTURE LOCK       the cut is signed off and the timeline stops moving
    -> reel-grade   the colour (optional; before the visuals and the sound)
-   -> reel-canvas-build  the visuals: plan and looks
+   -> reel-canvas-build  the visuals: plan and looks (cutaway clips come in through reel-broll, on the Beat Map)
+   -> reel-captions      the words on the video: the look and the marked words (needs the Beat Map Send)
    -> reel-sound-pass    the sound, mixed on the cut (after the lock, before the final video)
-   -> reel-canvas-build  the render: a 720p preview, then the final video once the client OKs it (it carries the finished sound)
+   -> reel-canvas-build  the render: a 720p preview, then the final video once the client OKs it (it draws the captions and carries the finished sound)
 
 caption-writer           any time after the cut
 reel-teardown            separate: someone else's reel, or an old posted one
@@ -49,25 +50,26 @@ so a cut that moves invalidates every timing derived from it.
 | first-time setup, "is the editor ready", "check the editor's setup or tools", "open my editor hub", "show all my reels", "start or restart my editor boards", a missing or broken tool, anything another skill says isn't set up | `editor-superengine:editor-doctor` |
 | "before I record", "check my setup" (before filming), "test clip", "will my mic and light work" (light gets advice; the test clip checks the camera and sound) | `editor-superengine:recording-preflight` |
 | a master joined from several clips; words chopped after the first clip in a cut | `editor-superengine:reel-first-cuts` |
-| "cut this", "build the A-roll", "make a first pass", "tighten the gaps", "the pause after X drags", "speed it up", "did the cut clip a word" | `editor-superengine:reel-first-cuts` |
+| "cut this", "build the A-roll", "make a first pass", "tighten the gaps", "the pause after X drags", "speed it up", "did the cut clip a word", "two recordings", "several clips", "sync camera and mic" | `editor-superengine:reel-first-cuts` |
 | "grade this reel", "colour grade", "fix the colour", "make it warmer", "the skin looks off", "open the Grade Board" | `editor-superengine:reel-grade` |
+| "add B-roll", "generate B-roll", "AI cutaway", "cutaway", "use my clip over ..." | `editor-superengine:reel-broll` |
 | "build the beat map", "plan what goes on screen", "add a scene", "lower third", "counter", "end card", "title card", "pick a layout", "punch-ins", "zoom in on that word", "layout switches", "follow my face", "slow push", "ken burns", "ratchet zoom", "design the hook", "motion comps", "comp the intro", "direction options", "ladder the blur", "will the Instagram buttons cover this", "render it", "make the preview", "make the final video", "export the reel" | `editor-superengine:reel-canvas-build` |
 | "sound pass", "add sound effects", "mix the sound", "master the audio", "clean up my voice", "run Auphonic", "add music", "pick a track" | `editor-superengine:reel-sound-pass` |
+| words on the video: "add captions", "burned-in captions", "subtitles", "karaoke captions", "pick a caption look", "open the Look Picker", "highlight these words", "change the caption colour", "turn captions off", "make this my default caption look" | `editor-superengine:reel-captions` |
 | write or check the post caption (the text under the post), the hook line, alt text, hashtags | `editor-superengine:caption-writer` |
 | tear down a posted reel, "what would we fix", "make a page to send them" | `editor-superengine:reel-teardown` |
 | copy a creator's editing style, measure how a reel is edited, "make mine look like this reel", "decode this reel's style", "build a template from this style" | `editor-superengine:style-decoder` |
 
-No Beat Map and the sound pass is done: the finished video already exists; say so and offer the visuals as an option. 'Render the cut' during the first cut is reel-first-cuts.
+No Beat Map and the sound pass is done: the finished video already exists; say so and offer the visuals or captions as options (both need a Beat Map). 'Render the cut' during the first cut is reel-first-cuts.
 
 An ask that says "caption" but not which: ask once, "The words on the video, or the text under
-the post?" The text under the post is caption-writer. Words on the video (burned-in captions)
-are not built yet.
+the post?" The text under the post is caption-writer. Words on the video are `editor-superengine:reel-captions`.
 
 Every skill here is invoked as `editor-superengine:<skill folder>`.
 
 ### Not built yet
 
-Burned-in captions, B-roll, a cover, trial reels, Goldmine, putting a copied style onto your own reel,
+A cover, trial reels, Goldmine, putting a copied style onto your own reel,
 a hand-off to another editor,
 graphics placed around the face, transitions, the before-posting check, and matching the colour
 of takes inside one recording: say "That part of the editor isn't built yet; it's coming in a later update."

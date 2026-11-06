@@ -19,6 +19,7 @@ param gets entrance "none", so it is complete at frame 0); a still hook title at
 has no scene; the VES-1 effect gate before anything renders; `hyperframes lint` before every render; then ONE audio
 stream muxed by stream copy: the sound pass's mix when it passed on this exact cut, else the cut's own sound.
 compose.py ok is the only writer of work/render-ok.json; master refuses without an OK of the latest preview.
+The picked caption look sits above the picture and scenes, clear of the speaker's head where space allows.
 """
 import argparse
 import html
@@ -50,6 +51,7 @@ import fps as fpsmod  # noqa: E402
 import styles  # noqa: E402  (S6c: the editing style's plan)
 import scene_check  # noqa: E402  (P/scripts: the G2-a scene contract)
 import licence_rows  # noqa: E402  (G4's licence check, as mix.py imports it)
+import footage_check  # noqa: E402
 
 _spec = importlib.util.spec_from_file_location("ig_safe_zones", HERE / "ig-safe-zones.py")
 _ig = importlib.util.module_from_spec(_spec)
@@ -312,7 +314,7 @@ def load_inputs(reel):
     master = reel / "work" / "renders" / f"master-{tag}.mp4"
     if not master.is_file():
         raise Stop(2, f"✗ The cut master work/renders/{master.name} is missing; make the cut first.")
-    return {"bm": bm, "beats": bm["beats"], "words": words, "cuts": cuts, "master": master}
+    return {"bm": bm, "beats": bm["beats"], "words": words, "cuts": cuts, "master": master, "reel_dir": reel}
 
 
 def probe_inputs(inp):
@@ -337,19 +339,118 @@ def probe_inputs(inp):
     inp.update(fps=fps_s, rate=rate, total=total, cut_frames=[s["out_in_f"] for s in inp["cuts"]["segments"][1:]])
 
 
+def broll_plan(inp):
+    """Integrity and proof checks block both tiers; placement suggestions are only notes."""
+    clips = [b for b in inp["beats"] if b.get("broll")]
+    if not clips:
+        return
+    reel = inp["reel_dir"]
+    uses = [dict(path=b["broll"]["src"], src_in_f=b["broll"]["in"], src_out_f=b["broll"]["out"]) for b in clips]
+    problems = ["BLOCK " + p for p in footage_check.check(reel, uses)]
+    try:
+        ledger = footage_check.rows(reel)
+        for b in clips:
+            clip = b["broll"]
+            matches = [r for r in ledger if r.get("id") == clip["ledger_id"] and
+                       footage_check.normalized(footage_check.asset(reel, r["path"])) ==
+                       footage_check.normalized(reel / clip["src"])]
+            if len(matches) != 1:
+                problems.append(f"BLOCK beat {b['id']}: the clip needs its matching footage ledger row")
+                continue
+            row = matches[0]
+            category = None
+            if b.get("scene"):
+                spec = json.loads((scene_check.SCENES / b["scene"]["id"] / "scene.json").read_text(encoding="utf-8"))
+                category = spec.get("category")
+            if row.get("origin") == "ai" and (b.get("value") is not None or category in scene_check.NUMBER_SCENES):
+                problems.append(f"BLOCK beat {b['id']}: an AI clip can't sit on a beat that shows a number: it would look like proof")
+            if clip["out"] > fpsmod.frame_count(reel / clip["src"]):
+                problems.append(f"BLOCK beat {b['id']}: the B-roll clip is too short for this source range")
+            if b["start_f"] < 3 * inp["rate"] or b["end_f"] > inp["total"] - 3 * inp["rate"]:
+                print(f"note: beat {b['id']} uses B-roll in the first or last 3 seconds; consider leaving the speaker visible there")
+            count = lambda beat: sum(beat["start_f"] < c < beat["end_f"] for c in inp["cut_frames"])
+            dense = next((other for other in inp["beats"] if other["end_f"] - other["start_f"] == b["end_f"] - b["start_f"]
+                          and count(other) >= 2), None)
+            if count(b) == 0 and dense:
+                print(f"note: consider B-roll on beat {dense['id']} instead of {b['id']}; it covers more jump cuts")
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        problems.append("BLOCK the B-roll could not be checked: " + str(e).splitlines()[0])
+    if problems:
+        raise Stop(1, *problems, "Nothing was rendered; fix the B-roll and Send again.")
+
+
+def footage_licences(inp, tier):
+    rows = licence_rows.footage({"reel_dir": inp["reel_dir"], "cuts": inp["cuts"], "beats": inp["beats"]})
+    blocks = [r["msg"] for r in rows if r["level"] == "block"]
+    if blocks and tier == "master":
+        raise Stop(1, *["BLOCK " + m for m in blocks], "The Master wasn't made; complete the footage licence rows first.")
+    for m in blocks:
+        print(f"warning: {m} (the Master will refuse until it's fixed)")
+
+
+def brand_params(spec, html, beat_params, saved):
+    """Saved brand choices for declared scene params, then the beat's more specific choices; no I/O."""
+    params, notes = {}, []
+    declared = spec.get("params", {})
+    if "accent" in declared and "accent" in saved:
+        accent = saved["accent"]
+        if isinstance(accent, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", accent):
+            params["accent"] = accent
+        else:
+            notes.append("Your saved brand colour needs six colour digits, such as #E0218A, so the scenes use their own colours.")
+    if "font" in declared and "font" in saved:
+        font = saved["font"]
+        if not isinstance(font, str) or not font.strip():
+            notes.append("Your saved brand font needs a family name, so the scenes use their own fonts.")
+        elif font not in scene_check.font_faces(html):
+            notes.append(f"Your brand font {font} isn't available for on-screen graphics yet, "
+                         f"so they use {declared['font']['default']}.")
+        else:
+            params["font"] = font
+    params.update(beat_params)
+    return params, notes
+
+
+def saved_brand():
+    """Read only the saved brand keys; missing or unreadable taste choices never stop a render."""
+    try:
+        saved = json.loads((rt.state_dir() / "styles/default.json").read_text(encoding="utf-8"))
+        if not isinstance(saved, dict):
+            raise ValueError("saved style must be an object")
+    except FileNotFoundError:
+        return {}
+    except (OSError, ValueError):
+        print("note: Your saved brand style couldn't be read, so the scenes use their own colours and fonts.")
+        return {}
+    return {key: saved[key] for key in ("accent", "font") if key in saved}
+
+
 def plan(inp, hook_text, extra_spans=None):
     """Notes, scene checks, the hook, and the effect gate; raises Stop before anything renders."""
     beats, rate = inp["beats"], inp["rate"]
+    broll_plan(inp)
     for b in beats:
-        if b["broll"] is not None:
-            print(f"note: beat {b['id']} has B-roll; B-roll is not built yet, skipped")
         if b["transition"] is not None:
             print(f"note: beat {b['id']} has a transition; transitions are not built yet, skipped")
     scened = [b for b in beats if b["scene"] is not None]
+    saved = saved_brand() if scened else {}
+    brand_notes = set()
     opens = set()  # H-S6b-19: a scene that opens the reel is complete at frame 0 when it can be
     for b in scened:
         params = b["scene"].get("params", {})  # no params key = {} (as fill_problems reads it)
-        if b["start_f"] == 0 and isinstance(params, dict) and "entrance" in scene_params(b["scene"]):
+        declared = scene_params(b["scene"])
+        if isinstance(params, dict):
+            try:
+                page = (scene_check.SCENES / b["scene"]["id"] / "scene.html").read_text(encoding="utf-8")
+            except OSError:
+                page = ""  # fill_problems names the missing scene below
+            params, notes = brand_params({"params": declared}, page, params, saved)
+            b["scene"] = dict(b["scene"], params=params)
+            for note in notes:
+                if note not in brand_notes:
+                    print(f"note: {note}")
+                    brand_notes.add(note)
+        if b["start_f"] == 0 and isinstance(params, dict) and "entrance" in declared:
             b["scene"] = dict(b["scene"], params=dict(params, entrance="none"))
             opens.add(b["id"])
     bad = [f"✗ beat {b['id']}: {p}" for b in scened
@@ -413,7 +514,7 @@ def choose_audio(reel, inp, tier):
     if line:
         print(f"note: the {tier} uses the cut's own sound: {line}")
     if kind == "mix":
-        rows = licence_rows.run({"reel_dir": reel, "fps": float(inp["rate"]), "cuts": inp["cuts"],
+        rows = licence_rows.music({"reel_dir": reel, "fps": float(inp["rate"]), "cuts": inp["cuts"],
                                  "beats": inp["beats"], "render": None})
         blocks = [r["msg"] for r in rows if r["level"] == "block"]
         if blocks and tier == "master":
@@ -480,6 +581,11 @@ def safe_id(bid, i):
     return bid if re.fullmatch(r"[A-Za-z0-9_-]+", bid) else f"beat-{i}"
 
 
+def broll_name(beat, i):
+    # Include the index so two ids that need sanitizing can never collide.
+    return f"broll-{safe_id(beat['id'], i)}-{i}"
+
+
 def main_html(inp, w, h, scene_files):
     rate, s = inp["rate"], w / 1080
     track = inp.get("track") or {"keys": [], "tweens": [], "style": {}}
@@ -496,6 +602,19 @@ def main_html(inp, w, h, scene_files):
               f'data-duration="{ts(inp["total"], rate)}" data-track-index="0" muted playsinline preload="auto" '
               f'style="width: 100%; height: 100%"></video></div></div>']
     tl = []
+    for i, b in enumerate(b for b in inp.get("beats", []) if b.get("broll")):
+        clip, name = b["broll"], broll_name(b, i)
+        videos = []
+        fits = ("broll-back", "broll-front") if clip["fit"] == "blur-fill" else ("",)
+        for j, css in enumerate(fits):
+            # every <video> needs an id (HyperFrames finds media by id; without one it renders frozen), and the
+            # blurred back plate reads its own copy so the two never look like one duplicated media entry
+            vid = name + ("-back" if css == "broll-back" else "")
+            videos.append(f'<video id="{vid}" class="clip {css}" src="media/{vid}.mp4" '
+                          f'data-start="{ts(b["start_f"], rate)}" data-duration="{ts(b["end_f"] - b["start_f"], rate)}" '
+                          f'data-media-start="{ts(clip["in"], rate)}" data-track-index="{len(scene_files) + 1 + i * 2 + j}" '
+                          f'muted playsinline preload="auto"></video>')
+        layers.append('<div class="band" style="z-index: 200">' + "".join(videos) + '</div>')
     for k in track["keys"]:  # a key = the whole a-roll state, set hard on its frame
         t, imm = at(k["f"], rate), "true" if k["f"] == 0 else "false"
         tl.append(f'        tl.set("#aroll-move", {{ scale: {k["scale"]}, transformOrigin: "{origin(k["ox"], k["oy"])}", '
@@ -555,10 +674,19 @@ def main_html(inp, w, h, scene_files):
         # complete and still from frame 0: set (never tweened) at 0 and rendered at once, then a hard cut out
         tl.append('        tl.set("#hook", { xPercent: -50, autoAlpha: 1, immediateRender: true }, 0);')
         tl.append(f'        tl.set("#hook", {{ autoAlpha: 0 }}, {ts(inp["hook_f"], rate)});')
+    caption_css = ""
+    doc = inp.get("captions")
+    if doc and doc["chunks"]:
+        sys.path.insert(0, str(HERE.parents[1] / "reel-captions" / "scripts"))
+        import captions
+        caption_css, caption_layers, caption_tl = captions.layer(
+            doc, [c["box"] for c in doc["chunks"]], s, lambda f: at(f, rate))
+        layers.extend(caption_layers)
+        tl.extend(caption_tl)
     fill = {"W": str(w), "H": str(h), "UNDERLAY": UNDERLAY, "HOOK_X": f"{x:.1f}", "HOOK_Y": f"{y:.1f}",
             "HOOK_W": f"{bw:.1f}", "HOOK_SIZE": f"{size:.1f}", "DURATION": ts(inp["total"], rate),
             "HOOK_SHADOW": f"0 0 {6 * s:.1f}px rgba(0, 0, 0, 0.9), 0 {2 * s:.1f}px {4 * s:.1f}px rgba(0, 0, 0, 0.9)",
-            "LAYERS": "\n".join(layers), "TIMELINE": "\n".join(tl)}
+            "LAYERS": "\n".join(layers), "TIMELINE": "\n".join(tl), "CAPTION_CSS": caption_css}
     out = TEMPLATE.read_text(encoding="utf-8")
     for k, v in fill.items():
         out = out.replace("{{" + k + "}}", v)
@@ -567,7 +695,7 @@ def main_html(inp, w, h, scene_files):
     return out
 
 
-def render(reel, tier, hook_text, extra_spans=None):
+def render(reel, tier, hook_text, extra_spans=None, keep_project=False):
     """One preview or Master. extra_spans (internal, no CLI flag): more gate spans, e.g. a test's planted move."""
     t_start = time.perf_counter()
     tmp = reel / "work" / "render-tmp"
@@ -592,8 +720,32 @@ def render(reel, tier, hook_text, extra_spans=None):
     for line in track["warnings"]:
         print(f"note: {line}")
     plan(inp, hook_text, track["spans"] + list(extra_spans or []))
+    footage_licences(inp, tier)
     inp["track"] = track
     styles.write_json(reel / styles.TRACK, track)  # S7 reads it
+    sys.path.insert(0, str(HERE.parents[1] / "reel-captions" / "scripts"))
+    import captions
+    import placer  # placer imports compose; keep this import inside render()
+    try:
+        doc = captions.plan(reel, fps=inp["fps"])
+        if doc["chunks"]:
+            ctx = placer.load_ctx(reel)
+            spec = captions.STYLES[doc["style"]["style"]]
+            bands = []
+            for c in doc["chunks"]:
+                # Captions end exclusively; placer's public spans end inclusively.
+                c["box"] = placer.place(ctx, c["start_f"], c["end_f"] - 1, captions.band_h(spec))
+                bands.append(dict(start_f=c["start_f"], end_f=c["end_f"] - 1, box=c["box"]))
+            doc["notes"].extend(ctx["notes"] + placer.ghosts(ctx, bands))
+    except captions.Stop as e:
+        raise Stop(e.code, *e.lines) from None
+    except (placer.NoRoom, ValueError) as e:
+        raise Stop(2, str(e)) from None
+    inp["captions"] = doc
+    captions.write(reel, doc)  # S9 reads the placed chunks, including advisory notes
+    for line in doc["notes"]:
+        print(f"note: {line}")
+    printed_notes = len(doc["notes"])
     audio, audio_src = choose_audio(reel, inp, tier)
     w, h = TIERS[tier]
     name = out_names(reel.name, datetime.now().strftime("%m.%d.%y"))[0 if tier == "preview" else 1]
@@ -621,10 +773,17 @@ def render(reel, tier, hook_text, extra_spans=None):
                 raise Stop(1, f"✗ The {sid} scene came out {got} frames long, not {want}; run it again.")
             scene_files.append((b, name_i))
         link_or_copy(inp["master"], proj / "media" / "aroll.mp4")
+        for i, b in enumerate(b for b in inp["beats"] if b.get("broll")):
+            names = [broll_name(b, i)] + ([broll_name(b, i) + "-back"] if b["broll"]["fit"] == "blur-fill" else [])
+            for n in names:
+                link_or_copy(reel / b["broll"]["src"], proj / "media" / (n + ".mp4"))
         (proj / "vendor").mkdir()
         shutil.copy2(P / "runtime" / "gsap" / "gsap.min.js", proj / "vendor" / "gsap.min.js")
         shutil.copytree(P / "runtime" / "fonts", proj / "fonts")
         page = main_html(inp, w, h, scene_files).encode("utf-8")
+        captions.write(reel, doc)  # layer() can add fitting notes
+        for line in doc["notes"][printed_notes:]:
+            print(f"note: {line}")
         assert b"\r" not in page
         (proj / "index.html").write_bytes(page)
         video = tmp / "video.mp4"
@@ -649,7 +808,9 @@ def render(reel, tier, hook_text, extra_spans=None):
     finally:
         partial.unlink(missing_ok=True)
         kill_warm()
-        if not remove_tree(tmp):
+        if keep_project and proj.is_dir():
+            print(f"info: render project kept at {proj}")
+        elif not remove_tree(tmp):
             print("note: work/render-tmp couldn't be deleted; it's safe to delete by hand")
     print(f"✓ {tier.capitalize()} ready: renders/{final.name}")
     return {"tier": tier, "out": f"renders/{final.name}", "frames": inp["total"], "fps": inp["fps"], "audio": audio,
@@ -677,11 +838,35 @@ def cmd_ok(reel, from_review):
 # ---- selftest ------------------------------------------------------------------------------------------------
 def selftest():
     import tempfile
+    from unittest.mock import patch
     fails = []
 
     def expect(name, ok):
         if not ok:
             fails.append(name)
+
+    spec = {"params": {"accent": {"default": "#4f8cff"}, "font": {"default": "Inter"}}}
+    face = '@font-face {font-family: "Inter"; src: url("./fonts/Inter-Regular.woff2");}'
+    saved = {"accent": "#E0218A", "font": "Inter"}
+    expect("brand: saved accent and licensed Inter apply",
+           brand_params(spec, face, {}, saved) == (saved, []))
+    beat_params = {"accent": "#123abc", "font": "Scene Font"}
+    expect("brand: beat accent and font win",
+           brand_params(spec, face, beat_params, saved)[0] == beat_params)
+    params, notes = brand_params(spec, face, {}, {"font": "Comic Sans MS"})
+    expect("brand: unlicensed font falls back with the plain note",
+           params == {} and notes == ["Your brand font Comic Sans MS isn't available for on-screen graphics yet, "
+                                     "so they use Inter."])
+    for accent in ("magenta", "#123", "#E0218A\n", None, [], 123):
+        params, notes = brand_params(spec, face, {}, {"accent": accent})
+        expect(f"brand: malformed accent {accent!r} is ignored with a note", params == {} and bool(notes))
+    for font in (None, [], 123, "", "   "):
+        params, notes = brand_params(spec, face, {}, {"font": font})
+        expect(f"brand: malformed font {font!r} is ignored with a note", params == {} and bool(notes))
+    expect("brand: undeclared keys never added", brand_params({"params": {}}, face, {}, saved) == ({}, []))
+    expect("brand: no saved brand preserves beat params", brand_params(spec, face, beat_params, {}) == (beat_params, []))
+    expect("brand: inputs stay unchanged", saved == {"accent": "#E0218A", "font": "Inter"}
+           and beat_params == {"accent": "#123abc", "font": "Scene Font"})
 
     for rate in (Fraction(25), Fraction(30000, 1001), Fraction(24000, 1001)):
         expect(f"style times at {rate}: never after the frame, on the frame",
@@ -728,6 +913,15 @@ def selftest():
     expect("spans: scene overlay + hook overlay, no moves",
            sorted((s["layer"], s["start_f"], s["end_f"]) for s in sp) == [("overlay", 0, 50), ("overlay", 50, 100)])
     expect("gate passes the plain reel", effect_gate.check(sp, [50], "25/1", 100) == [])
+    br = beat("br", 40, 70)
+    br["broll"] = {"src": "broll/ingested/own.mp4", "in": 6, "out": 36, "fit": "cover", "ledger_id": "f01"}
+    sp = build_spans([br], {}, 0)
+    expect("broll emits one span and crosses cuts", sp == [{"layer": "broll", "start_f": 40, "end_f": 70, "id": "br"}]
+           and effect_gate.check(sp, [50], "25/1", 100) == [])
+    expect("broll overlap blocks", any("overlaps broll" in p for p in effect_gate.check(
+        sp + [{"layer": "broll", "start_f": 69, "end_f": 80}], [50], "25/1", 100)))
+    expect("broll touching passes", effect_gate.check(
+        sp + [{"layer": "broll", "start_f": 70, "end_f": 80}], [50], "25/1", 100) == [])
     sp = build_spans([beat("b1", 0, 50), beat("ov", 40, 70, "overlay", "hook-title"),
                       beat("b2", 50, 100, scene="cta-end-card")], kinds, 40)
     expect("gate blocks two takeovers at once", any("overlaps takeover" in p for p in effect_gate.check(sp, [50], "25/1", 100)))
@@ -745,7 +939,8 @@ def selftest():
             del b0["scene"]["params"]
         inp = {"beats": [b0, beat("b2", 50, 100)], "rate": Fraction(25), "words": [], "total": 100,
                "cut_frames": [50], "fps": "25/1"}
-        with contextlib.redirect_stdout(io.StringIO()) as said:
+        with tempfile.TemporaryDirectory() as home, patch.object(rt, "state_dir", return_value=Path(home)), \
+                contextlib.redirect_stdout(io.StringIO()) as said:
             plan(inp, None)
         expect(f"beat-0 {sid}{'' if keyed else ' (no params key)'}: entrance none only when the scene has it, the warning only when it hasn't, no hook",
                b0["scene"].get("params", {}).get("entrance") == ("none" if opens else None)
@@ -756,6 +951,31 @@ def selftest():
                not _ig.violations("hook", x - bw / 2, y, bw, size * 1.15 * 3, w, h))
     with tempfile.TemporaryDirectory() as t:
         r = Path(t)
+        state = r / "state"
+        with patch.object(rt, "state_dir", return_value=state):
+            expect("brand: missing saved style is empty", saved_brand() == {})
+            path = state / "styles/default.json"
+            write_json(path, {**saved, "caption_style": {"style": "clean"}})
+            expect("brand: only brand keys are loaded", saved_brand() == saved)
+            for data in (b"{", b"[]", b"\xff"):
+                path.write_bytes(data)
+                with contextlib.redirect_stdout(io.StringIO()) as said:
+                    got = saved_brand()
+                expect("brand: unreadable style is a note, never a stop", got == {} and "note: " in said.getvalue())
+            write_json(path, {"accent": "#E0218A", "font": "Comic Sans MS"})
+            first = beat("brand-first", 0, 50, scene="hook-title")
+            first["scene"].update(slots={"kicker": "Part 1", "title": "Hi"}, params={"accent": "#123abc"})
+            second = beat("brand-second", 50, 100, scene="lower-third")
+            second["scene"]["slots"] = {"name": "Alex", "title": "Founder"}
+            branded = {"beats": [first, second], "rate": Fraction(25), "words": [], "total": 100,
+                       "cut_frames": [50], "fps": "25/1"}
+            with contextlib.redirect_stdout(io.StringIO()) as said:
+                plan(branded, None)
+            expect("brand: plan applies before fill checks, keeps beat override and entrance none",
+                   first["scene"]["params"] == {"accent": "#123abc", "entrance": "none"}
+                   and second["scene"]["params"] == {"accent": "#E0218A"})
+            expect("brand: plan prints each distinct font note once",
+                   said.getvalue().count("note: Your brand font Comic Sans MS") == 1)
         for i, n in enumerate((prev, "Reel 7 Preview 720p - 11.04.26.mp4", "Reel 7 Preview 720p - 11.06.26.partial.mp4")):
             (r / n).write_bytes(b"x")
             os.utime(r / n, (now - 100 + i * 10, now - 100 + i * 10))
@@ -767,8 +987,29 @@ def selftest():
                and "\r" not in page)
         expect("page: TRI-4 / F-13 rules", "repeat: -1" not in page and "translateX(-50%" not in page
                and "@keyframes" not in page and "onComplete" not in page and "xPercent: -50" in page)
+        br["broll"]["fit"] = "blur-fill"
+        bpage = main_html(dict(inp, beats=[br]), 720, 1280, [(beat("scene", 50, 100), "scene")])
+        expect("broll page: two muted videos with ids, own copies, one offset, tracks distinct from scenes",
+               bpage.count('src="media/broll-br-0.mp4"') == 1 and bpage.count('src="media/broll-br-0-back.mp4"') == 1
+               and 'id="broll-br-0"' in bpage and 'id="broll-br-0-back"' in bpage and bpage.count('data-media-start="0.24"') == 2
+               and 'data-track-index="2" muted' in bpage and 'data-track-index="3" muted' in bpage
+               and 'class="clip broll-front"' in bpage and 'z-index: 200' in bpage)
         expect("page: underlay from frame 0 is opaque at 0", 'tl.set("#underlay-0", { opacity: 1, immediateRender: true }, 0)'
                in page)
+        expect("page: caption CSS field is empty without captions",
+               "{{CAPTION_CSS}}" not in page and "#captions" not in page and "\n\n    </style>" in page)
+        doc = {"style": {"style": "clean", "accent": "#FFD84D"}, "notes": [], "chunks": [
+            {"i": i, "start_f": a, "end_f": e, "text": "Caption", "box": [100, 1400, 900, 1600],
+             "words": [{"w": i, "text": "Caption", "start_f": a, "mark": None, "punch": False}]}
+            for i, (a, e) in enumerate(((5, 25), (40, 60)))]}
+        cap_page = main_html(dict(inp, captions=doc), 720, 1280, [])
+        expect("page: captions sit at 600 and fill their CSS", 'id="captions" style="z-index: 600"' in cap_page
+               and "#captions .caption" in cap_page and "{{CAPTION_CSS}}" not in cap_page)
+        for c in doc["chunks"]:
+            expect(f"page: caption {c['i']} centres and hard-kills on its end frame",
+                   f'tl.set("#cap-{c["i"]}", {{xPercent: -50, autoAlpha: 0, immediateRender: true}}, 0);' in cap_page
+                   and f'tl.set("#cap-{c["i"]}", {{autoAlpha: 0}}, {at(c["end_f"], inp["rate"])});' in cap_page)
+        expect("page: captions use the root timeline only", "@keyframes" not in cap_page and "translateX" not in cap_page)
         trk = {"style": {"style": "layout-switch"},
                "keys": [{"f": 0, "scale": 1.0, "ox": 0.5, "oy": 0.38, "layout": "full"},
                         {"f": 50, "scale": 1.0, "ox": 0.5, "oy": 0.38, "layout": "pip"}],
@@ -803,6 +1044,7 @@ def main(argv=None):
         p = sub.add_parser(name, help=what)
         p.add_argument("--reel-dir", required=True, help="the reel folder, videos/<reel>")
         p.add_argument("--hook-text", help="the hook title's words (default: the first beat's words)")
+        p.add_argument("--keep-project", action="store_true", help="keep the render project for inspection")
     o = sub.add_parser("ok", help="record the client's OK of the latest preview")
     o.add_argument("--reel-dir", required=True, help="the reel folder, videos/<reel>")
     o.add_argument("--from-review", action="store_true", help="take the OK from the Master review Send (review.json)")
@@ -814,7 +1056,8 @@ def main(argv=None):
         return 2
     reel = Path(a.reel_dir).resolve()
     try:
-        summary = cmd_ok(reel, a.from_review) if a.cmd == "ok" else render(reel, a.cmd, a.hook_text)
+        summary = cmd_ok(reel, a.from_review) if a.cmd == "ok" else render(
+            reel, a.cmd, a.hook_text, keep_project=a.keep_project)
     except Stop as s:
         for line in s.lines:
             print(line)

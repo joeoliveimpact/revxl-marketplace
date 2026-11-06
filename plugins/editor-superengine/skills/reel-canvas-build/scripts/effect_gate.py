@@ -29,7 +29,7 @@ sys.path.insert(0, str(HERE))
 from win_encoding import ensure_utf8_output  # noqa: E402
 import fps as fpsmod  # noqa: E402
 
-LAYERS = ("aroll_transform", "takeover", "overlay", "transition")  # transition: G5 adds its rule later
+LAYERS = ("aroll_transform", "takeover", "overlay", "transition", "broll")  # transition: G5 adds its rule later
 GATE_KEYS = ("fps", "total_f", "cut_frames", "spans")
 
 
@@ -118,6 +118,12 @@ def check(spans, cut_frames, fps, total_f=None):
             out.append(f"{_name(a, i)} ({_frames(a, rate)}) overlaps {_name(b, j)} ({_frames(b, rate)}) by "
                        f"{n_f} frame{'s' if n_f != 1 else ''} ({_sec(n_f, rate)}); two full-screen takeovers can't be on "
                        f"screen at once, so move one to start where the other ends")
+    broll = sorted((t for t in good if t[1]["layer"] == "broll"), key=lambda t: t[1]["start_f"])
+    for n, (i, a) in enumerate(broll):
+        for j, b in broll[n + 1:]:
+            if b["start_f"] >= a["end_f"]:
+                break
+            out.append(f"{_name(a, i)} overlaps {_name(b, j)}; move one to start where the other ends")
     for i, s in good:
         if s["layer"] != "aroll_transform":
             continue
@@ -160,6 +166,8 @@ def spans_from_beats(beats, move_f, scene_kind=None):
     kind_of = scene_kind.get if isinstance(scene_kind, dict) else scene_kind
     out = []
     for b in beats:
+        if b.get("broll") is not None:
+            out.append({"layer": "broll", "start_f": b["start_f"], "end_f": b["end_f"], "id": b["id"]})
         sid = (b.get("scene") or {}).get("id") if kind_of else None
         if sid is not None:
             layer = kind_of(sid)
@@ -210,6 +218,9 @@ def selftest():
         return {"layer": layer, "start_f": s, "end_f": e, **({"id": i} if i else {})}
 
     cases = [  # (name, problems, substring a failure must contain; None = must pass)
+        ("broll overlap", check([sp("broll", 0, 31), sp("broll", 30, 60)], [], "30", 90), "overlaps broll"),
+        ("broll touch", check([sp("broll", 0, 30), sp("broll", 30, 60)], [], "30", 90), None),
+        ("broll across cut", check([sp("broll", 0, 90)], [60], "30", 90), None),
         ("takeovers overlap", check([sp("takeover", 0, 31, "a"), sp("takeover", 30, 60, "b")], [], "30", 90),
          "takeover 'a'"),
         ("takeovers touch", check([sp("takeover", 0, 30, "a"), sp("takeover", 30, 60, "b")], [], "30", 90), None),

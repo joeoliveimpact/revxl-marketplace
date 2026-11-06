@@ -32,15 +32,16 @@ Score by **direction**, not information content: a line carrying zero informatio
    unknown direction, or a repeated id. Fix the lines it names and run it again.
 3. Show the client the table, then stop for their pick.
 
-With several recordings, pick one take for the whole cut: render.py takes one raw file.
+With several recordings, the client can pick each line's take. Log the raws and use takes.py for a mixed cut,
+as `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/several-recordings.md` says.
 
 ## Stage 3 by hand: the EDL
 
-Build the EDL from the client's pick as `work/edl.json`, one `{src_in, src_out}` per cut, in reel order:
+Build the EDL from the client's pick as `work/edl.json`, one `{src_in, src_out, take}` per cut, in reel order (take defaults to 1):
 
 - Pads, a neighbour clamp and a merge rule. Mid-sentence trims clamp against the next **word**, not the
   next sentence.
-- Assert zero source overlaps.
+- Assert zero source overlaps within each recording.
 
 Then run gaps.py on it yourself (there is no printed command on this path):
 

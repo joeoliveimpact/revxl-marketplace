@@ -23,6 +23,9 @@ import runtime as rt  # noqa: E402
 
 ENGINES = ("auto", "rvm", "remove-background")
 K = 6  # Consecutive copies per sample let recurrent matting settle.
+BOX_SHARE = .75  # taste: occupied-height share reserved for the head and neck.
+# ponytail: A person-share box is cautious on wide shots; a real face/chin
+# finder is the upgrade path (v0.3.0).
 
 
 class Stop(Exception):
@@ -64,13 +67,24 @@ def settled_frames(count):
     return [i * K + K - 1 for i in range(count)]
 
 
+class HeadBand(tuple):
+    """The existing (cx, cy) pair, with a head-and-neck frame-fraction box attached."""
+
+    def __new__(cls, centre, box):
+        point = super().__new__(cls, centre)
+        point.box = box
+        return point
+
+
 def head_band(alpha, w, h):
-    """Head-band centroid of the largest 4-connected matte component, or None.
+    """Head-band centroid and box of the largest 4-connected component, or None.
 
     The reference is the row 10% down the occupied height. From there, stop
     before the first row wider than 1.6 times that row, or at 22% of occupied
     height. Counting starts at the first occupied row, including the head top.
     A band whose component pixels average less than 200 alpha is a ghost: None.
+    The box covers 75% of occupied height, and at least the entire centroid
+    band; it does not change the centroid band or use a shoulder-width stop.
     alpha is one flat, 8-bit plane (bytes, bytearray, or a sequence of ints).
     """
     if w <= 0 or h <= 0 or len(alpha) != w * h:
@@ -118,7 +132,11 @@ def head_band(alpha, w, h):
     n = sum(counts[top:end])
     if sum(opacity[top:end]) < 200 * n:
         return None
-    return (sum(sums[top:end]) / n / w, sum(y * counts[y] for y in range(top, end)) / n / h)
+    box_end = min(h, max(end, top + math.ceil(BOX_SHARE * height)))
+    xs = [pixel % w for pixel in largest if top <= pixel // w < box_end]
+    # Upper edges are exclusive so even a one-pixel band has a nonzero box.
+    box = (min(xs) / w, top / h, (max(xs) + 1) / w, box_end / h)
+    return HeadBand((sum(sums[top:end]) / n / w, sum(y * counts[y] for y in range(top, end)) / n / h), box)
 
 
 def reject_outliers(samples, points):
@@ -142,7 +160,7 @@ def anchors_result(cuts, samples, points):
     for seg, f in samples:
         point = points[f]
         if point is not None:
-            groups.setdefault(seg, []).append({"f": f, "x": point[0], "y": point[1]})
+            groups.setdefault(seg, []).append({"f": f, "x": point[0], "y": point[1], "box": list(point.box)})
     return {"schema": 1, "fps": cuts["fps"], "segments": [
         {"seg": seg, "samples": pts} for seg, pts in sorted(groups.items())]}
 
@@ -309,6 +327,7 @@ def execute(a):
 def selftest():
     import contextlib
     import io
+    import random
 
     w, h, cx, cy = 240, 300, 175, 65
     alpha = bytes(255 if (x - cx) ** 2 + (y - cy) ** 2 <= 25 ** 2
@@ -339,8 +358,50 @@ def selftest():
     checks.append(all(head_band(bytes(a if v else 0 for v in alpha), w, h) is None for a in (120, 160, 199)))
     point = head_band(bytes(200 if v else 0 for v in alpha), w, h)
     checks.append(point is not None and abs(point[0] - cx / w) < .02 and abs(point[1] - cy / h) < .02)
+    def valid_box(point):
+        x0, y0, x1, y1 = point.box
+        return (0 <= x0 < x1 <= 1 and 0 <= y0 < y1 <= 1
+                and x0 <= point[0] <= x1 and y0 <= point[1] <= y1)
+
+    def close_up(cx):
+        return bytes(255 if (x - cx) ** 2 + (y - 80) ** 2 <= 60 ** 2
+                     or (140 <= y < 174 and abs(x - cx) <= 18)
+                     or (110 <= y and 80 <= abs(x - cx) <= 110)
+                     or (174 <= y and abs(x - cx) <= 110) else 0 for y in range(h) for x in range(w))
+
+    point = head_band(close_up(120), w, h)
+    # Head and neck occupy 55%; shirt sides rise above the chin and neck.
+    checks.append(point is not None and valid_box(point) and point.box == (10 / w, 20 / h, 231 / w, 230 / h)
+                  and point.box[1] <= 125 / h < 141 / h <= 174 / h <= point.box[3]
+                  and point.box[3] - point.box[1] > .4)
+    hands = bytearray(close_up(120))
+    for y in range(30, 36):
+        hands[y * w + 5:y * w + 235] = bytes([255]) * 230
+    point = head_band(hands, w, h)
+    checks.append(point is not None and valid_box(point) and point.box == (5 / w, 20 / h, 235 / w, 230 / h)
+                  and point.box[3] >= 174 / h)
+    bun = bytearray(close_up(120))
+    for y in range(21):
+        for x in range(w):
+            if (x - 120) ** 2 + (y - 10) ** 2 <= 10 ** 2:
+                bun[y * w + x] = 255
+    point = head_band(bun, w, h)
+    checks.append(point is not None and valid_box(point) and point.box == (10 / w, 0., 231 / w, 225 / h)
+                  and point.box[3] >= 174 / h)
+    column = bytes(255 if 20 <= y and 60 <= x < 181 else 0 for y in range(h) for x in range(w))
+    point = head_band(column, w, h)
+    # 75% of the 280 occupied rows ends at row 230.
+    checks.append(point is not None and valid_box(point) and point.box == (60 / w, 20 / h, 181 / w, 230 / h))
+    point = head_band(close_up(180), w, h)
+    checks.append(point is not None and valid_box(point) and point.box == (70 / w, 20 / h, 1.0, 230 / h))
+    rng = random.Random(710)
+    for _ in range(200):
+        rw, rh = rng.randint(1, 48), rng.randint(1, 64)
+        plane = bytes(rng.choice((0, 0, 0, 200, 255, 255)) for _ in range(rw * rh))
+        point = head_band(plane, rw, rh)
+        checks.append(point is None or valid_box(point))
     if not all(checks):
-        print("selftest FAILED: head band, ghosts, settling, outliers, crop maths or sample frames")
+        print("selftest FAILED: head band/box, ghosts, settling, outliers, crop maths or sample frames")
         return 1
     print("selftest ok")
     return 0

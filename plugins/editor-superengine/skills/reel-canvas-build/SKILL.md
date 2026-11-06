@@ -1,6 +1,6 @@
 ---
 name: editor-superengine:reel-canvas-build
-description: Plans, designs and renders what plays on screen over a reel once the spoken cut is signed off. For the plan, the Beat Map (what the screen shows on each line, plus the numbers and key words to show) and the Sketches board for picking one direction. For the design loop, a few looks for the hook and the intro, tweaked until one lands. For the render, a 720p preview to watch, then the final video once the client OKs it, with the finished sound. Use for "build the beat map", "plan what goes on screen", "add a scene", "lower third", "counter", "end card", "title card", "pick a layout", "punch-ins", "zoom in on that word", "layout switches", "follow my face", "slow push", "ken burns", "ratchet zoom", "show me a few looks for the opening visuals", "design the hook", "comp the intro", "motion comps", "ladder the blur", "direction options", "iterate this visual", "will the Instagram buttons cover this", "render it", "make the preview", "make the final video", "export the reel", or to plan where B-roll will go (placing B-roll isn't built yet). Not for cutting the spoken take (reel-first-cuts) and not for the post caption (caption-writer).
+description: Plans, designs and renders what plays on screen over a reel once the spoken cut is signed off. For the plan, the Beat Map (what the screen shows on each line, plus the numbers and key words to show) and the Sketches board for picking one direction. For the design loop, a few looks for the hook and the intro, tweaked until one lands. For the render, a 720p preview to watch, then the final video once the client OKs it, with the finished sound. Use for "build the beat map", "plan what goes on screen", "add a scene", "lower third", "counter", "end card", "title card", "pick a layout", "punch-ins", "zoom in on that word", "layout switches", "follow my face", "slow push", "ken burns", "ratchet zoom", "show me a few looks for the opening visuals", "design the hook", "comp the intro", "motion comps", "ladder the blur", "direction options", "iterate this visual", "will the Instagram buttons cover this", "render it", "make the preview", "make the final video", "export the reel", or to render the own clips picked on the Beat Map. Not for cutting the spoken take (reel-first-cuts) and not for the post caption (caption-writer).
 ---
 
 # reel-canvas-build: the reel's visuals
@@ -30,14 +30,17 @@ description: Plans, designs and renders what plays on screen over a reel once th
 - Boards and videos open from the editor's board server: start or restart it with `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/board-server.md`.
 - `deps.json` lists what `editor-superengine:editor-doctor` installs for this skill. The cutout's RVM path uses torch, torchvision and numpy only when transcription setup already installed them; otherwise it uses the backup method.
 
+For B-roll asks, invoke `editor-superengine:reel-broll` first.
+
 ## Areas: open only the one the task needs
 
 | The client wants | Read |
 |---|---|
 | The plan and picks: what's on screen for each line, the layout per beat, numbers and key words marked, or picks on rough sketches and opening directions (the Beat Map and Sketches boards), or a scene (a ready-made graphic such as a title card, counter, list or end card) on a beat | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/beat-map.md` |
 | Punch-ins on jump cuts or layout switches, a zoom on a word, the camera following their face, or saving their editing style as the default | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/style.md` |
+| Where the captions sit: kept off the speaker's face and clear of Instagram's buttons, or the plain note when no spot is fully clear | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/placement.md` |
 | The design loop: a few looks for the hook or the opening visuals, a visual tweaked, or a check that Instagram's buttons won't cover the text | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/design-loop.md` |
-| The render: the 720p preview (a smaller, quicker copy to watch), the client's OK, then the final video at full size with the finished sound | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/build.md` |
+| The render: the 720p preview (a smaller, quicker copy to watch), the client's OK, then the final video at full size with the finished sound; the render draws the picked caption look from reel-captions; for the caption look or the marked words, invoke `editor-superengine:reel-captions` | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/build.md` |
 | Graphics behind the speaker: the cutout (the speaker cut out of the background) | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/build.md`, section 7 |
 
 **Not built yet:** use the single list in `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/SKILL.md`, "Not built yet". When the client asks for one of these, say "That part of the editor isn't built yet; it's coming in a later update." One follow-up is allowed: "If the reel has a Beat Map, I can leave a note on that moment for later." Don't build it any other way: a hand-built version skips the Beat Map checks and the preview OK.

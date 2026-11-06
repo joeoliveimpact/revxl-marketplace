@@ -4,7 +4,7 @@
 usage (heavy job, one scene per call keeps each run short; EDITOR_SE_HOME = a state folder with node, chrome,
 ffmpeg and hyperframes installed):
   python -I "C:/Workspaces/Content Studio/output/scripts/heavy_lock.py" --min-gb 3 -- \
-    python -X utf8 -I tests/editor/scene_render_test.py [--scene <id> ...] [--part all|base|counter|seek]
+    python -X utf8 -I tests/editor/scene_render_test.py [--scene <id> ...] [--part all|base|brand|counter|seek]
       [--write-previews]
 Default = every scene folder present (the 8 own ones and any vendored hf-*). For each scene, in a temp project built the offline_selftest way (scene.html as
 index.html + the shipped GSAP in ./vendor and the shipped fonts in ./fonts, cold font cache, Node network guard,
@@ -18,6 +18,9 @@ proxies to a dead port):
     900x1250 safe box (x 60..959, y 220..1469; ig-safe-zones.py), and some must exist (a blank render fails)
   - counter part, every scene of category "counter" (counter, hf-counter): last frame of value 47 counting up ==
     (or PSNR >= 45 dB vs) the animate:false frame for 47, and PSNR < 40 dB vs the animate:false frame for 46
+  - brand part, every scene: a temporary saved-style fixture applies lime and licensed Inter; the fill passes
+    scene_check and the final frame has lime pixels (each channel within 40), absent from the default frame;
+    an unavailable fixture font is refused with a note, keeping the scene default, without another render
   - seek part (in `all` for every vendored scene, licence not "own", which moved from GSAP 3.14.2 to 3.15.0; any
     scene with --part seek). Jump method: a different worker split (the pin's dist/docs/rendering.md documents
     only `-w, --workers` for this; it documents no range render). The default fill is rendered twice: --workers 1
@@ -41,8 +44,10 @@ SCENES = PLUGIN / "scenes"
 DOCTOR = PLUGIN / "skills" / "editor-doctor" / "scripts"
 sys.path.insert(0, str(PLUGIN / "skills" / "_shared"))
 sys.path.insert(0, str(DOCTOR))
+sys.path.insert(0, str(PLUGIN / "skills" / "reel-canvas-build" / "scripts"))
 import runtime as rt  # noqa: E402
 import offline_selftest as ost  # noqa: E402  (NETGUARD, DEAD, run, remove: the offline pattern, reused)
+import compose  # noqa: E402  (brand_params is pure: no saved state is read)
 
 W, H, FPS = 1080, 1920, 30
 SAFE = (60, 220, 960, 1470)  # x0, y0, x1, y1 (exclusive), the 900x1250 box
@@ -186,6 +191,8 @@ def scene_test(sid, tmp, env, log, write_preview, part):
     proj = project(tmp, sid, html)
     if part in ("all", "base"):
         base_checks(sid, d, html, spec, frames, dur, default, worst, proj, tmp, env, write_preview)
+    if part in ("all", "brand"):
+        brand_checks(sid, html, spec, frames, default, proj, tmp, env)
     if spec.get("category") == "counter" and part in ("all", "counter"):
         counter_checks(sid, spec, default, frames, proj, tmp, env)
     if part == "seek" or part == "all" and spec.get("licence") != "own":
@@ -232,6 +239,52 @@ def base_checks(sid, d, html, spec, frames, dur, default, worst, proj, tmp, env,
 
 
 
+def brand_pixels(video, frame):
+    """Visible pixels near fixture lime in the final frame; -1 means the frame did not decode."""
+    buf = raw(video, "format=rgba", "rgba", frame)
+    if len(buf) != W * H * 4:
+        return -1
+    return sum(1 for r, g, b, a in zip(buf[0::4], buf[1::4], buf[2::4], buf[3::4])
+               if a and abs(r - 198) <= 40 and abs(g - 240) <= 40 and abs(b - 0) <= 40)
+
+
+def brand_checks(sid, html, spec, frames, default, proj, tmp, env):
+    # H-B5: this fixture is independent of EDITOR_SE_HOME and never reads or writes the real saved style.
+    fixture = tmp / "styles" / "default.json"
+    fixture.parent.mkdir(exist_ok=True)
+    fixture.write_bytes(b'{"accent": "#C6F000", "font": "Inter"}\n')
+    saved = json.loads(fixture.read_text(encoding="utf-8"))
+    params, notes = compose.brand_params(spec, html, {}, saved)
+    ck(f"{sid}: fixture brand accent and Inter apply without notes", params == saved and not notes)
+    refused, notes = compose.brand_params(spec, html, {}, {"font": "Comic Sans MS"})
+    ck(f"{sid}: unavailable brand font is refused with a note and the scene default stays",
+       "font" not in refused and {**default, **refused}["font"] == spec["params"]["font"]["default"]
+       and notes == ["Your brand font Comic Sans MS isn't available for on-screen graphics yet, "
+                     f"so they use {spec['params']['font']['default']}."])
+    fill = {"id": sid, "slots": {key: default[key] for key in spec["slots"]}, "params": params}
+    # Default numeric displays need a fixture transcript too (VES-3); these are sample claims, never client words.
+    words = list(fill["slots"].values()) + ([str(default["value"])] if "value" in default else [])
+    problems = compose.scene_check.fill_problems(sid, fill, words=words)
+    if not ck(f"{sid}: brand-applied fill passes scene_check", not problems, "; ".join(problems)):
+        return
+    branded = tmp / f"{sid}-brand.mov"
+    ok, why = render(proj, {**default, **params}, branded, env)
+    if ck(f"{sid}: renders fixture brand fill", ok, "" if ok else why):
+        s = probe(branded)
+        ck(f"{sid}: brand render is {W}x{H} with alpha and {frames} frames",
+           (s.get("width"), s.get("height")) == (W, H) and str(s.get("pix_fmt", "")).startswith("yuva")
+           and int(s.get("nb_read_frames") or -1) == frames)
+        count = brand_pixels(branded, frames - 1)
+        ck(f"{sid}: brand frame has pixels within 40 per channel of #C6F000", count > 0, f"{count} pixels")
+    baseline = tmp / f"{sid}.mov"  # reuse the base part's default render when available
+    if not baseline.exists():
+        ok, why = render(proj, default, baseline, env)
+        if not ck(f"{sid}: renders default fill for brand comparison", ok, "" if ok else why):
+            return
+    count = brand_pixels(baseline, frames - 1)
+    ck(f"{sid}: default frame has no fixture lime", count == 0, f"{count} pixels")
+
+
 def counter_checks(sid, spec, default, frames, proj, tmp, env):
     if not ck(f"{sid}: has the counter params value and animate", {"value", "animate"} <= set(spec["params"])):
         return
@@ -274,9 +327,10 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--scene", action="append", help="scene id (repeatable); default every scene folder")
     ap.add_argument("--write-previews", action="store_true", help="write scenes/<id>/preview.png from the render")
-    ap.add_argument("--part", choices=("all", "base", "counter", "seek"), default="all",
+    ap.add_argument("--part", choices=("all", "base", "brand", "counter", "seek"), default="all",
                     help="base = lint + default + worst-case renders; counter = the 47/46 frame proof (category "
-                         "counter); seek = frame N sequential vs after a jump (all = these, seek on vendored only)")
+                         "counter); brand = fixture colour and font proof; seek = frame N sequential vs after a "
+                         "jump (all = these, seek on vendored only)")
     a = ap.parse_args()
     free = shutil.disk_usage(tempfile.gettempdir()).free / 2 ** 30
     if free < MIN_FREE_GB:

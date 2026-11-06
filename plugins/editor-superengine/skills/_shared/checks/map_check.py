@@ -11,12 +11,13 @@ cuts.json in the same folder (work/cuts.json, or work/take2/cuts.json for a ruli
 and when present cut-board.config.json + cut-selection.json and tweak-board.config.json, from disk, because
 staleness is a test on the files themselves. With no edit map (no word alignment on this computer), the folder's
 tx.json word times stand in (word_map.sources).
+Mixed cuts use work/cuts.json and all selected takes' maps; fingerprints and word identities include the take.
 Run alone, it also writes <reel>/work/map_check.json = {"blocks": [...], "warns": [...]} (the findings, each with
 its plain-English msg; empty lists when clean) on every run.
 
 Blocks:
   word-map-missing   no work/word_map.json (or the take's cuts.json missing, any input unreadable, or the
-                     board ruling doesn't name one take)
+                     board ruling doesn't name a usable edit map)
   word-map-stale     cuts.json or the edit map changed after the map was written (sha256 in the map), or the
                      ruling now points the cut at another edit map or another take's cuts.json
   word-missing       a kept word (recomputed by word_map.build from the current files) is not in the map
@@ -67,17 +68,17 @@ def run(ctx):
     work = reel / "work"
     try:
         rel = word_map.pick_map(reel)
-    except (ValueError, KeyError, IndexError, TypeError) as e:
+    except (OSError, ValueError, KeyError, IndexError, TypeError) as e:
         return [_hit("word-map-missing", "Can't tell which transcript the cut was made from: %s." % e + RERUN,
                      "cut-selection.json")]
     map_p = work / "word_map.json"
     try:
         crel, src, em = word_map.sources(reel, rel)
-    except (ValueError, KeyError, TypeError) as e:
+    except (OSError, ValueError, KeyError, TypeError) as e:
         return [_hit("word-map-missing", "The word map or its inputs can't be read (%s)." % e + RERUN, rel)]
     if src is None:   # no word times at all (no word alignment on this computer): skip, never block the render
         return [dict(check="no-word-times", level="warn", msg=word_map.NO_TIMES, where=rel)]
-    cuts_p, em_p = reel / crel, reel / src
+    cuts_p = reel / crel
     for p in (cuts_p, map_p):
         if not p.exists():
             what = "No word map yet" if p is map_p else "Can't check the words: %s is missing" % crel
@@ -85,10 +86,10 @@ def run(ctx):
     try:
         cuts, m = (json.loads(p.read_text(encoding="utf-8")) for p in (cuts_p, map_p))
         got = m["words"]
-    except (ValueError, KeyError, TypeError) as e:
+    except (OSError, ValueError, KeyError, TypeError) as e:
         return [_hit("word-map-missing", "The word map or its inputs can't be read (%s)." % e + RERUN, str(map_p))]
     if (m.get("cuts") != crel or m.get("cuts_sha256") != word_map.sha(cuts_p) or m.get("edit_map") != src
-            or m.get("edit_map_sha256") != word_map.sha(em_p)):
+            or m.get("edit_map_sha256") != word_map.source_sha(reel, src)):
         return [_hit("word-map-stale", "The word map is out of date: the cut list (%s) or the transcript "
                      "(%s) changed after it was written." % (crel, src) + RERUN, str(map_p))]
 
@@ -134,7 +135,10 @@ def run(ctx):
 
 def quote(cfg, sel, em):
     """The picked words in script order, [(line id, word id, word)], and {word id: line id} of the struck ones."""
-    unresolved = {w["id"] for w in em["words"] if w.get("status") == "unresolved"}
+    mixed = "takes" in em
+    maps = em["takes"] if mixed else {"1": em}
+    unresolved = {(word_map.word_id(n, w["id"]) if mixed else w["id"])
+                  for n, m in maps.items() for w in m["words"] if w.get("status") == "unresolved"}
     by_id = {ln["id"]: ln for ln in cfg["lines"]}
     q, struck = [], {}
     for l in sel["lines"]:
@@ -145,12 +149,13 @@ def quote(cfg, sel, em):
         seq = cfg["takes"][str(att["take"])]["words"]
         for w in att["words"]:
             bw = seq[w["i"]]
-            if str(bw["word"]).strip().startswith("[") or bw["id"] in unresolved:
+            ident = word_map.word_id(att["take"], bw["id"]) if mixed else bw["id"]
+            if str(bw["word"]).strip().startswith("[") or ident in unresolved:
                 continue
             if w["i"] in rm:
-                struck.setdefault(bw["id"], l["id"])
+                struck.setdefault(ident, l["id"])
             else:
-                q.append((l["id"], bw["id"], str(bw["word"]).strip()))
+                q.append((l["id"], ident, str(bw["word"]).strip()))
     return q, struck
 
 
@@ -249,4 +254,8 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except Exception as e:
+        print("the map check could not finish: " + str(e).splitlines()[0], file=sys.stderr)
+        sys.exit(1)

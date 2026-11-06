@@ -508,7 +508,16 @@ def main():
     log = pre + log
     segs, notes, absorbed, reverted = segments(edl, dels, env, a.min_island, words, log)
     keep = {k for k, p in enumerate(segs) if overlaps(words, *p)}
-    segs = write_cuts(work, snap_cuts(segs, fps, a.speed, keep, log))
+    cuts = snap_cuts(segs, fps, a.speed, keep, log)
+    segs = write_cuts(work, cuts)
+    # The frame map exists for the single-recording path too. No media bytes are read here.
+    from takes import write_timemap
+    reel = next((p for p in (work, *work.parents) if (p / "cut-board.config.json").exists()
+                 or (p / "footage/ledger.json").exists()), work.parent)
+    try:
+        write_timemap(work, cuts, probe.get("input"), reel_dir=reel, take=edl[0].get("take", 1))
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        die("the source time map could not be written: " + str(e).splitlines()[0])
 
     before = sum(c["src_out"] - c["src_in"] for c in edl)
     after = sum(b - x for x, b in segs)

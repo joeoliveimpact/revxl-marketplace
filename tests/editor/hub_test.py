@@ -1,6 +1,6 @@
-"""S13 hub proof: generated tiny reels, real board server, fresh locked browsers, eleven biting mutants.
+"""S13 hub proof: generated tiny reels, real board server, fresh locked browsers, twelve biting mutants.
 
-Run with the editor Python, -X utf8 -I; --case 1..11 (or the case name) runs independently.
+Run with the editor Python, -X utf8 -I; --case 1..12 (or the case name) runs independently.
 EDITOR_SE_HOME is read only. All generated files and child homes live in an owned scratch directory,
 removed even on failure. No downloads or real recordings. Each case has a 165 second watchdog.
 """
@@ -31,7 +31,7 @@ import runtime as rt
 from win_encoding import ensure_utf8_output
 
 HEAVY = Path("C:/Workspaces/Content Studio/output/scripts/heavy_lock.py")
-NAMES = ["reels", "tabs", "grade", "review", "sends", "health", "filmstrip", "layout", "attention", "sync", "edit_style"]
+NAMES = ["reels", "tabs", "grade", "review", "sends", "health", "filmstrip", "layout", "attention", "sync", "edit_style", "look", "broll"]
 
 
 class Blocked(RuntimeError):
@@ -240,6 +240,80 @@ def case_grade(p):
     live.write_bytes(original.replace(b"name=grade-selection.json", b"name=review.json"))
     try:
         p.bites(check, "Grade Send goes to forbidden filename")
+    finally:
+        live.write_bytes(original)
+
+
+def case_look(p):
+    """H-HUB-1 / H-X3-1: real picker output, hub tab, replay and allowlisted Send."""
+    sys.path.insert(0, str(HERE))
+    import canvas_boards_test as fixture
+    d = p.videos / "reel-01"
+    fixture.reel_fixture(d)
+    # Proof's take is 24 frames at 12 fps; keep the cut words and beats inside it.
+    items = read(d / "work/edit_map.cut.json")["words"][:6]
+    for i, w in enumerate(items):
+        w.update(start=i * 0.25, end=i * 0.25 + 0.22, parakeet_start=i * 0.25)
+    write(d / "work/edit_map.cut.json", {"words": items})
+    write(d / "work/cuts.json", {"fps": 12, "speed": 1.0, "segments": [
+        {"src_in_f": 0, "src_out_f": 24, "out_in_f": 0, "out_out_f": 24}]})
+    write(d / "work/plan.json", {"beats": [
+        {"w0": 0, "w1": 2, "layout": "full"}, {"w0": 3, "w1": 5, "layout": "split"}],
+        "word_marks": [{"w": 0, "mark": "num"}], "needs": ""})
+    p.py(p.plugin / "skills/reel-canvas-build/scripts/make_beat_map.py",
+         "--reel-dir", d, "--plan", d / "work/plan.json")
+    bm = read(d / "beat-map.state.json")
+    bm.update(caption_style={"style": "clean"}, sent_at="2026-11-05T12:00:00-05:00")
+    write(d / "beat-map-selection.json", bm)
+    master = d / "work/renders/master-100x.mp4"
+    master.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(d / "raw/take.mp4", master)
+    p.py(p.plugin / "skills/reel-captions/scripts/captions.py", "picker", "--reel-dir", d)
+    p.refresh()
+
+    def check():
+        dest = d / "look-picker-selection.json"
+        dest.unlink(missing_ok=True)
+        # A fresh opening starts from the picker current, including in the mutant run.
+        (d / "look-picker.state.json").unlink(missing_ok=True)
+        rows = p.browse([click('#tab-look-picker'),
+            {"do": "frame", "sel": "#panel iframe", "waitFn": "window.LP && LP.ready"},
+            {"do": "waitFn", "js": "[...document.querySelectorAll('.preview')].every(e=>"
+             "{const i=e.shadowRoot.querySelector('img');return i && i.complete && i.naturalWidth>0})"},
+            {"do": "eval", "js": "JSON.stringify({looks:document.querySelectorAll('#looks > .look-card').length,"
+             "layouts:document.querySelectorAll('#layouts > .layout-card').length,"
+             "frames:[...document.querySelectorAll('.preview')].map(e=>e.shadowRoot.querySelector('img').naturalWidth)})"},
+            click('#replay'),
+            {"do": "eval", "js": "JSON.stringify([...document.querySelectorAll('.preview')].map(e=>"
+             "{const c=e.shadowRoot.querySelector('.caption');return !!c && c.getAnimations().some(a=>"
+             "['running','finished'].includes(a.playState))}))"},
+            click('#looks [data-look="bold-pop"]'), click('#mark-look'),
+            {"do": "eval", "js": "JSON.stringify([...document.querySelectorAll('.preview')].map(e=>"
+             "{const c=e.shadowRoot.querySelector('.caption');return !!c && c.getAnimations({subtree:true}).some(a=>"
+             "a.effect.target!==c && a.effect.getKeyframes().some(k=>/^scaleX\\(/.test(k.transform||'')))}))"},
+            click('#send'),
+            {"do": "waitText", "sel": "#saved", "re": "saved|FAILED"}])
+        need(rows[0]["looks"] == 5 and rows[0]["layouts"] == 5, f"picker cards: {rows[0]}")
+        need(len(rows[0]["frames"]) == 10 and all(n > 0 for n in rows[0]["frames"]), "picker frame missing")
+        need(len(rows[1]) == 10 and all(rows[1]), "Replay all missed a caption")
+        need(len(rows[2]) == 10 and all(rows[2]), "Marker highlight missed a swipe")
+        need(dest.is_file(), "Look Picker Send missing")
+        doc = read(dest)
+        need(doc["schema"] == 1 and doc["reel"] == d.name, "wrong picker envelope")
+        need(doc["caption_style"] == {"style": "bold-pop", "mark_look": "marker",
+             "under_small_overlays": True, "line_breaks": True, "echo_suppression": False,
+             "loud_emphasis": False}, f"wrong picker options: {doc}")
+        need(doc["make_default"] is False, "default was opted in")
+        need(set(doc) == {"schema", "reel", "caption_style", "make_default", "sent_at"}, "layout leaked into Send")
+        need(re.fullmatch(r".*[+-]\d{2}:\d{2}", doc.get("sent_at", "")) and
+             dt.datetime.fromisoformat(doc["sent_at"]).utcoffset() is not None, "picker Send needs local ISO offset")
+    check()
+    live = p.editor / "look-picker/index.html"
+    original = live.read_bytes()
+    need(original.count(b"name=look-picker-selection.json") == 1, "look mutant anchor")
+    live.write_bytes(original.replace(b"name=look-picker-selection.json", b"name=review.json"))
+    try:
+        p.bites(check, "Look Picker Send goes to forbidden filename")
     finally:
         live.write_bytes(original)
 
@@ -534,6 +608,84 @@ def case_edit_style(p):
     with p.mutant("../beat-map/index.html", "body: JSON.stringify(doc)",
                   "body: JSON.stringify({...doc, edit_style: {...doc.edit_style, moves: {...doc.edit_style.moves, ratchet: undefined}}})"):
         p.bites(ratchet_check, "Beat Map drops moves.ratchet from Send")
+
+
+def case_broll(p):
+    """H-HUB-1: own B-roll picks survive one Send through the real hub and a reload."""
+    sys.path.insert(0, str(HERE))
+    import canvas_boards_test as fixture
+    canvas = p.plugin / "skills/reel-canvas-build/scripts"
+    sys.path.insert(0, str(canvas))
+    import beat_schema
+    d = p.videos / "reel-01"
+    fixture.reel_fixture(d)
+    p.py(canvas / "make_beat_map.py", "--reel-dir", d, "--plan", d / "work/plan.json")
+    seeded = read(d / "beat-map.state.json")
+    heard = beat_schema.load_words(d / beat_schema.DEFAULT_WORDS)
+    clip = {"src": "broll/ingested/own.mp4", "ledger_id": "f01", "name": "My own clip.mov",
+            "frames": 900, "width": 1536, "height": 1920, "origin": "own"}
+    short = dict(clip, src="broll/ingested/short.mp4", ledger_id="f02", name="Too short.mov", frames=1)
+    ai = dict(clip, src="broll/ingested/ai.mp4", ledger_id="f03", name="Garden.mp4", origin="ai",
+              job_id="test-123", request_sha256="a" * 64)
+    write(d / "broll/clips.json", {"fps": fixture.FPS, "clips": [clip, short, ai]})
+    start = round(0.2 * fixture.FPS)
+    length = seeded["beats"][0]["end_f"] - seeded["beats"][0]["start_f"]
+    expected = {"src": clip["src"], "in": start, "out": start + length, "fit": "blur-fill", "ledger_id": "f01"}
+
+    def open_map():
+        return [click('#tab-beat-map'), {"do": "waitFn", "js": "!!document.querySelector('#panel iframe')"},
+                {"do": "eval", "js": "document.querySelector('#panel iframe').scrollIntoView({block:'end'}), 0"},
+                {"do": "frame", "sel": "#panel iframe", "wait": "#board:not([hidden]) #broll-0"}]
+
+    def set_value(sel, value):
+        return {"do": "set", "sel": sel, "value": value}
+
+    def sent(actions):
+        (d / "beat-map-selection.json").unlink(missing_ok=True)
+        p.browse(open_map() + actions + [click('#send'),
+                 {"do": "waitFn", "js": "document.querySelector('#status').dataset.state==='sent'"}])
+        need((d / "beat-map-selection.json").is_file(), "Beat Map Send missing")
+        doc = read(d / "beat-map-selection.json")
+        need(not beat_schema.beat_map_problems(doc, heard), "B-roll Send fails beat schema")
+        return doc
+
+    def pick_check():
+        write(d / "beat-map.state.json", seeded)
+        doc = sent([set_value('#broll-0', 'f01'), set_value('#broll-fit-0', 'blur-fill'),
+                    set_value('#broll-start-0', '0.2')])
+        need(doc["beats"][0].get("broll") == expected, f"B-roll Send differs: {doc['beats'][0].get('broll')}")
+        need(read(d / "beat-map.state.json")["beats"][0]["broll"] == expected, "B-roll not saved in state")
+
+    labels = p.browse(open_map() + [{"do": "eval", "js":
+        "JSON.stringify(Array.from(document.querySelector('#broll-0').options, o => o.textContent))"}])[-1]
+    need(labels == ["None", "My own clip.mov", "Too short.mov", "Garden.mp4 (AI)"],
+         f"AI option label differs: {labels}")
+    ai_doc = sent([set_value('#broll-0', 'f03')])
+    need(ai_doc["beats"][0]["broll"] == {"src": ai["src"], "in": 0, "out": length,
+         "fit": "cover", "ledger_id": "f03"}, "AI picker did not send its ledger id")
+    pick_check()
+    restored = p.browse(open_map() + [{"do": "eval", "js": "JSON.stringify({clip:document.querySelector('#broll-0').value,"
+        "fit:document.querySelector('#broll-fit-0').value,start:document.querySelector('#broll-start-0').value})"}])[-1]
+    need(restored == {"clip": "f01", "fit": "blur-fill", "start": "0.2"}, f"B-roll controls not restored: {restored}")
+    need(sent([])["beats"][0]["broll"] == expected, "loading changed saved B-roll")
+    (d / "beat-map-selection.json").unlink()
+    p.browse(open_map() + [set_value('#broll-0', 'f02'), click('#send'),
+             {"do": "waitFn", "js": "document.querySelector('#status').dataset.state==='error' && "
+              "document.querySelector('#status').textContent.includes('B-roll clip is too short')"}])
+    need(not (d / "beat-map-selection.json").exists(), "short B-roll was sent")
+    need(sent([set_value('#broll-0', '')])["beats"][0]["broll"] is None, "None did not clear B-roll")
+    with p.mutant("../beat-map/index.html", "body: JSON.stringify(doc)",
+                  "body: JSON.stringify({...doc, beats: doc.beats.map(b => ({...b, broll: null}))})"):
+        p.bites(pick_check, "Beat Map drops B-roll from Send")
+    # A saved choice survives an unrelated edit even when the catalog is absent.
+    pick_check()
+    (d / "broll/clips.json").unlink()
+    p.browse(open_map() + [{"do": "waitFn", "js": "document.querySelector('#broll-0').disabled && "
+        "document.querySelector('#broll-0').options.length===1 && "
+        "document.querySelector('#broll-0').selectedIndex===0 && "
+        "document.querySelector('#broll-0').textContent.includes('Drop your clips')"}])
+    need(sent([set_value('#note-0', 'Keep my saved clip')])["beats"][0]["broll"] == expected,
+         "missing catalog changed saved B-roll")
 
 
 def data_checks(p):

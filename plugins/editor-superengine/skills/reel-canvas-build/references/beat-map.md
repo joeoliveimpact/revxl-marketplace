@@ -126,7 +126,9 @@ new directions unless they unlock it. When there's more to show, add it to the p
   Frames are the cut's frames at `fps`; `end_f` is where the next beat starts. `scene` is `null` or
   `{id, slots: {<name>: "<text>"}, params?: {<name>: <number|string|bool>}}`; every slot is given,
   with `""` to leave it empty. Scene-specific limits, transcript numbers and duration are checked before render.
-  `broll` and `transition` stay `null` in this version.
+  `broll` is `null` or `{src, in, out, fit, ledger_id}` from reel-broll: source frames at the cut's fps,
+  `out - in == end_f - start_f`, fit `cover` or `blur-fill`. Pick it in the Beat Map tab and Send once.
+  `transition` stays `null` in this version.
 - **Sketches** (`sketches.state.json`, and `sketches-selection.json` on Send): `schema` 1, `reel`,
   `rough` (a whole-reel rough video, or `null`), `directions` (`{id, name, why, frames, note}`),
   `pick` (a direction id, or `null`), `sketches` (`{id, beat, title, media, note}`; `beat` is a beat

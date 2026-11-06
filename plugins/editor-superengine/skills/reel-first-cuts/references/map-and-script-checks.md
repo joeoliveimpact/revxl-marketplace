@@ -20,9 +20,11 @@ every Stage 9 round), right after the boundary audit in Stage 3 and before rende
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/checks/map_check.py" videos/<reel>`
 
 `word_map.py` writes `work/word_map.json`: every word the cut keeps, where it sits in the raw and where it lands
-in the cut. It reads the edit map the cut was made from (the Cut Board take's, else `work/edit_map.json`) and that
-take's `cuts.json` in the same folder (`work/cuts.json`, or `work/take2/cuts.json` when the client ruled on take 2),
-and stamps a fingerprint of both, so a map written before the last change counts as stale. With no edit map (word
+in the cut. It reads `work/cuts.json` and the edit map the cut was made from (the Cut Board take's, else
+`work/edit_map.json`). A one-take ruling on any take but 1 goes through takes.py with
+`--take N:work/takeN:work/takeN/edit_map.json`, keeping the cut in `work/`.
+A mixed cut uses `work/cuts.json` and each segment's take's edit map; word IDs include the take so local IDs cannot collide.
+It fingerprints the cuts and every used edit map, so a map written before the last change counts as stale. With no edit map (word
 alignment isn't available on this computer), it uses the word times in `work/tx.json`. With no word times at all
 it writes nothing, and both scripts say "No word timings on this computer, so the word check was skipped; the cut
 can still render": tell the client, and the render goes ahead.
@@ -76,7 +78,8 @@ find the cause as SKILL.md's failure rules say: one you can't fix in two tries g
 
 Run it only when the client names their script file, right after Stage 1 and before any Cut Board is built. Its
 fixes change the edit map, so a board built before them would be stale (SKILL.md's Re-invoke guard). With several
-recordings, run it once per take's edit map (`work/take2/edit_map.json` and so on).
+recordings, run it once per take's edit map (`work/take2/edit_map.json` and so on), before building their shared Cut Board.
+The client can then pick lines across recordings; see `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/several-recordings.md`.
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/script_diff.py" "<script file>" work/edit_map.json [--never "word,word"]`
 

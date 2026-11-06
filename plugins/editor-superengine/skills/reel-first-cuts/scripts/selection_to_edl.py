@@ -3,11 +3,11 @@
 
     <editor python> -X utf8 -I selection_to_edl.py <reel>/cut-selection.json <reel>/cut-board.config.json [-o <reel>/work]
 
-Writes work/edl.json ([{src_in, src_out, line}] in reel order) and prints the gaps.py command: --internal/--join/
+Writes work/edl.json ([{src_in, src_out, line, take}] in reel order) and prints the gap command: --internal/--join/
 --beat-join from the pause default, --protect ranges for every pause ruled individually (line gaps and internal
 silences alike), --words with the take's edit map, --beat from the board's "Pause after commas" and the
 selection's --speed. Every drop is a run of removed words (the page seeds the repeat detector's proposals into the
-same list) subtracted from the attempt. Refuses a selection that mixes takes: render.py takes one raw file.
+same list) subtracted from the attempt. Mixed rulings print takes.py to plan each recording separately.
 
 Drift guard: every word time the board config carries (takes[n].words[].start, each attempt's words[].s) must sit
 within 80 ms of the same word in the take's edit map (its cut anchor, as board_sequence() gives it). One that
@@ -26,6 +26,7 @@ from build_edit_map import board_hash, board_sequence  # noqa: E402
 
 DRIFT = 0.080
 GAPS = '"${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/gaps.py"'
+TAKES = GAPS.replace("gaps.py", "takes.py")
 
 
 def cap_of(ms):
@@ -68,9 +69,10 @@ def main():
     default_ms = sel.get("gap_default_ms", cfg["gap_default_ms"])
 
     kept = [l for l in sel["lines"] if not l.get("drop") and l.get("pick") is not None]
-    edl, protect = [], []
+    edl, protect = [], {}
     for l in kept:
         att = by_id[l["id"]]["attempts"][l["pick"]]
+        pause = protect.setdefault(att["take"], [])
         n0 = len(edl)   # segments this line emits start here
         j = str(l["pick"])
         drops = []
@@ -117,27 +119,55 @@ def main():
         for k, sv in enumerate(att.get("silences", [])):
             ms = l.get("sil", {}).get(j, {}).get(str(k), "default")
             if ms != "default":
-                protect.append(f"{sv['a'] - 0.05:.3f}:{sv['a'] + 0.05:.3f}:{cap_of(ms):.3f}")
+                pause.append(f"{sv['a'] - 0.05:.3f}:{sv['a'] + 0.05:.3f}:{cap_of(ms):.3f}")
         # pause ruling after the line
         g = l.get("gap_after")
         if g and g.get("mode") == "override" and len(edl) > n0:   # a fully struck line emits nothing, so it owns no boundary
             so = edl[-1]["src_out"]
-            protect.append(f"{so - 0.3:.3f}:{so + 0.05:.3f}:{cap_of(g.get('ms')):.3f}")
+            pause.append(f"{so - 0.3:.3f}:{so + 0.05:.3f}:{cap_of(g.get('ms')):.3f}")
+        for seg in edl[n0:]:
+            seg["take"] = att["take"]
 
-    # the single-source rule counts only lines that emit a cut: a fully struck line plays nothing
+    # A fully struck line plays nothing and needs no source guards.
     emitting = {seg["line"] for seg in edl}
     takes = {by_id[l["id"]]["attempts"][l["pick"]]["take"] for l in kept if l["id"] in emitting}
     if not takes:
         sys.exit("REFUSED: the selection emits no cuts (every picked line is struck or dropped).")
-    if len(takes) != 1:
-        sys.exit(f"REFUSED: selection mixes takes {sorted(takes)}; render.py takes one raw file. "
-                 "Rule one take, or add a per-cut source to the pipeline first.")
-    take = takes.pop()
+    for take in sorted(takes):
+        bad = drift(cfg, reel_dir, take)
+        if bad:
+            print(f"REFUSED: {bad}", file=sys.stderr)
+            sys.exit(3)
+        ruling_guard(cfg, sel, take, a.allow_unhashed)
 
-    bad = drift(cfg, reel_dir, take)
-    if bad:
-        print(f"REFUSED: {bad}", file=sys.stderr)
-        sys.exit(3)
+    work.mkdir(parents=True, exist_ok=True)
+    (work / "edl.json").write_bytes(json.dumps(edl, indent=1).encode("utf-8"))
+    take = min(takes)
+    src = cfg["takes"][str(take)]["wav"]
+    dur = sum(c["src_out"] - c["src_in"] for c in edl)
+    label = f"take {take}" if len(takes) == 1 else "takes " + ", ".join(map(str, sorted(takes)))
+    print(f"{label} · {len(edl)} cuts · {dur:.1f}s of speech before gaps · source {src}")
+    join = default_ms / 1000.0
+    cmd = (f'<editor python> -X utf8 -I {GAPS if len(takes) == 1 else TAKES} "{work.as_posix()}" '
+           f'--edl "{(work / "edl.json").as_posix()}" '
+           f"--internal {join:.3f} --join {join:.3f} --beat-join {max(join, 0.32):.3f}")
+    if len(takes) == 1:
+        cmd += f' --words "{(reel_dir / cfg["takes"][str(take)]["edit_map"]).as_posix()}"'
+    else:
+        for n in sorted(takes):
+            em = reel_dir / cfg["takes"][str(n)]["edit_map"]
+            cmd += f' --take "{n}:{em.parent.as_posix()}:{em.as_posix()}"'
+    if sel.get("beat_ms") is not None:
+        cmd += f" --beat {sel['beat_ms'] / 1000.0:.3f}"
+    cmd += f" --speed {sel.get('speed', 1.0)}"
+    ranges = protect.get(take, []) if len(takes) == 1 else [f"{n}:{p}" for n in sorted(takes) for p in protect.get(n, [])]
+    if ranges:
+        cmd += " --protect " + ",".join(ranges)
+    print(cmd)
+    print("shots: " + (", ".join(f"{l['id']}={l['shot']}" for l in sel["lines"] if l.get("shot")) or "none"))
+
+
+def ruling_guard(cfg, sel, take, allow_unhashed):
 
     # Ruling guard: a ruling's indices (rm word i, pick attempt, sil silence k) only mean something against the
     # board it was made on. make_board.py stamps config.takes[n].word_list_hash and config.board_hash; the page
@@ -156,28 +186,14 @@ def main():
         sys.exit(f"REFUSED: selection was ruled on board {bgot[:12]} but config is {bwant[:12]}: its recording, lines, "
                  "attempts or silences changed after ruling. Re-rule on the current board.")
     if None in (want, got, bwant, bgot):
-        if not a.allow_unhashed:
+        if not allow_unhashed:
             sys.exit(f"REFUSED: no ruling fingerprint for take {take} (made before the guard). Rebuild the board from an "
                      "edit map and re-rule, or pass --allow-unhashed to run it anyway.")
         print(f"WARNING --allow-unhashed: take {take} ruling indices NOT verified against the board.")
 
-    work.mkdir(parents=True, exist_ok=True)
-    (work / "edl.json").write_text(json.dumps(edl, indent=1), encoding="utf-8")
-    src = cfg["takes"][str(take)]["wav"]
-    dur = sum(c["src_out"] - c["src_in"] for c in edl)
-    print(f"take {take} · {len(edl)} cuts · {dur:.1f}s of speech before gaps · source {src}")
-    join = default_ms / 1000.0
-    cmd = (f'<editor python> -X utf8 -I {GAPS} "{work.as_posix()}" --edl "{(work / "edl.json").as_posix()}" '
-           f"--internal {join:.3f} --join {join:.3f} --beat-join {max(join, 0.32):.3f} "
-           f'--words "{(reel_dir / cfg["takes"][str(take)]["edit_map"]).as_posix()}"')
-    if sel.get("beat_ms") is not None:
-        cmd += f" --beat {sel['beat_ms'] / 1000.0:.3f}"
-    cmd += f" --speed {sel.get('speed', 1.0)}"
-    if protect:
-        cmd += " --protect " + ",".join(protect)
-    print(cmd)
-    print("shots: " + (", ".join(f"{l['id']}={l['shot']}" for l in sel["lines"] if l.get("shot")) or "none"))
-
-
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        print("the selection could not be read: " + str(e).splitlines()[0], file=sys.stderr)
+        sys.exit(2)

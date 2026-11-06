@@ -20,7 +20,7 @@ Beat Map Send (beat 1 full 0-50, beat 2 full 50-100 with a lower-third scene) wh
 3-segment reel (cuts at 50 and 100) with a real edit_style; ask has no style anywhere.
 Prints PASS/FAIL per check; exit 0 only if all pass. Refuses to start below 10 GB free disk.
 """
-import argparse, contextlib, http.client, importlib.util, io, json, math, os, re, shutil, socket, subprocess, sys
+import argparse, contextlib, hashlib, http.client, importlib.util, io, json, math, os, re, shutil, socket, subprocess, sys
 import tempfile, threading, time
 from datetime import datetime, timedelta
 from fractions import Fraction
@@ -52,6 +52,7 @@ COLOUR_SRC = ("color=c=0x808080:s=1080x1920:r=25:d=4,format=rgb24,drawbox=x=%d:y
 STATIC_SRC = "color=c=0x1c2230:s=1080x1920:r=25:d=4"  # one flat dark colour, no motion
 IDENTITY = {"style": "punch-in", "punch_scale": 1.0,  # test fixture: a style that changes nothing
             "moves": {"opening_settle": False, "follow_cam": False, "word_punches": None}}
+NONE = {"style": "none"}
 MARKS = ((240, 900), (840, 1400))  # MARK_SRC's two 60 px white squares (centres, 1080x1920), below the hook title
 MARK_SRC = ("color=c=0x303030:s=1080x1920:r=%s:d=%s," + ",".join(
     "drawbox=x=%d:y=%d:w=60:h=60:color=white:t=fill" % (x - 30, y - 30) for x, y in MARKS))
@@ -102,7 +103,7 @@ def run(cmd, cwd=None, timeout=900):
 def compose(ws, *args):
     t0 = time.perf_counter()
     rc, out = run([sys.executable, "-X", "utf8", "-I", COMPOSE, *args], cwd=ws)
-    print(f"  compose {' '.join(args)} -> exit {rc} in {time.perf_counter() - t0:.1f} s")
+    print(f"  compose {' '.join(map(str, args))} -> exit {rc} in {time.perf_counter() - t0:.1f} s")
     for line in out.strip().splitlines():
         print("    | " + line)
     return rc, out
@@ -168,13 +169,14 @@ def style_reel(root, src, style, layouts=("full", "full", "full"), rate="25", cu
     return ws, reel
 
 
-def write_send(reel, beats, fps, edit_style=IDENTITY):
+def write_send(reel, beats, fps, edit_style=IDENTITY, caption_style=NONE):
     """The cut word list and the Beat Map Send for these beats (edit_style None = no style in the Send)."""
     words = [{"id": f"w_{i:04d}", "word": w, "start": st, "end": round(st + 0.3, 2)} for i, (w, st) in enumerate(WORDS)]
     wj(reel / "work" / "edit_map.cut.json", {"words": words})
     wj(reel / "beat-map-selection.json", {"schema": 1, "reel": REEL, "fps": fps, "words": "work/edit_map.cut.json",
                                           "beats": beats, "word_marks": [], "proposed": {}, "notes": {}, "needs": "",
                                           "sent_at": "2026-11-05T10:00:00Z",
+                                          **({} if caption_style is None else {"caption_style": caption_style}),
                                           **({} if edit_style is None else {"edit_style": edit_style})})
 
 
@@ -381,6 +383,446 @@ def c_preview(root):
     ck("work/render-tmp is gone", not (reel / "work" / "render-tmp").exists())
     ck("the preview name fails the Master rule", not MASTER_RE.match(prev))
     ck("no .partial left in renders/", not list((reel / "renders").glob("*.partial.mp4")))
+    return ws
+
+
+def broll_fixture(root):
+    ws, reel = make_reel(root, src=STATIC_SRC, scene=False)
+    fc = compose_mod().footage_check
+    raw = reel / "work/renders/master-100x.mp4"
+    wj(reel / "work/probe.json", {"input": str(raw)})
+    (reel / "broll").mkdir()
+    src = reel / "broll" / "own.mov"
+    rc, out = run([rt.tool("ffmpeg"), "-v", "error", "-y", "-f", "lavfi", "-i",
+                   "testsrc2=size=1080x1350:rate=30:duration=3", "-f", "lavfi", "-i",
+                   "sine=frequency=440:duration=3", "-c:v", "libx264", "-crf", "8", "-pix_fmt", "yuv420p",
+                   "-c:a", "aac", "-shortest", src])
+    if rc:
+        raise RuntimeError("couldn't make the B-roll source: " + out[-300:])
+    ck("B-roll source has sound to remove", stream_types(src) == ["audio", "video"])
+    script = PLUGIN / "skills/reel-broll/scripts/broll_ingest.py"
+    rc, out = run([sys.executable, "-X", "utf8", "-I", script, reel])
+    if not ck("real B-roll ingest succeeds", rc == 0, out):
+        raise RuntimeError(out)
+    clip = json.loads((reel / "broll/clips.json").read_text(encoding="utf-8"))["clips"][0]
+    row = next(r for r in fc.rows(reel) if r["id"] == clip["ledger_id"])
+    ingested = reel / clip["src"]
+    ck("ingested sha256 lands in the own footage ledger", row["sha256"] == fc.digest(ingested)
+       and row["origin"] == "own" and row["licence"] == "own" and row["role"] == "broll"
+       and clip["origin"] == "own")
+    ck("ingest drops B-roll sound and matches cut fps", stream_types(ingested) == ["video"]
+       and Fraction(fpsmod.probe_fps(ingested)) == 25)
+    stamp = ingested.stat().st_mtime_ns
+    rc, out = run([sys.executable, "-X", "utf8", "-I", script, reel])
+    ck("ingest reuses matching prepared bytes", rc == 0 and ingested.stat().st_mtime_ns == stamp
+       and len(fc.rows(reel)) == 2, out)
+    # A duplicate encode must retain the canonical row's path; temp names must not touch another destination.
+    shutil.copy2(src, reel / "broll/own.partial.mov")
+    other = reel / "broll/ingested/own.partial.mp4"
+    shutil.copy2(ingested, other)
+    other_stamp = other.stat().st_mtime_ns
+    (reel / "broll/broken.mov").write_bytes(b"not a video")
+    (reel / "broll/notes.txt").write_text("skip me", encoding="utf-8")
+    rc, out = run([sys.executable, "-X", "utf8", "-I", script, reel])
+    catalog = json.loads((reel / "broll/clips.json").read_text(encoding="utf-8"))["clips"]
+    ck("duplicate bytes reuse the canonical ledger path and one picker entry", rc == 0 and len(catalog) == 1
+       and catalog[0]["src"] == clip["src"] and catalog[0]["ledger_id"] == clip["ledger_id"]
+       and "reused own.partial.mov" in out, (catalog, out))
+    ck("cache cleanup preserves a destination named own.partial.mp4", other.is_file()
+       and other.stat().st_mtime_ns == other_stamp and fc.digest(other) == row["sha256"])
+    ck("unreadable video gets one named skip line; non-video ignored", out.count("skipped broken.mov:") == 1
+       and "notes.txt" not in out, out)
+    return ws, reel, clip
+
+
+def c_broll_ai(root):
+    # The editor must never acquire its own Higgsfield transport or spend path.
+    forbidden = []
+    # the editor's own skills; P/scripts/report_to_joe.py is the shared failure-report template whose comments
+    # name other plugins' scripts, and it calls none of them
+    for path in (PLUGIN / "skills").rglob("*"):
+        if path.is_file():
+            content = path.read_bytes().lower()
+            if b"hf_rest" in content or b"ledger.py" in content:
+                forbidden.append(str(path.relative_to(PLUGIN)))
+    ck("editor tree contains no Higgsfield scripts", not forbidden, forbidden)
+    ws, reel = make_reel(root, src=STATIC_SRC, scene=False)
+    c, fc = compose_mod(), compose_mod().footage_check
+    raw = reel / "work/renders/master-100x.mp4"
+    wj(reel / "work/probe.json", {"input": str(raw)})
+    downloaded = ws / "higgsfield/2026-11-06/download.mp4"
+    downloaded.parent.mkdir(parents=True)
+    rc, out = run([rt.tool("ffmpeg"), "-v", "error", "-y", "-f", "lavfi", "-i",
+                   "testsrc2=size=360x640:rate=30:duration=2", "-f", "lavfi", "-i",
+                   "sine=frequency=440:duration=2", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                   "-c:a", "aac", "-shortest", downloaded])
+    if rc:
+        raise RuntimeError("couldn't make the downloaded AI fixture: " + out[-300:])
+    ck("AI download fixture has sound", stream_types(downloaded) == ["audio", "video"])
+    before = hashlib.sha256(downloaded.read_bytes()).hexdigest()
+    request = ws / "higgsfield/requests/test.json"
+    request.parent.mkdir(parents=True)
+    wj(request, {"prompt": "A quiet garden", "aspect_ratio": "9:16", "duration": 2})
+    request_sha = hashlib.sha256(request.read_bytes()).hexdigest()
+    script = PLUGIN / "skills/reel-broll/scripts/broll_ingest.py"
+    command = [sys.executable, "-X", "utf8", "-I", script, reel]
+    catalog_path = reel / "broll/clips.json"
+
+    def snapshot():
+        return {p.relative_to(reel).as_posix(): (p.read_bytes(), p.stat().st_mtime_ns)
+                for p in reel.rglob("*") if p.is_file()}
+
+    def refused(label, args):
+        saved = snapshot()
+        rc, out = run(command + args)
+        ck(label, rc == 1 and len(out.strip().splitlines()) == 1 and "Traceback" not in out
+           and snapshot() == saved, out)
+
+    for label, args in (
+        ("AI without job id refuses without writes", ["--ai", downloaded, "--request", request]),
+        ("AI without request refuses without writes", ["--ai", downloaded, "--job-id", "test-123"]),
+        ("missing AI file refuses without writes", ["--ai", downloaded.with_name("missing.mp4"),
+                                                   "--job-id", "test-123", "--request", request]),
+        ("unreadable AI request refuses without writes", ["--ai", downloaded, "--job-id", "test-123",
+                                                         "--request", request.parent])):
+        refused(label, args)
+    ai_args = ["--ai", downloaded, "--job-id", "test-123", "--request", request]
+    rc, out = run(command + ai_args)
+    if not ck("real AI ingest succeeds", rc == 0, out):
+        raise RuntimeError(out)
+    clips = json.loads(catalog_path.read_text(encoding="utf-8"))["clips"]
+    clip = clips[0]
+    prepared = reel / clip["src"]
+    ledger = fc.rows(reel)
+    row = next(r for r in ledger if r["id"] == clip["ledger_id"])
+    ck("AI ingest logs own a-roll first and AI provenance", len(ledger) == 2 and ledger[0]["role"] == "aroll"
+       and ledger[0]["origin"] == "own" and ledger[0]["licence"] == "own"
+       and ledger[0]["sha256"] == fc.digest(raw) and row["role"] == "broll" and row["origin"] == "ai"
+       and row["job_id"] == "test-123" and row["licence"] == "ai: higgsfield (client's own plan)"
+       and row["sha256"] == hashlib.sha256(prepared.read_bytes()).hexdigest(), ledger)
+    ck("AI catalog keeps request hash and job id", len(clips) == 1 and clip["origin"] == "ai"
+       and clip["job_id"] == "test-123" and clip["request_sha256"] == request_sha, clips)
+    ck("AI download bytes unchanged", hashlib.sha256(downloaded.read_bytes()).hexdigest() == before)
+    ck("AI preparation is silent at cut fps and length", stream_types(prepared) == ["video"]
+       and Fraction(fpsmod.probe_fps(prepared)) == 25 and clip["frames"] == 50)
+    rc, out = run([rt.tool("ffprobe"), "-v", "error", "-select_streams", "v:0", "-show_entries",
+                   "stream=color_space,color_transfer,color_primaries,width,height", "-of", "json", prepared])
+    ck("AI prepared copy is 1080 by 1920 BT.709", rc == 0 and json.loads(out)["streams"] == [
+        {"width": 1080, "height": 1920, "color_space": "bt709", "color_transfer": "bt709",
+         "color_primaries": "bt709"}], out)
+    saved = snapshot()
+    rc, out = run(command + ["--reuse", request])
+    ck("exact AI request reuses clip without writes", rc == 0 and out.strip() ==
+       f"reuse: {clip['ledger_id']} {clip['src']} (job test-123)" and snapshot() == saved, out)
+    rc, out = run(command + ai_args)
+    ck("repeat AI ingest keeps prepared copy and ledger", rc == 0 and fc.rows(reel) == ledger
+       and prepared.stat().st_mtime_ns == saved[clip["src"]][1]
+       and json.loads(catalog_path.read_text(encoding="utf-8"))["clips"] == clips, out)
+    request_bytes = request.read_bytes()
+    request.write_bytes(request_bytes.replace(b"garden", b"gardens"))
+    refused("changed AI prompt misses reuse without writes", ["--reuse", request])
+    rc, out = run(command + ["--reuse", request])
+    ck("reuse miss says no earlier exact request", rc == 1 and out.strip() ==
+       "no earlier AI clip for this exact request", out)
+    request.write_bytes(request_bytes)
+    prepared_bytes = prepared.read_bytes()
+    prepared.write_bytes(prepared_bytes[:-1] + bytes([prepared_bytes[-1] ^ 1]))
+    refused("changed AI prepared bytes miss reuse without writes", ["--reuse", request])
+    prepared.write_bytes(prepared_bytes)
+    refused("existing AI ledger unchanged on missing job id", ["--ai", downloaded, "--request", request])
+
+    # A later own-only scan must preserve the paid clip, and AI ingest must preserve own clips.
+    own = reel / "broll/own.mov"
+    shutil.copy2(raw, own)
+    rc, out = run(command)
+    mixed = json.loads(catalog_path.read_text(encoding="utf-8"))["clips"]
+    ck("own scan retains AI clip and labels own origin", rc == 0 and clip in mixed and
+       any(x.get("origin") == "own" for x in mixed), (mixed, out))
+    rc, out = run(command + ai_args)
+    ck("AI ingest retains own picker entries", rc == 0 and
+       json.loads(catalog_path.read_text(encoding="utf-8"))["clips"] == mixed, out)
+
+    beats = [beat("b_001", 0, 50, 0, 4), beat("b_002", 50, 100, 5, 7)]
+    beats[0]["broll"] = dict(src=clip["src"], **{"in": 0, "out": 50}, fit="cover", ledger_id=clip["ledger_id"])
+
+    def preflight():
+        write_send(reel, beats, 25)
+        inp = c.load_inputs(reel)
+        c.probe_inputs(inp)
+        return inp, in_process(c.plan, inp, None)
+
+    beats[0]["value"] = 12
+    _, (_, stopped, text) = preflight()
+    ck("ingested AI on value beat BLOCKs as proof", stopped is not None and "BLOCK" in text
+       and "would look like proof" in text, text)
+    beats[0]["value"] = None
+    inp, (_, stopped, text) = preflight()
+    ck("ingested AI on plain beat passes compose plan", stopped is None, text)
+    _, stopped, text = in_process(c.footage_licences, inp, "master")
+    ck("ingested AI passes master licence check with job id", stopped is None, text)
+    return ws
+
+
+def c_broll(root):
+    ws, reel, clip = broll_fixture(root)
+    # At frame 60, ten frames after the cut, with a six-frame source offset.
+    beats = [beat("b_001", 0, 50, 0, 4), beat("b_002", 60, 85, 5, 7)]
+    prepared = reel / clip["src"]
+    for fit in ("cover", "blur-fill"):
+        beats[1]["broll"] = dict(src=clip["src"], **{"in": 6, "out": 31}, fit=fit, ledger_id=clip["ledger_id"])
+        write_send(reel, beats, 25)
+        rc, out = compose(ws, "preview", "--reel-dir", reel, "--keep-project")
+        no_traceback("B-roll " + fit, out)
+        final = reel / "renders" / names()[0]
+        if not ck(f"B-roll {fit} preview renders", rc == 0 and final.is_file(), out[-500:]):
+            continue
+        page = (reel / "work/render-tmp/proj/index.html").read_text(encoding="utf-8")
+        ck(f"{fit}: source offset and muted layer 200", 'data-media-start="0.24"' in page
+           and 'z-index: 200' in page and page.count('src="media/broll-') == (2 if fit == "blur-fill" else 1)
+           and page.count('<video id="broll-') == (2 if fit == "blur-fill" else 1))
+        # Compare luma; crop only the centre for contained footage, away from the blurred fill.
+        if fit == "cover":
+            iw, ih = size(prepared)
+            rw = round(iw * 1280 / ih)
+            expected = grab(prepared, [6], scale=(rw, 1280), crop=((rw - 720) // 2, 0, 720, 1280))[6]
+            frames = grab(final, [59, 60, 85])
+            threshold = 35
+            actual, before = frames[60], frames[59]
+            ck("B-roll disappears on its exclusive end frame", psnr(frames[85], expected) < 35)
+        else:
+            # The 4:5 clip contains at 720x900, with 190px above and below it.
+            expected = grab(prepared, [6], scale=(720, 900), crop=(240, 340, 240, 220))[6]
+            frames = grab(final, [59, 60], crop=(240, 530, 240, 220))
+            threshold = 30
+            actual, before = frames[60], frames[59]
+        score = psnr(actual, expected)
+        ck(f"{fit}: first B-roll frame matches source frame 6 (PSNR >= {threshold})", score >= threshold, score)
+        ck(f"{fit}: previous frame is a-roll (PSNR < 35)", psnr(before, expected) < 35)
+        master_audio = audio_md5(reel / "work/renders/master-100x.mp4")
+        ck(f"{fit}: voice packets unchanged, B-roll muted", bool(master_audio) and audio_md5(final) == master_audio)
+    return ws
+
+
+def c_broll_recording_paths(root):
+    """Own B-roll finds a single take from legacy relative and new absolute probe inputs."""
+    ws, reel = make_reel(root, src=STATIC_SRC, scene=False)
+    c, fc = compose_mod(), compose_mod().footage_check
+    raw = reel / "RAW.mp4"
+    shutil.copy2(reel / "work/renders/master-100x.mp4", raw)
+    (reel / "broll").mkdir()
+    shutil.copy2(raw, reel / "broll/own.mov")
+    work = reel / "work"
+    relative = raw.relative_to(ws)
+    rc, out = run([sys.executable, "-X", "utf8", "-I", FIRST_CUTS / "probe.py",
+                   relative, "-o", work], cwd=ws)
+    if not ck("probe accepts a workspace-relative recording", rc == 0, out):
+        raise RuntimeError(out)
+    probe = json.loads((work / "probe.json").read_text(encoding="utf-8"))
+    ck("probe stores the recording's absolute path", probe["input"] == str(raw.resolve()), probe["input"])
+    script = PLUGIN / "skills/reel-broll/scripts/broll_ingest.py"
+    for label, path in (("legacy relative", str(relative)), ("new absolute", str(raw.resolve()))):
+        wj(work / "probe.json", dict(probe, input=path))
+        rc, out = run([sys.executable, "-X", "utf8", "-I", script, reel], cwd=ws)
+        if not ck(f"{label}: own B-roll ingest finds the recording", rc == 0, out):
+            continue
+        clip = json.loads((reel / "broll/clips.json").read_text(encoding="utf-8"))["clips"][0]
+        beats = [beat("b_001", 0, 50, 0, 4), beat("b_002", 50, 100, 5, 7)]
+        beats[0]["broll"] = dict(src=clip["src"], **{"in": 0, "out": 50}, fit="cover",
+                                 ledger_id=clip["ledger_id"])
+        write_send(reel, beats, 25)
+        ledger = fc.rows(reel)
+        raw_rows = [r for r in ledger if r["path"] == str(raw.resolve())]
+        ck(f"{label}: ingest logs one own recording with matching bytes", len(raw_rows) == 1
+           and raw_rows[0]["role"] == "aroll" and raw_rows[0]["origin"] == "own"
+           and raw_rows[0]["licence"] == "own" and raw_rows[0]["sha256"] == fc.digest(raw), raw_rows)
+        rc, out = run([sys.executable, "-X", "utf8", "-I", PLUGIN / "skills/_shared/checks/footage_check.py",
+                       "check", reel, work], cwd=ws)
+        ck(f"{label}: footage ledger check finds the recording", rc == 0, out)
+        previous = Path.cwd()
+        try:
+            os.chdir(ws)
+            rows = c.licence_rows.footage({"reel_dir": reel})
+            ck(f"{label}: recording and own B-roll licence rows pass", not rows, rows)
+            ck(f"{label}: reel-relative recording fallback still works", fc.asset(reel, "RAW.mp4") == raw)
+        finally:
+            os.chdir(previous)
+    return ws
+
+
+def c_broll_blocks(root):
+    ws, reel = make_reel(root, scene=False)
+    c, fc = compose_mod(), compose_mod().footage_check
+    raw = reel / "work/renders/master-100x.mp4"
+    wj(reel / "work/probe.json", {"input": str(raw)})
+    ledger_path = reel / "footage/ledger.json"
+    ck("fresh single-take B-roll reel has no ledger", not ledger_path.exists())
+    (reel / "broll").mkdir()
+    shutil.copy2(raw, reel / "broll/own.mov")
+    script = PLUGIN / "skills/reel-broll/scripts/broll_ingest.py"
+    rc, out = run([sys.executable, "-X", "utf8", "-I", script, reel])
+    if not ck("real ingest starts with no footage ledger", rc == 0, out):
+        raise RuntimeError(out)
+    ledger = fc.rows(reel)
+    raw_rows = [r for r in ledger if fc.normalized(fc.asset(reel, r["path"])) == fc.normalized(raw)]
+    ck("ingest logs the a-roll's role, own rights and raw sha256", len(raw_rows) == 1 and
+       raw_rows[0]["role"] == "aroll" and raw_rows[0]["origin"] == "own" and
+       raw_rows[0]["licence"] == "own" and raw_rows[0]["sha256"] == fc.digest(raw), raw_rows)
+    ck("ingest explains the new recording row once", out.splitlines().count(
+       f"logged your recording {raw.name} in the footage list, so B-roll and the final can check it") == 1, out)
+    raw_id = raw_rows[0]["id"]
+    folder = reel / "broll/ingested"
+    clip = json.loads((reel / "broll/clips.json").read_text(encoding="utf-8"))["clips"][0]
+    prepared = reel / clip["src"]
+    ident = clip["ledger_id"]
+    ck("fresh ingest also logs the B-roll row", len(ledger) == 2 and any(r["id"] == ident and
+       r["role"] == "broll" and r["sha256"] == fc.digest(prepared) for r in ledger), ledger)
+    own = dict(src=clip["src"], **{"in": 0, "out": 50}, fit="cover", ledger_id=ident)
+    beats = [beat("b_001", 0, 50, 0, 4), beat("b_002", 50, 100, 5, 7)]
+    beats[0]["broll"] = dict(own)
+    write_send(reel, beats, 25)
+    rows = c.licence_rows.footage({"reel_dir": reel})
+    ck("ingest-logged single take has no footage licence blocks", not rows, rows)
+    rc, out = run([sys.executable, "-X", "utf8", "-I", PLUGIN / "skills/_shared/checks/footage_check.py",
+                   "check", reel, reel / "work"])
+    ck("single-take re-cut footage check passes after ingest", rc == 0, out)
+    beats[0]["broll"] = None
+    write_send(reel, beats, 25)
+    rows = c.licence_rows.footage({"reel_dir": reel})
+    ck("clearing every B-roll beat leaves no footage licence blocks", not rows, rows)
+    beats[0]["broll"] = dict(own)
+
+    # One missing recording must stop the whole ingest before any ledger or clip is written.
+    missing_reel = ws / "videos/missing-recording"
+    (missing_reel / "work").mkdir(parents=True)
+    (missing_reel / "broll").mkdir()
+    shutil.copy2(reel / "work/cuts.json", missing_reel / "work/cuts.json")
+    shutil.copy2(raw, missing_reel / "broll/own.mov")
+    missing_raw = missing_reel / "raw.mp4"
+    wj(missing_reel / "work/probe.json", {"input": str(missing_raw)})
+    rc, out = run([sys.executable, "-X", "utf8", "-I", script, missing_reel])
+    ck("missing raw stops ingest with one plain named line", rc == 1 and out.splitlines() == [
+       "your recording raw.mp4 is missing; restore it before adding B-roll"], out)
+    ck("missing raw writes no ledger or prepared clips", not (missing_reel / "footage/ledger.json").exists()
+       and not (missing_reel / "broll/clips.json").exists() and not (missing_reel / "broll/ingested").exists())
+    mixed_cuts = json.loads((reel / "work/cuts.json").read_text(encoding="utf-8"))
+    mixed_cuts["takes"] = {"1": {"raw": str(raw)}, "2": {"raw": str(missing_raw)},
+                           "3": {"raw": str(missing_reel / "unused.mp4")}}
+    for i, segment in enumerate(mixed_cuts["segments"], 1):
+        segment["take"] = i
+    wj(missing_reel / "work/cuts.json", mixed_cuts)
+    rc, out = run([sys.executable, "-X", "utf8", "-I", script, missing_reel])
+    ck("missing later mixed take stops before logging the first recording", rc == 1 and out.splitlines() == [
+       "your recording raw.mp4 is missing; restore it before adding B-roll"]
+       and not (missing_reel / "footage/ledger.json").exists(), out)
+    missing_raw.write_bytes(raw.read_bytes() + b"second-recording")
+    (missing_reel / "work/probe.json").unlink()
+    rc, out = run([sys.executable, "-X", "utf8", "-I", script, missing_reel])
+    mixed_rows = fc.rows(missing_reel)
+    ck("mixed ingest logs every used recording from takes without probe input", rc == 0 and
+       {r["sha256"] for r in mixed_rows if r["role"] == "aroll"} == {fc.digest(raw), fc.digest(missing_raw)} and
+       out.count("logged your recording ") == 2 and len(mixed_rows) == 3, (mixed_rows, out))
+    rc, out = run([sys.executable, "-X", "utf8", "-I", script, missing_reel])
+    ck("repeat ingest keeps existing recording rows and logs none again", rc == 0 and
+       fc.rows(missing_reel) == mixed_rows and "logged your recording " not in out, out)
+
+    def preflight():
+        write_send(reel, beats, 25)
+        inp = c.load_inputs(reel)
+        c.probe_inputs(inp)
+        return in_process(c.plan, inp, None)
+
+    original = prepared.read_bytes()
+    prepared.write_bytes(original[:-1] + bytes([original[-1] ^ 1]))
+    _, stopped, text = preflight()
+    ck("changed B-roll bytes BLOCK before rendering", stopped is not None and "BLOCK" in text and "changed after it was logged" in text, text)
+    prepared.write_bytes(original)
+    beats[1]["broll"] = dict(own, **{"in": 25, "out": 75})
+    _, stopped, text = preflight()
+    ck("same clip source frames overlapping BLOCK", stopped is not None and "BLOCK" in text and "used twice" in text, text)
+    beats[1]["broll"].update({"in": 50, "out": 100})
+    _, stopped, text = preflight()
+    ck("touching source intervals pass", stopped is None, text)
+    beats[1]["broll"] = None
+    # add() must log an AI asset with different bytes, rather than deduping the own clip.
+    ai = folder / "ai.mp4"
+    ai.write_bytes(original + b"ai-fixture")
+    ai_id = fc.add(reel, ai, role="broll", origin="ai", licence="ai", job_id="test")
+    beats[0]["broll"] = dict(own, src="broll/ingested/ai.mp4", ledger_id=ai_id)
+    beats[0]["value"] = 12
+    _, stopped, text = preflight()
+    ck("AI with a value BLOCKs as false proof", stopped is not None and "BLOCK" in text and "would look like proof" in text, text)
+    beats[0]["value"] = None
+    beats[0]["scene"] = {"id": "stat-card", "slots": {"stat": "3", "label": "edits"}}
+    _, stopped, text = preflight()
+    ck("AI on a stat-card BLOCKs as false proof", stopped is not None and "BLOCK" in text and "would look like proof" in text, text)
+    beats[0]["scene"] = None
+    _, stopped, text = preflight()
+    ck("AI on a plain beat passes", stopped is None, text)
+    beats[0]["broll"] = dict(own)
+    beats[0]["value"] = 12
+    _, stopped, text = preflight()
+    ck("own footage on a value beat passes", stopped is None, text)
+    ledger = fc.rows(reel)
+    own_row = next(r for r in ledger if r["id"] == ident)
+    ai_row = next(r for r in ledger if r["id"] == ai_id)
+    own_row["licence"] = ""
+    wj(ledger_path, ledger)
+    write_send(reel, beats, 25)
+    dummy_preview(reel)
+    c.cmd_ok(reel, False)
+    _, stopped, text = in_process(c.render, reel, "master", None)
+    ck("Master without music refuses empty footage licence before output", stopped is not None and "licence" in text
+       and not (reel / "renders" / names()[1]).exists() and not (reel / "work/render-tmp/proj").exists(), text)
+    inp = c.load_inputs(reel)
+    c.probe_inputs(inp)
+    _, stopped, text = in_process(c.footage_licences, inp, "preview")
+    ck("preview footage licence is warning only", stopped is None and "warning:" in text and "licence" in text, text)
+    own_row["licence"] = "own"
+    ai_row.pop("job_id")
+    wj(ledger_path, ledger)
+    beats[0]["broll"] = dict(own, src="broll/ingested/ai.mp4", ledger_id=ai_id)
+    write_send(reel, beats, 25)
+    rows = c.licence_rows.run({"reel_dir": reel})
+    ck("AI licence requires job id even without music", any(r["level"] == "block" and "job id" in r["msg"] for r in rows), rows)
+    cuts = {"takes": {"1": {"raw": str(prepared)}}, "segments": [
+        {"take": 1, "src_in_f": 0, "src_out_f": 50}]}
+    own_row["role"], own_row["licence"] = "aroll", ""
+    wj(ledger_path, ledger)
+    rows = c.licence_rows.run({"reel_dir": reel, "cuts": cuts, "beats": []})
+    ck("cut_uses checks used a-roll licence without a bed", any(ident in r["msg"] and "licence" in r["msg"] for r in rows), rows)
+    own_row["licence"] = "own"
+    wj(ledger_path, ledger)
+    rows = c.licence_rows.run({"reel_dir": reel, "cuts": cuts, "beats": []})
+    ck("unused AI footage row needs no licence job id on this cut", not rows, rows)
+    # The direct check CLI runs with -I in the existing sound-pass harness too.
+    beats[0]["broll"] = dict(own)
+    write_send(reel, beats, 25)
+    cli = PLUGIN / "skills/_shared/checks/licence_rows.py"
+    rc, out = run([sys.executable, "-X", "utf8", "-I", cli, reel])
+    ck("isolated licence CLI imports footage_check and accepts complete used rows", rc == 0 and "nothing missing" in out, out)
+    raw_row = next(r for r in ledger if r["id"] == raw_id)
+    raw_row["licence"] = ""
+    wj(ledger_path, ledger)
+    rows = c.licence_rows.run({"reel_dir": reel})
+    ck("two-segment single-take a-roll licence problem appears once", [r["msg"] for r in rows] == [
+       f"the footage row {raw_id} needs a licence"], rows)
+    # Missing rows used to repeat per segment too; preserve the order of distinct messages.
+    wj(ledger_path, [r for r in ledger if r["id"] != raw_id])
+    beats[0]["broll"] = dict(own, ledger_id="f99")
+    rows = c.licence_rows.footage({"reel_dir": reel, "beats": beats})
+    ck("repeated missing recording lines are deduplicated in first-appearance order", [r["msg"] for r in rows] == [
+       f"the footage {own['src']} has no matching licence row",
+       f"the recording {raw.name} has no matching licence row"], rows)
+    wj(ledger_path, ledger)
+    probe_path = reel / "work/probe.json"
+    for name, content in (("missing", None), ("unreadable", "{"), ("no input", "{}")):
+        if content is None:
+            probe_path.unlink(missing_ok=True)
+        else:
+            probe_path.write_text(content, encoding="utf-8")
+        rows = c.licence_rows.run({"reel_dir": reel})
+        ck(f"{name} source details cannot bypass a-roll licence check", any(r["level"] == "block" and
+           r["where"] == "work/probe.json" for r in rows), rows)
     return ws
 
 
@@ -1206,7 +1648,9 @@ def c_style_fps(root):
     return ws
 
 
-CASES = {"selftest": c_selftest, "preview": c_preview, "master-refused": c_master_refused, "master": c_master,
+CASES = {"broll": c_broll, "broll-blocks": c_broll_blocks, "broll-ai": c_broll_ai,
+         "broll-recording-paths": c_broll_recording_paths,
+         "selftest": c_selftest, "preview": c_preview, "master-refused": c_master_refused, "master": c_master,
          "gate-block": c_gate_block, "bad-input": c_bad_input, "joi-frames": c_joi_frames, "colour": c_colour,
          "frame0": c_frame0, "frame0-scene": c_frame0_scene, "cut-span-block": c_cut_span_block, "lint": c_lint,
          "scene-no-params": c_scene_no_params, "audio": c_audio,

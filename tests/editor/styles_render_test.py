@@ -483,7 +483,7 @@ def planted_send(reel, cuts, style, layouts=False):
         "schema": 1, "reel": reel.name, "fps": RATE, "words": "work/edit_map.cut.json", "beats": beats,
         "word_marks": [{"w": i * 4 + 2, "mark": "emph"} for i in PICK_SEGMENTS],
         "proposed": {}, "notes": {}, "needs": "", "sent_at": datetime.now().astimezone().isoformat(),
-        "edit_style": style})
+        "edit_style": style, "caption_style": {"style": "none"}})
 
 
 def build(h, take):

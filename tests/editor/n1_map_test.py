@@ -11,7 +11,7 @@ with no word times at all one warn and exit 0 (F2); a ruling on take 2 is checke
 usage: python tests/editor/n1_map_test.py <scratch-dir> [--case NAME]
 Prints PASS/FAIL per check; exit 0 = every check passed. --case runs one case; without it every case runs.
 Cases: map, check, nospeed (N1.1a); board, shift, twice, struck, swap, take2, anchor, noboard, real (N1.1b);
-tweakstale, txmap, notimes, take2dir (N1.1c; tweakstale runs the real make_tweaks.py on a 3 s tone).
+tweakstale, txmap, notimes, take2dir (N1.1c; tweakstale runs the real make_tweaks.py on a 3 s tone); take2merged (H-EGM6-1).
 Every input except `real` is a synthetic cuts.json (built by gaps.py's own snap_cuts), edit map, cut-board config
 and selection built here (no media). `real` runs S3's work files (copied, read only) through the real make_board.py,
 selection_to_edl.py and gaps.py (no Chrome, no render), prints what the map check says as INFO, and (N1.4b) asserts
@@ -423,9 +423,11 @@ def case_take2(S, a):
     write(d / "cut-selection.json", sel_of({"L01": 0, "L02": 1, "L03": 1}))   # mixed takes
     p, _ = word_map(d)
     pc, H = check(d)
-    ck("take2: a ruling mixing takes stops word_map.py (exit != 0, says so) and blocks the map check",
-       p.returncode != 0 and "takes ['1', '2']" in p.stderr and pc.returncode == 1 and kinds(H) == ["word-map-missing"]
-       and "takes ['1', '2']" in H[0]["msg"], (p.returncode, p.stderr[-300:], H))
+    # N4: a mixed ruling is allowed now (each cut piece names its take); against this single-take cut.json the
+    # picked take-1 words aren't in the cut, so the map check still blocks it, as missing quotes
+    ck("take2: a ruling mixing takes runs word_map.py (N4) and the map check blocks the single-take cut (quote-missing)",
+       p.returncode == 0 and pc.returncode == 1 and H and set(kinds(H)) == {"quote-missing"},
+       (p.returncode, p.stderr[-300:], H))
     write(d / "cut-selection.json", s)
 
 
@@ -714,10 +716,51 @@ def case_take2dir(S, a):
        and all("line L01" in h["msg"] for h in H), (p.returncode, H))
 
 
+def case_take2merged(S, a):
+    """H-EGM6-1: a takes.py cut containing only take 2 uses its words, with or without a board ruling."""
+    d = cs.fresh(S, "take2merged")
+    first, second = board_map(), board_map()
+    first["words"][0]["word"], second["words"][0]["word"] = " FirstOnly", " SecondOnly"
+    ems = {1: ("work/edit_map.json", first), 2: ("work/take2/edit_map.json", second)}
+    for rel, em in ems.values():
+        write(d / rel, em)
+    write(d / "cut-board.config.json", board_cfg(ems))
+    write(d / "cut-selection.json", sel_of({lid: 1 for lid, _ in LINES}))
+    g = cs.module("gaps.py")
+    cuts = g.snap_cuts(CLEAN, FPS, SPEED)
+    # takes.py writes raw/work per take and a take number on each merged segment.
+    cuts["takes"] = {"2": dict(raw="take2.mp4", work="work/take2")}
+    cuts["segments"] = [dict(s, take=2) for s in cuts["segments"]]
+    write(d / "work/cuts.json", cuts)
+    ck("take2merged: take 2 has no local cuts.json", not (d / "work/take2/cuts.json").exists())
+    for ruling in ("board", "no board"):
+        if ruling == "no board":
+            (d / "cut-board.config.json").unlink()
+            (d / "cut-selection.json").unlink()
+        p, m = word_map(d)
+        words = [w["word"] for w in m.get("words", [])]
+        ck("take2merged (%s): word map exits 0, keeps SecondOnly and excludes FirstOnly" % ruling,
+           p.returncode == 0 and "SecondOnly" in words and "FirstOnly" not in words,
+           (p.returncode, p.stderr[-300:], words))
+        ck("take2merged (%s): merged cut and take 2 map are the recorded sources" % ruling,
+           m.get("cuts") == "work/cuts.json" and m.get("edit_map") == {"2": "work/take2/edit_map.json"},
+           {k: m.get(k) for k in ("cuts", "edit_map")})
+        p, H = check(d)
+        ck("take2merged (%s): map check passes, exit 0" % ruling, p.returncode == 0 and H == [],
+           (p.returncode, H))
+    d = reel(S, "take2merged-plain")
+    p, m = word_map(d)
+    ck("take2merged: plain single-take sources and word IDs keep their existing shape",
+       p.returncode == 0 and m.get("cuts") == "work/cuts.json" and m.get("edit_map") == "work/edit_map.json"
+       and [w["id"] for w in m.get("words", [])] == KEPT, (p.returncode, m))
+    p, H = check(d)
+    ck("take2merged: plain single-take map check passes, exit 0", p.returncode == 0 and H == [], (p.returncode, H))
+
+
 CASES = {"map": case_map, "check": case_check, "nospeed": case_nospeed, "board": case_board, "shift": case_shift,
          "twice": case_twice, "struck": case_struck, "swap": case_swap, "take2": case_take2, "anchor": case_anchor,
          "noboard": case_noboard, "real": case_real, "tweakstale": case_tweakstale, "txmap": case_txmap,
-         "notimes": case_notimes, "take2dir": case_take2dir}
+         "notimes": case_notimes, "take2dir": case_take2dir, "take2merged": case_take2merged}
 
 
 def main():

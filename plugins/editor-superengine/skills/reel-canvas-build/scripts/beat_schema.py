@@ -36,8 +36,8 @@ BEAT_KEYS = ("id", "start_f", "end_f", "speech_anchor", "layout", "value", "scen
 ANCHOR_KEYS = ("text", "w0", "w1")
 MARK_KEYS = ("w", "mark")
 MAP_KEYS = ("schema", "reel", "fps", "words", "beats", "word_marks", "proposed", "notes", "needs", "sent_at",
-            "edit_style")
-OPTIONAL_MAP_KEYS = ("edit_style",)  # H-S6b-23: the reel's editing style; styles.py checks the inside
+            "edit_style", "caption_style")
+OPTIONAL_MAP_KEYS = ("edit_style", "caption_style")  # H-S6b-23 / H-S8-1: styles.py / captions.py check the inside
 PROPOSED_KEYS = ("layout", "value", "shows", "why")  # Claude's original pick per beat; the board highlights changes
 DEFAULT_WORDS = "work/edit_map.cut.json"  # H-S4b-5: re-transcribed cut words, S3 edit-map shape, index from 0
 SKETCHES_KEYS = ("schema", "reel", "rough", "directions", "pick", "sketches", "note", "sent_at", "locked_at", "scenes")
@@ -46,9 +46,8 @@ SKETCH_KEYS = ("id", "beat", "title", "media", "note")  # one per-beat preview
 SHOW_MAX = 60  # longest bad value quoted in a message, so one bad blob can't flood the output
 # scene is null or {id: non-empty str, slots: {str: str}, params?: {str: number|str|bool}}.
 # Scene files, transcript numbers and duration are checked by scene_check, independently of this shape.
-# broll / transition still check "null or object". Their owners tighten them later:
-#   broll      (G3-a) {src, in, out, fit, ledger_id}
-#   transition (G5)   {type, at_cut_frame, dur_frames}
+# broll is null or {src, in, out, fit, ledger_id}; frames are at the cut's fps.
+# transition (G5) still checks null or object: {type, at_cut_frame, dur_frames}.
 
 
 class SchemaError(ValueError):
@@ -136,6 +135,26 @@ def scene_problems(scene, where="scene", *, nullable=True):
     return out
 
 
+def broll_problems(broll, where="broll"):
+    """A whole-frame source range; beat_problems checks its length against the beat."""
+    if broll is None:
+        return []
+    out = _keys(broll, ("src", "in", "out", "fit", "ledger_id"), where)
+    if not isinstance(broll, dict):
+        return out
+    out += _rel_path_problems(broll.get("src"), where + ".src")
+    for k in ("in", "out"):
+        if not (_is_int(broll.get(k)) and broll[k] >= 0):
+            out.append(f"{where}.{k} is not a frame; use a whole number >= 0")
+    if all(_is_int(broll.get(k)) for k in ("in", "out")) and broll["in"] >= broll["out"]:
+        out.append(f"{where} must end after it starts; use 0 <= in < out")
+    if broll.get("fit") not in ("cover", "blur-fill"):
+        out.append(f"{where}.fit must be cover or blur-fill; pick one")
+    if not (isinstance(broll.get("ledger_id"), str) and re.fullmatch(r"f\d{2,}", broll["ledger_id"])):
+        out.append(f"{where}.ledger_id must name a footage row like f01; ingest the clip first")
+    return out
+
+
 def beat_problems(beat, words=None, *, where="beat"):
     """Problems with one beat. `words` (the cut's word list) turns on the speech_anchor index/text checks."""
     out = _keys(beat, BEAT_KEYS, where)
@@ -180,7 +199,14 @@ def beat_problems(beat, words=None, *, where="beat"):
         out.append(f"{where}.value {_show(b['value'])} is not a number; use a number or null")
     if "scene" in b:
         out += scene_problems(b["scene"], f"{where} ({_show(b.get('id'))}).scene")
-    for k in ("broll", "transition"):
+    if "broll" in b:
+        out += broll_problems(b["broll"], f"{where}.broll")
+        br = b["broll"]
+        if (isinstance(br, dict) and all(_is_int(br.get(k)) for k in ("in", "out"))
+                and all(_is_int(b.get(k)) for k in ("start_f", "end_f"))
+                and br["out"] - br["in"] != b["end_f"] - b["start_f"]):
+            out.append(f"{where}.broll must play for the whole beat; set out - in to end_f - start_f")
+    for k in ("transition",):
         if k in b and not (b[k] is None or isinstance(b[k], dict)):
             out.append(f"{where}.{k} {_show(b[k])} is not an object; use an object or null")
     return out
@@ -552,6 +578,18 @@ def selftest():
             dict(sketches, directions=[dict(sketches["directions"][0], frames=["../f1.png"])]), good),
          "directions[0].frames[0] '../f1.png' is not a plain relative path"),
     ]
+    clip = {"src": "broll/ingested/own.mp4", "in": 6, "out": 36, "fit": "cover", "ledger_id": "f01"}
+    for name, changes, want in (
+            ("cover", {}, None), ("blur-fill", {"fit": "blur-fill"}, None),
+            ("unknown key", {"extra": 1}, "unknown keys"), ("stretch", {"fit": "stretch"}, "fit"),
+            ("reversed", {"in": 40}, "end after"), ("short", {"out": 35}, "whole beat"),
+            ("unsafe", {"src": "../x.mp4"}, "relative path"), ("float", {"in": 6.0}, "whole number"),
+            ("negative", {"in": -1}, "whole number"), ("bad ledger id", {"ledger_id": "music01"}, "ledger_id")):
+        cases.append(("broll " + name,
+                      beat_map_problems(m(lambda d: both(d, "broll", dict(clip, **changes)))), want))
+    cases.extend([("broll null", broll_problems(None), None),
+                  ("broll not object", broll_problems("clip.mp4"), "not an object"),
+                  ("broll missing keys", broll_problems({"src": "broll/x.mp4"}), "missing in, out, fit, ledger_id")])
     fails = []
     for name, problems, want in cases:
         if want is None and problems:

@@ -1,7 +1,7 @@
 <!doctype html>
 <!-- The reel's main composition. compose.py fills every double-braced field and writes the result as the render
      project's index.html; nothing here is used as is. Layers stack by CSS z-index only (H-R5 bands):
-     a-roll 100, scenes 400 (the underlay sits on the band floor), the hook title 450. Every move lives on
+     a-roll 100, scenes 400 (the underlay sits on the band floor), the hook title 450, captions 600. Every move lives on
      the one paused root timeline below; no CSS animations or transitions. -->
 <html lang="en">
   <head>
@@ -19,6 +19,10 @@
       #hook { position: absolute; left: {{HOOK_X}}px; top: {{HOOK_Y}}px; width: {{HOOK_W}}px; z-index: 450;
               font-family: "Inter"; font-weight: 400; font-size: {{HOOK_SIZE}}px; line-height: 1.15; color: #ffffff;
               text-align: center; overflow-wrap: anywhere; text-shadow: {{HOOK_SHADOW}}; }
+      /* taste: 40px blur and a little shade keep the fill behind the contained picture. */
+      .band video.broll-back { filter: blur(40px) brightness(0.75); object-fit: cover; }
+      .band video.broll-front { object-fit: contain; }
+{{CAPTION_CSS}}
     </style>
   </head>
   <body>

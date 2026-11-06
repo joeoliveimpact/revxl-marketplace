@@ -1,4 +1,6 @@
 [
+  {"ask": "Add B-roll: use my own clip as a cutaway over the second point", "expect": "editor-superengine:reel-broll"},
+  {"ask": "Generate B-roll: make an AI cutaway for the garden beat", "expect": "editor-superengine:reel-broll"},
   {"ask": "I just installed this editor thing, is it ready to go on my laptop?", "expect": "editor-superengine:editor-doctor"},
   {"ask": "I'm about to film tomorrow's reel, can you check my mic and lighting first with a quick test clip?", "expect": "editor-superengine:recording-preflight"},
   {"ask": "I stitched three takes together into one video and now every cut after the first take chops my words off", "expect": "editor-superengine:reel-first-cuts"},

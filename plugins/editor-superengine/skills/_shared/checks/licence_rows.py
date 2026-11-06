@@ -1,5 +1,4 @@
-"""Licence rows (pre-render check): every track in the final has the licence row it needs. Music half; the footage
-half comes later.
+"""Licence rows (pre-render check): used music and footage have the licence rows they need.
 
   run(ctx) -> [{check, level: "block"|"warn", msg, where}]    ctx = {reel_dir, fps, cuts, beats, render}
   python checks/licence_rows.py <reel_dir>                     prints the rows; exit 1 on any block
@@ -13,7 +12,9 @@ import json, re, sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from cost_ask import file_sha256  # noqa: E402
+import footage_check  # noqa: E402
 
 PHASE = "pre"
 CHECK = "licence_rows"
@@ -51,7 +52,63 @@ def _read(p):
         return None
 
 
+def footage(ctx):
+    """Used B-roll and logged a-roll takes, independently of the sound pass."""
+    reel = Path(ctx["reel_dir"])
+    beats = ctx.get("beats")
+    if beats is None:
+        beats = (_read(reel / "beat-map-selection.json") or {}).get("beats", [])
+    clips = [b["broll"] for b in beats if b.get("broll")]
+    if not clips and not (reel / "footage" / "ledger.json").exists():
+        return []
+
+    def block(msg, where="footage/ledger.json"):
+        return {"check": CHECK, "level": "block", "msg": msg, "where": where}
+
+    try:
+        ledger = footage_check.rows(reel)
+        used, out = {}, []
+        for clip in clips:
+            matches = [r for r in ledger if r.get("id") == clip["ledger_id"] and
+                       footage_check.normalized(footage_check.asset(reel, r["path"])) ==
+                       footage_check.normalized(reel / clip["src"])]
+            if len(matches) != 1:
+                out.append(block(f"the footage {clip['src']} has no matching licence row"))
+            else:
+                used[matches[0]["id"]] = matches[0]
+        cuts = ctx.get("cuts") or _read(reel / "work" / "cuts.json") or {}
+        probe = _read(reel / "work" / "probe.json")
+        raw = probe.get("input") if isinstance(probe, dict) else None
+        raw = raw if isinstance(raw, str) and raw.strip() else None
+        if cuts.get("segments") and not (cuts.get("takes") or raw):
+            out.append(block("the cut's recording could not be found; restore its source details before making the final",
+                             "work/probe.json"))
+        if cuts.get("segments") and (cuts.get("takes") or raw):
+            for use in footage_check.cut_uses(cuts, raw):
+                key = footage_check.normalized(footage_check.asset(reel, use["path"]))
+                matches = [r for r in ledger if footage_check.normalized(footage_check.asset(reel, r["path"])) == key]
+                if len(matches) != 1:
+                    out.append(block(f"the recording {Path(use['path']).name} has no matching licence row"))
+                else:
+                    used[matches[0]["id"]] = matches[0]
+        for row in used.values():
+            missing = []
+            if not str(row.get("licence") or "").strip():
+                missing.append("a licence")
+            if row.get("origin") == "ai" and not str(row.get("job_id") or "").strip():
+                missing.append("the AI job id")
+            if missing:
+                out.append(block(f"the footage row {row['id']} needs {' and '.join(missing)}"))
+        return list({row["msg"]: row for row in out}.values())
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        return [block("the footage licence rows could not be checked: " + str(e).splitlines()[0])]
+
+
 def run(ctx):
+    return footage(ctx) + music(ctx)
+
+
+def music(ctx):
     reel = Path(ctx["reel_dir"])
     bed = ((_read(reel / "sound-selection.json") or {}).get("bed") or {}).get("file")
     if not bed:

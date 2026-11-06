@@ -249,7 +249,7 @@ def main():
     dups = dup_table(fps["measured_fps"], speeds, a.out_rate)
 
     (work / "envelope.json").write_text(json.dumps({"win_s": WIN, "db": env}), encoding="utf-8")
-    probe = {"input": str(src), "fps": fps, "calibration": cal,
+    probe = {"input": str(src.resolve()), "fps": fps, "calibration": cal,
              "dup_table": dups, "out_rate": a.out_rate, "fps_flag": fps_flag(),
              "video": vid, "audio_streams": n_audio, "audio_stream": a.audio_stream}
     (work / "probe.json").write_text(json.dumps(probe, indent=1), encoding="utf-8")

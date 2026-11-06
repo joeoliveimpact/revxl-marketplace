@@ -51,6 +51,16 @@ tests/editor/test_render_fps.py (repository test, not part of the installed plug
   Changes: it tests reel-canvas-build's scripts/fps.py, drops the r_frame_rate and 24-fps fallbacks (a failed
   probe now raises), and adds real-ffprobe checks on synthetic clips. License: MIT, full text below.
 
+tests/editor/test_render_captions.py (repository test, not part of the installed plugin)
+  Adapted from video-use, tests/test_render_captions.py, ChunkWordsTests (Browser Use,
+  https://github.com/browser-use/video-use). Changes: word dictionaries, inclusive caption ranges, frame timing,
+  a layout-switch check; the SRT and subtitle-path tests removed. License: MIT, full text below.
+
+skills/reel-captions/scripts/captions.py (its chunk_words part)
+  Adapted from video-use, helpers/render.py, chunk_words (Browser Use, https://github.com/browser-use/video-use).
+  Changes: cut-word dictionaries, frame lifetimes, layout boundaries, optional punctuation and pause breaks, and
+  truthful marked runs kept together. License: MIT, full text below.
+
 MIT License
 
 Copyright (c) 2026 Browser Use
@@ -99,6 +109,16 @@ skills/reel-first-cuts/scripts/silence_budget.py
   ported from Shorts Studio, gate/check.py (Claude Video Studio contributors), rewritten in standard-library
   Python. License: MIT, full text below.
 
+skills/reel-first-cuts/scripts/sync.py
+  Copied from shorts-studio (Claude Video Studio contributors), scripts/sync.py. Changes: shared helpers and
+  ffmpeg/ffprobe come from the editor install; UTF-8 output and plain failures; the low-match stop exits 2.
+  License: MIT, full text below.
+
+skills/reel-first-cuts/scripts/follow_cut.py
+  Copied from shorts-studio (Claude Video Studio contributors), scripts/follow_cut.py. Changes: reads cuts.json
+  frames, fps and speed; refuses mixed takes; ffmpeg comes from the editor install; frame count asserted;
+  UTF-8 output and plain failures. License: MIT, full text below.
+
 skills/reel-first-cuts/scripts/fix_words.py
   Ported from Shorts Studio, scripts/fix_words.py (Claude Video Studio contributors). Changes: it reads S3's
   edit map or a tx.json (`word` or `text`); fixes come from <paths.editor>/word-fixes.json or --map instead of
@@ -119,6 +139,16 @@ skills/reel-first-cuts/scripts/cut_qa.py
   (cuts.json frames at their own fps, the EDL, probe.py's source envelope and S3's edit map); only silence
   trims inside one EDL cut are checked; murmurs are searched in the kept audio; standalone script with
   --json and an exit code. License: MIT, full text below.
+
+skills/reel-canvas-build/scripts/placer.py
+  Adapted from shorts-studio (Claude Video Studio contributors), scripts/edit_build.py, hits() and the caption
+  spots only. Changes: corner rectangles, master-pixel head mapping, sampled moves, Instagram-safe candidates,
+  timed fallback notes and still-graphic overlap notes; the source's graphics zoning is not used.
+  License: MIT, full text below.
+
+skills/reel-captions/scripts/captions.py (its auto_chunks part)
+  Adapted from shorts-studio (Claude Video Studio contributors), engine/short/gen.py, auto_chunks. Changes:
+  output-frame layout boundaries and inclusive word positions. License: MIT, full text below.
 
 MIT License
 

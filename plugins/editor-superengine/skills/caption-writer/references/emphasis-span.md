@@ -40,6 +40,6 @@ A contrast is two halves. Marking one half alone states only half the claim.
 
 ## How it is checked
 
-`${CLAUDE_PLUGIN_ROOT}/skills/caption-writer/scripts/emphasis.py` holds the one copy of this rule. The caption checker uses it on every bolded span and suggests the truthful run when a mark is too small. The word-mark picker for burned-in captions (reel-captions, built later) imports the same function, so a bolded caption word and a punched on-screen word follow one rule.
+`${CLAUDE_PLUGIN_ROOT}/skills/caption-writer/scripts/emphasis.py` holds the one copy of this rule. The caption checker uses it on every bolded span and suggests the truthful run when a mark is too small. The word-mark picker for burned-in captions (`editor-superengine:reel-captions`) imports the same function, so a bolded caption word and a punched on-screen word follow one rule.
 
 The check reads words, not meaning, so it can miss a half-truth it has no word list for. When a mark looks fine to the script but reads wrong to you, widen it.

@@ -37,8 +37,9 @@ start tools. Read the whole file before acting and keep earlier entries when ack
 | `adjust-grade` | Invoke `editor-superengine:reel-grade`. |
 | `adjust-sound` | Invoke `editor-superengine:reel-sound-pass`. |
 | `style` | Ask "Use these choices as the default for your next reels?"; on yes, follow "make it my default" in `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/style.md`. Nothing else. |
-| `captions` | Ask once, "The words on the video, or the text under the post?" The text under the post is `editor-superengine:caption-writer`; words on the video get the router's not-built line. |
-| `cover`, `qa`, `broll`, `trial`, `goldmine` | The router's not-built line plus its one follow-up (`${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/SKILL.md`, "Not built yet"). |
+| `captions` | Ask once, "The words on the video, or the text under the post?" The text under the post is `editor-superengine:caption-writer`; words on the video are `editor-superengine:reel-captions`. |
+| `broll` | Invoke `editor-superengine:reel-broll`; use the client's clips on the Beat Map tab. |
+| `cover`, `qa`, `trial`, `goldmine` | The router's not-built line plus its one follow-up (`${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/SKILL.md`, "Not built yet"). |
 
 The page serializes list updates and re-reads disk before appending, including repeated clicks. A failed POST
 keeps the draft and exposes a copy-to-paste line with the payload. It never claims a failed Send succeeded.

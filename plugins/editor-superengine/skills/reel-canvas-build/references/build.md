@@ -11,7 +11,7 @@
 
 ```text
 Render progress:
-- [ ] 1 Beat Map Sent and a yes to the preview
+- [ ] 1 Beat Map Sent, a caption look chosen (or no captions), and a yes to the preview
 - [ ] 2 `✓ Preview ready`, opened in the Browser pane
 - [ ] 3 `✓ OK recorded`
 - [ ] 4 `✓ Master ready`, opened in the Browser pane
@@ -25,6 +25,8 @@ Renders can take a few minutes on a long reel: give each render's Bash call a 10
 
 - The client must have pressed Send on the Beat Map. If they haven't, open it
   (`${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/beat-map.md`, section 3) and ask them to.
+- A caption look, or "no captions", must be chosen. If the preview stops with `ask: which caption look? …`,
+  invoke `editor-superengine:reel-captions`, then come back to step 2.
 - Ask: "Shall I make the 720p preview?" The 720p preview (720 by 1280 pixels, a smaller copy that renders quickly)
   is the cheap look before the final video.
   Nothing renders without a yes.
@@ -79,6 +81,7 @@ When it refuses, nothing is made. In plain words, with the one next step:
 | it needs your OK first | the client hasn't OK'd the latest preview | show them the latest preview and ask |
 | the preview changed after the last OK | a newer preview was made since the OK | ask for an OK of the new one |
 | a line about the music's licence | the music's licence record is missing or doesn't match the track | fix it in the sound pass (`editor-superengine:reel-sound-pass`), then make the final video again |
+| `ask: which caption look` | no caption look or "no captions" choice yet | invoke `editor-superengine:reel-captions`, then make the preview again |
 | `BLOCK` lines | two things clash on screen, e.g. two full-screen scenes at once, or an effect running across a cut | move the beat's edges on the Beat Map, Send, then a new preview |
 | a layout check error (`✗` ending in a code in brackets) | a fault in the editor's own page, not the client's | run it once more; if it stays, the failure report, with the step 'the render' |
 
@@ -86,6 +89,8 @@ The preview stops on `BLOCK` and layout check lines the same way. Any other `✗
 means a missing input, e.g. no Beat Map Send or no cut yet: go to that step.
 
 ## 5. What the render does
+
+The saved brand colour and font restyle every scene, with the font applied only when its licensed file ships with the editor; a beat's own choices win.
 
 - The cut's picture plays untouched underneath, and section 1's hook text opens the reel.
 - A beat that carries a scene gets it over its frames: a first-beat scene opens complete, and back-to-back
@@ -98,8 +103,10 @@ means a missing input, e.g. no Beat Map Send or no cut yet: go to that step.
 
 ## 6. What a beat can ask for that isn't built yet
 
-Each part of a beat that isn't built yet (B-roll, transition) gets a `note:` line: tell the client what
-SKILL.md's Not built yet rule says.
+Transitions get a `note:` line: follow SKILL.md's Not built yet rule.
+Own-clip B-roll comes from reel-broll and the Beat Map Send. Before rendering, the footage ledger checks
+the clip's bytes and source intervals; AI footage cannot accompany a number. Missing footage licences warn
+on previews and refuse the Master, even without music. B-roll is muted at layer 200, under scenes and captions.
 
 ## 7. The cutout
 
