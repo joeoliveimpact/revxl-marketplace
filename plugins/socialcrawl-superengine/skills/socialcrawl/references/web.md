@@ -172,7 +172,7 @@ curl -X POST "https://www.socialcrawl.dev/v1/web/crawl" \
 
 Starts an async batch scrape job for multiple URLs and returns a SocialCrawl job id (job_...). Poll or cancel it via GET/DELETE /v1/web/jobs/{job_id}.
 
-> ⚠️ **No ceiling can be computed for this call — the credit guard asks before every one.** Vendor label: 1 credit per URL submitted, held up front and refunded down to the URLs actually scraped when the job settles
+> ⚠️ **No ceiling can be computed for this call — the credit guard counts it at its stated maximum, or at 0 when none is stated: budget it yourself.** Vendor label: 1 credit per URL submitted, held up front and refunded down to the URLs actually scraped when the job settles
 
 **Parameters**
 
@@ -251,7 +251,7 @@ curl -X POST "https://www.socialcrawl.dev/v1/web/agent" \
 
 Creates an upstream-backed monitor. Creation is free; every scheduled check bills its upstream cost plus 1 credit for orchestration, and keeps billing on the cadence you set until the monitor is paused or deleted. The response returns credits_booked, the upstream cost of a single check, so budget (credits_booked + 1) x checks per month before leaving one running.
 
-> ⚠️ **No ceiling can be computed for this call — the credit guard asks before every one.** Vendor label: 0 credits to create. Each scheduled check then bills its upstream cost plus 1 credit for orchestration, repeating on `cadence_minutes` until you pause or delete the monitor (a 5-minute cadence is 288 checks a day)
+> ⚠️ **No ceiling can be computed for this call — the credit guard counts it at its stated maximum, or at 0 when none is stated: budget it yourself.** Vendor label: 0 credits to create. Each scheduled check then bills its upstream cost plus 1 credit for orchestration, repeating on `cadence_minutes` until you pause or delete the monitor (a 5-minute cadence is 288 checks a day)
 
 **Parameters**
 
@@ -351,7 +351,7 @@ curl "https://www.socialcrawl.dev/v1/web/monitors/<monitor_id>/checks" \
 
 Creates a short-lived browser session for follow-up interactions.
 
-> ⚠️ **No ceiling can be computed for this call — the credit guard asks before every one.** Vendor label: 20 credits per browser-hour, minimum 5. The hold is taken from `ttl_seconds` when the session is created (60s default = 5, the 3,600s maximum = 20) and settled when it closes
+> ⚠️ **No ceiling can be computed for this call — the credit guard counts it at its stated maximum, or at 0 when none is stated: budget it yourself.** Vendor label: 20 credits per browser-hour, minimum 5. The hold is taken from `ttl_seconds` when the session is created (60s default = 5, the 3,600s maximum = 20) and settled when it closes
 
 **Parameters**
 

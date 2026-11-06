@@ -23,7 +23,7 @@
 | /playlist | `playlist_id` | **1-11** | Get YouTube playlist |
 | /search/hashtag | `hashtag` | **1-11** | Search YouTube by hashtag |
 | /shorts/trending | `include`? | **5-15** | Get trending YouTube shorts |
-| /video/transcript | `url` | 3 | Get YouTube video transcript — ⚠️ **Gated in this plugin: 3 credits per video — 100 of them = 300 credits. The credit guard ASKS before this runs (it no longer hard-denies). Cheaper first: GET youtube/video/subtitles — 1 credit, the same words straight off the caption track.** |
+| /video/transcript | `url` | 3 | Get YouTube video transcript — ⚠️ **Gated in this plugin: 3 credits per video — 100 of them = 300 credits. Run it only on an explicit yes; the credit guard counts it and never asks. Cheaper first: GET youtube/video/subtitles — 1 credit, the same words straight off the caption track.** |
 | /channel/playlists | `channelId` / `handle` | 1 | List a YouTube channel's playlists |
 | /channel/lives | `channelId` / `handle` | **1-7** | List a YouTube channel's live streams |
 | /channel/community-posts | `channelId` / `handle` | 1 | List a YouTube channel's community posts |
@@ -398,7 +398,7 @@ curl "https://www.socialcrawl.dev/v1/youtube/shorts/trending" \
 
 Returns the transcript of a YouTube video as timestamped segments: each with text, start `offset` and `duration` (seconds), language, word count, and speech rate. Supports multiple languages via `language`. When no transcript exists (the owner disabled captions, the video is login-gated or gone, or no caption track matches the requested language) the endpoint returns 404 RESOURCE_NOT_FOUND with `error.details.reason` set to `captions_disabled`, `login_required`, `no_captions`, or `video_gone`, no credits are charged, and retrying returns the same result.
 
-> ⚠️ **Gated in this plugin: 3 credits per video — 100 of them = 300 credits. The credit guard ASKS before this runs (it no longer hard-denies). Cheaper first: GET youtube/video/subtitles — 1 credit, the same words straight off the caption track.**
+> ⚠️ **Gated in this plugin: 3 credits per video — 100 of them = 300 credits. Run it only on an explicit yes; the credit guard counts it and never asks. Cheaper first: GET youtube/video/subtitles — 1 credit, the same words straight off the caption track.**
 
 **Parameters**
 
@@ -653,7 +653,7 @@ curl "https://www.socialcrawl.dev/v1/youtube/profile/full?handle=<handle>" \
 | Profile + posts + analytics in one call | `/profile/full` | 5 |
 | **Up to 1000 videos or channels at once** | `POST /videos` · `POST /channels` | 5 **per 50-id chunk** |
 | Who sponsored this video | `/video/sponsors` | **10** |
-| Transcript | ⚠️ `/video/transcript` — gated: **3cr per video**, the guard asks first. Cheaper: `/video/subtitles` at 1cr — see below | **3** |
+| Transcript | ⚠️ `/video/transcript` — gated: **3cr per video**, run only on an explicit yes. Cheaper: `/video/subtitles` at 1cr — see below | **3** |
 
 ### Batch before you loop — but know what the unit is
 
@@ -669,8 +669,8 @@ resolves nothing returns an empty list at **0 credits**.
 credit guard does not gate it. Parse those yourself.
 
 `/video/transcript` (3cr) and `POST /transcripts` are cleaned transcript endpoints and are
-**gated, not blocked**: the credit guard pauses and asks, naming the per-unit price and the
-cheaper route, and they run only on an explicit yes. **The batch one is 3 credits per
+**gated, not blocked**: name the per-unit price and the cheaper route, and run them only on an
+explicit yes; the credit guard counts them and never asks. **The batch one is 3 credits per
 successful video, not 3 per call** — verified live 08.08.26 (2 ids in, 1 succeeded,
 `credits_used: 3`), so 100 videos is 300 credits, the published ceiling for ONE call. There
 is no batch discount here, so captions at 1cr plus the local chain stay cheaper — quote both
@@ -678,7 +678,7 @@ and let the user choose.
 
 Note the two rules disagree on the batch endpoint: the generator's rule is "path ends
 `/transcript`" so `POST /transcripts` carries no gate note in this ref, while
-`credit-guard.mjs` tests `transcript` as a substring and does ask on it. Treat it as gated.
+`credit-guard.mjs` tests `transcript` as a substring and counts it at its 300 ceiling. Treat it as gated.
 
 ### `/search/suggestions` is free keyword research
 

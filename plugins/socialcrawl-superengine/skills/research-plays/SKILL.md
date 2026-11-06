@@ -46,8 +46,8 @@ require is stated in both modes.
    State the play's estimated total cost before starting it.
 3. **Loops**: estimate `calls × cost` up front and say it.
 4. **Gates** (from the canon skill): the pick is the go; the guard counts a plain `curl` silently
-   (one paid `curl` per Bash call, `-o` a literal path, `jq` in the next) and asks only at a cap step, on a call it can't count, or on any other command with a
-   SocialCrawl URL. Big guns: **never batched, never auto-repeated**. **Metered endpoints gate
+   (one paid `curl` per Bash call, `-o` a literal path, `jq` in the next), never asks, and denies
+   a call past the limit or any other SocialCrawl command. Big guns: **never batched, never auto-repeated**. **Metered endpoints gate
    on their WORST case, not their unit price** —
    state `low–high` and the driver before the first call. Cap + low-balance rule:
    [../_shared/references/credit-guard.md](../_shared/references/credit-guard.md).
@@ -85,34 +85,11 @@ still waits.
 
 **Ask once per session**, unless the ask names SocialCrawl: *"Are you trying to search with
 SocialCrawl?"* No → leave, and stay out until a prompt names SocialCrawl. Unattended counts as
-no: do nothing and note one line, *"SocialCrawl not used: nobody to confirm"*. Yes, or named →
+no ([credit-guard.md](../_shared/references/credit-guard.md)): do nothing and note one line, *"SocialCrawl not used: nobody to confirm"*. Yes, or named →
 the probe below first (a 401 is its key-setup path).
 
-A named ask takes the express lane below. Any other ask follows the suggest hook's note, whose
-last line is `jev: on` (with an ask file) or `jev: off`. Jev runs as
-`node "${CLAUDE_PLUGIN_ROOT}/hooks/jev.mjs" <mode> "<ask file>"`.
-
-1. **`jev: off`** — the no-key path, no Jev call: the rubric, the router and the menu order in
-   [references/elicitation.md](references/elicitation.md).
-2. **`jev: on`, or no note** — Write `{"ask": "<their words>"}` to the ask file (no note:
-   `~/.claude/revxl/jev-ask.json`) with the Write tool, then run mode `intake`. By its `next`:
-   - `not_research` → leave the flow.
-   - `missing` → one `AskUserQuestion` for it, then at most one re-intake with the answer
-     added; then go on with what there is (still `missing` counts as `none_fit`).
-   - `package` → add its `"row"` to the file with the Write tool, run mode `worth`.
-   - `none_fit` → mode `cuts`; dispatch `agents/research-router.md` with the `survivors` and
-     absolute `${CLAUDE_PLUGIN_ROOT}/…` paths for every file it reads; add its `options[]` to
-     the file as `"options"` with the Write tool, run mode `worth`.
-3. **The menu** is the go popup below: worth's first three `options` not `free`, in its order
-   (the recommendation with its `levelText` as the reason, the strongest, one more), then
-   **None of these — just the free path**, with the reason if `free` is recommended. Each: one
-   sentence from its `label`, a `lo–hi cr` range from its `quote`, and "may stop to confirm
-   along the way" when `mayStop`. Only `free` options: no menu, run the free path. The pick is
-   the go. Goal, Depth & freshness and End product are not asked on this path.
-4. **A failure** (non-zero exit): at intake, the no-key path; after it, the row's options from
-   `references/packages.json` (for `none_fit`, the router's), strongest first, asking nothing
-   new. Exit 3 says nothing; 4, 5 or 6 say one plain line, once per conversation: *"OpenRouter
-   key rejected / out of credit / Jev unavailable — using the standard picker"*.
+Then an unnamed ask follows [references/jev-route.md](references/jev-route.md); read it before the
+first Jev call. `jev: off` is the rubric in [references/elicitation.md](references/elicitation.md).
 
 ### How to ask (popup first, text second)
 
@@ -154,7 +131,7 @@ rule in that same file already allows it.
 
 **Named means the ask names the play.** Its curated `id` (`voice-of-customer`), its title
 ("Voice-of-Customer mining", "the VoC play"), or naming any other spec in
-`curated-workflows.json` counts as named. **Anything else is not named** — a goal, a niche, a
+`curated-workflows.json` counts as named. `[SocialCrawl launcher]`: named; exact plan asked. **Anything else is not named** — a goal, a niche, a
 bare handle with no play attached — and takes the route above: Jev, or the rubric.
 
 **A named ask skips that route and lands on the pitch below.** Jev, the five dimensions and
@@ -169,7 +146,7 @@ platforms and the end product, so re-asking them is the interrogation the round 
 - The pitch below is where the lane lands, not a step it clears; its blocking go rule governs
   unchanged.
 - Headless or unattended, the stop-and-report rule in `references/elicitation.md` governs
-  unchanged.
+  unchanged ([credit-guard.md](../_shared/references/credit-guard.md)).
 - The teach switch is unchanged — the teach block at the top of this file owns it.
 - Ground rules apply to a named play exactly as they do to an elicited one.
 
@@ -220,10 +197,8 @@ the row. **Never write a credit figure into this section.** The row and
 [credit-guard.md](../_shared/references/credit-guard.md) hold the numbers; a price copied here
 is one more copy to keep in step, and stale copies are the failure this file keeps paying for.
 
-**When the guard quotes more than we do, show both numbers.** The guard rounds up on anything it
-cannot measure, so its approval prompt can name a bigger number than the row does. Say it
-plainly: *"we quote what we measured; the guard rounds up on unknowns."* Two honest numbers beat
-one tidy one.
+**If a deny names a bigger number than the row, show both:** *"we quote what we measured; the
+guard rounds up."* Two honest numbers beat one tidy one.
 
 **Above the ceiling, stop and re-ask.** The row's `ceiling` is an abort control, not a prediction
 of the bill — it is the line where the run halts and the plan goes back to them, never a number
@@ -234,14 +209,14 @@ from. The row is the authority — read it there, do not re-derive it here.
 for it the way `### How to ask` in `references/elicitation.md` says: popup first, plain text where the popup is not
 available. A default answer never opens this gate. If no answer arrives, nothing runs —
 silence is not a yes, and never start on a timer. Headless or unattended, the headless
-paragraph in `references/elicitation.md` governs — stop and report, and spend nothing. If they already asked for this exact priced
+paragraph in `references/elicitation.md` governs — spend only what the run's prompt names, report the rest ([credit-guard.md](../_shared/references/credit-guard.md)). If they already asked for this exact priced
 plan — attended, never headless — show the gate and carry on: a second confirmation of the same
 request is noise, not safety. Anything wider than what they approved — more handles, more pages,
 a deeper `max=` — is a new
 plan and needs its own go.
 The go is that popup: fire `AskUserQuestion` with *"Which one should I run?"*, two or three
 priced options plus **None of these — just the free path**, and the pick they click is the
-explicit yes. Nothing is asked after the pick, except a cap crossing.
+explicit yes. Nothing is asked after the pick.
 
 **After the run, report what the API returned, not what we estimated.** `credits_used` and
 `credits_remaining` (null on a cache hit) come back in the response, and
@@ -313,3 +288,30 @@ the pick instead of making it. Coach it out loud against the rubric: what you wo
 why, and — said specifically — what they already got right. If the pick is fine, run it and do
 not manufacture edits to look useful. If they stall or say "just pick", pick, and make no second
 offer.
+
+## Failure report (offer after any failure you can't fix in two tries)
+
+Tell the client what went wrong in plain words, and whether anything was charged or changed. Then offer:
+"Want me to send Joe a short report so he can fix it? You'll see exactly what's in it first."
+
+1. With the Write tool, put the details in `socialcrawl-superengine/reports/report-body.md`: what the client asked for, the step
+   that failed, the command shape, and the error output. Never a key, and never the client's own content
+   (their notes, contacts, messages, file text).
+2. Draft it. Keep the summary short. Put the summary, step and error line in single quotes, drop any
+   apostrophe from them, and use no script names, web addresses or file paths (those go in the body
+   file; a command carrying the SocialCrawl address that isn't a plain `curl` is refused):
+
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin socialcrawl-superengine --plugin-version 0.4.0 --skill research-plays --step '<step>' --error-line '<the error line>' --summary '<headline>' --body-file socialcrawl-superengine/reports/report-body.md`
+
+3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
+4. Send, using the path after `DRAFT:`:
+
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" send "<draft path>"`
+
+`SENT` means Joe has it. `SAVED LOCALLY: <path>` means it couldn't be sent; tell the client where the file is
+so they can email it to Joe. Skip instead:
+
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" skip "<draft path>"`
+
+No `python`? Use `python3`. If neither runs, nothing was sent: tell the client the details are in
+`socialcrawl-superengine/reports/report-body.md`, to email to Joe.

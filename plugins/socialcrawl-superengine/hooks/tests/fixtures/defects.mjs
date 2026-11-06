@@ -6,7 +6,7 @@
  * Every fixture reproduces the checker's own command shape. They are written to FAIL on the
  * pre-fix build at 0c7d980 — that is the point of committing them.
  */
-import { run, session, V1, HOST, TSCRIPT, quoted, assert, assertDecision, assertCounted, assertNotPlain, assertMatch, assertNoMatch } from "../lib.mjs";
+import { run, session, visible, V1, HOST, TSCRIPT, quoted, mLimit, srcAuto, BALANCE, LIMIT, assert, assertDecision, assertCounted, assertNotPlain, assertNoMatch } from "../lib.mjs";
 
 const NOLOCAL = { unsetEnv: ["GROQ_API_KEY"], env: { PATH: "" } };
 const B = "https://" + HOST + "/v1/";
@@ -14,24 +14,20 @@ const B = "https://" + HOST + "/v1/";
 export default [
   {
     id: "D1-batch-scrape-no-nan",
-    desc: "D1: a non-numeric `high` never produces NaN, never writes {\"spent\":null}, and never wipes the counter",
+    desc: "D1: a non-numeric `high` never produces NaN, never writes {\"spent\":null}, and never wipes the counter (D28a: the call is counted at 0, a stated LIMIT, and passes within the limit)",
     fn() {
-      // (a) the single call: ask, per-unit price present, no NaN anywhere.
+      // (a) the single call: counted at 0 (no stated maximum), silently, no NaN anywhere.
       const r = run(`curl -X POST "${V1}web/batch-scrape" -d '{}'`);
-      assertDecision(r, "ask", "an un-quotable priced call must fail SAFE");
-      assertNoMatch(r, /NaN/, "no NaN may reach the message");
-      // R10: the entry is range null (a G7 sentence label), and the per-unit price reaches the
-      // ask as the vendor's own label, verbatim.
-      assertMatch(r, /1 credit per URL submitted/, "the per-unit price must still be stated");
-      assertMatch(r, /NO computable ceiling/, "must say plainly that no ceiling exists");
+      assertDecision(r, null, "an un-quotable priced call is counted at 0, not denied for it");
+      assertNoMatch(r, /NaN/, "no NaN may reach any output");
+      assert(r.raw === "" && r.state && r.state.spent === 0, `counted 0, read ${r.stateRaw}`, r);
       assert(r.stateRaw === null || !/null/.test(r.stateRaw), `state file must never contain null: ${r.stateRaw}`, r);
 
-      // (b) the counter-wipe chain the checker captured: 200 -> 275 -> (batch) -> 350. The
-      // 200cr step crosses the 200 cap step, so it asks and counts once it has run (R14a).
-      const s = session();
+      // (b) the counter-wipe chain the checker captured: 200 -> 275 -> (batch) -> 350, under a
+      // 1,000 session budget (contract §1) so every step is within the limit.
+      const s = session().budget({ sessionBudget: 1000 });
       const sov = `curl -s "${V1}prism/share-of-voice?brands=a,b"`;
-      assertDecision(s.run(sov), "ask", "step 1 crosses the cap step");
-      s.post(sov);
+      assertDecision(s.run(sov), null, "step 1 is within the limit");
       assert(s.state().spent === 200, `step 1 should record 200, got ${s.stateRaw()}`);
       s.run(`curl -s "${V1}prism/creator-vet?handle=abc"`);
       assert(s.state().spent === 275, `step 2 should record 275, got ${s.stateRaw()}`);
@@ -42,42 +38,35 @@ export default [
       assert(s.state().spent === 350, `step 4 should record 350, got ${s.stateRaw()} (75 means history was erased)`);
       s.cleanup();
 
-      // (c) the chain it used to poison: the total must be >= the priced leg, never NaN.
+      // (c) the chain it used to poison: the total must be >= the priced leg, never NaN. At the
+      // 200 limit the 200 total reaches it exactly, so it passes and counts 200.
       const ch = run(`curl -X POST "${V1}web/batch-scrape" -d '{}' && curl -s "${V1}prism/share-of-voice?brands=a,b"`);
       assertNoMatch(ch, /NaN/, "a chain containing an un-quotable leg must not go NaN");
-      assertMatch(ch, /Worst case for the whole command: ~200 credits/, "the priced leg still carries the total");
-      assertMatch(ch, /excludes a call no ceiling can be computed for/, "the total must say what it excludes");
+      assert(ch.raw === "" && ch.state.spent === 200, `the priced leg still carries the total, 200, read ${ch.stateRaw}`, ch);
     },
   },
   {
     id: "D2-batch-transcripts-real-price",
-    desc: "D2: the transcript gate states the BATCH row's billable ceiling (300), not the generic 10cr band",
+    desc: "D2: a BATCH transcript call counts the row's billable ceiling (300), not the generic 10cr band (D28: past the 200 limit, so M_LIMIT names 300)",
     fn() {
       const r = run(`curl -X POST "${V1}youtube/${TSCRIPT}s" -d '{"ids":["a"]}'`, NOLOCAL);
-      assertDecision(r, "ask", "a batch transcript call must still be gated");
-      assertMatch(r, /TRANSCRIPT call/, "the gate must still fire");
-      assertMatch(r, /Cheaper first/, "the redirect is mandatory policy");
-      // R10: the per-unit price is the vendor's own label, quoted in the batch-row sentence.
-      assertMatch(r, /BATCH transcript endpoint/, "the batch row's own sentence, not the generic band");
-      assertMatch(r, /3 credits per successful transcript/, "the per-unit price is mandatory policy");
-      assertMatch(r, /ceiling of 300 credits/, "the billable ceiling must be stated");
-      assertMatch(r, /Worst case for this call: ~300 credits/, "the number in the ask must be the billable one");
-      assert(quoted(r.state) === 300, `300 should be counted (pending the Post commit), read ${JSON.stringify(r.state)}`, r);
+      assertDecision(r, "deny", "300 is past the 200 limit");
+      assert(r.message === mLimit({ spent: 0, worst: 300, limit: LIMIT, src: srcAuto(BALANCE), bf: r.bf }), `exactly M_LIMIT naming the billable 300, read ${r.message}`, r);
+      assert(quoted(r.state) === 0, `a deny counts nothing, read ${JSON.stringify(r.state)}`, r);
 
       // chained with a 1cr call the command total must read 301, not 11.
       const ch = run(`curl -X POST "${V1}youtube/${TSCRIPT}s" -d '{"ids":["a"]}' && curl -s "${V1}amazon/shop?q=a"`, NOLOCAL);
-      assertMatch(ch, /Worst case for the whole command: ~301 credits/, "chain total must be 301");
+      assert(ch.message === mLimit({ spent: 0, worst: 301, limit: LIMIT, src: srcAuto(BALANCE), bf: ch.bf }), `chain total must be 301, read ${ch.message}`, ch);
 
-      // CONTROL: include=transcript bolted onto another metered endpoint keeps the generic band.
+      // CONTROL: include=transcript bolted onto another metered endpoint keeps that endpoint's own
+      // 75: it is counted at 75, silently, never at a null unit.
       const bolt = run(`curl -s "${V1}prism/creator-vet?handle=a&include=full,${TSCRIPT}"`, NOLOCAL);
-      assertDecision(bolt, "ask", "a bolt-on transcript param is still gated");
-      assertNoMatch(bolt, /BATCH transcript endpoint/, "a bolt-on is not a batch transcript row");
-      assertNoMatch(bolt, /per null/, "no null unit may reach the message");
+      assertCounted(bolt, 75, "a bolt-on transcript param counts the endpoint's 75");
     },
   },
   {
     id: "D3-truncated-url-not-cheap",
-    desc: "D3: all four truncation shapes become a fail-safe ask with a floor, never the 5cr unknown default",
+    desc: "D3: all four truncation shapes are not plain, so each is denied with M_NOTPLAIN and nothing is counted; its visible total is still the FALLBACK_BIG floor (50), never the 5cr unknown default",
     fn() {
       const shapes = [
         [`curl -s "${B}prism/creator-v""et?h=a"`, "split quoting"],
@@ -85,45 +74,42 @@ export default [
         [`BASE="${B}"; curl -s "\${BASE}prism/creator-vet?h=a"`, "${BASE} variable"],
         [`EP=prism/creator-vet; curl -s "${B}$EP"`, "$EP variable"],
       ];
-      // R14a.2: none of the four is a plain curl, so each takes the not-plain ask; the unreadable
-      // leg is still counted at the FALLBACK_BIG floor and named as a floor.
+      // R14a.2: none of the four is a plain curl, so each is denied (D28); the unreadable leg is
+      // still seen at the FALLBACK_BIG floor, as the unattended log shows.
       for (const [cmd, label] of shapes) {
-        const r = run(cmd);
-        assertNotPlain(r, 50, `${label}: must fail SAFE at the FALLBACK_BIG floor, not the 5cr default`);
-        assertMatch(r, /endpoint unreadable — that figure is a FLOOR/, `${label}: must be named as unreadable`);
-        assertNoMatch(r, /up to ~5 credits in one call/, `${label}: the cheap unknown default must be gone`);
+        assertNotPlain(run(cmd), `${label}: must fail SAFE`);
+        const l = visible(cmd);
+        assert(l && l.kind === "not-plain" && l.cmdWorst === 50, `${label}: the visible total is the 50 floor, not the 5cr default, read ${JSON.stringify(l)}`);
       }
       // CONTROL: the same URL written out in full still resolves to its real price.
       const ok = run(`curl -s "${B}prism/creator-vet?h=a"`);
       assertCounted(ok, 75, "a literal URL must still price at 75");
-      assertNoMatch(ok, /UNREADABLE endpoint/, "a resolvable path is not unreadable");
     },
   },
   {
     id: "D4-loops-degrade-to-ask",
-    desc: "D4, re-pointed (R14a.2): a loop around a billable URL is not a plain curl, so it takes the not-plain ask at its visible one-call figure, and a loop over free credits/* calls asks too",
+    desc: "D4, re-pointed (R14a.2; D28): a loop around a billable URL is not a plain curl, so it is denied with M_NOTPLAIN and nothing is counted, and so is a loop over free credits/* calls",
     fn() {
       const loops = [
-        [`for i in $(seq 1 100); do curl -s "${V1}youtube/video/${TSCRIPT}?id=$i"; done`, 3, "for + seq, transcript"],
-        [`for i in 1 2 3; do curl -s "${V1}prism/creator-vet?h=$i"; done`, 75, "literal for-list, metered"],
-        [`cat ids.txt | xargs -I{} curl -s "${V1}prism/creator-vet?h={}"`, 75, "xargs fan-out"],
-        [`while read u; do curl -s "${V1}prism/lookup?handle=$u"; done < h.txt`, 5, "while-read over a file"],
-        [`while read u\ndo\n curl -s "${V1}prism/lookup?handle=$u"\ndone < h.txt`, 5, "while/do on separate lines"],
-        [`for ((i=0;i<10;i++)); do curl -s "${V1}prism/creator-vet?h=$i"; done`, 75, "C-style for"],
-        [`until [ -f stop ]; do curl -s "${V1}prism/creator-vet?h=a"; done`, 75, "until loop"],
-        [`for i in 1 2; do curl -s "${V1}instagram/profile?handle=$i"; done`, 1, "cheap call in a loop"],
+        [`for i in $(seq 1 100); do curl -s "${V1}youtube/video/${TSCRIPT}?id=$i"; done`, "for + seq, transcript"],
+        [`for i in 1 2 3; do curl -s "${V1}prism/creator-vet?h=$i"; done`, "literal for-list, metered"],
+        [`cat ids.txt | xargs -I{} curl -s "${V1}prism/creator-vet?h={}"`, "xargs fan-out"],
+        [`while read u; do curl -s "${V1}prism/lookup?handle=$u"; done < h.txt`, "while-read over a file"],
+        [`while read u\ndo\n curl -s "${V1}prism/lookup?handle=$u"\ndone < h.txt`, "while/do on separate lines"],
+        [`for ((i=0;i<10;i++)); do curl -s "${V1}prism/creator-vet?h=$i"; done`, "C-style for"],
+        [`until [ -f stop ]; do curl -s "${V1}prism/creator-vet?h=a"; done`, "until loop"],
+        [`for i in 1 2; do curl -s "${V1}instagram/profile?handle=$i"; done`, "cheap call in a loop"],
       ];
-      for (const [cmd, want, label] of loops) {
+      for (const [cmd, label] of loops) {
         const r = run(cmd, NOLOCAL);
-        assertNotPlain(r, want, `${label}: a looped billable call must ask`);
-        assertMatch(r, /how many times, can't be read/, `${label}: the count must be declared unreadable`);
+        assertNotPlain(r, `${label}: a looped billable call is denied`);
         assertNoMatch(r, /\b(?:100|3|N) iterations\b/, `${label}: the guard must not claim to know the bound`);
       }
       // A benign loop with no SocialCrawl URL passes silently; a loop over free credits/* calls is
-      // not a plain curl either, so it asks (R14a.2: free calls go through the allow-list too).
+      // not a plain curl either, so it is denied (R14a.2: free calls go through the allow-list too).
       const benign = run(`for f in *.txt; do echo $f; done`);
       assert(benign.raw === "", "a loop with no SocialCrawl URL must pass silently", benign);
-      assertNotPlain(run(`for i in 1 2 3; do curl -s "${V1}credits/balance"; done`), 0, "a loop over free credits/* calls asks");
+      assertNotPlain(run(`for i in 1 2 3; do curl -s "${V1}credits/balance"; done`), "a loop over free credits/* calls is denied");
       assertCounted(run(`curl -s "${V1}prism/creator-vet?handle=abc"`), 75, "a single plain call is counted silently");
       // Loop keywords inside a body or a path are not a loop: these are plain curls, counted silently.
       const prose = [
@@ -138,7 +124,7 @@ export default [
   },
   {
     id: "D5-driver-not-limit",
-    desc: "D5: no quantity param can discount a per-unit quote below the row's published ceiling (see sweep S2)",
+    desc: "D5: no quantity param can discount a per-unit quote below the row's published ceiling (see sweep S2); D28: within the 200 limit it is counted, past it M_LIMIT names the full ceiling",
     fn() {
       const cases = [
         [`curl -s "${V1}prism/comments?url=X&max=5000&limit=10"`, 200, "comments with max and limit"],
@@ -162,34 +148,26 @@ export default [
   },
   {
     id: "D6-percent-encoded-transcript",
-    desc: "D6: a percent-encoded transcript path is decoded before the gate, so the price and redirect survive",
+    desc: "D6: a percent-encoded transcript path is decoded before the gate; a `%` in the path is not plain (R14a.2), so each is denied with M_NOTPLAIN, and its visible total is the decoded transcript's per-unit price, not an unreadable floor",
     fn() {
       const enc = "transcr" + "%69" + "pt";           // decodes to the gated token
       const enc2 = "%74" + "ranscript";
       const cases = [
-        [`curl -s "${V1}youtube/video/${enc}?id=abc"`, /bills 3 credits PER video/, "%69 inside the token"],
-        [`curl -s "${V1}instagram/media/${enc2}?id=abc"`, /bills 10 credits PER media/, "%74 leading the token"],
-        [`curl -s "${V1}youtube%2Fvideo%2F${enc}?id=abc"`, /bills 3 credits PER video/, "%2F slashes plus %69"],
+        [`curl -s "${V1}youtube/video/${enc}?id=abc"`, 3, "%69 inside the token"],
+        [`curl -s "${V1}instagram/media/${enc2}?id=abc"`, 10, "%74 leading the token"],
+        [`curl -s "${V1}youtube%2Fvideo%2F${enc}?id=abc"`, 3, "%2F slashes plus %69"],
       ];
-      for (const [cmd, priceRe, label] of cases) {
-        const r = run(cmd, NOLOCAL);
-        assertDecision(r, "ask", `${label}: must be gated`);
-        // R14a.2: a `%` in the path is not plain, so the not-plain ask carries the transcript sentence.
-        assertMatch(r, /NOT A PLAIN CURL/, `${label}: not a plain curl`);
-        assertMatch(r, /TRANSCRIPT call/, `${label}: the gate must fire`);
-        assertMatch(r, priceRe, `${label}: the per-unit price is mandatory`);
-        assertMatch(r, /Cheaper first/, `${label}: the redirect is mandatory`);
-        assertNoMatch(r, /^SocialCrawl PAID call/, `${label}: must not fall through to a plain PAID ask`);
+      for (const [cmd, price, label] of cases) {
+        assertNotPlain(run(cmd, NOLOCAL), `${label}: a % in the path is not plain`);
+        const l = visible(cmd, NOLOCAL);
+        assert(l && l.cmdWorst === price, `${label}: decoded to the transcript's ${price}, not the 50 floor, read ${JSON.stringify(l)}`);
       }
       // CONTROLS: a malformed escape must not break the decoder or the cost lookup.
       for (const bad of [`curl -s "${V1}prism/creator-vet?h=100%zz"`, `curl -s "${V1}prism/creator-vet?h=100%"`]) {
         assertCounted(run(bad), 75, "a malformed escape must still price at 75");
       }
-      assertNoMatch(
-        run(`curl -s "${V1}youtube/video/subtitles?id=abc"`, NOLOCAL),
-        /TRANSCRIPT call/,
-        "the cheaper subtitles route must not be gated"
-      );
+      // The cheaper subtitles route is not a transcript: its own flat 1, not a transcript band.
+      assertCounted(run(`curl -s "${V1}youtube/video/subtitles?id=abc"`, NOLOCAL), 1, "the cheaper subtitles route must not be gated");
     },
   },
 ];

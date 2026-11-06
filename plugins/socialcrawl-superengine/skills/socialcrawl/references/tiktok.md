@@ -23,7 +23,7 @@
 | /user/followers | `handle` / `user_id` | 1 | List TikTok user followers |
 | /user/following | `handle` / `user_id` | 1 | List TikTok user following |
 | /user/live | `handle` | 1 | Get TikTok user live stream |
-| /post/transcript | `url` | 10 | Get TikTok video transcript — ⚠️ **Gated in this plugin: 10 credits per post — 100 of them = 1000 credits. The credit guard ASKS before this runs (it no longer hard-denies). Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.** |
+| /post/transcript | `url` | 10 | Get TikTok video transcript — ⚠️ **Gated in this plugin: 10 credits per post — 100 of them = 1000 credits. Run it only on an explicit yes; the credit guard counts it and never asks. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.** |
 | /video/screen-text | `url` | 5 | Get TikTok video on-screen text |
 | /song | `clipId` | 1 | Get TikTok song details |
 | /song/videos | `clipId` | 1 | List TikTok videos using a song |
@@ -421,7 +421,7 @@ curl "https://www.socialcrawl.dev/v1/tiktok/user/live?handle=<handle>" \
 
 Returns the transcript of a TikTok video. Supports auto-generated captions and AI-powered transcription as fallback.
 
-> ⚠️ **Gated in this plugin: 10 credits per post — 100 of them = 1000 credits. The credit guard ASKS before this runs (it no longer hard-denies). Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.**
+> ⚠️ **Gated in this plugin: 10 credits per post — 100 of them = 1000 credits. Run it only on an explicit yes; the credit guard counts it and never asks. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.**
 
 **Parameters**
 
@@ -776,7 +776,7 @@ the API. Only six endpoints cost more.
 | On-screen text burned into a video | `/video/screen-text` | 5 |
 | The trending feed | `/trending` | 5 |
 | Profile + posts + analytics in one call | `/profile/full` | 5 |
-| Transcript | ⚠️ `/post/transcript` — gated: **10cr per post**, the guard asks first. Cheaper: pull the media URL (1–5cr) and run the local Whisper chain | **10** |
+| Transcript | ⚠️ `/post/transcript` — gated: **10cr per post**, run only on an explicit yes. Cheaper: pull the media URL (1–5cr) and run the local Whisper chain | **10** |
 
 ### The two endpoints worth paying 5cr for
 

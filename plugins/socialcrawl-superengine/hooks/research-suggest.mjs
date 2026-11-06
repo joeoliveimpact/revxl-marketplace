@@ -44,7 +44,8 @@
  *
  * JEV LINE (R13a). Every note ends `jev: on` with the absolute ask-file path `<revxl>/jev-ask.json`
  * (the hook creates `<revxl>`), or `jev: off`. On means an OpenRouter key is PRESENT: the
- * OPENROUTER_API_KEY env var is set, or ~/.config/openrouter/api_key has a non-zero size. The
+ * OPENROUTER_API_KEY env var is set, JEV_API_BASE (a key-injecting proxy) is set, or
+ * ~/.config/openrouter/api_key has a non-zero size. The
  * value is never read (P15); jev.mjs does its own key check and exits 3 on a bad one.
  */
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
@@ -192,11 +193,11 @@ function silent() {
 
 /**
  * The note's last line (R13a): `jev: on` + the absolute ask-file path, or `jev: off`. On = an
- * OpenRouter key is PRESENT — the env var is set, or the key file's size is above zero. Presence
+ * OpenRouter key is PRESENT — the env var or JEV_API_BASE is set, or the key file's size is above zero. Presence
  * only: the value is never read (P15). On creates `<revxl>` so the Write tool can put the ask there.
  */
 function jevLine() {
-  let on = Boolean(process.env.OPENROUTER_API_KEY);
+  let on = Boolean(process.env.OPENROUTER_API_KEY || process.env.JEV_API_BASE); // a key-injecting proxy counts as a key
   try {
     on = on || statSync(join(homedir(), ".config", "openrouter", "api_key")).size > 0;
   } catch {}
@@ -283,6 +284,8 @@ try {
 
 const prompt = input && typeof input.prompt === "string" ? input.prompt : "";
 if (!prompt.trim()) silent();
+// A press in the mod's Endpoints or Combos tab (5b): the person's priced pick, already routed. No suggestion.
+if (prompt.startsWith("[SocialCrawl launcher]")) silent();
 
 try {
   const lower = prompt.toLowerCase();

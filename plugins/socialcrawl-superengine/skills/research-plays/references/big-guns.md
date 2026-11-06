@@ -3,8 +3,8 @@
 Most of these are flat-priced. **`share-of-voice` is not** — it meters per brand, and
 **`creator-vet`** and **`crisis-radar`** hold a ceiling and refund down. Check the table.
 
-Every play here runs the same way, no exceptions. **The pick is the go; the guard asks only at
-a cap step, on a can't-count call, or on a command that isn't a plain `curl`.**
+Every play here runs the same way, no exceptions. **The pick is the go; the guard never asks: it
+denies a call past the session limit, or a command that isn't a plain `curl`.**
 
 1. `GET /v1/credits/balance` (0cr) — show the balance.
 2. Name the exact cost: *"This is a premium one-shot: `<endpoint>` costs **N credits**

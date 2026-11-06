@@ -13,7 +13,7 @@
 | /post/comments | `url` / `feedback_id` | **1-5** | List Facebook post comments |
 | /group/posts | `url` / `group_id` | 1 | List Facebook group posts |
 | /group | `url` / `group_id` | 1 | Get a Facebook group |
-| /post/transcript | `url` | 10 | Get Facebook video transcript — ⚠️ **Gated in this plugin: 10 credits per post — 100 of them = 1000 credits. The credit guard ASKS before this runs (it no longer hard-denies). Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.** |
+| /post/transcript | `url` | 10 | Get Facebook video transcript — ⚠️ **Gated in this plugin: 10 credits per post — 100 of them = 1000 credits. Run it only on an explicit yes; the credit guard counts it and never asks. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.** |
 | /profile/photos | `url` | **1-9** | List Facebook profile photos |
 | /profile/reels | `url` | 1 | List Facebook profile reels |
 | /adlibrary/ad | `id` / `url` | 5 | Get Facebook Ad Library ad details |
@@ -28,7 +28,7 @@
 | /events/search | `query` | 1 | Search Facebook events by keyword |
 | /events | `url` | **1-13** | List Facebook events for a city |
 | /event/details | `id` / `url` | 1 | Get details for a Facebook event |
-| /adlibrary/ad/transcript | `id` / `url` | 10 | Get a Facebook Ad Library video ad transcript — ⚠️ **Gated in this plugin: 10 credits per ad — 100 of them = 1000 credits. The credit guard ASKS before this runs (it no longer hard-denies). Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.** |
+| /adlibrary/ad/transcript | `id` / `url` | 10 | Get a Facebook Ad Library video ad transcript — ⚠️ **Gated in this plugin: 10 credits per ad — 100 of them = 1000 credits. Run it only on an explicit yes; the credit guard counts it and never asks. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.** |
 | /profile/full | `url` | 5 | Facebook profile, recent posts, and computed analytics in one call. |
 | /profile/reels/full | `url` | **5-25** | Facebook profile reels with exact views, likes, comments, and shares merged in, in one call. |
 | /search/posts | `query` | **1-9** | Search Facebook posts by keyword |
@@ -166,7 +166,7 @@ curl "https://www.socialcrawl.dev/v1/facebook/group?url=<url>" \
 
 Returns the transcript of a Facebook video post. Supports auto-generated captions.
 
-> ⚠️ **Gated in this plugin: 10 credits per post — 100 of them = 1000 credits. The credit guard ASKS before this runs (it no longer hard-denies). Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.**
+> ⚠️ **Gated in this plugin: 10 credits per post — 100 of them = 1000 credits. Run it only on an explicit yes; the credit guard counts it and never asks. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.**
 
 **Parameters**
 
@@ -437,7 +437,7 @@ curl "https://www.socialcrawl.dev/v1/facebook/event/details?id=<id>" \
 
 Retrieves a transcript for a single Facebook Ad Library video ad. Uses Facebook-provided captions when available, otherwise transcribes the public video URL on demand. Ads without retrievable captions return a 404 RESOURCE_NOT_FOUND, and on-demand transcription can fail transiently (503): both outcomes are free; credits are only deducted when a transcript is returned.
 
-> ⚠️ **Gated in this plugin: 10 credits per ad — 100 of them = 1000 credits. The credit guard ASKS before this runs (it no longer hard-denies). Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.**
+> ⚠️ **Gated in this plugin: 10 credits per ad — 100 of them = 1000 credits. Run it only on an explicit yes; the credit guard counts it and never asks. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.**
 
 **Parameters**
 
@@ -615,7 +615,7 @@ at 5cr. The Ad Library is the reason most research reaches for Facebook at all.
 | One ad's full detail | `/adlibrary/ad` | 5 |
 | Profile + posts + analytics in one call | `/profile/full` | 5 |
 | Reels with exact views/likes/comments/shares | `/profile/reels/full` | 5 |
-| Transcript | ⚠️ `/post/transcript`, `/adlibrary/ad/transcript` — gated: **10cr per item**, the guard asks first. Cheaper: pull the media URL (1–5cr) and transcribe it yourself | **10** |
+| Transcript | ⚠️ `/post/transcript`, `/adlibrary/ad/transcript` — gated: **10cr per item**, run only on an explicit yes. Cheaper: pull the media URL (1–5cr) and transcribe it yourself | **10** |
 
 ### The Ad Library is a competitor's paid strategy, stated openly
 

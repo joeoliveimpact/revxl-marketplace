@@ -1,33 +1,10 @@
 {
-  "description": "SocialCrawl credit guard: counts each paid API call's worst case against a silent session cap (min(500, 25% of the balance)) when the command is a plain curl in the Bash tool, and asks only at a cap step, before a call it can't count, such as a transcript call, which gets its per-unit price and a cheaper route, or on any other command carrying a SocialCrawl URL (denied unattended). A SocialCrawl call through PowerShell is never a plain curl: it always asks (denied unattended) and says to use the Bash tool. The same script on PostToolUse and PostToolUseFailure counts an asked call once it has run. A call it can't record (no session lock before its wait ends, no session folder, a save that fails) is refused, attended and unattended. Fires on Bash and PowerShell and only acts on socialcrawl.dev commands. It keeps the session's count in <revxl>/sessions/ (SC_REVXL_HOME, else ~/.claude/revxl), and every wait it makes ends within 7 seconds of its start, under this hook's 10-second timeout. It reads the balance once a session (0 credits, at most 3 tries), logs each unattended deny and paid pass, and on an error of its own it allows attended and denies unattended.",
+  "description": "SocialCrawl credit guard: counts each paid API call's worst case against a hard session limit when the command is a plain curl in the Bash tool, and stays silent within it. The limit is the session budget in <revxl>/socialcrawl-budget.json when one is set (a whole number from 1 to 20,000), else min(500, 25% of the balance), else 500 when the balance can't be read; a command that would take the session past it is denied, and reaching it exactly passes. It never raises a permission prompt: any other SocialCrawl command (not a plain curl, or through any tool but Bash) is denied with a message that names the fix, and so is every paid call in a session whose total was lost. Transcript, unreadable, uncomputable and unpriced calls are counted at their known worst case (0 where none is known) and pass within the limit. A call it can't record (no session lock before its wait ends, no session folder, a save that fails) is refused. Fires on Bash and PowerShell before a command, and only acts on socialcrawl.dev commands, but for one thing: it also guards its own files. A Write, Edit, MultiEdit or NotebookEdit of socialcrawl-budget.json, socialcrawl-day.json, credit-guard-unattended.jsonl or socialcrawl-calls.jsonl (or one of those names followed by a dot and more, such as a lock, temporary or rotated copy) in a revxl location (a folder of its path named revxl, or <revxl> itself), or of a session file or its lock in revxl/sessions/ or <revxl>/sessions/, or a Bash or PowerShell command naming one of them with a revxl location, is denied before anything else and is not logged; so is a Bash or PowerShell command that deletes, moves or renames the revxl folder itself (revxl or its sessions folder, the .claude folder above it, or <revxl>), and one naming budget-write, the Budget pane's save step. The Read tool still reads them, and every other write-type call passes untouched. It keeps the session's count in <revxl>/sessions/ (SC_REVXL_HOME, else ~/.claude/revxl), and every wait it makes ends within 7 seconds of its start, under this hook's 10-second timeout. Each decision on a call it counts (a pass or deny made while it holds the session lock) adds one line, attended or not, to the call record <revxl>/socialcrawl-calls.jsonl: the time, session, paths, worst case, committed total, decision, kind, limit and the cached balance with when it was read, and whether the run is a Desktop routine, never a key or a command; at 1 MiB the record moves to socialcrawl-calls.jsonl.1, and a line that can't be written changes nothing. It reads the balance once a session (0 credits, at most 3 tries) when no session budget is set, logs each unattended deny and paid pass, and on an error of its own it passes attended and denies unattended or in a routine.",
+  "modules": ["./mod/register.tsx"],
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash|PowerShell",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/credit-guard.mjs\"",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Bash|PowerShell",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/credit-guard.mjs\"",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PostToolUseFailure": [
-      {
-        "matcher": "Bash|PowerShell",
+        "matcher": "Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit",
         "hooks": [
           {
             "type": "command",

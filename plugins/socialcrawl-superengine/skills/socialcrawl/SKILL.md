@@ -39,9 +39,9 @@ Unified social + research data API. One API key, one response format, **645 endp
 > **`&include=transcript` on any paid call** (e.g. `prism/video-intel`) is the same deal — it
 > adds a paid transcript leg to a call that is already billing: **+10 credits, refunded if the
 > transcript comes back null**.
-> The credit-guard hook **asks** on all of these (it denies one only when it can't record the
-> call, and says why): show the user the per-unit price and the cheaper route, and run the paid
-> call only on an **explicit yes**.
+> The credit-guard hook never asks on these: it counts them and lets them run within the session
+> limit, so the gate is yours. Show the user the per-unit price and the cheaper route, and run the
+> paid call only on an **explicit yes**.
 
 ## API Key
 
@@ -67,18 +67,50 @@ the transcript, the session log, and any screenshot.
 
 Either form records only the *location* of the key, never its value. The reference files show the
 env form; with `file=ok`, swap in the file form. **Never build the key into a shell variable**
-(`K=…`, `${SOCIALCRAWL_API_KEY:-$(cat …)}`): the guard can't read a variable, so every call then
-takes its not-plain ask.
+(`K=…`, `${SOCIALCRAWL_API_KEY:-$(cat …)}`): the guard can't read a variable, so every call is then
+denied as not plain.
 
+<!-- canon-only:begin -->
+## Failure report (offer after any failure you can't fix in two tries)
+
+Tell the client what went wrong in plain words, and whether anything was charged or changed. Then offer:
+"Want me to send Joe a short report so he can fix it? You'll see exactly what's in it first."
+
+1. With the Write tool, put the details in `socialcrawl-superengine/reports/report-body.md`: what the client asked for, the step
+   that failed, the command shape, and the error output. Never a key, and never the client's own content
+   (their notes, contacts, messages, file text).
+2. Draft it. Keep the summary short. Put the summary, step and error line in single quotes, drop any
+   apostrophe from them, and use no script names, web addresses or file paths (those go in the body
+   file; a command carrying the SocialCrawl address that isn't a plain `curl` is refused):
+
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin socialcrawl-superengine --plugin-version 0.4.0 --skill socialcrawl --step '<step>' --error-line '<the error line>' --summary '<headline>' --body-file socialcrawl-superengine/reports/report-body.md`
+
+3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
+4. Send, using the path after `DRAFT:`:
+
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" send "<draft path>"`
+
+`SENT` means Joe has it. `SAVED LOCALLY: <path>` means it couldn't be sent; tell the client where the file is
+so they can email it to Joe. Skip instead:
+
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" skip "<draft path>"`
+
+No `python`? Use `python3`. If neither runs, nothing was sent: tell the client the details are in
+`socialcrawl-superengine/reports/report-body.md`, to email to Joe.
+<!-- canon-only:end -->
 ## First Use
 
 **Ask once per session — one answer for both skills.** Unless the ask names SocialCrawl, ask
 *"Are you trying to search with SocialCrawl?"*, the question `research-plays` asks; if either
 skill already asked it this session, that answer stands. No → neither skill makes a
 SocialCrawl call for the rest of the session, until a prompt names SocialCrawl. Unattended
-counts as no: make no call and note one line, *"SocialCrawl not used: nobody to confirm"*.
-Yes, or named → the steps below.
+counts as no: make no call and note one line, *"SocialCrawl not used: nobody to confirm"*
+([credit-guard.md](../_shared/references/credit-guard.md)). Yes, or named → the steps below.
 
+<!-- canon-only:begin -->
+A prompt that starts `[SocialCrawl launcher]` is the person's priced pick of that one call: make it, with no test call first and no ask-once question.
+
+<!-- canon-only:end -->
 On the first interaction with this skill in a session:
 
 1. Briefly introduce: "SocialCrawl provides a single API for 645 endpoints across 68 platform namespaces, plus a universal search across up to 17 sources. Let me verify your API key."
@@ -297,8 +329,9 @@ scanned**, so a deep pull can pass it. Cap `max` and quote the range.
 
 ### Getting a transcript
 
-**Every `*/transcript` endpoint is gated, not blocked** (see the policy at the top): the guard
-pauses, states the per-unit price and the cheaper route, and the call runs on an explicit yes.
+**Every `*/transcript` endpoint is gated, not blocked** (see the policy at the top): state the
+per-unit price and the cheaper route, and run the call only on an explicit yes. The guard counts
+it and never asks.
 The whole menu, cheapest first:
 
 | Your goal | Use this | Credits |
@@ -398,7 +431,7 @@ Read or process that file (`jq`, python) in a **separate** Bash call. A typed-ou
 the call countable and leaves its output on disk to read as often as needed. The guard is silent
 only inside its plain grammar (plain curls, chained with `&&` or piped into `jq` / `head`); set-up
 like `d=…;`, a variable in the path (`-o "$d/x"`), a loop, or a pipe into any other program is
-outside it and asks every time.
+outside it and is denied.
 
 **18 endpoints are not GET** — they take a JSON body instead of query params, and they live
 only on `web`, `youtube` and `prism`. Each platform reference file marks them with a method
@@ -413,10 +446,10 @@ curl -s -X POST "https://www.socialcrawl.dev/v1/prism/post-stats" \
 
 | Endpoint | Credits | What it's for |
 |----------|---------|---------------|
-| `POST /v1/prism/post-stats` | 1 **per URL** (IG/LI 5) | Up to 100 post URLs, current engagement, failures refunded |
+| `POST /v1/prism/post-stats` | 1 **per URL** (IG 2, LI 5) | Up to 100 post URLs, current engagement, failures refunded |
 | `POST /v1/prism/profiles` | 1 **per item** (LI 5) | Up to 50 handles → canonical Author each |
 | `POST /v1/prism/comment-lookup` | 2 **per item** (IG 5) | Re-check up to 25 known comments |
-| `POST /v1/youtube/transcripts` | 3 **per video** | ⚠️ Gated — the guard asks first. No batch discount: 100 videos = **300cr**, the published ceiling for ONE call. Offer `youtube/video/subtitles` (1cr) first. |
+| `POST /v1/youtube/transcripts` | 3 **per video** | ⚠️ Gated — run it only on an explicit yes. No batch discount: 100 videos = **300cr**, the published ceiling for ONE call. Offer `youtube/video/subtitles` (1cr) first. |
 | `POST /v1/youtube/videos` · `/channels` | 5 **per 50-id chunk** | Batch video / channel detail, up to 1000 ids. Still the best saving available — 1000 ids = 20 chunks = 100cr vs 1000cr one-at-a-time — but it is not 5cr flat. |
 | `POST /v1/web/crawl` · `/batch-scrape` | 1 | Start an async crawl job → poll `GET /v1/web/jobs/{job_id}` (0cr) |
 | `POST /v1/web/agent` | **25** | Agentic browse-and-extract. The most expensive single call in the API — confirm first, every time. |
@@ -433,7 +466,7 @@ curl -s -X POST "https://www.socialcrawl.dev/v1/prism/post-stats" \
 > | `POST /prism/post-stats` | one successful **URL** — 1cr, but **2cr Instagram**, **5cr LinkedIn** | 100 IG URLs = **200cr** |
 > | `POST /prism/profiles` | one **item** — 1cr, LinkedIn 5cr | 50 LinkedIn handles = **250cr** |
 > | `POST /prism/comment-lookup` | one **item** — 2cr TikTok, 5cr Instagram, more with `deep_scan` | the whole batch holds at most **100cr** |
-> | `POST /youtube/transcripts` | one successful **row** — 3cr | 100 videos = **300cr** (⚠️ gated — the guard asks, and 300 is this call's published ceiling) |
+> | `POST /youtube/transcripts` | one successful **row** — 3cr | 100 videos = **300cr** (⚠️ gated — explicit yes only, and 300 is this call's published ceiling) |
 > | `POST /youtube/videos` · `/channels` | one **50-id chunk** — 5cr | 1000 ids = **100cr** (vs 1000cr singly) |
 > | `GET /facebook/profile/reels/full` | one **page of 10 reels** — 5cr | `limit=50` = **25cr** |
 > | `GET /threads/search` | one **window** (~15–20 posts) — 1cr | `limit=100` ≈ **5–7cr** |
@@ -462,10 +495,9 @@ curl -s -X POST "https://www.socialcrawl.dev/v1/prism/post-stats" \
 > Follow it before any paid run.
 <!-- canon-only:begin -->
 > **Enforced:** this plugin also ships a PreToolUse hook (`hooks/credit-guard.mjs`) that
-> asks before every transcript endpoint — with its per-unit price and a cheaper route — and
-> counts every other paid call in a plain `curl` silently against a session cap, min(500, 25%
-> of the balance): it asks once at each cap step, before any call it can't count, and on any
-> other command with a SocialCrawl URL. It's a backstop — still follow the ritual.
+> never asks: it counts every paid call in a plain `curl` silently against the session's limit,
+> and denies a call that would go past it, or any other command with a SocialCrawl URL, with
+> the fix in its message. It's a backstop — still follow the ritual.
 <!-- canon-only:end -->
 
 The tier ladder covers most endpoints, but it is NOT the whole story:
@@ -474,7 +506,7 @@ The tier ladder covers most endpoints, but it is NOT the whole story:
 |------|------|----------|
 | standard | 1 credit | 359 endpoints — profiles, posts, comments, basic search |
 | advanced | 5 credits | 240 endpoints — full-profile bundles, ad libraries, trending, audience |
-| premium | 10 credits | 46 endpoints — transcripts (⚠️ gated: 10cr **per item**, the guard asks), age/gender, deep listings |
+| premium | 10 credits | 46 endpoints — transcripts (⚠️ gated: 10cr **per item**, explicit yes only), age/gender, deep listings |
 | **flat override** | **0–50 credits** | 98 of those 645 priced individually, **up to 50 credits per call** |
 
 **The override band is the trap.** `prism/creator-vet` holds **50–75**; `prism/leads` **50 per
@@ -485,12 +517,13 @@ exact — trust it over the tier label. (Source: the pricing registry, not the p
 **Spend rules (apply to every call):**
 - **Name the price once** before a paid call or run — a metered call as `low–high` with its
   worst case named; estimate `calls × cost` before a loop. No per-call yes on top of that.
-- **The session cap does the confirming.** Send each paid call as one plain `curl` in its own
+- **The session cap is the backstop.** Send each paid call as one plain `curl` in its own
   Bash call, saving to a literal `-o` file (see Making API Calls), and process the file in a
-  separate call. The guard counts those silently and asks once each time the session's total
-  crosses a step of min(500, 25% of the balance), and before any call it can't count: a transcript, `cohorts`, an unreadable URL, a per-unit call with no ceiling. Any other
+  separate call. The guard counts those silently, never asks, and denies a call that would take
+  the session past its limit (the limit, and how each kind of call is counted:
+  [credit-guard.md](../_shared/references/credit-guard.md)). Any other
   command with a SocialCrawl URL (a loop, a pipe into a program, a variable, a heredoc, a note,
-  `grep`, `echo`) asks every time, and is denied unattended. A `dry_run=1` is counted at its
+  `grep`, `echo`) is denied, attended and unattended. A `dry_run=1` is counted at its
   full price.
 - **15–50 credits (big guns)** — one-shot deliverables only: **never batched, never
   auto-repeated**.
