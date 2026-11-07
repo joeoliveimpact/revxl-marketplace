@@ -37,6 +37,9 @@ FIXTURES = HERE / "fixtures"
 CLICK = HERE / "boards_click.js"
 sys.path.insert(0, str(PLUGIN / "skills" / "_shared"))
 import runtime as rt  # noqa: E402
+sys.path.insert(0, str(HERE))
+from editor_test_state import isolated_home
+FIXTURE_PARENT = Path(os.environ["EDITOR_SE_HOME"]).parent if os.environ.get("EDITOR_SE_HOME") else Path(tempfile.gettempdir())
 
 REEL = "demo-reel"
 MASTER_RE = re.compile(r"^.+ master - \d{2}\.\d{2}\.\d{2}\.mp4$", re.I)  # hooks/mod/logic.ts MASTER
@@ -1660,6 +1663,7 @@ CASES = {"broll": c_broll, "broll-blocks": c_broll_blocks, "broll-ai": c_broll_a
          "rvm-info": c_rvm_info}
 
 
+@isolated_home(packages=True)
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--case", action="append", choices=list(CASES), help="case to run (repeatable); default all")
@@ -1669,8 +1673,7 @@ def main():
     ap.add_argument("--out", help="folder for the outputs a case keeps, e.g. frame0's PNGs (default: render-out "
                                   "next to the fixtures)")
     a = ap.parse_args()
-    home = os.environ.get("EDITOR_SE_HOME")
-    root = Path(a.tmp or (Path(home).parent if home else tempfile.gettempdir()))
+    root = Path(a.tmp or FIXTURE_PARENT)
     OPT["take"] = a.take or os.environ.get("EDITOR_SE_TEST_TAKE") or None
     OPT["out"] = Path(a.out or root / "render-out")
     free = shutil.disk_usage(root).free / 2 ** 30
@@ -1678,6 +1681,8 @@ def main():
         print(f"FAIL only {free:.1f} GB free disk; renders need {MIN_FREE_GB} GB. Free some space and run again.")
         return 1
     for name in a.case or list(CASES):
+        # An earlier reel's auto-recorded pick must not change the next case's Ask.
+        (rt.state_dir() / "styles/default.json").unlink(missing_ok=True)
         print(f"== {name}", flush=True)
         t0, ws = time.perf_counter(), None
         try:

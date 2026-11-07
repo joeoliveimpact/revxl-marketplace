@@ -12,6 +12,9 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from editor_test_state import isolated_home
+
 sys.dont_write_bytecode = True
 REPO = Path(__file__).resolve().parents[2]
 SKILLS = REPO / "plugins/editor-superengine/skills"
@@ -400,6 +403,7 @@ CASES = {"band": band, "conform-none": conform_none, "conform-crop": conform_cro
          "outliers": outliers, "settle": settle, "ghost": ghost, "anchors-box": anchors_box}
 
 
+@isolated_home()
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--case", choices=list(CASES))

@@ -14,6 +14,7 @@ Prints PASS/FAIL per check; exit 0 only if all pass.
 import argparse, importlib.util, json, os, shutil, subprocess, sys, tempfile
 from fractions import Fraction
 from pathlib import Path
+from unittest.mock import patch
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
@@ -380,8 +381,8 @@ def main():
     ap.add_argument("--case", action="append", choices=list(CASES), help="case to run (repeatable); default all")
     a = ap.parse_args()
     TOOLS.update({n: rt.tool(n) for n in ("ffmpeg", "ffprobe")})
-    with tempfile.TemporaryDirectory() as root:
-        os.environ["EDITOR_SE_HOME"] = str(Path(root) / "state")
+    with tempfile.TemporaryDirectory() as root, \
+            patch.dict(os.environ, {"EDITOR_SE_HOME": str(Path(root) / "state")}):
         (Path(root) / "state").mkdir()
         (Path(root) / "state" / "state.json").write_bytes(json.dumps({"components": {"ffmpeg": {"bins": TOOLS}}}).encode())
         for name in a.case or list(CASES):

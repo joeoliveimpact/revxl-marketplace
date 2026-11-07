@@ -50,13 +50,16 @@
 # SOFTWARE.
 """Plan burned-in captions and return markup for compose's root timeline.
 
-No tools, rendering or writes in plan(). Only write() saves work/captions.json.
+No tools or rendering in plan(); reading a Send remembers its caption look.
+Only write() saves work/captions.json.
 Word positions always refer to the original cut word list, including empty rows.
 pick_marks() returns inclusive truthful runs; the planner retains later accents
 and separately records the one punch event allowed per sentence.
 """
 import argparse
+import contextlib
 import html
+import io
 import json
 import math
 import re
@@ -75,6 +78,8 @@ for directory in (SKILLS / "_shared", SKILLS / "reel-canvas-build/scripts",
     sys.path.insert(0, str(directory))
 from win_encoding import ensure_utf8_output  # noqa: E402
 import runtime as rt  # noqa: E402
+import saved_style  # noqa: E402
+import standing_notes  # noqa: E402
 import beat_schema  # noqa: E402
 import scene_check  # noqa: E402
 from emphasis import truthful_span, tokenize, _is_num  # noqa: E402, F401 (shared TRI-6 rule)
@@ -131,7 +136,7 @@ def read_json(path):
         raise Stop(2, f"Cannot read {Path(path).name}: {e}. Make it again before planning captions.") from None
 
 
-def pick_style(reel_dir_or_bm, bm=None):
+def pick_style(reel_dir_or_bm, bm=None, *, remember=True):
     """Newest caption Send, then saved choice, then ask; accept legacy Beat Map dictionaries."""
     picker = {}
     if isinstance(reel_dir_or_bm, dict):
@@ -157,17 +162,25 @@ def pick_style(reel_dir_or_bm, bm=None):
         except (AttributeError, TypeError, ValueError):
             raise Stop(2, "A caption choice has no valid send time. Send it again.") from None
     if "caption_style" in picker and ("caption_style" not in bm or sent_at(picker) >= sent_at(bm)):
+        cs = picker["caption_style"]
+        if remember and isinstance(cs, dict) and cs.get("style") in (*STYLES, "none"):
+            standing_notes.record_pick("caption_style.style", cs["style"])
         return picker["caption_style"], "picker"
     if "caption_style" in bm:
+        cs = bm["caption_style"]
+        if remember and isinstance(cs, dict) and cs.get("style") in (*STYLES, "none"):
+            standing_notes.record_pick("caption_style.style", cs["style"])
         return bm["caption_style"], "reel"
-    path = rt.state_dir() / "styles/default.json"
     try:
-        saved = json.loads(path.read_text(encoding="utf-8"))
+        saved = saved_style.load()
     except FileNotFoundError:
         saved = {}
     except (OSError, ValueError):
         raise Stop(2, "Cannot read the saved style. Fix styles/default.json and try again.") from None
-    if isinstance(saved, dict) and "caption_style" in saved:
+    _, source = saved_style.resolve("caption_style.style", saved=saved)
+    if source == "recommended":
+        raise Stop(1, ASK + saved_style.recommendation_line("caption_style.style", saved))
+    if isinstance(saved, dict) and saved.get("caption_style") is not None:
         return saved["caption_style"], "saved"
     raise Stop(1, ASK)
 
@@ -191,7 +204,8 @@ def check_style(cs, source="reel"):
     filled = {**DEFAULTS, **cs}
     if "accent" not in cs:
         try:
-            saved = json.loads((rt.state_dir() / "styles/default.json").read_text(encoding="utf-8"))
+            with contextlib.redirect_stderr(io.StringIO()):
+                saved = saved_style.load()
         except (OSError, ValueError):
             saved = {}
         accent = saved.get("accent") if isinstance(saved, dict) else None
@@ -426,6 +440,32 @@ def _slot_tokens(value):
     return re.findall(r"[\w']+", str(value).casefold())
 
 
+def _brand_font(notes):
+    """Use scenes' declared faces and shipped, licensed runtime/fonts files."""
+    fallback = {"family": "Inter", "src": "./fonts/Inter-Regular.woff2"}
+    try:
+        with contextlib.redirect_stderr(io.StringIO()):
+            saved = saved_style.load()
+    except (OSError, ValueError):
+        return fallback
+    font = saved.get("font") if isinstance(saved, dict) else None
+    if not font:
+        return fallback
+    if isinstance(font, str) and font.strip():
+        for scene in sorted(scene_check.SCENES.glob("*/scene.html")):
+            try:
+                urls = scene_check.font_faces(scene.read_text(encoding="utf-8")).get(font, [])
+                files = [(scene_check.FONTS / u[len("./fonts/"):]).resolve() for u in urls]
+                if urls and all(u.startswith("./fonts/")
+                                and f.is_relative_to(scene_check.FONTS.resolve()) and f.is_file()
+                                and f.suffix.lower() in scene_check.FONT_EXT for u, f in zip(urls, files)):
+                    return {"family": font, "src": urls[0]}
+            except (OSError, ValueError):
+                continue
+    notes.append(f"Your brand font {font} isn't available for captions yet, so they use Inter.")
+    return fallback
+
+
 def plan(reel_dir, fps=None, *, _style=None):
     """Read the Send, words, cuts and saved style; return a plan without writing."""
     reel = Path(reel_dir)
@@ -448,6 +488,7 @@ def plan(reel_dir, fps=None, *, _style=None):
     if cs["style"] == "none":
         doc["declared_drops"] = [{"w": i, "why": "captions off"} for i in range(len(words))]
         return doc
+    doc["font"] = _brand_font(doc["notes"])
     beats = _beats(bm, total)
     switches = sorted({b["start_f"] for a, b in zip(beats, beats[1:]) if a["layout"] != b["layout"]})
     candidates = bm.get("word_marks", [])
@@ -533,7 +574,10 @@ def _js(values):
 
 
 def text_width_em(text):
-    """Measured advances when available; retain the old 0.6 em estimate for missing glyphs."""
+    """Inter-based advances, approximate for brand fonts; the placer's 8 px margin absorbs it.
+
+    Retain the old 0.6 em estimate for missing glyphs and the same fit rule for every font.
+    """
     try:
         table = json.loads(CHAR_WIDTHS.read_text(encoding="utf-8"))
         units, widths = table["units_per_em"], table["widths"]
@@ -559,8 +603,16 @@ def layer(doc, boxes, s, t):
     marker = doc["style"].get("mark_look", "accent") == "marker"
     # taste: soft shadow, 3 px outline and 16 px rounded plate corners.
     stroke = accent if spec["stroke"] == "accent" else spec["stroke"]
+    font = doc.get("font", {"family": "Inter", "src": "./fonts/Inter-Regular.woff2"})
+    family = json.dumps(font["family"], ensure_ascii=False)
+    stack = family + ', "Inter"' if font["family"] != "Inter" else family
+    # compose copies the same runtime/fonts tree, including this face, next to Inter.
+    brand_face = (f'@font-face {{font-family: {family}; src: url({json.dumps(font["src"], ensure_ascii=False)}); font-weight: 400;}}\n'
+                  if font["family"] != "Inter" else '')
     css = ('@font-face {font-family: "Inter"; src: url("fonts/Inter-Regular.woff2") format("woff2"); font-weight: 400;}\n'
-           '#captions .caption {position: absolute; font-family: "Inter"; font-weight: 400; font-synthesis: none; '
+           + brand_face
+           + '#captions .caption {position: absolute; '
+           + f'font-family: {stack}; font-weight: 400; font-synthesis: none; '
            f'color: {spec["color"]}; line-height: {spec["line_h"]}; white-space: nowrap; text-align: center; '
            f'text-shadow: 0 {2*s:g}px {6*s:g}px rgba(0,0,0,0.65); '
            + (f'-webkit-text-stroke: {3*s:g}px {stroke}; paint-order: stroke fill; ' if stroke else '')
@@ -676,6 +728,9 @@ def picker_doc(reel_dir):
     import compose  # lazy: the picker reuses the compositor's layout contract
     import placer
     reel = Path(reel_dir)
+    saved = saved_style.load()
+    _, source = saved_style.resolve("caption_style.style", saved=saved)
+    recommended = saved_style.recommendation("caption_style.style", saved) if source == "recommended" else None
     try:
         current, source = pick_style(reel)
         checked = check_style(current, source)
@@ -738,6 +793,7 @@ def picker_doc(reel_dir):
             "layouts": {name: compose.layout(name, 1) for name in beat_schema.LAYOUTS},
             "sample": {"text": sample["text"], "words": sample["words"]}, "looks": looks,
             "options": {**DEFAULTS, "mark_look": ["accent", "marker"]}, "current": current,
+            "recommended": recommended,
             "tips": tips, "notes": notes}
 
 

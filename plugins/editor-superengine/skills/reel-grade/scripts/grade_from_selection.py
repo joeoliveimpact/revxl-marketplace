@@ -77,7 +77,7 @@ def bake_selection(reel_dir):
     if problem:
         print(problem)
         return 1
-    look = sel.get("look") or {}
+    look = bg.resolve_look(reel_dir, selection=sel.get("look"))
     look = {"id": str(look.get("id") or "none"), "strength": look.get("strength", 1.0)}
     if isinstance(look["strength"], bool) or not isinstance(look["strength"], (int, float)):
         print(f"The Send's look strength is {look['strength']!r}, not a number from 0 to 1.")

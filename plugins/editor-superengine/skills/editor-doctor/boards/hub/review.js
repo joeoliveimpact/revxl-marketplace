@@ -31,6 +31,24 @@
         });
         $("qa").replaceChildren(ul);
       } else { const pre = document.createElement("pre"); pre.textContent = JSON.stringify(r.qa, null, 2); $("qa").replaceChildren(pre); }
+      if (r.qa.aids) {
+        const aids = document.createElement("div"); aids.id = "qa-aids";
+        const url = path => io.base(reel) + path.split("/").map(encodeURIComponent).join("/");
+        if (r.qa.aids.phone) {
+          const p = document.createElement("p"), a = document.createElement("a");
+          a.href = url(r.qa.aids.phone); a.textContent = "Phone-size copy";
+          p.append(a); aids.append(p);
+        }
+        const strips = Array.isArray(r.qa.aids.strips) ? r.qa.aids.strips : [];
+        [...strips, r.qa.aids.contact].filter(Boolean).forEach((path, i) => {
+          const a = document.createElement("a"), img = document.createElement("img");
+          a.href = url(path); img.src = a.href; img.loading = "lazy";
+          img.alt = i < strips.length ? "Cut " + (i + 1) + " review strip" : "Contact sheet";
+          img.style.cssText = "width:240px;max-width:100%;height:auto";
+          a.append(img); aids.append(a, " ");
+        });
+        $("qa").append(aids);
+      }
     }
     let pending = false;
     async function send(approve) {

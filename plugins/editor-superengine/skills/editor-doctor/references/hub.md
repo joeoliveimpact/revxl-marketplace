@@ -36,10 +36,12 @@ start tools. Read the whole file before acting and keep earlier entries when ack
 | `adjust-cut` | Invoke `editor-superengine:reel-first-cuts` (the gaps). |
 | `adjust-grade` | Invoke `editor-superengine:reel-grade`. |
 | `adjust-sound` | Invoke `editor-superengine:reel-sound-pass`. |
-| `style` | Ask "Use these choices as the default for your next reels?"; on yes, follow "make it my default" in `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/style.md`. Nothing else. |
+| `style` | Ask "Use these choices as the default for your next reels?"; on yes, run `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/saved_style.py" save-from-reel <reel folder>`, then read back the result in plain words. This saves the choices and the workspace skill. |
 | `captions` | Ask once, "The words on the video, or the text under the post?" The text under the post is `editor-superengine:caption-writer`; words on the video are `editor-superengine:reel-captions`. |
 | `broll` | Invoke `editor-superengine:reel-broll`; use the client's clips on the Beat Map tab. |
-| `cover`, `qa`, `trial`, `goldmine` | The router's not-built line plus its one follow-up (`${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/SKILL.md`, "Not built yet"). |
+| `qa` | Invoke `editor-superengine:reel-canvas-build`; follow its `references/qa-check.md` for that reel (pre check, then the full check on the latest Master when one exists). |
+| `handoff` | Invoke `editor-superengine:pro-editor-handoff` with the client's `choices.editor`: DaVinci Resolve or another editor's files. |
+| `cover`, `trial`, `goldmine` | The router's not-built line plus its one follow-up (`${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/SKILL.md`, "Not built yet"). |
 
 The page serializes list updates and re-reads disk before appending, including repeated clicks. A failed POST
 keeps the draft and exposes a copy-to-paste line with the payload. It never claims a failed Send succeeded.

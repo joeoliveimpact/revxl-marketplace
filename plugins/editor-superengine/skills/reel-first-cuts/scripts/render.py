@@ -165,7 +165,7 @@ def build_graph(cuts, sr, vfilter, astream=0):
     The speed change re-times the joined cut once (fps= again), which lands it on the
     cumulative out frames. F-15: the audio is trimmed in samples at the same frame
     times, so each segment's audio is as long as its picture and concat never pads."""
-    if len(cuts.get("takes") or {}) > 1:
+    if bool(cuts.get("takes")):
         return build_mixed_graph(cuts, sr, vfilter, astream)
     fps, speed, segs, L = cuts["fps"], cuts["speed"], cuts["segments"], []
     for i, s in enumerate(segs):
@@ -197,10 +197,8 @@ def build_mixed_graph(cuts, sr, filters, astreams):
 
 
 def mixed_inputs(cuts, raw):
-    """Keep take numbers; the lowest numbered used take supplies the positional raw."""
+    """Keep take numbers; cuts.json chooses the sources over the positional raw."""
     sources = [cuts["takes"][n]["raw"] for n in sorted(cuts["takes"], key=int)]
-    if os.path.normcase(os.path.abspath(raw)) != os.path.normcase(os.path.abspath(sources[0])):
-        die("the positional raw must match the first take's raw in cuts.json")
     return sources
 
 
@@ -209,7 +207,7 @@ def footage_guard(work, cuts, raw):
     work = Path(work).resolve()
     reel = next((p for p in (work.parent, *work.parent.parents) if (p / "footage/ledger.json").exists()
                  or (p / "cut-board.config.json").exists()), work.parent)
-    mixed = len(cuts.get("takes") or {}) > 1
+    mixed = bool(cuts.get("takes"))
     if not mixed and not (reel / "footage/ledger.json").exists():
         return
     sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "_shared/checks"))
@@ -293,7 +291,7 @@ def main():
         die("--speed %s differs from cuts.json's speed %s: run gaps.py with --speed %s first" % (a.speed, speed, a.speed))
     if not cuts["segments"]:
         die("cuts.json has no segments")
-    mixed = len(cuts.get("takes") or {}) > 1
+    mixed = bool(cuts.get("takes"))
     inputs = a.raw
     if mixed:
         inputs = mixed_inputs(cuts, a.raw)
@@ -318,15 +316,39 @@ def main():
             print("note: The face crop applies to take 1 only; the other recordings use a centred crop.")
         vfilter = {n: conform(p.get("video"), crop if n == "1" else None) for n, p in probes.items()}
         if a.grade:
-            grade = grade_filter(a.grade)
-            vfilter = {n: v + "," + grade for n, v in vfilter.items()}
+            g = Path(a.grade)
+            doc = json.loads(g.read_text(encoding="utf-8"))
+            take_grades = doc.get("takes") or {}
+            # Older single-file grades hold time ranges in a list, not recording IDs.
+            if not isinstance(take_grades, dict):
+                take_grades = {}
+
+            def take_filter(n):
+                take_grade = take_grades.get(n)
+                if not isinstance(take_grade, dict) or not take_grade.get("cube"):
+                    return grade_filter(a.grade)
+                try:
+                    cube, sha = (g.parent / take_grade["cube"]).resolve(), take_grade["cube_sha"]
+                except (KeyError, TypeError):
+                    die("take %s isn't a saved grade (it needs a cube and its cube_sha): save the grade again" % n)
+                if not cube.is_file():
+                    die("the grade's cube %s is missing: save the grade in reel-grade again, then render again" % cube)
+                if sha != hashlib.sha256(cube.read_bytes()).hexdigest():
+                    die("the grade's cube %s doesn't match grade.json (it changed after the grade was saved), so nothing was "
+                        "rendered: save the grade in reel-grade again, then render again" % cube.name)
+                p = str(cube)
+                if "'" in p:
+                    die("the cube's folder path has an apostrophe, which ffmpeg can't read: %s. Move it, then render again." % p)
+                return "format=gbrp16le,lut3d=file='" + p.replace("\\", "/").replace(":", "\\:") + "'"
+
+            vfilter = {n: v + "," + take_filter(n) for n, v in vfilter.items()}
         astream = {n: int(p.get("audio_stream", 0)) for n, p in probes.items()}
     else:
         vfilter = conform(probe.get("video"), crop) if crop is not None else conform(probe.get("video"))
         if a.grade:
             vfilter += "," + grade_filter(a.grade)
         astream = int(probe.get("audio_stream", 0))
-    sr = sample_rate(a.raw, astream[min(probes, key=int)] if mixed else astream)
+    sr = sample_rate(inputs[0] if mixed else a.raw, astream[min(probes, key=int)] if mixed else astream)
     if not (a.master or a.scrub):
         a.master = a.scrub = True
 

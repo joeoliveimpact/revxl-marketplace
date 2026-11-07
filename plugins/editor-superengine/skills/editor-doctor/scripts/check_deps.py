@@ -40,7 +40,8 @@ BLOCKS = ("grade", "scenes", "broll", "music", "transitions", "cover", "trial", 
 DEFAULTS = {"schema": 1, "engine": None, "language": None, "nle": "auto", "nle_source": "auto", "ports": {"board": 8747},
             "voice_cleanup": "free", "cuts": {"beat_ms": 300}, "paths": {"editor": "editor", "videos": "videos"}, **{b: {} for b in BLOCKS}}
 STYLE_SKELETON = ('{"schema":1,"style_id":null,"accent":null,"font":null,"look":null,'
-                  '"transitions":{"allowed":[],"sfx_pair":null}}')
+                  '"transitions":{"allowed":[],"sfx_pair":null},"edit_style":null,'
+                  '"caption_style":null,"cut":{"default_attempt":null}}')
 RESOLVE_MIN = (21, 1)
 SCRIPTING = {0: "None", 1: "Local", 2: "Network"}  # Preferences > System > General order (Resolve's README)
 PREFS = ("DaVinci Resolve > Preferences (Cmd+,)" if MAC else "DaVinci Resolve > Preferences (Ctrl+,)")

@@ -55,6 +55,8 @@ so a cut that moves invalidates every timing derived from it.
 | "add B-roll", "generate B-roll", "AI cutaway", "cutaway", "use my clip over ..." | `editor-superengine:reel-broll` |
 | "build the beat map", "plan what goes on screen", "add a scene", "lower third", "counter", "end card", "title card", "pick a layout", "punch-ins", "zoom in on that word", "layout switches", "follow my face", "slow push", "ken burns", "ratchet zoom", "design the hook", "motion comps", "comp the intro", "direction options", "ladder the blur", "will the Instagram buttons cover this", "render it", "make the preview", "make the final video", "export the reel" | `editor-superengine:reel-canvas-build` |
 | "sound pass", "add sound effects", "mix the sound", "master the audio", "clean up my voice", "run Auphonic", "add music", "pick a track" | `editor-superengine:reel-sound-pass` |
+| "Run QA for <reel>", "check my reel before I post" | `editor-superengine:reel-canvas-build` |
+| "a hand-off to another editor", "open this reel in Resolve", "editable timeline" | `editor-superengine:pro-editor-handoff` (only when configured `nle` is `resolve` or `mcp`) |
 | words on the video: "add captions", "burned-in captions", "subtitles", "karaoke captions", "pick a caption look", "open the Look Picker", "highlight these words", "change the caption colour", "turn captions off", "make this my default caption look" | `editor-superengine:reel-captions` |
 | write or check the post caption (the text under the post), the hook line, alt text, hashtags | `editor-superengine:caption-writer` |
 | tear down a posted reel, "what would we fix", "make a page to send them" | `editor-superengine:reel-teardown` |
@@ -70,8 +72,7 @@ Every skill here is invoked as `editor-superengine:<skill folder>`.
 ### Not built yet
 
 A cover, trial reels, Goldmine, putting a copied style onto your own reel,
-a hand-off to another editor,
-graphics placed around the face, transitions, the before-posting check, and matching the colour
+graphics placed around the face, transitions, and matching the colour
 of takes inside one recording: say "That part of the editor isn't built yet; it's coming in a later update."
 One follow-up is allowed: "If the reel has a Beat Map, I can leave a note on that moment for later."
 Never improvise it here or in another skill.

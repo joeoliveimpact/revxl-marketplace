@@ -15,15 +15,19 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+from unittest.mock import patch
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+from editor_test_state import isolated_home
 _spec = importlib.util.spec_from_file_location("caption_render_fixtures", HERE / "render_engine_test.py")
 rt = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(rt)
 CAPTIONS = rt.PLUGIN / "skills" / "reel-captions" / "scripts"
 captions = rt.load("captions", CAPTIONS)
+TOOL_HOME = rt.rt.state_dir()
 LOOKS = ("clean", "bold-pop", "boxed", "karaoke", "outline-caps")
-CASES = tuple("look-" + look for look in LOOKS) + ("layout-switch", "ask", "none", "tri6", "tri6-marker")
+CASES = tuple("look-" + look for look in LOOKS) + ("layout-switch", "ask", "none", "tri6", "tri6-marker", "two-styles")
 SCALE = 720 / 1080
 
 
@@ -151,6 +155,83 @@ def layout_case(root, out):
             c["end_f"] == switch for c in chunks) and any(c["start_f"] == switch + 1 for c in chunks))
 
 
+def two_styles_case(root, out):
+    # All planted assets and saved styles live in scratch copies, never in the installed editor.
+    root = root.resolve()
+    plugin = root / "plugin"
+    shutil.copytree(rt.PLUGIN, plugin, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    spec = importlib.util.spec_from_file_location("caption_font_fixtures", HERE / "captions_test.py")
+    helpers = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(helpers)
+    family = helpers.plant_brand_font(plugin)
+    original = rt.rt.state_dir()
+    state = json.loads((original / "state.json").read_text(encoding="utf-8"))
+    for component in state.get("components", {}).values():
+        for name, path in component.get("bins", {}).items():
+            component["bins"][name] = str((original / path).resolve())
+    ws, reel, _, send = fixture(root, None)
+    send.pop("edit_style", None)
+    send["word_marks"] = [{"w": 0, "mark": "key"}]
+    rt.wj(reel / "beat-map-selection.json", send)
+    styles = (
+        {"style_id": "client-a", "caption_style": {"style": "bold-pop"}, "accent": "#E0218A",
+         "font": family, "edit_style": {"style": "punch-in"}},
+        {"style_id": "client-b", "caption_style": {"style": "boxed"}, "accent": "#22C55E",
+         "edit_style": {"style": "layout-switch"}},
+    )
+    samples, docs = [], []
+    sample_f = None
+    for saved in styles:
+        client = saved["style_id"]
+        home, kept = root / (client + "-state"), out / client
+        (home / "styles").mkdir(parents=True)
+        kept.mkdir(parents=True, exist_ok=True)
+        rt.wj(home / "state.json", state)
+        rt.wj(home / "styles/default.json", saved)
+        # HyperFrames resolves its CLI relative to EDITOR_SE_HOME. Copy its installed
+        # packages too; browser and ffmpeg binaries above remain read-only absolute paths.
+        shutil.copytree(original / "hyperframes", home / "hyperframes")
+        with patch.dict(os.environ, {"EDITOR_SE_HOME": str(home)}), \
+                patch.object(rt, "COMPOSE", plugin / "skills/reel-canvas-build/scripts/compose.py"):
+            video, page, doc, _ = preview(ws, reel, kept)
+            if video is None:
+                return
+            look = saved["caption_style"]["style"]
+            rt.ck(client + ": captions.json records its saved look and accent",
+                  doc.get("style", {}).get("style") == look
+                  and doc.get("style", {}).get("accent") == saved["accent"], doc.get("style"))
+            track = json.loads((reel / "work/scale_track.json").read_text(encoding="utf-8"))
+            rt.ck(client + ": saved editing style reaches the compositor",
+                  track["style"]["style"] == saved["edit_style"]["style"], track["style"])
+            font_file = reel / "work/render-tmp/proj/fonts/Caption-Test.woff2"
+            rt.ck(client + ": caption font is the saved licensed face or Inter",
+                  doc.get("font", {}).get("family") == saved.get("font", "Inter")
+                  and ('font-family: "Caption Test", "Inter";' in page if "font" in saved
+                       else '#captions .caption {position: absolute; font-family: "Inter";' in page)
+                  and font_file.read_bytes() == (plugin / "runtime/fonts/Caption-Test.woff2").read_bytes())
+            chunk = doc["chunks"][0]
+            if sample_f is None:
+                sample_f = chunk["start_f"] + max(captions.STYLES[look][k]["frames"] for k in ("pop", "punch")) + 2
+            rt.ck(client + ": the common sample frame is inside the first caption",
+                  chunk["start_f"] <= sample_f < chunk["end_f"])
+            frame = rt.grab(video, [sample_f], "rgb24")[sample_f]
+            rt.ck(client + ": visible caption pixels inside its box", len(ink(frame, chunk["box"])) > 40)
+            save_pngs(video, [sample_f], kept)
+            samples.append(frame)
+            docs.append(doc)
+    # Compare the same coordinates inside BOTH caption boxes on the identical dark source.
+    boxes = [region(doc["chunks"][0]["box"]) for doc in docs]
+    x0, y0 = max(b[0] for b in boxes), max(b[1] for b in boxes)
+    x1, y1 = min(b[2] for b in boxes), min(b[3] for b in boxes)
+    if not rt.ck("the two caption boxes overlap", x1 > x0 and y1 > y0, boxes):
+        return
+    delta = sum(abs(samples[0][i] - samples[1][i])
+                for y in range(y0, y1) for i in range((y * 720 + x0) * 3, (y * 720 + x1) * 3))
+    mad = delta / ((x1 - x0) * (y1 - y0) * 3)
+    print(f"  two-styles caption frame {sample_f}: mean absolute RGB difference {mad:.3f} (threshold 8)")
+    rt.ck("two saved client styles render clearly different caption pixels", mad > 8, mad)
+
+
 def ask_case(root, out):
     ws, reel, _, _ = fixture(root, None)
     # Only state.json is needed before the ask: keep binary paths absolute in this copy.
@@ -272,13 +353,14 @@ def tri6_marker_case(root, out):
     tri6_case(root, out, marker=True)
 
 
+@isolated_home(packages=True)
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--case", required=True, choices=CASES)
     ap.add_argument("--out", help="folder for kept PNGs and rendered page/plan")
     ap.add_argument("--tmp", help="fixture parent folder (default: next to the editor state)")
     args = ap.parse_args()
-    parent = Path(args.tmp or rt.rt.state_dir().parent)
+    parent = Path(args.tmp or TOOL_HOME.parent)
     free = shutil.disk_usage(parent).free / 2 ** 30
     if free < 10:
         print(f"FAIL only {free:.1f} GB free disk; renders need 10 GB. Free some space and run again.")
@@ -292,7 +374,8 @@ def main():
                 look_case(Path(tmp), out, args.case[5:])
             else:
                 {"layout-switch": layout_case, "ask": ask_case, "none": none_case,
-                 "tri6": tri6_case, "tri6-marker": tri6_marker_case}[args.case](Path(tmp), out)
+                 "tri6": tri6_case, "tri6-marker": tri6_marker_case,
+                 "two-styles": two_styles_case}[args.case](Path(tmp), out)
         except Exception as exc:
             rt.ck(args.case + ": test run", False, f"{type(exc).__name__}: {exc}")
         finally:

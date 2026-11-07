@@ -4,7 +4,9 @@ import contextlib
 import importlib.util
 import io
 import json
+import os
 import re
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -81,6 +83,63 @@ def brand_checks(tmp):
         for accent in ("magenta", "#123", "#E0218A\n", None, [], 123):
             put(state / "styles/default.json", {"accent": accent, "caption_style": {"style": "boxed"}})
             assert captions.plan(reel)["style"]["accent"] == captions.DEFAULTS["accent"]
+
+
+def plant_brand_font(plugin):
+    """Alias a copy of shipped OFL Inter in a scratch scene's normal font source."""
+    fonts = plugin / "runtime/fonts"
+    fonts.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(SCRIPT.parents[3] / "runtime/fonts/Inter-Regular.woff2",
+                 fonts / "Caption-Test.woff2")
+    scene = plugin / "scenes/hook-title/scene.html"
+    scene.parent.mkdir(parents=True, exist_ok=True)
+    page = scene.read_text(encoding="utf-8") if scene.is_file() else ""
+    scene.write_bytes((page + '\n<style>@font-face {font-family: "Caption Test"; '
+                       'src: url("./fonts/Caption-Test.woff2"); font-weight: 400;}</style>\n').encode("utf-8"))
+    return "Caption Test"
+
+
+def brand_font_checks(tmp):
+    state, reel, plugin = tmp / "font-state", tmp / "font-reel", tmp / "font-plugin"
+    family = plant_brand_font(plugin)
+    fixture(reel, words("say this."))
+    put(state / "styles/default.json", {"font": family, "caption_style": {"style": "clean"}})
+    with patch.object(captions.rt, "state_dir", return_value=state), \
+            patch.object(captions.scene_check, "SCENES", plugin / "scenes"), \
+            patch.object(captions.scene_check, "FONTS", plugin / "runtime/fonts"):
+        doc = captions.plan(reel)
+        css, _, _ = captions.layer(doc, [(100, 1200, 900, 1400)] * len(doc["chunks"]), 1, str)
+        assert 'font-family: "Caption Test", "Inter";' in css, css
+        assert captions.scene_check.font_faces(css)[family] == ["./fonts/Caption-Test.woff2"]
+        assert not any("isn't available for captions" in n for n in doc["notes"])
+
+
+def brand_font_missing_checks(tmp):
+    state, reel, plugin = tmp / "missing-font-state", tmp / "missing-font-reel", tmp / "missing-font-plugin"
+    family = plant_brand_font(plugin)
+    fixture(reel, words("say this."))
+    with patch.object(captions.rt, "state_dir", return_value=state), \
+            patch.object(captions.scene_check, "SCENES", plugin / "scenes"), \
+            patch.object(captions.scene_check, "FONTS", plugin / "runtime/fonts"):
+        # A declaration without a file and an undeclared family both fall back.
+        (plugin / "runtime/fonts/Caption-Test.woff2").unlink()
+        for font in (family, "Missing Brand"):
+            put(state / "styles/default.json", {"font": font, "caption_style": {"style": "clean"}})
+            doc = captions.plan(reel)
+            for _ in range(2):
+                css, _, _ = captions.layer(doc, [(100, 1200, 900, 1400)] * len(doc["chunks"]), 1, str)
+            assert 'font-family: "Inter";' in css and '"Caption Test"' not in css
+            assert doc["notes"] == [f"Your brand font {font} isn't available for captions yet, so they use Inter."]
+
+
+def reel_beats_saved_checks(tmp):
+    state, reel = tmp / "accent-state", tmp / "accent-reel"
+    fixture(reel, words("say this."))
+    put(state / "styles/default.json", {"accent": "#E0218A", "caption_style": {"style": "boxed"}})
+    put(reel / captions.PICKER_SEND, {"caption_style": {"style": "bold-pop", "accent": "#123abc"}})
+    with patch.object(captions.rt, "state_dir", return_value=state):
+        doc = captions.plan(reel)
+        assert doc["style"]["style"] == "bold-pop" and doc["style"]["accent"] == "#123abc"
 
 
 def chunk_checks(tmp):
@@ -386,11 +445,15 @@ def picker_doc_checks(tmp):
 def main():
     failed = 0
     with tempfile.TemporaryDirectory() as tmp:
-        with patch.object(captions.rt, "state_dir", return_value=Path(tmp) / "no-saved-style"):
-            for check in (style_checks, brand_checks, chunk_checks, mark_checks, truth_checks, coverage_checks, layer_checks,
-                          cli_checks, picker_style_checks, marker_width_checks, loud_checks, picker_doc_checks):
+        for check in (style_checks, brand_checks, brand_font_checks, brand_font_missing_checks,
+                      reel_beats_saved_checks, chunk_checks, mark_checks, truth_checks, coverage_checks, layer_checks,
+                      cli_checks, picker_style_checks, marker_width_checks, loud_checks, picker_doc_checks):
+            root = Path(tmp) / check.__name__
+            root.mkdir()
+            # Every check starts without earlier picks; children inherit the same scratch home.
+            with patch.dict(os.environ, {"EDITOR_SE_HOME": str(root / "no-saved-style")}):
                 try:
-                    check(Path(tmp))
+                    check(root)
                     print(f"PASS {check.__name__}")
                 except Exception as e:
                     failed += 1

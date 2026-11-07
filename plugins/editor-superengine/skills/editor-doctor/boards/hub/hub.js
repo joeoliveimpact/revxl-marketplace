@@ -8,7 +8,7 @@ const current = () => DATA.reels.find(r => r.id === CUR);
 const stage = () => DATA.stages[current().cur];
 const pct = r => Math.round(r.lanes.reduce((n,l) => n + (l.total ? l.done/l.total : 0), 0) / r.lanes.length * 100);
 const ago = at => !at ? "never" : Math.max(0, Math.round((Date.now() - new Date(at).getTime())/60000)) + " min ago";
-const skillLabels = {captions:"Make captions", cover:"Pick a cover", qa:"Run QA", broll:"Add B-roll", trial:"Make a trial version", style:"Save this style", health:"Check my editor", goldmine:"Run Goldmine"};
+const skillLabels = {captions:"Make captions", cover:"Pick a cover", qa:"Run QA", broll:"Add B-roll", trial:"Make a trial version", style:"Save this style", health:"Check my editor", goldmine:"Run Goldmine", handoff:"Hand off to your editor"};
 const adjustments = {};
 
 function pending(fn) {
@@ -99,6 +99,12 @@ function drawHead() {
   $("attention-card").hidden = !blocks.length;
   $("attention").innerHTML = blocks.map(b=>`<li>${esc(b.msg)}${b.where ? " · " + esc(typeof b.where === "string" ? b.where : JSON.stringify(b.where)) : ""}</li>`).join("");
   $("actions").innerHTML = ["captions", "cover", "qa", "broll", "trial"].map(k=>`<button class="act" data-skill="${k}">${skillLabels[k]}</button>`).join("");
+  if (["resolve", "mcp"].includes(DATA.config.nle)) {
+    const choices = DATA.config.nle === "resolve" ? ["DaVinci Resolve", "Another editor (files)"] : ["Another editor (files)"];
+    $("actions").insertAdjacentHTML("beforeend", `<label for="handoff-editor">Your editor</label><select id="handoff-editor">${choices.map(c=>`<option>${esc(c)}</option>`).join("")}</select><button class="act" data-skill="handoff">${skillLabels.handoff} · Send</button>`);
+    $("handoff-editor").value = adjustments[CUR]?.handoffEditor || choices[0];
+    $("handoff-editor").onchange = e => { (adjustments[CUR] ||= {}).handoffEditor = e.target.value; };
+  }
 }
 function drawTabs() {
   const tabs = DATA.boards;
@@ -171,6 +177,12 @@ function request(skill) {
   const ask=skill === "goldmine" ? "Run Goldmine for my niche. Show me the SocialCrawl credit cost and ask before spending anything." :
     skill === "health" ? "Check my editor and fix what's missing." : `${skillLabels[skill] || "Adjust " + skill} for ${reel}.${details ? " " + details : ""}`;
   const entry={at:new Date().toISOString(),reel,skill,ask,choices:{...a}};
+  if (skill === "handoff") {
+    if (!["resolve", "mcp"].includes(DATA.config.nle)) return;
+    const editor = $("handoff-editor").value;
+    entry.choices = {editor};
+    entry.ask = `${skillLabels.handoff} for ${reel}: ${editor}.${details ? " " + details : ""}`;
+  }
   return append(reel,"hub-requests.json",entry);
 }
 function route() {

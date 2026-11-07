@@ -83,7 +83,7 @@ A GPU read that fails is never a change: `nvidia-smi` times out, exits non-zero,
 | `schema` | 1 | the doctor | everything that reads the config |
 | `engine` | null until the machine test | the doctor: the engine that actually installed (`none` on old macOS) | transcription (S3), STATUS |
 | `language` | null (unset = English) | not written by the doctor | the engine pick (doctor and setup) |
-| `nle` | `auto` until detection | the doctor: `resolve` or `none` from detection while `nle_source` is `auto`; `--set-nle` writes the client's choice (`mcp`, `resolve` or `none`) | the Resolve hand-off offer (S12) |
+| `nle` | `auto` until detection | the doctor: `resolve` or `none` from detection while `nle_source` is `auto`; `--set-nle` writes the client's choice (`mcp`, `resolve` or `none`) (`mcp` = files for another editor) | the Resolve hand-off offer (S12) |
 | `nle_source` | `auto` (missing counts as `auto`, for older configs) | the doctor: `auto`, or `manual` after `--set-nle mcp`, `resolve` or `none` (`--set-nle auto` returns to `auto`). Only `auto` is re-detected; a `manual` nle is kept and reported as "chosen by you" | the Resolve hand-off offer (S12) |
 | `ports.board` | 8747 | default | the boards' free-port fallback (S4a) |
 | `voice_cleanup` | `free` (or `auphonic`) | default | voice clean-up (S5) |

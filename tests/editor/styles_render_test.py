@@ -43,6 +43,8 @@ FIRST_CUTS = PLUGIN / "skills" / "reel-first-cuts" / "scripts"
 TUNING = SCRIPTS.parent / "references" / "tuning.json"
 sys.path.insert(0, str(PLUGIN / "skills" / "_shared"))
 import runtime as rt  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from editor_test_state import isolated_home
 
 CASES = ("build", "punch-dramatic", "punch-subtle", "layout-switch",
          "follow-cam", "ceiling", "tri2")
@@ -871,6 +873,11 @@ def write_tuning(h):
 def worker(kind, args):
     """Run real script entrypoints in a killable child; never change production code."""
     require_heavy_lock()
+    with isolated_home(packages=True):
+        return isolated_worker(kind, args)
+
+
+def isolated_worker(kind, args):
     # Production face/cutout children use -I, which ignores PYTHONDONTWRITEBYTECODE.
     # Propagate -B to Python descendants so no __pycache__ is written into the checkout.
     original_popen = subprocess.Popen
@@ -1048,6 +1055,11 @@ def main(argv=None):
         write_tuning(h)
         return 0
     require_heavy_lock()  # before creating any scratch or starting any video tool
+    with isolated_home(packages=True):
+        return run_cases(a)
+
+
+def run_cases(a):
     out = a.out.resolve() if a.out else Path(tempfile.mkdtemp(prefix="editor-styles-render-"))
     if out == REPO or out.is_relative_to(REPO) or REPO.is_relative_to(out):
         raise ValueError("--out must be outside this checkout and cannot contain it")

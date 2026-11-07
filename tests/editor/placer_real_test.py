@@ -18,6 +18,9 @@ import tempfile
 from fractions import Fraction
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from editor_test_state import isolated_home
+
 sys.dont_write_bytecode = True
 REPO = Path(__file__).resolve().parents[2]
 SCRIPTS = REPO / "plugins/editor-superengine/skills/reel-canvas-build/scripts"
@@ -298,6 +301,7 @@ def run(reel, out):
     return 0
 
 
+@isolated_home()
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--reel-dir", required=True, type=Path)

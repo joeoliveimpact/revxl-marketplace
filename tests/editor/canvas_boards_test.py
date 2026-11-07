@@ -9,6 +9,9 @@ The browser work runs through canvas_boards_click.js (puppeteer-core, headless s
 import base64, contextlib, copy, datetime, http.client, io, json, os, shutil, socket, subprocess, sys, tempfile, threading
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from editor_test_state import isolated_home
+
 PLUGIN = Path(__file__).resolve().parents[2] / "plugins/editor-superengine"
 DOCTOR = PLUGIN / "skills/editor-doctor/scripts"
 CANVAS = PLUGIN / "skills/reel-canvas-build/scripts"
@@ -17,6 +20,7 @@ sys.path.insert(0, str(DOCTOR))
 from win_encoding import ensure_utf8_output  # noqa: E402
 import runtime as rt  # noqa: E402
 import check_deps  # noqa: E402  (writes editor.config.json the way the doctor does)
+TOOL_HOME = rt.state_dir()
 
 SERVER = DOCTOR / "board_server.py"
 SEED = CANVAS / "make_beat_map.py"
@@ -150,6 +154,34 @@ const fs = require('fs'), {pathToFileURL} = require('url');
 """
 
 
+PICK_BROWSER = r"""
+const fs = require('fs'), {pathToFileURL} = require('url');
+(async () => {
+  const [pup, chrome, jobPath] = process.argv.slice(1), job = JSON.parse(fs.readFileSync(jobPath, 'utf8'));
+  const {default: puppeteer} = await import(pathToFileURL(pup).href);
+  const browser = await puppeteer.launch({executablePath:chrome, headless:'shell', args:['--no-sandbox'],
+    userDataDir:job.userDataDir});
+  const need = (ok, why) => { if (!ok) throw new Error(why); }, errors = [];
+  try {
+    const page = await browser.newPage(); page.setDefaultTimeout(15000);
+    page.on('pageerror', e => errors.push(String(e)));
+    await page.goto(job.url, {waitUntil:'load'});
+    await page.waitForSelector('#board:not([hidden]) #edit-style');
+    need(await page.$eval('#edit-style', e => e.value === '' &&
+      e.selectedOptions[0].textContent === 'Ask me before the preview'), 'remembered style was preselected');
+    need(await page.$eval('#edit-style', e => [...e.options].filter(o=>o.textContent.includes('Your last pick'))
+      .map(o=>o.value).join() === 'layout-switch'), 'badge is missing or on the wrong style');
+    need(!fs.existsSync(job.selection), 'opening the Beat Map sent a choice');
+    await page.$eval('#send', e => e.scrollIntoView({block:'center'}));
+    await page.click('#send'); await page.waitForSelector('#status[data-state=sent]');
+    need(!('edit_style' in JSON.parse(fs.readFileSync(job.selection,'utf8'))), 'untouched Style menu sent edit_style');
+    need(errors.length === 0, 'page errors: ' + errors.join('; '));
+    console.log(JSON.stringify({ok:true}));
+  } finally { await browser.close(); }
+})().catch(e=>{console.error(String(e.stack||e));process.exit(1);});
+"""
+
+
 BEATMAP_BROWSER = r"""
 const fs = require('fs'), {pathToFileURL} = require('url');
 (async () => {
@@ -277,7 +309,7 @@ def find_tools():
                 missing.append(name)
         except (KeyError, OSError, ValueError):
             missing.append(name)
-    pup = rt.state_dir() / "hyperframes/node_modules/puppeteer-core/lib/puppeteer/puppeteer-core.js"
+    pup = TOOL_HOME / "hyperframes/node_modules/puppeteer-core/lib/puppeteer/puppeteer-core.js"
     if not pup.is_file():
         missing.append("puppeteer-core")
     found["pup"] = str(pup)
@@ -478,6 +510,7 @@ def schema_scene_case():
         need(bs.sketches_problems(dict(sketches, scenes={"b_001": None}), bm), "null sketches scene accepted")
 
 
+@isolated_home()
 def main():
     ensure_utf8_output()
     if "--schema-scene-only" in sys.argv:
@@ -807,6 +840,25 @@ def main():
         else:
             raise Fail("compositor accepted an unsaid slot number")
 
+    def remembered_style():
+        sr = videos / "remembered-style"
+        reel_fixture(sr)
+        own_env = dict(env, EDITOR_SE_HOME=str(scratch / "pick-state"))
+        p = run(py + [str(PLUGIN / "skills/_shared/standing_notes.py"), "pick", "edit_style.style",
+                      "--value", '"layout-switch"', "--note", "Let the layout do it"], env=own_env)
+        need(p.returncode == 0, f"remembered pick: {p.stdout} {p.stderr}")
+        p = run(py + [str(SEED), "--reel-dir", str(sr), "--plan", str(sr / "work/plan.json")], env=own_env)
+        need(p.returncode == 0, f"remembered fixture seed: {p.stdout} {p.stderr}")
+        selection = sr / "beat-map-selection.json"
+        selection.unlink(missing_ok=True)
+        S["browsers"] += 1
+        job = scratch / f"pick-job-{S['browsers']}.json"
+        write_json(job, {"url": url("beat-map", sr.name), "selection": str(selection),
+                         "userDataDir": str(scratch / f"profile-{S['browsers']}")})
+        p = run([tools["node"], "-e", PICK_BROWSER, tools["pup"], tools["chrome"], str(job)])
+        need(p.returncode == 0, f"remembered style browser: {p.stdout} {p.stderr}")
+        need("edit_style" not in load(selection), "untouched Send wrote edit_style")
+
     S["A"] = free_port()
     S["B"] = free_port(S["A"])
     try:
@@ -825,6 +877,7 @@ def main():
         case("2 edit + reload: layout, value, note, word mark and needs survive a reload", c2)
         case("3 Send: beat-map-selection.json is valid and carries the edits and sent_at", c3)
         case("4 port change + new browser: the edits and sent come back from disk", c4)
+        case("remembered style: badge, Ask default and untouched Send", remembered_style)
         case("5 sketches: lock waits for a pick; pick, lock, notes saved, Send valid, restored on a new port", c5)
         case("6 empty: a reel with no beat map or sketches shows #empty on both pages", c6)
         case("8 the board won't send a broken doc", c8)

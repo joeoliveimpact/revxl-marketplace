@@ -44,6 +44,8 @@ description: Plan burned-in captions for the signed-off spoken cut, propose trut
    `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-captions/scripts/captions.py" picker --reel-dir "<reel folder>"`
 
    Open the Look Picker tab in the hub. The client compares the looks, picks the options and presses Send.
+   A remembered look is highlighted as “Your last pick”; it is recommended, and the client still chooses and presses Send.
+   When clients explain their pick, keep their words: `standing_notes.py pick <key> --value <json> --note "<their words>"`.
    Layouts there are previews only. IDs are `clean`, `bold-pop`, `boxed`, `karaoke`, `outline-caps`, or `none`.
    On `make_default: true`, save the Send's `caption_style` under that key in the saved style, preserving
    all other keys. The script never saves defaults itself. Then plan and make the normal preview below.

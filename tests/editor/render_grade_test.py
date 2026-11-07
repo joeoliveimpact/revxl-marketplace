@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """G1.3 done-test: render.py --grade bakes reel-grade's cube into the cut's one encode, both directions.
 
-  EDITOR_SE_HOME=<state> <editor python> -X utf8 -I tests/editor/render_grade_test.py [--case a|b|c|d|all] [--keep]
+  EDITOR_SE_HOME=<state> <editor python> -X utf8 -I tests/editor/render_grade_test.py [--case a|b|c|d|e|f|take2|all] [--keep]
 
 <state> is an installed editor state folder (ffmpeg, ffprobe); it is only read. Run it from a git checkout: case d
 reads render.py as it was at BEFORE. Every case is a light job (H-LOCK-1): a 3 s 640x360 lavfi clip of four known
@@ -14,6 +14,9 @@ for a 360x640 scale (as cut_safety_test.py does), so no heavy lock; below 1 GB f
   d  no --grade -> the ffmpeg commands and filter graphs are byte-identical to render.py's at BEFORE for the same
      inputs (real conform, SDR and HLG; captured, never encoded); with --grade the commands are the same and the
      graph gains exactly one lut3d, at the end of the conform.
+  e  saved Warm and Mono looks in isolated scratch homes -> clearly different master colour bands.
+  f  mixed recordings use their own cubes and reject changed cubes; a top-level-only cube mutant fails.
+  take2  keeping only take 2 uses its raw even when take 1 is positional; the old > 1 rule fails.
 Prints one "✓ <case>" / "✗ <case>: <why>" line per case, then "N passed, M failed". Exit 0 only when all pass.
 """
 import argparse, contextlib, hashlib, importlib.util, io, json, os, shutil, subprocess, sys, tempfile
@@ -25,6 +28,8 @@ RENDER = PLUGIN / "skills/reel-first-cuts/scripts/render.py"
 BEFORE = "02a6e9d"   # the last commit whose render.py has no --grade
 sys.dont_write_bytecode = True   # the in-process imports below must not leave __pycache__ in the plugin
 sys.path[:0] = [str(RENDER.parent), str(PLUGIN / "skills/reel-grade/scripts"), str(PLUGIN / "skills/_shared")]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from editor_test_state import isolated_home  # noqa: E402
 from win_encoding import ensure_utf8_output  # noqa: E402
 import runtime as rt  # noqa: E402
 
@@ -88,7 +93,7 @@ def run_render(path, work, src, *args, tiny=True, sub=None):
     """render.py's main() in-process -> (exit code, everything it printed, the module)."""
     m = load_render(path)
     if tiny:
-        m.conform = lambda video: TINY_VF
+        m.conform = lambda video, crop=None: TINY_VF
     if sub:
         m.subprocess = sub
     argv, buf = sys.argv, io.StringIO()
@@ -108,7 +113,7 @@ def run_render(path, work, src, *args, tiny=True, sub=None):
 
 def main():
     ensure_utf8_output()
-    names = ["a", "b", "c", "d"]
+    names = ["a", "b", "c", "d", "e", "f", "take2"]
     ap = argparse.ArgumentParser(description="G1.3 render --grade done-test")
     ap.add_argument("--case", choices=names + ["all"], default="all")
     ap.add_argument("--keep", action="store_true", help="keep the scratch folder")
@@ -283,7 +288,188 @@ def main():
                 need(g1.count(b"lut3d") == 1 and g1.replace(lut + b"[v];", b"[v];") == g0,
                      "%s: --grade didn't add exactly one lut3d at the end of the conform" % transfer)
 
-    cases = {"a": case_a, "b": case_b, "c": case_c, "d": case_d}
+    def case_e():
+        outputs = []
+        src = scratch / "saved-look-face.mp4"
+        p = sh([ff, "-v", "error", "-y", "-i", clip(), "-vf",
+                "drawbox=x=210:y=48:w=220:h=80:color=0xc08060:t=fill", "-c:v", "libx264",
+                "-threads", "2", "-crf", "0", "-preset", "veryfast", "-c:a", "copy", src])
+        need(p.returncode == 0, "could not make saved-look face patch: " + p.stderr[-300:])
+        saved_env = os.environ.get("EDITOR_SE_HOME")
+        try:
+            for look in ("warm", "mono"):
+                home = scratch / ("home-" + look)
+                (home / "styles").mkdir(parents=True)
+                # Tool paths stay read-only; only the copied state and style live in scratch.
+                state = json.loads((rt.state_dir() / "state.json").read_text(encoding="utf-8"))
+                for component in state.get("components", {}).values():
+                    component["bins"] = {k: str((rt.state_dir() / v).resolve())
+                                         for k, v in component.get("bins", {}).items()}
+                (home / "state.json").write_bytes(json.dumps(state).encode("utf-8"))
+                (home / "styles/default.json").write_bytes(json.dumps({
+                    "look": {"id": look, "strength": 1.0}}).encode("utf-8"))
+                w = work()
+                env = dict(os.environ, EDITOR_SE_HOME=str(home))
+                p = subprocess.run([sys.executable, "-X", "utf8", "-I", "-B",
+                                    str(PLUGIN / "skills/reel-grade/scripts/grade_match.py"),
+                                    "--video", str(src), "--reel-dir", str(w.parent),
+                                    "--take", "0-1", "--take", "1.5-2.5"], env=env, capture_output=True,
+                                   text=True, encoding="utf-8", errors="replace", timeout=160)
+                need(p.returncode == 0, "saved look matching failed: " + (p.stdout + p.stderr)[-400:])
+                need("Using your saved look: %s at 100 %%." % look.capitalize() in p.stdout,
+                     "saved look was not explained: " + p.stdout)
+                g = w.parent / "grade.json"
+                matched = json.loads(g.read_text(encoding="utf-8"))
+                need(matched["look"] == {"id": look, "strength": 1.0},
+                     "the saved look was not baked")
+                board = scratch / ("board-" + look)
+                (board / "grade").mkdir(parents=True)
+                (board / "grade-selection.json").write_bytes(json.dumps({
+                    "math_version": bg.gm.SPEC["version"], "correction": {}}).encode("utf-8"))
+                (board / "grade/grade-config.json").write_bytes(json.dumps({
+                    "duration": 3.0, "measured": matched["takes"][0]["measured"]}).encode("utf-8"))
+                p = subprocess.run([sys.executable, "-X", "utf8", "-I", "-B",
+                                    str(PLUGIN / "skills/reel-grade/scripts/grade_from_selection.py"),
+                                    "--reel-dir", str(board)], env=env, capture_output=True,
+                                   text=True, encoding="utf-8", errors="replace", timeout=160)
+                need(p.returncode == 0, "Grade Board saved-look fallback failed: " + (p.stdout + p.stderr)[-400:])
+                need(json.loads((board / "grade.json").read_text(encoding="utf-8"))["look"] == matched["look"],
+                     "the Grade Board did not use the saved look")
+                os.environ["EDITOR_SE_HOME"] = str(home)
+                choice = scratch / ("precedence-" + look)
+                choice.mkdir()
+                selection = {"id": "mono", "strength": 0.4}
+                (choice / "grade-selection.json").write_bytes(json.dumps({"look": selection}).encode("utf-8"))
+                need(bg.resolve_look(choice) == selection, "the board choice did not beat the saved look")
+                reel_look = {"id": "warm", "strength": 0.5}
+                (choice / "grade.json").write_bytes(json.dumps({"look": reel_look}).encode("utf-8"))
+                need(bg.resolve_look(choice) == reel_look, "the reel choice was not preserved")
+                explicit = {"id": "none", "strength": 1.0}
+                need(bg.resolve_look(choice, explicit=explicit) == explicit, "explicit none did not beat the reel")
+                need(bg.resolve_look(choice, selection=selection) == selection, "a new Send did not beat the old grade")
+                rc, out, _ = run_render(RENDER, w, src, "--master", "--grade", g)
+                need(rc == 0, "saved-look render failed: " + out[-400:])
+                outputs.append(bands(w / "renders/master-100x.mp4"))
+                if saved_env is None:
+                    os.environ.pop("EDITOR_SE_HOME", None)
+                else:
+                    os.environ["EDITOR_SE_HOME"] = saved_env
+        finally:
+            if saved_env is None:
+                os.environ.pop("EDITOR_SE_HOME", None)
+            else:
+                os.environ["EDITOR_SE_HOME"] = saved_env
+        gap = float(np.abs(outputs[0] - outputs[1]).max())
+        need(gap > 20, "saved warm and mono masters are too similar: %.2f/255" % gap)
+        need(float(np.ptp(outputs[1], axis=1).max()) <= 4, "the saved mono look did not remove colour")
+        print("    saved warm vs mono: worst band difference %.2f/255" % gap)
+
+    def mixed_work():
+        w = work()
+        src2 = scratch / "second.mp4"
+        if not src2.exists():
+            p = sh([ff, "-v", "error", "-y", "-i", clip(), "-vf", "hflip", "-c:v", "libx264",
+                    "-threads", "2", "-crf", "0", "-preset", "veryfast", "-c:a", "copy", src2])
+            need(p.returncode == 0, "could not make recording 2: " + p.stderr[-300:])
+        c = json.loads(json.dumps(CUTS))
+        c["takes"] = {"1": {"raw": str(clip()), "work": "work/take1"},
+                      "2": {"raw": str(src2), "work": "work/take2"}}
+        for n, s in enumerate(c["segments"], 1):
+            s["take"] = n
+            folder = w / ("take%d" % n)
+            folder.mkdir()
+            shutil.copyfile(w / "probe.json", folder / "probe.json")
+        (w / "cuts.json").write_bytes(json.dumps(c).encode("utf-8"))
+        sys.path.insert(0, str(PLUGIN / "skills/_shared/checks"))
+        import footage_check
+        for src in (clip(), src2):
+            footage_check.add(w.parent, src, "aroll", "own", "own")
+        return w
+
+    def mixed_gap(path):
+        w = mixed_work()
+        doc, problems = bg.write_grade(w.parent, [
+            {"range": [0, 1], "correction": {}}, {"range": [1.5, 2.5], "correction": {"sat": -1.0}}],
+            {"id": "none"}, take_ids=["1", "2"])
+        need(doc and not problems, "could not bake mixed grade")
+        g = w.parent / "grade.json"
+        master = render(path, w, "--grade", g)
+        gaps = []
+        for n, time in (("1", 0.5), ("2", 1.5)):
+            source = clip() if n == "1" else scratch / "second.mp4"
+            # Independent single-source render supplies the expected colour bands for this take's own cube.
+            single = work()
+            one = single.parent / "grade.json"
+            # Cube paths in the one-take document are absolute, so its different reel folder is irrelevant.
+            tk = dict(doc["takes"][n], cube=str(w.parent / doc["takes"][n]["cube"]))
+            one.write_bytes(json.dumps(tk).encode("utf-8"))
+            rc, out, _ = run_render(RENDER, single, source, "--master", "--grade", one)
+            need(rc == 0, "expected single-source render failed: " + out[-300:])
+            expected = bands(single / "renders/master-100x.mp4")
+            got = centres(np.round(read_frame(master, time) * 255.0))
+            gaps.append(float(np.abs(got - expected).max()))
+        return max(gaps), w, g
+
+    def case_f():
+        gap, w, g = mixed_gap(RENDER)
+        need(gap <= TOL, "mixed take differs from its own cube by %.2f/255" % gap)
+        bad = json.loads(g.read_text(encoding="utf-8"))
+        original = json.loads(json.dumps(bad))
+        bad["takes"]["2"]["cube_sha"] = "0" * 64
+        g.write_bytes(json.dumps(bad).encode("utf-8"))
+        cap = Capture()
+        rc, out, _ = run_render(RENDER, w, clip(), "--grade", g, sub=cap)
+        need(rc == 2 and not cap.encodes and "match" in out, "bad per-take sha was not refused before encoding")
+        for fallback in ({"1": original["takes"]["1"]},
+                         {"1": original["takes"]["1"], "2": {"tune": {}}},
+                         [original["takes"]["1"]]):
+            g.write_bytes(json.dumps(dict(original, takes=fallback)).encode("utf-8"))
+            cap = Capture()
+            rc, out, m = run_render(RENDER, w, clip(), "--grade", g, sub=cap)
+            need(rc == "captured" and len(cap.encodes) == 2, "mixed fallback failed: " + out[-300:])
+            lut = m.grade_filter(g).encode("utf-8")
+            need(all(graph.count(lut) == 2 for _, graph in cap.encodes), "a missing take cube did not use the top-level cube")
+        dm, _, _ = mixed_gap(mutant("            take_grade = take_grades.get(n)\n",
+                                    "            take_grade = None\n"))
+        need(dm > TOL, "mutant using the top-level cube for all takes was not caught")
+        print("    mixed own cubes: %.2f/255; top-level-only mutant: %.2f/255" % (gap, dm))
+
+    def take2_bands(path):
+        w = mixed_work()
+        cuts = json.loads((w / "cuts.json").read_text(encoding="utf-8"))
+        cuts["takes"] = {"2": cuts["takes"]["2"]}
+        for segment in cuts["segments"]:
+            segment["take"] = 2
+        (w / "cuts.json").write_bytes(json.dumps(cuts).encode("utf-8"))
+        g = grade("none", "reel-take2")
+        rc, out, _ = run_render(path, w, clip(), "--master", "--scrub", "--grade", g)
+        need(rc == 0, "take2 render failed: " + out[-400:])
+        master = bands(w / "renders/master-100x.mp4")
+        scrub = bands(w / "renders/scrub-100x.mp4")
+        need(float(np.abs(master - scrub).max()) <= TOL, "take2 master and scrub disagree")
+        return master
+
+    def case_take2():
+        _, first = plain()
+        # Recording 2 is the horizontal reversal of the four planted colour bands.
+        second = first[::-1]
+        got = take2_bands(RENDER)
+        gap = float(np.abs(got - second).max())
+        need(gap <= TOL, "keep-only-take-2 master has the wrong recording: %.2f/255" % gap)
+        old_rule = 'bool(cuts.get("takes"))'
+        source = RENDER.read_text(encoding="utf-8")
+        need(source.count(old_rule) == 3, "expected three take-path decisions for the mutant")
+        broken = scratch / "old-take-rule" / "render.py"
+        broken.parent.mkdir()
+        broken.write_bytes(source.replace(old_rule, 'len(cuts.get("takes") or {}) > 1').encode("utf-8"))
+        wrong = take2_bands(broken)
+        wrong_gap = float(np.abs(wrong - second).max())
+        need(float(np.abs(wrong - first).max()) <= TOL, "old-rule mutant didn't show take 1")
+        need(wrong_gap > 20, "old > 1 mutant was not caught")
+        print("    take2 colour gap: %.2f/255; old > 1 mutant: %.2f/255 (shows take 1)" % (gap, wrong_gap))
+
+    cases = {"a": case_a, "b": case_b, "c": case_c, "d": case_d, "e": case_e, "f": case_f,
+             "take2": case_take2}
     for name in want:
         try:
             cases[name]()
@@ -301,4 +487,5 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    with isolated_home():
+        sys.exit(main())

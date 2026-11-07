@@ -42,6 +42,9 @@ For B-roll asks, invoke `editor-superengine:reel-broll` first.
 | The design loop: a few looks for the hook or the opening visuals, a visual tweaked, or a check that Instagram's buttons won't cover the text | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/design-loop.md` |
 | The render: the 720p preview (a smaller, quicker copy to watch), the client's OK, then the final video at full size with the finished sound; the render draws the picked caption look from reel-captions; for the caption look or the marked words, invoke `editor-superengine:reel-captions` | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/build.md` |
 | Graphics behind the speaker: the cutout (the speaker cut out of the background) | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/build.md`, section 7 |
+| Check the reel before posting / Run QA | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/qa-check.md` |
+
+Before the 1080p final, run the pre check; after it, run the full check (see `qa-check.md`).
 
 **Not built yet:** use the single list in `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/SKILL.md`, "Not built yet". When the client asks for one of these, say "That part of the editor isn't built yet; it's coming in a later update." One follow-up is allowed: "If the reel has a Beat Map, I can leave a note on that moment for later." Don't build it any other way: a hand-built version skips the Beat Map checks and the preview OK.
 
@@ -56,7 +59,7 @@ Tell the client what went wrong in plain words, and whether anything was charged
 2. Draft it. Keep the summary short. Put the summary, step and error line in single quotes, drop any
    apostrophe from them, and use no script names:
 
-`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.1.0 --skill reel-canvas-build --step '<the plan, the design loop, the render or the cutout>' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
+`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.1.0 --skill reel-canvas-build --step '<the plan, the design loop, the render, the cutout or the before-posting check>' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
 
 3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
 4. Send, using the path after `DRAFT:`:

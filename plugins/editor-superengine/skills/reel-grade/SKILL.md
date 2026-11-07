@@ -5,6 +5,8 @@ description: Sets the colour of a talking-head reel. Use on "grade this reel", "
 
 # reel-grade: the reel's colour
 
+Match the colour of takes from different recordings and use the client's saved look when no look is picked for this reel.
+
 ## Output contract (every run, in this order)
 
 1. The contact sheet and the Grade Board open in the Browser pane, with one plain line: "Pick a colour, or none, then press Send." Then stop for the Send.
@@ -63,7 +65,9 @@ It bakes the Send into one cube, runs the skin guard and writes `grade.json`. No
 
 Tell the client the pick and ask (output contract, item 2). On a yes:
 
-`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/render.py" videos/<reel>/work/ videos/<reel>/RAW.mp4 --master --scrub --grade videos/<reel>/grade.json`
+`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/render.py" videos/<reel>/work/ "<raw video>" --master --scrub --grade videos/<reel>/grade.json`
+
+Use the reel's raw video; when the cut lists takes, render.py chooses the raw from the cut.
 
 This replaces the cut's master with the graded one, so the visuals and the sound pass use it with no extra encode. It checks the cube's sha before rendering. "Missing or changed": run step 3 again. A change after the client sees it goes back to the board (step 2).
 

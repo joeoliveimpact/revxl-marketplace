@@ -22,8 +22,10 @@ compose.py ok is the only writer of work/render-ok.json; master refuses without 
 The picked caption look sits above the picture and scenes, clear of the speaker's head where space allows.
 """
 import argparse
+import contextlib
 import html
 import importlib.util
+import io
 import json
 import math
 import os
@@ -45,6 +47,7 @@ sys.path.insert(0, str(P / "scripts"))
 sys.path.insert(0, str(HERE))
 from win_encoding import ensure_utf8_output  # noqa: E402
 import runtime as rt  # noqa: E402
+import saved_style  # noqa: E402
 import beat_schema  # noqa: E402
 import effect_gate  # noqa: E402
 import fps as fpsmod  # noqa: E402
@@ -257,7 +260,7 @@ def packet_md5(path, sel):
 
 
 def streams(path):
-    rc, out, _ = run([rt.tool("ffprobe"), "-v", "error", "-show_entries", "stream=codec_type,duration", "-of", "json",
+    rc, out, _ = run([rt.tool("ffprobe"), "-v", "error", "-show_entries", "stream=codec_type,duration,pix_fmt", "-of", "json",
                       path], rt.python_env())
     try:
         return json.loads(out).get("streams") or []
@@ -414,7 +417,10 @@ def brand_params(spec, html, beat_params, saved):
 def saved_brand():
     """Read only the saved brand keys; missing or unreadable taste choices never stop a render."""
     try:
-        saved = json.loads((rt.state_dir() / "styles/default.json").read_text(encoding="utf-8"))
+        with contextlib.redirect_stderr(io.StringIO()) as note:
+            saved = saved_style.load()
+        if note.getvalue():
+            raise ValueError("saved style could not be read")
         if not isinstance(saved, dict):
             raise ValueError("saved style must be an object")
     except FileNotFoundError:
@@ -586,9 +592,23 @@ def broll_name(beat, i):
     return f"broll-{safe_id(beat['id'], i)}-{i}"
 
 
-def main_html(inp, w, h, scene_files):
+def main_html(inp, w, h, scene_files, layers="all"):
+    if layers not in ("all", "aroll", "overlay", "captions"):
+        raise ValueError("unknown render layers")
+    which = layers
+    if which == "aroll":
+        inp = dict(inp, beats=[], under=[], hook_f=0, captions=None)
+        scene_files = []
+    elif which == "captions":
+        inp = dict(inp, beats=[], under=[], hook_f=0, track={"keys": [], "tweens": [], "style": {}})
+        scene_files = []
+    elif which == "overlay":
+        inp = dict(inp, captions=None)
     rate, s = inp["rate"], w / 1080
     track = inp.get("track") or {"keys": [], "tweens": [], "style": {}}
+    baked = baked_spans(track, inp.get("beats", []), inp["total"]) if which == "overlay" else []
+    if which == "overlay":
+        track = dict(track, keys=[], tweens=[])
     lays = {}
 
     def lay(name):
@@ -600,7 +620,7 @@ def main_html(inp, w, h, scene_files):
               f'<div id="aroll-move" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%">'
               f'<video id="aroll" class="clip" src="media/aroll.mp4" data-start="0" '
               f'data-duration="{ts(inp["total"], rate)}" data-track-index="0" muted playsinline preload="auto" '
-              f'style="width: 100%; height: 100%"></video></div></div>']
+              f'style="width: 100%; height: 100%"></video></div></div>'] if which in ("all", "aroll") else []
     tl = []
     for i, b in enumerate(b for b in inp.get("beats", []) if b.get("broll")):
         clip, name = b["broll"], broll_name(b, i)
@@ -683,11 +703,20 @@ def main_html(inp, w, h, scene_files):
             doc, [c["box"] for c in doc["chunks"]], s, lambda f: at(f, rate))
         layers.extend(caption_layers)
         tl.extend(caption_tl)
+    if baked:
+        layers = ['      <div id="handoff-overlay" class="band">' + "\n".join(layers) + '</div>']
+        tl.append('        tl.set("#handoff-overlay", { opacity: 1, immediateRender: true }, 0);')
+        for span in baked:
+            imm = "true" if span["start_f"] == 0 else "false"
+            tl.append(f'        tl.set("#handoff-overlay", {{ opacity: 0, immediateRender: {imm} }}, {at(span["start_f"], rate)});')
+            tl.append(f'        tl.set("#handoff-overlay", {{ opacity: 1, immediateRender: false }}, {at(span["end_f"], rate)});')
     fill = {"W": str(w), "H": str(h), "UNDERLAY": UNDERLAY, "HOOK_X": f"{x:.1f}", "HOOK_Y": f"{y:.1f}",
             "HOOK_W": f"{bw:.1f}", "HOOK_SIZE": f"{size:.1f}", "DURATION": ts(inp["total"], rate),
             "HOOK_SHADOW": f"0 0 {6 * s:.1f}px rgba(0, 0, 0, 0.9), 0 {2 * s:.1f}px {4 * s:.1f}px rgba(0, 0, 0, 0.9)",
             "LAYERS": "\n".join(layers), "TIMELINE": "\n".join(tl), "CAPTION_CSS": caption_css}
     out = TEMPLATE.read_text(encoding="utf-8")
+    if which in ("overlay", "captions"):
+        out = out.replace("background: #000000;", "background: transparent;")
     for k, v in fill.items():
         out = out.replace("{{" + k + "}}", v)
     if "{{" in out:
@@ -695,9 +724,61 @@ def main_html(inp, w, h, scene_files):
     return out
 
 
-def render(reel, tier, hook_text, extra_spans=None, keep_project=False):
+def baked_spans(track, beats, total):
+    """Frames needing the finished picture; touching ranges merge, with combined layout labels."""
+    ranges = []
+
+    def add(start, end, layout):
+        start, end = max(0, start), min(total, end)
+        if start < end:
+            ranges.append({"start_f": start, "end_f": end, "layout": layout})
+
+    keys = sorted(track.get("keys", []), key=lambda k: k["f"])
+    for i, key in enumerate(keys):
+        if key["layout"] in ("pip", "overlay"):
+            add(key["f"], keys[i + 1]["f"] if i + 1 < len(keys) else total, key["layout"])
+    for move in track.get("tweens", []):
+        if move["prop"] == "layout":
+            for name in ("pip", "overlay"):
+                if name in (move["from"], move["to"]):
+                    add(move["start_f"], move["end_f"], name)
+    if track.get("style", {}).get("style") == "layout-switch":
+        for beat in beats:
+            if beat["layout"] in ("pip", "overlay"):
+                add(beat["start_f"], beat["end_f"], beat["layout"])
+    merged = []
+    for span in sorted(ranges, key=lambda r: (r["start_f"], r["end_f"])):
+        if merged and span["start_f"] <= merged[-1]["end_f"]:
+            merged[-1]["end_f"] = max(merged[-1]["end_f"], span["end_f"])
+            merged[-1]["layout"] = "+".join(sorted(set(merged[-1]["layout"].split("+")) | {span["layout"]}))
+        else:
+            merged.append(dict(span))
+    return merged
+
+
+NEED_BAKED_MASTER = "Render the Master first: the picture-in-picture or blurred-card parts are taken from it."
+
+
+def require_baked_master(reel, spans, total, rate):
+    if not spans:
+        return None
+    candidates = [p for p in (reel / "renders").glob("*") if p.is_file() and MASTER_RE.fullmatch(p.name)]
+    latest = max(candidates, key=lambda p: (p.stat().st_mtime_ns, p.name)) if candidates else None
+    try:
+        if latest is not None and fpsmod.as_fraction(fpsmod.resolve_fps(latest)) == rate and fpsmod.frame_count(latest) == total:
+            return latest
+    except (OSError, ValueError):
+        pass
+    raise Stop(1, NEED_BAKED_MASTER)
+
+
+def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="all"):
     """One preview or Master. extra_spans (internal, no CLI flag): more gate spans, e.g. a test's planted move."""
     t_start = time.perf_counter()
+    if layers not in ("all", "aroll", "overlay", "captions"):
+        raise Stop(2, "Choose all, aroll, overlay or captions layers.")
+    if layers != "all":
+        tier = "master"
     tmp = reel / "work" / "render-tmp"
     if tmp.exists() and not remove_tree(tmp):  # an earlier run that crashed can leave it behind
         raise Stop(1, f"✗ The old work/render-tmp folder can't be deleted; close what uses it, then run this again.")
@@ -720,6 +801,8 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False):
     for line in track["warnings"]:
         print(f"note: {line}")
     plan(inp, hook_text, track["spans"] + list(extra_spans or []))
+    baked = baked_spans(track, inp["beats"], inp["total"]) if layers != "all" else []
+    require_baked_master(reel, baked, inp["total"], inp["rate"])
     footage_licences(inp, tier)
     inp["track"] = track
     styles.write_json(reel / styles.TRACK, track)  # S7 reads it
@@ -746,11 +829,18 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False):
     for line in doc["notes"]:
         print(f"note: {line}")
     printed_notes = len(doc["notes"])
-    audio, audio_src = choose_audio(reel, inp, tier)
+    audio, audio_src = choose_audio(reel, inp, tier) if layers == "all" else ("cut", inp["master"])
     w, h = TIERS[tier]
     name = out_names(reel.name, datetime.now().strftime("%m.%d.%y"))[0 if tier == "preview" else 1]
     renders = reel / "renders"
+    if layers != "all":
+        ext = "mov" if layers in ("overlay", "captions") else "mp4"
+        label = {"overlay": "Overlay", "captions": "Captions", "aroll": "A-roll"}[layers]
+        name = f"{reel.name} {label} - {datetime.now().strftime('%m.%d.%y')}.{ext}"
+        renders = reel / "handoff"
     final, partial = renders / name, renders / (name[:-4] + ".partial.mp4")
+    if layers in ("overlay", "captions"):
+        partial = renders / (name[:-4] + ".partial.mov")
     print("info: encode generations: camera -> cut master (1) -> this render (2)")
     env, cache = rt.hyperframes_env(), tmp / "hf-cache"
     proj = tmp / "proj"
@@ -758,7 +848,7 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False):
         (proj / "media").mkdir(parents=True)
         cache.mkdir()
         scene_files = []
-        for i, b in enumerate(inp["scened"]):
+        for i, b in enumerate(inp["scened"] if layers in ("all", "overlay") else []):
             sid, name_i = b["scene"]["id"], safe_id(b["id"], i)
             sproj = tmp / "scenes" / name_i
             scene_project(sproj, b, inp["rate"])
@@ -772,27 +862,32 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False):
             if got != want:
                 raise Stop(1, f"✗ The {sid} scene came out {got} frames long, not {want}; run it again.")
             scene_files.append((b, name_i))
-        link_or_copy(inp["master"], proj / "media" / "aroll.mp4")
-        for i, b in enumerate(b for b in inp["beats"] if b.get("broll")):
+        if layers in ("all", "aroll"):
+            link_or_copy(inp["master"], proj / "media" / "aroll.mp4")
+        for i, b in enumerate(b for b in inp["beats"] if b.get("broll") and layers in ("all", "overlay")):
             names = [broll_name(b, i)] + ([broll_name(b, i) + "-back"] if b["broll"]["fit"] == "blur-fill" else [])
             for n in names:
                 link_or_copy(reel / b["broll"]["src"], proj / "media" / (n + ".mp4"))
         (proj / "vendor").mkdir()
         shutil.copy2(P / "runtime" / "gsap" / "gsap.min.js", proj / "vendor" / "gsap.min.js")
         shutil.copytree(P / "runtime" / "fonts", proj / "fonts")
-        page = main_html(inp, w, h, scene_files).encode("utf-8")
+        page = main_html(inp, w, h, scene_files, layers=layers).encode("utf-8")
         captions.write(reel, doc)  # layer() can add fitting notes
         for line in doc["notes"][printed_notes:]:
             print(f"note: {line}")
         assert b"\r" not in page
         (proj / "index.html").write_bytes(page)
-        video = tmp / "video.mp4"
+        video = tmp / ("video.mov" if layers in ("overlay", "captions") else "video.mp4")
         hf_render(proj, video, env, f"{tier} ({w}x{h})",
-                  ["--fps", inp["fps"], "--frames-cache-dir", cache, *QUALITY[tier]])
+                  ["--fps", inp["fps"], "--frames-cache-dir", cache, *QUALITY[tier],
+                   *(["--format", "mov"] if layers in ("overlay", "captions") else [])])
         renders.mkdir(exist_ok=True)
         t0 = time.perf_counter()
-        rc, o, e = ffmpeg("-y", "-i", video, "-i", audio_src, "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy",
-                          "-c:a", "copy", "-movflags", "+faststart", partial)
+        if layers in ("overlay", "captions"):
+            rc, o, e = ffmpeg("-y", "-i", video, "-map", "0:v:0", "-an", "-c:v", "copy", partial)
+        else:
+            rc, o, e = ffmpeg("-y", "-i", video, "-i", audio_src, "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy",
+                              "-c:a", "copy", "-movflags", "+faststart", partial)
         if rc != 0 or not partial.is_file():
             raise Stop(1, f"✗ Adding the sound stopped (exit {rc}: {tail(o + e)}); run it again.")
         print(f"info: sound added in {time.perf_counter() - t0:.1f} s")
@@ -800,7 +895,11 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False):
         st = streams(partial)
         dur = {s.get("codec_type"): float(s.get("duration") or 0) for s in st}
         kinds = sorted(s.get("codec_type") for s in st)
-        if got != inp["total"] or kinds != ["audio", "video"] or abs(dur["audio"] - dur["video"]) > 1 / float(inp["rate"]):
+        if layers in ("overlay", "captions"):
+            pix = next((s.get("pix_fmt", "") for s in st if s.get("codec_type") == "video"), "")
+            if got != inp["total"] or kinds != ["video"] or not alpha_pix_fmt(pix):
+                raise Stop(1, f"The {layers} layer has the wrong frame count or no transparent channel; run it again.")
+        elif got != inp["total"] or kinds != ["audio", "video"] or abs(dur["audio"] - dur["video"]) > 1 / float(inp["rate"]):
             raise Stop(1, f"✗ The render came out wrong ({got} frames for {inp['total']}, streams {kinds}, sound "
                           f"{dur.get('audio', 0):.3f} s against picture {dur.get('video', 0):.3f} s), so it was "
                           f"deleted; run it again.")
@@ -812,9 +911,16 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False):
             print(f"info: render project kept at {proj}")
         elif not remove_tree(tmp):
             print("note: work/render-tmp couldn't be deleted; it's safe to delete by hand")
-    print(f"✓ {tier.capitalize()} ready: renders/{final.name}")
-    return {"tier": tier, "out": f"renders/{final.name}", "frames": inp["total"], "fps": inp["fps"], "audio": audio,
+    label = tier.capitalize() if layers == "all" else {"aroll": "A-roll", "overlay": "Overlay", "captions": "Captions"}[layers]
+    if tier == "master" and layers == "all":
+        write_json(reel / OK_FILE, dict(ok, hook_text=inp["hook_text"] if hook_text is not None else None))
+    print(f"✓ {label} ready: {renders.name}/{final.name}")
+    return {"tier": tier, "out": f"{renders.name}/{final.name}", "frames": inp["total"], "fps": inp["fps"], "audio": None if layers in ("overlay", "captions") else audio,
             "scenes": len(inp["scened"]), "seconds": round(time.perf_counter() - t_start, 1)}
+
+
+def alpha_pix_fmt(pix):
+    return pix.startswith(("yuva", "gbrap", "rgba", "bgra", "argb", "abgr", "ya")) or pix in ("ayuv64le", "ayuv64be")
 
 
 def cmd_ok(reel, from_review):
@@ -1010,6 +1116,44 @@ def selftest():
                    f'tl.set("#cap-{c["i"]}", {{xPercent: -50, autoAlpha: 0, immediateRender: true}}, 0);' in cap_page
                    and f'tl.set("#cap-{c["i"]}", {{autoAlpha: 0}}, {at(c["end_f"], inp["rate"])});' in cap_page)
         expect("page: captions use the root timeline only", "@keyframes" not in cap_page and "translateX" not in cap_page)
+        aroll_page = main_html(dict(inp, captions=doc), 720, 1280, [(beat("scene", 50, 100), "scene")], layers="aroll")
+        overlay_page = main_html(dict(inp, captions=doc), 720, 1280, [], layers="overlay")
+        captions_page = main_html(dict(inp, captions=doc), 720, 1280, [(beat("scene", 50, 100), "scene")], layers="captions")
+        expect("layers: captions alone on transparency", 'id="captions"' in captions_page and 'id="aroll-box"' not in captions_page
+               and 'id="scene-' not in captions_page and '"#aroll-box"' not in captions_page and "background: transparent;" in captions_page)
+        expect("layers: overlay excludes captions", "#captions" not in overlay_page and 'id="captions"' not in overlay_page)
+        expect("layers: a-roll alone", 'id="aroll-box"' in aroll_page and "#captions" not in aroll_page
+               and 'id="scene-' not in aroll_page and 'id="underlay-' not in aroll_page)
+        expect("layers: transparent overlay without a-roll", 'id="aroll-box"' not in overlay_page
+               and '"#aroll-box"' not in overlay_page and "background: transparent;" in overlay_page)
+        expect("layers: all preserves the default page", cap_page == main_html(dict(inp, captions=doc), 720, 1280, [], layers="all"))
+        fallback = {"keys": [{"f": f, "layout": name} for f, name in ((0, "full"), (20, "pip"), (30, "pip"), (50, "full"))],
+                    "tweens": [{"prop": "layout", "from": "full", "to": "pip", "start_f": 15, "end_f": 20},
+                               {"prop": "layout", "from": "pip", "to": "full", "start_f": 45, "end_f": 55}],
+                    "style": {"style": "layout-switch"}}
+        fallback_beats = [beat("plain", 0, 60), beat("glass", 60, 75, "overlay"), beat("plain-end", 75, 100)]
+        expect("layers: pip moves and blurred-card frames become two finished-picture spans",
+               baked_spans(fallback, fallback_beats, 100) == [
+                   {"start_f": 15, "end_f": 55, "layout": "pip"}, {"start_f": 60, "end_f": 75, "layout": "overlay"}])
+        expect("layers: touching spans merge with both layout names",
+               baked_spans({"keys": [{"f": 0, "layout": "pip"}, {"f": 25, "layout": "full"}],
+                            "tweens": [], "style": {"style": "layout-switch"}},
+                           [beat("glass", 25, 50, "overlay")], 50) == [{"start_f": 0, "end_f": 50, "layout": "overlay+pip"}])
+        expect("layers: full, split, stack and overlays without a blurred card need no finished picture",
+               all(baked_spans({"keys": [{"f": 0, "layout": name}], "tweens": []}, [], 100) == []
+                   for name in ("full", "split", "stack"))
+               and baked_spans({"keys": [{"f": 0, "layout": "full"}], "tweens": [], "style": {"style": "punch-in"}},
+                               [beat("plain-overlay", 0, 100, "overlay")], 100) == [])
+        masked = main_html(dict(inp, track=fallback, beats=fallback_beats), 720, 1280, [], layers="overlay")
+        expect("layers: the overlay hides and restores on each finished-picture boundary",
+               'id="handoff-overlay"' in masked and all(
+                   f'tl.set("#handoff-overlay", {{ opacity: {opacity}, immediateRender: false }}, {at(frame, inp["rate"])});' in masked
+                   for frame, opacity in ((15, 0), (55, 1), (60, 0), (75, 1))))
+        masked_all = main_html(dict(inp, track={"keys": [{"f": 0, "layout": "pip"}], "tweens": [], "style": {}}),
+                               720, 1280, [], layers="overlay")
+        expect("layers: a finished-picture span can cover frame zero through the exclusive end",
+               'tl.set("#handoff-overlay", { opacity: 0, immediateRender: true }, 0);' in masked_all
+               and f'tl.set("#handoff-overlay", {{ opacity: 1, immediateRender: false }}, {at(inp["total"], inp["rate"])});' in masked_all)
         trk = {"style": {"style": "layout-switch"},
                "keys": [{"f": 0, "scale": 1.0, "ox": 0.5, "oy": 0.38, "layout": "full"},
                         {"f": 50, "scale": 1.0, "ox": 0.5, "oy": 0.38, "layout": "pip"}],
@@ -1045,6 +1189,9 @@ def main(argv=None):
         p.add_argument("--reel-dir", required=True, help="the reel folder, videos/<reel>")
         p.add_argument("--hook-text", help="the hook title's words (default: the first beat's words)")
         p.add_argument("--keep-project", action="store_true", help="keep the render project for inspection")
+    p = sub.add_parser("layers", help="render the approved a-roll, transparent overlay and captions for an editor")
+    p.add_argument("--reel-dir", required=True)
+    p.add_argument("--which", choices=("aroll", "overlay", "captions", "all"), default="all")
     o = sub.add_parser("ok", help="record the client's OK of the latest preview")
     o.add_argument("--reel-dir", required=True, help="the reel folder, videos/<reel>")
     o.add_argument("--from-review", action="store_true", help="take the OK from the Master review Send (review.json)")
@@ -1056,9 +1203,17 @@ def main(argv=None):
         return 2
     reel = Path(a.reel_dir).resolve()
     try:
+        if a.cmd == "layers":
+            summary = [render(reel, "master", None, layers=which)
+                       for which in (("aroll", "overlay", "captions") if a.which == "all" else (a.which,))]
+            print(json.dumps(summary, ensure_ascii=False))
+            return 0
         summary = cmd_ok(reel, a.from_review) if a.cmd == "ok" else render(
             reel, a.cmd, a.hook_text, keep_project=a.keep_project)
     except Stop as s:
+        if a.cmd == "layers":
+            print(" ".join(s.lines))
+            return s.code
         for line in s.lines:
             print(line)
         return s.code

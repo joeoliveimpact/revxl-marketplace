@@ -26,6 +26,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[1] / "_shared"))
 import runtime as rt  # noqa: E402
+import saved_style  # noqa: E402
 from win_encoding import ensure_utf8_output  # noqa: E402
 
 # islands(), the board sequence and the word-list hash have one home: build_edit_map.py in this folder (H-R16)
@@ -202,7 +203,7 @@ def reel_rel(path, reel_dir):
 def default_attempt():
     """The saved-style rule cut.default_attempt ("last" or "first"), else "last"."""
     try:
-        st = json.loads((rt.state_dir() / "styles" / "default.json").read_text(encoding="utf-8"))
+        st = saved_style.load()
         v = (st.get("cut") or {}).get("default_attempt")
     except (OSError, ValueError, AttributeError):
         v = None

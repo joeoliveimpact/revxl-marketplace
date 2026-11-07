@@ -232,6 +232,13 @@ function render(){
   card.onkeydown=keyPick;$('#looks').append(card);
  }
  $('#none').onclick=()=>pickLook('none');$('#none').onkeydown=keyPick;
+ if(C.recommended){
+  const card=$$('#look-choices [role=radio]').find(el=>el.dataset.look===C.recommended.value);
+  if(card){
+   const badge=document.createElement('small');badge.className='quiet';badge.textContent='Your last pick';
+   badge.style.display='block';card.append(badge);
+  }
+ }
  for(const layout of LAYOUTS){
   const card=document.createElement('button');card.className='layout-card';card.dataset.layout=layout;
   card.setAttribute('aria-label','Replay '+LABELS[layout]+' preview');
@@ -268,7 +275,9 @@ async function init(){
   bc=BoardClient.create({board:'look-picker'});
   const [config,state,last]=await Promise.all([json('work/look-picker.json'),bc.load(),json('look-picker-selection.json')]);
   if(!config){$('#empty').hidden=false;return;}
-  C=config;restore(C.current);restore(last);restore(state);
+  C=config;
+  if(C.recommended)restore({style:C.recommended.value});
+  restore(C.current);restore(last);restore(state);
   $('#board').hidden=false;render();$('#replay').disabled=false;
   $('#replay').onclick=replayAll;$('#send').onclick=send;
   for(const [id,key] of [['mark-look','mark_look'],['under-small-overlays','under_small_overlays'],

@@ -34,11 +34,12 @@ under `edit_style`. The board control is easiest; Claude may write the Send for
 the client, preserving their other choices and checking it before previewing.
 **Ask me before the preview** removes the reel's choice; a saved style still applies.
 
-Only when the client says **"make it my default"**: copy this reel's `edit_style`
-into `<state>/styles/default.json`, key `edit_style`, with `word_punches.picks` and
-`ratchet.picks` set to `[]`, and keep camera moves only when their `segments` is `"all"`.
-`<state>` is the folder in the `<editor python>` line before `/venv`. Keep any other
-saved settings. Tell the client: "Your default doesn't carry word punches to later reels. To get them on a later reel, pick Punch-ins and a Word punches setting in that reel's Editing style panel, then mark the words to stress; that reel then uses its panel choices instead of your default."
+Only when the client says **"make it my default"**, run:
+
+`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/saved_style.py" save-from-reel <reel folder>`
+
+Read back the saved choices in plain words. The writer keeps other saved settings
+and writes the client's workspace skill. Tell the client: "Your default doesn't carry word punches to later reels. To get them on a later reel, pick Punch-ins and a Word punches setting in that reel's Editing style panel, then mark the words to stress; that reel then uses its panel choices instead of your default."
 
 ## The arrangements
 

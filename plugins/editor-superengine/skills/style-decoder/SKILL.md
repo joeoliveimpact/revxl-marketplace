@@ -44,6 +44,20 @@ The client never types a command; you run everything.
   `${CLAUDE_PLUGIN_ROOT}/skills/style-decoder/references/stylespec-contract.md`.
   Frame passes: `references/styleframes-contract.md` in the same skill.
 
+## Your saved styles
+
+Use the one saved-style store for defaults and named styles; decoded specs are referenced by id.
+Run with the `<editor python>` defined above:
+
+`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/saved_style.py" show [name]`
+
+Read it back in plain words. Use `list` instead of `show [name]` for named styles.
+Save a decoded style with the reel's choices:
+
+`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/saved_style.py" save-from-reel <reel folder> --from-decoded <slug>`
+
+For Standing notes, run `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/standing_notes.py" add` or `list`; `add --help` explains matching a choice. Tell the client plainly when a note "Could not be matched".
+
 ## The stages
 
 | # | Stage | You run | Gate |

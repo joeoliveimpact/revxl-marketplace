@@ -160,7 +160,7 @@ const MARKS = ["num", "key", "emph", "cta"];
 const MARK_NAME = {num: "number", key: "key word", emph: "stress", cta: "call to action"};
 const $ = (s) => document.querySelector(s);
 const statusEl = $("#status"), sendBtn = $("#send");
-let bc = null, doc = null, words = null, timer = null, seq = 0;
+let bc = null, doc = null, words = null, timer = null, seq = 0, boardConfig = {};
 let sceneCatalog = [], sceneSuggestions = {}, sketchScenes = {}, sceneFieldId = 0;
 let brollClips = [];
 const invalidBroll = new Set();
@@ -340,6 +340,9 @@ function loadEditStyle() {
   savedWordMoves = Object.fromEntries(["ratchet", "word_punches"].filter((k) => k in moves).map((k) => [k, moves[k]]));
   savedCameraMoves = Object.fromEntries(["push", "ken_burns", "reframe"].filter((k) => k in moves).map((k) => [k, moves[k]]));
   wordMoveChanged = cameraMoveChanged = false;
+  const recommended = boardConfig.recommended?.value;
+  const option = [...$("#edit-style").options].find(o => o.value === recommended);
+  if (option) option.textContent += " — Your last pick";
   $("#edit-style").value = es.style || "";
   // Number inputs display saved values beyond min/max without clamping them.
   $("#punch-scale").value = es.punch_scale ?? 1.12;
@@ -625,8 +628,9 @@ async function init() {
       if (j && Array.isArray(j.words)) words = j.words.map((w) => String((w && w.word) || ""));
     } catch (e) { words = null; }
   }
-  const [catalog, suggestions, sketchesState, sketchesSend] = await Promise.all(
-    ["scenes/catalog.json", "scenes/suggest.json", "sketches.state.json", "sketches-selection.json"].map(reelJson));
+  const [catalog, suggestions, sketchesState, sketchesSend, config] = await Promise.all(
+    ["scenes/catalog.json", "scenes/suggest.json", "sketches.state.json", "sketches-selection.json", "beat-map.config.json"].map(reelJson));
+  boardConfig = config || {};
   sceneCatalog = Array.isArray(catalog) ? catalog : [];
   const clips = await reelJson("broll/clips.json");
   brollClips = clips && Array.isArray(clips.clips) ? clips.clips : [];

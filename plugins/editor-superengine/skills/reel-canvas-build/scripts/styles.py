@@ -50,6 +50,8 @@ sys.path.insert(0, str(HERE.parents[1] / "_shared"))
 sys.path.insert(0, str(HERE))
 from win_encoding import ensure_utf8_output  # noqa: E402
 import runtime as rt  # noqa: E402
+import saved_style  # noqa: E402
+import standing_notes  # noqa: E402
 import beat_schema  # noqa: E402
 import effect_gate  # noqa: E402
 import fps as fpsmod  # noqa: E402
@@ -198,11 +200,14 @@ def load_anchors(reel, segs):
 def pick_style(bm):
     """(edit_style, "reel" | "saved"): the Send's, else the saved style's; neither = ask the client (H-R36)."""
     if "edit_style" in bm:
+        es = bm["edit_style"]
+        if isinstance(es, dict) and es.get("style") in STYLES:
+            standing_notes.record_pick("edit_style.style", es["style"])
         return bm["edit_style"], "reel"
-    try:
-        saved = json.loads((rt.state_dir() / "styles" / "default.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        saved = None
+    saved = saved_style.load()
+    _, source = saved_style.resolve("edit_style.style", saved=saved)
+    if source == "recommended":
+        raise Stop(1, ASK + saved_style.recommendation_line("edit_style.style", saved))
     es = saved.get("edit_style") if isinstance(saved, dict) else None
     if isinstance(es, dict):
         return es, "saved"

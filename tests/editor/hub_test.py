@@ -22,6 +22,9 @@ import threading
 import time
 from unittest.mock import patch
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from editor_test_state import copy_tool_state
+
 sys.dont_write_bytecode = True
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
@@ -63,9 +66,11 @@ class Proof:
         self.editor = self.ws / "desk"
         self.videos = self.ws / "clips"
         self.hub = self.editor / "hub"
+        home = copy_tool_state(rt.state_dir(), scratch / "state")
         self.env = rt.python_env(base=dict(os.environ, HOME=str(scratch / "home"),
                               USERPROFILE=str(scratch / "home"), TMP=str(scratch / "tmp"),
-                              TEMP=str(scratch / "tmp"), TMPDIR=str(scratch / "tmp")))
+                              TEMP=str(scratch / "tmp"), TMPDIR=str(scratch / "tmp"),
+                              EDITOR_SE_HOME=str(home)))
         for n in ("home", "tmp"):
             (scratch / n).mkdir()
         with socket.socket() as s:
@@ -248,6 +253,13 @@ def case_look(p):
     """H-HUB-1 / H-X3-1: real picker output, hub tab, replay and allowlisted Send."""
     sys.path.insert(0, str(HERE))
     import canvas_boards_test as fixture
+    # Keep remembered picks in an owned home; installed tools remain read only.
+    pick_home = p.scratch / "pick-state"
+    write(pick_home / "state.json", {"components": {"fixture": {"bins": {
+        key: rt.tool(key) for key in ("ffmpeg", "ffprobe", "node", "chrome")}}}})
+    p.env["EDITOR_SE_HOME"] = str(pick_home)
+    p.py(p.plugin / "skills/_shared/standing_notes.py", "pick", "caption_style.style",
+         "--value", '"boxed"', "--note", "Keep it framed")
     d = p.videos / "reel-01"
     fixture.reel_fixture(d)
     # Proof's take is 24 frames at 12 fps; keep the cut words and beats inside it.
@@ -263,7 +275,7 @@ def case_look(p):
     p.py(p.plugin / "skills/reel-canvas-build/scripts/make_beat_map.py",
          "--reel-dir", d, "--plan", d / "work/plan.json")
     bm = read(d / "beat-map.state.json")
-    bm.update(caption_style={"style": "clean"}, sent_at="2026-11-05T12:00:00-05:00")
+    bm.update(sent_at="2026-11-05T12:00:00-05:00")
     write(d / "beat-map-selection.json", bm)
     master = d / "work/renders/master-100x.mp4"
     master.parent.mkdir(parents=True, exist_ok=True)
@@ -276,6 +288,13 @@ def case_look(p):
         dest.unlink(missing_ok=True)
         # A fresh opening starts from the picker current, including in the mutant run.
         (d / "look-picker.state.json").unlink(missing_ok=True)
+        opening = p.browse([click('#tab-look-picker'),
+            {"do": "frame", "sel": "#panel iframe", "waitFn": "window.LP && LP.ready"},
+            {"do": "eval", "js": "JSON.stringify({badges:[...document.querySelectorAll('#look-choices small')]"
+             ".filter(e=>e.textContent==='Your last pick').map(e=>e.closest('[data-look]').dataset.look),"
+             "picked:document.querySelector('#look-choices [aria-checked=true]')?.dataset.look})"}])
+        need(opening[0] == {"badges": ["boxed"], "picked": "boxed"}, f"remembered look: {opening}")
+        need(not dest.exists(), "Opening the Look Picker sent the remembered look")
         rows = p.browse([click('#tab-look-picker'),
             {"do": "frame", "sel": "#panel iframe", "waitFn": "window.LP && LP.ready"},
             {"do": "waitFn", "js": "[...document.querySelectorAll('.preview')].every(e=>"
@@ -330,6 +349,16 @@ def case_review(p):
             shutil.copyfile(p.clip, target)
             os.utime(target, (1700000000 + i, 1700000000 + i))
     (p.videos / "reel-02/renders/reel-02 Master - 11.05.26.mp4").unlink()
+    d = p.videos / "reel-01"
+    aids = {"strips": ["work/qa/cut-01.png", "work/qa/cut 02.png"],
+            "contact": "work/qa/contact.jpg", "phone": "work/qa/phone-720p.mp4"}
+    (d / "work/qa").mkdir()
+    for rel in aids["strips"] + [aids["contact"]]:
+        shutil.copyfile(d / "cover.jpg", d / rel)
+    shutil.copyfile(p.clip, d / aids["phone"])
+    qa = read(d / "work/qa.json")
+    qa["aids"] = aids
+    write(d / "work/qa.json", qa)
     data = p.refresh()
     need(data["reels"][0].get("preview_name") == latest, "latest finished preview name missing")
     need(data["reels"][0].get("preview_url", "").endswith("/" + latest.replace(" ", "%20")),
@@ -337,12 +366,18 @@ def case_review(p):
     def check():
         d = p.videos / "reel-01"
         (d / "review.json").unlink(missing_ok=True)
-        r = p.snapshot("({preview:document.querySelector('#preview')?.getAttribute('src'),master:document.querySelector('#master')?.getAttribute('src'),qa:document.querySelector('#qa').textContent})",
+        r = p.snapshot("({preview:document.querySelector('#preview')?.getAttribute('src'),master:document.querySelector('#master')?.getAttribute('src'),qa:document.querySelector('#qa').textContent,"
+            "aids:[...document.querySelectorAll('#qa-aids a')].map(a=>({href:a.getAttribute('href'),label:a.textContent,img:a.querySelector('img')?.getAttribute('src')}))})",
             [click('#tab-review'), {"do": "frame", "sel": "#panel iframe", "waitFn": "window.ReviewReady"},
              {"do": "set", "sel": "#review-note", "value": "Keep the ending"}, click('#approve'),
              {"do": "waitText", "sel": "#status", "re": "Sent|Could not"}])
         need(r["preview"] == "/videos/reel-01/renders/" + latest.replace(" ", "%20"), f"review preview: {r}")
         need(r["master"] and "Loudness" in r["qa"] and "Ready to post" in r["qa"], f"review missing master/QA: {r}")
+        expected = ["/videos/reel-01/" + path.replace(" ", "%20")
+                    for path in [aids["phone"], *aids["strips"], aids["contact"]]]
+        need([a["href"] for a in r["aids"]] == expected and r["aids"][0]["label"] == "Phone-size copy",
+             f"review aid links missing: {r}")
+        need(all(a["img"].endswith(a["href"]) for a in r["aids"][1:]), f"review aid thumbnails missing: {r}")
         need((d / "review.json").is_file(), "review Send missing")
         doc = read(d / "review.json")
         need(set(doc) == {"approve", "preview", "note", "sent_at"} and doc["approve"] is True
@@ -374,10 +409,15 @@ def case_sends(p):
         p.browse([{"do": "set", "sel": "#note", "value": "Keep the laugh"}, click('#notes-send'),
                   {"do": "waitText", "sel": "#status", "re": "Sent|Could not"},
                   click('[data-skill="captions"]'), click('[data-skill="captions"]'),
+                  click('[data-skill="qa"]'),
+                  click('[data-skill="style"]'),
                   {"do": "waitFn", "js": "Hub.pending===0"}])
         need((d / "reel-notes.json").is_file(), "notes Send missing")
         need(read(d / "reel-notes.json")[-1]["text"] == "Keep the laugh", "wrong note")
-        need((d / "hub-requests.json").is_file() and len(read(d / "hub-requests.json")) == 2, "two clicks did not append two requests")
+        need((d / "hub-requests.json").is_file() and len(read(d / "hub-requests.json")) == 4, "four clicks did not append four requests")
+        requests = read(d / "hub-requests.json")
+        need(requests[-2]["skill"] == "qa" and requests[-2]["ask"].startswith("Run QA for reel-01"), "wrong QA request")
+        need(requests[-1]["skill"] == "style", "wrong Save this style request")
     check()
     with p.mutant("hub.js", "const list = previous.concat(entry);", "const list = [entry];"):
         p.bites(check, "requests overwrite earlier Sends")

@@ -30,6 +30,7 @@ HERE = Path(__file__).resolve().parent
 sys.path[:0] = [str(HERE), str(HERE.parents[1] / "_shared")]   # -I leaves the script folder off the path
 from win_encoding import ensure_utf8_output  # noqa: E402
 import grade_math as gm  # noqa: E402
+import saved_style  # noqa: E402
 
 LOOKS_PATH = HERE.parent / "looks" / "looks.json"
 TUNE = ("temp", "tint", "con", "sat", "mat")
@@ -103,6 +104,28 @@ def load_looks():
     return {lk["id"]: lk for lk in json.loads(LOOKS_PATH.read_text(encoding="utf-8"))["looks"]}
 
 
+def resolve_look(reel_dir, explicit=None, selection=None):
+    """An explicit look, then the reel/board choice, then the saved style, then none."""
+    if explicit is not None:
+        return explicit
+    if selection is not None:
+        return selection
+    for name in ("grade.json", "grade-selection.json"):
+        path = Path(reel_dir) / name
+        if path.is_file():
+            look = json.loads(path.read_text(encoding="utf-8")).get("look")
+            if look is not None:
+                return look
+    look = saved_style.load().get("look")
+    if look is not None:
+        look_stack(look)
+        lid = str(look.get("id") or "none")
+        name = load_looks().get(lid, {}).get("name", "None")
+        print(f"Using your saved look: {name} at {float(look.get('strength', 1.0)) * 100:g} %.")
+        return look
+    return {"id": "none"}
+
+
 def look_stack(look):
     """{"id", "strength"} -> (slots, neutral). 'none' or strength 0 = no slots. Strength scales tune numbers linearly."""
     look = look or {}
@@ -150,12 +173,13 @@ def sha256(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def write_grade(reel_dir, takes, look, ref=0, size=33, guard=None):
+def write_grade(reel_dir, takes, look, ref=0, size=33, guard=None, take_ids=None):
     """Bake one cube per take (its correction + the look); write <reel_dir>/grade.json only if every cube passes.
 
     takes: [{"range": [a, b], "measured": {...}, "correction": {...}}]. The top-level cube is the reference take's:
     one cut is one take, so that is the cube for the whole cut. guard(take_index, cube_path) returns None when the
-    cube is fine, else a plain refusal line. -> (grade.json dict or None, [refusal lines]).
+    cube is fine, else a plain refusal line. take_ids writes a map keyed by recording number; without it the
+    legacy list is unchanged. -> (grade.json dict or None, [refusal lines]).
     """
     reel_dir = Path(reel_dir)
     look = {"id": str((look or {}).get("id") or "none"), "strength": float((look or {}).get("strength", 1.0))}
@@ -168,7 +192,8 @@ def write_grade(reel_dir, takes, look, ref=0, size=33, guard=None):
     problems = [m for m in (guard(i, reel_dir / tk["cube"]) for i, tk in enumerate(out)) if m] if guard else []
     if problems:
         return None, problems
-    doc = {"takes": out, "look": look, "cube": out[ref]["cube"], "cube_sha": out[ref]["cube_sha"]}
+    stored = {str(n): dict(tk, tune=tk["correction"]) for n, tk in zip(take_ids, out)} if take_ids is not None else out
+    doc = {"takes": stored, "look": look, "cube": out[ref]["cube"], "cube_sha": out[ref]["cube_sha"]}
     (reel_dir / "grade.json").write_bytes((json.dumps(doc, indent=1) + "\n").encode("utf-8"))
     return doc, []
 

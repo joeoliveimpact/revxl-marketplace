@@ -26,6 +26,7 @@ sys.path.insert(0, str(HERE.parents[1] / "_shared"))
 sys.path.insert(0, str(HERE))
 from win_encoding import ensure_utf8_output  # noqa: E402
 import beat_schema  # noqa: E402
+import saved_style  # noqa: E402
 
 OUT_NAME = "beat-map.state.json"
 PREV_NAME = OUT_NAME + ".prev"  # same backup name the board server uses
@@ -131,6 +132,12 @@ def run(reel_dir, plan_path, words_rel, cuts_rel, replace):
             raise Fail(REFUSE)
         os.replace(out, reel / PREV_NAME)
     out.write_bytes((json.dumps(doc, indent=1, ensure_ascii=False) + "\n").encode("utf-8"))
+    # Board-only recommendations stay outside the schema-validated choices and never count as a Send.
+    saved = saved_style.load()
+    _, source = saved_style.resolve("edit_style.style", saved=saved)
+    recommended = saved_style.recommendation("edit_style.style", saved) if source == "recommended" else None
+    (reel / "beat-map.config.json").write_bytes(
+        (json.dumps({"recommended": recommended}, indent=1, ensure_ascii=False) + "\n").encode("utf-8"))
     try:
         import scene_fill
         scene_fill.write_catalog(reel, doc["beats"], words, fps)

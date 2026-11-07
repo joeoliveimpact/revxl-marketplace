@@ -150,6 +150,31 @@ skills/reel-captions/scripts/captions.py (its auto_chunks part)
   Adapted from shorts-studio (Claude Video Studio contributors), engine/short/gen.py, auto_chunks. Changes:
   output-frame layout boundaries and inclusive word positions. License: MIT, full text below.
 
+skills/_shared/checks/pacing_check.py
+  Adapted from shorts-studio (Claude Video Studio contributors), scripts/pacing_check.py. Changes: standard-library
+  pixel measurements through the editor's tools, warning-only rows, declared transition windows; the contact sheet
+  moved to review_aids.py. License: MIT, full text below.
+
+skills/_shared/checks/lipsync_check.py
+  Adapted from shorts-studio (Claude Video Studio contributors), scripts/lipsync_check.py. Changes: matching the
+  current cut against the raw recording, the render's crop and scale, normalised correlation, one bounded decode
+  per file, pre-render check rows and a standalone exit code. License: MIT, full text below.
+
+skills/_shared/checks/gate_check.py
+  Adapted from shorts-studio (Claude Video Studio contributors), gate/check.py. Changes: an explicit table of all
+  20 source tests (ported, covered or skipped), cut-word sync, standard-library audio measurement and ffmpeg
+  silence detection, saved layouts instead of Apple Vision, warning-only silent holds. License: MIT, full text below.
+
+skills/_shared/standing_notes.py
+  Adapted from shorts-studio (Claude Video Studio contributors), scripts/learn.py. Changes: notes kept in the
+  client's own saved style, each Standing note kept word for word beside its rule, and notes that match no rule
+  listed under "Could not be matched". License: MIT, full text below.
+
+skills/pro-editor-handoff/scripts/export_edit.py
+  Adapted from shorts-studio (Claude Video Studio contributors), scripts/export_edit.py. Changes: cut-frame
+  timeline mapping, original music and effects, rational-rate subtitles, file URIs, checks and plain failures;
+  rendering and muxing removed. License: MIT, full text below.
+
 MIT License
 
 Copyright (c) 2026 Claude Video Studio contributors
