@@ -32,6 +32,34 @@ runtime/gsap/gsap.min.js
   GSAP 3.15.0 (gsap.min.js from the npm package gsap@3.15.0), unmodified, header kept.
   Copyright 2026 GreenSock (Webflow). Subject to the terms at https://gsap.com/standard-license
 
+runtime/three/three.module.js, runtime/three/three.core.js
+  three.js 0.186.1 (build/three.module.js and build/three.core.js from the npm package three@0.186.1), unmodified;
+  file sha256s in runtime/three/VERSION.json. Copyright (c) 2010-2026 three.js authors. MIT License, full text in
+  runtime/three/LICENSE.
+
+runtime/motion/motion.js
+  Motion 14.6.0 (dist/motion.js from the npm package motion@14.6.0), unmodified; sha256s in runtime/motion/VERSION.json.
+  Copyright (c) 2024 Motion B.V. MIT License, full text in runtime/motion/LICENSE.
+
+runtime/three/postprocessing.js
+  postprocessing 6.39.5 (build/index.js from the npm package postprocessing@6.39.5), unmodified; sha256s in
+  runtime/three/VERSION-postprocessing.json. Copyright (c) 2015 Raoul van Rüschen. zlib License, full text in
+  runtime/three/LICENSE-postprocessing.
+
+runtime/three/three.quarks.js, runtime/three/quarks.core.js
+  three.quarks 0.17.1 (dist/three.quarks.esm.js) and quarks.core 0.17.1 (dist/quarks.core.esm.js) from npm.
+  Change: three.quarks.js line endings converted from CRLF to LF; no other edit. quarks.core.js unmodified.
+  sha256s in runtime/three/VERSION-three.quarks.json and VERSION-quarks.core.json. Copyright (c) 2019 Forrest Sun.
+  MIT License, full text in runtime/three/LICENSE-three.quarks and LICENSE-quarks.core.
+
+skills/reel-canvas-build/boards/sketches/tweakpane.min.js, skills/reel-first-cuts/boards/tweak-board/tweakpane.min.js
+  Tweakpane 4.0.5 (dist/tweakpane.min.js from the npm package tweakpane@4.0.5), unmodified, byte-identical copies.
+  Copyright (c) 2016 cocopon. MIT License, full text in LICENSE-tweakpane beside each copy
+  (from https://raw.githubusercontent.com/cocopon/tweakpane/4.0.5/LICENSE.txt; the npm package ships none).
+
+scenes/glass-card-3d/scene.html (its tone-map-once order and dead-frame gate)
+  Ideas from viettranx/3dviz-pro-max (MIT), rewritten in our own code; nothing copied.
+
 runtime/fonts/Inter-Regular.woff2
   Inter 4.1, web/Inter-Regular.woff2 from https://github.com/rsms/inter/releases/download/v4.1/Inter-4.1.zip, unmodified.
   Copyright (c) 2016 The Inter Project Authors. SIL Open Font License 1.1, full text in LICENSES/OFL-Inter.txt.
@@ -175,6 +203,12 @@ skills/pro-editor-handoff/scripts/export_edit.py
   timeline mapping, original music and effects, rational-rate subtitles, file URIs, checks and plain failures;
   rendering and muxing removed. License: MIT, full text below.
 
+skills/reel-first-cuts/scripts/clip_cut.py
+  Copied from shorts-studio (Claude Video Studio contributors), scripts/clip_cut.py. Changes: runtime ffmpeg/ffprobe;
+  UTF-8 input/output and LF writes; full-batch range, safe-name and existing-folder refusals; transcript word
+  adapters; no overwrites; encode-generation disclosure; padded end held at the recording's end. License: MIT, full
+  text below.
+
 MIT License
 
 Copyright (c) 2026 Claude Video Studio contributors
@@ -216,6 +250,18 @@ scenes/hf-cta-end-card/scene.html
   moved to HyperFrames variables (slots and params); one paused timeline; exit animations removed. Source
   blob ids and sha256s are in scenes/registry-allow.json. Each folder's scene.json and preview.png are ours.
   Copyright 2026 HeyGen, Inc. License: Apache License 2.0, full text in LICENSES/Apache-2.0-HyperFrames.txt.
+
+skills/reel-canvas-build/references/3d.md (its capture rules section)
+  Rules adapted, in our own words, from HyperFrames (HeyGen, https://github.com/heygen-com/hyperframes, tag v0.8.184,
+  commit d15a274c198cf18bc1df177cbe20df95392a8947), skills/hyperframes-animation/transitions/overview.md.
+  Copyright 2026 HeyGen, Inc. License: Apache License 2.0, full text in LICENSES/Apache-2.0-HyperFrames.txt.
+
+skills/reel-sound-pass/scripts/carve.py
+  Ported from HyperFrames (HeyGen, https://github.com/heygen-com/hyperframes, tag v0.8.184,
+  commit d15a274c198cf18bc1df177cbe20df95392a8947), packages/core/src/audioCarve.ts (band analysis and per-band
+  envelopes). Changes: rewritten in Python + numpy; one voice stem; the broadband level duck not ported; filters
+  rendered as an STFT mask of the same peaking response instead of Web Audio biquads; default strength 0.8; no
+  Studio code and no telemetry. Copyright 2026 HeyGen, Inc. Apache License 2.0, full text in LICENSES/Apache-2.0-HyperFrames.txt.
 
 skills/reel-canvas-build/layouts/split.html, skills/reel-canvas-build/layouts/stack.html,
 skills/reel-canvas-build/layouts/pip.html, skills/reel-canvas-build/layouts/overlay.html

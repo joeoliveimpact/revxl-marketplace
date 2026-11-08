@@ -1,6 +1,6 @@
 ---
 name: editor-superengine:reel-grade
-description: Sets the colour of a talking-head reel. Use on "grade this reel", "colour grade", "fix the colour", "make it warmer", "the skin looks off", or "open the Grade Board". The editor measures the footage, shows every colour option on one contact sheet and the Grade Board, the client picks, and the grade is burnt in only after the client says yes. Every grade is checked so skin stays natural. NOT for cuts, captions or sound.
+description: Sets the colour of a talking-head reel. Use on "grade this reel", "match the colour between my recordings", "colour grade", "fix the colour", "make it warmer", "the skin looks off", or "open the Grade Board". The editor measures the footage, shows every colour option on one contact sheet and the Grade Board, the client picks, and the grade is burnt in only after the client says yes. Every grade is checked so skin stays natural. NOT for cuts, captions or sound.
 ---
 
 # reel-grade: the reel's colour
@@ -22,6 +22,7 @@ Speak the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-th
 - If the conversation was compacted since this skill loaded, invoke it again before going on.
 - Re-running is safe: the measurement and board steps write into `videos/<reel>/grade/` and `videos/<reel>/grade.json`; step 4 re-renders the cut from the raw only after a new yes.
 - If the video changed after step 1 (a new cut), run step 1 again and ask for a new Send: the old frames and measurements are stale.
+- In Auto edit (the picker printed "Auto edit with ..."), follow section 5 of ${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/house-rules.md.
 
 ## Ground rules
 
@@ -46,6 +47,8 @@ Speak the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-th
 `<editor python> -X utf8 -I "<scripts>/make_grade.py" --reel <reel> --video "<the video to grade>" --reel-dir videos/<reel>`
 
 It measures black, white and skin hue on three frames, bakes each look and checks it against this reel's skin (a ✗ line is a look the guard refused: don't offer it), and writes `grade.json` at the identity. "No face found": ask whether this is a graphics-only video.
+
+**1b. Several recordings** (the cut's `work/cuts.json` has `takes`): match them before step 2: `<editor python> -X utf8 -I "<scripts>/grade_match.py" --from-cuts videos/<reel>`.
 
 ### 2. Contact sheet and Grade Board
 

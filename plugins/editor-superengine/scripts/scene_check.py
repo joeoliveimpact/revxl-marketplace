@@ -5,7 +5,7 @@ needs to render it:
   scene.json   {id, category, kind, slots, dur, params, source, licence}
                id       = the folder name
                category = what the scene is, one of lower-third, callout, counter, list, quote, stat-card,
-                          hook-title, cta-end-card (an own scene's category is its id; a vendored scene names
+                          hook-title, cta-end-card, slots, cover-title (an own scene's category is its id; a vendored scene names
                           the category it fills, e.g. hf-counter is "counter")
                kind     = "overlay" (sits over the a-roll, leaves most of the frame clear) or
                           "takeover" (may fill the frame)
@@ -72,6 +72,7 @@ something fails, 2 when the check itself could not run.
 import argparse
 import hashlib
 import json
+import math
 import re
 import shutil
 import struct
@@ -92,7 +93,7 @@ FONTS = P / "runtime" / "fonts"
 GSAP_SRC = "./vendor/gsap.min.js"
 FILES = ("scene.html", "scene.json", "preview.png")
 KEYS = ("id", "category", "kind", "slots", "dur", "params", "source", "licence")
-CATEGORIES = ("lower-third", "callout", "counter", "list", "quote", "stat-card", "hook-title", "cta-end-card")
+CATEGORIES = ("lower-third", "callout", "counter", "list", "quote", "stat-card", "hook-title", "cta-end-card", "slots", "cover-title")
 KINDS = ("overlay", "takeover")
 PARAM_TYPES = ("number", "string", "boolean", "color")
 NUMBER_SCENES = ("counter", "stat-card")  # categories that show a number, so VES-3 f applies
@@ -409,6 +410,179 @@ def asset_refs(html):
     return refs
 
 
+# ---- N3: 3D scenes (category "3d", layer band 300-399, three.js from ./vendor) ----
+# 3D scenes retain the scene contract, with root 300 and all layers in 300-399.
+# Their inline import map resolves only three to the shipped vendor module.
+# Inline modules import only three; GSAP remains the only script loaded by src.
+# The two engine files are runtime dependencies, not unconfirmed scene assets.
+from html.parser import HTMLParser
+
+CATEGORIES += ("3d",)
+BAND_3D = (300, 399)
+THREE_FILES = ("./vendor/three.module.js", "./vendor/three.core.js")
+_n3_spec_problems = spec_problems
+_n3_html_problems = html_problems
+_n3_asset_refs = asset_refs
+
+
+def spec_problems(sid, spec):
+    out = _n3_spec_problems(sid, spec)
+    if not isinstance(spec, dict) or spec.get("category") != "3d":
+        return out
+    allowed = {f"scene.json has an unknown key {show(k)}; the keys are {', '.join(KEYS)}"
+               for k in ("layer", "regions")}
+    if any(p in allowed for p in out):
+        out = [p for p in out if p not in allowed]
+        # Unknown keys make the original return early; validate the remaining spec too.
+        clean = {k: v for k, v in spec.items() if k not in ("layer", "regions")}
+        out += [p for p in _n3_spec_problems(sid, clean) if p not in out]
+    if "layer" in spec and spec["layer"] != "3d":
+        out.append('a 3D scene layer must be "3d"')
+    regions = spec.get("regions")
+    if not isinstance(regions, dict) or set(regions) != {"top", "bottom"}:
+        return out + ["3D regions must be an object with exactly top and bottom"]
+    for name, box in regions.items():
+        if not (isinstance(box, list) and len(box) == 4 and all(type(v) is int for v in box)):
+            out.append(f"3D region {name} must be a list of four integers [x0, y0, x1, y1]")
+            continue
+        x0, y0, x1, y1 = box
+        if not (60 <= x0 < x1 <= 960 and 220 <= y0 < y1 <= 1470):
+            out.append(f"3D region {name} must have positive width and height inside the safe box "
+                       "x 60..960, y 220..1470 (exclusive ends)")
+        if not (0 <= x0 < x1 <= W and 0 <= y0 < y1 <= H):
+            out.append(f"3D region {name} must lie inside the {W}x{H} canvas (exclusive ends)")
+    return out
+
+
+class _N3Scripts(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.scripts = []
+        self.current = None
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "script":
+            self.current = (dict(attrs), [])
+
+    def handle_data(self, data):
+        if self.current is not None:
+            self.current[1].append(data)
+
+    def handle_endtag(self, tag):
+        if tag == "script" and self.current is not None:
+            attrs, parts = self.current
+            self.scripts.append((attrs, "".join(parts)))
+            self.current = None
+
+
+def html_problems(sid, spec, html):
+    out = _n3_html_problems(sid, spec, html)
+    if spec.get("category") != "3d":
+        return out
+    out = [p for p in out if "scene layer band" not in p]
+    zs = [int(z) for z in re.findall(r"z-index\s*:\s*(-?\d+)", html, re.I)
+          + re.findall(r"zIndex\s*[:=]\s*[\"']?(-?\d+)", html)]
+    out += [f"z-index {z} is outside the 3D layer band 300-399" for z in zs if not BAND_3D[0] <= z <= BAND_3D[1]]
+    root_decls = []
+    for css in re.findall(r"<style\b[^>]*>(.*?)</style>", html, re.S | re.I):
+        for selectors, decls in re.findall(r"([^{}]+)\{([^{}]*)\}", css):
+            for selector in selectors.split(","):
+                if selector.strip() == f"#{sid}":
+                    root_decls.append((100, decls))
+                elif re.fullmatch(r"\[data-composition-id\s*=\s*[\"']?%s[\"']?\]" % re.escape(sid), selector.strip()):
+                    root_decls.append((10, decls))
+    root = re.search(r"<[a-z]+\b[^>]*\bdata-composition-id\s*=\s*[\"']%s[\"'][^>]*>" % re.escape(sid), html, re.I)
+    if root:
+        inline = re.search(r"\bstyle\s*=\s*([\"'])(.*?)\1", root.group(0), re.S | re.I)
+        if inline:
+            root_decls.append((1000, inline.group(2)))
+    root_zs = []
+    for specificity, decls in root_decls:
+        for z, important in re.findall(r"z-index\s*:\s*(-?\d+)\s*(!important)?", decls, re.I):
+            root_zs.append((bool(important), specificity, len(root_zs), int(z)))
+    if not root_zs or max(root_zs)[-1] != BAND_3D[0]:
+        out.append("the 3D root needs z-index: 300 (the 3D layer band 300-399)")
+
+    parser = _N3Scripts()
+    parser.feed(html)
+    maps = [(attrs, body) for attrs, body in parser.scripts if (attrs.get("type") or "").strip().lower() == "importmap"]
+    try:
+        good_map = (len(maps) == 1 and "src" not in maps[0][0]
+                    and json.loads(maps[0][1]) == {"imports": {"three": THREE_FILES[0]}})
+    except (ValueError, TypeError):
+        good_map = False
+    if not good_map:
+        out.append('the 3D import map must map exactly {"three": "./vendor/three.module.js"} inline')
+    modules = [(attrs, body) for attrs, body in parser.scripts if (attrs.get("type") or "").strip().lower() == "module"]
+    namespace = False
+    # Keep string literals intact while dropping comments, so commented imports do not satisfy the rule.
+    tokens = r'''"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|/\*.*?\*/|//[^\n]*'''
+    literal = r'''(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')'''
+    declaration = r'''\b(?:import|export)\s*(?:[^;'"()`]*?\bfrom\s*)?'''
+    imports = (rf"(?P<declaration>{declaration}(?P<decl_source>{literal}))"
+               rf"|(?P<dynamic>\bimport\s*\(\s*(?P<dyn_source>{literal})\s*\))"
+               rf"|(?P<computed>\bimport\s*\()|{tokens}")
+    for attrs, body in modules:
+        if "src" in attrs:
+            out.append("a 3D module must be inline, with no module src script")
+        body = re.sub(tokens, lambda m: " " if m.group(0).startswith(("//", "/*")) else m.group(0), body, flags=re.S)
+        for match in re.finditer(imports, body, re.S):
+            source = match.group("decl_source") or match.group("dyn_source")
+            if source is not None and source[1:-1] != "three":
+                name = source[1:-1]
+                out.append(f"3D module import {show(name)} is not allowed; import only three through the local import map")
+            if match.group("declaration") and source[1:-1] == "three":
+                namespace |= bool(re.fullmatch(r"import\s+\*\s+as\s+THREE\s+from\s*" + literal, match.group(0)))
+            if match.group("computed"):
+                out.append("a 3D module import must name three literally; computed imports are not allowed")
+    if not namespace:
+        out.append('a 3D inline module must import * as THREE from "three"')
+    return out
+
+
+def asset_refs(html):
+    return _n3_asset_refs(html) - set(THREE_FILES)
+
+
+# ---- G2-c: optional local render leads; keep the N3 checks intact ----
+LEAD_IMPORTS = {"three": THREE_FILES[0], "postprocessing": "./vendor/postprocessing.js",
+                "three.quarks": "./vendor/three.quarks.js"}
+LEAD_IMPORTS["quarks.core"] = "./vendor/quarks.core.js"
+MOTION_SRC = "./vendor/motion.js"
+_g2c_html_problems = html_problems
+
+
+def html_problems(sid, spec, html):
+    out = _g2c_html_problems(sid, spec, html)
+    parser = _N3Scripts()
+    parser.feed(html)
+    srcs = [attrs for attrs, _ in parser.scripts if "src" in attrs]
+    if ([attrs["src"] for attrs in srcs] == [GSAP_SRC, MOTION_SRC]
+            and not any(k in attrs for attrs in srcs for k in ("async", "defer"))
+            and all(attrs.get("type", "").lower() in ("", "text/javascript") for attrs in srcs)):
+        out = [p for p in out if not p.startswith("scene.html must load exactly one script file, GSAP")]
+    if spec.get("category") != "3d":
+        return out
+    maps = [(attrs, body) for attrs, body in parser.scripts if attrs.get("type", "").strip().lower() == "importmap"]
+    try:
+        doc = json.loads(maps[0][1]) if len(maps) == 1 and "src" not in maps[0][0] else None
+        imports = doc.get("imports") if isinstance(doc, dict) else None
+        valid = (set(doc) == {"imports"} and isinstance(imports, dict) and "three" in imports
+                 and all(name in LEAD_IMPORTS and value == LEAD_IMPORTS[name] for name, value in imports.items()))
+    except (ValueError, TypeError):
+        valid = False
+    if valid:
+        out = [p for p in out if not p.startswith("the 3D import map must map exactly")]
+        allowed_errors = {f"3D module import {show(name)} is not allowed; import only three through the local import map"
+                          for name in imports if name != "three"}
+        out = [p for p in out if p not in allowed_errors]
+    return out
+
+
+def asset_refs(html):
+    return _n3_asset_refs(html) - set(THREE_FILES) - set(LEAD_IMPORTS.values()) - {MOTION_SRC}
+
+
 def registry_problems(d, spec, allow, why):
     """The G2-b rules: a vendored scene's allowed entry, sha256 and header; no unconfirmed asset in any scene."""
     sid, out = d.name, []
@@ -562,7 +736,37 @@ def fill_problems(sid, fill, scenes=SCENES, words=None):
                        f"the value, so every number shown mid-count fits the display (F-11)")
         if isinstance(beat_value, (int, float)) and not isinstance(beat_value, bool) and merged["value"] != beat_value:
             out.append(f"the counter ends on {merged['value']} but the beat's value is {beat_value}; they must match")
-    if cat in NUMBER_SCENES:
+    if cat == "slots":
+        # List size and section timings are production settings; label claims use
+        # caption-writer's spoken-number semantics, including spelled-out numbers.
+        sys.path.insert(0, str(P / "skills/caption-writer/scripts"))
+        from check_caption import numbers as caption_numbers
+        if not all(key in params for key in ("count", "section_starts")):
+            out.append("Choose the slot count and spoken section starts explicitly; the sample is not a saved choice.")
+        count = merged["count"]
+        if type(count) not in (int, float) or not math.isfinite(count) or int(count) != count or not 2 <= count <= 6:
+            out.append("Choose a whole slot count from two to six.")
+        else:
+            active = [slots[f"label{i}"] for i in range(1, int(count) + 1)]
+            if any(not 1 <= len(text.split()) <= 2 for text in active):
+                out.append("Give each active slot a label of one or two words.")
+            if any(slots[f"label{i}"].strip() for i in range(int(count) + 1, 7)):
+                out.append("Leave unused slot labels empty.")
+            try:
+                starts = [float(t) for t in merged["section_starts"].split(",")]
+                if (len(starts) != int(count) or not all(0 < t < spec["dur"][1] for t in starts) or
+                        any(a >= b for a, b in zip(starts, starts[1:]))):
+                    raise ValueError
+            except (ValueError, TypeError):
+                out.append("Give each slot an increasing section start in seconds inside this scene.")
+            claims = {value: shown for text in active for value, shown in caption_numbers(text).items()}
+            if claims and words is None:
+                out.append("The slot labels need this reel's transcript to prove their numbers.")
+            elif words is not None:
+                heard = caption_numbers(" ".join(words))
+                out += [f'The number "{shown}" is not said in this reel; change the slot label.'
+                        for value, shown in claims.items() if value not in heard]
+    elif cat in NUMBER_SCENES:
         claims = ([merged["value"]] if "value" in merged else []) + [v for t in slots.values() for v, _ in numbers(t)]
         if words is None:
             out.append(f"the {sid} shows a number, so it needs the transcript (--transcript <words.json>) to prove the "
@@ -634,6 +838,63 @@ def selftest():
             spec["params"]["entrance"]["enum"] = enum
             js.write_text(json.dumps(spec), encoding="utf-8")
             expect(f"enum {label} fails check", any(why in p for p in scene_problems(good / "hook-title")))
+    with tempfile.TemporaryDirectory() as t:
+        scene = Path(t) / "callout"
+        shutil.copytree(SCENES / "callout", scene)
+        spec = json.loads((scene / "scene.json").read_text(encoding="utf-8"))
+        spec["category"] = "3d"
+        spec["regions"] = {"top": [60, 260, 960, 760], "bottom": [60, 1100, 960, 1460]}
+        (scene / "scene.json").write_text(json.dumps(spec), encoding="utf-8")
+        page = (scene / "scene.html").read_text(encoding="utf-8").replace("z-index: 400", "z-index: 300")
+        imports = '<script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>'
+        module = '<script type="module">import * as THREE from "three";</script>'
+        page = page.replace("</head>", imports + module + "</head>")
+        (scene / "scene.html").write_text(page, encoding="utf-8")
+        expect("3d: an own scene with local imports passes", scene_problems(scene) == [])
+        for label, bad_page, why in (
+                ("2d band", page.replace("z-index: 300", "z-index: 420"), "3D layer band"),
+                ("wrong root", page.replace("z-index: 300", "z-index: 301"), "root needs z-index: 300"),
+                ("important root", page.replace("z-index: 300", "z-index: 301 !important; z-index: 300"), "root needs z-index: 300"),
+                ("CDN map", page.replace("./vendor/three.module.js", "https://cdn.example/three.js"), "import map"),
+                ("relative import", page.replace(module, module.replace("</script>", 'import x from "./other.js";</script>')), "not allowed"),
+                ("bare import", page.replace(module, module.replace("</script>", 'import x from "other";</script>')), "not allowed"),
+                ("side effect import", page.replace(module, module.replace("</script>", 'import "./other.js";</script>')), "not allowed"),
+                ("dynamic import", page.replace(module, module.replace("</script>", 'import("./other.js");</script>')), "not allowed"),
+                ("computed import", page.replace(module, module.replace("</script>", 'import(path);</script>')), "computed imports"),
+                ("re-export", page.replace(module, module.replace("</script>", 'export * from "./other.js";</script>')), "not allowed"),
+                ("compact import", page.replace(module, module.replace("</script>", "import{x}from'./other.js';</script>")), "not allowed"),
+                ("module src", page.replace('type="module"', 'type="module" src=./other.js'), "module"),
+                ("missing map", page.replace(imports, ""), "import map"),
+                ("missing module", page.replace(module, ""), "module")):
+            (scene / "scene.html").write_text(bad_page, encoding="utf-8")
+            expect(f"3d: {label} fails", any(why in p for p in scene_problems(scene)))
+        (scene / "scene.html").write_text(page.replace(
+            module, '<script type="module">const note = \'import * as THREE from "three"\';</script>'), encoding="utf-8")
+        expect("3d: a string cannot satisfy the namespace import",
+               any("must import * as THREE" in p for p in scene_problems(scene)))
+        (scene / "scene.html").write_text(page.replace(module, module.replace(
+            "</script>", 'const note = "import \'./other.js\'";</script>')), encoding="utf-8")
+        expect("3d: import-like text in a string is harmless", scene_problems(scene) == [])
+        spec["category"] = "callout"
+        spec.pop("regions")
+        (scene / "scene.json").write_text(json.dumps(spec), encoding="utf-8")
+        (scene / "scene.html").write_text(page, encoding="utf-8")
+        expect("3d: 2d scenes still reject z-index 300",
+               any("scene layer band" in p for p in scene_problems(scene)))
+        expect("3d: runtime files are not unconfirmed references",
+               asset_refs('<link href="./vendor/three.module.js"><link href="./vendor/three.core.js">'
+                          '<img src="./other.png">') == {"./other.png"})
+    glass = SCENES / "glass-card-3d"
+    spec = json.loads((glass / "scene.json").read_text(encoding="utf-8"))
+    expect("3d: shipped glass-card-3d passes", scene_problems(glass) == [])
+    expect("3d: missing regions fails",
+           bool(spec_problems(glass.name, {k: v for k, v in spec.items() if k not in ("layer", "regions")})))
+    expect("3d: regions outside the safe box fails", bool(spec_problems(glass.name, dict(
+        spec, regions={"top": [59, 260, 960, 760], "bottom": [60, 1100, 960, 1460]}))))
+    expect("3d: layer 2d fails", bool(spec_problems(glass.name, dict(spec, layer="2d"))))
+    callout = json.loads((SCENES / "callout" / "scene.json").read_text(encoding="utf-8"))
+    expect("3d: 2d scenes still reject regions", any(
+        "unknown key 'regions'" in p for p in spec_problems("callout", dict(callout, regions=spec["regions"]))))
     for f in fails:
         print(f"selftest FAILED: {f}")
     if not fails:

@@ -10,7 +10,8 @@ source time src_in_f/fps + (t - out_in_f/fps) * speed. Cut marks are ranges in C
 subtracted from the segment(s) it falls in. Tighten/loosen marks become --protect ranges around the source moment
 (cap = the chosen ms). Notes are printed for the human. Writes <out>/edl.json and prints the gaps.py command with
 --words (the take's edit map), --speed (the board's speed, else the cut's) and --beat (the Cut Board's beat_ms from
-cut-selection.json next to the selection, else 0.300); the joins stay gaps.py's defaults.
+cut-selection.json next to the selection, else 0.300). Pauses use the Cut Board's selected default, else its
+config default; without either they keep gaps.py's defaults. Cut timing uses the active saved style.
 
 Only the segments a mark touches are re-gapped. Every other segment goes in as --hold of its own source span, so
 gaps.py keeps it whole and a Send with no marks gives back the cut's own cuts.json. A cut mark touches the segments
@@ -117,10 +118,22 @@ def main():
     print(f"{len(sel.get('marks', []))} marks: {len(cuts_s)} cut ranges ({removed:.2f}s removed), {len(protect)} pause "
           f"rulings, {len(notes)} notes -> {len(edl)} cuts in {out / 'edl.json'} ({len(hold)} untouched segments held)")
     cut_sel = Path(a.selection).parent / "cut-selection.json"
-    beat_ms = json.loads(cut_sel.read_text(encoding="utf-8")).get("beat_ms") if cut_sel.is_file() else None
+    cut_sel = json.loads(cut_sel.read_text(encoding="utf-8")) if cut_sel.is_file() else {}
+    beat_ms = cut_sel.get("beat_ms")
     cmd = (f'<editor python> -X utf8 -I {GAPS} "{work.as_posix()}" --edl "{(out / "edl.json").as_posix()}" '
            f'--words "{em_p.as_posix()}" --speed {sel.get("speed") or speed} '
            f'--beat {(beat_ms if beat_ms is not None else 300) / 1000:.3f}')
+    cut_cfg = Path(a.selection).parent / "cut-board.config.json"
+    cut_cfg = json.loads(cut_cfg.read_text(encoding="utf-8")) if cut_cfg.is_file() else {}
+    if "gap_default_ms" in cut_sel or "gap_default_ms" in cut_cfg:
+        ms = cut_sel.get("gap_default_ms", cut_cfg.get("gap_default_ms"))
+        join = 9.0 if ms is None else ms / 1000.0
+        cmd += f" --internal {join:.3f} --join {join:.3f}"
+    import saved_style
+    nudge = saved_style._get(saved_style.load(cfg_p.parent), "cut.nudge_ms")
+    if nudge is not None:
+        nudge = min(150, max(0, nudge))
+        cmd += f" --nudge {nudge / 1000:.3f}"
     if protect:
         cmd += " --protect " + ",".join(protect)
     if hold:

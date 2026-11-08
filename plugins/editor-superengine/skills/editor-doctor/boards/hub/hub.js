@@ -8,7 +8,7 @@ const current = () => DATA.reels.find(r => r.id === CUR);
 const stage = () => DATA.stages[current().cur];
 const pct = r => Math.round(r.lanes.reduce((n,l) => n + (l.total ? l.done/l.total : 0), 0) / r.lanes.length * 100);
 const ago = at => !at ? "never" : Math.max(0, Math.round((Date.now() - new Date(at).getTime())/60000)) + " min ago";
-const skillLabels = {captions:"Make captions", cover:"Pick a cover", qa:"Run QA", broll:"Add B-roll", trial:"Make a trial version", style:"Save this style", health:"Check my editor", goldmine:"Run Goldmine", handoff:"Hand off to your editor"};
+const skillLabels = {captions:"Make captions", cover:"Pick a cover", qa:"Run QA", broll:"Add B-roll", trial:"Make a trial version", style:"Save this style", styles:"My styles", health:"Check my editor", goldmine:"Run Goldmine", handoff:"Hand off to your editor"};
 const adjustments = {};
 
 function pending(fn) {
@@ -148,10 +148,11 @@ function drawAdjust() {
 async function drawSaved(reel) {
   const [notes, requests] = await Promise.all([HubIO.json(HubIO.base(reel)+"reel-notes.json",[]),HubIO.json(HubIO.base(reel)+"hub-requests.json",[])]);
   if (reel !== CUR) return;
-  $("note-list").innerHTML = (Array.isArray(notes) ? notes : []).map(n=>`<li>${esc(n.kind || "Note")} · ${Math.floor(n.at||0)}s · ${esc(n.text)}</li>`).join("");
+  $("note-list").innerHTML = (Array.isArray(notes) ? notes : []).map(n=>`<li>${esc(n.kind || "Note")} · ${Math.floor(n.at||0)}s · ${esc(n.text)}</li>`).join("") || '<li class="empty">No notes yet.</li>';
   $("queue").innerHTML = (Array.isArray(requests) ? requests : []).slice().reverse().map(q=>`<li>${esc(q.ask)}<small>Sent · ${esc(ago(q.at))}</small></li>`).join("") || '<li class="empty">Nothing sent yet.</li>';
 }
 function drawPages() {
+  $("styles").innerHTML = (DATA.styles || []).map(s=>`<form data-style-id="${esc(s.id)}"><p>${esc(s.label)}${s.default ? " (default)" : ""}</p><label class="dfield" for="style-${esc(s.id)}">New name for ${esc(s.label)}<input id="style-${esc(s.id)}" name="label" type="text" size="12" maxlength="40" value="${esc(s.label)}" required></label><button class="btn" type="submit">Rename</button>${s.default ? "" : '<button class="btn" type="button" data-style-action="default">Make default</button>'}${s.auto && (s.auto.ready || s.auto.on) ? `<button class="btn" type="button" data-style-action="auto" aria-pressed="${!!s.auto.on}" aria-label="Auto edit for ${esc(s.label)}">Auto edit: ${s.auto.on ? "On" : "Off"}</button>` : `<small>Auto edit unlocks after ${esc(s.auto ? s.auto.threshold : 3)} smooth reels (${esc(s.auto ? s.auto.good_in_a_row : 0)} so far)</small>`}</form>`).join("") || '<p class="empty">No saved styles yet.</p>';
   const health = DATA.health;
   $("health-list").innerHTML = health.map(h=>{
     if (typeof h === "string") { const m=h.match(/^STATUS (\S+) (ok|warn|missing) (.*)$/); h=m ? {component:m[1],level:m[2],detail:m[3]} : {detail:h}; }
@@ -184,6 +185,18 @@ function request(skill) {
     entry.ask = `${skillLabels.handoff} for ${reel}: ${editor}.${details ? " " + details : ""}`;
   }
   return append(reel,"hub-requests.json",entry);
+}
+function requestStyle(form, action) {
+  if (!current()) { HubIO.status("Add a reel folder before sending a request."); return; }
+  const style = DATA.styles.find(s=>s.id===form.dataset.styleId), id = style.id;
+  const label = action === "rename" ? form.elements.label.value.trim() : style.label;
+  if (!label) { form.elements.label.focus(); return; }
+  if (action === "auto") {
+    const on = !style.auto.on, ask = `Turn Auto edit ${on ? "on" : "off"} for ${style.label}`;
+    return append(CUR,"hub-requests.json",{at:new Date().toISOString(),reel:CUR,skill:"styles",ask,choices:{action,id,label,on}});
+  }
+  const ask = action === "rename" ? `Rename ${style.label} to ${label}` : `Make ${style.label} my default`;
+  return append(CUR,"hub-requests.json",{at:new Date().toISOString(),reel:CUR,skill:"styles",ask,choices:{action,id,label}});
 }
 function route() {
   const page=["health","goldmine"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "reels";
@@ -233,6 +246,8 @@ $("notes-form").onsubmit=e=>{
   e.preventDefault();const text=$("note").value.trim();if(!text)return;
   const reel=CUR;append(reel,"reel-notes.json",{text,kind:$("note-kind").value,at:$("vid").currentTime || 0,sent_at:new Date().toISOString()}).then(ok=>{if(ok&&CUR===reel&&$("note").value.trim()===text)$("note").value="";});
 };
+$("styles").onsubmit=e=>{e.preventDefault();requestStyle(e.target,"rename");};
+$("styles").onclick=e=>{if(e.target.dataset.styleAction)requestStyle(e.target.closest("form"),e.target.dataset.styleAction);};
 $("layout").onclick=saveLayout;
 $("reload").onclick=()=>load();
 let key=0;

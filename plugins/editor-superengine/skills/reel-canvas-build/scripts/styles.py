@@ -197,14 +197,14 @@ def load_anchors(reel, segs):
     return out
 
 
-def pick_style(bm):
+def pick_style(bm, *, reel=None, remember=True):
     """(edit_style, "reel" | "saved"): the Send's, else the saved style's; neither = ask the client (H-R36)."""
     if "edit_style" in bm:
         es = bm["edit_style"]
-        if isinstance(es, dict) and es.get("style") in STYLES:
+        if remember and isinstance(es, dict) and es.get("style") in STYLES:
             standing_notes.record_pick("edit_style.style", es["style"])
         return bm["edit_style"], "reel"
-    saved = saved_style.load()
+    saved = saved_style.load(reel)
     _, source = saved_style.resolve("edit_style.style", saved=saved)
     if source == "recommended":
         raise Stop(1, ASK + saved_style.recommendation_line("edit_style.style", saved))
@@ -565,12 +565,12 @@ def ceiling_notes(keys, tweens, beats, tuning):
     return out
 
 
-def plan(reel, extra_spans=None, presets=None, tuning=None, fps=None):
+def plan(reel, extra_spans=None, presets=None, tuning=None, fps=None, *, remember_choices=True, style_reel=None):
     """The scale track for the reel, effect-gated; writes nothing (cmd_plan writes it). Raises Stop.
     extra_spans: internal, so a test can plant a move the gate must refuse. fps: compose.py's rate ("n/d") from the
     cut master; None = read it from the cut master here."""
     inp = load(Path(reel), fps)
-    raw, source = pick_style(inp["bm"])
+    raw, source = pick_style(inp["bm"], reel=reel if style_reel is None else style_reel, remember=remember_choices)
     es = check_style(raw, source, len(inp["words"]))
     keys, tweens, warn = build(inp, es, presets)
     warn += ceiling_notes(keys, tweens, inp["bm"]["beats"], tuning or TUNING)

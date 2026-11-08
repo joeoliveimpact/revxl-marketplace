@@ -14,7 +14,7 @@ reworded sentence out, so both reads of L03 sit in one attempt. Words after the 
 - config: make_board.py writes attempts[].review on L03 with exactly the two sentences' board indices; nothing of
   them is struck by default; the "never, never" line and every other line carry no review hit; the default
   selection passes selection_to_edl's board_hash check and keeps both sentences.
-- send: through the stub hub's Cut Board tab (the boards.json route), the flag text shows, "Keep first" then Send:
+- send: through the real hub's Cut Board tab (the boards.json route), the flag text shows, "Keep first" then Send:
   cut-selection.json rm["0"] of L03 holds exactly the second sentence's indices, and selection_to_edl.py + gaps.py
   cut the second sentence and keep the first.
 - reload: a new browser reopens the board; the struck words and the "Keep first" choice still show.
@@ -25,7 +25,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-import boards_test as bt  # noqa: E402  (S4b.3's helpers: setup, server, browse, cut, selection, the stub hub)
+import boards_test as bt  # noqa: E402  (S4b.3's helpers: setup, server, browse, cut, selection, the real hub)
 
 cs, ck, G = bt.cs, bt.ck, bt.G
 REWORD = ["You", "don't", "have", "techie", "skills."]
@@ -106,22 +106,15 @@ def case_config(S, a):
     ck("config: ... and its EDL keeps both sentences (never auto-cut)", inside(t0) and inside(t1), edl)
 
 
-def hub(d):
-    h = G["ws"] / "editor/hub"
-    h.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(bt.STUB_HUB, h / "index.html")                      # test fixture only: the hub page is S13's
-    shutil.copyfile(bt.DOCTOR / "boards.json", h / "boards.json")
-
-
 KEEP_FIRST = '[data-keep="%d:%d:0:first"]' % (L, J)
 
 
 def case_send(S, a):
     d, cfg, se = planted("send")
-    hub(d)
+    bt.refresh_hub()
     first, second = board_i(cfg, se[2]), board_i(cfg, se[3])
     want = "s.lines[%d].rm['%d'] && s.lines[%d].rm['%d'].length===%d" % (L, J, L, J, len(second))
-    out = bt.browse([{"do": "goto", "path": "/editor/hub/?reel=send", "wait": ".tabs[data-built]"},
+    out = bt.browse([{"do": "goto", "path": "/editor/hub/?reel=send", "waitFn": "window.Hub && Hub.ready"},
                      {"do": "click", "sel": "#tab-cut-board"},
                      dict(do="frame", sel=".frame iframe", **bt.CUT_READY),
                      {"do": "eval", "js": "(document.querySelector('[data-review=\"%d:%d:0\"] .rflag')||{}).textContent" % (L, J)},

@@ -125,18 +125,20 @@ def bed_loudness(path, offset, length):
 
 def bed_grid(reel, file):
     """The beat grid of <reel>/beds/<file>, or None (no steady beat, or it couldn't be read). Cached in
-    <reel>/work/beats/<file>.json, keyed by the file's sha256, so the board and the bake read the same grid."""
+    <reel>/work/beats/<file>.json, keyed by the file's sha256 and the detector version."""
+    beat_grid.LAST_REASON = "no beat"
     path = Path(reel) / "beds" / file
     cache = Path(reel) / "work" / "beats" / (file + ".json")
     try:
         sha = hashlib.sha256(path.read_bytes()).hexdigest()
         c = json.loads(cache.read_text(encoding="utf-8")) if cache.is_file() else {}
-        if c.get("sha256") == sha:
+        if c.get("sha256") == sha and c.get("version") == beat_grid.VERSION:
+            beat_grid.LAST_REASON = c.get("reason", "no beat") if not c.get("grid") else None
             return c.get("grid")
         g = beat_grid.grid(path)
     except Exception:  # noqa: BLE001  (no grid is the answer to anything unreadable; never a crash)
         return None
-    write_json(cache, {"sha256": sha, "grid": g})
+    write_json(cache, {"sha256": sha, "version": beat_grid.VERSION, "grid": g, "reason": beat_grid.LAST_REASON})
     return g
 
 
@@ -145,7 +147,11 @@ def snap(reel, b, entry, offset, track_s, cut_end):
     to cut_end (or the first bar start is reached). Prints a plain line when it moved by bars or found no beat."""
     g = bed_grid(reel, b["file"])
     if not g:
-        print("No steady beat was found in %s, so the music starts where the board set it." % b["file"])
+        if beat_grid.LAST_REASON == "drift":
+            print("The beat in %s drifts, so the music starts where the board set it and nothing snaps to the beat."
+                  % b["file"])
+        else:
+            print("No steady beat was found in %s, so the music starts where the board set it." % b["file"])
         return offset, None
     p, ph, down = g["period_s"], g["phase_s"], g["downbeat_s"]
     o = ph + max(0, round((offset - ph) / p)) * p
@@ -156,8 +162,24 @@ def snap(reel, b, entry, offset, track_s, cut_end):
     if bars:
         print("The music starts %d bar%s earlier so it lasts the whole reel." % (bars, "" if bars == 1 else "s"))
     o = round(o, 4)
+    end = min(cut_end, entry + track_s - o)
+    kicks = sorted(((entry + at - o, strength) for at, strength in g.get("kicks", [])
+                    if o <= at < o + end - entry), key=lambda hit: -hit[1])
+    big_hits, chosen_beats = [], []
+    strongest = kicks[0][1] if kicks else 0.0
+    for at, strength in kicks:
+        if strongest <= 0 or strength < 0.6 * strongest:
+            break
+        # Count grid beats so rounded cache times cannot turn exactly sixteen beats into fifteen.
+        beat = round((at - entry + o - ph) / p)
+        if all(abs(beat - chosen) >= 16 for chosen in chosen_beats):
+            big_hits.append(at)
+            chosen_beats.append(beat)
+            if len(big_hits) == 3:
+                break
+    # H-BEAT-1: the Beat Map shows these as suggestions; the client applies any visual change themselves.
     return o, {"bpm": g["bpm"], "period_s": p, "phase_s": ph, "downbeat_s": down, "offset_from_s": offset,
-               "offset_s": o}
+               "offset_s": o, "big_hits_s": [round(at, 4) for at in big_hits]}
 
 
 def place(reel, b, N, dur, voice=None):
@@ -213,7 +235,30 @@ def place(reel, b, N, dur, voice=None):
     if not spans:
         print("There is no transcript of the cut, so the music won't dip under the voice.")
     kf = keyframes(spans, depth, dur)
-    env = env * lin(gain + envelope_db(kf, t))
+    mode = "dip"
+    carve_info = {"strength": 0.8, "bands": [], "points": []}
+    settings = b.get("carve")
+    if isinstance(settings, dict) and settings.get("on") is True:
+        try:
+            import carve
+            carve_info["strength"] = carve.profile(settings.get("strength", 0.8))["strength"]
+            if not voice or not Path(voice).is_file():
+                raise ValueError("No voice stem")
+            v = decode(voice)[:N]
+            v = np.pad(v, ((0, max(0, N - len(v))), (0, 0)))
+            carve_info = carve.analyse(v, SR, settings.get("strength", 0.8))
+            if not carve_info["bands"]:
+                raise ValueError("No voice bands")
+            carved = carve.render(stem, carve_info, SR)
+            if carved.shape != stem.shape or not np.isfinite(carved).all():
+                raise ValueError("Invalid carved bed")
+            stem = carved
+            stem[~ok] = 0  # preserve the exact placement boundaries after overlap-add
+            mode = "carve"
+        except Exception:  # an unavailable carve always uses the original dip path
+            carve_info = {"strength": carve_info["strength"], "bands": [], "points": []}
+            print("The music couldn't carve around the voice here, so it dips instead.")
+    env = env * lin(gain + envelope_db([] if mode == "carve" else kf, t))
     stem = (stem * env.astype(np.float32)[:, None]).astype(np.float32)
     info = {"source": "beds/" + b["file"], "entry_s": entry, "exit_s": round(exit_, 4), "offset_s": offset,
             "fade_in_s": fi, "fade_out_s": fo, "stops": b.get("stops", []),
@@ -221,5 +266,5 @@ def place(reel, b, N, dur, voice=None):
                       "bed_lufs_scope": scope, "gain_db_applied": round(gain, 3)},
             "duck": {"depth_db": depth, "attack_s": ATTACK_S, "release_s": RELEASE_S, "spans": spans or [],
                      "keyframes": kf},
-            "beat": beat}
+            "beat": beat, "beat_sync": bool(b.get("beat_sync")), "mode": mode, "carve": carve_info}   # beat None + sync on = refused grid
     return stem, info

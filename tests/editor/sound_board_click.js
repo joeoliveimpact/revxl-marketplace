@@ -35,6 +35,10 @@ function readBoard() {
       empty: document.getElementById("musiclist").textContent.trim(),
       bed: document.getElementById("bedsel").value, vol: document.getElementById("bedvol").value,
       duck: document.getElementById("bedduck").value, entry: document.getElementById("bentry").value,
+      carve: {on: document.getElementById("bedcarve").checked,
+              strength: +document.getElementById("carvestrength").value,
+              visible: getComputedStyle(document.getElementById("carvestrengthwrap")).display !== "none",
+              preview: typeof previewCarve === "function" && !!previewCarve()},
       offset: document.getElementById("boffset").value,
       gainDb: typeof bedGainDb === "function" ? bedGainDb() : null,   // the gain the bed preview plays at
       ticks: [...document.querySelectorAll("#musiclist input.mrights")].map((c) => c.checked),

@@ -23,7 +23,7 @@ Its changes save as the client works; **Send to Claude** makes the choice availa
 to the preview. The reel's Send uses `edit_style` with `style: "punch-in"` or
 `style: "layout-switch"`. Layout switches needs only that one key.
 
-If the Send has no `edit_style`, compose uses the saved style's `edit_style`.
+If the Send has no `edit_style`, compose uses the `edit_style` of the style picked for this reel at its start, if any.
 If neither has one, compose stops before rendering; its last line is:
 
 `ask: which editing style? punch-ins on jump cuts, or layout switches`
@@ -32,14 +32,9 @@ Ask the client: "Do you want punch-ins on the jump cuts, or layout switches?"
 Then put their pick in the reel's Beat Map Send (`beat-map-selection.json`),
 under `edit_style`. The board control is easiest; Claude may write the Send for
 the client, preserving their other choices and checking it before previewing.
-**Ask me before the preview** removes the reel's choice; a saved style still applies.
+**Ask me before the preview** removes the reel's choice; the style picked for this reel at its start, if any, still applies.
 
-Only when the client says **"make it my default"**, run:
-
-`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/saved_style.py" save-from-reel <reel folder>`
-
-Read back the saved choices in plain words. The writer keeps other saved settings
-and writes the client's workspace skill. Tell the client: "Your default doesn't carry word punches to later reels. To get them on a later reel, pick Punch-ins and a Word punches setting in that reel's Editing style panel, then mark the words to stress; that reel then uses its panel choices instead of your default."
+**Saved styles** (save, default, rename and other saved choices): ${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/saved-styles.md.
 
 ## The arrangements
 

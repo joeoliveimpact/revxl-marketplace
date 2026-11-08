@@ -151,6 +151,11 @@ def main():
     cmd = (f'<editor python> -X utf8 -I {GAPS if len(takes) == 1 else TAKES} "{work.as_posix()}" '
            f'--edl "{(work / "edl.json").as_posix()}" '
            f"--internal {join:.3f} --join {join:.3f} --beat-join {max(join, 0.32):.3f}")
+    import saved_style
+    nudge = saved_style._get(saved_style.load(reel_dir), "cut.nudge_ms")
+    if nudge is not None:
+        nudge = min(150, max(0, nudge))
+        cmd += f" --nudge {nudge / 1000:.3f}"
     if len(takes) == 1:
         cmd += f' --words "{(reel_dir / cfg["takes"][str(take)]["edit_map"]).as_posix()}"'
     else:

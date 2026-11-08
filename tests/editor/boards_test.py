@@ -33,7 +33,6 @@ import check_deps  # noqa: E402  (writes editor.config.json the way the doctor d
 
 HEAVY = r"C:/Workspaces/Content Studio/output/scripts/heavy_lock.py"
 CLICK = HERE / "boards_click.js"
-STUB_HUB = HERE / "fixtures/stub-hub.html"
 FX = Path(cs.S3_WORK)
 FX_FILES = ("edit_map.json", "tx.16k.wav", "probe.json", "envelope.json")
 WINDOW = (46.5, 59.5)            # the six sentences the script is made of
@@ -41,7 +40,8 @@ GONE_FROM_T2 = 1                 # L02 is absent from take 2
 TABS = {"cut-board": ("Cut Board", ["cut"], 10), "beat-map": ("Beat Map", ["motion"], 20),
         "sketches": ("Sketches", ["motion"], 30), "tweak-board": ("Tweak Board", ["tweak"], 40),
         "sound-board": ("Sound Board", ["sound"], 50), "grade-board": ("Grade Board", ["grade"], 60),
-        "look-picker": ("Look Picker", ["captions"], 70), "cover-picker": ("Cover Picker", ["cover"], 80)}
+        "look-picker": ("Look Picker", ["captions"], 70), "cover-picker": ("Cover Picker", ["cover"], 80),
+        "trials": ("Trial reels", ["cover"], 90)}
 SOUND_LINE = ('"sound-board": {"skill": "reel-sound-pass", "template": "skills/reel-sound-pass/boards/sound-board", '
               '"writes": ["sound-selection.json"], "tab": {"label": "Sound Board", "stages": ["sound"], "order": 50}},')
 VIDEOS_IGNORE = ["*selection.json", "*.state.json", "*.prev"]
@@ -257,6 +257,15 @@ def tools():
     return G["tools"]
 
 
+def refresh_hub():
+    """Install the real hub and build its data after the fixture reels exist."""
+    server()  # Finish startup board_sync before refreshing the generated data.
+    for name in ("board_sync.py", "hub_rows.py"):
+        p = sh([PY, "-X", "utf8", "-I", "-B", DOCTOR / name, "--root", G["ws"]], cwd=G["ws"])
+        if p.returncode:
+            raise RuntimeError("hub setup %s: %s" % (name, p.stdout + p.stderr))
+
+
 def browse(actions, label):
     """One NEW headless Chrome (fresh profile) under heavy_lock. Returns the driver's output; a failed run is a FAIL."""
     port, t = server(), tools()
@@ -429,6 +438,73 @@ def case_all_take(S, a):
     ck("all-take: after 'all take 2' the kept lines use take 2 only (takes %s)" % sorted(takes), takes == {2})
 
 
+def case_tweak_silence(S, a):
+    d, cfg = reel("tweak-silence")
+    tc = ready_cut(d, cfg)
+    if not tc:
+        return
+    gap = dict(start=1.0, end=4.5, duration=3.5)
+    if not ck("tweak-silence: fixture contains the gap", tc["duration"] >= gap["end"], tc["duration"]):
+        return
+    report = d / "work/long-silences.json"
+    write(report, dict(silences=[gap]))
+    refresh_hub()
+    hub = G["ws"] / "editor/hub"
+    shutil.copyfile(HERE / "fixtures/stub-hub.html", hub / "index.html")
+    shutil.copyfile(DOCTOR / "boards.json", hub / "boards.json")
+
+    def opened():
+        return [{"do": "goto", "path": "/editor/hub/?reel=tweak-silence", "wait": '.tabs[data-built="boards.json"]'},
+                {"do": "click", "sel": "#tab-tweak-board"}, dict(do="frame", sel=".frame iframe", **TWEAK_READY),
+                {"do": "click", "sel": "#long-quiet summary"}]
+
+    def sent(choice, label):
+        (d / "tweak-selection.json").unlink(missing_ok=True)
+        out = browse(opened() + [{"do": "click", "sel": f'#long-quiet input[value="{choice}"]'},
+                     {"do": "eval", "js": "!document.querySelector('#dirty').hidden"},
+                     {"do": "waitState", "board": "tweak-board", "js":
+                      "s.silences?.[0]?.choice===" + json.dumps(choice) if choice else "!s.silences"},
+                     {"do": "click", "sel": "#send"},
+                     {"do": "waitText", "sel": "#saved", "re": "saved tweak-selection\\.json|FAILED"},
+                     {"do": "eval", "js": "document.querySelector('#dirty').hidden"}], label)
+        ck(label + ": dirty before Send, clean after", out["reads"] == [True, True], out["reads"])
+        return cs.load(d / "tweak-selection.json")
+
+    def title_check(label):
+        sel = sent("title", label)
+        return sel.get("silences") == [dict(start=1.0, end=4.5, choice="title")] and sel["marks"] == []
+
+    if not ck("tweak-silence: title rides Send without a mark", title_check("silence-title")):
+        return
+    out = browse(opened() + [{"do": "eval", "js": "document.querySelector('#long-quiet input[value=title]').checked"}],
+                 "silence-restored")
+    ck("tweak-silence: fresh browser restores title", out["reads"] == [True], out["reads"])
+    sel = sent("cut", "silence-cut")
+    entry = (sel.get("silences") or [{}])[0]
+    ck("tweak-silence: cut has exactly its linked mark", sel["marks"] ==
+       [dict(id=entry.get("mark"), type="cut", a=1.0, b=4.5)] and entry.get("choice") == "cut", sel)
+    q = script("tweaks_to_edl.py", d / "tweak-selection.json", d / "work")
+    ck("tweak-silence: tweaks_to_edl accepts silence key", q.returncode == 0, q.stdout + q.stderr)
+    sel = sent("", "silence-later")
+    ck("tweak-silence: decide later removes linked mark and key", "silences" not in sel and sel["marks"] == [], sel)
+    report.unlink()
+    out = browse(opened() + [{"do": "eval", "js": "document.querySelector('#long-quiet').textContent"}], "silence-missing")
+    ck("tweak-silence: missing report is plain", bool(out["reads"]) and
+       "No long quiet stretches to decide on." in out["reads"][0], out["reads"])
+    write(report, dict(silences=[gap]))
+    # Mutate only the served copy, then restore its exact bytes.
+    board = G["ws"] / "editor/tweak-board/index.html"
+    original = board.read_bytes()
+    anchor = "body:JSON.stringify(S,null,1)"
+    text = original.decode("utf-8")
+    if ck("tweak-silence: mutant anchor unique", text.count(anchor) == 1):
+        try:
+            board.write_bytes(text.replace(anchor, "body:JSON.stringify({...S,silences:undefined},null,1)").encode("utf-8"))
+            ck("tweak-silence: dropping silences from Send is caught", not title_check("silence-mutant"))
+        finally:
+            board.write_bytes(original)
+
+
 def case_tweak_send(S, a):
     d, cfg = reel("tweak-send")
     tc = ready_cut(d, cfg)
@@ -457,6 +533,26 @@ def case_tweak_send(S, a):
 
 def frames_of(cuts):
     return [(s["src_in_f"], s["src_out_f"]) for s in cuts.get("segments", [])]
+
+
+# ---- G2-c: separate case preserves the existing tweak-send expectations ----
+def case_tweak_fine_tune(S, a):
+    d, cfg = reel("tweak-fine-tune")
+    if not ready_cut(d, cfg):
+        return
+    out = browse([
+        dict(do="goto", path="/editor/tweak-board/?reel=tweak-fine-tune", **TWEAK_READY),
+        {"do": "seek", "t": 1.0}, {"do": "click", "sel": '[data-add="tight"]'},
+        {"do": "waitFn", "js": "document.querySelector('#fine-pane .tp-rotv_b') !== null"},
+        {"do": "click", "sel": '#fine-pane .tp-rotv_b'},
+        {"do": "slider", "sel": '#fine-pane .tp-sldv', "fraction": 0.65},
+        {"do": "eval", "js": "S.marks[0].a"},
+        {"do": "click", "sel": '#send'},
+        {"do": "waitText", "sel": '#saved', "re": "saved tweak-selection\\.json|FAILED"},
+    ], "tweak-fine-tune")
+    marks = cs.load(d / "tweak-selection.json").get("marks", [])
+    ck("Tweakpane slider travels through Tweak Send", bool(out["reads"]) and len(marks) == 1
+       and marks[0]["a"] == out["reads"][0] and abs(marks[0]["a"] - 1.0) > 0.02, marks)
 
 
 def case_roundtrip(S, a):
@@ -496,9 +592,15 @@ def case_roundtrip(S, a):
         ok = p.returncode == 0 and g is not None and g.returncode == 0
         ck("roundtrip: tweaks_to_edl.py + its gaps.py command run (%s)" % sel.name, ok,
            (p.returncode, p.stderr[-300:], g and g.stderr[-300:]))
-        ck("roundtrip: the printed command has --words, the cut's --speed and --beat, and no --internal/--join/--beat-join "
-           "copy", {"--words", "--speed", "--beat"} <= set(argv) and not {"--internal", "--join", "--beat-join"} & set(argv),
-           line)
+        # AE-2b (hub ruling H-STY-5): tweaks_to_edl now carries the reel's Cut Board pause default as one equal
+        # --internal/--join pair (it used to fall back to gaps.py's 150 ms); it never copies --beat-join.
+        pair = [argv[argv.index(k) + 1] if k in argv else None for k in ("--internal", "--join")]
+        sent = cs.load(d / "cut-selection.json") if (d / "cut-selection.json").is_file() else {}
+        ms = sent.get("gap_default_ms", cfg.get("gap_default_ms"))
+        want = "%.3f" % (9.0 if ms is None else ms / 1000.0)
+        ck("roundtrip: the printed command has --words, the cut's --speed and --beat, the reel's pause default as "
+           "--internal/--join (%s s), and no --beat-join" % want, {"--words", "--speed", "--beat"} <= set(argv)
+           and "--beat-join" not in argv and pair == [want, want], line)
         return cs.load(w / "cuts.json") if ok else {}
     cuts1 = again(sel0)
     f0, f1 = frames_of(cuts0), frames_of(cuts1)
@@ -702,13 +804,9 @@ def case_port(S, a):
 
 def case_hub_roundtrip(S, a):
     d, cfg = reel("hub")
-    hub = G["ws"] / "editor/hub"
-    server()                                                       # finish startup board_sync before the fixture
-    hub.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(STUB_HUB, hub / "index.html")                      # test fixture only: the hub page is S13's
-    shutil.copyfile(DOCTOR / "boards.json", hub / "boards.json")
+    refresh_hub()
     strike, wi = word_click(cfg, 2, 0, 1)
-    out = browse([{"do": "goto", "path": "/editor/hub/?reel=hub", "wait": ".tabs[data-built]"},
+    out = browse([{"do": "goto", "path": "/editor/hub/?reel=hub", "waitFn": "window.Hub && Hub.ready"},
                   {"do": "eval", "js": "[...document.querySelectorAll('.tabs [role=tab]')].map(b=>b.textContent)"},
                   {"do": "click", "sel": "#tab-cut-board"},
                   dict(do="frame", sel=".frame iframe", **CUT_READY),
@@ -722,7 +820,7 @@ def case_hub_roundtrip(S, a):
     r = out["reads"]
     if not ck("hub-roundtrip: the page answered every read", len(r) == 3, r):
         return
-    order = [TABS[k][0] for k in sorted(TABS, key=lambda k: TABS[k][2])]
+    order = [TABS[k][0] for k in sorted(TABS, key=lambda k: TABS[k][2])] + ["Master review"]
     ck("hub-roundtrip: the host page's tab strip is built from boards.json tab, sorted by order (%s)" % r[0], r[0] == order)
     ck("hub-roundtrip: the Cut Board opened in the frame at /editor/cut-board/?reel=hub, its pause-after-commas starting at "
        "the workspace's 0.28 s", r[2] == "/editor/cut-board/?reel=hub" and r[1] == "0.28", r[1:])
@@ -743,7 +841,8 @@ def case_hub_roundtrip(S, a):
     tc = tweaks(d, master)
     cuts = cs.load(d / "work/cuts.json")
     dur = cuts["segments"][-1]["out_out_f"] / cuts["fps"]
-    out = browse([{"do": "goto", "path": "/editor/hub/?reel=hub", "wait": ".tabs[data-built]"},
+    refresh_hub()
+    out = browse([{"do": "goto", "path": "/editor/hub/?reel=hub", "waitFn": "window.Hub && Hub.ready"},
                   {"do": "click", "sel": "#tab-tweak-board"},
                   dict(do="frame", sel=".frame iframe", **TWEAK_READY),
                   {"do": "eval", "js": "JSON.stringify({d: document.getElementById('v').duration, src: document.getElementById('v').currentSrc, "
@@ -786,7 +885,7 @@ def case_tabs(S, a):
         gt = c.getresponse().status
         c.close()
         built = (PLUGIN / boards[k]["template"]).is_dir()
-        copy = (G["ws"] / "editor" / k / "index.html").is_file()   # the hub's copy is the stub, when hub-roundtrip ran
+        copy = (G["ws"] / "editor" / k / "index.html").is_file()   # board_sync installs the real hub too
         if st != 200 or not (d / (k + ".state.json")).is_file() or gt != (200 if copy else 404) or (built and not copy):
             bad.append((k, st, gt, built, copy))
     ck("tabs: board_server serves every built board and saves every board's state with the tab key in boards.json "
@@ -821,6 +920,8 @@ def case_offline(S, a):
 CASES = {"import": case_import, "cut-send": case_cut_send, "cut-reload": case_cut_reload, "all-take": case_all_take,
          "tweak-send": case_tweak_send, "roundtrip": case_roundtrip, "tweak-beat": case_tweak_beat, "drift": case_drift, "gitignore": case_gitignore,
          "port": case_port, "hub-roundtrip": case_hub_roundtrip, "tabs": case_tabs, "offline": case_offline}
+CASES["tweak-fine-tune"] = case_tweak_fine_tune
+CASES["tweak-silence"] = case_tweak_silence
 
 
 def main():

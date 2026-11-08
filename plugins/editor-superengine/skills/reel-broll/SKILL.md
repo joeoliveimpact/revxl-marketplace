@@ -40,16 +40,15 @@ This needs the internet and spends the client's own Higgsfield credits: their pl
 2. Run `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-broll/scripts/broll_ingest.py" "<reel folder>" --reuse "<request json>"`. This reads local files only. A match means use that prepared clip: tell the client it is reused, with no new job and no charge, then go to the Beat Map tab. A changed prompt or setting is a different request. If the request cannot be read, stop and fix it before continuing.
 3. With no match, continue `higgsfield-superengine:hf-generate`: it shows the estimate as "about $X". That is the spending ask: ask whether to proceed and wait. "No" means stop before submission; nothing runs and nothing is charged. Only "Yes" lets that skill submit through its spend guard, wait, download into `higgsfield/<YYYY-MM-DD>/`, and keep the job id (`request_id`). On a retry, follow its existing-job guard; never submit the same job twice.
 4. Run `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-broll/scripts/broll_ingest.py" "<reel folder>" --ai "<downloaded file>" --job-id "<request_id>" --request "<request json>"`. This prepares one silent copy in `broll/ingested/`, without changing the download, and logs its job id and the exact request's hash. Only that Higgsfield skill handles generation, prices, credits and downloads.
-5. Return to the Beat Map tab to place it, then follow the existing Send and preview flow above. An AI clip cannot cover a beat with a value, counter or stat-card scene: it would look like proof.
+5. Return to the Beat Map tab to place it, then follow the existing Send and preview flow above.
 
 ## Hard rules
 
 - Audio is removed on ingest and every B-roll layer stays muted; the voice sound is copied unchanged.
 - The footage ledger must match the file's hash and identity. Source ranges cannot overlap themselves.
-- Start and end on whole cut frames; each clip plays for the whole beat. Two B-roll spans cannot overlap; one may cross cuts. The VES-1 gate runs before rendering.
+- Start and end on whole cut frames; each clip plays for the whole beat. Two B-roll spans cannot overlap; one may cross cuts. The render checks the spans first.
 - An AI clip cannot sit on a beat with a value or a counter or stat-card scene: it would look like proof. Own clips pass; every AI ledger row carries its job id.
 - Used footage needs a licence row before the 1080p final; an AI row also needs its job id. Previews warn; finals refuse missing rows.
-- B-roll sits at 200, above a-roll 100, below scenes 400, pip 500 and captions 600.
 
 Placement is taste: suggest keeping the speaker visible in the first and last 3 seconds, or putting one longer cutaway over dense jump cuts. These are options, never blocks. Stock footage is outside this skill.
 

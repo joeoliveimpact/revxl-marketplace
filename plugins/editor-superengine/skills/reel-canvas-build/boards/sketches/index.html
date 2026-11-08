@@ -86,6 +86,10 @@
       <h2 id="sk-h">Sketches</h2>
       <div id="sketches" class="grid"></div>
     </section>
+    <details class="panel" id="storyboard">
+      <summary>How each beat comes in and goes out (optional)</summary>
+      <div id="storyboard-rows"></div>
+    </details>
 
     <section class="panel">
       <label class="block" for="note">Anything else for Claude?</label>
@@ -102,7 +106,7 @@
 <div class="bar">
   <p id="status" role="status" aria-live="polite" data-state="empty"></p>
   <button type="button" id="lock" disabled>Lock this look</button>
-  <button type="button" id="send">Send to Claude</button>
+  <button type="button" id="send" disabled>Send to Claude <small data-loading>Loading...</small></button>
 </div>
 
 <script src="./board-client.js"></script>
@@ -340,6 +344,7 @@ function sketch(s, i) {
 }
 
 function render() {
+  renderStoryboard();
   if (doc.rough != null) {
     $("#rough-panel").hidden = false;
     const url = mediaUrl(doc.rough);
@@ -407,12 +412,13 @@ async function send() {
 
 async function init() {
   try { bc = BoardClient.create({board: "sketches"}); }
-  catch (e) { setStatus("error", "This board needs to be opened by Claude. Ask Claude to open the sketches."); sendBtn.disabled = true; return; }
+  catch (e) { setStatus("error", "This board needs to be opened by Claude. Ask Claude to open the sketches."); sendBtn.disabled = true; sendBtn.querySelector("[data-loading]").remove(); return; }
   doc = await bc.load();
   if (!doc) {
     $("#empty").hidden = false;
     sendBtn.disabled = true;
     setStatus("empty", "Nothing to send yet.");
+    sendBtn.querySelector("[data-loading]").remove();
     return;
   }
   [sceneCatalog, sceneSuggestions] = await Promise.all(["scenes/catalog.json", "scenes/suggest.json"].map(reelJson));
@@ -425,9 +431,114 @@ async function init() {
   if (doc.sent_at) setStatus("sent", "Last sent " + new Date(doc.sent_at).toLocaleString());
   else setStatus("saved", "All changes saved.");
   sendBtn.addEventListener("click", send);
+  sendBtn.querySelector("[data-loading]").remove();
+  sendBtn.disabled = false;
   lockBtn.addEventListener("click", toggleLock);
 }
+function renderStoryboard(){
+  const rows = $("#storyboard-rows");
+  rows.replaceChildren();
+  sceneBeats.forEach((beat, i) => {
+    const row = el("fieldset", {"data-beat": beat.id}, el("legend", {text: beatLabel(beat.id)}));
+    const saved = doc.storyboard?.beats?.[beat.id] || {};
+    for (const [field, label, options] of [
+      ["in", "Comes in", ["", "fade", "slide", "zoom", "hold", "cut"]],
+      ["out", "Goes out", ["", "fade", "slide", "zoom", "hold", "cut"]],
+      ["ease_in", "Ease in", ["", "soft", "snappy", "steady"]],
+      ["ease_out", "Ease out", ["", "soft", "snappy", "steady"]]]) {
+      const id = "storyboard-" + i + "-" + field;
+      const select = el("select", {id, "data-field": field});
+      for (const value of options) select.append(el("option", {value, text: value}));
+      select.value = saved[field] || "";
+      select.addEventListener("change", () => {
+        const beats = doc.storyboard?.beats || {};
+        const values = beats[beat.id] || {};
+        if (select.value) values[field] = select.value; else delete values[field];
+        if (Object.keys(values).length) beats[beat.id] = values; else delete beats[beat.id];
+        if (Object.keys(beats).length) doc.storyboard = {beats}; else delete doc.storyboard;
+        renderStoryboardTips(); edited();
+      });
+      row.append(el("label", {class: "block", for: id, text: label}), select);
+    }
+    rows.append(row);
+  });
+  renderStoryboardTips();
+}
+function renderStoryboardTips(){
+  $("#storyboard-rows").querySelectorAll(".storyboard-tip").forEach(e => e.remove());
+  const beats = doc.storyboard?.beats || {};
+  sceneBeats.slice(0, -1).forEach((beat, i) => {
+    const out = beats[beat.id]?.out, next = beats[sceneBeats[i + 1].id]?.in;
+    if (out && next && out !== next) $("#storyboard-rows").children[i].append(el("p", {class: "muted storyboard-tip",
+      text: "Tip: match this exit to how the next beat comes in for a smoother join."}));
+  });
+}
 init();
+</script>
+
+<!-- ---- G2-c: Tweakpane fine-tune ---- -->
+<section id="fine-tune" class="panel" hidden aria-label="Fine-tune scene">
+  <label class="block" for="fine-beat">Fine-tune beat</label>
+  <select id="fine-beat"></select>
+  <p id="fine-empty" class="muted"></p>
+  <div id="fine-pane"></div>
+</section>
+<script type="module">
+// ---- G2-c: Tweakpane fine-tune ----
+import { Pane } from "./tweakpane.min.js";
+const section = document.getElementById("fine-tune");
+document.getElementById("board").append(section);
+const choose = document.getElementById("fine-beat");
+const empty = document.getElementById("fine-empty");
+let pane = null, selected = null, model = {}, bindings = [], refreshing = false;
+function refreshFineValues() {
+  const fill = doc?.scenes?.[selected], spec = fill && sceneSpec(fill.id);
+  if (!spec || !pane) return;
+  for (const param of bindings) model[param.name] = fill.params?.[param.name] ?? param.default;
+  // refresh() can clamp the display model and emit change; never echo it back.
+  refreshing = true;
+  try { pane.refresh(); } finally { refreshing = false; }
+}
+function buildFine() {
+  pane?.dispose(); pane = null; bindings = []; model = {};
+  const beats = Object.keys(doc?.scenes || {});
+  if (!beats.includes(selected)) selected = beats[0] || null;
+  choose.replaceChildren(...beats.map(beat => new Option(beatLabel(beat), beat)));
+  choose.value = selected || ""; choose.disabled = !beats.length;
+  section.hidden = !doc;
+  const fill = doc?.scenes?.[selected], spec = fill && sceneSpec(fill.id);
+  bindings = (spec?.params || []).filter(p => p.type === "number" || p.type === "color");
+  empty.textContent = bindings.length ? "" : "This beat has no numeric or colour scene values to fine-tune.";
+  if (!bindings.length) return;
+  pane = new Pane({container: document.getElementById("fine-pane"), title: "Fine-tune", expanded: false});
+  for (const param of bindings) {
+    model[param.name] = fill.params?.[param.name] ?? param.default;
+    const options = {label: param.name, disabled: counterValue(spec, param)};
+    if (param.type === "number") {
+      if (param.min != null) options.min = param.min;
+      if (param.max != null) options.max = param.max;
+    } else options.view = "color";
+    pane.addBinding(model, param.name, options).on("change", event => {
+      if (refreshing || counterValue(spec, param)) return;
+      fill.params ||= {}; fill.params[param.name] = event.value;
+      const row = [...document.querySelectorAll(".scene-controls")].find(e => e.dataset.beat === selected);
+      const control = row && [...row.querySelectorAll("[data-param]")].find(e => e.dataset.param === param.name);
+      if (control) {
+        control.value = event.value;
+        control.dispatchEvent(new Event("input", {bubbles: true}));
+      } else edited();
+      refreshFineValues();
+    });
+  }
+}
+choose.addEventListener("change", () => { selected = choose.value; buildFine(); });
+document.getElementById("sketches").addEventListener("focusin", event => {
+  const beat = event.target.closest(".scene-controls")?.dataset.beat;
+  if (beat && doc?.scenes?.[beat] && beat !== selected) { selected = beat; buildFine(); }
+});
+document.getElementById("sketches").addEventListener("input", refreshFineValues);
+new MutationObserver(buildFine).observe(document.getElementById("sketches"), {childList: true, subtree: true});
+buildFine();
 </script>
 </body>
 </html>

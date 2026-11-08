@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Trial reels</title>
+<style>
+:root{color-scheme:dark;--bg:#101218;--panel:#191d26;--line:#353e50;--ink:#f1f3f8;--dim:#abb5c8;--accent:#9fc0ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,sans-serif}
+header,main{padding:18px;max-width:1600px;margin:auto}header{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+h1{font-size:26px;font-weight:600;margin:0 auto 0 0}h2{font-size:18px;margin:0 0 8px}p{color:var(--dim)}
+button,select,textarea{font:inherit;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--ink);padding:9px}
+button{cursor:pointer}button:disabled{opacity:.5;cursor:default}#send{background:var(--accent);color:#101218;font-weight:600}
+#versions{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}article{background:var(--panel);padding:12px;border:1px solid var(--line);border-radius:10px}
+video{display:block;width:100%;max-height:58vh;aspect-ratio:9/16;background:#000}label{display:block;margin-top:12px}textarea{display:block;width:100%;min-height:70px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}[hidden]{display:none!important}#status[data-state=error]{color:#ffa9a9}
+</style>
+</head>
+<body>
+<header><h1>Trial reels</h1><button id="watch-opening" disabled>Watch the opening</button>
+<label><input id="muted" type="checkbox" checked> Muted</label><button id="send" disabled>Send to Claude</button></header>
+<main><p>One change per trial. Post the versions you choose and compare your own results.</p>
+<p id="empty">Ask Claude to prepare trial versions from your approved cut.</p>
+<p id="status" role="status" aria-live="polite"></p><div id="versions"></div></main>
+<script src="./board-client.js"></script>
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const baseUrl = "/videos/" + encodeURIComponent(new URLSearchParams(location.search).get("reel")) + "/";
+let forbidden, bc, report, state, queue = Promise.resolve(), openingTimer = null;
+const videos = [];
+function status(text, kind="saved") { $("#status").textContent = text; $("#status").dataset.state = kind; }
+function node(tag, text) { const el = document.createElement(tag); if(text) el.textContent = text; return el; }
+async function json(rel) { const r = await fetch(baseUrl + rel, {cache:"no-store"}); return r.ok ? r.json() : null; }
+function validWords() { return !forbidden.test(JSON.stringify(state)); }
+function persist() {
+  if (!validWords()) { status("Use honest trial-reel wording in your note.", "error"); return Promise.resolve({ok:false}); }
+  const doc = structuredClone(state);
+  queue = queue.catch(() => null).then(() => bc.save(doc));
+  return queue;
+}
+function renderCard(row, isBase) {
+  if (!/^[a-z][a-z0-9-]*$/.test(row.id) || typeof row.file !== "string" ||
+      !row.file.startsWith("trials/" + row.id + "/") || row.file.split("/").some(s => !s || s === "." || s === ".." || /[\\:]/.test(s)))
+    throw new Error("file");
+  const card = node("article"); card.dataset.id = row.id;
+  card.append(node("h2", isBase ? "Approved cut · unchanged" : "Trial " + row.id));
+  const video = node("video"); video.controls = true; video.muted = true; video.playsInline = true; video.preload = "metadata";
+  video.src = baseUrl + row.file.split("/").map(encodeURIComponent).join("/");
+  video.setAttribute("aria-label", isBase ? "Base reel" : "Trial " + row.id); card.append(video); videos.push(video);
+  card.append(node("p", isBase ? "Same cut and voice as every trial." : row.description || "One declared change: " + row.change));
+  if (!isBase) {
+    const pick = state.versions.find(v => v.id === row.id);
+    const label = node("label", "Your choice"), select = node("select"); select.id = "choice-" + row.id; label.htmlFor = select.id;
+    for (const [value, text] of [["", "Choose keep or skip"],["keep","Keep"],["skip","Skip"]]) {
+      const option = node("option", text); option.value = value; select.append(option);
+    }
+    select.value = pick.choice; select.onchange = () => { pick.choice = select.value; persist(); };
+    const noteLabel = node("label", "Your note (optional)"), note = node("textarea"); note.id = "note-" + row.id;
+    noteLabel.htmlFor = note.id; note.value = pick.note; note.oninput = () => { pick.note = note.value; persist(); };
+    card.append(label, select, noteLabel, note);
+  }
+  $("#versions").append(card);
+}
+async function watchOpening() {
+  clearTimeout(openingTimer);
+  try {
+    await Promise.all(videos.map(video => new Promise((resolve, reject) => {
+      video.pause();
+      const seek = () => {
+        if (video.currentTime === 0) { resolve(); return; }
+        video.addEventListener("seeked", resolve, {once:true}); video.currentTime = 0;
+      };
+      video.addEventListener("error", reject, {once:true});
+      if (video.readyState) seek(); else video.addEventListener("loadedmetadata", seek, {once:true});
+    })));
+    await Promise.all(videos.map(video => video.play()));
+    openingTimer = setTimeout(() => videos.forEach(video => video.pause()), 5000);
+  } catch(e) { videos.forEach(video => video.pause()); status("One of the trial videos could not play. Reload and try again.", "error"); }
+}
+async function send() {
+  if (!validWords()) { status("Use honest trial-reel wording in your note.", "error"); return; }
+  if (state.versions.some(row => !["keep","skip"].includes(row.choice))) {
+    status("Choose keep or skip for each trial before sending.", "error"); return;
+  }
+  $("#send").disabled = true;
+  try {
+    state.sent_at = new Date().toISOString();
+    const saved = await persist(); if (!saved.ok) throw new Error("save");
+    const r = await fetch(baseUrl + "__save?board=trials&name=trials-selection.json", {
+      method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(state)});
+    const answer = await r.json(); if (!r.ok || !answer.ok) throw new Error("send");
+    status("Sent. Tell Claude your trial choices are ready.", "sent");
+  } catch(e) { status("Couldn't send. Your choices are kept here; try Send again.", "error"); }
+  finally { $("#send").disabled = false; }
+}
+async function init() {
+  try {
+    const wording = await fetch("./wording.json", {cache:"no-store"});
+    if (!wording.ok) throw new Error("wording");
+    forbidden = new RegExp(await wording.json(), "i");
+    bc = BoardClient.create({board:"trials"});
+    const [data, saved, last] = await Promise.all([json("trials/trials-report.json"), bc.load(), json("trials-selection.json")]);
+    if (!data || !data.base || !data.versions?.length) return;
+    if (forbidden.test(JSON.stringify(data))) throw new Error("wording");
+    report = data;
+    const signature = JSON.stringify([report.plan_sha256, report.versions.map(v => [v.id, v.sha256])]);
+    const old = saved?.report === signature ? saved : last?.report === signature ? last : null;
+    state = {schema:1, report:signature, versions:report.versions.map(row => {
+      const prior = old?.versions?.find(v => v.id === row.id);
+      return {id:row.id, choice:["keep","skip"].includes(prior?.choice) ? prior.choice : "", note:prior?.note || ""};
+    })};
+    if (!validWords()) throw new Error("wording");
+    renderCard(report.base, true); report.versions.forEach(row => renderCard(row, false));
+    $("#empty").hidden = true; $("#send").disabled = false; $("#watch-opening").disabled = false;
+    $("#muted").onchange = () => videos.forEach(video => { video.muted = $("#muted").checked; });
+    $("#watch-opening").onclick = watchOpening; $("#send").onclick = send;
+  } catch(e) { status("The trial versions could not load. Ask Claude to prepare them again.", "error"); }
+}
+init();
+</script>
+</body>
+</html>

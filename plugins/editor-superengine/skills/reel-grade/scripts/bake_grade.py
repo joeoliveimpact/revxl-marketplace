@@ -116,7 +116,7 @@ def resolve_look(reel_dir, explicit=None, selection=None):
             look = json.loads(path.read_text(encoding="utf-8")).get("look")
             if look is not None:
                 return look
-    look = saved_style.load().get("look")
+    look = saved_style.load(reel_dir).get("look")
     if look is not None:
         look_stack(look)
         lid = str(look.get("id") or "none")

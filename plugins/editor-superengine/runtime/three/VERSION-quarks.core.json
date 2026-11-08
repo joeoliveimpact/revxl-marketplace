@@ -1,0 +1,13 @@
+{
+  "package": "quarks.core",
+  "version": "0.17.1",
+  "tarball_sha256": "2cc16d071de883b1c607e74b7a4c5492f4977576648775df3f31f62f08821871",
+  "files": {
+    "quarks.core.js": "b214161d4f49500f1adcf65ba39a1edcc7162454f53a6c7fe4576512f24fcb3a",
+    "LICENSE-quarks.core": {
+      "sha256": "4846c46a25cd0baab940d02389c40475cee79bfd4e06195c844a00c71663fbd1",
+      "upstream_sha256": "a5475475eea369815620d571431d6293996ee2492c02c41f0c47596f6fbcd4dd",
+      "line_endings": "CRLF->LF"
+    }
+  }
+}

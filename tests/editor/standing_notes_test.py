@@ -25,11 +25,11 @@ def cli(*args, code=0, cwd=None):
 
 def add(note, key="caption_style.style", value="bold-pop", style="default"):
     cli("add", note, "--key", key, "--value", json.dumps(value), "--style", style)
-    return ss.load(style)["standing_notes"][-1]["id"]
+    return ss.load(name=style)["standing_notes"][-1]["id"]
 
 
 def readback(style="default"):
-    return "\n".join(ss.readback(ss.load(style)))
+    return "\n".join(ss.readback(ss.load(name=style)))
 
 
 def captions():
@@ -47,21 +47,22 @@ def case_sticks(root):
         reel = root / name
         reel.mkdir()
         (reel / "beat-map-selection.json").write_bytes(b'{"beats": [], "word_marks": []}\n')
-        assert ss.resolve("caption_style.style", saved=ss.load()) == ("bold-pop", "saved")
+        assert ss.resolve("caption_style.style", saved=ss.load(name="default")) == ("bold-pop", "saved")
+        ss.pick(reel, "default")
         assert cap.pick_style(reel) == ({"style": "bold-pop"}, "saved")
     assert "Always: Caption look = bold-pop" in cli("list")
     assert "Always: Caption look = bold-pop" in readback()
     # A named style must not change the default or another client's notes.
     add("My captions are boxed", value="boxed", style="client-b")
-    assert ss.load("client-b")["caption_style"]["style"] == "boxed"
-    assert ss.load()["caption_style"]["style"] == "bold-pop"
+    assert ss.load(name="client-b")["caption_style"]["style"] == "boxed"
+    assert ss.load(name="default")["caption_style"]["style"] == "bold-pop"
     assert "My captions are boxed" in cli("list", "--style", "client-b")
 
 
 def case_verbatim(root):
     note = '  Always say "caf\u00e9" \u2014 \u9ec4\u8272 \U0001f49b\nKeep my "words".  '
     add(note)
-    record = ss.load()["standing_notes"][0]
+    record = ss.load(name="default")["standing_notes"][0]
     assert record["note"].encode("utf-8") == note.encode("utf-8")
     assert record["status"] == "matched" and record["added"]
     assert record["key"] == "caption_style.style" and record["value"] == "bold-pop"
@@ -73,11 +74,11 @@ def case_verbatim(root):
 def case_unmatched(root):
     note = "Give every reel that feeling from my childhood"
     cli("add", note, "--unmatched")
-    record = ss.load()["standing_notes"][0]
+    record = ss.load(name="default")["standing_notes"][0]
     assert record["status"] == "unmatched" and record["note"] == note
     assert record["key"] is None and record["value"] is None
-    assert ss.resolve("caption_style.style", saved=ss.load()) == (None, "ask")
-    assert set(ss.load()) == {"schema", "standing_notes"}
+    assert ss.resolve("caption_style.style", saved=ss.load(name="default")) == (None, "ask")
+    assert set(ss.load(name="default")) == {"schema", "standing_notes"}
     for output in (cli("list"), readback()):
         assert "Standing notes:" not in output
         section = output.split("Could not be matched:", 1)[1]
@@ -89,7 +90,7 @@ def case_replace(root):
     first = add("Always use bold pop")
     second = add("Always use boxed captions", value="boxed")
     assert first != second
-    assert ss.resolve("caption_style.style", saved=ss.load()) == ("boxed", "saved")
+    assert ss.resolve("caption_style.style", saved=ss.load(name="default")) == ("boxed", "saved")
     for output in (cli("list"), readback()):
         assert "Always use bold pop" in output and "Always use boxed captions" in output
         assert "replaced by a newer note" in output
@@ -97,25 +98,25 @@ def case_replace(root):
         assert "Always: Caption look = boxed" in output
         assert "Always: Caption look = bold-pop" not in output
     cli("remove", str(first))
-    assert ss.resolve("caption_style.style", saved=ss.load()) == ("boxed", "saved")
+    assert ss.resolve("caption_style.style", saved=ss.load(name="default")) == ("boxed", "saved")
     assert second in cli("list", "--ids")
 
 
 def case_match(root):
     cli("add", "Use my yellow", "--unmatched")
-    note_id = ss.load()["standing_notes"][0]["id"]
+    note_id = ss.load(name="default")["standing_notes"][0]["id"]
     cli("match", str(note_id), "--key", "accent", "--value", '"#FFD84D"')
-    record = ss.load()["standing_notes"][0]
+    record = ss.load(name="default")["standing_notes"][0]
     assert record["id"] == note_id and record["note"] == "Use my yellow"
     assert record["status"] == "matched"
-    assert ss.resolve("accent", saved=ss.load()) == ("#FFD84D", "saved")
+    assert ss.resolve("accent", saved=ss.load(name="default")) == ("#FFD84D", "saved")
     assert "Use my yellow" not in cli("list").split("Could not be matched:", 1)[1]
     # Matching a formerly unmatched note also replaces an existing rule.
     previous = add("My font is Inter", key="font", value="Inter")
     cli("add", "Use the other font", "--unmatched")
-    current = ss.load()["standing_notes"][-1]["id"]
+    current = ss.load(name="default")["standing_notes"][-1]["id"]
     cli("match", str(current), "--key", "font", "--value", '"Montserrat"')
-    assert ss.resolve("font", saved=ss.load()) == ("Montserrat", "saved")
+    assert ss.resolve("font", saved=ss.load(name="default")) == ("Montserrat", "saved")
     assert "replaced by a newer note" in cli("list")
     assert current in cli("list", "--ids") and current not in readback()
     assert previous != current
@@ -126,16 +127,16 @@ def case_remove(root):
     current = add("Use boxed now", value="boxed")
     accent = add("Use my yellow", key="accent", value="#FFD84D")
     cli("remove", str(current))
-    assert ss.resolve("caption_style.style", saved=ss.load()) == ("bold-pop", "saved")
-    assert ss.resolve("accent", saved=ss.load()) == ("#FFD84D", "saved")
+    assert ss.resolve("caption_style.style", saved=ss.load(name="default")) == ("bold-pop", "saved")
+    assert ss.resolve("accent", saved=ss.load(name="default")) == ("#FFD84D", "saved")
     assert "Use boxed now" not in cli("list")
     assert "Always: Caption look = bold-pop" in cli("list")
     assert "replaced" not in cli("list")
-    assert all("replaced_by" not in n for n in ss.load()["standing_notes"])
+    assert all("replaced_by" not in n for n in ss.load(name="default")["standing_notes"])
     cli("remove", str(accent))
-    assert ss.resolve("accent", saved=ss.load()) == (None, "ask")
+    assert ss.resolve("accent", saved=ss.load(name="default")) == (None, "ask")
     cli("add", "Still unsure", "--unmatched")
-    note_id = ss.load()["standing_notes"][-1]["id"]
+    note_id = ss.load(name="default")["standing_notes"][-1]["id"]
     cli("remove", str(note_id))
     assert "Still unsure" not in readback()
 
@@ -168,7 +169,7 @@ def case_allowed(root):
         assert "Traceback" not in output and len(output.splitlines()) == 1
         assert ss.path().read_bytes() == before
     cli("add", "Match me later", "--unmatched")
-    note_id = ss.load()["standing_notes"][-1]["id"]
+    note_id = ss.load(name="default")["standing_notes"][-1]["id"]
     before = ss.path().read_bytes()
     cli("match", note_id, "--key", "caption_style.style", "--value", '"invented"', code=2)
     assert ss.path().read_bytes() == before
@@ -177,21 +178,21 @@ def case_allowed(root):
 def case_parent(root):
     child = add("Bold captions")
     parent = add("Whole caption choice", key="caption_style", value={"style": "boxed", "line_breaks": False})
-    assert ss.load()["standing_notes"][0]["replaced_by"] == parent
-    assert ss.load()["caption_style"] == {"style": "boxed", "line_breaks": False}
+    assert ss.load(name="default")["standing_notes"][0]["replaced_by"] == parent
+    assert ss.load(name="default")["caption_style"] == {"style": "boxed", "line_breaks": False}
     # Parent wins even when a child note is added later.
     later = add("Clean captions", value="clean")
-    assert ss.load()["standing_notes"][-1]["replaced_by"] == parent
-    assert ss.load()["caption_style"]["style"] == "boxed"
+    assert ss.load(name="default")["standing_notes"][-1]["replaced_by"] == parent
+    assert ss.load(name="default")["caption_style"]["style"] == "boxed"
     cli("remove", parent)
-    assert ss.load()["caption_style"] == {"style": "clean"}
-    assert all(n.get("replaced_by") != parent for n in ss.load()["standing_notes"])
+    assert ss.load(name="default")["caption_style"] == {"style": "clean"}
+    assert all(n.get("replaced_by") != parent for n in ss.load(name="default")["standing_notes"])
     cli("remove", later)
-    assert ss.load()["caption_style"]["style"] == "bold-pop"
+    assert ss.load(name="default")["caption_style"]["style"] == "bold-pop"
     cli("remove", child)
-    assert "caption_style" not in ss.load()
+    assert "caption_style" not in ss.load(name="default")
     cli("add", "Unclear words", "--unmatched")
-    unmatched = ss.load()["standing_notes"][-1]["id"]
+    unmatched = ss.load(name="default")["standing_notes"][-1]["id"]
     assert unmatched not in cli("list") and unmatched not in readback()
     assert unmatched in cli("list", "--ids")
 

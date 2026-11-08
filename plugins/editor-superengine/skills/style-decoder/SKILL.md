@@ -44,19 +44,7 @@ The client never types a command; you run everything.
   `${CLAUDE_PLUGIN_ROOT}/skills/style-decoder/references/stylespec-contract.md`.
   Frame passes: `references/styleframes-contract.md` in the same skill.
 
-## Your saved styles
-
-Use the one saved-style store for defaults and named styles; decoded specs are referenced by id.
-Run with the `<editor python>` defined above:
-
-`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/saved_style.py" show [name]`
-
-Read it back in plain words. Use `list` instead of `show [name]` for named styles.
-Save a decoded style with the reel's choices:
-
-`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/saved_style.py" save-from-reel <reel folder> --from-decoded <slug>`
-
-For Standing notes, run `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/standing_notes.py" add` or `list`; `add --help` explains matching a choice. Tell the client plainly when a note "Could not be matched".
+**Saved styles** (list, show, rename, default, delete, restore, Standing notes, and saving a decoded style as a new style): ${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/saved-styles.md.
 
 ## The stages
 
@@ -164,6 +152,8 @@ frames show. Every "I had to guess" is a missing field; every mismatch is an
 ambiguity. Fix them, then re-run stage 4.
 
 ### 7. Publish
+
+Before `index`, write `adapters.editor` with the closest editor edit style, caption look and grade look judged from the frames, or `UNKNOWN` (allowed values in saved-styles.md §5). When the client came from "Copy a reel I like", save it as in saved-styles.md §5 after approval.
 
 Only after the client approves: set `style.status` to `approved`, then
 `stylespec.py index`. Tell the client that "approved" means the spec faithfully

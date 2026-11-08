@@ -11,6 +11,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[1] / "_shared"))
 sys.path.insert(0, str(HERE.parents[1] / "_shared/checks"))
 from win_encoding import ensure_utf8_output
+from cut_timing import GUARD_MS
 import footage_check
 
 
@@ -60,9 +61,10 @@ def main():
     ap.add_argument("--edl", required=True)
     ap.add_argument("--take", action="append", required=True)
     for name, default in (("internal", .150), ("join", .150), ("beat-join", .320), ("lead", .080),
-                          ("tail", .100), ("guard", .070), ("min-island", .500), ("min-gap", .100)):
+                          ("tail", .100), ("guard", GUARD_MS / 1000), ("min-island", .500), ("min-gap", .100)):
         ap.add_argument("--" + name, type=float, default=default)
     ap.add_argument("--beat", type=float)
+    ap.add_argument("--nudge", type=float, default=0.)
     ap.add_argument("--speed", type=float, default=1.)
     ap.add_argument("--protect", default="")
     ap.add_argument("--hold", default="")
@@ -129,6 +131,8 @@ def main():
             cmd += ["--" + name, str(getattr(a, name.replace("-", "_")))]
         if a.beat is not None:
             cmd += ["--beat", str(a.beat)]
+        if a.nudge:
+            cmd += ["--nudge", str(a.nudge)]
         if protected[n]:
             cmd += ["--protect", ",".join(protected[n])]
         if a.hold:

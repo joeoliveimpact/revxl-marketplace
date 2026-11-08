@@ -10,6 +10,7 @@
     "grade-board": {"skill": "reel-grade", "template": "skills/reel-grade/boards/grade-board", "writes": ["grade-selection.json"], "tab": {"label": "Grade Board", "stages": ["grade"], "order": 60}},
     "hub": {"skill": "editor-doctor", "template": "skills/editor-doctor/boards/hub", "writes": ["review.json", "reel-notes.json", "hub-requests.json"]},
     "look-picker": {"skill": "reel-captions", "template": "skills/reel-captions/boards/look-picker", "writes": ["look-picker-selection.json"], "tab": {"label": "Look Picker", "stages": ["captions"], "order": 70}},
-    "cover-picker": {"skill": "reel-cover", "template": "skills/reel-cover/boards/cover-picker", "writes": [], "tab": {"label": "Cover Picker", "stages": ["cover"], "order": 80}}
+    "cover-picker": {"skill": "reel-cover", "template": "skills/reel-cover/boards/cover-picker", "writes": ["cover-picker-selection.json"], "tab": {"label": "Cover Picker", "stages": ["cover"], "order": 80}},
+    "trials": {"skill": "reel-trials", "template": "skills/reel-trials/boards/trials", "writes": ["trials-selection.json"], "tab": {"label": "Trial reels", "stages": ["cover"], "order": 90}}
   }
 }

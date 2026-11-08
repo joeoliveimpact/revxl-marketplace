@@ -1,0 +1,15 @@
+{
+  "id": "cta-reminder",
+  "category": "callout",
+  "kind": "overlay",
+  "slots": {
+    "keyword": {"maxChars": 16, "default": "NOTES", "hint": "the word viewers should comment"}
+  },
+  "dur": [4, 6],
+  "params": {
+    "accent": {"type": "color", "default": "#ffd84d"},
+    "font": {"type": "string", "default": "Inter"}
+  },
+  "source": "editor-superengine original",
+  "licence": "own"
+}

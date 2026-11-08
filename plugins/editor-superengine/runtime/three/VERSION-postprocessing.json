@@ -1,0 +1,9 @@
+{
+  "package": "postprocessing",
+  "version": "6.39.5",
+  "tarball_sha256": "ce7495c521102470ce6284563436f6bb673050282a795328a64857ea282e6222",
+  "files": {
+    "postprocessing.js": "b1111c2a755e2f05ffeed9cccecb16580e3022517d93c56a069673a92bed0b4f",
+    "LICENSE-postprocessing": "b7650918449bd5fb011ce30ce0e5bcda27aa9639db1fb3aef8c67c32945237f2"
+  }
+}

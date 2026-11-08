@@ -1,14 +1,18 @@
-"""G1.2 done-test: the Grade Board inside the stub hub's Grade tab, through the real board server, both directions.
+"""G1.2 done-test: the Grade Board inside the real hub's Grade tab, through the real board server, both directions.
 
   EDITOR_SE_HOME=<state> <editor python> -X utf8 -I tests/editor/grade_board_test.py --fixture <talking-head.mp4> \
-      [--case identity|send|reload|roundtrip|all] [--start 30]
+      [--case send_loading|early_send|failed_init|identity|send|reload|roundtrip|all] [--start 30]
+  python -X utf8 -I tests/editor/grade_board_test.py --data-only  # static Send + mutant, no installed tools needed
 
 <state> is an installed editor state folder (node, chrome-headless-shell, puppeteer-core, ffmpeg); it is only read.
 --fixture (or GRADE_TEST_VIDEO) is a talking-head recording, only read: each run cuts one 10 s excerpt at 640 px wide
 into a scratch folder (a light job) and every case builds its own reel from it with make_grade.py, so any case runs
 alone. Every browser is a NEW headless Chrome (fresh profile, so nothing comes from its storage) driven by
-boards_click.js under heavy_lock.py (exit 75/76 = unproven). The board is always opened from the stub hub's Grade tab
-(tests/editor/fixtures/stub-hub.html, a same-origin iframe), never directly. Cases:
+boards_click.js under heavy_lock.py (exit 75/76 = unproven). The board is always opened from the real hub's Grade tab
+(a same-origin iframe); failed-init cases open it directly to test a missing reel or config. Cases:
+  send_loading  static Send starts disabled with Loading...; an enabled-button mutant is rejected (no browser).
+  early_send    without waiting for boot, Send is disabled or already wired; an enabled click writes the Send.
+  failed_init   missing reel/config gives a plain error, no Loading cue, Send disabled; cleanup mutants fail.
   identity   the board opens at the identity: white slider 1.000, the correction equals grade_math.json's defaults,
              look None; Suggested fix then sets make_grade's measured values; every request stays on the board server.
              Mutant: a board copy that opens at the measured values -> the identity check fails.
@@ -28,6 +32,7 @@ Prints one "✓ <case>" / "✗ <case>: <why>" line per case, then "N passed, M f
 """
 import argparse, http.client, json, os, re, shutil, socket, subprocess, sys, tempfile, threading
 from pathlib import Path
+from html.parser import HTMLParser
 
 HERE = Path(__file__).resolve().parent
 PLUGIN = HERE.parents[1] / "plugins/editor-superengine"
@@ -38,12 +43,9 @@ sys.path[:0] = [str(PLUGIN / "skills/_shared"), str(DOCTOR), str(RG / "scripts")
 from win_encoding import ensure_utf8_output  # noqa: E402
 import runtime as rt  # noqa: E402
 import check_deps  # noqa: E402  (writes editor.config.json the way the doctor does)
-import numpy as np  # noqa: E402
-import bake_grade as bg  # noqa: E402  (through_cube: the cube read the way the GPU reads it)
 
 SERVER = DOCTOR / "board_server.py"
 CLICK = HERE / "boards_click.js"
-STUB_HUB = HERE / "fixtures/stub-hub.html"
 HEAVY = r"C:/Workspaces/Content Studio/output/scripts/heavy_lock.py"
 BOARD_HTML = RG / "boards/grade-board/index.html"
 CLIP_S, CLIP_W = 10.0, 640
@@ -132,14 +134,62 @@ def identity_problems(r):
     return out
 
 
+def check_send_loading(html):
+    class SendParser(HTMLParser):
+        attrs = None
+        inside = False
+        cue = False
+
+        def handle_starttag(self, tag, attrs):
+            attrs = dict(attrs)
+            if tag == "button" and attrs.get("id") == "send":
+                self.attrs, self.inside = attrs, True
+            if self.inside and tag == "small" and "data-loading" in attrs:
+                self.cue = True
+
+        def handle_endtag(self, tag):
+            if tag == "button":
+                self.inside = False
+
+        def handle_data(self, data):
+            if self.inside:
+                self.text.append(data)
+
+    parser = SendParser()
+    parser.text = []
+    parser.feed(html)
+    need(parser.attrs is not None and "disabled" in parser.attrs, "Send is live during load")
+    need(parser.cue and "Loading..." in "".join(parser.text), "Send has no loading cue")
+
+
+def send_loading_case():
+    html = BOARD_HTML.read_text(encoding="utf-8")
+    check_send_loading(html)
+    button = re.search(r'<button\b[^>]*\bid="send"[^>]*>', html).group()
+    need(button.count(" disabled") == 1, "loading mutant anchor differs")
+    try:
+        check_send_loading(html.replace(button, button.replace(" disabled", "", 1), 1))
+    except Fail as e:
+        need(str(e) == "Send is live during load", f"wrong mutant rejection: {e}")
+    else:
+        raise Fail("loading mutant survived: Send enabled before init")
+
+
 def main():
     ensure_utf8_output()
-    names = ["identity", "send", "reload", "roundtrip"]
+    names = ["send_loading", "early_send", "failed_init", "identity", "send", "reload", "roundtrip"]
     ap = argparse.ArgumentParser(description="Grade Board done-test")
     ap.add_argument("--case", choices=names + ["all"], default="all")
+    ap.add_argument("--data-only", action="store_true", help="run the static Send check and its mutant only")
     ap.add_argument("--fixture", default=os.environ.get("GRADE_TEST_VIDEO"), help="a talking-head recording (read only)")
     ap.add_argument("--start", type=float, default=30.0, help="where the 10 s excerpt starts in the fixture")
     a = ap.parse_args()
+    if a.data_only or a.case == "send_loading":
+        send_loading_case()
+        print("Send loading static check + enabled-button mutant passed")
+        return 0
+    import numpy as np
+    import bake_grade as bg  # through_cube: the cube read the way the GPU reads it
     want = names if a.case == "all" else [a.case]
     tools, missing = find_tools()
     if missing:
@@ -197,9 +247,6 @@ def main():
         t.cancel()
         need(line.startswith("Editor boards: http://127.0.0.1:") and line.endswith("/"), f"server said {line!r}")
         S["server"], S["port"] = p, int(line.rsplit(":", 1)[1].rstrip("/"))
-        hub = ws / "editor/hub"
-        hub.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(STUB_HUB, hub / "index.html")  # test fixture only: the 0.2.0 hub page is S13's
         return S["port"]
 
     def clip():
@@ -221,14 +268,19 @@ def main():
         ok(py(RG, "make_grade.py", "--reel", name, "--video", d / "raw/clip.mp4", "--reel-dir", d), "make_grade.py")
         return d, load(d / "grade/grade-config.json")
 
-    def browse(reel_name, actions, label):
-        """A NEW headless Chrome (fresh profile) under heavy_lock opens the stub hub, the Grade tab, then runs actions."""
+    def browse(reel_name, actions, label, ready=True, direct_path=None):
+        """A NEW headless Chrome (fresh profile) under heavy_lock opens the real hub, the Grade tab, then runs actions."""
         port = server()
+        for name in ("board_sync.py", "hub_rows.py"):
+            p = sh([sys.executable, "-X", "utf8", "-I", "-B", DOCTOR / name, "--root", ws])
+            ok(p, "hub setup " + name)
         S["browsers"] += 1
         job = scratch / "jobs" / f"{S['browsers']:02d}-{label}.json"
-        tab = [{"do": "goto", "path": f"/editor/hub/?reel={reel_name}", "wait": "#tab-grade"},
-               {"do": "click", "sel": "#tab-grade"},
-               {"do": "frame", "sel": ".frame iframe", "waitFn": "window.GB && GB.ready"}]
+        tab = [{"do": "goto", "path": f"/editor/hub/?reel={reel_name}", "waitFn": "window.Hub && Hub.ready"},
+               {"do": "click", "sel": "#tab-grade-board"},
+               {"do": "frame", "sel": ".frame iframe", **({"waitFn": "window.GB && GB.ready"} if ready else {"wait": "#send"})}]
+        if direct_path is not None:
+            tab = [{"do": "goto", "path": direct_path, "wait": "#send"}]
         write_json(job, {"base": f"http://127.0.0.1:{port}", "userDataDir": str(scratch / "profiles" / job.stem),
                          "actions": tab + actions})
         p = sh([sys.executable, "-X", "utf8", "-I", HEAVY, "--wait", "60", "--min-gb", "3", "--",
@@ -263,6 +315,47 @@ def main():
             (d / f).unlink(missing_ok=True)
 
     # ---- cases ----
+    def c_early_send():
+        d, _ = reel("early-send-reel")
+        out = browse("early-send-reel", [
+            {"do": "eval", "js": "document.querySelector('#send').disabled || typeof document.querySelector('#send').onclick === 'function'"},
+            {"do": "waitFn", "js": "!document.querySelector('#send').disabled"},
+            {"do": "click", "sel": "#send"},
+            {"do": "waitText", "sel": "#saved", "re": "saved grade-selection\\.json|FAILED"}], "early-send", ready=False)
+        need(out["reads"] == [True], "Send was enabled before its handler was attached")
+        need((d / "grade-selection.json").is_file(), "early Send did not write grade-selection.json")
+
+    def c_failed_init():
+        (videos / "no-grade-reel").mkdir()
+        for path, message in (("/editor/grade-board/", "Ask Claude to open the Grade Board for this reel."),
+                              ("/editor/grade-board/?reel=no-grade-reel", "No grade is set up for this reel yet.")):
+            def check_init():
+                out = browse("no-grade-reel", [
+                    {"do": "waitFn", "js": "!!document.querySelector('body > pre')"},
+                    {"do": "eval", "js": "JSON.stringify({error: document.querySelector('body > pre').textContent, "
+                     "disabled: document.querySelector('#send').disabled, loading: !!document.querySelector('#send [data-loading]')})"}],
+                    "failed-init", ready=False, direct_path=path)
+                r = reads(out)[0]
+                need("Grade Board could not start:" in r["error"] and message in r["error"], f"wrong boot error: {r}")
+                need(r["disabled"], "failed init: Send is enabled")
+                need(not r["loading"], "failed init: loading cue survived")
+            check_init()
+            live = ws / "editor/grade-board/index.html"
+            original = live.read_bytes()
+            html = original.decode("utf-8")
+            cleanup = "$('#send').querySelector('[data-loading]')?.remove();"
+            need(html.count(cleanup) == 1, "failed-init mutant anchor differs")
+            live.write_bytes(html.replace(cleanup, "", 1).encode("utf-8"))
+            try:
+                try:
+                    check_init()
+                except Fail as e:
+                    need(str(e) == "failed init: loading cue survived", f"wrong mutant rejection: {e}")
+                else:
+                    raise Fail("failed-init loading cue mutant survived")
+            finally:
+                live.write_bytes(original)
+
     def c_identity():
         html = BOARD_HTML.read_text(encoding="utf-8")
         need(not re.search(r"localStorage|https?://|fonts\.g", html), "the board names localStorage or a web address")
@@ -295,34 +388,63 @@ def main():
         writes = {w for b in boards.values() for w in b.get("writes", [])}
         need("grade-selection.json" in sends and not set(sends) - writes,
              f"logic.ts Send names not in any boards.json writes: {sorted(set(sends) - writes)} (SENDS {sends})")
-        d, _ = reel("send-reel")
+        d, cfg = reel("send-reel")
         need(post("send-reel", "selection.json") == 403 and not (d / "selection.json").exists(),
              "a __save of selection.json for grade-board was not refused with 403")
-        browse("send-reel", [{"do": "click", "sel": '#rail figure[data-look="warm"]'},
+        # Pick the look at run time: the first look the skin guard passes on THIS clip. A look that fails
+        # the guard is refused by the board by design, so a hard-coded look breaks on some clips.
+        passing = [lk["id"] for lk in cfg["looks"] if (lk.get("guard") or {}).get("ok") is not False]
+        need(passing, f"no look passes the skin check on this clip: {[(lk['id'], lk.get('guard')) for lk in cfg['looks']]}")
+        pick = passing[0]
+        print(f"    send look: {pick} (first look the skin guard passes on this clip)")
+        # Refusal leg: a look that fails the guard is refused with the board's plain message, no slider,
+        # no crash. Use a look that fails on this clip; if none does, plant the failure in the config.
+        failing = [lk for lk in cfg["looks"] if (lk.get("guard") or {}).get("ok") is False]
+        rd, rcfg = reel("refuse-reel")
+        if failing:
+            bad = failing[0]
+            planted = False
+        else:
+            bad = next(lk for lk in rcfg["looks"] if lk["id"] == "warm")
+            bad["guard"] = dict(bad.get("guard") or {}, ok=False)
+            write_json(rd / "grade/grade-config.json", rcfg)
+            planted = True
+        print(f"    refused look: {bad['id']} ({'planted' if planted else 'fails the guard on this clip'})")
+        msg = f"{bad['name']} fails the skin check on this reel"
+        browse("refuse-reel", [{"do": "domclick", "sel": f'#rail figure[data-look="{bad["id"]}"]'},
+                               {"do": "waitText", "sel": "#lookNote", "re": re.escape(msg)},
+                               {"do": "waitFn", "js": "!document.getElementById('strength')"
+                                " && document.querySelector('#rail figure.on').dataset.look === 'none'"}], "refuse")
+        need(not (rd / "grade-selection.json").exists(), "a refused look wrote a grade-selection.json")
+        browse("send-reel", [{"do": "domclick", "sel": f'#rail figure[data-look="{pick}"]'},
                              {"do": "set", "sel": "#strength", "value": "0.6"},
+                             {"do": "waitFn", "js": "!document.querySelector('#send').disabled"},
                              {"do": "click", "sel": "#send"},
                              {"do": "waitText", "sel": "#saved", "re": "saved grade-selection\\.json|FAILED"}], "send")
         sel = d / "grade-selection.json"
         need(sel.is_file(), "no grade-selection.json in the reel folder after Send")
         need(not (d / "selection.json").exists(), "a selection.json was written too")
         doc = load(sel)
-        need(doc["look"] == {"id": "warm", "strength": 0.6}, f"look sent as {doc['look']}")
+        need(doc["look"] == {"id": pick, "strength": 0.6}, f"look sent as {doc['look']}")
         need(doc["correction"] == IDENTITY, f"correction sent as {doc['correction']}")
         need(doc["reel"] == "send-reel" and doc["math_version"] == SPEC["version"] and doc["saved_at"],
              f"reel {doc.get('reel')}, math_version {doc.get('math_version')}, saved_at {doc.get('saved_at')}")
 
     def c_reload():
         d, cfg = reel("reload-reel")
-        browse("reload-reel", [{"do": "click", "sel": '#rail figure[data-look="punchy"]'},
+        ok_looks = [lk["id"] for lk in cfg["looks"] if (lk.get("guard") or {}).get("ok") is not False]
+        need(ok_looks, "no look passes the skin check on this clip")
+        look = "punchy" if "punchy" in ok_looks else ok_looks[0]  # run-time pick: a guard-failing look is refused
+        browse("reload-reel", [{"do": "domclick", "sel": f'#rail figure[data-look="{look}"]'},
                                {"do": "set", "sel": "#strength", "value": "0.4"}, {"do": "click", "sel": "#suggest"},
                                {"do": "waitState", "board": "grade-board",
-                                "js": "s.A && s.A.look.id === 'punchy' && s.A.look.strength === 0.4 && s.A.correction.white !== 1"}],
+                                "js": f"s.A && s.A.look.id === '{look}' && s.A.look.strength === 0.4 && s.A.correction.white !== 1"}],
                "reload-1")
         need((d / "grade-board.state.json").is_file(), "no grade-board.state.json on disk")
         r = reads(browse("reload-reel", [{"do": "eval", "js": READ}], "reload-2"))[0]
         sug = cfg["suggested"]
         got = (r["look"], r["on"], r["strength"], r["corr"]["white"], r["whiteText"])
-        need(got == ({"id": "punchy", "strength": 0.4}, ["punchy"], "0.4", sug["white"], f"{sug['white']:.3f}"),
+        need(got == ({"id": look, "strength": 0.4}, [look], "0.4", sug["white"], f"{sug['white']:.3f}"),
              f"after a reload in a new browser the board shows (look, highlighted, strength, white, white text) = {got}")
         drop_state(d)
         r = reads(browse("reload-reel", [{"do": "eval", "js": READ}], "reload-3"))[0]
@@ -337,23 +459,43 @@ def main():
         img.save(d / "grade/patches.png")
         cfg["frames"].append({"pct": None, "t": None, "file": "patches.png", "label": "patches"})
         write_json(d / "grade/grade-config.json", cfg)
+        # Pick the look at run time: Punchy first, else the first guard-passing look, whose bake of this exact
+        # Send (strength 0.5, Suggested fix, temp +0.2) the skin guard accepts on THIS clip. A combination that
+        # turns skin past the limit is refused by design, so a hard-coded look breaks on some clips.
+        corr = dict(IDENTITY)
+        corr.update({k: float(v) for k, v in cfg["suggested"].items() if k in SPEC["pre_pass"]["params"]})
+        corr["temp"] = 0.2
+        order = ["punchy"] + [lk["id"] for lk in cfg["looks"]
+                              if lk["id"] != "punchy" and (lk.get("guard") or {}).get("ok") is not False]
+        pd, _ = reel("trip-probe")
+        look = None
+        for lid in order:
+            write_json(pd / "grade-selection.json", {"look": {"id": lid, "strength": 0.5}, "correction": corr,
+                                                     "reel": "trip-probe", "math_version": SPEC["version"],
+                                                     "saved_at": "probe"})
+            if py(RG, "grade_from_selection.py", "--reel-dir", pd).returncode == 0:
+                look = lid
+                break
+        need(look, f"no look's Send passes the skin guard on this clip (tried {order})")
+        print(f"    roundtrip look: {look} (first whose Send the skin guard accepts on this clip)")
         out = browse("trip-reel", [
             {"do": "click", "sel": '#frames button[data-f="patches.png"]'},
             {"do": "waitFn", "js": "GB.S.frame === 'patches.png' && GB.ready"},
-            {"do": "click", "sel": '#rail figure[data-look="punchy"]'}, {"do": "set", "sel": "#strength", "value": "0.5"},
+            {"do": "domclick", "sel": f'#rail figure[data-look="{look}"]'}, {"do": "set", "sel": "#strength", "value": "0.5"},
             {"do": "click", "sel": "#suggest"}, {"do": "set", "sel": "#tune input[data-k=temp]", "value": "0.2"},
-            {"do": "eval", "js": PIXELS}, {"do": "eval", "js": FLOAT}, {"do": "click", "sel": "#send"},
+            {"do": "eval", "js": PIXELS}, {"do": "eval", "js": FLOAT},
+            {"do": "waitFn", "js": "!document.querySelector('#send').disabled"}, {"do": "click", "sel": "#send"},
             {"do": "waitText", "sel": "#saved", "re": "saved grade-selection\\.json|FAILED"},
             {"do": "waitState", "board": "grade-board",
-             "js": "s.A && s.A.look.id === 'punchy' && s.A.look.strength === 0.5 && s.A.correction.temp === 0.2"}], "roundtrip")
+             "js": f"s.A && s.A.look.id === '{look}' && s.A.look.strength === 0.5 && s.A.correction.temp === 0.2"}], "roundtrip")
         board, board_f = reads(out)[:2]
         sel = load(d / "grade-selection.json")
-        need(sel["look"] == {"id": "punchy", "strength": 0.5} and sel["correction"]["temp"] == 0.2
+        need(sel["look"] == {"id": look, "strength": 0.5} and sel["correction"]["temp"] == 0.2
              and sel["correction"]["white"] == cfg["suggested"]["white"], f"sent {sel['look']} {sel['correction']}")
         msg = ok(py(RG, "grade_from_selection.py", "--reel-dir", d), "grade_from_selection.py")
         need("Nothing was applied" in msg, f"the bake said {msg.strip()!r}")
         g = load(d / "grade.json")
-        need(g["look"] == {"id": "punchy", "strength": 0.5} and g["takes"][0]["correction"] == sel["correction"]
+        need(g["look"] == {"id": look, "strength": 0.5} and g["takes"][0]["correction"] == sel["correction"]
              and "extra_generations" not in g, f"grade.json {json.dumps(g)[:400]}")
 
         def fgap(cube, vals):
@@ -427,7 +569,10 @@ def main():
         p = py(RG, "grade_from_selection.py", "--reel-dir", d, "--apply", d / "raw/clip.mp4", "-o", bad, "--yes")
         need(p.returncode == 1 and not bad.exists() and "changed" in p.stdout, f"a changed cube: exit {p.returncode}, {p.stdout.strip()}")
 
-    fns = {"identity": ("identity: the board opens at the identity (white 1.000, grade_math defaults, look None); "
+    fns = {"send_loading": ("send_loading: disabled static Send and cue; enabled-button mutant fails", send_loading_case),
+           "early_send": ("early_send: Send is disabled or wired before boot; an enabled click writes grade-selection.json", c_early_send),
+           "failed_init": ("failed_init: plain error, no Loading cue and disabled Send; cleanup mutants fail", c_failed_init),
+           "identity": ("identity: the board opens at the identity (white 1.000, grade_math defaults, look None); "
                         "Suggested fix applies the measured values; the measured-defaults mutant fails", c_identity),
            "send": ("send: a look + strength + Send writes grade-selection.json, never selection.json", c_send),
            "reload": ("reload: the look, strength and fix come back from grade-board.state.json in a new browser", c_reload),

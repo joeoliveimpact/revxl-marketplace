@@ -36,40 +36,23 @@ start tools. Read the whole file before acting and keep earlier entries when ack
 | `adjust-cut` | Invoke `editor-superengine:reel-first-cuts` (the gaps). |
 | `adjust-grade` | Invoke `editor-superengine:reel-grade`. |
 | `adjust-sound` | Invoke `editor-superengine:reel-sound-pass`. |
-| `style` | Ask "Use these choices as the default for your next reels?"; on yes, run `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/saved_style.py" save-from-reel <reel folder>`, then read back the result in plain words. This saves the choices and the workspace skill. |
+| `style` | Ask "Save these choices as a new style?"; on yes, run `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/saved_style.py" save-from-reel <reel folder>`, read back the result, say the new name and offer a rename in the same line. This saves the choices and the workspace skill. Refresh with both scripts above. |
+| `styles` | Run `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/saved_style.py"`: `choices.action` = `rename` runs `rename <choices.id> <choices.label>`; `default` runs `set-default <choices.id>`. `auto` runs `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/style_learn.py" auto <choices.id> on\|off --workspace <workspace folder>` using `choices.on`. Read back in one plain line and refresh with both scripts above. |
 | `captions` | Ask once, "The words on the video, or the text under the post?" The text under the post is `editor-superengine:caption-writer`; words on the video are `editor-superengine:reel-captions`. |
 | `broll` | Invoke `editor-superengine:reel-broll`; use the client's clips on the Beat Map tab. |
 | `qa` | Invoke `editor-superengine:reel-canvas-build`; follow its `references/qa-check.md` for that reel (pre check, then the full check on the latest Master when one exists). |
 | `handoff` | Invoke `editor-superengine:pro-editor-handoff` with the client's `choices.editor`: DaVinci Resolve or another editor's files. |
-| `cover`, `trial`, `goldmine` | The router's not-built line plus its one follow-up (`${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/SKILL.md`, "Not built yet"). |
+| `trial` | Invoke `editor-superengine:reel-trials` from the approved cut; read `trials-selection.json` after Send and report keep/skip in plain words. |
+| `cover` | Invoke `editor-superengine:reel-cover`; prepare candidates, open the Cover Picker, then apply the client's Send. |
+| `goldmine` | The router's not-built line plus its one follow-up (`${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/SKILL.md`, "Not built yet"). |
 
 The page serializes list updates and re-reads disk before appending, including repeated clicks. A failed POST
 keeps the draft and exposes a copy-to-paste line with the payload. It never claims a failed Send succeeded.
 The existing server offers whole-file writes, so simultaneous writes from separate browsers are not a transaction.
 Use one active hub when sending requests.
 
-## Cockpit agreement
-
-Stage and open-Send rules are read from `hooks/mod/logic.ts`, including optional Grade, sent/locked state and
-downstream timestamps. The Cockpit keeps its baseline and acknowledgements in private stores, which a disk-only
-script cannot access. When those are available to Claude, export the current workspace's baseline and its ack map
-as `<paths.editor>/hub/cockpit-state.json`: `{"baseline": 1234, "acked": {"reel-01/cut-selection.json": 1235}}`
-(timestamps are milliseconds), then refresh. Without a baseline the hub follows the Cockpit rule: no open Sends.
-Hub requests still appear in the request queue. Automatic Cockpit routing of these files belongs to its Send router.
+## Goldmine
 
 Goldmine uses the workspace's `reel-build/goldmine-run.json`, or the active shortform brand state's `project_path`.
 The current pointer is authoritative: missing compute exports show the credits empty state, never stale/sample
 numbers. `n` is the export's `corpus.reels_total`, alongside the manifest's breakout count.
-
-## Porting a board
-
-See [Building boards on the board server](../scripts/README.md#building-boards-on-the-board-server-build-lanes-only).
-Keep templates under the manifest's owning skill; the hub template is `skills/editor-doctor/boards/hub`.
-Board tabs and their stages/order come from `boards.json`. A missing client template says "not built yet".
-Master review is `editor/hub/review.html?reel=<reel>`, never a render folder listing.
-
-Use `BoardClient.create({board: "cut-board"})` for board state. Send the real whitelisted filename, for example
-`/videos/<reel>/__save?board=cut-board&name=cut-selection.json` or
-`/videos/<reel>/__save?board=grade-board&name=grade-selection.json`. State is `<board>.state.json` with one `.prev`;
-Sends are distinct files. Templates must not include generated `hub-data.json`, filmstrip frames or client state:
-board_sync overwrites only template-owned files and preserves these generated artifacts.

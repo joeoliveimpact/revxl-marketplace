@@ -23,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "_shared"))
 import runtime as rt  # noqa: E402
 
 WIN = 0.010          # envelope resolution, seconds
+DEAD_DB = 30
 HDR_TRANSFERS = ("arib-std-b67", "smpte2084")   # HLG, PQ
 SETUP = "The editor's setup isn't finished: its video tools are missing. Run the editor setup (editor-doctor), then try again."
 FFMPEG = FFPROBE = None
@@ -129,6 +130,46 @@ def count_audio_streams(path):
     p = run([FFPROBE, "-v", "error", "-select_streams", "a",
              "-show_entries", "stream=index", "-of", "csv=p=0", str(path)])
     return len([x for x in p.stdout.splitlines() if x.strip()])
+
+
+def dead_channel(path, stream=0):
+    """Return the dead stereo side, or None when the measurement is inconclusive."""
+    # ponytail: whole-file RMS can miss a hissy dead input against sparse quiet
+    # speech (safe: behaves as today); upgrade by measuring inside speech windows.
+    try:
+        p = run([FFMPEG, "-hide_banner", "-nostats", "-i", str(path),
+                 "-map", "0:a:%d" % stream, "-vn", "-af",
+                 "astats=measure_overall=none:measure_perchannel=RMS_level+Peak_level", "-f", "null", "-"])
+        if p.returncode:
+            return None
+        channels, channel = {}, None
+        for line in p.stderr.splitlines():
+            m = re.search(r"Channel:\s*(\S+)", line)
+            if m:
+                channel = int(m.group(1))
+                if channel in channels:
+                    return None
+                channels[channel] = {}
+            m = re.search(r"(RMS|Peak) level dB:\s*(\S+)", line)
+            if m:
+                if channel is None or m.group(1) in channels[channel]:
+                    return None
+                channels[channel][m.group(1)] = float(m.group(2))
+        if set(channels) != {1, 2}:
+            return None
+        for levels in channels.values():
+            if set(levels) != {"RMS", "Peak"} or any(
+                    not (math.isfinite(v) or v == -math.inf) for v in levels.values()):
+                return None
+            if levels["RMS"] > levels["Peak"] or ((levels["Peak"] == -math.inf) != (levels["RMS"] == -math.inf)):
+                return None
+        for dead, live, side in ((1, 2, "L"), (2, 1, "R")):
+            if math.isfinite(channels[live]["RMS"]) and (channels[dead]["Peak"] == -math.inf
+                    or channels[live]["RMS"] - channels[dead]["RMS"] >= DEAD_DB):
+                return side
+    except (OSError, UnicodeError, ValueError, TypeError):
+        return None
+    return None
 
 
 # ---------------------------------------------------------------------- envelope
@@ -245,6 +286,7 @@ def main():
     fps = true_fps(src)
     env = envelope(src, work, a.audio_stream)
     cal = calibrate(env)
+    dead = dead_channel(src, a.audio_stream)
     speeds = [float(x) for x in a.speeds.split(",")]
     dups = dup_table(fps["measured_fps"], speeds, a.out_rate)
 
@@ -252,6 +294,8 @@ def main():
     probe = {"input": str(src.resolve()), "fps": fps, "calibration": cal,
              "dup_table": dups, "out_rate": a.out_rate, "fps_flag": fps_flag(),
              "video": vid, "audio_streams": n_audio, "audio_stream": a.audio_stream}
+    if dead:
+        probe["dead_channel"] = dead
     (work / "probe.json").write_text(json.dumps(probe, indent=1), encoding="utf-8")
 
     L = []
@@ -287,6 +331,9 @@ def main():
     L.append("AUDIO")
     L.append("  %d stream(s); the cut uses stream %d%s" % (n_audio, a.audio_stream,
              " -- check it is the voice" if n_audio > 1 else ""))
+    if dead:
+        L.append("Your mic recorded on one side only (the %s side is silent); I copied it to both sides."
+                 % ("left" if dead == "L" else "right"))
     L.append("")
     L.append("ffmpeg frame-rate flag: %s" % probe["fps_flag"])
     L.append("wrote %s and %s" % (work / "probe.json", work / "envelope.json"))

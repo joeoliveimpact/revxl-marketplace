@@ -7,6 +7,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -17,6 +18,7 @@ SCRIPT = ROOT / "plugins/editor-superengine/skills/reel-captions/scripts/caption
 SPEC = importlib.util.spec_from_file_location("captions", SCRIPT)
 captions = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(captions)
+SOURCE_HOME = captions.rt.state_dir()
 
 
 def words(text, step=0.2):
@@ -55,7 +57,9 @@ def style_checks(tmp):
         fixture(reel, words("say this."))
         expect_stop(1, lambda: captions.plan(reel), captions.ASK)
         put(state / "styles/default.json", {"caption_style": {"style": "boxed"}})
-        assert captions.pick_style({}) == ({"style": "boxed"}, "saved")
+        expect_stop(1, lambda: captions.pick_style(reel), captions.ASK)
+        captions.saved_style.pick(reel, "default")
+        assert captions.pick_style(reel) == ({"style": "boxed"}, "saved")
         assert captions.plan(reel)["style"]["style"] == "boxed"
         fixture(reel, words("say this."), {"style": "clean"})
         assert captions.pick_style({"caption_style": {"style": "clean"}})[1] == "reel"
@@ -74,6 +78,8 @@ def brand_checks(tmp):
     with patch.object(captions.rt, "state_dir", return_value=state):
         fixture(reel, words("say this."), {"style": "clean"})
         put(state / "styles/default.json", {"accent": "#E0218A"})
+        assert captions.plan(reel)["style"]["accent"] == captions.DEFAULTS["accent"]
+        captions.saved_style.pick(reel, "default")
         assert captions.plan(reel)["style"]["accent"] == "#E0218A"
         fixture(reel, words("say this."), {"style": "clean", "accent": "#123abc"})
         assert captions.plan(reel)["style"]["accent"] == "#123abc"
@@ -107,6 +113,7 @@ def brand_font_checks(tmp):
     with patch.object(captions.rt, "state_dir", return_value=state), \
             patch.object(captions.scene_check, "SCENES", plugin / "scenes"), \
             patch.object(captions.scene_check, "FONTS", plugin / "runtime/fonts"):
+        captions.saved_style.pick(reel, "default")
         doc = captions.plan(reel)
         css, _, _ = captions.layer(doc, [(100, 1200, 900, 1400)] * len(doc["chunks"]), 1, str)
         assert 'font-family: "Caption Test", "Inter";' in css, css
@@ -125,6 +132,7 @@ def brand_font_missing_checks(tmp):
         (plugin / "runtime/fonts/Caption-Test.woff2").unlink()
         for font in (family, "Missing Brand"):
             put(state / "styles/default.json", {"font": font, "caption_style": {"style": "clean"}})
+            captions.saved_style.pick(reel, "default")
             doc = captions.plan(reel)
             for _ in range(2):
                 css, _, _ = captions.layer(doc, [(100, 1200, 900, 1400)] * len(doc["chunks"]), 1, str)
@@ -301,6 +309,8 @@ def picker_style_checks(tmp):
         fixture(reel, words("our own words."))
         expect_stop(1, lambda: captions.pick_style(reel), captions.ASK)
         put(state / "styles/default.json", {"caption_style": {"style": "boxed"}})
+        expect_stop(1, lambda: captions.pick_style(reel), captions.ASK)
+        captions.saved_style.pick(reel, "default")
         assert captions.pick_style(reel) == ({"style": "boxed"}, "saved")
         picker = {"caption_style": {"style": "bold-pop"}, "sent_at": "2026-11-05T10:00:00-05:00"}
         put(reel / "look-picker-selection.json", picker)
@@ -442,12 +452,53 @@ def picker_doc_checks(tmp):
     assert captions.picker_doc(reel)["current"] is None  # picker can help choose the first look
 
 
+def remembered_unpicked_checks(tmp):
+    reel, state = tmp / "reel", tmp / "state"
+    put(state / "state.json", {"components": {"fixture": {"bins": {
+        key: captions.rt.tool(key, SOURCE_HOME) for key in ("ffmpeg", "ffprobe")}}}})
+    fixture(reel, words("our own words stay here."))
+    put(reel / "work/cuts.json", {"fps": 30, "speed": 1, "segments": [
+        {"src_in_f": 0, "src_out_f": 180, "out_in_f": 0, "out_out_f": 180}]})
+    master = reel / "work/renders/master-100x.mp4"
+    master.parent.mkdir(parents=True)
+    with patch.dict(os.environ, {"EDITOR_SE_HOME": str(state)}):
+        result = subprocess.run([sys.executable, "-X", "utf8", "-I",
+            str(SCRIPT.parents[2] / "_shared/standing_notes.py"), "pick", "caption_style.style",
+            "--value", '"boxed"', "--note", "Keep it framed"], capture_output=True, text=True, encoding="utf-8")
+        assert result.returncode == 0, result.stdout + result.stderr
+        # Another reel's saved choices must not become this reel's current look or brand.
+        captions.saved_style.save({"caption_style": {"style": "karaoke"}, "accent": "#123ABC",
+                                   "edit_style": {"style": "layout-switch"}}, "other")
+        captions.saved_style.pick(tmp / "other-reel", "other")
+        result = subprocess.run([captions.rt.tool("ffmpeg"), "-v", "error", "-y", "-f", "lavfi", "-i",
+            "color=c=gray:s=64x64:r=30:d=6", "-frames:v", "180", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+            str(master)], capture_output=True, text=True, encoding="utf-8")
+        assert result.returncode == 0, result.stderr
+        result = subprocess.run([sys.executable, "-X", "utf8", "-I", str(SCRIPT), "picker", "--reel-dir", str(reel)],
+                                capture_output=True, text=True, encoding="utf-8")
+        assert result.returncode == 0, result.stdout + result.stderr
+        doc = json.loads((reel / "work/look-picker.json").read_text(encoding="utf-8"))
+        assert doc["recommended"] is not None, "An unpicked reel lost its remembered look"
+        assert doc["recommended"]["value"] == "boxed" and doc["recommended"]["note"] == "Keep it framed"
+        assert doc["current"] is None
+        assert all((reel / file).is_file() for file in doc["frames"].values())
+        assert not (reel / "look-picker-selection.json").exists()
+        assert not (reel / "work/captions.json").exists()
+        assert captions.saved_style.pick_for(reel) is None
+        loaded = captions.saved_style.load(reel)
+        assert set(loaded) == {"picks"}, "Saved choices leaked into an unpicked reel"
+        assert captions.saved_style.load(reel, for_write=True) == {}
+        assert captions.check_style({"style": "clean"}, reel=reel)["accent"] == "#FFD84D"
+        expect_stop(1, lambda: captions.plan(reel), "Last time you picked Boxed")
+
+
 def main():
     failed = 0
     with tempfile.TemporaryDirectory() as tmp:
         for check in (style_checks, brand_checks, brand_font_checks, brand_font_missing_checks,
                       reel_beats_saved_checks, chunk_checks, mark_checks, truth_checks, coverage_checks, layer_checks,
-                      cli_checks, picker_style_checks, marker_width_checks, loud_checks, picker_doc_checks):
+                      cli_checks, picker_style_checks, marker_width_checks, loud_checks, picker_doc_checks,
+                      remembered_unpicked_checks):
             root = Path(tmp) / check.__name__
             root.mkdir()
             # Every check starts without earlier picks; children inherit the same scratch home.

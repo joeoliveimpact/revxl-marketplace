@@ -59,7 +59,7 @@ def reel(root):
 def case_verbatim(root):
     note = '  My "caf\u00e9" \u2014 \u9ec4\u8272 \U0001f49b\nKeep these words.  '
     pick(note=note)
-    data = ss.load()
+    data = ss.load(name="default")
     record = data["picks"]["caption_style.style"]
     assert record["note"].encode("utf-8") == note.encode("utf-8")
     assert record["value"] == "bold-pop" and record["at"]
@@ -68,8 +68,8 @@ def case_verbatim(root):
     assert 'Last time you picked Bold pop for captions - your words: "' + note + '"' in output
     assert note in "\n".join(ss.readback(data))
     pick(value="boxed", style="client-b")
-    assert ss.load()["picks"]["caption_style.style"]["value"] == "bold-pop"
-    assert ss.load("client-b")["picks"]["caption_style.style"]["value"] == "boxed"
+    assert ss.load(name="default")["picks"]["caption_style.style"]["value"] == "bold-pop"
+    assert ss.load(name="client-b")["picks"]["caption_style.style"]["value"] == "boxed"
     before = ss.path().read_bytes()
     for key, value in (("caption_style.style", "invented"), ("caption_style", {"style": "invented"}),
                        ("font", 123), ("language", "en")):
@@ -82,12 +82,13 @@ def case_recommended(root):
     folder = reel(root)
     pick()
     pick("edit_style.style", "layout-switch", "Let the layout do it")
-    assert ss.resolve("caption_style.style", saved=ss.load()) == ("bold-pop", "recommended")
-    assert ss.resolve("edit_style.style", saved=ss.load()) == ("layout-switch", "recommended")
+    ss.pick(folder, "fresh")
+    assert ss.resolve("caption_style.style", saved=ss.load(name="default")) == ("bold-pop", "recommended")
+    assert ss.resolve("edit_style.style", saved=ss.load(name="default")) == ("layout-switch", "recommended")
     cap, styles = readers()
     for reader, callback, label, note in (
             (cap, lambda: cap.pick_style(folder), "Bold pop", "Keep my words bright"),
-            (styles, lambda: styles.pick_style({}), "Layout switch", "Let the layout do it")):
+            (styles, lambda: styles.pick_style({}, reel=folder), "Layout switch", "Let the layout do it")):
         try:
             callback()
         except reader.Stop as error:
@@ -100,24 +101,25 @@ def case_recommended(root):
     # Parent choices also recommend their child value, without setting it.
     ss.save({})
     pick("caption_style", {"style": "boxed"}, "Keep it framed")
-    assert ss.resolve("caption_style.style", saved=ss.load()) == ("boxed", "recommended")
+    assert ss.resolve("caption_style.style", saved=ss.load(name="default")) == ("boxed", "recommended")
 
 
 def case_saved_wins(root):
     folder = reel(root)
     pick()
     pick("edit_style.style", "layout-switch", "Let the layout do it")
-    data = ss.load()
+    data = ss.load(name="default")
     data.update(caption_style={"style": "clean"}, edit_style={"style": "punch-in"})
     ss.save(data)
+    ss.pick(folder, "default")
     cap, styles = readers()
-    assert ss.resolve("caption_style.style", saved=ss.load()) == ("clean", "saved")
+    assert ss.resolve("caption_style.style", saved=ss.load(name="default")) == ("clean", "saved")
     assert cap.pick_style(folder) == ({"style": "clean"}, "saved")
-    assert styles.pick_style({}) == ({"style": "punch-in"}, "saved")
+    assert styles.pick_style({}, reel=folder) == ({"style": "punch-in"}, "saved")
     cli("standing_notes.py", "add", "Always boxed", "--key", "caption_style.style", "--value", '"boxed"')
     assert cap.pick_style(folder) == ({"style": "boxed"}, "saved")
     assert ss.resolve("caption_style.style", reel={"caption_style": {"style": "none"}},
-                      saved=ss.load()) == ("none", "reel")
+                      saved=ss.load(name="default")) == ("none", "reel")
 
 
 def case_archive(root):
@@ -125,10 +127,10 @@ def case_archive(root):
     ss.save({"caption_style": {"style": "clean"}, "font": "Inter"})
     original = ss.path().read_bytes()
     put(folder / "beat-map-selection.json", {"caption_style": {"style": "boxed"}})
-    cli("saved_style.py", "save-from-reel", folder)
+    cli("saved_style.py", "save-from-reel", folder, "--name", "default")
     second = ss.path().read_bytes()
     put(folder / "beat-map-selection.json", {"caption_style": {"style": "bold-pop"}})
-    cli("saved_style.py", "save-from-reel", folder)
+    cli("saved_style.py", "save-from-reel", folder, "--name", "default")
     current = ss.path().read_bytes()
     assert ss.path("default@v1").read_bytes() == original
     assert ss.path("default@v2").read_bytes() == second
@@ -136,10 +138,10 @@ def case_archive(root):
     assert len(listed.splitlines()) == 1 and "2 archived versions" in listed
     assert "@v" not in listed
     assert "Caption look: Clean" in cli("saved_style.py", "show", "default@v1")
-    cli("saved_style.py", "save-from-reel", folder)
+    cli("saved_style.py", "save-from-reel", folder, "--name", "default")
     assert not ss.path("default@v3").exists(), "Unchanged re-save created an archive"
     cli("saved_style.py", "restore", "default@v1")
-    assert ss.load()["caption_style"]["style"] == "clean"
+    assert ss.load(name="default")["caption_style"]["style"] == "clean"
     assert ss.path("default@v3").read_bytes() == current
     assert ss.path("default@v1").read_bytes() == original
     # Restore always keeps the current file, even when restoring the same contents again.
@@ -155,6 +157,7 @@ def case_archive(root):
 def case_board(root):
     folder = reel(root)
     pick()
+    ss.pick(folder, "fresh")
     cap, _ = readers()
     doc = cap.picker_doc(folder)
     assert doc["recommended"]["value"] == "bold-pop"
@@ -185,22 +188,23 @@ def case_board(root):
 
 def case_auto_record(root):
     folder = reel(root)
+    ss.pick(folder, "fresh")
     cap, styles = readers()
     put(folder / "beat-map-selection.json", {
         "caption_style": {"style": "clean"}, "sent_at": "2026-11-06T10:00:00Z"})
     put(folder / "look-picker-selection.json", {
         "caption_style": {"style": "bold-pop"}, "sent_at": "2026-11-06T11:00:00Z"})
     assert cap.pick_style(folder) == ({"style": "bold-pop"}, "picker")
-    record = ss.load()["picks"]["caption_style.style"]
+    record = ss.load(name="default")["picks"]["caption_style.style"]
     assert record["value"] == "bold-pop" and record["note"] == "" and record["at"]
     pick(note="  My exact words.  ")
     cap.pick_style(folder)
-    assert ss.load()["picks"]["caption_style.style"]["note"] == "  My exact words.  "
+    assert ss.load(name="default")["picks"]["caption_style.style"]["note"] == "  My exact words.  "
     # The newer Beat Map wins, clears the old words, and does not set a saved default.
     put(folder / "beat-map-selection.json", {
         "caption_style": {"style": "boxed"}, "sent_at": "2026-11-06T12:00:00Z"})
     assert cap.pick_style(folder) == ({"style": "boxed"}, "reel")
-    data = ss.load()
+    data = ss.load(name="default")
     assert data["picks"]["caption_style.style"]["value"] == "boxed"
     assert data["picks"]["caption_style.style"]["note"] == ""
     assert "caption_style" not in data
@@ -215,18 +219,18 @@ def case_auto_record(root):
         raise AssertionError("An automatically remembered caption look must still ask")
     assert styles.pick_style({"edit_style": {"style": "layout-switch"}}) == (
         {"style": "layout-switch"}, "reel")
-    record = ss.load()["picks"]["edit_style.style"]
+    record = ss.load(name="default")["picks"]["edit_style.style"]
     assert record["value"] == "layout-switch" and record["note"] == "" and record["at"]
     pick("edit_style.style", "layout-switch", "Keep my layout")
     styles.pick_style({"edit_style": {"style": "layout-switch"}})
-    assert ss.load()["picks"]["edit_style.style"]["note"] == "Keep my layout"
+    assert ss.load(name="default")["picks"]["edit_style.style"]["note"] == "Keep my layout"
     styles.pick_style({"edit_style": {"style": "punch-in"}})
-    data = ss.load()
+    data = ss.load(name="default")
     assert data["picks"]["edit_style.style"]["value"] == "punch-in"
     assert data["picks"]["edit_style.style"]["note"] == ""
     assert "edit_style" not in data
     try:
-        styles.pick_style({})
+        styles.pick_style({}, reel=folder)
     except styles.Stop as error:
         assert error.code == 1 and ". Last time you picked Punch in" in error.lines[0]
     else:

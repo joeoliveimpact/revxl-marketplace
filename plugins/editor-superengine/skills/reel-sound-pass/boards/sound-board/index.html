@@ -367,6 +367,15 @@ textarea{border-radius:12px!important;font-family:var(--et-mono)!important}
           <td><span class="pk">music level vs your voice (-18 suggested)</span></td>
         </tr>
         <tr>
+          <td><label><input type="checkbox" id="bedcarve" checked> Carve around the voice</label></td>
+          <td></td>
+          <td><span id="carvestrengthwrap" class="flexlbl">
+            <input type="range" id="carvestrength" min="0.25" max="1" step="0.05" value="0.8" aria-label="Carve strength">
+            <span class="gain" id="carvestrengthl">0.8</span>
+          </span></td>
+          <td></td>
+        </tr>
+        <tr>
           <td><span class="beat">dip under voice</span></td>
           <td></td>
           <td>
@@ -486,7 +495,8 @@ function stateJson(){
     userCount: userCount,
     bed: {file: $("bedsel").value, gain: +$("bedvol").value,
           entry: BED.entry, exit: BED.exit, offset: BED.offset,
-          fadeIn: BED.fadeIn, fadeOut: BED.fadeOut, stops: BED.stops, duck: +$("bedduck").value, beatSync: BED.beatSync},
+          fadeIn: BED.fadeIn, fadeOut: BED.fadeOut, stops: BED.stops, duck: +$("bedduck").value, beatSync: BED.beatSync,
+          carve: carveSettings()},
     music_request: MREQ, rights: RIGHTS,
     latency: +$("lat").value || 0,
     vvol: +$("vvol").value
@@ -527,7 +537,7 @@ function restore(json){
   $("bedvol").value = s.bed.gain; $("bedvoll").textContent = s.bed.gain + " dB";
   BED.entry = s.bed.entry; BED.exit = s.bed.exit; BED.offset = s.bed.offset;
   BED.fadeIn = s.bed.fadeIn; BED.fadeOut = s.bed.fadeOut; BED.stops = s.bed.stops; BED.beatSync = !!s.bed.beatSync;
-  setDuck(s.bed.duck); MREQ = s.music_request; RIGHTS = Object.assign({}, s.rights);
+  setDuck(s.bed.duck); setCarve(s.bed.carve || {on:false}); MREQ = s.music_request; RIGHTS = Object.assign({}, s.rights);
   $("lat").value = s.latency;
   $("vvol").value = s.vvol; $("vvol").oninput();
   loopWin = null; scheduled = {};
@@ -643,6 +653,7 @@ function payload(){
                 fade_out_s: stopFo(s), fade_in_s: stopFi(s)};   /* fade out ends at start_s; fade in starts at end_s */
       }),
       duck_db: +$("bedduck").value,
+      carve: carveSettings(),
       rights_confirmed: !!(bedRow($("bedsel").value) && (bedRow($("bedsel").value).rights_confirmed === true || RIGHTS[$("bedsel").value])),
       beat_sync: syncOn()   /* true: offset_s is already on a beat of the track */
     },
@@ -1062,11 +1073,26 @@ function startBed(){
     bedGainNode.gain.value = dbToLin(bedGainDb());
     var stopGain = a.createGain();                   /* music stops, on their own node */
     var duckGain = a.createGain();                   /* the dip under speech, on its own node */
-    bedNode.connect(bedEnvGain).connect(stopGain).connect(duckGain).connect(bedGainNode).connect(a.destination);
+    var tail = bedNode;
+    var carveData = previewCarve();
+    if(carveData){
+      carveData.bands.forEach(function(b){
+        var filter = a.createBiquadFilter(); filter.type = "peaking";
+        filter.frequency.value = b.freq; filter.Q.value = b.q;
+        var lane = carveData.points.filter(function(p){ return p.freq === b.freq; })[0].points;
+        var c = Math.max(a.currentTime, now0), reelT = t + (c - now0);
+        filter.gain.setValueAtTime(carveValue(lane, reelT), c);
+        lane.forEach(function(p){
+          if(p.t > reelT) filter.gain.linearRampToValueAtTime(p.v, now0 + p.t - t);
+        });
+        tail.connect(filter); tail = filter;
+      });
+    }
+    tail.connect(bedEnvGain).connect(stopGain).connect(duckGain).connect(bedGainNode).connect(a.destination);
     /* fixed dip from config.speech_spans: full depth inside a span, 80 ms in before it, 300 ms back after,
        straight lines in dB; sampled every 10 ms from now to the bed's exit */
     var D = +$("bedduck").value, sp = speechSpans(), c0 = Math.max(a.currentTime, now0), T0 = t + (c0 - now0);
-    if(D > 0 && sp.length && exit > T0 + 0.02){
+    if(!carveData && D > 0 && sp.length && exit > T0 + 0.02){
       var n = Math.max(2, Math.ceil((exit - T0) * 100)), curve = new Float32Array(n);
       for(var i = 0; i < n; i++){
         var T = T0 + (exit - T0) * i / (n - 1), k = 0;
@@ -1118,7 +1144,7 @@ function seedFromConfig(cfg){
   userCount = 0;
   BED.entry = 0; BED.exit = null; BED.offset = 0; BED.fadeIn = 0.5; BED.fadeOut = 1.5; BED.beatSync = false;
   $("bedsel").value = ""; $("bedvol").value = -18; $("bedvoll").textContent = "-18 dB";
-  setDuck(6); MREQ = null; RIGHTS = {};   /* reset clears the music request and the rights tick */
+  setDuck(6); setCarve({on:true, strength:0.8}); MREQ = null; RIGHTS = {};   /* reset clears the music request and the rights tick */
   BED.stops = (cfg.bed_stops || []).map(function(s){   /* seeded stops; a saved session overrides them */
     return {a: +s.start_s, b: +s.end_s, label: s.label || "", fo: s.fade_out_s, fi: s.fade_in_s};
   });
@@ -1147,10 +1173,38 @@ function seedFromConfig(cfg){
     BED.entry = bd.entry_s || 0; BED.exit = bd.exit_s; BED.offset = bd.offset_s || 0;
     BED.fadeIn = bd.fade_in_s; BED.fadeOut = bd.fade_out_s;
     if(bd.duck_db != null) setDuck(bd.duck_db);
+    if(bd.carve) setCarve(bd.carve);
   }
 }
 
 /* ---------- music row: one line per track in config.beds ---------- */
+function carveSettings(){ return {on: $("bedcarve").checked, strength: +$("carvestrength").value}; }
+function setCarve(settings){
+  $("bedcarve").checked = settings.on === true;
+  var s = settings.strength == null ? 0.8 : +settings.strength;
+  $("carvestrength").value = isFinite(s) ? Math.max(0.25, Math.min(1, s)) : 0.8;
+  $("carvestrengthl").textContent = $("carvestrength").value;
+  $("carvestrengthwrap").style.display = $("bedcarve").checked ? "" : "none";
+}
+function previewCarve(){
+  if(!$("bedcarve").checked || !CFG.carve) return null;
+  var data = CFG.carve.profiles ? CFG.carve.profiles[(+$("carvestrength").value).toFixed(2)] : CFG.carve;
+  if(!data || !data.bands || !data.bands.length || !data.points) return null;
+  if(Math.abs(data.strength - +$("carvestrength").value) > 0.001) return null;
+  return data.bands.every(function(b){
+    return data.points.some(function(p){ return p.freq === b.freq && p.points && p.points.length; });
+  }) ? data : null;
+}
+function carveValue(points, t){
+  if(t <= points[0].t) return points[0].v;
+  for(var i = 1; i < points.length; i++){
+    if(t < points[i].t){
+      var left = points[i-1], right = points[i];
+      return left.v + (right.v - left.v) * (t - left.t) / (right.t - left.t);
+    }
+  }
+  return points[points.length-1].v;
+}
 function setDuck(db){
   db = (db == null || !isFinite(+db)) ? 6 : Math.min(12, Math.max(4, +db));
   $("bedduck").value = db; $("bedduckl").textContent = db + " dB";
@@ -1340,6 +1394,7 @@ function renderMusic(){
         if(Array.isArray(saved.bed.stops)) BED.stops = saved.bed.stops;
       }
       if(saved.bed.duck !== undefined) setDuck(saved.bed.duck);
+      setCarve(saved.bed.carve || {on:false});
       if(saved.bed.beatSync !== undefined) BED.beatSync = !!saved.bed.beatSync;
     }
     if(saved.music_request !== undefined) MREQ = saved.music_request;
@@ -1628,6 +1683,8 @@ $("bedvol").oninput = function(){
   refreshOut(); saveState();
 };
 $("bedduck").oninput = function(){ setDuck(+$("bedduck").value); bedChanged(); };
+$("bedcarve").onchange = function(){ setCarve(carveSettings()); bedChanged(); };
+$("carvestrength").oninput = function(){ setCarve(carveSettings()); bedChanged(); };
 ["mfree", "mown"].forEach(function(id){
   $(id).onclick = function(){
     var want = id === "mfree" ? "free" : "own";

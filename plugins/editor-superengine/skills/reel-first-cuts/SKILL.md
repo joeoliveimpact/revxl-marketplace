@@ -1,6 +1,6 @@
 ---
 name: editor-superengine:reel-first-cuts
-description: Turns raw talking-head footage into a finished first cut. The client picks lines and takes on the Cut Board, then fixes the cut on the Tweak Board. Use on "cut this reel", "open the Cut Board", "fix it on the Tweak Board", "tighten the gaps", "several clips", "two recordings", "sync camera and mic", long recordings, or a master joined from several clips (words chopping only after the first clip). Not for captions or sound.
+description: Turns raw talking-head footage into a finished first cut. The client picks lines and takes on the Cut Board, then fixes the cut on the Tweak Board. Use on "cut this reel", "open the Cut Board", "fix it on the Tweak Board", "tighten the gaps", "several clips", "two recordings", "sync camera and mic", "make Shorts from this long recording", long recordings, or a master joined from several clips (words chopping only after the first clip). Not for captions or sound.
 ---
 
 # Reel First Cuts
@@ -23,11 +23,11 @@ Speak the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-th
 - Re-running is safe: the scripts read the raw and write only into `work/` and the board files. Re-run
   from the stage that changed; never render from an earlier render.
 - If the raw or its edit map changed after a board was built, build that board again: its Send is stale.
-  If only the recording or its clock changed and the words are the same, copy the old Send and board
-  config aside before the rebuild, then carry the Send over: `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/port_selection.py" <old cut-selection.json> <old cut-board.config.json> cut-board.config.json -o cut-selection.json`.
+  To carry a Send over, follow `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/boards.md`, "Carry a Send over".
   If it refuses, ask for a new Send.
 - If the reel already has a Sound Board (`config.json`) or a Beat Map Send, a new cut means redoing the sound picks and the visuals plan. Tell the client before re-cutting.
 - Never skip a ⛔ stage, on a re-run either.
+- Run the style picker first if it has not run for this reel (editor-start-here); in Auto edit, follow section 5 of ${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/house-rules.md.
 
 ## Ground rules
 
@@ -84,10 +84,11 @@ A failed proof stops the cut.
 It measures the true frame rate (never `r_frame_rate`), the source RMS envelope every later stage reads,
 per-file thresholds, the duplicate-frame table per speed (report it, never assert a rule), the picture
 and `audio_stream` (`--audio-stream N` picks another; with several, confirm it is the voice).
+Pass on, word for word, the one-side mic note if probe prints it.
 
 **Several recordings:** each is a take; run Stages 0–1 in its own folder and log it with `footage_check.py add`.
-The client can pick any line from any take: a mixed ruling prints `takes.py`, then render reads every raw in one pass; `work/timemap.json` records the sources.
 Flow, limits and commands: `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/several-recordings.md`.
+**One long recording, several Shorts, or long quiet stretches:** `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/short-clips.md`.
 
 ### 1 · Transcribe — a contract, not a vendor
 
@@ -111,13 +112,8 @@ With the Write tool, put the approved script in `script.md` (one spoken line per
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/make_board.py" --script script.md --take 1:work/edit_map.json:work/tx.16k.wav [--take 2:work/take2/edit_map.json:work/take2/tx.16k.wav] --shots shots.json --reel <reel> -o videos/<reel>`
 
-It writes `cut-board.config.json` (every attempt of every line in every take; default: the last attempt
-wins). Give the client probe.json's duplicate-frame % per speed (the board shows
-the length). Start the board server and open the Cut Board (its hub tab, order 10) at `/editor/cut-board/?reel=<reel>` in the Browser pane, as
-`${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/board-server.md` says. The client picks lines and
-takes, strikes words, sets "Pause after commas" (0.20-0.40 s) and the speed, then presses Send (it
-writes `cut-selection.json`). A line said twice in different words shows Keep first / Keep second /
-Keep both: the client picks; never cut one yourself. Then:
+Open the Cut Board as `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/boards.md`, "Cut Board", says.
+A line said twice in different words shows Keep first / Keep second / Keep both: the client picks; never cut one yourself. Then:
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/selection_to_edl.py" cut-selection.json cut-board.config.json`
 
@@ -166,17 +162,12 @@ gaps ranked with the words either side. `silencedetect` logs at **info**: never 
 A cut whose `work/cuts.json` has `takes` has no Tweak Board yet: follow `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/several-recordings.md`. Otherwise:
 Hand over the review page, `work/cut-review.html` (raw and cut side by side, the 20 largest cuts),
 **with the checklist** (`work/listen.txt`), and say plainly what the gates cannot see: they passed on
-all four defects the client caught in the reference build. Then:
+all four defects the client caught in the reference build. Run `long_silence.py work --json` (short-clips.md, "After the cut"), then:
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/make_tweaks.py" --cut CUT.mp4 --work work --config cut-board.config.json --take 1 --version v<N> -o videos/<reel>`
 
-(`--take`: the take `selection_to_edl.py` named. `<N>` is 1 the first time, then one more than the
-`version` in the current `tweak-board.config.json` on every Stage 9 round; a new version opens the board
-empty.) It writes `tweak-board.config.json` from
-`work/cuts.json`. Open the Tweak Board (its hub tab, order 40) at `/editor/tweak-board/?reel=<reel>`
-the same way. The client marks cuts, tight and loose pauses and the speed, then presses Send (it writes
-`tweak-selection.json`). Preview rules:
-`${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/preview-before-render.md`.
+For version numbers and the Tweak Board, follow `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/boards.md`, "Tweak Board".
+Preview rules: `${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/preview-before-render.md`.
 
 ### 9 · Gap corrections — the ear-driven loop
 Only for cuts without `takes`; otherwise follow Stage 8's Cut Board path.

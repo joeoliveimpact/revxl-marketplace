@@ -1,6 +1,6 @@
 ---
 name: editor-superengine:reel-sound-pass
-description: Finishes the sound of a picture-locked reel. Use on "sound pass", "add sound effects", "mix the sound", "master the audio", "clean up my voice", or "run Auphonic". The client picks every sound on the Sound Board, then the editor bakes the stems, cleans the voice (free by default, Auphonic only after the client says yes to its cost), keeps the board's levels, masters to -14 LUFS, puts the sound back on the untouched picture last, and checks every cue made it. NOT for picture edits, captions or the first cut, which come before this.
+description: Finishes the sound of a picture-locked reel. Use on "sound pass", "add music", "pick a track", "background music under my voice", "add sound effects", "mix the sound", "master the audio", "clean up my voice", or "run Auphonic". The client picks every sound on the Sound Board, then the editor bakes the stems, cleans the voice (free by default, Auphonic only after the client says yes to its cost), keeps the board's levels, masters to -14 LUFS, puts the sound back on the untouched picture last, and checks every cue made it. NOT for picture edits, captions or the first cut, which come before this.
 ---
 
 # reel-sound-pass: the reel's finished sound
@@ -20,6 +20,7 @@ Speak to the client the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/refe
 - If the conversation was compacted since this skill loaded, invoke it again before going on.
 - Re-running is safe. The mix reads the picture and the board's Send and writes only into `videos/<reel>/sound/`. A paid Auphonic result for the same voice track is saved and reused at no charge; a paid job is never started twice.
 - If the picture changed after the board was made, the board and its cue times are stale: run step 2's `new_board.py` again with `--video "<the new locked picture>"`, then reopen the board. Reopening alone keeps the old picture.
+- In Auto edit (the picker printed "Auto edit with ..."), follow section 5 of ${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/house-rules.md.
 
 ## Ground rules
 

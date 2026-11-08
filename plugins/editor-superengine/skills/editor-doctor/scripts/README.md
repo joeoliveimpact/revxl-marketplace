@@ -32,6 +32,28 @@ Not fetched, on purpose: whisper.cpp and its ggml models. The editor never calls
 
 For whoever builds or ports a board. Starting, restarting and recovering the boards is in `../references/board-server.md`.
 
+### Cockpit agreement
+
+Stage and open-Send rules are read from `hooks/mod/logic.ts`, including optional Grade, sent/locked state and
+downstream timestamps. The Cockpit keeps its baseline and acknowledgements in private stores, which a disk-only
+script cannot access. When those are available to Claude, export the current workspace's baseline and its ack map
+as `<paths.editor>/hub/cockpit-state.json`: `{"baseline": 1234, "acked": {"reel-01/cut-selection.json": 1235}}`
+(timestamps are milliseconds), then refresh. Without a baseline the hub follows the Cockpit rule: no open Sends.
+Hub requests still appear in the request queue. Automatic Cockpit routing of these files belongs to its Send router.
+
+### Porting a board
+
+See [Building boards on the board server](#building-boards-on-the-board-server-build-lanes-only).
+Keep templates under the manifest's owning skill; the hub template is `skills/editor-doctor/boards/hub`.
+Board tabs and their stages/order come from `boards.json`. A missing client template says "not built yet".
+Master review is `editor/hub/review.html?reel=<reel>`, never a render folder listing.
+
+Use `BoardClient.create({board: "cut-board"})` for board state. Send the real whitelisted filename, for example
+`/videos/<reel>/__save?board=cut-board&name=cut-selection.json` or
+`/videos/<reel>/__save?board=grade-board&name=grade-selection.json`. State is `<board>.state.json` with one `.prev`;
+Sends are distinct files. Templates must not include generated `hub-data.json`, filmstrip frames or client state:
+board_sync overwrites only template-owned files and preserves these generated artifacts.
+
 ### Endpoints
 
 The URLs stay the same whatever folders `paths.editor` and `paths.videos` name on disk.

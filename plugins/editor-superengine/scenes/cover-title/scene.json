@@ -1,0 +1,19 @@
+{
+  "id": "cover-title",
+  "category": "cover-title",
+  "kind": "overlay",
+  "slots": {
+    "title": {"maxChars": 28, "default": "Clear cuts make the story", "hint": "at most six words and 28 letters, all said in the reel"},
+    "kicker": {"maxChars": 32, "default": "", "hint": "optional small line"}
+  },
+  "dur": [0.03333333333333333, 5],
+  "params": {
+    "y": {"type": "number", "default": 1100, "min": 220, "max": 1290, "hint": "top; clamped to keep the complete box above the bottom safe zone"},
+    "size": {"type": "string", "default": "normal", "enum": ["normal", "smaller"]},
+    "align": {"type": "string", "default": "center", "enum": ["left", "center", "right"]},
+    "accent": {"type": "color", "default": "#4f8cff"},
+    "font": {"type": "string", "default": "Inter"}
+  },
+  "source": "editor-superengine original (G6)",
+  "licence": "own"
+}

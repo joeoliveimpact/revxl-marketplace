@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"text","type":"string","default":"Three steps to calm mornings"},
+  {"id":"place","type":"string","default":"bottom"},
+  {"id":"accent","type":"color","default":"#4f8cff"},
+  {"id":"font","type":"string","default":"Inter"},
+  {"id":"seed","type":"number","default":7},
+  {"id":"mode","type":"string","default":"auto"},
+  {"id":"glow","type":"string","default":"bloom"},
+  {"id":"dust","type":"string","default":"quarks"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="./vendor/gsap.min.js"></script>
+    <script type="importmap">{"imports":{"three":"./vendor/three.module.js","postprocessing":"./vendor/postprocessing.js","three.quarks":"./vendor/three.quarks.js","quarks.core":"./vendor/quarks.core.js"}}</script>
+    <style>
+      @font-face { font-family: "Inter"; src: url("./fonts/Inter-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; }
+      #glass-card-3d { position: relative; width: 1080px; height: 1920px; z-index: 300; }
+      #band { position: absolute; left: 60px; top: 1100px; width: 900px; height: 360px; overflow: hidden; contain: paint; }
+      #dust, #gl, #glow { position: absolute; left: 0; top: 0; width: 900px; height: 360px; }
+      #gl { visibility: hidden; }
+      #perspective { position: absolute; inset: 0; perspective: 1100px; perspective-origin: 50% 50%; }
+      #slab { position: absolute; left: 90px; top: 72px; width: 720px; height: 216px; transform-style: preserve-3d; transform-origin: 50% 50%; }
+      .slice { position: absolute; inset: 0; border: 2px solid rgba(155, 188, 230, 0.48); border-radius: 36px; background-color: rgba(0, 0, 0, 0); }
+      #card { position: absolute; left: 0; top: 0; width: 720px; height: 216px; border: 2px solid rgba(210, 230, 255, 0.7); border-radius: 36px; background-color: rgba(25, 36, 56, 0.56); background-image: linear-gradient(to bottom, rgba(224, 239, 255, 0.2), rgba(120, 160, 210, 0.15)); color: #f5f8ff; font-family: "Inter"; font-weight: 400; overflow: hidden; }
+      #edge { position: absolute; left: 0; top: 30px; width: 8px; height: 152px; border-radius: 0 8px 8px 0; background-color: #4f8cff; }
+      #words { position: absolute; left: 42px; top: 24px; width: 632px; height: 164px; display: flex; align-items: center; justify-content: center; color: #f5f8ff; font-size: 64px; line-height: 1.16; text-align: center; overflow-wrap: anywhere; }
+    </style>
+  </head>
+  <body>
+    <div id="glass-card-3d" data-composition-id="glass-card-3d" data-start="0" data-duration="4" data-fps="30" data-width="1080" data-height="1920" data-3d-path="css">
+      <div id="band">
+        <canvas id="glow" data-no-capture></canvas>
+        <canvas id="dust" data-no-capture></canvas>
+        <div id="perspective">
+          <div id="slab">
+            <div id="card" class="plate card" data-capture>
+              <div id="edge"></div>
+              <span id="words" data-slot="text">Three steps to calm mornings</span>
+            </div>
+          </div>
+        </div>
+        <canvas id="gl" data-no-capture></canvas>
+      </div>
+    </div>
+    <script>
+      // Register before the deferred module or the HyperFrames adapter can bind.
+      (function () {
+        const root = document.getElementById("glass-card-3d");
+        const band = document.getElementById("band");
+        const slab = document.getElementById("slab");
+        const card = document.getElementById("card");
+        const words = document.getElementById("words");
+        const edge = document.getElementById("edge");
+        const v = window.__hyperframes.getVariables();
+        const h = v.place === "top" ? 500 : 360;
+        band.style.top = v.place === "top" ? "260px" : "1100px";
+        band.style.height = h + "px";
+        slab.style.top = (h - 216) / 2 + "px";
+        // Open rings form a 24 px edge without stacking opaque glass faces.
+        const slices = Array.from({ length: 12 }, (_, i) => {
+          const slice = document.createElement("div");
+          slice.className = "slice";
+          slice.style.transform = "translateZ(" + (-12 + i * 2) + "px)";
+          slice.style.borderColor = "rgba(155, 188, 230, " + (0.36 + i * 0.012) + ")";
+          slab.insertBefore(slice, card);
+          return slice;
+        });
+        gsap.set(card, { z: 12 });
+        card.style.fontFamily = JSON.stringify(v.font);
+        edge.style.backgroundColor = v.accent;
+        words.textContent = v.text;
+        const state = { t: 0 };
+        const duration = Number(root.dataset.duration);
+        const tl = gsap.timeline({ paused: true });
+        window.__timelines = window.__timelines || {};
+        window.__timelines["glass-card-3d"] = tl;
+        // All changes, including a jump backwards, are derived from this state.
+        tl.fromTo(state, { t: 0 }, { t: duration, duration: duration, ease: "none" }, 0);
+        function pose(t) {
+          const q = Math.min(1, Math.max(0, t / 0.7));
+          const enter = 1 - Math.pow(1 - q, 3);
+          // A cosine cycle starts and finishes at rest, then holds for 0.3 s.
+          const u = Math.min(1, Math.max(0, (t - 0.7) / (duration - 1)));
+          const sway = 3 * Math.sin(2 * Math.PI * (0.5 - 0.5 * Math.cos(Math.PI * u)));
+          return { opacity: enter, rx: 28 - 22 * enter + sway,
+            ry: -18 + 13 * enter - sway, z: -140 * (1 - enter) };
+        }
+        function cssPose(t) {
+          const p = pose(t);
+          gsap.set(slab, { rotationX: p.rx, rotationY: p.ry, z: p.z });
+          // Opacity on the preserve-3d parent would flatten the slab during entry.
+          gsap.set([card, ...slices], { opacity: p.opacity });
+          return p;
+        }
+        function mulberry32(seed) {
+          return function () {
+            let a = seed += 0x6D2B79F5;
+            a = Math.imul(a ^ a >>> 15, a | 1);
+            a ^= a + Math.imul(a ^ a >>> 7, a | 61);
+            return ((a ^ a >>> 14) >>> 0) / 4294967296;
+          };
+        }
+        const rand = mulberry32(Number(v.seed) >>> 0);
+        const particles = Array.from({ length: 200 }, () => {
+          const depth = rand();
+          const angle = rand() * Math.PI * 2;
+          const z = -24 - (1 - depth) * 196;
+          const parallax = (1100 - z) / 1100;
+          return { x: (rand() - 0.5) * 680, y: (rand() - 0.5) * (h - 200),
+            z, dx: Math.cos(angle) * (40 + 50 * depth) * parallax,
+            dy: Math.sin(angle) * (40 + 50 * depth) * parallax, size: (3 + 4 * depth) * parallax,
+            alpha: 0.35 + 0.45 * depth, accent: rand() > 0.45 };
+        });
+        const dust = document.getElementById("dust");
+        const glow = document.getElementById("glow");
+        for (const c of [dust, glow, document.getElementById("gl")]) {
+          c.width = 900; c.height = h; c.style.height = h + "px";
+        }
+        const dc = dust.getContext("2d");
+        const gc = glow.getContext("2d");
+        function dustAt(p, t) {
+          const drift = Math.min(1, Math.max(0, t / duration));
+          return { x: p.x + p.dx * drift, y: p.y + p.dy * drift, z: p.z };
+        }
+        function projectCard(x, y, z, p) {
+          const rx = p.rx * Math.PI / 180, ry = p.ry * Math.PI / 180;
+          const cy = y * Math.cos(rx) - z * Math.sin(rx);
+          const cz = y * Math.sin(rx) + z * Math.cos(rx);
+          const cx = x * Math.cos(ry) + cz * Math.sin(ry);
+          const depth = -x * Math.sin(ry) + cz * Math.cos(ry) + p.z;
+          const s = 1100 / (1100 - depth);
+          return [450 + cx * s, h / 2 + cy * s];
+        }
+        function haloPath(p) {
+          gc.beginPath();
+          // Project the same rounded front contour as the CSS and WebGL slab.
+          for (let corner = 0; corner < 4; corner++) {
+            const cx = corner === 0 || corner === 3 ? 324 : -324;
+            const cy = corner < 2 ? 72 : -72;
+            for (let j = 0; j <= 12; j++) {
+              const angle = (corner * 90 + j * 7.5) * Math.PI / 180;
+              const xy = projectCard(cx + 36 * Math.cos(angle), cy + 36 * Math.sin(angle), 12, p);
+              if (corner === 0 && j === 0) gc.moveTo(...xy); else gc.lineTo(...xy);
+            }
+          }
+          gc.closePath();
+        }
+        function drawCSS(t) {
+          const p = cssPose(t);
+          dc.clearRect(0, 0, 900, h);
+          for (const dot of particles) {
+            const a = dustAt(dot, t);
+            const s = 1100 / (1100 - a.z - p.z);
+            dc.fillStyle = dot.accent ? v.accent : "#f5f8ff";
+            dc.globalAlpha = p.opacity * dot.alpha;
+            dc.beginPath(); dc.arc(450 + a.x * s, h / 2 + a.y * s, dot.size * s / 2, 0, Math.PI * 2); dc.fill();
+          }
+          gc.clearRect(0, 0, 900, h);
+          gc.save();
+          gc.globalAlpha = p.opacity * 0.42;
+          gc.fillStyle = v.accent;
+          gc.strokeStyle = v.accent; gc.lineWidth = 12;
+          gc.shadowColor = v.accent; gc.shadowBlur = 26;
+          haloPath(p); gc.fill(); gc.stroke();
+          // Leave the centre clear so the halo does not darken the glass body.
+          gc.shadowBlur = 0; gc.globalAlpha = 1;
+          gc.globalCompositeOperation = "destination-out";
+          haloPath(p); gc.fill();
+          gc.restore();
+        }
+        const api = { root, band, slab, card, words, edge, v, h, state, tl, pose, cssPose, particles, dustAt,
+          draw: drawCSS, drawCSS, sync(t) {
+            const time = Math.max(0, Math.min(duration, Number(t) || 0));
+            tl.totalTime(time, true);
+            api.draw(state.t);
+          } };
+        window.__glassCard = api;
+        tl.eventCallback("onUpdate", () => api.draw(state.t));
+        window.addEventListener("hf-seek", () => api.sync(window.__hfThreeTime));
+        drawCSS(0);
+      })();
+    </script>
+    <script type="module">
+      import * as THREE from "three";
+      window.THREE = THREE;
+      // The pinned adapter reads public counters; this three release keeps its
+      // own counters private. Publish only this composition's pending setup.
+      const loading = THREE.DefaultLoadingManager;
+      loading.itemsLoaded = 0;
+      loading.itemsTotal = 1;
+      loading.itemStart("glass-card-setup");
+      const a = window.__glassCard;
+      const { root, slab, card, words, edge, v, h } = a;
+      const canvas = document.getElementById("gl");
+      // Probe after the entrance settles, at the same time on every worker.
+      const PROBE_TIME = 1.2;
+      // Fewer visible pixels than 2% of the band means the card is missing.
+      const MIN_VISIBLE_FRACTION = 0.02;
+      // A visible-pixel mean below 6% is too dark to use.
+      const MIN_MEAN_LUMINANCE = 0.06;
+      // A spread below 2% identifies an almost uniform block.
+      const MIN_LUMINANCE_STDDEV = 0.02;
+      // Only call it a flat block when it covers more than 60% of the band.
+      const FLAT_VISIBLE_FRACTION = 0.60;
+      // The middle 90% must span at least 8% luminance to show detail.
+      const MIN_LUMINANCE_RANGE = 0.08;
+      let renderer = null;
+      let failed = false;
+      function fallback() {
+        failed = true;
+        root.dataset["3dPath"] = "css";
+        canvas.style.visibility = "hidden";
+        slab.style.visibility = "visible";
+        document.getElementById("dust").style.visibility = "visible";
+        a.draw = a.drawCSS;
+        a.sync(window.__hfThreeTime ?? a.state.t);
+      }
+      function probeFrame() {
+        a.draw(PROBE_TIME);
+        if (failed) return;
+        const gl = renderer.getContext();
+        // The canvas is exactly regions[place], with its origin at the band.
+        const width = gl.drawingBufferWidth, height = gl.drawingBufferHeight;
+        // Only the test harness sets this hook. Paint the drawing buffer only
+        // here; ordinary renders and all subsequent seeks ignore it.
+        const plant = window.__N3_PLANT;
+        if (["black", "flat", "lowcontrast"].includes(plant)) {
+          renderer.setRenderTarget(null);
+          gl.colorMask(true, true, true, true);
+          gl.enable(gl.SCISSOR_TEST);
+          gl.scissor(0, 0, width, height);
+          const level = plant === "black" ? 0 : plant === "flat" ? 0.5 : 0.45;
+          gl.clearColor(level, level, level, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+          if (plant === "lowcontrast") {
+            gl.scissor(0, 0, Math.floor(width / 2), height);
+            gl.clearColor(0.51, 0.51, 0.51, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+          }
+          renderer.resetState();
+        }
+        const pixels = new Uint8Array(width * height * 4);
+        gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        const luminances = [];
+        let sum = 0, squares = 0;
+        for (let i = 0; i < pixels.length; i += 4) {
+          if (pixels[i + 3] === 0) continue;
+          const l = (0.2126 * pixels[i] + 0.7152 * pixels[i + 1] + 0.0722 * pixels[i + 2]) / 255;
+          luminances.push(l); sum += l; squares += l * l;
+        }
+        luminances.sort((x, y) => x - y);
+        const count = luminances.length;
+        const visibleFraction = count / (width * height);
+        const mean = count ? sum / count : 0;
+        const stddev = count ? Math.sqrt(Math.max(0, squares / count - mean * mean)) : 0;
+        const p5 = count ? luminances[Math.floor((count - 1) * 0.05)] : 0;
+        const p95 = count ? luminances[Math.floor((count - 1) * 0.95)] : 0;
+        const range = p95 - p5;
+        const reason = visibleFraction < MIN_VISIBLE_FRACTION || mean < MIN_MEAN_LUMINANCE ? "near-black"
+          : visibleFraction > FLAT_VISIBLE_FRACTION && stddev < MIN_LUMINANCE_STDDEV ? "flat"
+          : range < MIN_LUMINANCE_RANGE ? "lowcontrast" : null;
+        root.dataset["3dProbe"] = JSON.stringify({ time: PROBE_TIME, visibleFraction, mean, stddev, p5, p95, range, reason });
+        if (reason) {
+          root.dataset["3dFallback"] = "dead-frame:" + reason;
+          console.warn("The 3D card rendered dark or flat on this computer, so the simple version was used instead.");
+          fallback();
+        }
+      }
+      canvas.addEventListener("webglcontextlost", (event) => { event.preventDefault(); fallback(); });
+      function wantWebGL() {
+        if (v.mode === "css") return false;
+        if (v.mode === "webgl") return true;
+        const probe = document.createElement("canvas");
+        let gl = null;
+        try {
+          gl = probe.getContext("webgl2") || probe.getContext("webgl") || probe.getContext("experimental-webgl");
+          if (!gl) return false;
+          const debug = gl.getExtension("WEBGL_debug_renderer_info");
+          const name = debug ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) : "";
+          return !/swiftshader|llvmpipe|software|basic render/i.test(name);
+        } catch (_) { return false; }
+        finally { if (gl) gl.getExtension("WEBGL_lose_context")?.loseContext(); }
+      }
+      function rounded(ctx, x, y, w, height, r) {
+        ctx.beginPath(); ctx.roundRect(x, y, w, height, r);
+      }
+      function textureFromCard(textOnly = false) {
+        const image = document.createElement("canvas");
+        image.width = 720; image.height = 216;
+        const ctx = image.getContext("2d");
+        const style = getComputedStyle(card);
+        if (!textOnly) {
+        rounded(ctx, 1, 1, 718, 214, parseFloat(style.borderRadius));
+        ctx.fillStyle = style.backgroundColor; ctx.fill();
+        const sheen = ctx.createLinearGradient(0, 0, 0, 216);
+        sheen.addColorStop(0, "rgba(224, 239, 255, 0.2)");
+        sheen.addColorStop(1, "rgba(120, 160, 210, 0.15)");
+        ctx.fillStyle = sheen; ctx.fill();
+        ctx.strokeStyle = style.borderTopColor; ctx.lineWidth = 2; ctx.stroke();
+        ctx.save(); rounded(ctx, 2, 2, 716, 212, 34); ctx.clip();
+        ctx.fillStyle = getComputedStyle(edge).backgroundColor;
+        rounded(ctx, 0, 30, 8, 152, 4); ctx.fill(); ctx.restore();
+        // Broad internal reflections give the GPU glass a luminous blue face.
+        const reflection = ctx.createLinearGradient(0, 216, 720, 0);
+        reflection.addColorStop(0, "rgba(64, 185, 255, 0.72)");
+        reflection.addColorStop(0.48, "rgba(116, 173, 255, 0.42)");
+        reflection.addColorStop(1, "rgba(201, 226, 255, 0.72)");
+        rounded(ctx, 2, 2, 716, 212, 34);
+        ctx.fillStyle = reflection; ctx.fill();
+        }
+        if (textOnly) {
+        const textStyle = getComputedStyle(words);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "400 " + textStyle.fontSize + " " + style.fontFamily;
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        const lines = [];
+        let line = "";
+        for (const word of String(v.text).split(/\s+/)) {
+          const next = line ? line + " " + word : word;
+          if (ctx.measureText(next).width > 632 && line) { lines.push(line); line = word; }
+          else line = next;
+        }
+        if (line) lines.push(line);
+        // A long unbroken slot wraps too, just as overflow-wrap does in the DOM.
+        const wrapped = [];
+        for (const row of lines) {
+          let part = "";
+          for (const ch of row) {
+            if (part && ctx.measureText(part + ch).width > 632) { wrapped.push(part); part = ch; }
+            else part += ch;
+          }
+          wrapped.push(part);
+        }
+        const spacing = parseFloat(textStyle.lineHeight);
+        wrapped.forEach((row, i) => ctx.fillText(row, 360, 108 + (i - (wrapped.length - 1) / 2) * spacing));
+        }
+        const tex = new THREE.CanvasTexture(image);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        return tex;
+      }
+      async function build() {
+        // Keep a visible CSS picture throughout font and GPU setup. Only local fonts load.
+        await document.fonts.load('400 64px "Inter"');
+        await document.fonts.load("400 64px " + JSON.stringify(v.font));
+        if (!wantWebGL()) { fallback(); return; }
+        renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, preserveDrawingBuffer: true });
+        renderer.setPixelRatio(1); renderer.setSize(900, h, false); renderer.setClearColor(0x000000, 0);
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.toneMapping = THREE.NoToneMapping;
+        // Fixed exposure keeps the blue edge coloured; glyphs stay white in
+        // their separate sharp pass, outside the optical effects.
+        renderer.toneMappingExposure = 1.0;
+        renderer.debug.onShaderError = () => { fallback(); };
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(2 * Math.atan(h / 2200) * 180 / Math.PI, 900 / h, 1, 4000);
+        scene.add(new THREE.AmbientLight(0xe0edff, 1.2));
+        const key = new THREE.DirectionalLight(0xffffff, 2.4);
+        key.position.set(-400, 600, 900); scene.add(key);
+        const slabMesh = new THREE.Group(); scene.add(slabMesh);
+        const outline = new THREE.Shape();
+        outline.moveTo(-324, -108); outline.lineTo(324, -108);
+        outline.quadraticCurveTo(360, -108, 360, -72); outline.lineTo(360, 72);
+        outline.quadraticCurveTo(360, 108, 324, 108); outline.lineTo(-324, 108);
+        outline.quadraticCurveTo(-360, 108, -360, 72); outline.lineTo(-360, -72);
+        outline.quadraticCurveTo(-360, -108, -324, -108);
+        const body = new THREE.ExtrudeGeometry(outline, { depth: 20, steps: 1,
+          bevelEnabled: true, bevelThickness: 2, bevelSize: 2, bevelSegments: 3, curveSegments: 16 });
+        body.translate(0, 0, -10);
+        // Omit the end caps: only the textured front fills the glass centre.
+        const capMaterial = new THREE.MeshBasicMaterial({ visible: false });
+        const edgeMaterial = new THREE.MeshStandardMaterial({ color: 0x9bbce6,
+          metalness: 0.25, roughness: 0.3, transparent: true, opacity: 0.48, depthWrite: false });
+        const sides = new THREE.Mesh(body, [capMaterial, edgeMaterial]);
+        sides.renderOrder = 2; slabMesh.add(sides);
+        const material = new THREE.MeshBasicMaterial({ map: textureFromCard(), transparent: true, depthWrite: true, alphaTest: 0.01 });
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(720, 216), material);
+        mesh.position.z = 12; mesh.renderOrder = 3; slabMesh.add(mesh);
+        // Render glyphs after all optical effects, in the exact same card pose.
+        const textScene = new THREE.Scene(), textGroup = new THREE.Group();
+        textScene.add(textGroup);
+        const textMaterial = new THREE.MeshBasicMaterial({ map: textureFromCard(true), transparent: true, depthWrite: false });
+        const textMesh = new THREE.Mesh(new THREE.PlaneGeometry(720, 216), textMaterial);
+        textMesh.position.z = 13; textGroup.add(textMesh);
+        const rim = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(outline.getPoints(96)),
+          new THREE.LineBasicMaterial({ color: new THREE.Color(v.accent).multiplyScalar(3.5), transparent: true }));
+        rim.position.z = 13; rim.renderOrder = 4; slabMesh.add(rim);
+        const accentMaterial = new THREE.MeshBasicMaterial({ color: new THREE.Color(v.accent).multiplyScalar(5), transparent: true });
+        const accentMesh = new THREE.Mesh(new THREE.PlaneGeometry(9, 152), accentMaterial);
+        accentMesh.position.set(-354, 0, 14); accentMesh.renderOrder = 4; slabMesh.add(accentMesh);
+        const sweepMaterial = new THREE.ShaderMaterial({
+          uniforms: { progress: { value: 0 }, strength: { value: 0 } },
+          vertexShader: `varying vec2 uvGlass;
+            void main() { uvGlass = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+          fragmentShader: `varying vec2 uvGlass; uniform float progress; uniform float strength;
+            void main() {
+              vec2 q = abs((uvGlass - 0.5) * vec2(720.0, 216.0)) - vec2(324.0, 72.0);
+              if (length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) > 35.0) discard;
+              float d = (uvGlass.x + uvGlass.y * 0.28) - mix(-0.3, 1.6, progress);
+              float highlight = exp(-d * d / 0.012);
+              gl_FragColor = vec4(vec3(1.1, 1.45, 1.8), highlight * strength);
+              #include <colorspace_fragment>
+            }`, transparent: true, depthWrite: false });
+        const sweep = new THREE.Mesh(new THREE.PlaneGeometry(720, 216), sweepMaterial);
+        sweep.position.z = 14; sweep.renderOrder = 5; slabMesh.add(sweep);
+        const positions = new Float32Array(a.particles.length * 3);
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+        geo.setAttribute("diameter", new THREE.Float32BufferAttribute(a.particles.map(dot => dot.size), 1));
+        geo.setAttribute("strength", new THREE.Float32BufferAttribute(a.particles.map(dot => dot.alpha), 1));
+        geo.setAttribute("accentMix", new THREE.Float32BufferAttribute(a.particles.map(dot => Number(dot.accent)), 1));
+        const dots = new THREE.ShaderMaterial({
+          uniforms: { tint: { value: new THREE.Color(v.accent) }, white: { value: new THREE.Color("#f5f8ff") }, alpha: { value: 0 } },
+          vertexShader: `
+            attribute float diameter;
+            attribute float strength;
+            attribute float accentMix;
+            varying float dotAlpha;
+            varying float dotAccent;
+            void main() {
+              vec4 eye = modelViewMatrix * vec4(position, 1.0);
+              gl_PointSize = diameter * 1100.0 / -eye.z;
+              dotAlpha = strength; dotAccent = accentMix;
+              gl_Position = projectionMatrix * eye;
+            }`,
+          fragmentShader: `
+            uniform vec3 tint;
+            uniform vec3 white;
+            uniform float alpha;
+            varying float dotAlpha;
+            varying float dotAccent;
+            void main() {
+              float circle = 1.0 - smoothstep(0.0, 0.5, length(gl_PointCoord - vec2(0.5)));
+              gl_FragColor = vec4(mix(white, tint, dotAccent * 0.2), alpha * min(dotAlpha, 0.22) * circle);
+              #include <colorspace_fragment>
+            }`,
+          transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+        const points = new THREE.Points(geo, dots); points.frustumCulled = false; points.renderOrder = 1; scene.add(points);
+        // Project the whole text box in the current card pose, not just the glyphs.
+        // Include the requested 16 px margin, sprite radius and the DOF/bloom halo.
+        function textBounds() {
+          camera.updateMatrixWorld();
+          const corners = [];
+          for (const x of [words.offsetLeft - 360, words.offsetLeft + words.offsetWidth - 360]) {
+            for (const y of [108 - words.offsetTop, 108 - words.offsetTop - words.offsetHeight]) {
+              const point = new THREE.Vector3(x, y, 13).applyQuaternion(slabMesh.quaternion).project(camera);
+              corners.push({ x: (point.x + 1) * 450, y: (1 - point.y) * h / 2 });
+            }
+          }
+          return { left: Math.min(...corners.map(p => p.x)) - 16,
+            right: Math.max(...corners.map(p => p.x)) + 16,
+            top: Math.min(...corners.map(p => p.y)) - 16,
+            bottom: Math.max(...corners.map(p => p.y)) + 16 };
+        }
+        function nearText(position, size, bounds) {
+          const point = new THREE.Vector3(position.x, position.y, position.z).project(camera);
+          const x = (point.x + 1) * 450, y = (1 - point.y) * h / 2;
+          const radius = size * 0.5 * 1100 / (camera.position.z - position.z) + 48;
+          return x + radius >= bounds.left && x - radius <= bounds.right
+            && y + radius >= bounds.top && y - radius <= bounds.bottom;
+        }
+        let quarks = null, dustRenderer = null;
+        // Only the library's synchronous simulation may consume this stream.
+        // Bracket access permits the sanctioned random override without adding
+        // an unseeded random call to our own scene code.
+        function seeded(task) {
+          let seed = Number(v.seed) >>> 0;
+          const previous = Math["random"];
+          Math["random"] = () => {
+            let n = seed += 0x6D2B79F5;
+            n = Math.imul(n ^ n >>> 15, n | 1);
+            n ^= n + Math.imul(n ^ n >>> 7, n | 61);
+            return ((n ^ n >>> 14) >>> 0) / 4294967296;
+          };
+          try { return task(); } finally { Math["random"] = previous; }
+        }
+        if (v.dust === "quarks") {
+          const { ParticleSystem, BatchedRenderer, ConstantValue, ConstantColor, Vector4 } = await import("three.quarks");
+          const image = document.createElement("canvas"); image.width = image.height = 64;
+          const ctx = image.getContext("2d"), radial = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+          radial.addColorStop(0, "rgba(255,255,255,1)");
+          radial.addColorStop(0.45, "rgba(255,255,255,0.7)");
+          radial.addColorStop(1, "rgba(255,255,255,0)");
+          ctx.fillStyle = radial; ctx.fillRect(0, 0, 64, 64);
+          const dustMaterial = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(image),
+            transparent: true, alphaTest: 0.005, depthTest: true, blending: THREE.AdditiveBlending });
+          const tint = new THREE.Color(v.accent);
+          const shape = { update() {}, initialize(particle) {
+            const rand = Math["random"];
+            const front = rand() < 0.22;
+            const z = front ? 160 + rand() * 120 : -360 - rand() * 1100;
+            const scale = (1100 - z) / 1100;
+            // Leave foreground light around the text exclusion, inside the band.
+            particle.position.set((rand() - 0.5) * (front ? 860 : 790) * scale,
+              (rand() - 0.5) * (h - (front ? 30 : 70)) * scale, z);
+            particle.velocity.set((rand() - 0.5) * 22 * scale, (rand() - 0.5) * 12 * scale, front ? -20 : 18);
+            const size = (front ? 14 + rand() * 12 : 7 + rand() * 12) * scale;
+            particle.startSize.set(size, size, size); particle.size.copy(particle.startSize);
+            const bright = rand() < 0.3 ? 3.5 : 1.2;
+            particle.startColor.set((0.8 + tint.r * 0.2) * bright, (0.8 + tint.g * 0.2) * bright,
+              (0.8 + tint.b * 0.2) * bright, front ? 0.32 : 0.22);
+            particle.color.copy(particle.startColor);
+          } };
+          quarks = seeded(() => new ParticleSystem({ duration: 9, looping: false,
+            startLife: new ConstantValue(12), startSpeed: new ConstantValue(0),
+            startSize: new ConstantValue(1), startColor: new ConstantColor(new Vector4(1, 1, 1, 1)),
+            emissionOverTime: new ConstantValue(0), emissionBursts: [{ time: 0, count: new ConstantValue(260), cycle: 1, interval: 0.1, probability: 1 }],
+            shape, material: dustMaterial, renderOrder: 1 }));
+          scene.add(quarks.emitter); dustRenderer = new BatchedRenderer();
+          scene.add(dustRenderer); dustRenderer.addSystem(quarks); points.visible = false;
+        }
+        // Bloom has no temporal effects. Supply the delta explicitly so the
+        // composer's internal clock cannot affect a seek or a cold render.
+        const { EffectComposer, RenderPass, EffectPass, BloomEffect, DepthOfFieldEffect,
+          ToneMappingEffect, ToneMappingMode } = await import("postprocessing");
+        const composer = new EffectComposer(renderer, { frameBufferType: THREE.HalfFloatType });
+        composer.addPass(new RenderPass(scene, camera));
+        const dof = new DepthOfFieldEffect(camera, { focusDistance: 1088, focusRange: 180, bokehScale: 7, resolutionScale: 1 });
+        composer.addPass(new EffectPass(camera, dof));
+        if (v.glow === "bloom") {
+          composer.addPass(new EffectPass(camera, new BloomEffect({
+            intensity: 1.5, luminanceThreshold: 1, luminanceSmoothing: 0.3,
+            mipmapBlur: true, radius: 0.7
+          })));
+        }
+        // ACES filmic rolls off bright bloom while retaining the blue accent;
+        // map only once, after depth blur and bloom, with no adaptive history.
+        composer.addPass(new EffectPass(camera, new ToneMappingEffect({ mode: ToneMappingMode.ACES_FILMIC })));
+        composer.setSize(900, h);
+        root.dataset["3dGlow"] = v.glow;
+        root.dataset["3dDust"] = quarks ? "quarks" : "points";
+        root.dataset["3dFocus"] = "depth-of-field";
+        a.draw = function (t) {
+          // The glow is shared; only the card and dust swap drawing paths.
+          a.drawCSS(t);
+          if (failed) return;
+          const p = a.pose(t);
+          camera.position.z = 1100 - p.z;
+          slabMesh.rotation.set(THREE.MathUtils.degToRad(-p.rx), THREE.MathUtils.degToRad(p.ry), 0, "YXZ");
+          material.opacity = p.opacity; edgeMaterial.opacity = p.opacity * 0.48;
+          textGroup.quaternion.copy(slabMesh.quaternion); textMaterial.opacity = p.opacity;
+          rim.material.opacity = accentMaterial.opacity = p.opacity;
+          const duration = Number(root.dataset.duration);
+          const lateStart = Math.max(1.5, duration - 0.85);
+          const firstSweep = t >= 0.5 && t <= 1.4;
+          const sweepTime = firstSweep ? (t - 0.5) / 0.9 : (t - lateStart) / 0.7;
+          sweepMaterial.uniforms.progress.value = Math.min(1, Math.max(0, sweepTime));
+          sweepMaterial.uniforms.strength.value = sweepTime >= 0 && sweepTime <= 1
+            ? Math.sin(Math.PI * sweepTime) * (firstSweep ? 0.58 : 0.24) * p.opacity : 0;
+          dof.cocMaterial.focusDistance = camera.position.z - 12;
+          if (quarks) seeded(() => {
+            quarks.restart(); quarks.emitter.updateWorldMatrix(true, false);
+            quarks.update(0);
+            const fps = Number(root.dataset.fps), steps = Math.floor(t * fps + 1e-7);
+            for (let i = 0; i < steps; i++) quarks.update(1 / fps);
+            const remainder = t - steps / fps;
+            if (remainder > 1e-7) quarks.update(remainder);
+            const bounds = textBounds();
+            for (let i = 0; i < quarks.particleNum; i++) {
+              const particle = quarks.particles[i];
+              // Cull the complete sprite plus optical halo before it reaches text.
+              // Far dust is faint everywhere, and absent under the text box too.
+              const covered = nearText(particle.position, Math.max(particle.size.x, particle.size.y), bounds);
+              particle.color.w *= covered ? 0 : p.opacity;
+            }
+            dustRenderer.update(0);
+            // The library defaults transparent sprites to no depth writes.
+            // Write their cutout depth so postprocessing sees front AND far dust.
+            for (const batch of dustRenderer.batches) batch.material.depthWrite = true;
+          });
+          dots.uniforms.alpha.value = p.opacity;
+          a.particles.forEach((dot, i) => {
+            const d = a.dustAt(dot, t);
+            positions[i * 3] = d.x; positions[i * 3 + 1] = -d.y; positions[i * 3 + 2] = d.z;
+          });
+          geo.attributes.position.needsUpdate = true;
+          try {
+            composer.render(0);
+            renderer.autoClear = false; renderer.clearDepth(); renderer.render(textScene, camera);
+          }
+          catch (_) { fallback(); }
+          finally { renderer.autoClear = true; }
+        };
+        renderer.compile(scene, camera);
+        if (failed || renderer.getContext().isContextLost()) { fallback(); return; }
+        probeFrame();
+        if (failed) return;
+        a.sync(window.__hfThreeTime ?? a.state.t);
+        if (failed) return;
+        root.dataset["3dPath"] = "webgl";
+        slab.style.visibility = "hidden";
+        document.getElementById("dust").style.visibility = "hidden";
+        canvas.style.visibility = "visible";
+      }
+      try { await build().catch(() => fallback()); }
+      finally { loading.itemsLoaded = 1; loading.itemEnd("glass-card-setup"); }
+    </script>
+  </body>
+</html>

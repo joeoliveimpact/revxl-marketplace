@@ -59,11 +59,16 @@ def baked_note(spans, rate):
         minutes, remainder = divmod(tenths, 600)
         return f"{minutes}:{remainder // 10:02d}.{remainder % 10}"
 
-    labels = {"pip": "picture-in-picture", "overlay": "blurred card"}
+    labels = {"pip": "picture-in-picture", "overlay": "blurred card", "transition": "transition"}
     parts = [f'{clock(s["start_f"])}-{clock(s["end_f"])} (' +
              " and ".join(labels[name] for name in s["layout"].split("+")) + ")" for s in spans]
-    noun = "part uses" if len(spans) == 1 else "parts use"
-    return f"note: {len(spans)} {noun} the finished picture because their layout can't be rebuilt in an editor: " + ", ".join(parts)
+    # Counts timeline parts (back-to-back transitions merge into one part); the labels name what each holds.
+    names = {name for s in spans for name in s["layout"].split("+")}
+    moves, layouts = "transition" in names, bool(names - {"transition"})
+    what = ("layout and transition movement" if moves and layouts else
+            "transition movement" if moves else "layout")
+    noun, own = ("part uses", "its") if len(spans) == 1 else ("parts use", "their")
+    return f"note: {len(spans)} {noun} the finished picture because {own} {what} can't be rebuilt in an editor: " + ", ".join(parts)
 
 
 def derive_media(reel, aroll, master=None):

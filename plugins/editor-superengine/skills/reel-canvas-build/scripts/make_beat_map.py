@@ -133,7 +133,7 @@ def run(reel_dir, plan_path, words_rel, cuts_rel, replace):
         os.replace(out, reel / PREV_NAME)
     out.write_bytes((json.dumps(doc, indent=1, ensure_ascii=False) + "\n").encode("utf-8"))
     # Board-only recommendations stay outside the schema-validated choices and never count as a Send.
-    saved = saved_style.load()
+    saved = saved_style.load(reel)
     _, source = saved_style.resolve("edit_style.style", saved=saved)
     recommended = saved_style.recommendation("edit_style.style", saved) if source == "recommended" else None
     (reel / "beat-map.config.json").write_bytes(

@@ -29,6 +29,7 @@ import grade_math as gm  # noqa: E402
 import bake_grade as bg  # noqa: E402
 import skin_guard as sg  # noqa: E402
 from apply_grade import IMAGES, apply  # noqa: E402
+from grade_bounds import clamp  # noqa: E402
 
 KEYS = list(gm.PRE) + list(bg.TUNE)
 
@@ -52,6 +53,9 @@ def correction_of(sel):
         if isinstance(v, bool) or not isinstance(v, (int, float)) or not lo <= v <= hi:
             return None, f"The Send's {k} is {v!r}, outside the board's range {lo:g} to {hi:g}."
         out[k] = float(v)
+    out, notes = clamp(out)
+    for note in notes:
+        print("note: " + note)
     return out, None
 
 

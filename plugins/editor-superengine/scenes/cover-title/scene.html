@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"title","type":"string","label":"Title","default":"Clear cuts make the story"},
+  {"id":"kicker","type":"string","label":"Kicker","default":""},
+  {"id":"y","type":"number","label":"Title top","default":1100},
+  {"id":"size","type":"string","label":"Title size","default":"normal"},
+  {"id":"align","type":"string","label":"Alignment","default":"center"},
+  {"id":"accent","type":"color","label":"Accent","default":"#4f8cff"},
+  {"id":"font","type":"string","label":"Font family","default":"Inter"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="./vendor/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Inter"; src: url("./fonts/Inter-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; }
+      #cover-title { position: relative; width: 1080px; height: 1920px; z-index: 400; font-family: "Inter"; font-weight: 400; color: #ffffff; --accent: #4f8cff; }
+      #cover-title .block { position: absolute; left: 60px; top: 1100px; width: 900px; padding: 24px; overflow: hidden; }
+      #cover-title .plate { position: absolute; inset: 0; background: rgba(14, 15, 18, 0.9); border-top: 8px solid var(--accent); }
+      #cover-title .words { position: relative; width: 852px; }
+      #cover-title .kicker { display: block; font-size: 30px; line-height: 1.2; color: var(--accent); overflow-wrap: anywhere; }
+      #cover-title .kicker:empty { display: none; }
+      #cover-title .title { display: block; font-size: 72px; line-height: 1.1; overflow-wrap: anywhere; }
+    </style>
+  </head>
+  <body>
+    <div id="cover-title" data-composition-id="cover-title" data-start="0" data-duration="1" data-fps="30" data-width="1080" data-height="1920">
+      <div class="block">
+        <div class="plate"></div>
+        <div class="words">
+          <span class="kicker slot" data-slot="kicker"></span>
+          <span class="title slot" data-slot="title"></span>
+        </div>
+      </div>
+    </div>
+    <script>
+      (function () {
+        const v = window.__hyperframes.getVariables();
+        const root = document.getElementById("cover-title");
+        const block = root.querySelector(".block");
+        root.style.setProperty("--accent", v.accent);
+        root.style.fontFamily = JSON.stringify(v.font);
+        block.style.top = v.y + "px";
+        block.style.textAlign = v.align;
+        root.querySelectorAll("[data-slot]").forEach(el => { el.textContent = v[el.dataset.slot]; });
+        const fit = () => {
+          // Match cover_pick's two named sizes and measured line heights.
+          const sizes = {normal: [72, 79.2], smaller: [60, 66]};
+          const title = root.querySelector(".title");
+          let [fontSize, lineHeight] = sizes[v.size];
+          title.style.fontSize = fontSize + "px";
+          title.style.lineHeight = lineHeight + "px";
+          if (v.size === "normal" && title.getBoundingClientRect().height > 2 * lineHeight + 1) {
+            [fontSize, lineHeight] = sizes.smaller;
+            title.style.fontSize = fontSize + "px";
+            title.style.lineHeight = lineHeight + "px";
+          }
+          const words = root.querySelector(".words");
+          const height = Math.ceil(words.getBoundingClientRect().height + 2 * 24);
+          block.style.height = height + "px";
+          block.style.top = Math.max(220, Math.min(v.y, 1470 - height)) + "px";
+        };
+        fit();
+        document.fonts.ready.then(fit);
+        const tl = gsap.timeline({ paused: true });
+        tl.set(block, { opacity: 1, immediateRender: true }, 0);
+        window.__timelines = window.__timelines || {};
+        window.__timelines["cover-title"] = tl;
+      })();
+    </script>
+  </body>
+</html>

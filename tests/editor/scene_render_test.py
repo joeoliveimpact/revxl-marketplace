@@ -6,7 +6,7 @@ ffmpeg and hyperframes installed):
   python -I "C:/Workspaces/Content Studio/output/scripts/heavy_lock.py" --min-gb 3 -- \
     python -X utf8 -I tests/editor/scene_render_test.py [--scene <id> ...] [--part all|base|brand|counter|seek]
       [--write-previews]
-Default = every scene folder present (the 8 own ones and any vendored hf-*). For each scene, in a temp project built the offline_selftest way (scene.html as
+Default = every scene folder present (own scenes and any vendored hf-*). For each scene, in a temp project built the offline_selftest way (scene.html as
 index.html + the shipped GSAP in ./vendor and the shipped fonts in ./fonts, cold font cache, Node network guard,
 proxies to a dead port):
   - `hyperframes lint --json`: exit 0, 0 errors, 0 warnings
@@ -261,7 +261,8 @@ def brand_checks(sid, html, spec, frames, default, proj, tmp, env):
        "font" not in refused and {**default, **refused}["font"] == spec["params"]["font"]["default"]
        and notes == ["Your brand font Comic Sans MS isn't available for on-screen graphics yet, "
                      f"so they use {spec['params']['font']['default']}."])
-    fill = {"id": sid, "slots": {key: default[key] for key in spec["slots"]}, "params": params}
+    fill = {"id": sid, "slots": {key: default[key] for key in spec["slots"]},
+            "params": {**{key: default[key] for key in spec["params"]}, **params}}
     # Default numeric displays need a fixture transcript too (VES-3); these are sample claims, never client words.
     words = list(fill["slots"].values()) + ([str(default["value"])] if "value" in default else [])
     problems = compose.scene_check.fill_problems(sid, fill, words=words)

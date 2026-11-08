@@ -156,7 +156,7 @@ def joined_tail(count, fps, speed, vfilter="null", audio=True):
     return lines
 
 
-def build_graph(cuts, sr, vfilter, astream=0):
+def build_graph(cuts, sr, vfilter, astream=0, dead=None):
     """One filter graph for the whole cut, from cuts.json. Written to a file, not the
     command line - 40+ segments blow past argument limits on every platform.
 
@@ -166,16 +166,17 @@ def build_graph(cuts, sr, vfilter, astream=0):
     cumulative out frames. F-15: the audio is trimmed in samples at the same frame
     times, so each segment's audio is as long as its picture and concat never pads."""
     if bool(cuts.get("takes")):
-        return build_mixed_graph(cuts, sr, vfilter, astream)
+        return build_mixed_graph(cuts, sr, vfilter, astream, dead)
     fps, speed, segs, L = cuts["fps"], cuts["speed"], cuts["segments"], []
     for i, s in enumerate(segs):
         L.append("[0:v]%s[v%d];" % (video_cut(s, fps), i))
-        L.append("[0:a:%d]%s[a%d];" % (astream, audio_cut(s, fps, sr), i))
+        pan = "pan=stereo|c0=c%d|c1=c%d," % ((1, 1) if dead == "L" else (0, 0)) if dead else ""
+        L.append("[0:a:%d]%s%s[a%d];" % (astream, pan, audio_cut(s, fps, sr), i))
     L.extend(joined_tail(len(segs), fps, speed, vfilter))
     return "\n".join(L)
 
 
-def build_mixed_graph(cuts, sr, filters, astreams):
+def build_mixed_graph(cuts, sr, filters, astreams, dead=None):
     """Conform each raw once, split to its pieces, resample all audio to the first take's rate."""
     fps, speed, segs, lines = cuts["fps"], cuts["speed"], cuts["segments"], []
     for index, n in enumerate(sorted(cuts["takes"], key=int)):
@@ -184,10 +185,12 @@ def build_mixed_graph(cuts, sr, filters, astreams):
             continue
         vf = filters[n] if isinstance(filters, dict) else filters
         stream = astreams[n] if isinstance(astreams, dict) else astreams
+        side = (dead or {}).get(n)
+        pan = "pan=stereo|c0=c%d|c1=c%d," % ((1, 1) if side == "L" else (0, 0)) if side else ""
         lines.append("[%d:v]%s,split=%d%s;" % (index, vf, len(indices),
                      "".join("[sv%d]" % i for i in indices)))
-        lines.append("[%d:a:%d]aresample=%d,aformat=channel_layouts=stereo,asplit=%d%s;" %
-                     (index, stream, sr, len(indices), "".join("[sa%d]" % i for i in indices)))
+        lines.append("[%d:a:%d]%saresample=%d,aformat=channel_layouts=stereo,asplit=%d%s;" %
+                     (index, stream, pan, sr, len(indices), "".join("[sa%d]" % i for i in indices)))
         for i in indices:
             s = segs[i]
             lines.append("[sv%d]%s[v%d];" % (i, video_cut(s, fps), i))
@@ -343,11 +346,13 @@ def main():
 
             vfilter = {n: v + "," + take_filter(n) for n, v in vfilter.items()}
         astream = {n: int(p.get("audio_stream", 0)) for n, p in probes.items()}
+        dead = {n: p["dead_channel"] for n, p in probes.items() if p.get("dead_channel")}
     else:
         vfilter = conform(probe.get("video"), crop) if crop is not None else conform(probe.get("video"))
         if a.grade:
             vfilter += "," + grade_filter(a.grade)
         astream = int(probe.get("audio_stream", 0))
+        dead = probe.get("dead_channel")
     sr = sample_rate(inputs[0] if mixed else a.raw, astream[min(probes, key=int)] if mixed else astream)
     if not (a.master or a.scrub):
         a.master = a.scrub = True
@@ -361,13 +366,13 @@ def main():
     results = []
     if a.master:
         g = work / ("_graph-master-%s.txt" % tag)
-        g.write_text(build_graph(cuts, sr, vfilter, astream), encoding="utf-8")
+        g.write_text(build_graph(cuts, sr, vfilter, astream, dead), encoding="utf-8")
         out = outdir / ("master-%s.mp4" % tag)
         encode(inputs, g, out, fps, fps_flag, 14, "slow", int(round(fps)), "192k")
         results.append(("master", out))
     if a.scrub:
         g = work / ("_graph-scrub-%s.txt" % tag)
-        g.write_text(build_graph(cuts, sr, vfilter, astream), encoding="utf-8")
+        g.write_text(build_graph(cuts, sr, vfilter, astream, dead), encoding="utf-8")
         out = outdir / ("scrub-%s.mp4" % tag)
         encode(inputs, g, out, fps, fps_flag, 20, "veryfast", max(1, int(round(fps / 2))), "160k")
         results.append(("scrub", out))

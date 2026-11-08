@@ -1,6 +1,7 @@
 """S6a done-test: the Beat Map and Sketches boards end to end, plus the ways they must refuse.
 
   EDITOR_SE_HOME=<state> python -X utf8 -I tests/editor/canvas_boards_test.py
+  python -X utf8 -I tests/editor/canvas_boards_test.py --data-only  # static Send + mutant, no browser
 
 <state> is an installed editor state folder (node, chrome-headless-shell, puppeteer-core); it is only read.
 Prints one "✓ <case>" / "✗ <case>: <why>" line per case, then "N passed, M failed". Exit 0 only when all pass.
@@ -8,6 +9,7 @@ The browser work runs through canvas_boards_click.js (puppeteer-core, headless s
 """
 import base64, contextlib, copy, datetime, http.client, io, json, os, shutil, socket, subprocess, sys, tempfile, threading
 from pathlib import Path
+from html.parser import HTMLParser
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from editor_test_state import isolated_home
@@ -58,7 +60,7 @@ const fs = require('fs'), {pathToFileURL} = require('url');
     page.on('pageerror', e => errors.push(String(e)));
     async function open() {
       await page.goto(job.url, {waitUntil: 'load'});
-      await page.waitForSelector('.tabs[data-built]');
+      await page.waitForFunction('window.Hub && Hub.ready');
       await page.click('#tab-sketches');
       const handle = await page.waitForSelector('iframe');
       const frame = await handle.contentFrame();
@@ -67,9 +69,10 @@ const fs = require('fs'), {pathToFileURL} = require('url');
     }
     let frame = await open();
     async function click(selector) {
+      if (selector === '#send') await frame.waitForSelector('#send:not([disabled])');
       await frame.$eval(selector, e => {
         e.scrollIntoView({block:'center'});
-        // A fixed footer inside the 900px fixture also needs the outer page to scroll.
+        // A fixed footer inside the hub iframe also needs the outer page to scroll.
         parent.scrollBy(0, window.frameElement.getBoundingClientRect().top + e.getBoundingClientRect().top - parent.innerHeight / 2);
       });
       try { await frame.click(selector); }
@@ -136,6 +139,27 @@ const fs = require('fs'), {pathToFileURL} = require('url');
     await send(); frame = await open();
     need(await frame.$eval(number, e => e.value) === '1.5', 'number param was not restored');
     need(JSON.parse(fs.readFileSync(job.selection, 'utf8')).scenes.b_001.params.sweep === 1.5, 'number param sent as wrong type');
+    // ---- G2-c: Fine-tune writes the selected beat through the existing Send ----
+    await frame.select('#fine-beat', 'b_001');
+    await click('#fine-pane .tp-rotv_b');
+    const slider = '#fine-pane .tp-sldv';
+    await frame.waitForSelector(slider, {visible:true});
+    need(Math.abs(await frame.$eval('#fine-pane input', e => Number(e.value)) - 1.5) < 0.001,
+      'Fine-tune did not reflect the existing number control');
+    await frame.$eval(slider, e => {
+      e.scrollIntoView({block:'center'});
+      parent.scrollBy(0, window.frameElement.getBoundingClientRect().top + e.getBoundingClientRect().top - parent.innerHeight / 2);
+    });
+    const bounds = await (await frame.$(slider)).boundingBox();
+    await page.mouse.move(bounds.x + bounds.width * 0.25, bounds.y + bounds.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(bounds.x + bounds.width * 0.65, bounds.y + bounds.height / 2, {steps:8});
+    await page.mouse.up();
+    const fineValue = await frame.$eval(number, e => Number(e.value));
+    need(fineValue > 1.5 && fineValue <= 7, 'Fine-tune slider did not update the existing control');
+    await send();
+    need(JSON.parse(fs.readFileSync(job.selection, 'utf8')).scenes.b_001.params.sweep === fineValue,
+      'Fine-tune slider value did not travel through Send');
     await click(row + ' .remove-scene'); await send();
     step = 'locked counter';
     const counterRow = '.scene-controls[data-beat="b_002"]';
@@ -172,6 +196,7 @@ const fs = require('fs'), {pathToFileURL} = require('url');
     need(await page.$eval('#edit-style', e => [...e.options].filter(o=>o.textContent.includes('Your last pick'))
       .map(o=>o.value).join() === 'layout-switch'), 'badge is missing or on the wrong style');
     need(!fs.existsSync(job.selection), 'opening the Beat Map sent a choice');
+    await page.waitForSelector('#send:not([disabled])');
     await page.$eval('#send', e => e.scrollIntoView({block:'center'}));
     await page.click('#send'); await page.waitForSelector('#status[data-state=sent]');
     need(!('edit_style' in JSON.parse(fs.readFileSync(job.selection,'utf8'))), 'untouched Style menu sent edit_style');
@@ -195,13 +220,14 @@ const fs = require('fs'), {pathToFileURL} = require('url');
     const page = await browser.newPage(); page.setDefaultTimeout(15000);
     page.on('pageerror', e => errors.push(String(e)));
     async function open() {
-      await page.goto(job.url, {waitUntil:'load'}); await page.waitForSelector('.tabs[data-built]');
+      await page.goto(job.url, {waitUntil:'load'}); await page.waitForFunction('window.Hub && Hub.ready');
       await page.click('#tab-beat-map');
       const frame = await (await page.waitForSelector('iframe')).contentFrame();
       await frame.waitForSelector('#status[data-state=saved], #status[data-state=sent]'); return frame;
     }
     let frame = await open();
     async function click(s) {
+      if (s === '#send') await frame.waitForSelector('#send:not([disabled])');
       await frame.$eval(s, e => { e.scrollIntoView({block:'center'});
         parent.scrollBy(0, window.frameElement.getBoundingClientRect().top + e.getBoundingClientRect().top - parent.innerHeight/2); });
       await frame.click(s);
@@ -289,6 +315,46 @@ class Fail(Exception):
 def need(ok, why):
     if not ok:
         raise Fail(why)
+
+
+def check_send_loading(html, board):
+    class SendParser(HTMLParser):
+        attrs = None
+        inside = False
+
+        def handle_starttag(self, tag, attrs):
+            if tag == "button" and dict(attrs).get("id") == "send":
+                self.attrs = dict(attrs)
+                self.inside = True
+
+        def handle_endtag(self, tag):
+            if tag == "button":
+                self.inside = False
+
+        def handle_data(self, data):
+            if self.inside:
+                self.text.append(data)
+
+    parser = SendParser()
+    parser.text = []
+    parser.feed(html)
+    need(parser.attrs is not None and "disabled" in parser.attrs, f"{board}: Send is live during load")
+    need("Loading..." in "".join(parser.text), f"{board}: Send has no loading cue")
+
+
+def send_loading_case():
+    for board in ("beat-map", "sketches"):
+        html = (PLUGIN / "skills/reel-canvas-build/boards" / board / "index.html").read_text(encoding="utf-8")
+        check_send_loading(html, board)
+        if board == "beat-map":
+            anchor = 'id="send" disabled'
+            need(html.count(anchor) == 1, "loading mutant anchor differs")
+            try:
+                check_send_loading(html.replace(anchor, 'id="send"', 1), board)
+            except Fail as e:
+                need(str(e) == "beat-map: Send is live during load", f"wrong mutant rejection: {e}")
+            else:
+                raise Fail("loading mutant survived: Send enabled before init")
 
 
 def free_port(*taken):
@@ -388,8 +454,8 @@ def scene_fill_case():
         reel_fixture(reel)
         cat = scene_fill.catalog()
         expected = {d.name for d in scene_check.SCENES.iterdir()
-                    if d.is_dir() and not scene_check.scene_problems(d)}
-        need({s["id"] for s in cat} == expected, "catalog must list every shippable scene")
+                    if d.is_dir() and not scene_check.scene_problems(d)} - {"cover-title"}  # G6: cover only, not a Beat Map scene
+        need({s["id"] for s in cat} == expected, "catalog must list every shippable Beat Map scene")
         for item in cat:
             spec = load(scene_check.SCENES / item["id"] / "scene.json")
             want = {k: spec[k] for k in ("id", "kind", "category", "dur")}
@@ -521,6 +587,10 @@ def main():
         scene_fill_case()
         print("scene_fill passed")
         return 0
+    if "--data-only" in sys.argv:
+        send_loading_case()
+        print("Send loading static check + enabled-button mutant passed")
+        return 0
     tools, missing = find_tools()
     if missing:
         print(f"✗ This test needs an installed editor state: set EDITOR_SE_HOME to one "
@@ -565,6 +635,11 @@ def main():
 
     def url(board, reel_name="demo-reel"):
         return f"http://127.0.0.1:{S['port']}/editor/{board}/?reel={reel_name}"
+
+    def refresh_hub():
+        for name in ("board_sync.py", "hub_rows.py"):
+            p = run(py + ["-B", str(DOCTOR / name), "--root", str(ws)], env=env)
+            need(p.returncode == 0, f"hub setup {name}: {p.stdout} {p.stderr}")
 
     def browse(page_url, actions):
         """A NEW browser (fresh profile) runs the actions; returns its reads."""
@@ -687,11 +762,40 @@ def main():
 
     def c6():
         (videos / "empty-reel").mkdir()
-        reads = browse(url("beat-map", "empty-reel"), [
-            {"do": "goto"}, {"do": "wait", "sel": "#empty", "visible": True}, {"do": "read"},
-            {"do": "goto", "url": url("sketches", "empty-reel")}, {"do": "wait", "sel": "#empty", "visible": True},
-            {"do": "read"}])
-        need(reads[0]["empty"] and reads[1]["empty"], f"#empty shown: beat-map {reads[0]['empty']}, sketches {reads[1]['empty']}")
+        for board in ("beat-map", "sketches"):
+            live = ws / "editor" / board / "index.html"
+            for state_name, reel_name, message in (
+                    ("error", "", "This board needs to be opened by Claude."),
+                    ("empty", "empty-reel", "Nothing to send yet.")):
+                def check_init():
+                    r = browse(url(board, reel_name), [{"do": "goto"},
+                               {"do": "waitState", "state": state_name}, {"do": "read"}])[0]
+                    need(r["status"]["state"] == state_name and message in r["status"]["text"],
+                         f"{board} {state_name}: wrong status {r['status']}")
+                    need(r["send"] and r["send"]["disabled"], f"{board} {state_name}: Send is enabled")
+                    need(not r["send"]["loading"], f"{board} {state_name}: loading cue survived")
+                    if state_name == "empty":
+                        need(r["empty"], f"{board}: #empty is hidden")
+                check_init()
+                original = live.read_bytes()
+                html = original.decode("utf-8")
+                # Remove only the cleanup on this exit path; keep its status and disabled state.
+                if state_name == "error":
+                    anchor = next(line for line in html.splitlines() if 'catch (e) { setStatus("error", "This board' in line)
+                else:
+                    anchor = html.split('  if (!doc) {', 1)[1].split('    return;', 1)[0]
+                cleanup = 'sendBtn.querySelector("[data-loading]").remove();'
+                need(anchor.count(cleanup) == 1, f"{board} {state_name}: cleanup mutant anchor differs")
+                live.write_bytes(html.replace(anchor, anchor.replace(cleanup, "", 1), 1).encode("utf-8"))
+                try:
+                    try:
+                        check_init()
+                    except Fail as e:
+                        need(str(e) == f"{board} {state_name}: loading cue survived", f"wrong mutant rejection: {e}")
+                    else:
+                        raise Fail(f"{board} {state_name}: loading cue mutant survived")
+                finally:
+                    live.write_bytes(original)
 
     # ---- reverse ----
     def c7():
@@ -723,7 +827,7 @@ def main():
         doc["reel"] = "broken-reel"
         doc["beats"][0]["layout"] = "grid"
         write_json(bad_reel / "beat-map.state.json", doc)
-        browse(url("beat-map", "broken-reel"), [{"do": "goto"}, {"do": "wait", "sel": "#send"},
+        browse(url("beat-map", "broken-reel"), [{"do": "goto"}, {"do": "wait", "sel": "#send:not([disabled])"},
                                                 {"do": "click", "sel": "#send"}, {"do": "waitState", "state": "error"}])
         need(not (bad_reel / "beat-map-selection.json").exists(), "beat-map-selection.json was written")
 
@@ -755,10 +859,7 @@ def main():
         scene_fixture(sr)
         p = run(py + [str(SEED), "--reel-dir", str(sr), "--plan", str(sr / "work/plan.json")], env=env)
         need(p.returncode == 0, f"scene fixture seed: {p.stdout} {p.stderr}")
-        hub = ws / rt.read_config(ws)["paths"]["editor"] / "hub"
-        hub.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(Path(__file__).parent / "fixtures/stub-hub.html", hub / "index.html")
-        shutil.copyfile(DOCTOR / "boards.json", hub / "boards.json")
+        refresh_hub()
         S["browsers"] += 1
         job = scratch / f"scene-job-{S['browsers']}.json"
         write_json(job, {"url": url("hub", name), "userDataDir": str(scratch / f"profile-{S['browsers']}"),
@@ -800,10 +901,7 @@ def main():
         sk = load(sr / "sketches.state.json")
         sk["scenes"] = {"b_001": {"id": "callout", "slots": {"text": "From Sketches"}, "params": {}}}
         write_json(sr / ("sketches.state.json" if source == "state" else "sketches-selection.json"), sk)
-        hub = ws / rt.read_config(ws)["paths"]["editor"] / "hub"
-        hub.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(Path(__file__).parent / "fixtures/stub-hub.html", hub / "index.html")
-        shutil.copyfile(DOCTOR / "boards.json", hub / "boards.json")
+        refresh_hub()
         S["browsers"] += 1
         job = scratch / f"beatmap-job-{S['browsers']}.json"
         write_json(job, {"url": url("hub", name), "userDataDir": str(scratch / f"profile-{S['browsers']}"),
@@ -847,6 +945,8 @@ def main():
         p = run(py + [str(PLUGIN / "skills/_shared/standing_notes.py"), "pick", "edit_style.style",
                       "--value", '"layout-switch"', "--note", "Let the layout do it"], env=own_env)
         need(p.returncode == 0, f"remembered pick: {p.stdout} {p.stderr}")
+        p = run(py + [str(PLUGIN / "skills/_shared/saved_style.py"), "pick", str(sr), "fresh"], env=own_env)
+        need(p.returncode == 0, f"reel style pick: {p.stdout} {p.stderr}")
         p = run(py + [str(SEED), "--reel-dir", str(sr), "--plan", str(sr / "work/plan.json")], env=own_env)
         need(p.returncode == 0, f"remembered fixture seed: {p.stdout} {p.stderr}")
         selection = sr / "beat-map-selection.json"
@@ -862,6 +962,7 @@ def main():
     S["A"] = free_port()
     S["B"] = free_port(S["A"])
     try:
+        case("Send starts disabled with a loading cue; enabling it early is rejected", send_loading_case)
         case("schema_scene: scene shapes and Sketches beat keys", schema_scene_case)
         case("scene_fill: catalog, honest fills, timing and planted bad suggestions", scene_fill_case)
         if "--scenes-only" in sys.argv:
@@ -879,7 +980,7 @@ def main():
         case("4 port change + new browser: the edits and sent come back from disk", c4)
         case("remembered style: badge, Ask default and untouched Send", remembered_style)
         case("5 sketches: lock waits for a pick; pick, lock, notes saved, Send valid, restored on a new port", c5)
-        case("6 empty: a reel with no beat map or sketches shows #empty on both pages", c6)
+        case("6 init exits: empty and failed boards clear Loading, keep Send disabled; cleanup mutants fail", c6)
         case("8 the board won't send a broken doc", c8)
         case("10 __save refuses a name outside the board's writes list", c10)
         case("9 seed refuses to overwrite; --replace keeps .prev", c9)

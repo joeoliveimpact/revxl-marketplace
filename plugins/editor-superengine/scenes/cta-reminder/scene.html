@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"keyword","type":"string","label":"Comment word","default":"NOTES"},
+  {"id":"accent","type":"color","label":"Accent","default":"#ffd84d"},
+  {"id":"font","type":"string","label":"Font family","default":"Inter"}
+]'>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1080, height=1920" />
+  <script src="./vendor/gsap.min.js"></script>
+  <style>
+    @font-face { font-family: "Inter"; src: url("./fonts/Inter-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 1080px; height: 1920px; overflow: hidden; }
+    #cta-reminder { position: relative; width: 1080px; height: 1920px; z-index: 400; font-family: "Inter"; font-weight: 400; color: #ffffff; --accent: #ffd84d; }
+    #cta-reminder .card { position: absolute; left: 80px; top: 1150px; width: 520px; padding: 24px 28px; border-radius: 18px; background: rgba(16, 19, 24, 0.9); }
+    #cta-reminder .prompt { display: block; font-size: 32px; line-height: 1.3; }
+    #cta-reminder .keyword { display: block; margin-top: 8px; font-size: 44px; line-height: 1.2; color: var(--accent); overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <div id="cta-reminder" data-composition-id="cta-reminder" data-start="0" data-duration="5" data-fps="30" data-width="1080" data-height="1920">
+    <div class="card plate">
+      <span class="prompt">Comment</span>
+      <span class="keyword slot" data-slot="keyword"></span>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const root = document.getElementById("cta-reminder");
+      const variables = window.__hyperframes.getVariables();
+      root.style.setProperty("--accent", variables.accent);
+      root.style.fontFamily = JSON.stringify(variables.font);
+      root.querySelector('[data-slot="keyword"]').textContent = variables.keyword;
+      const card = root.querySelector(".card");
+      const duration = Number(root.dataset.duration);
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo(card, { x: -48, opacity: 0 }, { x: 0, opacity: 1, duration: 0.35, ease: "power2.out" }, 0);
+      tl.to(card, { x: -48, opacity: 0, duration: 0.35, ease: "power2.in" }, duration - 0.35);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["cta-reminder"] = tl;
+    })();
+  </script>
+</body>
+</html>

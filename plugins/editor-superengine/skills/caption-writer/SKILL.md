@@ -8,6 +8,7 @@ description: Writes or audits the caption under a finished reel's post. Use on "
 ## Output contract (every run, in this order)
 
 **Write mode**
+Hook lines never claim an audience experiment or promise results; hook numbers must be said in the reel (hard rule 1).
 1. Two hook-line options (the first line, the only part people see before "...more"), each scored 1-10 on: curiosity, keyword placement, and a fresh angle on the reel's spoken hook. Rewrite any option with any of its three scores under 8. Mark the ~55-character cut when that option is on.
 2. The body, in the client's voice.
 3. Alt text (a short picture description for screen readers and search).

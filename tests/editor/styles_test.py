@@ -101,7 +101,11 @@ def c_saved(root):
     (sd / "default.json").write_bytes(json.dumps({"schema": 1, "edit_style": {"style": "punch-in",
                                                                                "punch_scale": 1.2}}).encode())
     try:
-        rc, out, track = plan_cli(make_reel(root))
+        reel = make_reel(root)
+        rc, out, _ = plan_cli(reel)
+        ck("saved: an unpicked reel still asks", rc == 1 and "ask: which editing style?" in out, out)
+        st.saved_style.pick(reel, "default")
+        rc, out, track = plan_cli(reel)
         ck("saved: the saved style is used when the Send has none (source saved, its punch level on frame 50)",
            rc == 0 and track["source"] == "saved" and key(track, 50)["scale"] == 1.2, out)
         rc, out, track = plan_cli(make_reel(root, {"style": "layout-switch"}))
@@ -109,6 +113,7 @@ def c_saved(root):
            and track["style"]["style"] == "layout-switch", out)
     finally:
         (sd / "default.json").unlink()
+        (sd / "_index.json").unlink(missing_ok=True)
 
 
 def c_cut_set(root):

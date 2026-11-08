@@ -70,3 +70,5 @@ match. Log and use `synced.mp4` as the take's raw, then run Stages 0–1 on it.
 
 This trims the screen on the same frames at the same speed and asserts the output frame count. It stops on mixed
 takes: one screen recording can follow only one recording's cut.
+
+The other way round, one long recording cut into several separate Shorts, is in `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/short-clips.md`.

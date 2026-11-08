@@ -19,8 +19,9 @@ first, and its STATUS line says it is switching.
 The chain transcribes the audio track probe.py chose (`audio_stream`), as 16 kHz
 mono, and stores that track's `mean_loudness_db` in probe.json (S5's quiet-recording
 gate reuses it). Three guards run on every transcript, raw or re-transcribed cut
-(HF-5, hard rule; the numbers are the spec's, not tuned here):
-  (a) silent tail: silencedetect at -35 dB / 0.6 s; when the clip ends with more
+(HF-5, hard rule; the numbers are the spec's except the tail level, per ruling
+H-HF5-1, 11.07.26: per-clip level for the tail guard, never louder than -35 dB):
+  (a) silent tail: silencedetect at the per-clip level / 0.6 s; when the clip ends with more
       than 0.8 s of silence, words starting over 0.4 s after the sound ends are
       dropped (the engine invented them)
   (b) near silence: mean loudness under -45 dB stops the run with a plain message
@@ -85,6 +86,7 @@ WORD_CAVEAT = ("ASR word ENDS run early (up to 0.54s measured) and word times ar
                "CONTIGUOUS, so they cannot locate silence. Use for identity and "
                "ordering; waveform-verify any cut point taken from them.")
 TAIL_DB, TAIL_MIN_S, TAIL_LONG_S, TAIL_GRACE_S = -35, 0.6, 0.8, 0.4   # HF-5 (a)
+TAIL_MARGIN_DB = 12.0                                                 # H-HF5-1
 QUIET_DB = -45.0                                                       # HF-5 (b)
 CHILD = "EDITOR_SE_TX_CHILD"
 DOCTOR = HERE.parents[1] / "editor-doctor" / "scripts" / "check_deps.py"
@@ -212,10 +214,32 @@ def quiet_message(db, stream, tracks):
     return msg
 
 
-def sound_end(wav, duration):
+def tail_noise_db(wav):
+    """H-HF5-1: noise = min(-35, clip peak dB - TAIL_MARGIN_DB)."""
+    # ponytail: no noise-floor bound (H-HF5-6): steady hiss can keep an invented tail word; v0.3.0 lead B
+    # measures the floor only after the speech ends. Losing real speech would be worse.
+    # Peak avoids lowering the reading just because a clip has long pauses.
+    # Keep mean_loudness's quiet-recording gate and failure sentinel unchanged.
+    try:
+        p = ff("ffmpeg", "-hide_banner", "-nostats", "-i", wav, "-af", "volumedetect",
+               "-f", "null", "-")
+        m = re.search(r"max_volume:\s*(-?[\d.]+|-inf) dB", p.stderr)
+        if p.returncode == 0 and m:
+            peak = float(m.group(1))
+            if math.isfinite(peak):
+                return min(TAIL_DB, peak - TAIL_MARGIN_DB)
+    except (OSError, KeyError, ValueError):
+        pass
+    return TAIL_DB
+
+
+def sound_end(wav, duration, guards=None):
     """HF-5 (a): where the sound ends, when the clip ends in more than 0.8 s of silence; else None."""
+    noise = tail_noise_db(wav)
+    if guards is not None:
+        guards["tail_noise_db"] = noise
     err = ff("ffmpeg", "-hide_banner", "-nostats", "-i", wav, "-af",
-             "silencedetect=noise=%ddB:d=%s" % (TAIL_DB, TAIL_MIN_S), "-f", "null", "-").stderr
+             "silencedetect=noise=%sdB:d=%s" % (noise, TAIL_MIN_S), "-f", "null", "-").stderr
     starts = [float(x) for x in re.findall(r"silence_start:\s*(-?[\d.]+)", err)]
     ends = [float(x) for x in re.findall(r"silence_end:\s*(-?[\d.]+)", err)]
     if not starts:
@@ -417,11 +441,12 @@ def main():
     d.update(engine=engine, audio_stream=stream, mean_loudness_db=round(db, 1))
 
     filled = fill_untimed(d["words"], d["duration"])
-    kept, dropped = trim_tail(d["words"], sound_end(wav, d["duration"]))
+    d["guards"] = {"untimed_filled": filled}
+    kept, dropped = trim_tail(d["words"], sound_end(wav, d["duration"], d["guards"]))
     for i, w in enumerate(kept):
         w["i"] = i
     d["words"] = kept
-    d["guards"] = {"untimed_filled": filled, "tail_dropped": [w["word"] for w in dropped]}
+    d["guards"]["tail_dropped"] = [w["word"] for w in dropped]
     d["_word_caveat"] = WORD_CAVEAT
     if filled:
         print("gave %d untimed word(s) a time from their neighbours" % filled)

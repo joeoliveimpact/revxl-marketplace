@@ -512,6 +512,9 @@ def case_follow(S, a):
 
 def case_single(S, a):
     r = cs.module("render.py")
+    # Pin 3364bd2, the pre-N4 anchor, for no-takes graphs. The one-take path
+    # changed on purpose in 3700d21 (egm-m7 B5, ruling H-EGM7), so compare it
+    # against the take path instead of the legacy graph.
     base = sh(["git", "show", "3364bd2:" + (SCRIPTS / "render.py").relative_to(cs.REPO).as_posix()])
     if base.returncode:
         raise RuntimeError("base render is unavailable: " + base.stderr)
@@ -519,9 +522,20 @@ def case_single(S, a):
     for speed in (1., 1.15):
         cuts = cs.module("gaps.py").snap_cuts([(1,2), (4,6)], 30, speed)
         base_graph = old.build_graph(cuts, 48000, "scale=360:640", 0)
-        for takes in ({}, {"1": {"raw": "A.mp4"}}):
-            ck("single: speed %s build_graph byte-identical to base (%d takes)" % (speed, len(takes)),
-               r.build_graph(dict(cuts, takes=takes), 48000, "scale=360:640", 0) == base_graph)
+        ck("single: speed %s no-takes build_graph byte-identical to base" % speed,
+           r.build_graph(dict(cuts, takes={}), 48000, "scale=360:640", 0) == base_graph)
+        one_take = dict(cuts, takes={"1": {"raw": "A.mp4"}})
+        ck("single: speed %s one take uses the take path" % speed,
+           r.build_graph(one_take, 48000, "scale=360:640", 0)
+           == r.build_mixed_graph(one_take, 48000, "scale=360:640", 0))
+        take_two = dict(cuts, takes={"2": {"raw": "B.mp4"}},
+                        segments=[dict(s, take=2) for s in cuts["segments"]])
+        inputs = r.mixed_inputs(take_two, "A.mp4")
+        graph = r.build_graph(take_two, 48000, {"2": "scale=360:640"}, {"2": 1})
+        ck("single: speed %s take-2-only reads its own raw and streams" % speed,
+           inputs == ["B.mp4"] and "[0:v]scale=360:640,split=2[sv0][sv1];" in graph
+           and "[0:a:1]aresample=48000" in graph and "[0:a:0]" not in graph
+           and graph == r.build_mixed_graph(take_two, 48000, {"2": "scale=360:640"}, {"2": 1}))
         mixed_cuts = dict(cuts, takes={"1": {}, "2": {}},
                           segments=[dict(s, take=n) for n, s in enumerate(cuts["segments"], 1)])
         mixed_graph = r.build_graph(mixed_cuts, 48000, {"1": "null", "2": "null"}, {"1": 0, "2": 1})
@@ -530,6 +544,30 @@ def case_single(S, a):
            and "[1:a:1]aresample=48000" in mixed_graph
            and mixed_graph.splitlines()[-3:] == base_graph.replace("scale=360:640", "null").splitlines()[-3:]
            and mixed_graph.count("atempo=") == (1 if speed != 1. else 0))
+    # H-AUD-1: mono source upmixed to identical L/R by aformat=channel_layouts=stereo.
+    start = time.monotonic()
+    mono, stereo = S / "mono.mkv", S / "stereo.mkv"
+    ff("-f", "lavfi", "-i", "color=c=black:s=320x180:r=30:d=2",
+       "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:duration=2",
+       "-t", "2", "-ac", "1", "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
+       "-c:a", "pcm_s16le", mono)
+    mono_cuts = cs.module("gaps.py").snap_cuts([(.25, 1.75)], 30, 1.)
+    mono_cuts["takes"] = {"1": {"raw": str(mono)}}
+    graph_path = S / "mono-graph.txt"
+    graph_path.write_bytes(r.build_graph(mono_cuts, 48000, "scale=320:180", 0).encode("utf-8"))
+    ff("-i", mono, "-/filter_complex", graph_path, "-map", "[v]", "-map", "[a]",
+       "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", "-c:a", "pcm_s16le", stereo)
+    probe = sh([cs.rt.tool("ffprobe"), "-v", "error", "-select_streams", "a:0",
+                "-show_entries", "stream=channels", "-of", "json", stereo])
+    streams = json.loads(probe.stdout).get("streams", []) if probe.returncode == 0 else []
+    ck("single: mono upmix output has two channels", probe.returncode == 0
+       and len(streams) == 1 and streams[0].get("channels") == 2, probe.stdout+probe.stderr)
+    diff = sh([cs.rt.tool("ffmpeg"), "-v", "info", "-i", stereo, "-map", "0:a:0", "-vn",
+               "-af", "pan=mono|c0=c0-c1,volumedetect", "-f", "null", "-"])
+    peak = re.search(r"max_volume:\s*(-inf|[-\d.]+) dB", diff.stderr)
+    ck("single: mono upmix has identical L/R (difference below -90 dB)",
+       diff.returncode == 0 and peak is not None and float(peak.group(1)) < -90, diff.stderr)
+    ck("single: mono upmix real encode under 30 seconds", time.monotonic()-start < 30)
     # A helper call below must not even import/check a ledger on the legacy path.
     d = synthetic(S)
     from unittest.mock import patch
@@ -540,9 +578,133 @@ def case_single(S, a):
            and not (d / "footage/ledger.json").exists())
 
 
+def case_deadch(S, a):
+    """H-AUD-2: repair a dead stereo side at render input; preserve live stereo and mono."""
+    import contextlib, io
+    from unittest.mock import patch
+    from subprocess import CompletedProcess
+
+    cs.need_ram()
+    start = time.monotonic()
+    r = cs.module("render.py")
+    detector = cs.module("probe.py")
+    def stats(left, right):
+        return "\n".join("Channel: %d\nRMS level dB: %s\nPeak level dB: %s" % (n, rms, peak)
+                         for n, (rms, peak) in enumerate((left, right), 1))
+
+    valid = stats((-20, -17), (-50, -47))
+    for label, output, rc, expected in (
+            ("exactly 30 dB", valid, 0, "R"),
+            ("left 30 dB lower", stats((-50, -47), (-20, -17)), 0, "L"),
+            ("under 30 dB", stats((-20, -17), (-49.9, -46.9)), 0, None),
+            ("both silent", stats(("-inf", "-inf"), ("-inf", "-inf")), 0, None),
+            ("failed pass", valid, 1, None), ("empty", "", 0, None),
+            ("missing peak", valid.replace("Peak level dB: -47", ""), 0, None),
+            ("malformed number", valid.replace("-50", "broken"), 0, None),
+            ("NaN", valid.replace("-50", "nan"), 0, None),
+            ("positive infinity", valid.replace("-20", "inf"), 0, None),
+            ("duplicate channel", valid + "\nChannel: 2", 0, None),
+            ("three channels", valid + "\nChannel: 3\nRMS level dB: -inf\nPeak level dB: -inf", 0, None)):
+        with patch.object(detector, "run", return_value=CompletedProcess([], rc, "", output)):
+            ck("deadch: measurement %s" % label, detector.dead_channel("unused", 1) == expected)
+    with patch.object(detector, "run", side_effect=OSError("unreadable")):
+        ck("deadch: unreadable measurement is inconclusive", detector.dead_channel("unused") is None)
+    base_probe = sh(["git", "show", "81858f4:" + (SCRIPTS / "probe.py").relative_to(cs.REPO).as_posix()])
+    if base_probe.returncode:
+        raise RuntimeError("base probe is unavailable: " + base_probe.stderr)
+    old_probe = type(sys)("deadch_base_probe"); old_probe.__file__ = str(SCRIPTS / "probe.py")
+    exec(base_probe.stdout, old_probe.__dict__)
+    sources, flags = {}, {}
+    note = "Your mic recorded on one side only (the %s side is silent); I copied it to both sides."
+    for name, pan, expected in (("left", "pan=stereo|c0=c0|c1=0*c0", "R"),
+                                ("right", "pan=stereo|c0=0*c0|c1=c0", "L"),
+                                ("stereo", None, None), ("mono", None, None),
+                                ("quiet", "pan=stereo|c0=c0|c1=0.1*c0", None)):
+        src = sources[name] = S / (name + ".mkv")
+        args = ["-f", "lavfi", "-i", "color=c=black:s=320x180:r=30:d=2",
+                "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:duration=2"]
+        if name == "stereo":
+            args += ["-f", "lavfi", "-i", "sine=frequency=880:sample_rate=48000:duration=2",
+                     "-filter_complex", "[1:a][2:a]join=inputs=2:channel_layout=stereo[tone]",
+                     "-map", "0:v", "-map", "[tone]"]
+        elif pan:
+            args += ["-af", pan]
+        else:
+            args += ["-ac", "1"]
+        ff(*args, "-t", "2", "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
+           "-c:a", "pcm_s16le", src)
+        w = S / (name + "-work")
+        p = script("probe.py", src, "-o", w)
+        ck("deadch: %s probe succeeds" % name, p.returncode == 0, p.stdout+p.stderr)
+        probe = cs.load(w / "probe.json")
+        flags[name] = probe.get("dead_channel")
+        ck("deadch: %s dead side %s" % (name, expected), flags[name] == expected
+           and (expected is not None or "dead_channel" not in probe), probe)
+        ck("deadch: %s client note" % name,
+           (note % ("right" if expected == "R" else "left")) in p.stdout if expected else
+           "Your mic recorded on one side only" not in p.stdout, p.stdout)
+        if expected is None:
+            before = {f: (w / f).read_bytes() for f in ("probe.json", "envelope.json")}
+            stdout = io.StringIO()
+            with patch.object(sys, "argv", ["probe.py", str(src), "-o", str(w)]), contextlib.redirect_stdout(stdout):
+                old_probe.main()
+            ck("deadch: %s probe files and report byte-identical to 81858f4" % name,
+               all((w / f).read_bytes() == data for f, data in before.items()) and stdout.getvalue() == p.stdout)
+
+    base = sh(["git", "show", "81858f4:" + (SCRIPTS / "render.py").relative_to(cs.REPO).as_posix()])
+    if base.returncode:
+        raise RuntimeError("base render is unavailable: " + base.stderr)
+    old = type(sys)("deadch_base_render"); old.__file__ = str(SCRIPTS / "render.py")
+    exec(base.stdout, old.__dict__)
+    gaps = cs.module("gaps.py")
+    for speed in (1., 1.15):
+        cuts = gaps.snap_cuts([(.25, .75), (1., 1.75)], 30, speed)
+        one = dict(cuts, takes={"2": {}}, segments=[dict(s, take=2) for s in cuts["segments"]])
+        mixed = dict(cuts, takes={"1": {}, "2": {}},
+                     segments=[dict(s, take=n) for n, s in enumerate(cuts["segments"], 1)])
+        for label, build, prior, doc, vf, stream in (
+                ("legacy", r.build_graph, old.build_graph, cuts, "null", 0),
+                ("one take", r.build_graph, old.build_graph, one, {"2": "null"}, {"2": 1}),
+                ("mixed", r.build_graph, old.build_graph, mixed, {"1": "null", "2": "null"}, {"1": 0, "2": 1}),
+                ("mixed helper", r.build_mixed_graph, old.build_mixed_graph, mixed, "null", 0)):
+            want = prior(doc, 48000, vf, stream)
+            ck("deadch: %s speed %s graph byte-identical to 81858f4, omitted and None" % (label, speed),
+               build(doc, 48000, vf, stream) == want and build(doc, 48000, vf, stream, dead=None) == want)
+        graph = r.build_graph(mixed, 48000, "null", {"1": 0, "2": 1}, dead={"2": "L"})
+        ck("deadch: only the flagged take is panned before resampling",
+           "[0:a:0]aresample=" in graph and "[1:a:1]pan=stereo|c0=c1|c1=c1,aresample=" in graph
+           and graph.count("pan=stereo") == 1)
+
+    for name in ("left", "right", "stereo"):
+        for takes in (False, True):
+            cuts = gaps.snap_cuts([(.25, 1.75)], 30, 1.)
+            dead = flags[name]
+            if takes:
+                cuts["takes"] = {"1": {"raw": str(sources[name])}}
+                dead = {"1": dead} if dead else {}
+            graph_path = S / ("%s-%s-graph.txt" % (name, takes))
+            graph_path.write_bytes(r.build_graph(cuts, 48000, "scale=320:180", 0, dead=dead).encode("utf-8"))
+            out = S / ("%s-%s-out.mkv" % (name, takes))
+            ff("-i", sources[name], "-/filter_complex", graph_path, "-map", "[v]", "-map", "[a]",
+               "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", "-c:a", "pcm_s16le", out)
+            diff = sh([cs.rt.tool("ffmpeg"), "-v", "info", "-i", out, "-map", "0:a:0", "-vn",
+                       "-af", "pan=mono|c0=c0-c1,volumedetect", "-f", "null", "-"])
+            peak = re.search(r"max_volume:\s*(-inf|[-\d.]+) dB", diff.stderr)
+            ck("deadch: %s takes=%s L/R %s" % (name, takes, "differ" if name == "stereo" else "identical"),
+               diff.returncode == 0 and peak is not None and
+               (float(peak.group(1)) > -60 if name == "stereo" else float(peak.group(1)) < -90), diff.stderr)
+            level = sh([cs.rt.tool("ffmpeg"), "-v", "info", "-i", out, "-map", "0:a:0", "-vn",
+                        "-af", "volumedetect", "-f", "null", "-"])
+            mean = re.search(r"mean_volume:\s*(-inf|[-\d.]+) dB", level.stderr)
+            ck("deadch: %s takes=%s output is live" % (name, takes), level.returncode == 0
+               and mean is not None and float(mean.group(1)) > -40, level.stderr)
+    elapsed = time.monotonic() - start
+    ck("deadch: real probes and encodes under 30 seconds (%.2f s)" % elapsed, elapsed < 30)
+
+
 CASES = {"ledger": case_ledger, "edl": case_edl, "takes": case_takes,
          "timemap": case_timemap, "single": case_single, "best-take": case_best_take,
-         "render": case_render, "sync": case_sync, "follow": case_follow}
+         "render": case_render, "sync": case_sync, "follow": case_follow, "deadch": case_deadch}
 
 
 def main():

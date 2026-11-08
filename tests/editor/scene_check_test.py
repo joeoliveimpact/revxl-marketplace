@@ -7,7 +7,7 @@ right reason, and the same copy un-mutated must pass in the same run (so no chec
 <script src>, a removed @font-face, a fill over maxChars, a CSS @keyframes, a CSS translateX(-50%), the CSS
 translate property at -50% (either axis), Math.random(), z-index 700, a body background, a counter value missing
 from the transcript, a counter with no transcript, a counter `from` outside 0..value (passing ones alongside).
-G2-b registry rules, in a temp tree of the 8 own scenes (which passes with no registry-allow.json) plus a fake
+G2-b registry rules, in a temp tree of the own scenes (which passes with no registry-allow.json) plus a fake
 vendored hf-counter (the own counter renamed, with the header comment, licence Apache-2.0, category counter) and
 its registry-allow.json entry (which passes): CDN GSAP, an asset file with no entry, an html-referenced asset with
 no entry, scene.html not matching ours_sha256, a missing header comment, no registry-allow.json, a refused verdict,
@@ -22,7 +22,7 @@ REPO = HERE.parents[1]
 PLUGIN = REPO / "plugins" / "editor-superengine"
 SCENES = PLUGIN / "scenes"
 CHECK = PLUGIN / "scripts" / "scene_check.py"
-IDS = ("callout", "counter", "cta-end-card", "hook-title", "list", "lower-third", "quote", "stat-card")
+IDS = ("callout", "counter", "cta-end-card", "hook-title", "list", "lower-third", "quote", "stat-card", "slots", "cover-title")
 fails = []
 
 
@@ -43,7 +43,7 @@ def out(p):
 
 p = run("check")
 ALL = sorted(d.name for d in SCENES.iterdir() if d.is_dir())
-ck("every shipped scene passes check (%d OK lines, the 8 own ones included, exit 0)" % len(ALL),
+ck("every shipped scene passes check (%d OK lines, the own scenes included, exit 0)" % len(ALL),
    p.returncode == 0 and set(IDS) <= set(ALL)
    and sorted(l[3:] for l in p.stdout.splitlines() if l.startswith("OK ")) == ALL, out(p))
 
@@ -130,7 +130,7 @@ def save_allow(d, entries):
 
 
 def tree(t):
-    """A temp scenes/ holding a copy of the 8 own scenes only (no registry-allow.json)."""
+    """A temp scenes/ holding a copy of the own scenes only (no registry-allow.json)."""
     d = Path(t) / "scenes"
     for sid in IDS:
         shutil.copytree(SCENES / sid, d / sid)
@@ -167,11 +167,12 @@ def edit(path, old, new):
 with tempfile.TemporaryDirectory() as t:
     d = tree(t)
     p = run("check", d)
-    ck("G2-b: the 8 own scenes with no registry-allow.json pass", p.returncode == 0 and p.stdout.count("OK ") == 8, out(p))
+    ck(f"G2-b: the {len(IDS)} own scenes with no registry-allow.json pass",
+       p.returncode == 0 and p.stdout.count("OK ") == len(IDS), out(p))
     add_vendored(d)
     p = run("check", d)
-    ck("G2-b: plus a vendored hf-counter with its allowed entry passes (9 OK)",
-       p.returncode == 0 and p.stdout.count("OK ") == 9 and "OK hf-counter" in p.stdout, out(p))
+    ck(f"G2-b: plus a vendored hf-counter with its allowed entry passes ({len(IDS) + 1} OK)",
+       p.returncode == 0 and p.stdout.count("OK ") == len(IDS) + 1 and "OK hf-counter" in p.stdout, out(p))
 
 
 def vmutant(name, change, reason, sid="hf-counter"):

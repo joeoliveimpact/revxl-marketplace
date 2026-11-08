@@ -32,7 +32,9 @@ reel folder (`sfx/`, `beds/`), probes every sound, computes the waveforms, and w
   The voice waveform sits above it on the same time axis, so speech gaps are visible.
 - **Music:** one line per track (hear its strongest part, title, mood, length, origin, Use); "Add a free track" /
   "Use my own track" set `music_request` so Claude walks the client through it after Send. Level is the music vs
-  the voice (-18 suggested), the dip under voice (4-12 dB, default 6) is heard in the preview,
+  the voice (-18 suggested). "Carve around the voice" starts on at strength 0.8; its slider (0.25-1) appears
+  while it is on. It lowers only the music's voice bands and lets them return through pauses. The preview
+  follows the same voice curves when available. The dip under voice (4-12 dB, default 6) remains the fallback,
   and an own track needs the "I have the rights" tick.
 - **Music stops:** a stop at the playhead, with cut-at and back-at times. The music fades out to silence by the
   cut, fades back in from the return (defaults 0.3 s and 0.5 s) and keeps running underneath, so it comes back
@@ -43,6 +45,9 @@ reel folder (`sfx/`, `beds/`), probes every sound, computes the waveforms, and w
   they sit right, then judge.
 - Decisions survive a reload. Send writes `sound-selection.json`; undecided cues go in its `undecided` list and
   are never mixed.
+- Send saves `bed.carve` as `{on, strength}`. Old selections without that key keep their original dip and
+  re-bake unchanged. No voice, no usable bands, or a failed carve uses the dip and says so. Resolve receives
+  the simpler dip as volume keyframes and a note that the voice carve is applied only in our render.
 - **Beat-sync (off by default):** a checkbox on the music row, greyed out with "no steady beat found in this track"
   when the bed's `grid` is null. On, the track start (`offset_s`) snaps to its nearest beat whenever it changes,
   faint beat ticks show on the cue strip, and "Snap cues to the beat" moves only the cues within

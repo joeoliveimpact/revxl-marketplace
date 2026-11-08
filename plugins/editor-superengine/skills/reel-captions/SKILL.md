@@ -1,6 +1,6 @@
 ---
 name: editor-superengine:reel-captions
-description: Plan burned-in captions for the signed-off spoken cut, propose truthful word marks, and pick a caption look before rendering. Use for captions, subtitles, caption style, burned-in captions, karaoke captions, pick a caption look, highlight these words, change the caption colour, turn captions off, or make this my default caption look. For words on the video; the post caption belongs to caption-writer.
+description: Plans burned-in captions for the signed-off spoken cut, proposes truthful word marks, and picks a caption look before rendering. Use for captions, subtitles, caption style, burned-in captions, karaoke captions, pick a caption look, highlight these words, change the caption colour, turn captions off, or make this my default caption look. For words on the video; the post caption belongs to caption-writer.
 ---
 
 ## Output contract (every run, in this order)
@@ -18,6 +18,7 @@ description: Plan burned-in captions for the signed-off spoken cut, propose trut
 - Keep the client's existing choices. Ask before replacing a board they edited.
 - A plan does not mean a render. The final video still needs the client's OK of the latest preview,
   recorded by reel-canvas-build's `compose.py ok`.
+- In Auto edit (the picker printed "Auto edit with ..."), follow section 5 of ${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/house-rules.md.
 
 ## Ground rules
 
@@ -27,8 +28,7 @@ description: Plan burned-in captions for the signed-off spoken cut, propose trut
 - There is no default look. “No captions” is an explicit choice, never a fallback.
 - All looks and options are the client's taste. Read `${CLAUDE_PLUGIN_ROOT}/skills/reel-captions/references/looks.md`.
 - Use Inter Regular only, weight 400, with its licence on file. Use the literal family name Inter.
-- Keep the smallest truthful phrase: “doesn't work”, never “work” alone. The script imports the shared
-  `emphasis.truthful_span`; never reproduce its rule in a prompt or another function.
+- Keep the smallest truthful phrase: “doesn't work”, never “work” alone.
 - At most one punch event per sentence, even when it spans several words. Later marks keep their accent;
   numbers and calls to action never punch. Do not remove qualifiers to make a phrase fit.
 - A truthful marked phrase longer than three words, or one that straddles a layout change, is shown
@@ -36,19 +36,16 @@ description: Plan burned-in captions for the signed-off spoken cut, propose trut
 
 ## Flow
 
-1. Read `caption_style` from `look-picker-selection.json` or the Beat Map Send. If both have a choice,
-   the newer `sent_at` wins. Then try `caption_style` in `rt.state_dir()/styles/default.json`;
-   with no choice, ask the plain look question above. Never infer a look from the editing style.
+1. `captions.py plan` reads the reel's Sends and the active saved style itself; don't read the style file. With no choice, ask the plain look question above. Never infer a look from the editing style.
    To compare looks on the client's own cut, run:
 
    `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-captions/scripts/captions.py" picker --reel-dir "<reel folder>"`
 
    Open the Look Picker tab in the hub. The client compares the looks, picks the options and presses Send.
    A remembered look is highlighted as “Your last pick”; it is recommended, and the client still chooses and presses Send.
-   When clients explain their pick, keep their words: `standing_notes.py pick <key> --value <json> --note "<their words>"`.
+   When clients explain their pick, keep their words: `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/standing_notes.py" pick <key> --value <json> --note "<their words>"`.
    Layouts there are previews only. IDs are `clean`, `bold-pop`, `boxed`, `karaoke`, `outline-caps`, or `none`.
-   On `make_default: true`, save the Send's `caption_style` under that key in the saved style, preserving
-   all other keys. The script never saves defaults itself. Then plan and make the normal preview below.
+   On `make_default: true`, run `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/saved_style.py" set caption_style '<the Send's caption_style JSON>' --reel "<reel folder>"`, then plan and make the normal preview below.
 2. Offer marks on numbers, key words, a phrase to stress or a call to action. Run:
 
    `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-captions/scripts/captions.py" marks --reel-dir "<reel folder>" --candidates '<JSON list of {w, mark}>'`
@@ -67,9 +64,7 @@ description: Plan burned-in captions for the signed-off spoken cut, propose trut
    off are declared too. Minimum reading time is a note, never a reason to drop words.
 4. Rendering belongs to reel-canvas-build's `compose.py`: every preview and final draws the picked look.
    Read `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/build.md` and follow its preview/OK flow.
-   Do not render another way. Its caller supplies `placer.place(ctx, start_f, end_f, band_h(spec))` boxes
-   to `layer(doc, boxes, s, t)` and forwards placement notes into the caption document. Keep every caption
-   when the placer chooses the least-covering safe spot. Each caption has a hard end on the root timeline.
+   Do not render another way.
 
 ## Failure report (offer after any failure you can't fix in two tries)
 

@@ -24,6 +24,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "_shared"))
 from win_encoding import ensure_utf8_output  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import transitions
 
 SCHEMA = 1  # bump only when a saved file's shape changes; old files then fail loudly, not silently
 LAYOUTS = ("full", "split", "stack", "pip", "overlay")  # H-R1's fixed set; overlay alone may overlap
@@ -36,18 +38,18 @@ BEAT_KEYS = ("id", "start_f", "end_f", "speech_anchor", "layout", "value", "scen
 ANCHOR_KEYS = ("text", "w0", "w1")
 MARK_KEYS = ("w", "mark")
 MAP_KEYS = ("schema", "reel", "fps", "words", "beats", "word_marks", "proposed", "notes", "needs", "sent_at",
-            "edit_style", "caption_style")
-OPTIONAL_MAP_KEYS = ("edit_style", "caption_style")  # H-S6b-23 / H-S8-1: styles.py / captions.py check the inside
+            "edit_style", "caption_style", "loops", "transitions", "cta_reminder", "holds")
+OPTIONAL_MAP_KEYS = ("edit_style", "caption_style", "loops", "transitions", "cta_reminder", "holds")  # Optional document choices; old Sends stay valid.
 PROPOSED_KEYS = ("layout", "value", "shows", "why")  # Claude's original pick per beat; the board highlights changes
 DEFAULT_WORDS = "work/edit_map.cut.json"  # H-S4b-5: re-transcribed cut words, S3 edit-map shape, index from 0
-SKETCHES_KEYS = ("schema", "reel", "rough", "directions", "pick", "sketches", "note", "sent_at", "locked_at", "scenes")
+SKETCHES_KEYS = ("schema", "reel", "rough", "directions", "pick", "sketches", "note", "sent_at", "locked_at", "scenes", "storyboard")
 DIRECTION_KEYS = ("id", "name", "why", "frames", "note")  # the coach picks ONE direction
 SKETCH_KEYS = ("id", "beat", "title", "media", "note")  # one per-beat preview
 SHOW_MAX = 60  # longest bad value quoted in a message, so one bad blob can't flood the output
 # scene is null or {id: non-empty str, slots: {str: str}, params?: {str: number|str|bool}}.
 # Scene files, transcript numbers and duration are checked by scene_check, independently of this shape.
 # broll is null or {src, in, out, fit, ledger_id}; frames are at the cut's fps.
-# transition (G5) still checks null or object: {type, at_cut_frame, dur_frames}.
+# transition (G5) follows transitions.MENU; cut membership is checked at render time.
 
 
 class SchemaError(ValueError):
@@ -155,7 +157,7 @@ def broll_problems(broll, where="broll"):
     return out
 
 
-def beat_problems(beat, words=None, *, where="beat"):
+def beat_problems(beat, words=None, *, where="beat", fps=None):
     """Problems with one beat. `words` (the cut's word list) turns on the speech_anchor index/text checks."""
     out = _keys(beat, BEAT_KEYS, where)
     if not isinstance(beat, dict):
@@ -206,9 +208,7 @@ def beat_problems(beat, words=None, *, where="beat"):
                 and all(_is_int(b.get(k)) for k in ("start_f", "end_f"))
                 and br["out"] - br["in"] != b["end_f"] - b["start_f"]):
             out.append(f"{where}.broll must play for the whole beat; set out - in to end_f - start_f")
-    for k in ("transition",):
-        if k in b and not (b[k] is None or isinstance(b[k], dict)):
-            out.append(f"{where}.{k} {_show(b[k])} is not an object; use an object or null")
+    out += transitions.beat_problems(b, fps)
     return out
 
 
@@ -283,7 +283,68 @@ def _note_value_problems(v, where):
     return [] if isinstance(v, str) else [f"{where} {_show(v)} is not text; use a string"]
 
 
-def beat_map_problems(doc, words=None):
+def loops_problems(doc, words=None, timed_words=None):
+    """Optional output-frame ledger. Timed cut words prove the closure inside its window.
+
+    Callers holding only word strings can check wording but cannot prove its time;
+    the pre-render loop check always supplies the timed cut word list.
+    """
+    if "loops" not in doc:
+        return []
+    rows = doc["loops"]
+    if not isinstance(rows, list):
+        return ["Open loops must be a list of ledger rows, or be left out."]
+    out = []
+    fps = doc.get("fps")
+    beats = doc.get("beats") if isinstance(doc.get("beats"), list) else []
+    total = max((b.get("end_f", 0) for b in beats
+                 if isinstance(b, dict) and _is_int(b.get("end_f"))), default=0)
+    keys = ("question", "on_screen", "setup_f", "updates_f", "closure_f", "closure_words", "cta_f")
+    for i, row in enumerate(rows):
+        where = f"Open loop {i + 1}"
+        bad = _keys(row, keys, where)
+        if bad:
+            out += bad
+            continue
+        for key in ("question", "on_screen", "closure_words"):
+            out += _nonempty_str(row[key], f"{where} {key}")
+        setup, closure, cta, updates = (row[k] for k in ("setup_f", "closure_f", "cta_f", "updates_f"))
+        if (not _is_int(setup) or not _is_int(closure) or not 0 <= setup < closure or
+                not isinstance(updates, list) or not all(_is_int(f) and setup < f < closure for f in updates) or
+                any(a >= b for a, b in zip(updates, updates[1:])) or
+                cta is not None and (not _is_int(cta) or cta <= closure)):
+            out.append(f"{where}: keep setup before every update, updates before closure, and closure before the call to action.")
+            continue
+        if total and (closure >= total or cta is not None and cta >= total):
+            out.append(f"{where}: keep closure and the call to action inside this cut.")
+        if not isinstance(row["closure_words"], str) or not row["closure_words"].strip():
+            continue
+        spoken = None
+        if timed_words is not None:
+            if not _is_num(fps) or fps <= 0 or not isinstance(timed_words, list):
+                out.append(f"{where}: the cut needs timed words and a frame rate to prove the closure.")
+                continue
+            selected = []
+            valid = True
+            for word in timed_words:
+                if not (isinstance(word, dict) and isinstance(word.get("word"), str) and
+                        _is_num(word.get("start")) and _is_num(word.get("end")) and word["end"] >= word["start"]):
+                    valid = False
+                    break
+                if setup <= word["start"] * fps and word["end"] * fps <= closure:
+                    selected.append(word["word"])
+            if not valid:
+                out.append(f"{where}: restore the cut's timed word list to prove the closure.")
+                continue
+            spoken = " ".join(selected)
+        elif words is not None:
+            spoken = " ".join(words)
+        if spoken is not None and (" " + _norm(row["closure_words"]) + " ") not in (" " + _norm(spoken) + " "):
+            out.append(f"{where}: the closure words must be said between setup and closure in this reel.")
+    return out
+
+
+def beat_map_problems(doc, words=None, timed_words=None):
     """Problems with a whole beat map document. `words` = the cut's word list (see load_words)."""
     out = _keys(doc, MAP_KEYS, "beat map", OPTIONAL_MAP_KEYS)
     if not isinstance(doc, dict):
@@ -302,26 +363,39 @@ def beat_map_problems(doc, words=None):
         out += _marks_problems(doc["word_marks"], words)
     if "edit_style" in doc and not isinstance(doc["edit_style"], dict):
         out.append(f"edit_style {_show(doc['edit_style'])} is not an object; use {{\"style\": ...}} or leave it out")
+    if "cta_reminder" in doc:
+        reminder = doc["cta_reminder"]
+        if (not isinstance(reminder, dict) or
+                not all(_is_num(reminder.get(k)) for k in ("at_s", "hold_s", "gain")) or
+                not isinstance(reminder.get("keyword"), str) or len(reminder["keyword"]) > 16):
+            out.append("cta_reminder needs numeric at_s, hold_s and gain, and a keyword string of at most 16 characters; fix it or leave it out")
+    if "holds" in doc:
+        holds = doc["holds"]
+        if (not isinstance(holds, list) or any(
+                not isinstance(h, dict) or not _is_int(h.get("at_f")) or
+                not isinstance(h.get("reason"), str) or not h["reason"].strip() for h in holds)):
+            out.append("holds needs a list of integer at_f and non-empty reason text; fix the rows or leave it out")
+    out += transitions.options_problems(doc.get("transitions"))
     if "needs" in doc and not isinstance(doc["needs"], str):
         out.append(f"needs {_show(doc['needs'])} is not text; use a string (may be empty)")
     beats = doc.get("beats")
     beats_ok = isinstance(beats, list)
     if "beats" in doc and not beats_ok:
         out.append(f"beats {_show(beats)} is not a list; use [] or a list of beats")
-    out += _beat_map_beats_problems(beats if beats_ok else [], words)
+    out += _beat_map_beats_problems(beats if beats_ok else [], words, doc.get("fps"))
     beat_ids = {b["id"] for b in beats if isinstance(b, dict) and isinstance(b.get("id"), str)} if beats_ok else None
     if "proposed" in doc:
         out += _beat_keyed_problems(doc["proposed"], "proposed", beat_ids, _proposed_value_problems)
     if "notes" in doc:
         out += _beat_keyed_problems(doc["notes"], "notes", beat_ids, _note_value_problems)
-    return out
+    return out + loops_problems(doc, words, timed_words)
 
 
-def _beat_map_beats_problems(beats, words):
+def _beat_map_beats_problems(beats, words, fps=None):
     """Each beat, unique ids, sorted by start_f, and no overlap except overlays."""
     out, good, ids = [], [], set()
     for i, b in enumerate(beats or []):
-        bad = beat_problems(b, words, where=f"beats[{i}]")
+        bad = beat_problems(b, words, where=f"beats[{i}]", fps=fps)
         out += bad
         if isinstance(b, dict) and isinstance(b.get("id"), str):
             if b["id"] in ids:
@@ -346,7 +420,7 @@ def _beat_map_beats_problems(beats, words):
 
 def sketches_problems(doc, beat_map=None):
     """Problems with a sketches document. Pass the beat map to check each sketch's beat id exists."""
-    out = _keys(doc, SKETCHES_KEYS, "sketches doc", ("scenes",))
+    out = _keys(doc, SKETCHES_KEYS, "sketches doc", ("scenes", "storyboard"))
     if not isinstance(doc, dict):
         return out
     if "schema" in doc and not (_is_int(doc["schema"]) and doc["schema"] == SCHEMA):
@@ -368,6 +442,20 @@ def sketches_problems(doc, beat_map=None):
     if "scenes" in doc:
         out += _beat_keyed_problems(doc["scenes"], "scenes", beat_ids,
                                    lambda v, where: scene_problems(v, where, nullable=False))
+    if "storyboard" in doc:
+        storyboard = doc["storyboard"]
+        if not isinstance(storyboard, dict) or not isinstance(storyboard.get("beats"), dict):
+            out.append("storyboard must be an object with a beats object")
+        else:
+            def storyboard_value(v, where):
+                fields = ("in", "out", "ease_in", "ease_out")
+                problems = _keys(v, fields, where, fields)
+                if isinstance(v, dict):
+                    for key, value in v.items():
+                        if not isinstance(value, str) or not value.strip() or len(value) > 24:
+                            problems.append(f"{where}.{key} must be non-empty text of at most 24 characters")
+                return problems
+            out += _beat_keyed_problems(storyboard["beats"], "storyboard.beats", beat_ids, storyboard_value)
     direction_ids = None
     for name, keys in (("directions", DIRECTION_KEYS), ("sketches", SKETCH_KEYS)):
         if name not in doc:
@@ -413,8 +501,8 @@ def sketches_problems(doc, beat_map=None):
     return out
 
 
-def validate_beat_map(doc, words=None):
-    problems = beat_map_problems(doc, words)
+def validate_beat_map(doc, words=None, timed_words=None):
+    problems = beat_map_problems(doc, words, timed_words)
     if problems:
         raise SchemaError(problems)
 
@@ -466,16 +554,18 @@ def _report(problems, ok_line=None):
 def cmd_check(path, words_path=None):
     try:
         doc = _read_doc(path)
-        words = None
+        words, timed_words = None, None
         if words_path:
             words = load_words(words_path)
+            timed_words = _read_doc(words_path).get("words")
         elif isinstance(doc, dict) and not _rel_path_problems(doc.get("words"), "words"):
             beside = Path(path).resolve().parent / doc["words"]
             if beside.is_file():
                 words = load_words(beside)
+                timed_words = _read_doc(beside).get("words")
     except SchemaError as e:
         return _report(e.problems)
-    return _report(beat_map_problems(doc, words),
+    return _report(beat_map_problems(doc, words, timed_words),
                    lambda: f"ok: {len(doc['beats'])} beats, {len(doc['word_marks'])} word marks")
 
 
@@ -499,7 +589,7 @@ def selftest():
             {"id": "b_002", "start_f": 10, "end_f": 50, "speech_anchor": {"text": "today", "w0": 3, "w1": 3},
              "layout": "overlay", "value": None, "scene": {"id": "callout", "slots": {"text": "today"}}, "broll": None, "transition": None},
             {"id": "b_003", "start_f": 30, "end_f": 60, "speech_anchor": {"text": "Go now", "w0": 4, "w1": 5},
-             "layout": "split", "value": 2.5, "scene": None, "broll": None, "transition": {"type": "cut"}},
+             "layout": "split", "value": 2.5, "scene": None, "broll": None, "transition": None},
         ],
         "word_marks": [{"w": 0, "mark": "num"}, {"w": 2, "mark": "key"}, {"w": 5, "mark": "cta"}],
         "proposed": {"b_001": {"layout": "split", "value": 3, "shows": "a counter to 3", "why": "a number said aloud"}},

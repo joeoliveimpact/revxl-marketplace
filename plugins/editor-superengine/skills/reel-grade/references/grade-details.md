@@ -54,3 +54,13 @@ that burns the grade in checks the sha first, so it applies exactly the cube tha
 Burning the grade into a finished video with `grade_from_selection.py --apply ... --yes` is one more encode on top
 of the cut's own, so `grade.json` records `"extra_generations": 1`. A graded still is only a preview and records
 nothing. Grading inside the cut's own render avoids the extra generation.
+
+## Natural grade bounds and before/after sheet
+
+Natural grade bounds hold exposure within ±0.35 stop, temperature within ±0.4,
+tint within ±0.25, contrast within ±0.3, and saturation within -0.3 to +0.25,
+in Grade Board units. A held correction prints a note. Board-range validation
+still applies first. Preview the grade using
+`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-grade/scripts/before_after_sheet.py" before.mp4 --lut <the baked grade LUT> --out grade/comparison.png`,
+or pass a second video instead of `--lut`. The PNG contains before/after pairs
+at 10%, 50% and 90% of the shared duration.

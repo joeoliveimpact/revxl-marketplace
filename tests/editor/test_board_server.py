@@ -272,7 +272,7 @@ def sync_checks(td):
     (ws / "videos" / ".gitignore").write_bytes(b"raw/")
     notes = board_sync.sync(ws, plug)
     assert "cut-board: copied (your saved work is untouched)" in notes, notes
-    assert "sound-board: not built yet, nothing to copy" in notes and len(notes) == 9, notes
+    assert "sound-board: not built yet, nothing to copy" in notes and len(notes) == 10, notes  # one note per boards.json board (trials added by N5)
     assert not (ws / "editor" / "sound-board").exists()
     gi = (ws / "editor" / ".gitignore").read_bytes()
     assert gi == b"mine.log\n.board-server.json\n*.prev\n*.tmp\n", gi

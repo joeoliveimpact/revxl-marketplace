@@ -19,6 +19,8 @@ sys.dont_write_bytecode = True
 HERE = Path(__file__).resolve().parent
 sys.path[:0] = [str(HERE), str(HERE.parents[1] / "_shared")]
 import runtime as rt
+import saved_style
+import style_learn
 from win_encoding import ensure_utf8_output
 from board_sync import is_real, load_manifest, workspace_paths
 
@@ -261,7 +263,18 @@ def build(root, plugin_root=rt.PLUGIN_ROOT):
     owners = [r["id"] for r in rows if (videos / r["id"] / "hub.state.json").is_file()]
     return dict(schema=1, refreshed=now.isoformat(), config={"nle": rt.read_config(root).get("nle", "none")},
                 state_reel=next(iter(owners), rows[0]["id"] if rows else None), stages=stages, boards=boards,
-                reels=rows, health=(read(root / "editor/.platform.json", {}) or {}).get("status", []), goldmine=goldmine(root))
+                reels=rows, styles=style_rows(root),
+                health=(read(root / "editor/.platform.json", {}) or {}).get("status", []), goldmine=goldmine(root))
+
+
+def style_rows(root):
+    rows = saved_style.styles()
+    for row in rows:
+        try:
+            row["auto"] = style_learn.status(row["id"], workspace=root)
+        except (OSError, ValueError):
+            row["auto"] = dict(ready=False, on=False, good_in_a_row=0, threshold=style_learn._threshold(root))
+    return rows
 
 
 def main(argv=None):

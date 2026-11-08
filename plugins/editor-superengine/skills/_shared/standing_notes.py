@@ -89,7 +89,7 @@ def record_pick(key, value, *, note=None, style="default"):
     value = choice(key, json.dumps(value, ensure_ascii=False))
     automatic = note is None
     try:
-        data = saved_style.load(style, for_write=True)
+        data = saved_style.load(name=style, for_write=True)
         previous = saved_style.recommendation(key, data)
         if note is None:
             note = previous["note"] if previous and previous["value"] == value else ""
@@ -146,7 +146,7 @@ def lines(data, ids=False):
 
 def parser():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--style", default="default")
+    ap.add_argument("--style", default=saved_style.active_name())
     sub = ap.add_subparsers(dest="command", required=True)
     add = sub.add_parser("add")
     add.add_argument("note")
@@ -183,7 +183,7 @@ def main(argv=None):
     try:
         value = (choice(args.key, args.value)
                  if args.command in ("match", "pick") or args.command == "add" and not args.unmatched else None)
-        data = saved_style.load(args.style, for_write=args.command not in ("list", "picks"))
+        data = saved_style.load(name=args.style, for_write=args.command not in ("list", "picks"))
         if args.command == "list":
             print("\n".join(lines(data, args.ids)))
             return 0

@@ -31,7 +31,11 @@ re-picks for this workspace, says in its STATUS line that it is switching, and r
 
 Every transcript gets them, the raw one and the re-transcribed cut:
 
-1. **Silent tail.** `silencedetect` at -35 dB / 0.6 s. When the clip ends in more than 0.8 s of
+1. **Silent tail.** The tail level follows the clip: its loudest point minus 12 dB, never louder than
+   -35 dB (H-HF5-1); `silencedetect` uses this level for 0.6 s. Known limit (H-HF5-6): there is no
+   noise-floor bound, so on a quiet clip with steady hiss an invented word after the speech can survive;
+   it shows in the captions and can be fixed, while real speech is never dropped.
+   When the clip ends in more than 0.8 s of
    silence, words that start more than 0.4 s after the sound ends are dropped: the engine invented
    them. `guards.tail_dropped` lists them.
 2. **Near silence.** The chosen track's mean loudness (ffmpeg `volumedetect`) is stored as

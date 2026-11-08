@@ -62,12 +62,17 @@ def main(argv=None):
     ap.add_argument("--cues", help="JSON file: proposed cues")
     ap.add_argument("--stops", help="JSON file: proposed music stops [{start_s, end_s, label}]")
     ap.add_argument("--bed", help="a music bed to preset (file name in the beds folder)")
-    ap.add_argument("--bed-gain", type=float, default=-18.0, help="the preset bed's level, dB")
+    ap.add_argument("--bed-gain", type=float, default=None, help="the preset bed's level, dB")
     ap.add_argument("--blurb", default="")
     a = ap.parse_args(argv)
-
     editor_dir, videos_dir = workspace()
     reel = videos_dir / a.reel
+    if a.bed_gain is None:
+        sys.path.insert(0, str(HERE.parents[1] / "_shared"))
+        import saved_style
+        gain = saved_style._get(saved_style.load(reel), "music.bed_gain_db")
+        a.bed_gain = gain if saved_style._valid(gain, "number") else -18.0
+
     if not reel.is_dir():
         print("There is no reel folder named %s." % a.reel)
         return 2
@@ -140,15 +145,35 @@ def main(argv=None):
         pre = next(b for b in beds if b["file"] == a.bed)
         cfg["bed_default"] = {"file": a.bed, "gain_db": a.bed_gain, "entry_s": 0, "exit_s": dur,
                               "offset_s": pre["suggest_entry_s"],
-                              "fade_in_s": 0.5, "fade_out_s": 0.8, "duck_db": music_fit.DUCK_DB}
+                              "fade_in_s": 0.5, "fade_out_s": 0.8, "duck_db": music_fit.DUCK_DB,
+                              "carve": {"on": True, "strength": 0.8}}
     tmp = reel / "work" / "voice-lufs.tmp.wav"               # measured exactly as bake measures voice.wav
+    voice = None
     try:
-        write_wav(tmp, decode(reel / rel))
+        voice = decode(reel / rel)
+        write_wav(tmp, voice)
         v = loudness(tmp)[0]
         tmp.unlink()
     except RuntimeError:                                      # a picture with no sound: no voice to set music against
         v = float("nan")
     cfg["voice_lufs"] = v if math.isfinite(v) else None
+    try:
+        import carve
+        # Preview uses the exact analysis at each stop of the strength slider.
+        # The voice alone determines these curves; changing beds needs no new analysis.
+        if voice is None:
+            raise ValueError("No voice stem")
+        samples = int(info["dur"] * 48000 + 0.5)
+        voice = voice[:samples]
+        if len(voice) < samples:
+            import room_tone
+            import numpy as np
+            voice = np.vstack([voice, room_tone.fill(voice, samples - len(voice))])
+        cfg["carve"] = {"profiles": {"%.2f" % (s / 100): carve.analyse(voice, 48000, s / 100)
+                                     for s in range(25, 101, 5)}}
+    except Exception:  # preview and bake both retain the dip when analysis is unavailable
+        cfg["carve"] = None
+        print("The music couldn't carve around the voice here, so it dips instead.")
     spans = music_fit.speech_spans(reel)
     if spans:
         cfg["speech_spans"] = spans

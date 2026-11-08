@@ -1,6 +1,6 @@
 ---
 name: editor-superengine:reel-canvas-build
-description: Plans, designs and renders what plays on screen over a reel once the spoken cut is signed off. For the plan, the Beat Map (what the screen shows on each line, plus the numbers and key words to show) and the Sketches board for picking one direction. For the design loop, a few looks for the hook and the intro, tweaked until one lands. For the render, a 720p preview to watch, then the final video once the client OKs it, with the finished sound. Use for "build the beat map", "plan what goes on screen", "add a scene", "lower third", "counter", "end card", "title card", "pick a layout", "punch-ins", "zoom in on that word", "layout switches", "follow my face", "slow push", "ken burns", "ratchet zoom", "show me a few looks for the opening visuals", "design the hook", "comp the intro", "motion comps", "ladder the blur", "direction options", "iterate this visual", "will the Instagram buttons cover this", "render it", "make the preview", "make the final video", "export the reel", or to render the own clips picked on the Beat Map. Not for cutting the spoken take (reel-first-cuts) and not for the post caption (caption-writer).
+description: Plans, designs and renders what plays on screen over a reel once the spoken cut is signed off. For the plan, the Beat Map (what the screen shows on each line, plus the numbers and key words to show) and the Sketches board for picking one direction. For the design loop, a few looks for the hook and the intro, tweaked until one lands. For the render, a 720p preview to watch, then the final video once the client OKs it, with the finished sound. Use for "build the beat map", "add a transition", "whip", "glitch", "plan what goes on screen", "add a scene", "lower third", "counter", "end card", "title card", "pick a layout", "punch-ins", "zoom in on that word", "layout switches", "follow my face", "slow push", "ken burns", "design the hook", "motion comps", "render it", "make the final video", "export the reel", saved styles, Auto edit on or off, or rendering own clips picked on the Beat Map. Not for cutting the spoken take (reel-first-cuts) and not for the post caption (caption-writer).
 ---
 
 # reel-canvas-build: the reel's visuals
@@ -19,6 +19,7 @@ description: Plans, designs and renders what plays on screen over a reel once th
 - Never replace a board the client has edited without asking them first: their edits live in it.
 - Re-opening a board is safe: its work is saved on disk after every change.
 - The final video is made only after the client OKs the latest preview, recorded only by `compose.py ok` (`${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/build.md`, section 3).
+- Run the style picker first if it has not run for this reel (editor-start-here); in Auto edit, follow section 5 of ${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/house-rules.md.
 
 ## Ground rules
 
@@ -37,12 +38,18 @@ For B-roll asks, invoke `editor-superengine:reel-broll` first.
 | The client wants | Read |
 |---|---|
 | The plan and picks: what's on screen for each line, the layout per beat, numbers and key words marked, or picks on rough sketches and opening directions (the Beat Map and Sketches boards), or a scene (a ready-made graphic such as a title card, counter, list or end card) on a beat | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/beat-map.md` |
-| Punch-ins on jump cuts or layout switches, a zoom on a word, the camera following their face, or saving their editing style as the default | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/style.md` |
+| Punch-ins on jump cuts or layout switches, a zoom on a word, the camera following their face | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/style.md`, then `motion.md` in the same folder for the moves |
+| Their saved styles: save this reel's choices as a style, list, rename, make one the default, delete or restore one, Auto edit on or off | ${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/saved-styles.md |
+| A transition at a cut or on a graphic (flash, whip, zoom, glitch, fade, push, wipe or shader), picked on the Beat Map | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/transitions.md` |
 | Where the captions sit: kept off the speaker's face and clear of Instagram's buttons, or the plain note when no spot is fully clear | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/placement.md` |
 | The design loop: a few looks for the hook or the opening visuals, a visual tweaked, or a check that Instagram's buttons won't cover the text | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/design-loop.md` |
 | The render: the 720p preview (a smaller, quicker copy to watch), the client's OK, then the final video at full size with the finished sound; the render draws the picked caption look from reel-captions; for the caption look or the marked words, invoke `editor-superengine:reel-captions` | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/build.md` |
 | Graphics behind the speaker: the cutout (the speaker cut out of the background) | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/build.md`, section 7 |
+| An optional 3D glass card over the speaker for one short line or number (the glass-card-3d scene), and its check before the render | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/3d.md` |
+| Glass-card glow and dust, and the Fine-tune sliders on the Sketches and Tweak boards | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/leads.md` |
 | Check the reel before posting / Run QA | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/qa-check.md` |
+| After the finished reel: five yes/no questions Claude answers itself; also a CTA reminder, holds on a moment, how each beat comes in and goes out, and style origin and colours | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/eye-test-extras.md` |
+| Reusing an unchanged render instead of rendering again | `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/render-skip.md` |
 
 Before the 1080p final, run the pre check; after it, run the full check (see `qa-check.md`).
 

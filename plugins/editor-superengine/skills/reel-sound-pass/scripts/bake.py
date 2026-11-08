@@ -7,7 +7,7 @@ No selection yet (or no sound library): voice only. Writes into <reel>/sound/:
   voice.wav  the picture's own sound, untouched (room tone fills any stretch where it is shorter than the picture)
   sfx.wav    every kept cue, placed to the sample: its file starts peak_s (the cue's, else 0) before the cue's
              time, so the hit lands on the time; a start before 0 trims the file's head instead
-  music.wav  the bed (music_fit.place): entry, exit, slide, fades, level, music stops and the speech dip baked in
+  music.wav  the bed (music_fit.place): entry, exit, slide, fades, level, music stops and voice carve (else speech dip)
   sum.wav    voice + sfx + music at unity
   cues/      one clip per cue (gain, length cap and fade baked in, silence up to the exact sample), for an editor
              that places clips on frames, and placement.json (frame, lane, clip) for the same

@@ -1,24 +1,32 @@
 #!/usr/bin/env python3
 """S5 check for reel-sound-pass (part A): the mix pipeline, the Auphonic cost ask, the sound library, room tone,
 the quiet gate, the stem bake, and (N2) the beat grid, the beat-synced bed, the cue pre-fill and the hit offsets.
-Synthetic media only, made with ffmpeg here; no network (Auphonic is faked in-process, the pack comes from a file://
-URL).
+Synthetic media made with ffmpeg here, plus two real beds from EDITOR_TEST_SOUND_PACK; no network (Auphonic is
+faked in-process, the pack comes from a file:// URL).
 
 usage: EDITOR_SE_HOME=<installed state> <state python> -X utf8 -I tests/editor/sound_pass_test.py
            [--case free_master|cost_ask|pack|ingest_trim|room_tone|quiet_gate|bake_exact|music_level|music_seam|
                    music_licence|music_absent|music_strongest|beat_grid|beat_grid_hard|beat_fit|edl_hash|
-                   prefill|peak_offset] [--scratch <dir>]
+                   prefill|peak_offset|beat_steady|beat_drift|beat_half_trap|beat_real_bed|big_hits|sfx_peak_silence|
+                   safe-fetch|no-overwrite] [--scratch <dir>]
            [--plugin <plugin root>]
-Each case finishes in well under 150 s. Prints PASS/FAIL per check, then "N passed, M failed"; exit 1 on any fail.
+Each case finishes in well under 150 s. Prints PASS/FAIL per check, then counts; exit 1 on any fail,
+77 when blocked without failures. beat_real_bed reports BLOCKED if the local pack is missing or has the wrong hash.
 """
 import argparse, hashlib, io, json, os, shutil, subprocess, sys, tempfile, time, urllib.error, zipfile
 from pathlib import Path
+
+sys.dont_write_bytecode = True  # Tests read plugin modules without creating plugin cache files.
 
 import numpy as np
 
 HERE = Path(__file__).resolve().parent
 PLUGIN = HERE.parents[1] / "plugins" / "editor-superengine"
 results = []
+
+
+class Blocked(RuntimeError):
+    pass
 
 
 def ck(name, ok, detail=""):
@@ -342,6 +350,124 @@ def case_pack(scratch):
        and shipped["bytes"] > 0, shipped)
 
 
+def case_safe_fetch(scratch):
+    """No network: exercise the actual fetch entry point with fake responses."""
+    import contextlib
+    from unittest.mock import patch
+    import safe_fetch
+    import sfx_ingest
+    from types import SimpleNamespace
+
+    class Reply(io.BytesIO):
+        def __init__(self, body=b"", status=200, headers=None):
+            super().__init__(body)
+            self.status, self.headers = status, headers or {}
+            self.bytes_read = 0
+
+        def read(self, n=-1):
+            data = super().read(n)
+            self.bytes_read += len(data)
+            return data
+
+    ws = workspace(scratch, "safe-fetch")
+    pack = io.BytesIO()
+    with zipfile.ZipFile(pack, "w") as z:
+        z.writestr("hit.wav", b"pack sound")
+    data = pack.getvalue()
+    manifest = dict(url="https://assets.example/pack.zip", bytes=len(data), sha256=hashlib.sha256(data).hexdigest())
+    mf = ws / "manifest.json"
+    mf.write_bytes((json.dumps(manifest) + "\n").encode("utf-8"))
+    target = ws / "download.tmp"
+    for location in ("http://10.1.2.3/p.zip", "http://[::1]/", "file:///pack.zip"):
+        out, calls = io.StringIO(), []
+
+        def redirect(url):
+            calls.append(url)
+            return Reply(status=302, headers={"Location": location})
+
+        with patch.object(sfx_ingest, "library", return_value=ws / "sound"), patch.object(safe_fetch, "send", redirect), contextlib.redirect_stdout(out):
+            rc = sfx_ingest.fetch(SimpleNamespace(manifest=mf))
+        ck("safe-fetch: redirect checked before second request", rc == 1 and len(calls) == 1
+           and not (ws / "sound").exists() and len(out.getvalue().splitlines()) == 1, out.getvalue())
+    for headers in ({}, {"Content-Length": "1000"}):
+        response = Reply(b"x" * 1000, headers=headers)
+        try:
+            safe_fetch.download(manifest["url"], target, 10, send=lambda url: response)
+            refused = False
+        except ValueError:
+            refused = True
+        ck("safe-fetch: cap aborts early and removes temp", refused and response.bytes_read <= 11
+           and not target.exists(), response.bytes_read)
+    hops = []
+
+    def loop(url):
+        hops.append(url)
+        return Reply(status=302, headers={"Location": "/again"})
+
+    try:
+        safe_fetch.download(manifest["url"], target, 10, send=loop)
+        refused = False
+    except ValueError:
+        refused = True
+    ck("safe-fetch: at most five redirects", refused and len(hops) == 6 and not target.exists(), hops)
+    for host in ("localhost", "sub.localhost", "host.local", "host.internal", "127.0.0.1", "169.254.1.2", "127.1", "127.0x0.0.1"):
+        try:
+            safe_fetch.check_url("http://" + host + "/pack.zip")
+            refused = False
+        except ValueError:
+            refused = True
+        ck("safe-fetch: local host refused", refused, host)
+    for url in ("file:////10.1.2.3/share/pack.zip", "file:///%2f10.1.2.3/share/pack.zip",
+                "file:///\\\\10.1.2.3/share/pack.zip"):
+        try:
+            safe_fetch.check_url(url, first=True)
+            refused = False
+        except ValueError:
+            refused = True
+        ck("safe-fetch: network file path refused", refused, url)
+    out = io.StringIO()
+    with patch.object(sfx_ingest, "library", return_value=ws / "sound"), patch.object(safe_fetch, "send", return_value=Reply(data)), contextlib.redirect_stdout(out):
+        rc = sfx_ingest.fetch(SimpleNamespace(manifest=mf))
+    ck("safe-fetch: valid bounded download unpacks", rc == 0 and (ws / "sound/hit.wav").read_bytes() == b"pack sound", out.getvalue())
+    # A safe redirect is allowed, including https -> http, with exact byte cap.
+    replies = iter([Reply(status=302, headers={"Location": "http://assets.example/final.zip"}), Reply(data)])
+    safe_fetch.download(manifest["url"], target, len(data), send=lambda url: next(replies))
+    ck("safe-fetch: public redirect passes", target.read_bytes() == data)
+
+
+def case_no_overwrite(scratch):
+    ws = workspace(scratch, "no-overwrite")
+    first, second = ws / "a/hit.wav", ws / "b/hit.wav"
+    first.parent.mkdir(); second.parent.mkdir()
+    M.write_wav(first, tone(.3, 440))
+    M.write_wav(second, tone(.3, 880))
+    p = script(ws, "sfx_ingest.py", "add", first)
+    lib = ws / "editor/sound"
+    ck("no-overwrite: first add succeeds", p.returncode == 0 and (lib / "hit.wav").is_file(), p.all)
+    original = (lib / "hit.wav").read_bytes()
+    p = script(ws, "sfx_ingest.py", "add", second)
+    ck("no-overwrite: second add gets first free name", p.returncode == 0 and (lib / "hit-2.wav").is_file()
+       and "Kept hit.wav (yours); writing hit-2.wav instead." in p.stdout
+       and (lib / "hit.wav").read_bytes() == original, p.all)
+    data = io.BytesIO()
+    with zipfile.ZipFile(data, "w") as z:
+        z.write(second, "hit.wav")
+        z.write(second, "fresh.wav")
+    pack = ws / "pack.zip"
+    pack.write_bytes(data.getvalue())
+    mf = ws / "manifest.json"
+    mf.write_bytes((json.dumps(dict(url=pack.as_uri(), bytes=len(data.getvalue()),
+                   sha256=hashlib.sha256(data.getvalue()).hexdigest())) + "\n").encode("utf-8"))
+    p = script(ws, "sfx_ingest.py", "fetch", "--manifest", mf)
+    ck("no-overwrite: pack keeps original, uses next free name", p.returncode == 0 and (lib / "hit-3.wav").is_file()
+       and "writing hit-3.wav instead" in p.stdout and (lib / "hit.wav").read_bytes() == original, p.all)
+    ck("no-overwrite: fresh pack member keeps its name", (lib / "fresh.wav").read_bytes() == second.read_bytes())
+    idx = json.loads((lib / "library-index.json").read_text(encoding="utf-8"))
+    ck("no-overwrite: all retained and new names indexed", {"hit.wav", "hit-2.wav", "hit-3.wav", "fresh.wav"} <= idx["files"].keys())
+    p = script(ws, "sfx_ingest.py", "verify")
+    ck("no-overwrite: final index verifies", p.returncode == 0, p.all)
+
+
 def case_ingest_trim(scratch):
     ws = workspace(scratch, "ingest_trim")
     rng = np.random.default_rng(7)
@@ -481,7 +607,7 @@ def steady_bed(seconds, amp=0.25):
 
 def bed_sel(f, **kw):
     b = {"file": f, "gain_db": -18, "duck_db": 6, "rights_confirmed": False, "entry_s": 0, "exit_s": 12, "offset_s": 0,
-         "fade_in_s": 0.5, "fade_out_s": 0.8, "stops": []}
+         "fade_in_s": 0.5, "fade_out_s": 0.8, "stops": [], "carve": {"on": False, "strength": 0.8}}
     b.update(kw)
     return b
 
@@ -973,6 +1099,7 @@ def case_beat_fit(scratch):
     print("INFO beat-sync off at 3.37 s -> kick phase vs entry %s s" % off)
     ck("beat_fit: reverse, beat-sync off at 3.37 s leaves the kicks off the entry (> 25 ms)",
        p.returncode == 0 and pb.get("beat") is None and off is not None and off > 0.025, off)
+    ck("beat_fit: beat-sync off is recorded as off, so no 'no steady beat' line can show", pb.get("beat_sync") is False, pb.get("beat_sync"))
 
     M.write_wav(r / "beds" / "steady.wav", steady_bed(30.0))           # sines only: no beat to find
     selection(r, [], bed_sel("steady.wav", exit_s=27.4, offset_s=1.23, beat_sync=True))
@@ -981,6 +1108,222 @@ def case_beat_fit(scratch):
     ck("beat_fit: beat-sync on a track with no steady beat says so plainly and places it as the board set it",
        p.returncode == 0 and "No steady beat" in p.stdout and pb.get("beat") is None and pb.get("offset_s") == 1.23,
        (p.all[-300:], pb.get("offset_s")))
+    ck("beat_fit: a refused grid is recorded with beat-sync on", pb.get("beat_sync") is True, pb.get("beat_sync"))
+
+
+def drum_track(times, strengths, seconds=10.0, snares=()):
+    """Short drum fixture with explicit beat times, kick levels and optional snare beats; no hats."""
+    n = int(seconds * SR)
+    x = np.zeros(n)
+    tk = np.arange(int(0.15 * SR)) / SR
+    kick = (np.sin(2 * np.pi * (50 * tk + 3 * (1 - np.exp(-tk / 0.03)))) * np.exp(-tk / 0.06)
+            * np.minimum(1, tk / 0.001))
+    ts = np.arange(int(0.03 * SR)) / SR
+    snare = (np.random.default_rng(0).normal(0, 1, len(ts)) + np.sin(2 * np.pi * 190 * ts)) * np.exp(-ts / 0.05)
+    for k, (at, strength) in enumerate(zip(times, strengths)):
+        i = int(round(at * SR))
+        if 0 <= i < n:
+            hit = snare if k in snares else kick
+            x[i:i + len(hit)] += strength * hit[:n - i]
+    return np.stack([x, x], 1).astype(np.float32)
+
+
+def case_beat_steady(scratch):
+    import beat_grid
+    d = Path(scratch) / "beat_steady"
+    d.mkdir(parents=True, exist_ok=True)
+    f = d / "steady.wav"
+    M.write_wav(f, click_track(10, 120, 0.1)[0])
+    g = beat_grid.grid(f)
+    ck("beat_steady: ten seconds at 120 BPM finds a grid", g is not None, beat_grid.LAST_REASON)
+    if g:
+        ck("beat_steady: BPM within 0.5 %", abs(g["bpm"] - 120) / 120 <= 0.005, g)
+        ck("beat_steady: median refit residual is at most 10 ms", g["residual_ms"] <= 10, g)
+        ck("beat_steady: diagnostic residuals bound the median",
+           0 <= g["residual_ms"] <= g["residual_p90_ms"] <= g["residual_max_ms"], g)
+        ck("beat_steady: acceptance clears the last refusal reason", beat_grid.LAST_REASON is None)
+        kicks = g["kicks"]
+        ck("beat_steady: every grid line has a kick strength in time order", len(kicks) == 20
+           and all(a[0] < b[0] for a, b in zip(kicks, kicks[1:])), kicks)
+        ck("beat_steady: kick times and strengths have four and three decimal places",
+           all(at == round(at, 4) and strength == round(strength, 3) for at, strength in kicks), kicks)
+    limit = beat_grid.MAX_RESIDUAL
+    try:
+        beat_grid.MAX_RESIDUAL = 0.001
+        ck("beat_steady: reverse, a 1 ms limit refuses the same audio", beat_grid.grid(f) is None
+           and beat_grid.LAST_REASON == "drift", beat_grid.LAST_REASON)
+    finally:
+        beat_grid.MAX_RESIDUAL = limit
+    # Seven strong lines cannot establish a grid, even with the residual limit relaxed.
+    sparse = d / "seven.wav"
+    M.write_wav(sparse, drum_track(0.1 + np.arange(7) * 0.5, np.full(7, 0.9)))
+    try:
+        beat_grid.MAX_RESIDUAL = 1
+        ck("beat_steady: fewer than eight supported lines refuses as no beat, never drift, even with a loose limit",
+           beat_grid.grid(sparse) is None and beat_grid.LAST_REASON == "no beat", beat_grid.LAST_REASON)
+    finally:
+        beat_grid.MAX_RESIDUAL = limit
+
+
+def case_beat_drift(scratch):
+    import beat_grid, music_fit
+    ws = workspace(scratch, "beat_drift")
+    r = ws / "videos" / "reel-d"
+    (r / "beds").mkdir(parents=True)
+    f = r / "beds" / "drifting.wav"
+    p0, pend = 60 / 116, 60 / 124
+    c = (pend ** 2 - p0 ** 2) / (4 * 10)
+    k = np.arange(24)
+    times = 0.1 + p0 * k + c * k ** 2
+    times = times[times < 9.95]
+    M.write_wav(f, drum_track(times, np.full(len(times), 0.8)))
+    ck("beat_drift: a slide from 116 to 124 BPM refuses with drift", beat_grid.grid(f) is None
+       and beat_grid.LAST_REASON == "drift", beat_grid.LAST_REASON)
+    p = script(ws, "beat_grid.py", f)
+    ck("beat_drift: CLI exits 1 with the plain drift line", p.returncode == 1
+       and "drifts, so the music starts where the board set it and nothing snaps to the beat." in p.stdout
+       and "Traceback" not in p.all, p.all[-400:])
+    limit = beat_grid.MAX_RESIDUAL
+    try:
+        beat_grid.MAX_RESIDUAL = 1
+        g = beat_grid.grid(f)
+        ck("beat_drift: reverse, relaxing only the residual gate admits the same track", g is not None, g)
+        if g:
+            ck("beat_drift: its median refit residual exceeds 10 ms", g["residual_ms"] > 10, g)
+    finally:
+        beat_grid.MAX_RESIDUAL = limit
+    cache = r / "work" / "beats" / "drifting.wav.json"
+    sha = hashlib.sha256(f.read_bytes()).hexdigest()
+    stale = {"sha256": sha, "grid": {"bpm": 120, "period_s": 0.5, "phase_s": 0.1, "downbeat_s": 0.1}}
+    for version in (None, beat_grid.VERSION - 1):
+        record = dict(stale)
+        if version is not None:
+            record["version"] = version
+        M.write_json(cache, record)
+        got = music_fit.bed_grid(r, f.name)
+        saved = json.loads(cache.read_text(encoding="utf-8"))
+        ck("beat_drift: cache version %s is recomputed, old accepted grid discarded" % version,
+           got is None and saved.get("version") == beat_grid.VERSION and saved.get("grid") is None
+           and beat_grid.LAST_REASON == "drift", saved)
+    beat_grid.LAST_REASON = None
+    out = io.StringIO()
+    from contextlib import redirect_stdout
+    with redirect_stdout(out):
+        offset, detail = music_fit.snap(r, {"file": f.name}, 0, 1.23, 10, 8)
+    ck("beat_drift: cached refusal keeps the board offset and explains drift", offset == 1.23 and detail is None
+       and "drifts, so" in out.getvalue(), out.getvalue())
+    silent = r / "beds" / "silence.wav"
+    M.write_wav(silent, np.zeros((4 * SR, 2), np.float32))
+    ck("beat_drift: a later no-beat call clears a stale drift reason", beat_grid.grid(silent) is None
+       and beat_grid.LAST_REASON == "no beat", beat_grid.LAST_REASON)
+
+
+def case_beat_half_trap(scratch):
+    import beat_grid
+    d = Path(scratch) / "beat_half_trap"
+    d.mkdir(parents=True, exist_ok=True)
+    times = 0.1 + np.arange(20) * 0.5
+    f = d / "backbeat.wav"
+    levels = np.where(np.arange(20) % 2 == 0, 0.9, 0.3)
+    M.write_wav(f, drum_track(times, levels, snares=range(1, 20, 2)))
+    g = beat_grid.grid(f)
+    ck("beat_half_trap: full-band backbeats preserve 120 BPM", g is not None
+       and abs(g["bpm"] - 120) / 120 <= 0.005, g or beat_grid.LAST_REASON)
+    if g:
+        checks = g["tempo_check"]
+        ck("beat_half_trap: all three candidates are recorded", len(checks) == 3, checks)
+        ck("beat_half_trap: candidate scores are precision and recall in [0, 1]", all(
+            0 <= row["precision"] <= 1 and 0 <= row["recall"] <= 1
+            for row in checks if row["eligible"]), checks)
+        ck("beat_half_trap: only eligible candidates stay inside 60-200 BPM", all(
+            60 <= row["bpm"] <= 200 for row in checks if row["eligible"]), checks)
+        outside = [row for row in checks if row["bpm"] < 60 or row["bpm"] > 200]
+        ck("beat_half_trap: an out-of-range relative is not eligible and never chosen", bool(outside)
+           and all(row["eligible"] is False and row["precision"] is None and row["recall"] is None
+                   and abs(row["bpm"] - g["bpm"]) > 0.5 for row in outside), checks)
+    f = d / "kick-only.wav"
+    M.write_wav(f, drum_track(times[::2], np.full(10, 0.9)))
+    g = beat_grid.grid(f)
+    ck("beat_half_trap: reverse, kicks alone at 60 BPM stay at 60", g is not None
+       and abs(g["bpm"] - 60) / 60 <= 0.005, g or beat_grid.LAST_REASON)
+
+
+# ElevenLabs Music beds from the editor's sound pack; credited in LICENSES/SOUND-PACK-CREDITS.md.
+def case_beat_real_bed(scratch):
+    import beat_grid
+    pack_path = os.environ.get("EDITOR_TEST_SOUND_PACK")
+    if not pack_path or not Path(pack_path).is_file():
+        raise Blocked("set EDITOR_TEST_SOUND_PACK to the editor sound pack zip")
+    manifest = json.loads((PLUGIN_ROOT / "skills/reel-sound-pass/pack.json").read_text(encoding="utf-8"))
+    try:
+        sha = hashlib.sha256(Path(pack_path).read_bytes()).hexdigest()
+    except OSError:
+        raise Blocked("the editor sound pack zip could not be read") from None
+    if sha != manifest["sha256"]:
+        raise Blocked("the editor sound pack zip sha256 does not match pack.json")
+    d = Path(scratch) / "beat_real_bed"
+    d.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(pack_path) as pack:
+        for member, bpm in (("beds/dark-trap-d-minor-130.mp3", 130), ("beds/bed-0720-a.mp3", 120),
+                            ("beds/founders-focus.mp3", 130)):
+            f = Path(pack.extract(member, d))
+            g = beat_grid.grid(f)
+            ck("beat_real_bed %s: grid accepted" % member, g is not None, beat_grid.LAST_REASON)
+            if g:
+                measured = {key: g[key] for key in ("bpm", "residual_ms", "residual_p90_ms", "residual_max_ms")}
+                print("INFO beat_real_bed %s: %s" % (member, json.dumps(measured)), flush=True)
+                ck("beat_real_bed %s: BPM within 0.5 %%" % member, abs(g["bpm"] - bpm) / bpm <= 0.005, g)
+                ck("beat_real_bed %s: median refit residual at most 10 ms" % member, g["residual_ms"] <= 10, g)
+
+
+def case_big_hits(scratch):
+    ws = workspace(scratch, "big_hits")
+    r = reel_with_picture(scratch, ws, "reel-bh", 10.0)
+    (r / "beds").mkdir()
+    # At 198 BPM, three hits sixteen beats apart fit inside ten seconds.
+    times = 0.1 + np.arange(33) * (60 / 198)
+    loud = np.array([0, 16, 32])
+    strengths = np.full(33, 0.4)
+    strengths[loud] = [0.95, 0.9, 0.85]
+    entry = 0.05
+
+    def bake_hits(name, levels, offset=0.1, end=10.0):
+        M.write_wav(r / "beds" / name, drum_track(times, levels))
+        selection(r, [], bed_sel(name, entry_s=entry, exit_s=end, offset_s=offset, beat_sync=True))
+        p = script(ws, "bake.py", "--reel", "reel-bh", "--video", r / "locked.mp4")
+        placement = json.loads((r / "sound" / "placement.json").read_text(encoding="utf-8")) if p.returncode == 0 else {}
+        bed = placement.get("bed") or {}
+        beat = bed.get("beat") or {}
+        hits = beat.get("big_hits_s", [])
+        ck("big_hits %s: bake writes big_hits_s in placement.json" % name, p.returncode == 0
+           and "big_hits_s" in beat, p.all[-400:])
+        ck("big_hits %s: up to 3 strong beats, separated by at least sixteen beats" % name, len(hits) <= 3
+           and all(abs(a - b) + 2e-4 >= 16 * beat.get("period_s", 60 / 198)
+                   for i, a in enumerate(hits) for b in hits[i + 1:]), hits)
+        ck("big_hits %s: every hit is inside the played window" % name,
+           all(entry <= t < bed.get("exit_s", end) for t in hits), hits)
+        return hits, bed
+
+    hits, bed = bake_hits("loud.wav", strengths)
+    planted = entry + times[loud] - bed.get("offset_s", 0.1)
+    ck("big_hits: all three spaced loud kicks survive the spacing rule", len(hits) == 3
+       and all(min(abs(t - at) for at in planted) <= 1 / 30 for t in hits), (hits, planted.tolist()))
+    ck("big_hits: loud kicks are strongest first and within one frame", len(hits) == 3
+       and all(abs(t - at) <= 1 / 30 for t, at in zip(hits, planted)), hits)
+    cached = json.loads((r / "work" / "beats" / "loud.wav.json").read_text(encoding="utf-8"))
+    kicks = (cached.get("grid") or {}).get("kicks", [])
+    ck("big_hits: all thirty-three grid beats have kick records in time order", len(kicks) == 33
+       and all(a[0] < b[0] for a, b in zip(kicks, kicks[1:])), kicks)
+    hits, bed = bake_hits("window.wav", strengths, offset=1.6, end=7.5)
+    ck("big_hits: excluded loud kicks do not suppress the strongest played kick", len(hits) == 1
+       and abs(hits[0] - (entry + times[16] - bed.get("offset_s", 1.6))) <= 1 / 30, hits)
+    single = np.full(33, 0.4)
+    single[0] = 0.95
+    hits, bed = bake_hits("threshold.wav", single)
+    ck("big_hits: distant kicks below sixty percent are excluded", len(hits) == 1
+       and abs(hits[0] - (entry + times[0] - bed.get("offset_s", 0.1))) <= 1 / 30, hits)
+    hits, bed = bake_hits("uniform.wav", np.full(33, 0.6))
+    ck("big_hits: uniform kicks still yield a hit", 1 <= len(hits) <= 3, hits)
 
 
 def whoosh(seconds, seed=2):
@@ -1126,6 +1469,34 @@ def case_peak_offset(scratch):
        and first == int(round(5.0 * SR)) and abs(int(np.argmax(sfx)) / SR - 5.8) <= 0.001, (first, p.all[-300:]))
 
 
+def case_sfx_peak_silence(scratch):
+    import measure_sfx
+    ws = workspace(scratch, "sfx_peak_silence")
+    r = reel_with_picture(scratch, ws, "reel-ps", 6.0)
+    (r / "sfx").mkdir()
+    t = np.arange(SR) / SR
+    x = np.zeros(SR)
+    burst = (t >= 0.5) & (t < 0.503)
+    x[burst] = 0.9 * np.exp(-0.5 * ((t[burst] - 0.501) / 0.0003) ** 2) * np.cos(2 * np.pi * 2000 * (t[burst] - 0.501))
+    tail = (t >= 0.503) & (t < 0.506)
+    x[tail] = 0.02 * np.sin(2 * np.pi * 2000 * (t[tail] - 0.503))
+    f = r / "sfx" / "delayed.wav"
+    M.write_wav(f, np.stack([x, x], 1).astype(np.float32))
+    ck("sfx_peak_silence: the first half second is digital silence", not M.decode(f)[:SR // 2].any())
+    ps = measure_sfx.measure(f)["peak_s"]
+    ck("sfx_peak_silence: peak_s is 0.500 within 5 ms", ps is not None and abs(ps - 0.5) <= 0.005, ps)
+    if ps is None:
+        return
+    selection(r, [cue(1, 3.0, f.name, 0.0, peak_s=ps)])
+    p = script(ws, "bake.py", "--reel", "reel-ps", "--video", r / "locked.mp4")
+    ck("sfx_peak_silence: bake exits 0", p.returncode == 0, p.all[-400:])
+    if p.returncode == 0:
+        hit = int(np.argmax(np.abs(M.decode(r / "sound" / "sfx.wav")[:, 0]))) / SR
+        ck("sfx_peak_silence: baked peak lands on the cue within 1 ms", abs(hit - 3.0) <= 0.001, hit)
+        detail = json.loads((r / "sound" / "placement.json").read_text(encoding="utf-8"))
+        ck("sfx_peak_silence: placement keeps the measured peak offset", detail["cues"][0].get("peak_s") == ps, detail["cues"])
+
+
 def edl_hash(r):
     """H-N2-6: sha256 of work/cuts.json + work/edit_map.cut.json (the speech cuts)."""
     h = hashlib.sha256()
@@ -1178,17 +1549,130 @@ def case_edl_hash(scratch):
     ck("edl_hash: reverse, a planted rewrite of cuts.json (same data, new bytes) is caught", edl_hash(r) != h0)
 
 
-CASES = {"free_master": case_free_master, "cost_ask": case_cost_ask, "pack": case_pack, "ingest_trim": case_ingest_trim,
+def case_carve(scratch):
+    """Frozen DR-CARVE thresholds, real speech, old-path parity and deterministic bakes."""
+    import ast
+    import contextlib
+    import types
+    from unittest.mock import patch
+    sys.path.insert(0, str(HERE))
+    from carve_ab import fixture, measurements
+    import carve
+    import bake as BA
+    import music_fit as MF
+    ws = workspace(scratch, "carve")
+    r = ws / "videos" / "carve"
+    voice, bed, spans = fixture(PLUGIN_ROOT)
+    (r / "beds").mkdir(parents=True)
+    M.write_wav(r / "beds/bed.wav", bed)
+    (r / "work/cut").mkdir(parents=True)
+    M.write_json(r / "work/cut/tx-cut.json", {"words": [{"start": s["start_s"], "end": s["end_s"]} for s in spans]})
+    M.write_wav(r / "voice.wav", voice)
+    b = bed_sel("bed.wav", exit_s=15, fade_in_s=0, fade_out_s=0)
+    b.pop("carve")  # exercise a genuinely old Send with no carve key
+    plain, _ = MF.place(r, b, len(bed), 15, r / "voice.wav")
+    carved, info = MF.place(r, dict(b, carve={"on": True, "strength": 0.8}), len(bed), 15, r / "voice.wav")
+    default, default_info = MF.place(r, dict(b, carve={"on": True}), len(bed), 15, r / "voice.wav")
+    ck("carve: missing strength uses 0.8", default_info["carve"]["strength"] == 0.8 and np.array_equal(default, carved))
+    # Remove only the dip to get the same placed and levelled reference.
+    with patch.object(MF, "keyframes", return_value=[]):
+        reference, _ = MF.place(r, b, len(bed), 15, r / "voice.wav")
+    ck("carve: bake honours on and records six bands", info["mode"] == "carve" and len(info["carve"]["bands"]) == 6, info)
+    nums = measurements(voice, reference, carved, plain, info["carve"], SR)
+    print("INFO carve measurements " + json.dumps(nums, sort_keys=True), flush=True)
+    ck("carve: strongest selected band drops >= 6 dB", nums["strongest_drop_db"] >= 6, nums)
+    ck("carve: every selected band drops >= 3 dB", min(nums["band_drop_db"]) >= 3, nums)
+    ck("carve: outer bands stay within 1.5 dB", max(map(abs, nums["outer_drop_db"])) <= 1.5, nums)
+    ck("carve: dip drops the same outer bands >= 4 dB", min(nums["dip_outer_drop_db"]) >= 4, nums)
+    ck("carve: pauses return every band within 0.5 dB", max(map(abs, nums["pause_drop_db"])) <= 0.5, nums)
+    # measured -1.69 dB at 0.8, H-CARVE-2: 0.8 was chosen by ear; the carve trades ~2 dB of voice-band clearance for a fuller bed
+    ck("carve: 1-4 kHz voice/bed ratio >= dip - 2.0 dB", nums["ratio_advantage_db"] >= -2.0, nums)
+    off, off_info = MF.place(r, dict(b, carve={"on": False, "strength": 0.8}), len(bed), 15, r / "voice.wav")
+    ck("carve: missing key and explicit off are sample-identical", np.array_equal(plain, off) and off_info["mode"] == "dip")
+    # Bake against 81858f4's actual pre-change module, not just a second new-code branch.
+    old = types.ModuleType("music_fit_81858f4")
+    old.__file__ = str(SCRIPTS / "music_fit.py")
+    source = subprocess.check_output(["git", "show", "81858f4:plugins/editor-superengine/skills/reel-sound-pass/scripts/music_fit.py"],
+                                     cwd=HERE.parents[1], text=True, encoding="utf-8")
+    exec(compile(source, old.__file__, "exec"), old.__dict__)
+    make_picture(r / "locked.mp4", voice, 15, scratch)
+    library = ws / "editor/sound/beds"
+    library.mkdir(parents=True)
+    shutil.copyfile(r / "beds/bed.wav", library / "bed.wav")
+    p = script(ws, "new_board.py", "--reel", "carve", "--video", r / "locked.mp4", "--bed", "bed.wav")
+    ck("carve: new_board builds the default and preview profiles", p.returncode == 0, p.all[-600:])
+    cfg = json.loads((r / "config.json").read_text(encoding="utf-8")) if p.returncode == 0 else {}
+    ck("carve: new board defaults on at 0.8", cfg.get("bed_default", {}).get("carve") == {"on": True, "strength": 0.8})
+    previews = (cfg.get("carve") or {}).get("profiles", {})
+    ck("carve: config covers every strength slider stop", set(previews) == {"%.2f" % (s / 100) for s in range(25, 101, 5)}
+       and previews.get("0.80", {}).get("bands") and previews.get("0.80", {}).get("points"), list(previews))
+    selection(r, [], b)
+    with patch.object(BA, "music_fit", old):
+        BA.bake(r, r / "locked.mp4")
+    before = hashlib.sha256((r / "sound/music.wav").read_bytes()).hexdigest()
+    print("INFO carve 81858f4 music.wav sha256 " + before, flush=True)
+    BA.bake(r, r / "locked.mp4")
+    ck("carve: old selection bakes byte-identical to 81858f4", before == hashlib.sha256((r / "sound/music.wav").read_bytes()).hexdigest(), before)
+    selection(r, [], dict(b, carve={"on": True, "strength": 0.8}))
+    BA.bake(r, r / "locked.mp4")
+    h = hashlib.sha256((r / "sound/music.wav").read_bytes()).hexdigest()
+    BA.bake(r, r / "locked.mp4")
+    ck("carve: two bakes give identical music.wav sha256", h == hashlib.sha256((r / "sound/music.wav").read_bytes()).hexdigest(), h)
+    for name in ("silent", "missing", "no bands", "exception", "render exception"):
+        stream = io.StringIO()
+        if name == "silent":
+            M.write_wav(r / "silent.wav", np.zeros_like(voice))
+        vp = r / ("silent.wav" if name == "silent" else "voice.wav") if name != "missing" else None
+        original = carve.analyse
+        def analyse(*args, **kwargs):
+            if name == "exception":
+                raise RuntimeError("forced")
+            return {"strength": 0.8, "bands": [], "points": []} if name == "no bands" else original(*args, **kwargs)
+        def render_failure(*args, **kwargs):
+            raise RuntimeError("forced render failure")
+        renderer = render_failure if name == "render exception" else carve.render
+        with patch.object(carve, "analyse", analyse), patch.object(carve, "render", renderer), contextlib.redirect_stdout(stream):
+            fallback, detail = MF.place(r, dict(b, carve={"on": True}), len(bed), 15, vp)
+        # The same gain reference for silent/missing voice uses the old anchor.
+        with contextlib.redirect_stdout(io.StringIO()):
+            expected, _ = MF.place(r, b, len(bed), 15, vp)
+        ck("carve: %s falls back to the unchanged dip" % name,
+           detail["mode"] == "dip" and np.array_equal(fallback, expected)
+           and stream.getvalue().count("The music couldn't carve around the voice here, so it dips instead.") == 1,
+           stream.getvalue())
+        with patch.object(MF, "keyframes", return_value=[]), contextlib.redirect_stdout(io.StringIO()):
+            ref, _ = MF.place(r, b, len(bed), 15, vp)
+        inside = MF.envelope_db(detail["duck"]["keyframes"], np.arange(len(bed)) / SR) <= -4
+        drop = 10 * np.log10(np.mean(ref[inside].astype(np.float64) ** 2) / np.mean(fallback[inside].astype(np.float64) ** 2))
+        ck("carve: %s fallback dips >= 4 dB" % name, drop >= 4, float(drop))
+    text = (SCRIPTS / "carve.py").read_text(encoding="utf-8")
+    imports = {n.name.split(".")[0] for node in ast.walk(ast.parse(text))
+               for n in (node.names if isinstance(node, ast.Import) else [])}
+    froms = {node.module.split(".")[0] for node in ast.walk(ast.parse(text)) if isinstance(node, ast.ImportFrom)}
+    ck("carve: numpy and stdlib only, no network or telemetry", (imports | froms) <= (sys.stdlib_module_names | {"numpy"})
+       and not any(s in text.lower() for s in ("track", "posthog", "fetch", "http")))
+    ck("carve: Apache source header and changes line", all(s in text for s in
+       ("Apache", "HeyGen", "heygen-com/hyperframes", "v0.8.184", "d15a274c198cf18bc1df177cbe20df95392a8947",
+        "packages/core/src/audioCarve.ts", "Changed by editor-superengine:")))
+
+
+CASES = {"carve": case_carve, "free_master": case_free_master, "cost_ask": case_cost_ask, "pack": case_pack, "ingest_trim": case_ingest_trim,
          "room_tone": case_room_tone, "quiet_gate": case_quiet_gate, "bake_exact": case_bake_exact,
          "music_level": case_music_level, "music_seam": case_music_seam, "music_licence": case_music_licence,
          "music_absent": case_music_absent, "music_strongest": case_music_strongest, "beat_grid": case_beat_grid,
          "beat_grid_hard": case_beat_grid_hard, "beat_fit": case_beat_fit, "edl_hash": case_edl_hash,
-         "prefill": case_prefill, "peak_offset": case_peak_offset}
+         "prefill": case_prefill, "peak_offset": case_peak_offset,
+         "beat_steady": case_beat_steady, "beat_drift": case_beat_drift, "beat_half_trap": case_beat_half_trap,
+         "beat_real_bed": case_beat_real_bed,
+         "big_hits": case_big_hits,
+         "sfx_peak_silence": case_sfx_peak_silence,
+         "safe-fetch": case_safe_fetch, "no-overwrite": case_no_overwrite}
 
 
 def main():
     global M, MA, SR, SCRIPTS, CHECKS, PLUGIN_ROOT, room_tone, cost_ask
     ap = argparse.ArgumentParser()
+    ap.add_argument("scratch_dir", nargs="?", help="scratch folder (also accepted through --scratch)")
     ap.add_argument("--case", choices=sorted(CASES), action="append")
     ap.add_argument("--scratch")
     ap.add_argument("--plugin", default=str(PLUGIN))
@@ -1203,18 +1687,23 @@ def main():
     import room_tone  # noqa: E402
     import cost_ask  # noqa: E402
     SR = M.SR
-    scratch = Path(a.scratch) if a.scratch else Path(tempfile.mkdtemp(prefix="sound-pass-test-"))
+    scratch = Path(a.scratch or a.scratch_dir) if (a.scratch or a.scratch_dir) else Path(tempfile.mkdtemp(prefix="sound-pass-test-"))
     scratch.mkdir(parents=True, exist_ok=True)
+    blocked = 0
     for name in a.case or sorted(CASES):
         t0 = time.time()
         try:
             CASES[name](scratch)
+        except Blocked as e:
+            blocked += 1
+            print("BLOCKED %s: %s" % (name, e), flush=True)
         except Exception as e:  # a crash is a failed case, never a silent pass
             ck("%s: ran without crashing" % name, False, "%s: %s" % (type(e).__name__, e))
         print("INFO %s took %.1f s" % (name, time.time() - t0), flush=True)
     passed = sum(results)
-    print("%d passed, %d failed" % (passed, len(results) - passed))
-    return 0 if results and all(results) else 1
+    failed = len(results) - passed
+    print("%d passed, %d failed, %d blocked" % (passed, failed, blocked))
+    return 1 if failed else 77 if blocked else 0 if results else 1
 
 
 if __name__ == "__main__":

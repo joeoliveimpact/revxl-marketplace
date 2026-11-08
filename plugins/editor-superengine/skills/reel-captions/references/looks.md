@@ -10,10 +10,9 @@ All five looks use the licensed Inter Regular font. These are the client's taste
 - **Karaoke:** dim words brighten in turn as they are spoken. Marked words have the accent colour.
 - **Outline caps:** uppercase white words with an accent outline and a small rise.
 
-**No captions** is also a choice. There is no default look. The suggested accent is yellow;
+**No captions** is also a choice. The suggested accent is yellow;
 the client can choose another colour. Numbers, key words, stressed phrases and calls to action
-can carry that accent. Only one stressed phrase per sentence gets a small punch in size.
-A marked phrase keeps the words that make it true, such as “doesn't work”.
+can carry that accent.
 
 The client can also choose these options (VES-3):
 
@@ -32,7 +31,6 @@ The client can also choose these options (VES-3):
 - Suggestion: Try marker mode if a swipe behind the whole true phrase helps it stand out.
 - Suggestion: Try loudness emphasis to suggest stressed phrases, then check that they say what you mean.
 
-Groups have one to three spoken words. A truthful marked phrase that cannot fit that limit,
-or cannot fit before a layout change, stays in without its stress, with a note so the client can revise the mark.
+Groups have one to three spoken words.
 When no clear spot exists, the caption stays in the safest available spot with a note.
 An unusually long group uses a smaller font to fit, also with a note.

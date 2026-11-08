@@ -6,7 +6,7 @@
 - 3. Record the OK
 - 4. Make the final video
 - 5. What the render does
-- 6. What a beat can ask for that isn't built yet
+- 6. Transition notes and B-roll at render
 - 7. The cutout
 
 ```text
@@ -29,7 +29,7 @@ Renders can take a few minutes on a long reel: give each render's Bash call a 10
   invoke `editor-superengine:reel-captions`, then come back to step 2.
 - Ask: "Shall I make the 720p preview?" The 720p preview (720 by 1280 pixels, a smaller copy that renders quickly)
   is the cheap look before the final video.
-  Nothing renders without a yes.
+  Nothing renders without a yes. In Auto edit (`${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/house-rules.md`, section 5), make it without asking.
 - The opening hook: when no scene opens the reel, the render writes the first beat's words (70 characters at most)
   on screen from the first frame until that beat ends, 5 seconds at most. If those words run longer (the preview
   refuses them with a `✗` line), or the client named a different hook, add `--hook-text "<the hook>"` to the preview command.
@@ -66,6 +66,8 @@ approve, or approved an older preview: tell the client it has to approve the lat
 the latest preview, so a hand-written OK would skip the client's review.
 A change request is not an OK: make the change, then a new preview.
 
+After `ok`, say any printed style lines word for word: a learned change, the Auto edit offer, or Auto edit switched off. For the offer, a yes runs `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/style_learn.py" auto <style> on`; a no runs the same script's `decline <style>`. Quote style names with spaces. Pass `--workspace <workspace folder>` to `auto` for this workspace's unlock setting. If that style isn't the default, add: "It starts by itself once <style> is your default. Make it your default?" On yes, run `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/saved_style.py" set-default <style>`.
+
 ## 4. Make the final video
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/scripts/compose.py" master --reel-dir "<reel folder>"`
@@ -101,9 +103,9 @@ The saved brand colour and font restyle every scene, with the font applied only 
 - It deletes its scratch folder after every render. If an old one can't be deleted, it stops before rendering:
   close whatever has a file from that folder open, then run it again.
 
-## 6. What a beat can ask for that isn't built yet
+## 6. Transition notes and B-roll at render
 
-Transitions get a `note:` line: follow SKILL.md's Not built yet rule.
+A `note:` about a transition (such as the shader shown as a fade on this computer) is passed on in plain words; see `references/transitions.md`.
 Own-clip B-roll comes from reel-broll and the Beat Map Send. Before rendering, the footage ledger checks
 the clip's bytes and source intervals; AI footage cannot accompany a number. Missing footage licences warn
 on previews and refuse the Master, even without music. B-roll is muted at layer 200, under scenes and captions.

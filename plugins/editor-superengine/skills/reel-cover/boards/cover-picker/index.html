@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pick your cover</title>
+  <script src="./board-client.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 28px; background: #11151b; color: #f1f4f8; font: 16px/1.5 system-ui, sans-serif; }
+    main { max-width: 1160px; margin: auto; }
+    h1 { margin: 0 0 8px; font-size: 30px; line-height: 1.2; }
+    p { max-width: 68ch; }
+    button, input { font: inherit; }
+    button { cursor: pointer; border: 2px solid #536379; border-radius: 12px; background: #1c2531; color: inherit; padding: 12px; }
+    button:hover { border-color: #b2c7e3; }
+    button:focus-visible, input:focus-visible { outline: 3px solid #a5cbff; outline-offset: 3px; }
+    button[aria-pressed="true"] { border-color: #91bdff; background: #243c5d; }
+    button:disabled { opacity: .55; cursor: default; }
+    #candidates { display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 14px; align-items: start; }
+    #candidates button { width: 100%; text-align: left; }
+    #candidates span { display: block; min-height: 3em; font-size: 13px; margin-bottom: 8px; }
+    #candidates img { display: block; width: 100%; aspect-ratio: 9/16; object-fit: cover; border-radius: 5px; }
+    #options { display: flex; gap: 30px; flex-wrap: wrap; margin: 28px 0; }
+    #fields { flex: 1 1 310px; max-width: 620px; }
+    label { display: block; margin: 12px 0; }
+    #title { display: block; width: 100%; padding: 12px; margin-top: 8px; background: #1c2531; color: inherit; border: 1px solid #8798af; border-radius: 6px; }
+    #embed { width: 20px; height: 20px; vertical-align: middle; margin-right: 8px; }
+    #validation { min-height: 3em; color: #ffcaac; }
+    #preview { position: relative; width: 270px; height: 480px; overflow: hidden; background: #222; }
+    #preview img { width: 100%; height: 100%; object-fit: fill; }
+    #head { position: absolute; border: 2px dashed #69efc0; pointer-events: none; }
+    #title-box { position: absolute; padding: 6px; background: rgba(14,15,18,.9); box-shadow: inset 0 2px #4f8cff; text-align: center; overflow-wrap: anywhere; overflow: hidden; font: 400 18px/1.1 CoverInter; }
+    #send { min-height: 48px; padding: 10px 32px; background: #315d99; border-color: #91bdff; }
+    #status { min-height: 1.5em; }
+    #status[data-state="error"] { color: #ffcaac; }
+    #status[data-state="sent"] { color: #69efc0; }
+    .help { color: #b9c6d6; font-size: 14px; }
+    [hidden] { display: none !important; }
+    @media (max-width: 520px) { body { padding: 18px; } #candidates { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Pick your cover</h1>
+  <p>Frame 0 is recommended because your opening text hook lives there. Any frame is fine. If the opening is blurry, the sharpest nearby frame comes first.</p>
+  <p id="empty">Your cover frames are being prepared. Ask the editor to prepare them if they do not appear.</p>
+  <div id="candidates" role="group" aria-label="Cover frames"></div>
+  <section id="options" hidden aria-label="Your cover">
+    <div id="fields">
+      <label for="title">Short title (optional, up to six words said in the reel)
+        <input id="title" type="text" autocomplete="off" aria-describedby="validation">
+      </label>
+      <p id="title-limit" class="help">Keep the cover title to at most six words and 28 letters.</p>
+      <p id="validation" role="status" aria-live="polite"></p>
+      <label><input id="embed" type="checkbox">Use this cover as the first frame of the reel</label>
+      <p class="help">The dashed green box protects your head and face (the top 60% of the measured head box). The title goes below it, or above when there is room, and never covers your face. Keep it to two lines. The next render uses your first-frame choice.</p>
+      <p id="note" class="help"></p>
+      <p id="face-note" class="help" role="status" aria-live="polite" hidden></p>
+    </div>
+    <div>
+      <div id="preview" role="img" aria-label="Cover preview with title area and head box">
+        <img id="preview-image" alt="Selected cover frame">
+        <div id="head" hidden></div><div id="title-box" hidden></div>
+      </div>
+      <p class="help">Title placement preview</p>
+    </div>
+  </section>
+  <button id="send" type="button" disabled>Send</button>
+  <p id="status" role="status" aria-live="polite"></p>
+</main>
+<script>
+"use strict";
+const $ = selector => document.querySelector(selector);
+const reel = new URLSearchParams(location.search).get("reel");
+const baseUrl = "/videos/" + encodeURIComponent(reel) + "/";
+let bc, data, state, queue = Promise.resolve(), sending = false;
+const status = (text, kind = "") => { $("#status").textContent = text; $("#status").dataset.state = kind; };
+const tokens = text => text.split(/\s+/u).map(s => s.replace(/[^\p{L}\p{N}_]/gu, "").toLowerCase().replace(/ß/g, "ss").replace(/ς/g, "σ")).filter(Boolean);
+const selected = () => data.candidates.find(row => row.frame === state.frame);
+const payload = () => ({frame: state.frame, title: state.title.trim().replace(/\s+/gu, " ") || null, embed_first_frame: state.embed_first_frame});
+
+// Use the caption checker's exported vocabulary and pattern, including number
+// phrases: a title cannot assemble a new numeric claim from separately said words.
+function titleNumbers(text) {
+  const rules = data.number_rules, found = new Set();
+  const clean = text.replace(/\[[^\]]*\]|https?:\/\/\S+|www\.\S+/g, " ").replaceAll("**", "");
+  const pattern = new RegExp(rules.pattern, "gi");
+  for (const m of clean.matchAll(pattern)) {
+    let value = Number(m[1].replaceAll(",", "")) * (rules.suffix[(m[2] || "").toLowerCase()] || 1);
+    const after = clean.slice(m.index + m[0].length).match(/^\s+(hundred|thousand|million)\b/i);
+    if (after) value *= rules.mult[after[1].toLowerCase()];
+    found.add(value);
+  }
+  const words = clean.toLowerCase().match(/[a-z]+|[^a-z\s]+/g) || [];
+  for (let i = 0; i < words.length;) {
+    if (Object.hasOwn(rules.small, words[i]) || Object.hasOwn(rules.mult, words[i])) {
+      let j = i, total = 0, cur = 0;
+      while (j < words.length && (Object.hasOwn(rules.small, words[j]) || Object.hasOwn(rules.mult, words[j]))) {
+        const w = words[j];
+        if (Object.hasOwn(rules.small, w)) cur += rules.small[w];
+        else if (w === "hundred") cur = Math.max(cur, 1) * 100;
+        else { total += Math.max(cur, 1) * rules.mult[w]; cur = 0; }
+        j++;
+      }
+      if (!(i > 0 && /^[\d.,]+$/.test(words[i - 1]) && Object.hasOwn(rules.mult, words[i]))) found.add(total + cur);
+      i = j;
+    } else i++;
+  }
+  return [...found];
+}
+
+function titleSize(text, size) {
+  const l = data.title_layout, el = document.createElement("div");
+  Object.assign(el.style, {position: "absolute", visibility: "hidden", width: (l.width - 2 * l.padding) + "px",
+    fontFamily: "CoverInter", fontWeight: "400", fontSize: size.font_size + "px", lineHeight: size.line_height + "px", overflowWrap: "anywhere"});
+  el.textContent = text || " ";
+  document.body.append(el);
+  const lines = Math.max(1, Math.round(el.getBoundingClientRect().height / size.line_height));
+  const fits = el.scrollWidth <= el.clientWidth && lines <= l.max_lines;
+  el.remove();
+  return {height: Math.ceil(lines * size.line_height + 2 * l.padding), fits, ...size};
+}
+
+function headBand(head) {
+  return head ? [head[0], head[1], head[2], head[1] + data.title_layout.head_fraction * (head[3] - head[1])] : null;
+}
+
+function titleY(head, height) {
+  const l = data.title_layout;
+  if (head && !(0 <= head[0] && head[0] < head[2] && head[2] <= 1 && 0 <= head[1] && head[1] < head[3] && head[3] <= 1)) return null;
+  if (head && head.every((v, i) => v === [0, 0, 1, 1][i])) return null;
+  const band = headBand(head);
+  const below = band ? Math.max(l.top, Math.ceil(band[3] * 1920) + l.gap) : l.default_y;
+  const above = band ? Math.min(l.bottom - height, Math.floor(band[1] * 1920) - l.gap - height) : below;
+  return [below, above].find(y => y >= l.top && y + height <= l.bottom) ?? null;
+}
+
+function titlePlacement(head, text) {
+  for (const size of Object.values(data.title_layout.sizes)) {
+    const measured = titleSize(text, size), y = titleY(head, measured.height);
+    if (measured.fits && y !== null) return {...measured, y};
+  }
+  return null;
+}
+
+function validation() {
+  if (!selected()) return "Choose a cover frame.";
+  const title = payload().title;
+  if (!title) return "";
+  if (title.split(/\s+/u).length > 6 || [...title].length > data.title_layout.max_chars || !tokens(title).length) return $("#title-limit").textContent;
+  const unsaid = tokens(title).filter(word => !data.words.includes(word));
+  if (unsaid.length) return "Words not said in this reel: " + [...new Set(unsaid)].join(", ");
+  if (titleNumbers(title).some(value => !data.numbers.some(n => Number(n) === value))) return "A number in this title was not said in this reel.";
+  if (!titlePlacement(selected().head_box, title)) return data.title_layout.refusal;
+  return "";
+}
+
+function update() {
+  const row = selected();
+  if (!row) return;
+  $("#face-note").hidden = row.head_box != null;
+  $("#face-note").textContent = row.head_box == null ? "note: no face position for this frame, so the title sits low on the cover; check it clears your face before you post." : "";
+  document.querySelectorAll("#candidates button").forEach(b => b.setAttribute("aria-pressed", String(Number(b.dataset.frame) === state.frame)));
+  $("#preview-image").src = baseUrl + "cover/cand-" + row.frame + ".jpg";
+  const head = headBand(row.head_box), box = $("#head");
+  box.hidden = !head;
+  if (head) Object.assign(box.style, {left: head[0] * 100 + "%", top: head[1] * 100 + "%", width: (head[2] - head[0]) * 100 + "%", height: (head[3] - head[1]) * 100 + "%"});
+  const size = titlePlacement(row.head_box, payload().title), l = data.title_layout, title = $("#title-box");
+  title.hidden = !payload().title || !size;
+  title.textContent = payload().title || "";
+  if (size) Object.assign(title.style, {left: l.x / 1080 * 100 + "%", top: size.y / 1920 * 100 + "%", width: l.width / 1080 * 100 + "%", height: size.height / 1920 * 100 + "%",
+    padding: l.padding / 4 + "px", fontSize: size.font_size / 4 + "px", lineHeight: size.line_height / 4 + "px"});
+  const error = validation();
+  $("#validation").textContent = error;
+  $("#title").setAttribute("aria-invalid", String(!!error));
+  $("#send").disabled = sending || !!error;
+}
+
+function persist() {
+  const draft = structuredClone(state);
+  queue = queue.catch(() => null).then(() => bc.save(draft));
+  return queue;
+}
+function changed() { status(""); update(); persist(); }
+
+async function send() {
+  if (validation() || sending) { update(); return; }
+  sending = true; update();
+  document.querySelectorAll("#candidates button, #title, #embed").forEach(el => { el.disabled = true; });
+  try {
+    const doc = payload();
+    const saved = await persist();
+    if (!saved.ok) throw new Error("save");
+    const response = await fetch(baseUrl + "__save?board=cover-picker&name=cover-picker-selection.json", {
+      method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(doc)});
+    const answer = await response.json();
+    if (!response.ok || !answer.ok) throw new Error("send");
+    status("Sent. Your cover choice is ready for the editor to apply.", "sent");
+  } catch (error) { status("Couldn't send. Your choice is kept here; try Send again.", "error"); }
+  finally {
+    sending = false;
+    document.querySelectorAll("#candidates button, #title, #embed").forEach(el => { el.disabled = false; });
+    update();
+  }
+}
+
+async function init() {
+  try {
+    bc = BoardClient.create({board: "cover-picker"});
+    const [response, saved] = await Promise.all([fetch(baseUrl + "cover/candidates.json", {cache: "no-store"}), bc.load()]);
+    if (!response.ok) throw new Error("candidates");
+    data = await response.json();
+    $("#title-limit").textContent = "Keep the cover title to at most six words and " + data.title_layout.max_chars + " letters.";
+    const font = new FontFace("CoverInter", "url(" + baseUrl + "cover/title-font.woff2)");
+    document.fonts.add(await font.load());
+    if (!data.candidates?.length || data.candidates.length > 6 || !data.candidates[0].recommended ||
+        data.candidates.some(row => !Number.isInteger(row.frame) || row.frame < 0)) throw new Error("frames");
+    state = {frame: data.candidates.some(row => row.frame === saved?.frame) ? saved.frame : data.candidates[0].frame,
+             title: typeof saved?.title === "string" ? saved.title : "", embed_first_frame: saved?.embed_first_frame === true};
+    for (const row of data.candidates) {
+      const button = document.createElement("button"), label = document.createElement("span"), img = document.createElement("img");
+      button.type = "button"; button.dataset.frame = row.frame;
+      label.textContent = row.recommended ? "Recommended: your opening frame, where your text hook is" : "Frame " + row.frame + " · " + row.t.toFixed(1) + " s";
+      img.src = baseUrl + "cover/cand-" + row.frame + ".jpg"; img.alt = "Cover frame " + row.frame;
+      button.append(label, img);
+      button.onclick = () => { state.frame = row.frame; changed(); };
+      $("#candidates").append(button);
+    }
+    $("#title").value = state.title; $("#embed").checked = state.embed_first_frame;
+    $("#title").oninput = () => { state.title = $("#title").value; changed(); };
+    $("#embed").onchange = () => { state.embed_first_frame = $("#embed").checked; changed(); };
+    $("#send").onclick = send;
+    $("#note").textContent = data.note || "";
+    $("#empty").hidden = true; $("#options").hidden = false;
+    update();
+  } catch (error) { status("The cover frames could not load. Ask the editor to prepare them again.", "error"); }
+}
+init();
+</script>
+</body>
+</html>

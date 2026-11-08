@@ -27,6 +27,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[1] / "_shared"))
 import runtime as rt  # noqa: E402
 import saved_style  # noqa: E402
+from cut_timing import pause_default as style_pause_default  # noqa: E402
 from win_encoding import ensure_utf8_output  # noqa: E402
 
 # islands(), the board sequence and the word-list hash have one home: build_edit_map.py in this folder (H-R16)
@@ -200,14 +201,19 @@ def reel_rel(path, reel_dir):
     return Path(os.path.relpath(p, top)).as_posix()
 
 
-def default_attempt():
+def default_attempt(reel=None):
     """The saved-style rule cut.default_attempt ("last" or "first"), else "last"."""
     try:
-        st = saved_style.load()
+        st = saved_style.load(reel)
         v = (st.get("cut") or {}).get("default_attempt")
     except (OSError, ValueError, AttributeError):
         v = None
     return v if v in ("last", "first") else "last"
+
+
+def pause_default(reel=None):
+    """The active style's pause between lines, else the existing 150 ms default."""
+    return style_pause_default(saved_style._get(saved_style.load(reel), "cut.pause_ms"))
 
 
 def beat_default():
@@ -323,7 +329,7 @@ def main():
     # the default ruling never mixes takes: the main take holds the most lines, a tie goes to the higher take
     held = {int(n): sum(1 for ln in lines if any(x["take"] == int(n) for x in ln["attempts"])) for n in takes}
     main_take = max(held, key=lambda n: (held[n], n))
-    which = default_attempt()
+    which = default_attempt(out)
     for ln in lines:
         js = [j for j, x in enumerate(ln["attempts"]) if x["take"] == main_take]
         ln["default"] = (js[-1] if which == "last" else js[0]) if js else None
@@ -333,9 +339,13 @@ def main():
     shots = json.loads(Path(a.shots).read_text(encoding="utf-8"))
     cfg = dict(reel=a.reel, rule=f"{which} attempt wins, take {main_take}", main_take=main_take,
                gap_presets=[["Tight", 0], ["150", 150], ["250", 250], ["500", 500], ["Breathe", 800], ["As spoken", None]],
-               gap_default_ms=150, beat_ms=beat_default(), speed_options=[1.0, 1.1, 1.15, 1.2], speed_default=1.0,
+               gap_default_ms=pause_default(out), beat_ms=beat_default(), speed_options=[1.0, 1.1, 1.15, 1.2], speed_default=1.0,
                shots=shots, lines=lines,
                takes={n: {k: v for k, v in t.items() if k != "anchors"} for n, t in takes.items()})
+    if cfg["gap_default_ms"] not in [ms for _, ms in cfg["gap_presets"]]:
+        index = next(i for i, (_, ms) in enumerate(cfg["gap_presets"])
+                     if ms is None or ms > cfg["gap_default_ms"])
+        cfg["gap_presets"].insert(index, [str(round(cfg["gap_default_ms"])), cfg["gap_default_ms"]])
     # what a ruling indexes: word lists, attempts, silences. attempts[].review is not in it: the keep choice is
     # stored as rm word indices, which the word lists already cover
     cfg["board_hash"] = board_hash(cfg)

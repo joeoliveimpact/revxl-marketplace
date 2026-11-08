@@ -192,7 +192,7 @@ input[type=range]{accent-color:var(--you);width:100%;margin:0}
 .act .go{margin-top:auto;font-size:11.5px;color:var(--mute)}
 .act .flag{font-size:11.5px;color:var(--you)}
 .act.sug{border-color:rgba(255,90,60,.35)}
-.queue{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.queue{height:174px;overflow-y:auto;list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .queue li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:8px 12px;border:1px solid var(--hair);border-radius:12px;font-size:13px}
 .queue li.empty{display:block;color:var(--mute);border-style:dashed}
 .queue time{font:400 11.5px var(--mono);color:var(--mute)}
@@ -278,7 +278,7 @@ button.st:hover{background:rgba(242,205,82,.08)}
 .pills input[value="fix"]:checked+span{background:var(--captions)}
 .pills input[value="cut"]:checked+span{background:var(--you)}
 .pills input:focus-visible+span{outline:1.5px solid var(--ink);outline-offset:2px}
-.notelist{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;max-height:150px;overflow:auto}
+.notelist{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;height:123px;overflow-y:auto}
 .notelist li{display:grid;grid-template-columns:auto auto 1fr;gap:6px 8px;align-items:center;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.035)}
 .notelist li.empty{display:block;color:var(--mute);font-size:12.5px;background:none;border:1px dashed var(--hair);padding:10px}
 .notelist p{grid-column:1/-1;margin:0;font-size:13px;line-height:1.4}

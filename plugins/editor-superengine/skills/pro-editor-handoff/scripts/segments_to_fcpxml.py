@@ -180,6 +180,10 @@ def load_model(reel, aroll, overlay, captions=None):
     placement = read(reel / "sound/placement.json", {})
     bed = placement.get("bed") or {}
     beds, effects = [], []
+    notes = []
+    if bed.get("mode") == "carve":
+        note = "The music's voice carve is applied only in our render; Resolve gets the simpler dip."
+        notes.append(note)
     if bed.get("source"):
         ref = asset(original(reel, bed["source"], "beds"))
         gain = rational(bed["level"]["gain_db_applied"])
@@ -212,7 +216,8 @@ def load_model(reel, aroll, overlay, captions=None):
             raise ValueError("An original sound clip extends beyond its source or the reel")
     return {"name": reel.name, "rate": rate, "total": cursor, "segments": segments, "assets": list(assets.values()),
             "aroll": ar, "overlay": ov, "captions": cap, "beds": beds, "effects": effects,
-            "width": picture["width"], "height": picture["height"], "master": master, "baked_spans": baked}
+            "width": picture["width"], "height": picture["height"], "master": master, "baked_spans": baked,
+            "notes": notes}
 
 
 def db_text(value):
@@ -303,6 +308,8 @@ def write(reel: Path, aroll: Path, overlay: Path | None, out: Path, captions: Pa
     model["master"] = asset(master_picture) if model["baked_spans"] else None
     model["assets"] = [a for a in model["assets"] if a["id"] not in unused]
     save_xml(build_tree(model), out, "fcpxml")
+    for note in model["notes"]:
+        print(note)
     by_ref = {a["id"]: str(a["path"]) for a in model["assets"]}
     audio_items = {by_ref[model["voice"]]: 1}
     for clip in model["beds"] + model["effects"]:
@@ -314,7 +321,7 @@ def write(reel: Path, aroll: Path, overlay: Path | None, out: Path, captions: Pa
             "format": {"width": model["width"], "height": model["height"], "frameDuration": stamp(1 / model["rate"])},
             "paths": [str(a["path"]) for a in model["assets"]], "audio_items": audio_items,
             "baked_spans": model["baked_spans"], "master": by_ref.get(model["master"]),
-            "picture": by_ref[model["picture"]], "voice": by_ref[model["voice"]]}
+            "picture": by_ref[model["picture"]], "voice": by_ref[model["voice"]], "notes": model["notes"]}
 
 
 def picture_problems(path, total, rate):

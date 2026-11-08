@@ -34,7 +34,9 @@ import runtime as rt
 from win_encoding import ensure_utf8_output
 
 HEAVY = Path("C:/Workspaces/Content Studio/output/scripts/heavy_lock.py")
-NAMES = ["reels", "tabs", "grade", "review", "sends", "health", "filmstrip", "layout", "attention", "sync", "edit_style", "look", "broll"]
+NAMES = ["reels", "tabs", "grade", "review", "sends", "health", "filmstrip", "layout", "attention", "sync", "edit_style", "look", "broll", "styles", "reminder_holds", "strong_beats"]
+NAMES.append("storyboard")
+NAMES.append("rapid_sends")
 
 
 class Blocked(RuntimeError):
@@ -403,15 +405,34 @@ def case_review(p):
 
 def case_sends(p):
     d = p.videos / "reel-01"
+    # Positions inside the side panel (which scrolls on its own), so page-load settling above it doesn't count.
+    side = "(document.querySelector('aside.side').getBoundingClientRect().top - document.querySelector('aside.side').scrollTop)"
+    positions = ("JSON.stringify({style: document.querySelector('[data-skill=style]').getBoundingClientRect().top - " + side + ","
+                 "actions: document.querySelector('#actions').getBoundingClientRect().top - " + side + "})")
+    settled = "[...document.images].every(i => i.complete) && document.querySelector('#vid').readyState >= 1"
     def check():
+        # Wait for drawSaved: note-list and queue growth shift the later pointer targets.
         for n in ("reel-notes.json", "hub-requests.json"):
             (d / n).unlink(missing_ok=True)
-        p.browse([{"do": "set", "sel": "#note", "value": "Keep the laugh"}, click('#notes-send'),
+        notes_top, before, after = p.browse([
+                  {"do": "waitFn", "js": settled},
+                  {"do": "set", "sel": "#note", "value": "Keep the laugh"},
+                  {"do": "eval", "js": "document.querySelector('#actions').getBoundingClientRect().top - " + side},
+                  click('#notes-send'),
                   {"do": "waitText", "sel": "#status", "re": "Sent|Could not"},
+                  {"do": "waitFn", "js": "Hub.pending===0"},
+                  {"do": "eval", "js": positions},
                   click('[data-skill="captions"]'), click('[data-skill="captions"]'),
                   click('[data-skill="qa"]'),
+                  {"do": "waitFn", "js": "Hub.pending===0"},
                   click('[data-skill="style"]'),
-                  {"do": "waitFn", "js": "Hub.pending===0"}])
+                  {"do": "waitFn", "js": "Hub.pending===0"},
+                  {"do": "eval", "js": positions}])
+        need(abs(before["actions"] - notes_top) <= 0.5,
+             f"notes Send moved #actions: {notes_top} -> {before['actions']}")
+        for target in ("style", "actions"):
+            need(abs(after[target] - before[target]) <= 0.5,
+                 f"skill Sends moved {target}: {before[target]} -> {after[target]}")
         need((d / "reel-notes.json").is_file(), "notes Send missing")
         need(read(d / "reel-notes.json")[-1]["text"] == "Keep the laugh", "wrong note")
         need((d / "hub-requests.json").is_file() and len(read(d / "hub-requests.json")) == 4, "four clicks did not append four requests")
@@ -421,6 +442,121 @@ def case_sends(p):
     check()
     with p.mutant("hub.js", "const list = previous.concat(entry);", "const list = [entry];"):
         p.bites(check, "requests overwrite earlier Sends")
+    with p.mutant("hub.css", ".queue{height:174px;", ".queue{"):
+        p.bites(check, "queue without fixed height moves Save this style")
+
+
+def case_rapid_sends(p):
+    target = p.videos / "reel-01/hub-requests.json"
+    skills = ["captions", "qa", "cover", "style", "qa", "captions", "style", "cover"]
+
+    def check():
+        target.unlink(missing_ok=True)
+        p.browse([{"do": "eval", "js":
+                   "for (const skill of " + json.dumps(skills) + ") { "
+                   "document.querySelector('[data-skill=\"' + skill + '\"]').click(); }"},
+                  {"do": "waitFn", "js": "Hub.pending===0"}])
+        need(target.is_file(), "rapid requests missing")
+        requests = read(target)
+        need(len(requests) == 8, f"eight clicks saved {len(requests)} requests")
+        need([r["skill"] for r in requests] == skills, f"rapid requests out of click order: {requests}")
+
+    check()
+    with p.mutant("hub.js", "const work = queue.catch(() => {}).then(fn);",
+                  "const work = Promise.resolve().then(fn);"):
+        p.bites(check, "rapid requests run without serialization")
+
+
+def case_styles(p):
+    writer = p.plugin / "skills/_shared/saved_style.py"
+    home = Path(p.env["EDITOR_SE_HOME"])
+    write(home / "styles/default.json", {"font": "Inter"})
+    write(home / "styles/client-b.json", {"font": "Montserrat"})
+    data = p.refresh()
+    need({s["id"]: s["label"] for s in data["styles"]} == {"default": "Style 1", "client-b": "Client b"},
+         f"saved styles missing from hub data: {data.get('styles')}")
+    d = p.videos / "reel-01"
+
+    def check():
+        (d / "hub-requests.json").unlink(missing_ok=True)
+        p.browse([click('[data-style-id="client-b"] [data-style-action="default"]'),
+                  {"do": "set", "sel": '[data-style-id="client-b"] input', "value": "Talking head"},
+                  click('[data-style-id="client-b"] button[type="submit"]'),
+                  {"do": "waitFn", "js": "Hub.pending===0"}])
+        need((d / "hub-requests.json").is_file(), "style requests missing")
+        requests = read(d / "hub-requests.json")
+        need(len(requests) == 2, f"two style clicks did not append two requests: {requests}")
+        for request, action, label, ask in zip(requests, ("default", "rename"), ("Client b", "Talking head"),
+                ("Make Client b my default", "Rename Client b to Talking head")):
+            need(request["skill"] == "styles" and request["reel"] == "reel-01" and request["ask"] == ask,
+                 f"wrong style request: {request}")
+            need(request["choices"] == {"action": action, "id": "client-b", "label": label},
+                 f"style choices differ: {request['choices']}")
+
+    check()
+    with p.mutant("hub.js", "choices:{action,id,label}", "choices:{action,label}"):
+        p.bites(check, "style requests drop their stable id")
+    # Act on the requests exactly as the hub reference instructs, then rebuild.
+    check()
+    for request in read(d / "hub-requests.json"):
+        choices = request["choices"]
+        if choices["action"] == "rename":
+            p.py(writer, "rename", choices["id"], choices["label"])
+        else:
+            p.py(writer, "set-default", choices["id"])
+    data = p.refresh()
+    row = next(s for s in data["styles"] if s["id"] == "client-b")
+    need({k: row[k] for k in ("id", "label", "default")} ==
+         {"id": "client-b", "label": "Talking head", "default": True}, "style commands did not update hub data")
+    rows = p.snapshot("[...document.querySelectorAll('#styles form')].map(f=>({id:f.dataset.styleId,"
+                        "label:f.querySelector('p').textContent,makeDefault:!!f.querySelector('[data-style-action=default]')}))")
+    need(next(r for r in rows if r["id"] == "client-b") ==
+         {"id": "client-b", "label": "Talking head (default)", "makeDefault": False}, "renamed default not shown")
+    need(next(r for r in rows if r["id"] == "default")["makeDefault"], "old default cannot be selected")
+    need("Auto edit unlocks after 3 smooth reels (0 so far)" in p.snapshot("document.querySelector('#styles').textContent"),
+         "locked style does not explain Auto edit")
+    write(home / "styles/client-b.learn.json", {"schema": 1,
+        "style_created": read(home / "styles/_index.json")["styles"]["client-b"]["created"], "reels": [
+        {"reel": str(d), "preview": str(i), "at": "2026-11-07T12:00:00+00:00", "mode": "normal",
+         "changes": [], "big": False, "why": ""} for i in range(3)],
+        "auto": {"on": False, "declined_at": None}, "learned": []})
+    need(next(s for s in p.refresh()["styles"] if s["id"] == "client-b")["auto"]["ready"],
+         "ready style does not reach the hub")
+
+    def check_auto(on=True):
+        (d / "hub-requests.json").unlink(missing_ok=True)
+        p.browse([click('[data-style-id="client-b"] [data-style-action="auto"]'),
+                  {"do": "waitFn", "js": "Hub.pending===0"}])
+        requests = read(d / "hub-requests.json")
+        need(len(requests) == 1, "one Auto edit click must append one request")
+        request = requests[0]
+        need(request["skill"] == "styles" and request["ask"] ==
+             f"Turn Auto edit {'on' if on else 'off'} for Talking head", f"wrong Auto edit request: {request}")
+        need(request["choices"] == {"action": "auto", "id": "client-b", "label": "Talking head", "on": on},
+             f"wrong Auto edit choices: {request}")
+
+    check_auto()
+    with p.mutant("hub.js", "choices:{action,id,label,on}", "choices:{action,id,label}"):
+        p.bites(check_auto, "Auto edit request drops the requested state")
+    check_auto()
+    learner = p.plugin / "skills/_shared/style_learn.py"
+    choices = read(d / "hub-requests.json")[0]["choices"]
+    p.py(learner, "auto", choices["id"], "on" if choices["on"] else "off", "--workspace", p.ws)
+    p.refresh()
+    need(p.snapshot("document.querySelector('[data-style-id=client-b] [data-style-action=auto]').textContent") ==
+         "Auto edit: On", "enabled Auto edit is not shown")
+    check_auto(False)
+    # Labels are client input. They must stay text, including inside the input's value attribute.
+    label = '<img src=x onerror="alert(1)">'
+    p.py(writer, "rename", "client-b", label)
+    p.refresh()
+    escaped = p.snapshot("({images:document.querySelectorAll('#styles img').length,"
+                         "label:document.querySelector('[data-style-id=client-b] input').value})")
+    need(escaped == {"images": 0, "label": label}, f"style label became markup: {escaped}")
+    (home / "styles/_index.json").write_bytes(b"{")
+    need(p.refresh()["styles"] == [], "unreadable style names crashed the hub or exposed stale styles")
+    need(p.snapshot("document.querySelector('#styles').textContent") == "No saved styles yet.",
+         "empty styles message missing")
 
 
 def case_health(p):
@@ -507,6 +643,177 @@ def case_sync(p):
         p.bites(check, "generated data shipped as template")
     finally:
         template.unlink()
+
+
+def case_storyboard(p):
+    """Storyboard choices survive the real hub Send and clear the real suggestion."""
+    import canvas_boards_test as fixture
+    canvas = p.plugin / "skills/reel-canvas-build/scripts"
+    sys.path.insert(0, str(canvas))
+    import beat_schema
+    d = p.videos / "reel-01"
+    fixture.reel_fixture(d)
+    p.py(canvas / "make_beat_map.py", "--reel-dir", d, "--plan", d / "work/plan.json")
+    beat_map = read(d / "beat-map.state.json")
+    write(d / "beat-map-selection.json", beat_map)
+
+    def module(name):
+        spec = importlib.util.spec_from_file_location(name, p.plugin / "skills/_shared/checks" / (name + ".py"))
+        loaded = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(loaded)
+        return loaded
+
+    checks, storyboard = module("check"), module("storyboard_check")
+
+    def open_sketches():
+        return [click('#tab-sketches'), {"do": "waitFn", "js": "!!document.querySelector('#panel iframe')"},
+                {"do": "frame", "sel": "#panel iframe", "wait": "#board:not([hidden]) #storyboard"},
+                click('#storyboard summary')]
+
+    def control(beat, field):
+        return f'#storyboard [data-beat="{beat}"] [data-field="{field}"]'
+
+    def sent(actions):
+        (d / "sketches-selection.json").unlink(missing_ok=True)
+        p.browse(open_sketches() + actions + [click('#send'),
+                 {"do": "waitFn", "js": "document.querySelector('#status').dataset.state==='sent'"}])
+        doc = read(d / "sketches-selection.json")
+        need(beat_schema.sketches_problems(doc, beat_map) == [], "storyboard Send failed schema")
+        return doc
+
+    def mismatch():
+        fixture.reel_fixture(d)
+        doc = sent([{"do": "set", "sel": control("b_001", "out"), "value": "hold"},
+                    {"do": "set", "sel": control("b_002", "in"), "value": "slide"},
+                    {"do": "waitText", "sel": "#storyboard", "re": "Tip: match this exit"}])
+        need(doc.get("storyboard") == {"beats": {"b_001": {"out": "hold"}, "b_002": {"in": "slide"}}},
+             "storyboard dropped from Send")
+        rows = storyboard.run(checks.build_context(d))
+        need(len(rows) == 1 and rows[0]["level"] == "warn", f"expected one storyboard suggestion: {rows}")
+
+    mismatch()
+    restored = p.browse(open_sketches() + [{"do": "eval", "js": "JSON.stringify(["
+        "document.querySelector('#storyboard [data-beat=\"b_001\"] [data-field=out]').value,"
+        "document.querySelector('#storyboard [data-beat=\"b_002\"] [data-field=in]').value])"}])[-1]
+    need(restored == ["hold", "slide"], "fresh browser did not restore storyboard")
+    sent([{"do": "set", "sel": control("b_002", "in"), "value": "hold"},
+          {"do": "waitFn", "js": "!document.querySelector('#storyboard .storyboard-tip')"}])
+    need(storyboard.run(checks.build_context(d)) == [], "matching choices did not clear suggestion")
+    doc = sent([{"do": "set", "sel": control("b_001", "out"), "value": ""},
+                {"do": "set", "sel": control("b_002", "in"), "value": ""}])
+    need("storyboard" not in doc, "blank choices left a storyboard key")
+    with p.mutant("../sketches/index.html", "body: JSON.stringify(doc)}",
+                  "body: JSON.stringify(Object.fromEntries(Object.entries(doc).filter(([k]) => k !== 'storyboard')))}"):
+        p.bites(mismatch, "Send drops storyboard")
+
+
+def case_reminder_holds(p):
+    """The real hub saves optional reminder controls and reasons for quiet stretches."""
+    import canvas_boards_test as fixture
+    canvas = p.plugin / "skills/reel-canvas-build/scripts"
+    sys.path.insert(0, str(canvas))
+    import beat_schema
+    d = p.videos / "reel-01"
+    fixture.reel_fixture(d)
+    p.py(canvas / "make_beat_map.py", "--reel-dir", d, "--plan", d / "work/plan.json")
+    seeded = read(d / "beat-map.state.json")
+    # Remove the fixture's CTA mark for the happy path; plant it again below.
+    seeded["word_marks"] = []
+    # Keep one long gap, 120..270, including every cut start and overlay boundary.
+    for beat, (start, end) in zip(seeded["beats"], [(0, 30), (30, 60), (60, 90), (65, 85), (90, 270)]):
+        beat.update(start_f=start, end_f=end)
+    write(d / "beat-map.state.json", seeded)
+    heard = beat_schema.load_words(d / beat_schema.DEFAULT_WORDS)
+
+    def module(name):
+        path = p.plugin / "skills/_shared/checks" / (name + ".py")
+        spec = importlib.util.spec_from_file_location(name, path)
+        loaded = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(loaded)
+        return loaded
+
+    checks = module("check")
+    cta, hold = module("cta_reminder_check"), module("hold_gap_check")
+    expected = dict(at_s=6.3, hold_s=2, gain=0, keyword="NOTES")
+    reason = "Give your viewer time to read."
+
+    def open_map():
+        return [click('#tab-beat-map'), {"do": "waitFn", "js": "!!document.querySelector('#panel iframe')"},
+                {"do": "eval", "js": "document.querySelector('#panel iframe').scrollIntoView({block: 'end'}), 0"},
+                {"do": "frame", "sel": "#panel iframe", "wait": "#board:not([hidden]) #reminder-holds"},
+                click('#reminder-holds summary')]
+
+    def set_value(sel, value):
+        return {"do": "set", "sel": sel, "value": value}
+
+    def sent(actions):
+        (d / "beat-map-selection.json").unlink(missing_ok=True)
+        p.browse(open_map() + actions + [click('#send'),
+                 {"do": "waitFn", "js": "document.querySelector('#status').dataset.state==='sent'"}])
+        need((d / "beat-map-selection.json").is_file(), "Beat Map Send missing")
+        doc = read(d / "beat-map-selection.json")
+        problems = beat_schema.beat_map_problems(doc, heard)
+        need(problems == [], f"Send fails the beat map schema: {problems}")
+        return doc
+
+    def reminder_check():
+        write(d / "beat-map.state.json", seeded)
+        doc = sent([click('#reminder-enabled'), set_value('#reminder-keyword', 'NOTES'),
+                    set_value('#reminder-at', '6.3'), set_value('#reminder-hold', '2'),
+                    set_value('#reminder-volume', '0')])
+        need(doc.get("cta_reminder") == expected, f"reminder Send differs: {doc.get('cta_reminder')}")
+        need(cta.run(checks.build_context(d)) == [], "valid reminder failed its real check")
+        rows = hold.run(checks.build_context(d))
+        need(len(rows) == 1 and rows[0]["level"] == "warn" and rows[0]["at"] == 4,
+             f"expected one unexplained gap: {rows}")
+
+    reminder_check()
+    baseline = (d / "beat-map-selection.json").read_bytes()
+
+    def refused(actions, message):
+        p.browse(open_map() + actions + [click('#send'),
+                 {"do": "waitFn", "js": "document.querySelector('#status').dataset.state==='error' && "
+                  f"document.querySelector('#status').textContent.includes({json.dumps(message)})"}])
+        need((d / "beat-map-selection.json").read_bytes() == baseline, "refused Send changed the file")
+
+    refused([set_value('#reminder-volume', '15')], "10%")
+    # A scene category and a marked word must each independently prevent overlap.
+    saved = read(d / "beat-map-selection.json")
+    scene_doc = json.loads(json.dumps(saved))
+    catalog = read(p.plugin / "scenes/cta-end-card/scene.json")
+    scene_doc["beats"][-1]["scene"] = dict(id="cta-end-card",
+        slots={name: slot["default"] for name, slot in catalog["slots"].items()}, params={})
+    write(d / "scenes/catalog.json", [dict(catalog,
+        slots=[dict(name=name, maxChars=slot["maxChars"]) for name, slot in catalog["slots"].items()],
+        params=[dict(name=name, **param) for name, param in catalog["params"].items()])])
+    write(d / "beat-map.state.json", scene_doc)
+    refused([], "Move your reminder")
+    word_doc = json.loads(json.dumps(saved))
+    word_doc["word_marks"] = [dict(w=13, mark="cta")]
+    write(d / "beat-map.state.json", word_doc)
+    refused([], "Move your reminder")
+
+    write(d / "beat-map.state.json", saved)
+    doc = sent([set_value('#hold-reason-120', reason),
+                {"do": "waitState", "board": "beat-map", "js": "s.holds?.[0]?.reason===" + json.dumps(reason)}])
+    need(doc.get("holds") == [dict(at_f=120, reason=reason)], "gap reason missing from Send")
+    need(hold.run(checks.build_context(d)) == [], "sent reason did not clear the real warning")
+    restored = p.browse(open_map() + [{"do": "eval", "js": "JSON.stringify({enabled:"
+        "document.querySelector('#reminder-enabled').checked,keyword:document.querySelector('#reminder-keyword').value,"
+        "at:document.querySelector('#reminder-at').value,hold:document.querySelector('#reminder-hold').value,"
+        "volume:document.querySelector('#reminder-volume').value,reason:document.querySelector('#hold-reason-120').value})"}])[-1]
+    need(restored == dict(enabled=True, keyword="NOTES", at="6.3", hold="2", volume="0", reason=reason),
+         f"fresh browser did not restore reminder and reason: {restored}")
+    need("cta_reminder" not in sent([click('#reminder-enabled')]), "unticking kept the reminder key")
+
+    # Shape checks remain light, but reject invalid types and overlong keywords.
+    for bad in (None, dict(expected, at_s=True), dict(expected, keyword="X" * 17)):
+        need(beat_schema.beat_map_problems(dict(doc, cta_reminder=bad), heard), "invalid reminder shape accepted")
+    for bad in (None, [dict(at_f=True, reason=reason)], [dict(at_f=120, reason=" ")]):
+        need(beat_schema.beat_map_problems(dict(doc, holds=bad), heard), "invalid holds shape accepted")
+    with p.mutant("../beat-map/index.html", "body: JSON.stringify(doc)",
+                  "body: JSON.stringify({...doc, cta_reminder: undefined})"):
+        p.bites(reminder_check, "Beat Map drops cta_reminder from Send")
 
 
 def case_edit_style(p):
@@ -648,6 +955,89 @@ def case_edit_style(p):
     with p.mutant("../beat-map/index.html", "body: JSON.stringify(doc)",
                   "body: JSON.stringify({...doc, edit_style: {...doc.edit_style, moves: {...doc.edit_style.moves, ratchet: undefined}}})"):
         p.bites(ratchet_check, "Beat Map drops moves.ratchet from Send")
+
+
+def case_strong_beats(p):
+    """H-BEAT-2: up to 3 strong beats and honest empty states leave the Beat Map Send unchanged."""
+    import canvas_boards_test as fixture
+    canvas = p.plugin / "skills/reel-canvas-build/scripts"
+    d = p.videos / "reel-01"
+    fixture.reel_fixture(d)
+    p.py(canvas / "make_beat_map.py", "--reel-dir", d, "--plan", d / "work/plan.json")
+    seeded = read(d / "beat-map.state.json")
+    placement = d / "sound/placement.json"
+    times = [1.25, 4.5, 7.75]
+    total = fixture.TOTAL_F / fixture.FPS
+    label = "strong beat: good spot for a punch-in or transition"
+    quiet = "No steady beat in the music, so no strong-beat suggestions."
+    no_hits = "No standout kick in the part of the song this reel plays."
+    p.refresh()
+
+    def open_map():
+        return [click('#tab-beat-map'), {"do": "waitFn", "js": "!!document.querySelector('#panel iframe')"},
+                {"do": "eval", "js": "document.querySelector('#panel iframe').scrollIntoView({block: 'end'}), 0"},
+                {"do": "frame", "sel": "#panel iframe", "wait": "#board:not([hidden]) #edit-style"}]
+
+    def show_and_send(value, marked=False, note=None):
+        write(d / "beat-map.state.json", seeded)
+        (d / "beat-map-selection.json").unlink(missing_ok=True)
+        if value is None:
+            placement.unlink(missing_ok=True)
+        else:
+            write(placement, value)
+        snapshot = {"do": "eval", "js": "JSON.stringify((() => {"
+            "const strip = document.querySelector('#strip').getBoundingClientRect();"
+            "const note = document.querySelector('#strong-beat-note');"
+            "return {marks:[...document.querySelectorAll('#strip .strong-beat-mark')].map(e => {"
+            "const r = e.getBoundingClientRect(); return {time:Number(e.dataset.timeS),label:e.title,"
+            "aria:e.getAttribute('aria-label'),fraction:(r.left + r.width/2 - strip.left)/strip.width,"
+            "visible:r.width > 0 && r.height > 0};}),width:strip.width,"
+            "quiet:!note.hidden,note:note.textContent,suggestions:!document.querySelector('#strong-beat-suggestions').hidden,"
+            "list:[...document.querySelectorAll('#strong-beat-times li')].map(e => e.textContent)};})())"}
+        actions = [snapshot]
+        if marked:
+            # A suggestion click must not edit a beat, even when followed by Send.
+            actions.append({"do": "eval", "js": "document.querySelector('#strip .strong-beat-mark')?.click(), 0"})
+        reads = p.browse(open_map() + actions + [click('#send'),
+            {"do": "waitFn", "js": "document.querySelector('#status').dataset.state==='sent'"}])
+        view = reads[1]  # open_map records its scroll expression before the snapshot
+        marks = view["marks"]
+        need(len(marks) == (3 if marked else 0), f"strong-beat mark count differs: {marks}")
+        if marked:
+            need([m["time"] for m in marks] == times, f"strong-beat times differ: {marks}")
+            need(all(m["label"] == label and label in m["aria"] and m["visible"] for m in marks),
+                 f"strong-beat labels or visibility differ: {marks}")
+            need(all(abs(m["fraction"] - at / total) * view["width"] <= 1 for m, at in zip(marks, times)),
+                 f"strong-beat strip positions differ: {marks}")
+            need(not view["quiet"] and view["suggestions"]
+                 and view["list"] == [f"{t:.2f} s: {label}" for t in times],
+                 f"strong-beat time list differs: {view}")
+        else:
+            need(view["quiet"] == (note is not None) and (note is None or view["note"] == note)
+                 and not view["list"] and not view["suggestions"], f"wrong strong-beat empty state: {view}")
+        sent = read(d / "beat-map-selection.json")
+        need(read(d / "beat-map.state.json") == sent, "saved state and Send differ")
+        # Send timestamps vary between fresh browsers; every other key and value must be identical.
+        need("sent_at" in sent, "Send timestamp missing")
+        return {k: v for k, v in sent.items() if k != "sent_at"}
+
+    baseline = show_and_send({})
+    need(show_and_send(None) == baseline, "missing placement changed the Send")
+    need(show_and_send({"bed": None}) == baseline, "absent bed changed the Send")
+    need(show_and_send({"bed": {"beat_sync": True}}, note=quiet) == baseline, "refused grid changed the Send")
+    need(show_and_send({"bed": {"beat_sync": False}}) == baseline, "beat-sync off showed a note or changed the Send")
+    need(show_and_send({"bed": {"beat": {"big_hits_s": []}}}, note=no_hits) == baseline,
+         "empty strong-beat list changed the Send")
+
+    def positive():
+        sent = show_and_send({"bed": {"beat": {"big_hits_s": times}}}, True)
+        need(set(sent) == set(baseline), "strong-beat suggestions added Send keys")
+        need(sent == baseline, "strong-beat suggestions edited the Beat Map Send")
+
+    positive()
+    with p.mutant("../beat-map/index.html", "strongBeatTimes = Array.isArray(times) ? times : [];",
+                  "strongBeatTimes = [];"):
+        p.bites(positive, "Beat Map ignores strong-beat placement data")
 
 
 def case_broll(p):

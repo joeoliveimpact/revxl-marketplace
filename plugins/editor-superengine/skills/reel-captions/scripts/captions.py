@@ -136,9 +136,10 @@ def read_json(path):
         raise Stop(2, f"Cannot read {Path(path).name}: {e}. Make it again before planning captions.") from None
 
 
-def pick_style(reel_dir_or_bm, bm=None, *, remember=True):
+def pick_style(reel_dir_or_bm, bm=None, *, remember=True, style_reel=None):
     """Newest caption Send, then saved choice, then ask; accept legacy Beat Map dictionaries."""
     picker = {}
+    reel = None
     if isinstance(reel_dir_or_bm, dict):
         bm = reel_dir_or_bm
     else:
@@ -172,11 +173,11 @@ def pick_style(reel_dir_or_bm, bm=None, *, remember=True):
             standing_notes.record_pick("caption_style.style", cs["style"])
         return bm["caption_style"], "reel"
     try:
-        saved = saved_style.load()
+        saved = saved_style.load(reel if style_reel is None else style_reel)
     except FileNotFoundError:
         saved = {}
     except (OSError, ValueError):
-        raise Stop(2, "Cannot read the saved style. Fix styles/default.json and try again.") from None
+        raise Stop(2, "Cannot read the active saved style; save it again and try again.") from None
     _, source = saved_style.resolve("caption_style.style", saved=saved)
     if source == "recommended":
         raise Stop(1, ASK + saved_style.recommendation_line("caption_style.style", saved))
@@ -185,13 +186,13 @@ def pick_style(reel_dir_or_bm, bm=None, *, remember=True):
     raise Stop(1, ASK)
 
 
-def check_style(cs, source="reel"):
+def check_style(cs, source="reel", *, reel=None):
     """Fill taste options, or name the choice and the place that needs fixing."""
     where = {"reel": "the Beat Map Send's caption_style", "picker": "the Look Picker choice's caption_style",
              "saved": "the saved style's caption_style"}[source]
     fix = ("Fix caption_style in the Beat Map Send and try again." if source == "reel"
            else "Send the caption choice from the Look Picker again." if source == "picker"
-           else "Fix caption_style in the saved style (styles/default.json) and try again.")
+           else "Fix caption_style in the active saved style and try again.")
     if not isinstance(cs, dict):
         raise Stop(2, f"{where} must be an object.", fix)
     bad = []
@@ -205,7 +206,7 @@ def check_style(cs, source="reel"):
     if "accent" not in cs:
         try:
             with contextlib.redirect_stderr(io.StringIO()):
-                saved = saved_style.load()
+                saved = saved_style.load(reel)
         except (OSError, ValueError):
             saved = {}
         accent = saved.get("accent") if isinstance(saved, dict) else None
@@ -440,12 +441,12 @@ def _slot_tokens(value):
     return re.findall(r"[\w']+", str(value).casefold())
 
 
-def _brand_font(notes):
+def _brand_font(notes, reel):
     """Use scenes' declared faces and shipped, licensed runtime/fonts files."""
     fallback = {"family": "Inter", "src": "./fonts/Inter-Regular.woff2"}
     try:
         with contextlib.redirect_stderr(io.StringIO()):
-            saved = saved_style.load()
+            saved = saved_style.load(reel)
     except (OSError, ValueError):
         return fallback
     font = saved.get("font") if isinstance(saved, dict) else None
@@ -466,12 +467,13 @@ def _brand_font(notes):
     return fallback
 
 
-def plan(reel_dir, fps=None, *, _style=None):
+def plan(reel_dir, fps=None, *, _style=None, style_reel=None):
     """Read the Send, words, cuts and saved style; return a plan without writing."""
     reel = Path(reel_dir)
+    style_reel = reel if style_reel is None else style_reel
     bm = read_json(reel / SEND)
-    cs, source = pick_style(reel, bm) if _style is None else (_style, "picker")
-    cs = check_style(cs, source)
+    cs, source = pick_style(reel, bm, style_reel=style_reel) if _style is None else (_style, "picker")
+    cs = check_style(cs, source, reel=style_reel)
     word_doc = read_json(reel / DEFAULT_WORDS)
     words = word_doc.get("words") if isinstance(word_doc, dict) else None
     _word_input(words)
@@ -488,7 +490,7 @@ def plan(reel_dir, fps=None, *, _style=None):
     if cs["style"] == "none":
         doc["declared_drops"] = [{"w": i, "why": "captions off"} for i in range(len(words))]
         return doc
-    doc["font"] = _brand_font(doc["notes"])
+    doc["font"] = _brand_font(doc["notes"], style_reel)
     beats = _beats(bm, total)
     switches = sorted({b["start_f"] for a, b in zip(beats, beats[1:]) if a["layout"] != b["layout"]})
     candidates = bm.get("word_marks", [])
@@ -728,12 +730,12 @@ def picker_doc(reel_dir):
     import compose  # lazy: the picker reuses the compositor's layout contract
     import placer
     reel = Path(reel_dir)
-    saved = saved_style.load()
+    saved = saved_style.load(reel)
     _, source = saved_style.resolve("caption_style.style", saved=saved)
     recommended = saved_style.recommendation("caption_style.style", saved) if source == "recommended" else None
     try:
         current, source = pick_style(reel)
-        checked = check_style(current, source)
+        checked = check_style(current, source, reel=reel)
     except Stop as exc:
         if exc.code != 1:
             raise
@@ -769,7 +771,7 @@ def picker_doc(reel_dir):
             raise Stop(2, str(exc)) from None
         variants, sheets = {}, []
         for mode in ("accent", "marker"):
-            doc = {"style": check_style({**preview_style, "style": sid, "mark_look": mode}),
+            doc = {"style": check_style({**preview_style, "style": sid, "mark_look": mode}, reel=reel),
                    "chunks": [c], "notes": notes}
             css, markup, _ = layer(doc, [box], 1, lambda f: str(float(Fraction(f) / rate)))
             # The board owns the animation; supply a visible, centred caption and settled marker.

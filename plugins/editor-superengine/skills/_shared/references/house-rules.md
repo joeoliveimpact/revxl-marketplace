@@ -1,6 +1,6 @@
 # House rules
 
-Four rules that govern every editing job in this plugin. They are not style preferences.
+Five rules that govern every editing job in this plugin. They are not style preferences.
 Each one is here because breaking it cost a whole build.
 
 ---
@@ -96,3 +96,7 @@ invented for a reviewer rather than a viewer. The verdict was "thin in quality, 
 contrast and overall design pop". The second pass fixed the measurable proxies and was still
 wrong, because the direction was never the problem the measurements could see. Both passes
 were wiped.
+
+## 5. Auto edit
+
+When this reel's style picker printed "Auto edit with …" (rerun `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/saved_style.py" picker <reel folder>` to check), write each board's Send yourself from the style, or the skill's recommended option where the style has none, and go on without asking. That runs a ⛔ stage; it doesn't skip it. Make the 720p preview without asking. Still stop for any price-and-ask, a failing check, or a `✗` or `BLOCK` line, and never post. Show the finished preview; the client rules on it. "stop" or "normal mode" runs `pick <reel folder> normal`.

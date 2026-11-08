@@ -27,6 +27,8 @@ main>*{min-width:0}
 .mark .row .del{margin-left:auto}
 .mark select{padding:1px 6px;font-size:12px}
 #listenh{margin-top:16px}
+.panel{border:1px solid var(--line);border-radius:6px;padding:10px;margin:12px 0;background:var(--card)}
+.panel summary{cursor:pointer}.panel label{display:block}.panel fieldset{border:0;padding:8px 0;margin:0}
 @media(max-width:820px){main{grid-template-columns:1fr}}
 </style>
 <style id="editor-theme">/* Editor Hub look, theme layer only. Delete this block to undo. */
@@ -136,8 +138,68 @@ pre{font:400 12px/1.6 var(--et-mono)!important;color:var(--et-ink2)!important;bo
   <div id="marks"></div>
   <h2 id="listenh" hidden>what to listen for</h2>
   <pre id="listen"></pre>
+  <details class="panel" id="long-quiet">
+   <summary>Long quiet stretches</summary>
+   <div id="quiet-rows"></div>
+  </details>
  </aside>
 </main>
+
+<!-- ---- G2-c: Tweakpane fine-tune ---- -->
+<section id="fine-tune" hidden aria-label="Fine-tune mark">
+  <label for="fine-mark">Fine-tune mark</label>
+  <select id="fine-mark"></select>
+  <p id="fine-empty"></p>
+  <div id="fine-pane"></div>
+</section>
+<script type="module">
+// ---- G2-c: Tweakpane fine-tune ----
+import { Pane } from "./tweakpane.min.js";
+const section = document.getElementById("fine-tune");
+document.querySelector("aside").append(section);
+const choose = document.getElementById("fine-mark"), empty = document.getElementById("fine-empty");
+let pane = null, selected = null, refreshing = false;
+function buildFine() {
+  // Rebuilding the display copy must never write clamped values back to a mark.
+  refreshing = true;
+  try {
+  pane?.dispose(); pane = null;
+  section.hidden = !C;
+  const marks = S.marks || [];
+  if (!marks.some(m => m.id === selected)) selected = marks[0]?.id ?? null;
+  choose.replaceChildren(...marks.map(m => new Option(LABEL[m.type] + " at " + fmt(m.a), String(m.id))));
+  choose.value = selected == null ? "" : String(selected); choose.disabled = !marks.length;
+  const mark = marks.find(m => m.id === selected);
+  const keys = ["a", "b", "ms"].filter(k => Number.isFinite(mark?.[k]));
+  empty.textContent = keys.length ? "" : "This mark has no numeric values to fine-tune. Select or add a mark.";
+  if (!keys.length || !C) return;
+  const model = Object.fromEntries(keys.map(k => [k, mark[k]]));
+  pane = new Pane({container: document.getElementById("fine-pane"), title: "Fine-tune", expanded: false});
+  for (const key of keys) {
+    const options = {label: {a: "start (s)", b: "end (s)", ms: "pause (ms)"}[key],
+      min: key === "b" ? mark.a + 0.02 : 0,
+      max: key === "ms" ? Math.max(1000, mark.ms, ...(C.presets || []).map(p => p[1])) :
+        key === "a" && Number.isFinite(mark.b) ? mark.b - 0.02 : C.duration,
+      step: key === "ms" ? 1 : 0.001};
+    pane.addBinding(model, key, options).on("change", event => {
+      if (refreshing || !event.last) return;
+      mark[key] = event.value;
+      S.marks.sort((a, b) => a.a - b.a);
+      render();
+    });
+  }
+  } finally { refreshing = false; }
+}
+choose.addEventListener("change", () => { selected = Number(choose.value); buildFine(); });
+function selectMark(event) {
+  const row = event.target.closest(".mark"), id = row?.querySelector("[data-type]")?.dataset.type;
+  if (id != null && Number(id) !== selected) { selected = Number(id); buildFine(); }
+}
+document.getElementById("marks").addEventListener("click", selectMark, true);
+document.getElementById("marks").addEventListener("focusin", selectMark);
+new MutationObserver(buildFine).observe(document.getElementById("marks"), {childList: true});
+buildFine();
+</script>
 <script src="./board-client.js"></script>
 <script>
 // state and Send go through the editor boards; the reel comes from this page's own ?reel= (works inside the hub's iframe too)
@@ -157,7 +219,7 @@ function flash(msg){ const p=$('#pend'); p.textContent=msg; p.hidden=false; clea
 // "changes not sent" = the marks differ from the last Send (tweak-selection.json); before any Send, from how the board opened (UI audit #8)
 const canon=o=>JSON.stringify(o,(k,x)=>(x&&typeof x==='object'&&!Array.isArray(x))?Object.fromEntries(Object.keys(x).sort().map(y=>[y,x[y]])):x);
 let sentCanon=null, baseCanon=null;
-function markDirty(){ $('#dirty').hidden= canon(S.marks)===(sentCanon??baseCanon); }
+function markDirty(){ $('#dirty').hidden= canon({marks:S.marks,silences:S.silences||[]})===(sentCanon??baseCanon); }
 // undo / redo: in-memory snapshots of the marks and the speed, taken at every save (UI audit E)
 let hist=[], fut=[], snap=null, snapKey=null;
 const undoSnap=()=>JSON.stringify({marks:S.marks, speed:S.speed??null});
@@ -208,6 +270,7 @@ function add(type){
   if(id!=null){ const el=document.querySelector(`[data-text="${id}"]`); if(el) el.focus(); }   // N goes straight to typing the note
 }
 function render(first){
+  renderLongQuiet();
   if(first){ snap=undoSnap(); markDirty(); } else persist();   // opening the board is not a change
   const box=$('#marks'); box.innerHTML=''; $('#n').textContent=S.marks.length?`(${S.marks.length})`:'';
   S.marks.forEach(m=>{
@@ -275,10 +338,71 @@ $('#send').onclick=async()=>{
   try{
     const r=await fetch(BASE+'__save?board=tweak-board&name=tweak-selection.json',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(S,null,1)});
     if(!r.ok) throw new Error('the board server answered '+r.status);
-    sentCanon=canon(S.marks); setSaved('saved tweak-selection.json '+new Date().toLocaleTimeString());
+    sentCanon=canon({marks:S.marks,silences:S.silences||[]}); setSaved('saved tweak-selection.json '+new Date().toLocaleTimeString());
   }catch(err){ S.saved_at=prev; setSaved('SEND FAILED: '+(err instanceof TypeError?'no answer from the editor boards (are they running?)':err.message)+'. Nothing reached Claude; your marks are still on this page.',true); }
   persist();
 };
+// Quiet choices share the board document and its normal render/save path.
+let quietGaps = null;
+const sameQuietGap = (a,b) => a.start===b.start && a.end===b.end;
+function removeQuietChoice(entry){
+  if(entry.mark!=null) S.marks=S.marks.filter(m=>m.id!==entry.mark);
+  S.silences=(S.silences||[]).filter(e=>e!==entry);
+  if(!S.silences.length) delete S.silences;
+}
+function renderLongQuiet(){
+  const box=$('#quiet-rows'); box.replaceChildren();
+  if(!quietGaps){
+    box.textContent='No long quiet stretches to decide on.';
+    return;
+  }
+  const entries=S.silences||[];
+  for(const entry of entries){
+    if(entry.mark!=null && !S.marks.some(m=>m.id===entry.mark)) delete entry.mark;
+  }
+  quietGaps.forEach((gap,i)=>{
+    const entry=entries.find(e=>sameQuietGap(e,gap));
+    const row=document.createElement('fieldset'), legend=document.createElement('legend');
+    legend.textContent=`At ${gap.start} s: ${gap.duration} s with no words.`;
+    row.append(legend);
+    for(const [choice,label] of [['linger','Keep the last caption on screen'],['title','Show a title card'],
+      ['cut','Cut this quiet part'],['','Decide later']]){
+      const wrap=document.createElement('label'), radio=document.createElement('input');
+      radio.type='radio'; radio.name='quiet-'+i; radio.value=choice;
+      radio.checked=(entry?.choice||'')===choice;
+      radio.addEventListener('change',()=>{
+        if(!radio.checked) return;
+        if(entry) removeQuietChoice(entry);
+        if(choice){
+          const next={start:gap.start,end:gap.end,choice};
+          if(choice==='cut'){
+            next.mark=seq++;
+            S.marks.push({id:next.mark,type:'cut',a:gap.start,b:gap.end});
+            S.marks.sort((a,b)=>a.a-b.a);
+          }
+          (S.silences||=[]).push(next);
+        }
+        render();
+      });
+      wrap.append(radio,document.createTextNode(label)); row.append(wrap);
+    }
+    box.append(row);
+  });
+  for(const entry of entries.filter(e=>!quietGaps.some(g=>sameQuietGap(e,g)))){
+    const row=document.createElement('p'), remove=document.createElement('button');
+    row.textContent='Saved choice for a quiet part that is no longer there';
+    remove.type='button'; remove.textContent='Remove';
+    remove.addEventListener('click',()=>{ removeQuietChoice(entry); render(); });
+    row.append(remove); box.append(row);
+  }
+  if(!box.childNodes.length) box.textContent='No long quiet stretches to decide on.';
+}
+fetch(BASE+'work/long-silences.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null).then(report=>{
+  quietGaps=Array.isArray(report?.silences) && report.silences.every(g=>g &&
+    [g.start,g.end,g.duration].every(Number.isFinite) && g.end>g.start && g.duration>0) ? report.silences : null;
+  if(C) renderLongQuiet();
+});
+
 (bc?Promise.all([fetch(BASE+'tweak-board.config.json').then(r=>{ if(!r.ok) throw new Error('no tweak-board.config.json for this reel (HTTP '+r.status+')'); return r.json(); }), bc.load(),
   fetch(BASE+'tweak-selection.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null)]):Promise.reject(new Error('open this board with ?reel=<reel> in its address'))).then(([c,disk,sent])=>{
   C=c; $('#title').textContent=`Tweak Board · ${C.reel} · ${C.version} · ${fmt(C.duration)}`; v().src=reelUrl(C.video); $('#listen').textContent=C.listen||''; $('#listenh').hidden=!C.listen;
@@ -287,8 +411,8 @@ $('#send').onclick=async()=>{
   try{ const st=disk; if(st){
     if(mine(st)){ S=st; S.marks=S.marks||[]; seq=Math.max(1,...S.marks.map(m=>m.id+1)); } else setSaved(`stored marks were made on ${st.reel} ${st.version}, not this cut: started empty`,true); } }catch(e){}
   S.reel=C.reel; S.version=C.version;
-  try{ if(sent){ const o=sent; if(o.reel===C.reel&&o.version===C.version) sentCanon=canon(o.marks||[]); } }catch(e){}
-  baseCanon=canon(S.marks);
+  try{ if(sent){ const o=sent; if(o.reel===C.reel&&o.version===C.version) sentCanon=canon({marks:o.marks||[],silences:o.silences||[]}); } }catch(e){}
+  baseCanon=canon({marks:S.marks,silences:S.silences||[]});
   // speeds come from tweak-board.config.json; the board opens at the cut's own speed unless the saved state has one (UI audit F)
   const ship=+C.ship_speed||1, sp=S.speed||ship;
   const opts=[...new Set([...(C.speed_options||[]),ship,sp].map(Number))].sort((p,q)=>p-q);

@@ -82,7 +82,7 @@ The render reads the Beat Map's Send (`beat-map-selection.json`), so use the Ske
 
 Choose **Punch-ins on jump cuts** for alternating closer views, or **Layout switches** for the beat layouts.
 Punch-ins also offers the punch level, a settle at the start, following the face and punches on words marked stress.
-**Ask me before the preview** leaves this reel's choice open; a saved default still applies, otherwise Claude asks.
+**Ask me before the preview** leaves this reel's choice open; the style picked for this reel at its start, if any, still applies, otherwise Claude asks.
 Changes save as you go; press **Send to Claude** to use them in the preview. See [style.md](style.md) for the rules.
 
 ## 4. Read what the client sent
@@ -128,7 +128,7 @@ new directions unless they unlock it. When there's more to show, add it to the p
   with `""` to leave it empty. Scene-specific limits, transcript numbers and duration are checked before render.
   `broll` is `null` or `{src, in, out, fit, ledger_id}` from reel-broll: source frames at the cut's fps,
   `out - in == end_f - start_f`, fit `cover` or `blur-fill`. Pick it in the Beat Map tab and Send once.
-  `transition` stays `null` in this version.
+  `transition` is `null` (a hard cut) or an object as in transitions.md.
 - **Sketches** (`sketches.state.json`, and `sketches-selection.json` on Send): `schema` 1, `reel`,
   `rough` (a whole-reel rough video, or `null`), `directions` (`{id, name, why, frames, note}`),
   `pick` (a direction id, or `null`), `sketches` (`{id, beat, title, media, note}`; `beat` is a beat

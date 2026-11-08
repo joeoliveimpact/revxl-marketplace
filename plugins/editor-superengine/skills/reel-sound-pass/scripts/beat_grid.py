@@ -16,17 +16,18 @@ How it listens (standard library + numpy; the editor's ffmpeg decodes):
   4. Where the beats fall: the hit curve is folded on that beat length and the strongest fold wins. Then a
      straight line is fitted through the hit nearest each beat (within 25 ms; stray ones dropped), which fixes the
      beat length and the first beat together.
-  5. Double or half: if the points halfway between beats hit as hard as the beats, the tempo is doubled (under
-     70 BPM, any real hit there is enough: a mild preference for 70 BPM and up); if every other beat is empty, it is
-     halved, never to under 70.
+  5. Double or half: score each allowed beat length against strong onsets from the full sound and the kick.
+     Balance the share of grid lines with hits and the share of hits covered by lines; ties favour 90-130 BPM.
   6. Bar start: of the four beat positions in a bar, the one with the most kick.
   7. Confidence: the share of beats with a clear onset (full sound or kick) within an eighth of a beat, counted over
      what chance would give, so dense hats can't lift a wrong grid. No grid when it is under MIN_CONFIDENCE, or when
      the comb at the beat isn't STEADY_AT times harder than at nearby unrelated lengths (steady noise, a pad).
+  8. Residual: take the nearest onset peak within an eighth beat of each final grid line, keeping at least eight.
+     Refit those peaks against their line indices; their GATE_PCTL percentile miss must be at most MAX_RESIDUAL.
+     The median gates acceptance; the 90th percentile and largest miss are also reported.
 No tempo hint is ever taken: the track alone decides.
-ponytail: one steady tempo and 4/4 bars only; a track that speeds up, swings hard or changes metre gets a poor fit
-(low confidence, so no grid). A real 60-69 BPM track with any off-beat hit reads as double time (every beat is still
-on a line). Track the tempo per section if that is ever needed.
+ponytail: one steady tempo and 4/4 bars only; a track that speeds up or swings beyond the residual limit has no
+grid. Track the tempo per section if that is ever needed.
 """
 import json, subprocess, sys
 from pathlib import Path
@@ -43,15 +44,18 @@ MIN_BPM, MAX_BPM = 60.0, 200.0
 MIN_CONFIDENCE = 0.25           # chance-corrected (step 7): steady noise scores about 0, a weak real beat 0.3
 ONSET_K = 3.0                   # an onset stands this many standard deviations above the curve's mean
 CONF_K = 2.5                    # the same, for the confidence count
-DOUBLE_AT, HALF_AT = 0.5, 0.3   # half-points this strong vs the beats: double; the weaker beat set this weak: half
-PREF_LO = 70.0                  # under this, any real hit halfway between beats (DOUBLE_LOW) doubles the tempo
-DOUBLE_LOW = 0.1
 REL = (0.5, 2 / 3, 0.75, 4 / 3, 1.5, 2.0)    # beat lengths a beat is mistaken for, as multiples of the true one
 SEEDS = 4                       # self-match peaks tried as seeds
 CHUNK_S = 12.0                  # the comb's stretch length
 DECOYS = (0.87, 0.91, 0.95, 1.05, 1.09, 1.13)  # beat lengths near the found one but not musically related
 STEADY_AT = 1.4                 # a steady beat combs this much harder than every decoy
 FIT_W = 0.025                   # the line fit takes the onset within this of each beat (dense music: the nearest hit)
+GATE_PCTL = 50                  # percentile of absolute nearest-peak residuals after refitting
+MAX_RESIDUAL = 0.010            # largest allowed gated statistic, in seconds
+# ponytail: the 10 ms median cutoff is tuned on 3 shipped beds (3.5-5.6 ms) and a synthetic 116->124 BPM drift
+# (17-22 ms); widen it if real client music with a steady beat gets refused.
+VERSION = 3
+LAST_REASON = None              # "drift", "no beat", or None after acceptance
 
 
 def _mono(path, af=None):
@@ -119,9 +123,14 @@ def _tempo(acc):
     seeds = []
     for i in sorted(tops, key=lambda i: -seg[i])[:SEEDS]:
         lag, m = _parab(acf, lo + i), 2
-        while m * lag + 4 < n / 2:
+        while np.isfinite(lag) and m * lag + 4 < n / 2:
             c = int(round(m * lag))
-            lag = _parab(acf, c - 3 + int(np.argmax(acf[c - 3:c + 4]))) / m
+            if c - 3 < 0 or c + 4 > n:
+                break
+            refined = _parab(acf, c - 3 + int(np.argmax(acf[c - 3:c + 4]))) / m
+            if not np.isfinite(refined) or m * refined - 3 < 0 or m * refined + 4 > n:
+                break  # keep the last usable lag when interpolation leaves the curve
+            lag = refined
             m *= 2
         seeds.append(lag * H)
     if not seeds:
@@ -206,6 +215,8 @@ def _confidence(full, kick, t, w):
 
 def grid(path):
     """The track's beat grid (see the module notes), or None when it has no steady beat."""
+    global LAST_REASON
+    LAST_REASON = "no beat"
     full = onset_curve(_mono(path))
     kick = onset_curve(_mono(path, "lowpass=f=120,lowpass=f=120"))
     dur = len(full) * H
@@ -218,20 +229,40 @@ def grid(path):
     period = _tempo(acc)
     if not period:
         return None
-    for _ in range(4):
-        phase = _phase(acc, period)
-        period, phase = _fit(acc, period, phase, dur, thr_a)
-        k, t = _lines(phase, period, dur)
-        w = H
-        on, half = _strength(acc, t, w), _strength(acc, t[t + period / 2 < dur] + period / 2, w)
-        even, odd = _strength(acc, t[k % 2 == 0], w), _strength(acc, t[k % 2 == 1], w)
-        if (half >= (DOUBLE_LOW if 60 / period < PREF_LO else DOUBLE_AT) * on > 0
-                and 60 / (period / 2) <= MAX_BPM * 1.02):
-            period /= 2
-        elif min(even, odd) < HALF_AT * max(even, odd) and 60 / (period * 2) >= PREF_LO:
-            period *= 2
-        else:
-            break
+    phase = _phase(acc, period)
+    period, phase = _fit(acc, period, phase, dur, thr_a)
+    peaks = np.flatnonzero((acc > thr_a) & (acc >= np.r_[-np.inf, acc[:-1]])
+                           & (acc > np.r_[acc[1:], -np.inf]))
+    hits = peaks * H
+    if not len(hits):
+        return None
+    tempo_check, choices = [], []
+    for candidate in sorted({period * 2, period, period / 2}):
+        bpm = 60 / candidate
+        eligible = bool(MIN_BPM <= bpm <= MAX_BPM)
+        record = {"bpm": round(float(bpm), 3), "precision": None, "recall": None, "eligible": eligible}
+        tempo_check.append(record)
+        if not eligible:
+            continue
+        folded = _phase(acc, candidate)
+        _, lines = _lines(folded, candidate, dur)
+        if not len(lines):
+            continue
+        # Search sorted times in both directions without building a track-length squared array.
+        def matched(a, b):
+            j = np.searchsorted(b, a)
+            distance = np.minimum(np.abs(a - b[np.clip(j, 0, len(b) - 1)]),
+                                  np.abs(a - b[np.clip(j - 1, 0, len(b) - 1)]))
+            return float(np.mean(distance <= 0.025))
+        precision, recall = matched(lines, hits), matched(hits, lines)
+        score = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
+        preference = max(90 - bpm, 0, bpm - 130)
+        record.update(precision=round(precision, 4), recall=round(recall, 4))
+        choices.append((score, -preference, candidate, folded))
+    if not choices:
+        return None
+    _, _, period, phase = max(choices, key=lambda row: row[:2])
+    period, phase = _fit(acc, period, phase, dur, thr_a)
     k, t = _lines(phase, period, dur)
     v = _near(kick, t, period / 8)[0]
     bar = [float(v[k % 4 == r].sum()) for r in range(4)]
@@ -240,8 +271,26 @@ def grid(path):
     steady = _comb(acc, period) >= STEADY_AT * max(_comb(acc, period * r) for r in DECOYS)
     if conf < MIN_CONFIDENCE or not steady:
         return None
+    j = np.searchsorted(hits, t)
+    left, right = hits[np.clip(j - 1, 0, len(hits) - 1)], hits[np.clip(j, 0, len(hits) - 1)]
+    at = np.where(np.abs(t - left) <= np.abs(t - right), left, right)
+    keep = np.abs(at - t) <= period / 8
+    if keep.sum() < 8:                                       # too few hits to judge: no beat, not drift
+        LAST_REASON = "no beat"
+        return None
+    p, c = np.polyfit(k[keep], at[keep], 1)
+    residuals = np.abs(at[keep] - (c + p * k[keep]))
+    residual = float(np.percentile(residuals, GATE_PCTL))
+    if residual > MAX_RESIDUAL:
+        LAST_REASON = "drift"
+        return None
+    kicks = [[round(float(at), 4), round(float(strength), 3)] for at, strength in zip(t, v)]
+    LAST_REASON = None
     return {"bpm": round(float(60 / period), 3), "period_s": round(float(period), 6), "phase_s": round(float(phase), 4),
-            "downbeat_s": round(float(downbeat), 4), "confidence": round(conf, 3)}
+            "downbeat_s": round(float(downbeat), 4), "confidence": round(conf, 3),
+            "residual_ms": round(residual * 1000, 1),
+            "residual_p90_ms": round(float(np.percentile(residuals, 90)) * 1000, 1),
+            "residual_max_ms": round(float(np.max(residuals)) * 1000, 1), "tempo_check": tempo_check, "kicks": kicks}
 
 
 def main(argv=None):
@@ -256,7 +305,11 @@ def main(argv=None):
         return 2
     g = grid(argv[0])
     if not g:
-        print("No steady beat was found in %s." % Path(argv[0]).name)
+        if LAST_REASON == "drift":
+            print("The beat in %s drifts, so the music starts where the board set it and nothing snaps to the beat."
+                  % Path(argv[0]).name)
+        else:
+            print("No steady beat was found in %s." % Path(argv[0]).name)
         return 1
     print(json.dumps(g))
     return 0

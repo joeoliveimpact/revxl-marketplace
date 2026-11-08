@@ -17,6 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "_shared"))
 import runtime as rt  # noqa: E402
+from cut_timing import GUARD_MS  # noqa: E402
 from win_encoding import ensure_utf8_output  # noqa: E402
 # the Cut Board's cut time per word has one home: make_board.in_point over build_edit_map.board_sequence (H-N1-11)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -240,8 +241,9 @@ def keep_edge_words(edl, env, words, guard, fps, log, cin=None):
     return out
 
 
-def plan(edl, env, caps, guard, min_island, protect, holds=(), words=(), beat=None):
+def plan(edl, env, caps, guard, min_island, protect, holds=(), words=(), beat=None, nudge=0.0):
     """Return {cut_index: [(del_a, del_b), ...]} in source time, plus a log."""
+    nudge = max(0.0, nudge)
     log, dels = [], {i: [] for i in range(len(edl))}
 
     def held(c):
@@ -334,6 +336,7 @@ def plan(edl, env, caps, guard, min_island, protect, holds=(), words=(), beat=No
             total = tail + nhead
             if total > cap + 0.02:
                 excess = total - cap
+                tail_at, head_at = len(dels[i]), len(dels[i + 1])
                 # take from the tail first, then the incoming head; never past guard
                 take_tail = min(excess, max(0.0, tail - guard))
                 if take_tail > 0.02:
@@ -343,6 +346,25 @@ def plan(edl, env, caps, guard, min_island, protect, holds=(), words=(), beat=No
                     take_head = min(take_head, max(0.0, nhead - guard))
                     if take_head > 0.02:
                         add(i + 1, nxt["src_in"], nxt["src_in"] + take_head, True, kind)
+                if nudge:
+                    # Redistribute the actual safe deletions, including add()'s speech/word vetoes.
+                    # Later restores tail and removes as much head; pause length stays fixed.
+                    dt = sum(b - a for a, b in dels[i][tail_at:])
+                    dh = sum(b - a for a, b in dels[i + 1][head_at:])
+                    end = max([sb] + [w["end"] for w in overlaps(words, c["src_in"], c["src_out"])])
+                    start = min([nsa] + [w["start"] for w in overlaps(words, nxt["src_in"], nxt["src_out"])])
+                    room_tail = max(0.0, c["src_out"] - end - guard)
+                    room_head = max(0.0, start - nxt["src_in"] - guard)
+                    lo, hi = max(-dh, dt - room_tail), min(dt, room_head - dh)
+                    if lo <= hi:
+                        shift = min(hi, max(lo, nudge))
+                        del dels[i][tail_at:]
+                        del dels[i + 1][head_at:]
+                        if dt - shift > 1e-9:
+                            dels[i].append((c["src_out"] - (dt - shift), c["src_out"]))
+                        if dh + shift > 1e-9:
+                            dels[i + 1].append((nxt["src_in"], nxt["src_in"] + dh + shift))
+                        log.append("  cut%-3d NUDGE %+.3fs (pause kept)" % (i + 1, shift))
                 log.append("  cut%-3d %8.3f  %5.3f -> %5.3f  %-9s  (tail %.3f + head %.3f)"
                            % (i + 1, sb, total, cap, kind, tail, nhead))
         else:
@@ -461,10 +483,11 @@ def main():
     ap.add_argument("--edl", required=True)
     ap.add_argument("--internal", type=float, default=0.150)
     ap.add_argument("--join", type=float, default=0.150)
+    ap.add_argument("--nudge", type=float, default=0.0, help="shift each splice in seconds, keeping its pause")
     ap.add_argument("--beat-join", type=float, default=0.320)
     ap.add_argument("--lead", type=float, default=0.080)
     ap.add_argument("--tail", type=float, default=0.100)
-    ap.add_argument("--guard", type=float, default=0.070)
+    ap.add_argument("--guard", type=float, default=GUARD_MS / 1000)
     ap.add_argument("--min-island", type=float, default=0.500)
     ap.add_argument("--min-gap", type=float, default=0.100)
     ap.add_argument("--protect", default="", help="src_from:src_to:cap,... (comedic beats)")
@@ -504,9 +527,13 @@ def main():
         protect.append((float(f), float(t), float(c)))
 
     holds = [tuple(map(float, h.split(":"))) for h in filter(None, a.hold.split(","))]
-    dels, log = plan(edl, env, caps, a.guard, a.min_island, protect, holds, words, beat)
+    dels, log = plan(edl, env, caps, a.guard, a.min_island, protect, holds, words, beat, a.nudge)
     log = pre + log
     segs, notes, absorbed, reverted = segments(edl, dels, env, a.min_island, words, log)
+    if a.nudge and words:
+        checked = keep_edge_words([dict(src_in=x, src_out=b) for x, b in segs], env, words,
+                                  a.guard, fps, log, board_cuts(em))
+        segs = [[c["src_in"], c["src_out"]] for c in checked]
     keep = {k for k, p in enumerate(segs) if overlaps(words, *p)}
     cuts = snap_cuts(segs, fps, a.speed, keep, log)
     segs = write_cuts(work, cuts)

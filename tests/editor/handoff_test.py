@@ -188,6 +188,23 @@ def case_fcpxml(root):
        and fcpx.seconds(early.get("duration")) == Fraction(1, 5))
     ck("cut SFX has no fade", early.find(".//fadeOut") is None)
     ck("every referenced file is summarized", len(summary["paths"]) == 4)
+    # Carve stays in our render; the native hand-off retains these exact dip points.
+    import contextlib
+    import io
+    placement = fcpx.read(reel / "sound/placement.json")
+    placement["bed"]["mode"] = "carve"
+    build.save(reel / "sound/placement.json", placement)
+    stream = io.StringIO()
+    media = build.derive_media(reel, master, None)
+    carved_out = out.with_name("carve.fcpxml")
+    with contextlib.redirect_stdout(stream):
+        carved_summary = fcpx.write(reel, master, None, carved_out, **media)
+    note = "The music's voice carve is applied only in our render; Resolve gets the simpler dip."
+    ck("carve hand-off prints and records one plain note", stream.getvalue().count(note) == 1
+       and carved_summary.get("notes") == [note], stream.getvalue())
+    ck("carve hand-off retains the original dip keyframes", carved_out.read_bytes() == out.read_bytes())
+    placement["bed"].pop("mode")
+    build.save(reel / "sound/placement.json", placement)
     clips[1].set("ref", spine[0].get("ref"))
     tree.write(out)
     ck("voice used as a cut picture rejected", bool(fcpx.check(out)))

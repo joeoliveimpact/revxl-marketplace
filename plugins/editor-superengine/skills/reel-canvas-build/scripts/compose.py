@@ -55,6 +55,9 @@ import styles  # noqa: E402  (S6c: the editing style's plan)
 import scene_check  # noqa: E402  (P/scripts: the G2-a scene contract)
 import licence_rows  # noqa: E402  (G4's licence check, as mix.py imports it)
 import footage_check  # noqa: E402
+# --- G5 transitions (VES-1) ---
+import transitions
+# --- end G5 ---
 
 _spec = importlib.util.spec_from_file_location("ig_safe_zones", HERE / "ig-safe-zones.py")
 _ig = importlib.util.module_from_spec(_spec)
@@ -301,7 +304,8 @@ def load_inputs(reel):
     bm = read_json(reel / SEND, "✗ Send the Beat Map first: press Send on the Beat Map board, then run this again.")
     try:
         words = beat_schema.load_words(reel / beat_schema.DEFAULT_WORDS)
-        beat_schema.validate_beat_map(bm, words)
+        timed_words = read_json(reel / beat_schema.DEFAULT_WORDS, "The cut word list is missing.").get("words") if "loops" in bm else None
+        beat_schema.validate_beat_map(bm, words, timed_words)
         if (reel / "sketches-selection.json").exists():
             beat_schema.validate_sketches(read_json(reel / "sketches-selection.json", ""), bm)
     except beat_schema.SchemaError as e:
@@ -414,11 +418,11 @@ def brand_params(spec, html, beat_params, saved):
     return params, notes
 
 
-def saved_brand():
+def saved_brand(reel=None):
     """Read only the saved brand keys; missing or unreadable taste choices never stop a render."""
     try:
         with contextlib.redirect_stderr(io.StringIO()) as note:
-            saved = saved_style.load()
+            saved = saved_style.load(reel)
         if note.getvalue():
             raise ValueError("saved style could not be read")
         if not isinstance(saved, dict):
@@ -435,11 +439,14 @@ def plan(inp, hook_text, extra_spans=None):
     """Notes, scene checks, the hook, and the effect gate; raises Stop before anything renders."""
     beats, rate = inp["beats"], inp["rate"]
     broll_plan(inp)
-    for b in beats:
-        if b["transition"] is not None:
-            print(f"note: beat {b['id']} has a transition; transitions are not built yet, skipped")
+    # --- G5 transitions (VES-1) ---
+    try:
+        transitions.plan(inp)
+    except (ValueError, OSError, KeyError, subprocess.SubprocessError) as error:
+        raise Stop(1, " ".join(str(error).splitlines())) from None
+    # --- end G5 ---
     scened = [b for b in beats if b["scene"] is not None]
-    saved = saved_brand() if scened else {}
+    saved = saved_brand(inp.get("style_reel", inp.get("reel_dir"))) if scened else {}
     brand_notes = set()
     opens = set()  # H-S6b-19: a scene that opens the reel is complete at frame 0 when it can be
     for b in scened:
@@ -472,6 +479,11 @@ def plan(inp, hook_text, extra_spans=None):
         if not lo <= secs <= hi:
             problems.append(f"✗ beat {b['id']} runs {float(secs):.2f} s, but the {b['scene']['id']} scene fits "
                             f"{lo}-{hi} s; move the beat's edges or pick another scene")
+        if b["scene"]["id"] == "slots":
+            params = {k: p["default"] for k, p in specs["slots"]["params"].items()}
+            params.update(b["scene"].get("params", {}))
+            if any(float(t) >= float(secs) for t in params["section_starts"].split(",")):
+                problems.append("The slots section starts must fit inside their existing beat; choose earlier starts or another scene.")
     first = next((b for b in beats if b["start_f"] == 0), None)
     hook_f, text = 0, None
     if any(b["start_f"] == 0 and b["scene"] is not None for b in beats):
@@ -583,6 +595,77 @@ def scene_project(dst, beat, rate):
     (dst / "index.html").write_bytes((src[:root.start()] + tag + src[root.end():]).encode("utf-8"))
 
 
+# ---- N3: 3D scenes (category "3d", layer band 300-399, three.js from ./vendor) ----
+Z_3D = 300
+THREE_RUNTIME = P / "runtime" / "three"
+_n3_scene_project = scene_project
+
+
+def scene_is_3d(beat):
+    scene = beat.get("scene")
+    if not scene:
+        return False
+    spec = json.loads((scene_check.SCENES / scene["id"] / "scene.json").read_text(encoding="utf-8"))
+    return spec.get("category") == "3d"
+
+
+def scene_z(beat, i):
+    if scene_is_3d(beat):
+        z = Z_3D + i
+        if z >= 400:
+            raise Stop(1, "This reel has more scenes than the 3D layer holds; use fewer scenes.")
+        return z
+    return Z_SCENE + i
+
+
+def scene_project(dst, beat, rate):
+    result = _n3_scene_project(dst, beat, rate)
+    if scene_is_3d(beat):
+        files = ("three.module.js", "three.core.js")
+        if not all((THREE_RUNTIME / name).is_file() for name in files):
+            raise Stop(1, "The 3D engine files are missing, reinstall the editor.")
+        for name in files:
+            shutil.copy2(THREE_RUNTIME / name, dst / "vendor" / name)
+    return result
+
+
+# ---- G2-c: copy exactly the optional local runtime files a scene names ----
+MOTION_RUNTIME = P / "runtime" / "motion"
+_g2c_scene_project = scene_project
+
+
+def scene_project(dst, beat, rate):
+    result = _g2c_scene_project(dst, beat, rate)
+    html = (scene_check.SCENES / beat["scene"]["id"] / "scene.html").read_text(encoding="utf-8")
+    parser = scene_check._N3Scripts()
+    parser.feed(html)
+    sources = [attrs.get("src") for attrs, _ in parser.scripts]
+    if scene_check.MOTION_SRC in sources:
+        source = MOTION_RUNTIME / "motion.js"
+        if not source.is_file():
+            raise Stop(1, "The Motion engine file is missing, reinstall the editor.")
+        shutil.copy2(source, dst / "vendor" / source.name)
+    if scene_is_3d(beat):
+        # Validate before using map values as filesystem paths.
+        maps = [body for attrs, body in parser.scripts if attrs.get("type", "").strip().lower() == "importmap"]
+        if maps:
+            try:
+                doc = json.loads(maps[0])
+                imports = doc["imports"]
+                if (len(maps) != 1 or set(doc) != {"imports"} or "three" not in imports
+                        or not all(scene_check.LEAD_IMPORTS.get(k) == v for k, v in imports.items())):
+                    raise ValueError
+            except (ValueError, TypeError, KeyError, AttributeError):
+                raise Stop(1, "The 3D scene import map is invalid; use the shipped local engine files.")
+            for value in imports.values():
+                name = value.removeprefix("./vendor/")
+                source = THREE_RUNTIME / name
+                if not source.is_file():
+                    raise Stop(1, "The 3D engine files are missing, reinstall the editor.")
+                shutil.copy2(source, dst / "vendor" / name)
+    return result
+
+
 def safe_id(bid, i):
     return bid if re.fullmatch(r"[A-Za-z0-9_-]+", bid) else f"beat-{i}"
 
@@ -657,7 +740,7 @@ def main_html(inp, w, h, scene_files, layers="all"):
             tl.append(f'        tl.fromTo("#aroll-box", {{ {geom(a)} }}, {{ {geom(b)}, {end}')
             tl.append(f'        tl.set("#aroll-box", {{ {chrome(b)}, immediateRender: false }}, {at(m["end_f"], rate)});')
     for i, (b, name) in enumerate(scene_files):
-        z = Z_SCENE + i
+        z = scene_z(b, i)
         if z >= Z_PIP:
             raise Stop(1, "✗ This reel has more scenes than the scene layer holds; use fewer scenes.")
         layers.append(f'      <div class="band" style="z-index: {z}"><video id="scene-{name}" class="clip" '
@@ -703,6 +786,13 @@ def main_html(inp, w, h, scene_files, layers="all"):
             doc, [c["box"] for c in doc["chunks"]], s, lambda f: at(f, rate))
         layers.extend(caption_layers)
         tl.extend(caption_tl)
+    # --- G5 transitions (VES-1) ---
+    # A-roll handoff pages keep the base picture: the Master clip carries the move.
+    if which in ("all", "overlay"):
+        transition_layers, transition_tl, _, _ = transitions.layer(inp, w, h, rate)
+        layers.extend(transition_layers)
+        tl.extend(transition_tl)
+    # --- end G5 ---
     if baked:
         layers = ['      <div id="handoff-overlay" class="band">' + "\n".join(layers) + '</div>']
         tl.append('        tl.set("#handoff-overlay", { opacity: 1, immediateRender: true }, 0);')
@@ -746,6 +836,14 @@ def baked_spans(track, beats, total):
         for beat in beats:
             if beat["layout"] in ("pip", "overlay"):
                 add(beat["start_f"], beat["end_f"], beat["layout"])
+    # --- G5 transitions (VES-1) ---
+    # Flash and overlay types (fade, push, wipe, shader) stay in the overlay layer;
+    # only cut types that move the a-roll need frames from the finished Master.
+    for span in transitions.spans(beats):
+        spec = transitions.MENU[span["transition"]["type"]]
+        if spec["kind"] == "cut" and spec.get("moves_aroll"):
+            add(span["start_f"], span["end_f"], "transition")
+    # --- end G5 ---
     merged = []
     for span in sorted(ranges, key=lambda r: (r["start_f"], r["end_f"])):
         if merged and span["start_f"] <= merged[-1]["end_f"]:
@@ -756,7 +854,9 @@ def baked_spans(track, beats, total):
     return merged
 
 
-NEED_BAKED_MASTER = "Render the Master first: the picture-in-picture or blurred-card parts are taken from it."
+# --- G5 transitions (VES-1) ---
+NEED_BAKED_MASTER = "Render the Master first: the picture-in-picture or blurred-card parts or transitions are taken from it."
+# --- end G5 ---
 
 
 def require_baked_master(reel, spans, total, rate):
@@ -772,7 +872,7 @@ def require_baked_master(reel, spans, total, rate):
     raise Stop(1, NEED_BAKED_MASTER)
 
 
-def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="all"):
+def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="all", *, remember_choices=True, style_reel=None):
     """One preview or Master. extra_spans (internal, no CLI flag): more gate spans, e.g. a test's planted move."""
     t_start = time.perf_counter()
     if layers not in ("all", "aroll", "overlay", "captions"):
@@ -783,6 +883,8 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
     if tmp.exists() and not remove_tree(tmp):  # an earlier run that crashed can leave it behind
         raise Stop(1, f"✗ The old work/render-tmp folder can't be deleted; close what uses it, then run this again.")
     inp = load_inputs(reel)
+    style_reel = reel if style_reel is None else style_reel
+    inp["style_reel"] = style_reel
     if tier == "master":
         latest = latest_preview(reel / "renders")
         ok = None
@@ -795,7 +897,7 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
             raise Stop(1, f"✗ {line}")
     probe_inputs(inp)
     try:  # H-R36: no editing style anywhere = the ask line, and nothing renders
-        track = styles.plan(reel, fps=inp["fps"])
+        track = styles.plan(reel, fps=inp["fps"], remember_choices=remember_choices, style_reel=style_reel)
     except styles.Stop as e:
         raise Stop(e.code, *e.lines) from None
     for line in track["warnings"]:
@@ -810,7 +912,11 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
     import captions
     import placer  # placer imports compose; keep this import inside render()
     try:
-        doc = captions.plan(reel, fps=inp["fps"])
+        if remember_choices:
+            doc = captions.plan(reel, fps=inp["fps"], style_reel=style_reel)
+        else:  # N5 scratch renders must not rewrite the shared saved caption choice.
+            cs, _ = captions.pick_style(reel, remember=False, style_reel=style_reel)
+            doc = captions.plan(reel, fps=inp["fps"], _style=cs, style_reel=style_reel)
         if doc["chunks"]:
             ctx = placer.load_ctx(reel)
             spec = captions.STYLES[doc["style"]["style"]]
@@ -870,8 +976,25 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
                 link_or_copy(reel / b["broll"]["src"], proj / "media" / (n + ".mp4"))
         (proj / "vendor").mkdir()
         shutil.copy2(P / "runtime" / "gsap" / "gsap.min.js", proj / "vendor" / "gsap.min.js")
+        # --- G5 transitions (VES-1) ---
+        transitions.copy_vendor(inp, proj, layers)
+        # --- end G5 ---
         shutil.copytree(P / "runtime" / "fonts", proj / "fonts")
         page = main_html(inp, w, h, scene_files, layers=layers).encode("utf-8")
+        # --- G6 cover (embed) ---
+        cover_file, cover_image = reel / "cover.json", reel / "cover.jpg"
+        if layers == "all" and cover_file.is_file() and cover_image.is_file():
+            cover = read_json(cover_file, "The cover choice could not be read; Send the Cover Picker again.")
+            if cover.get("embed_first_frame") is True:
+                link_or_copy(cover_image, proj / "media" / "cover.jpg")
+                still = (f'<img id="cover-first-frame" src="media/cover.jpg" alt="" '
+                         f'style="position:absolute;left:0;top:0;width:{w}px;height:{h}px;z-index:650;'
+                         'visibility:hidden;object-fit:fill">\n')
+                sets = ('        tl.set("#cover-first-frame", { autoAlpha: 1, immediateRender: true }, 0);\n'
+                        f'        tl.set("#cover-first-frame", {{ autoAlpha: 0, immediateRender: false }}, {at(1, inp["rate"])});\n')
+                page = page.replace(b'    </div>\n    <script>', still.encode("utf-8") + b'    </div>\n    <script>', 1)
+                page = page.replace(b'        window.__timelines =', sets.encode("utf-8") + b'        window.__timelines =', 1)
+        # --- end G6 ---
         captions.write(reel, doc)  # layer() can add fitting notes
         for line in doc["notes"][printed_notes:]:
             print(f"note: {line}")
@@ -937,6 +1060,12 @@ def cmd_ok(reel, from_review):
             raise Stop(1, f"✗ {line}")
     doc = {"ok_at": datetime.now().astimezone().isoformat(), "preview": latest.name}
     write_json(reel / OK_FILE, doc)
+    try:
+        import style_learn
+        for line in style_learn.record_approval(reel):
+            print(line)
+    except (OSError, ValueError):
+        print("I couldn't update your style's learning history; your OK is still recorded.")
     print(f"✓ OK recorded for {latest.name}; the Master can be made now.")
     return doc
 
@@ -1059,14 +1188,16 @@ def selftest():
         r = Path(t)
         state = r / "state"
         with patch.object(rt, "state_dir", return_value=state):
-            expect("brand: missing saved style is empty", saved_brand() == {})
+            expect("brand: missing saved style is empty", saved_brand(r) == {})
             path = state / "styles/default.json"
             write_json(path, {**saved, "caption_style": {"style": "clean"}})
-            expect("brand: only brand keys are loaded", saved_brand() == saved)
+            expect("brand: an unpicked reel does not use the default", saved_brand(r) == {})
+            saved_style.pick(r, "default")
+            expect("brand: only brand keys are loaded", saved_brand(r) == saved)
             for data in (b"{", b"[]", b"\xff"):
                 path.write_bytes(data)
                 with contextlib.redirect_stdout(io.StringIO()) as said:
-                    got = saved_brand()
+                    got = saved_brand(r)
                 expect("brand: unreadable style is a note, never a stop", got == {} and "note: " in said.getvalue())
             write_json(path, {"accent": "#E0218A", "font": "Comic Sans MS"})
             first = beat("brand-first", 0, 50, scene="hook-title")
@@ -1074,7 +1205,7 @@ def selftest():
             second = beat("brand-second", 50, 100, scene="lower-third")
             second["scene"]["slots"] = {"name": "Alex", "title": "Founder"}
             branded = {"beats": [first, second], "rate": Fraction(25), "words": [], "total": 100,
-                       "cut_frames": [50], "fps": "25/1"}
+                       "cut_frames": [50], "fps": "25/1", "style_reel": r}
             with contextlib.redirect_stdout(io.StringIO()) as said:
                 plan(branded, None)
             expect("brand: plan applies before fill checks, keeps beat override and entrance none",
@@ -1144,6 +1275,18 @@ def selftest():
                    for name in ("full", "split", "stack"))
                and baked_spans({"keys": [{"f": 0, "layout": "full"}], "tweens": [], "style": {"style": "punch-in"}},
                                [beat("plain-overlay", 0, 100, "overlay")], 100) == [])
+        # --- G5 transitions (VES-1) ---
+        whip = dict(beat("whip", 0, 100), transition={"type": "whip", "at_cut_frame": 60, "dur_frames": 3})
+        expect("layers: a moving cut transition uses the finished picture",
+               baked_spans({}, [whip], 100) == [{"start_f": 57, "end_f": 63, "layout": "transition"}])
+        expect("layers: flash and fade stay in the overlay layer",
+               baked_spans({}, [dict(whip, transition=dict(whip["transition"], type="flash")),
+                                dict(beat("fade", 0, 100, "overlay"), transition={
+                                    "type": "fade", "at_cut_frame": None, "dur_frames": 3, "edge": "both"})], 100) == [])
+        expect("layers: a transition touching pip merges with both names",
+               baked_spans({"keys": [{"f": 0, "layout": "pip"}, {"f": 57, "layout": "full"}]},
+                           [whip], 100) == [{"start_f": 0, "end_f": 63, "layout": "pip+transition"}])
+        # --- end G5 ---
         masked = main_html(dict(inp, track=fallback, beats=fallback_beats), 720, 1280, [], layers="overlay")
         expect("layers: the overlay hides and restores on each finished-picture boundary",
                'id="handoff-overlay"' in masked and all(
@@ -1171,6 +1314,48 @@ def selftest():
                not any(("left:" in l or "top:" in l) for l in page.splitlines() if "tl.fromTo(" in l or "tl.to(" in l))
         expect("page: the video element is never animated; one plate per non-full beat",
                '"#aroll"' not in page and page.count('class="layout-card"') == 2 and 'id="plate-1"' in page)
+    with tempfile.TemporaryDirectory() as t:
+        root = Path(t)
+        scenes = root / "scenes"
+        shutil.copytree(scene_check.SCENES / "callout", scenes / "callout")
+        spec_path = scenes / "callout" / "scene.json"
+        spec = json.loads(spec_path.read_text(encoding="utf-8"))
+        spec["category"] = "3d"
+        spec_path.write_text(json.dumps(spec), encoding="utf-8")
+        three = root / "runtime" / "three"
+        three.mkdir(parents=True)
+        for name in ("three.module.js", "three.core.js"):
+            (three / name).write_bytes(f"// {name}\n".encode("utf-8"))
+        b = beat("three", 0, 50, scene="callout")
+        with patch.object(scene_check, "SCENES", scenes), patch.dict(globals(), THREE_RUNTIME=three):
+            expect("3d: scene video starts in the 3D band", scene_z(b, 7) == 307)
+            expect("3d: the composition uses the 3D layer for its scene video",
+                   '<div class="band" style="z-index: 300"><video id="scene-three"' in main_html(
+                       {"rate": Fraction(25), "total": 50, "under": [], "hook_f": 0}, 720, 1280, [(b, "three")]))
+            expect("3d: last 3D layer stays below 400", scene_z(b, 99) == 399)
+            try:
+                scene_z(b, 100)
+                expect("3d: too many scenes stop", False)
+            except Stop as s:
+                expect("3d: too many scenes stop", s.code == 1 and "3D layer" in s.lines[0])
+            scene_project(root / "project", b, Fraction(25))
+            expect("3d: the project copies both engine files",
+                   all((root / "project" / "vendor" / name).read_bytes() == (three / name).read_bytes()
+                       for name in ("three.module.js", "three.core.js")))
+            with patch.dict(globals(), THREE_RUNTIME=root / "missing"):
+                try:
+                    scene_project(root / "missing-project", b, Fraction(25))
+                    expect("3d: missing runtime stops", False)
+                except Stop as s:
+                    expect("3d: missing runtime stops with a plain line", s.code == 1 and s.lines == (
+                        "The 3D engine files are missing, reinstall the editor.",))
+            spec["category"] = "callout"
+            spec_path.write_text(json.dumps(spec), encoding="utf-8")
+            expect("3d: 2d scenes keep their layer", scene_z(b, 7) == 408)
+            with patch.dict(globals(), THREE_RUNTIME=root / "missing"):
+                scene_project(root / "2d-project", b, Fraction(25))
+            expect("3d: 2d projects do not need the engine",
+                   not (root / "2d-project" / "vendor" / "three.module.js").exists())
     for f in fails:
         print(f"selftest FAILED: {f}")
     if not fails:

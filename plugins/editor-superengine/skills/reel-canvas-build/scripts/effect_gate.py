@@ -1,14 +1,16 @@
 """VES-1 effect gate: run before render to block effects that would fight each other (stdlib only).
 
 A span is one effect on the reel's timeline: {layer, start_f, end_f} plus an optional id (used in
-messages); other keys are ignored. Frames are output frames at the reel fps, end_f exclusive.
+messages). Transition spans also carry their beat and declaration from transitions.spans;
+other layers ignore extra keys. Frames are output frames at the reel fps, end_f exclusive.
 A cut frame is the first output frame of the next segment.
 
 What the gate blocks:
   - two full-screen takeovers on screen at once (touching end-to-start is fine)
   - any a-roll transform (punch-in, follow-cam, Ken Burns, layout move) that runs across a cut
     (starting or ending exactly on the cut is fine)
-Overlays, takeovers and transitions may cover cuts; overlays may overlap anything.
+Overlays and takeovers may cover cuts. A declared cut transition covers exactly one cut;
+an overlay transition stays inside its own beat. Overlays may overlap anything.
 
 underlay() adds the coverage underlay: one span under each run of back-to-back takeovers so the
 a-roll never flashes between them. Its merge gap (merge_gap_s) is a taste option, not a rule.
@@ -28,8 +30,9 @@ sys.path.insert(0, str(HERE.parents[1] / "_shared"))
 sys.path.insert(0, str(HERE))
 from win_encoding import ensure_utf8_output  # noqa: E402
 import fps as fpsmod  # noqa: E402
+import transitions  # noqa: E402
 
-LAYERS = ("aroll_transform", "takeover", "overlay", "transition", "broll")  # transition: G5 adds its rule later
+LAYERS = ("aroll_transform", "takeover", "overlay", "transition", "broll")
 GATE_KEYS = ("fps", "total_f", "cut_frames", "spans")
 
 
@@ -131,6 +134,31 @@ def check(spans, cut_frames, fps, total_f=None):
             if s["start_f"] < c < s["end_f"]:
                 out.append(f"{_name(s, i)} ({_frames(s, rate)}) runs across the cut at frame {c} ({_sec(c, rate)}); "
                            f"an a-roll move can't span a cut, so start it on the cut or end it there")
+    seen = set()
+    for i, s in good:
+        if s["layer"] != "transition":
+            continue
+        t, beat = s.get("transition"), s.get("beat")
+        if not isinstance(t, dict) or not isinstance(beat, dict) or beat.get("transition") != t:
+            out.append(f"{_name(s, i)} needs its beat's transition declaration")
+            continue
+        bad = transitions.problems([beat], cuts, fps, [])
+        out.extend(bad)
+        if bad:
+            continue
+        spec = transitions.MENU[t["type"]]
+        if spec["kind"] == "cut":
+            c, d = t["at_cut_frame"], t["dur_frames"]
+            inside = [c0 for c0 in cuts if s["start_f"] < c0 < s["end_f"]]
+            if inside != [c] or (s["start_f"], s["end_f"]) != (c - d, c + d):
+                out.append(f"{_name(s, i)} must cover exactly one cut and name that cut")
+            if c in seen:
+                out.append(f"Two transitions name the same cut at frame {c}; keep one")
+            seen.add(c)
+        else:
+            declared = transitions.spans([beat])
+            if not any((s["start_f"], s["end_f"]) == (v["start_f"], v["end_f"]) for v in declared):
+                out.append(f"{_name(s, i)} must stay inside its beat's declared edge window")
     return out
 
 
@@ -166,6 +194,9 @@ def spans_from_beats(beats, move_f, scene_kind=None):
     kind_of = scene_kind.get if isinstance(scene_kind, dict) else scene_kind
     out = []
     for b in beats:
+        transition_bad = transitions.beat_problems(b)
+        if transition_bad:
+            raise ValueError(" ".join(transition_bad))
         if b.get("broll") is not None:
             out.append({"layer": "broll", "start_f": b["start_f"], "end_f": b["end_f"], "id": b["id"]})
         sid = (b.get("scene") or {}).get("id") if kind_of else None
@@ -178,6 +209,7 @@ def spans_from_beats(beats, move_f, scene_kind=None):
         elif b.get("layout") == "overlay":
             out.append({"layer": "overlay", "start_f": b["start_f"], "end_f": b["end_f"], "id": b["id"]})
     solid = sorted((b for b in beats if b.get("layout") != "overlay"), key=lambda b: b["start_f"])
+    out.extend(transitions.spans(beats))
     for a, b in zip(solid, solid[1:]):
         if move_f and a["layout"] != b["layout"]:
             out.append({"layer": "aroll_transform", "start_f": b["start_f"], "end_f": b["start_f"] + move_f,
@@ -235,6 +267,17 @@ def selftest():
         ("cut past end", check([], [90], "30", 90), "outside the reel"),
         ("bad fps", check([], [], "0"), "fps"),
     ]
+    beat = {"id": "REEL_A", "layout": "full", "start_f": 0, "end_f": 90,
+            "transition": {"type": "flash", "at_cut_frame": 60, "dur_frames": 3}}
+    cases.extend([
+        ("declared transition", check(transitions.spans([beat]), [60], "30", 90), None),
+        ("transition over two cuts", check(transitions.spans([beat]), [59, 60], "30", 90), "exactly one cut"),
+        ("transition names no cut", check(transitions.spans([beat]), [61], "30", 90), "exactly one cut"),
+        ("two transitions at one cut", check(transitions.spans([beat, beat]), [60], "30", 90), "Two transitions"),
+        ("undeclared transition", check([sp("transition", 57, 63)], [60], "30", 90), "declaration"),
+        ("overlay fade", check(transitions.spans([dict(beat, layout="overlay", transition={
+            "type": "fade", "at_cut_frame": None, "dur_frames": 3, "edge": "both"})]), [60], "30", 90), None),
+    ])
     fails = []
     for name, problems, want in cases:
         if want is None and problems:

@@ -20,7 +20,6 @@ import check_deps  # noqa: E402  (writes editor.config.json the way the doctor d
 
 SERVER = DOCTOR / "board_server.py"
 CLICK = Path(__file__).resolve().parent / "sound_board_click.js"
-STUB_HUB = Path(__file__).resolve().parent / "fixtures/stub-hub.html"
 DUR = 3.0
 LIBRARY = [{"file": "tick.wav", "duration": 0.3, "peak_dbfs": -3.0, "rms_dbfs": -20.0},
            {"file": "long-swoosh.wav", "duration": 2.4, "peak_dbfs": -2.0, "rms_dbfs": -18.0}]
@@ -97,7 +96,7 @@ def load(p):
 
 def main():
     ensure_utf8_output()
-    names = ["send", "reload", "reject_all", "reset", "writes_guard", "tips", "hub_tab", "music", "beat_sync"]
+    names = ["send", "reload", "reject_all", "reset", "writes_guard", "tips", "hub_tab", "music", "beat_sync", "carve"]
     ap = argparse.ArgumentParser(description="Sound Board done-test")
     ap.add_argument("--case", choices=names + ["all"], default="all")
     pick = ap.parse_args().case
@@ -159,6 +158,11 @@ def main():
     def browse(reel_name, actions, page="editor/sound-board/"):
         """A NEW browser (fresh profile, so nothing comes from this browser's storage) runs the actions."""
         port = server()
+        if page == "editor/hub/":
+            # Refresh after creating each reel, including when the server is already running.
+            for name in ("board_sync.py", "hub_rows.py"):
+                p = run([sys.executable, "-X", "utf8", "-I", "-B", str(DOCTOR / name), "--root", str(ws)], env=env)
+                need(p.returncode == 0, f"hub setup {name}: {p.stdout} {p.stderr}")
         S["browsers"] += 1
         job = scratch / f"job-{S['browsers']}.json"
         write_json(job, {"url": f"http://127.0.0.1:{port}/{page}?reel={reel_name}",
@@ -263,11 +267,9 @@ def main():
 
     def c_hub_tab():
         d = reel("hub-reel")
-        hub = ws / "editor/hub"
-        hub.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(STUB_HUB, hub / "index.html")  # test fixture only: the 0.2.0 hub page is built later
         out = browse("hub-reel", [
-            {"do": "goto", "noRows": True}, {"do": "click", "sel": "#tab-sound"},
+            {"do": "goto", "noRows": True}, {"do": "waitTrue", "js": "window.Hub && Hub.ready"},
+            {"do": "click", "sel": "#tab-sound-board"},
             {"do": "frame", "sel": ".frame iframe"},
             {"do": "gain", "row": 1, "db": 5}, {"do": "click", "sel": KEEP % 1},
             {"do": "click", "sel": (ROW % 1) + " button.nudge:nth-child(4)"}, {"do": "waitSaved"},
@@ -292,11 +294,9 @@ def main():
             p = run([tools["ffmpeg"], "-v", "error", "-y", "-f", "lavfi", "-i", "sine=f=220:d=4", "-ac", "2",
                      str(d / "beds" / b["file"])])
             need(p.returncode == 0, f"ffmpeg could not make {b['file']}: {p.stderr.strip()[-300:]}")
-        hub = ws / "editor/hub"
-        hub.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(STUB_HUB, hub / "index.html")  # test fixture only
         own = LINE % 2
-        tab = [{"do": "goto", "noRows": True}, {"do": "click", "sel": "#tab-sound"}, {"do": "frame", "sel": ".frame iframe"}]
+        tab = [{"do": "goto", "noRows": True}, {"do": "waitTrue", "js": "window.Hub && Hub.ready"},
+               {"do": "click", "sel": "#tab-sound-board"}, {"do": "frame", "sel": ".frame iframe"}]
         out = browse("music-reel", tab + [
             {"do": "read"},
             {"do": "click", "sel": own + " button.muse"},
@@ -329,6 +329,58 @@ def main():
         got = (reset["bed"], reset["vol"], reset["duck"], reset["ticks"], reset["request"])
         need(got == ("", "-18", "6", [False], []), f"after reset the music shows {got}")
 
+    def c_carve():
+        frequencies = (160, 400, 630, 1000, 1600, 2500)
+        data = {"profiles": {"0.80": {
+            "strength": 0.8,
+            "bands": [{"freq": f, "q": 2.06, "gainDb": -14.8 if f == 1600 else -7.4} for f in frequencies],
+            "points": [{"freq": f, "points": [{"t": 0, "v": 0}, {"t": 0.2, "v": -8},
+                                              {"t": 2, "v": -8}, {"t": 4, "v": 0}]} for f in frequencies]}}}
+        d = reel("carve-reel", beds=BEDS, carve=data)
+        (d / "beds").mkdir()
+        p = run([tools["ffmpeg"], "-v", "error", "-y", "-f", "lavfi", "-i", "sine=f=1600:d=4", "-ac", "2",
+                 str(d / "beds" / BEDS[0]["file"])])
+        need(p.returncode == 0, p.stderr[-300:])
+        reads = browse("carve-reel", [{"do": "goto"}, {"do": "read"},
+            {"do": "click", "sel": LINE % 1 + " button.muse"},
+            {"do": "set", "sel": "#carvestrength", "value": 0.8},
+            {"do": "waitSaved"}, {"do": "click", "sel": "#send"}, {"do": "waitSent"}, {"do": "read"}])["reads"]
+        need(reads[0]["music"]["carve"] == {"on": True, "strength": 0.8, "visible": True, "preview": True},
+             f"carve defaults: {reads[0]['music']['carve']}")
+        need(load(d / "sound-selection.json")["bed"]["carve"] == {"on": True, "strength": 0.8}, "Send lost on/strength")
+        need(load(d / "sound-board.state.json")["bed"]["carve"] == {"on": True, "strength": 0.8}, "save lost on/strength")
+        reads = browse("carve-reel", [{"do": "goto"}, {"do": "read"},
+            {"do": "eval", "js": "window.CARVE_FILTERS = []; var ac = audio(), originalFilter = ac.createBiquadFilter.bind(ac); ac.createBiquadFilter = function(){ var f = originalFilter(), ramp = f.gain.linearRampToValueAtTime.bind(f.gain); f.carveRamps = []; f.gain.linearRampToValueAtTime = function(v,t){ f.carveRamps.push([v,t]); return ramp(v,t); }; CARVE_FILTERS.push(f); return f; }; true"},
+            {"do": "click", "sel": "#play"}, {"do": "waitTrue", "js": "CARVE_FILTERS.length > 0"},
+            {"do": "eval", "js": "CARVE_FILTERS.map(function(f){ return {type:f.type, freq:f.frequency.value, q:f.Q.value, lastRampGain:f.carveRamps[f.carveRamps.length-1][0]}; })"},
+            {"do": "click", "sel": "#play"},
+            {"do": "click", "sel": "#bedcarve"}, {"do": "waitSaved"}, {"do": "read"},
+            {"do": "click", "sel": "#send"}, {"do": "waitSent"}])["reads"]
+        need(reads[0]["music"]["carve"] == {"on": True, "strength": 0.8, "visible": True, "preview": True}, "reload lost strength")
+        need(reads[3]["music"]["carve"] == {"on": False, "strength": 0.8, "visible": False, "preview": False}, "off did not hide the slider")
+        need([f["freq"] for f in reads[2]] == list(frequencies)
+             and all(f["type"] == "peaking" and abs(f["q"] - 2.06) < 1e-5
+                     and f["lastRampGain"] == 0 for f in reads[2]),
+             f"preview filter nodes: {reads[2]}")
+        need(load(d / "sound-selection.json")["bed"]["carve"] == {"on": False, "strength": 0.8}, "unticking did not send on:false")
+        reads = browse("carve-reel", [{"do": "goto"}, {"do": "read"}, {"do": "dialog", "accept": True},
+            {"do": "click", "sel": "#reset"}, {"do": "waitSaved"}, {"do": "read"},
+            {"do": "eval", "js": "CFG.carve = null; previewCarve()"}])["reads"]
+        need(not reads[0]["music"]["carve"]["on"], "off did not survive reload")
+        need(reads[1]["music"]["carve"] == {"on": True, "strength": 0.8, "visible": True, "preview": True}, "reset lost defaults")
+        need(reads[2] is None, "missing curves must use the dip")
+        preset = {"file": BEDS[0]["file"], "gain_db": -18, "entry_s": 0, "exit_s": DUR, "offset_s": 0,
+                  "fade_in_s": 0.5, "fade_out_s": 0.8, "carve": {"on": False, "strength": 0.8}}
+        reel("carve-preset", beds=BEDS, carve=data, bed_default=preset)
+        p = browse("carve-preset", [{"do": "goto"}, {"do": "read"}])["reads"][0]["music"]["carve"]
+        need(p == {"on": False, "strength": 0.8, "visible": False, "preview": False}, f"preset: {p}")
+        # Saved sessions made before carve existed must retain their dip setting.
+        old = load(d / "sound-board.state.json")
+        old["bed"].pop("carve", None)
+        write_json(d / "sound-board.state.json", old)
+        p = browse("carve-reel", [{"do": "goto"}, {"do": "read"}])["reads"][0]["music"]["carve"]
+        need(not p["on"] and not p["visible"], f"old saved board unexpectedly enabled carve: {p}")
+
     def c_beat_sync():
         def make(name):
             d = reel(name, library=SYNC_LIB, beds=SYNC_BEDS, cues=SYNC_CUES)
@@ -337,10 +389,8 @@ def main():
                 p = run([tools["ffmpeg"], "-v", "error", "-y", "-f", "lavfi", "-i", f"sine=f=220:d={secs}", str(d / sub / f)])
                 need(p.returncode == 0, f"ffmpeg could not make {f}: {p.stderr.strip()[-300:]}")
             return d
-        hub = ws / "editor/hub"
-        hub.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(STUB_HUB, hub / "index.html")  # test fixture only
-        tab = [{"do": "goto", "noRows": True}, {"do": "click", "sel": "#tab-sound"}, {"do": "frame", "sel": ".frame iframe"}]
+        tab = [{"do": "goto", "noRows": True}, {"do": "waitTrue", "js": "window.Hub && Hub.ready"},
+               {"do": "click", "sel": "#tab-sound-board"}, {"do": "frame", "sel": ".frame iframe"}]
         flat, grid = LINE % 2 + " button.muse", LINE % 1 + " button.muse"
         to_snap = [{"do": "click", "sel": flat}, {"do": "read"},                       # null grid
                    {"do": "click", "sel": grid}, {"do": "read"},                       # grid, beat-sync still off
@@ -410,6 +460,7 @@ def main():
            "hub_tab": ("hub_tab: inside the hub's iframe, a gain and nudge adjust saves and goes out on Send", c_hub_tab),
            "music": ("music: inside the hub's iframe, pick, preview, level, dip, rights tick and a free-track request "
                      "go out on Send and come back on reload", c_music),
+           "carve": ("carve: defaults, Send, off, save/restore/reset, preset and peaking preview", c_carve),
            "beat_sync": ("beat_sync: inside the hub's iframe, beat-sync snaps the music start and near cues to a beat, "
                          "a hit plays peak_s early, Send and reload carry it, a null grid disables it", c_beat_sync)}
     try:

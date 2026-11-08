@@ -117,7 +117,7 @@ pre{color:var(--et-ink2)!important;border-top:1px solid var(--et-hair)!important
  <span id="ab"><button id="holdB" title="Keep a copy of the current grade as B, so you can flip back to it and compare">hold as B</button> <button id="toggleAB" class="b" disabled title="Flip between the grade you are editing (A) and the copy you kept (B)">show B</button></span>
  <button id="sheetBtn" title="The face frame through every look, as one picture">contact sheet</button>
  <span style="margin-left:auto"></span>
- <button id="send" class="send">send to Claude</button>
+ <button type="button" id="send" class="send" disabled>send to Claude <small data-loading>Loading...</small></button>
  <span id="saved" style="color:var(--ok)"></span> <span id="dirty" class="pend" hidden>changes not sent</span>
 </header>
 <main>
@@ -401,10 +401,10 @@ async function send(){
 /* ---- boot -------------------------------------------------------------------------------- */
 (bc?Promise.all([
   fetch('grade_math.json').then(r=>r.json()),
-  fetch(GDIR+'grade-config.json',{cache:'no-store'}).then(r=>{ if(!r.ok) throw new Error('no grade set up for this reel yet (grade/grade-config.json, HTTP '+r.status+'). Ask Claude to set up the grade'); return r.json(); }),
+  fetch(GDIR+'grade-config.json',{cache:'no-store'}).then(r=>{ if(!r.ok) throw new Error('No grade is set up for this reel yet. Ask Claude to set up the grade.'); return r.json(); }),
   bc.load(),
   fetch(BASE+'grade-selection.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null)
-]):Promise.reject(new Error('open this board with ?reel=<reel> in its address'))).then(async([spec,cfg,disk,sent])=>{
+]):Promise.reject(new Error('Ask Claude to open the Grade Board for this reel.'))).then(async([spec,cfg,disk,sent])=>{
   GM.init(spec); C=cfg;
   PRE=spec.pre_pass.params.slice(); TUNE=spec.slot.params.filter(k=>k!=='mix');
   $('#title').textContent=`Grade Board · ${C.reel}`;
@@ -447,6 +447,8 @@ async function send(){
     renderAll(); persist(); note('Suggested fix applied · Ctrl+Z undoes'); };
   $('#sheetBtn').onclick=openSheet; $('#sheetClose').onclick=closeSheet;
   $('#send').onclick=send;
+  $('#send').querySelector('[data-loading]').remove();
+  $('#send').disabled=false;
   document.addEventListener('keydown',e=>{
     if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&e.key.toLowerCase()==='z'){ e.preventDefault(); undo(); return; }
     if(e.target.tagName==='INPUT') return;
@@ -462,5 +464,8 @@ async function send(){
   syncAB(); renderCorr(); buildRail();
   setFrame(S.frame,true); markDirty(); loop();
   window.GB={get C(){return C},get S(){return S},get ready(){return srcReady},st,draw,setFrame,send};  // a handle for the tests
-}).catch(e=>{ document.body.insertAdjacentHTML('afterbegin',`<pre style="color:#FF5A3C;padding:16px">Grade Board could not start: ${esc(e.message)}</pre>`); });
+}).catch(e=>{
+  $('#send').querySelector('[data-loading]')?.remove();
+  $('#send').disabled=true;
+  document.body.insertAdjacentHTML('afterbegin',`<pre style="color:#FF5A3C;padding:16px">Grade Board could not start: ${esc(e.message)}</pre>`); });
 </script></body></html>

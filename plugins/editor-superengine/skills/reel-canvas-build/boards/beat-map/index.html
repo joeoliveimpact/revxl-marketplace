@@ -19,6 +19,11 @@
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   #strip { display: flex; height: 34px; border-radius: 6px; overflow: hidden; background: var(--line); gap: 2px; }
   #strip div { flex-basis: 0; min-width: 2px; }
+  #strip { position: relative; }
+  .strong-beat-mark { position: absolute; top: 0; bottom: 0; width: 6px; transform: translateX(-50%);
+    background: var(--accent); border: 1px solid #0d1320; border-radius: 3px; }
+  #strong-beat-suggestions { margin-top: 10px; font-size: 13px; color: var(--muted); }
+  #strong-beat-note { margin-bottom: 0; font-size: 13px; }
   .legend { display: flex; flex-wrap: wrap; gap: 14px; list-style: none; padding: 0; margin: 10px 0 0; color: var(--muted); font-size: 13px; }
   .legend span { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
   .l-full { background: var(--full); } .l-split { background: var(--split); } .l-stack { background: var(--stack); }
@@ -61,6 +66,9 @@
   .scene-controls input, .scene-controls select { font: inherit; color: var(--text); background: #12141a;
     border: 1px solid #3a4150; border-radius: 6px; padding: 8px; width: 100%; }
   .remove-scene { margin-top: 12px; }
+  .transition-controls { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 14px; }
+  .transition-controls label { display: block; margin-top: 6px; }
+  .transition-controls input, .transition-controls select { width: 100%; max-width: 280px; }
   .style-options { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 12px; }
   #punch-scale { width: 100px; }
   .bar { position: fixed; left: 0; right: 0; bottom: 0; background: #0f1116; border-top: 1px solid var(--line);
@@ -95,6 +103,12 @@
       <h2 id="strip-h">The whole video at a glance</h2>
       <div id="strip" role="list" aria-label="Beats in order, sized by length"></div>
       <ul class="legend" id="legend"></ul>
+      <details id="strong-beat-suggestions" hidden>
+        <summary>Strong beats (up to 3 suggestions)</summary>
+        <p>Choose a punch-in or transition yourself; these marks do not change your edit.</p>
+        <ul class="legend" id="strong-beat-times"></ul>
+      </details>
+      <p class="muted" id="strong-beat-note" hidden>No steady beat in the music, so no strong-beat suggestions.</p>
     </section>
 
     <section class="panel" aria-labelledby="style-h">
@@ -127,6 +141,35 @@
       </div>
     </section>
 
+    <details class="panel" id="open-loops">
+      <summary>Open loops (optional)</summary>
+      <p class="muted">Track a viewer question and the spoken words that close it. Choose moments from this cut.</p>
+      <div id="loop-rows"></div>
+      <button id="add-loop" type="button">Add a loop</button>
+    </details>
+
+    <details class="panel" id="reminder-holds">
+      <summary>Reminder and quiet stretches (optional)</summary>
+      <h2>Mid-video reminder (optional).</h2>
+      <label><input id="reminder-enabled" type="checkbox"> Show a short 'comment a keyword' reminder partway through</label>
+      <div id="reminder-fields" hidden>
+        <label class="block" for="reminder-keyword">Keyword</label>
+        <input id="reminder-keyword" type="text" maxlength="16">
+        <label class="block" for="reminder-at">Starts at (seconds)</label>
+        <input id="reminder-at" type="number" min="0" step="0.1" aria-describedby="reminder-window reminder-note">
+        <p id="reminder-window" class="muted"></p>
+        <p id="reminder-note" class="muted" hidden></p>
+        <label class="block" for="reminder-hold">Shows for (seconds)</label>
+        <input id="reminder-hold" type="number" min="0.1" step="0.1" value="4">
+        <label class="block" for="reminder-volume">Reminder sound volume (%)</label>
+        <input id="reminder-volume" type="number" min="0" max="10" step="1" value="0" aria-describedby="reminder-silent">
+        <p id="reminder-silent" class="muted">At 0%, your reminder is silent.</p>
+      </div>
+      <h2>Long quiet stretches.</h2>
+      <p class="muted">You can explain why you hold a quiet stretch. These notes never stop you sending.</p>
+      <div id="hold-rows"></div>
+    </details>
+
     <section class="panel" aria-labelledby="beats-h">
       <h2 id="beats-h">Beats</h2>
       <p class="muted">Tap a word to mark it: number, key word, stress, call to action, then off again.</p>
@@ -148,7 +191,7 @@
 
 <div class="bar">
   <p id="status" role="status" aria-live="polite" data-state="empty"></p>
-  <button type="button" id="send">Send to Claude</button>
+  <button type="button" id="send" disabled>Send to Claude <small data-loading>Loading...</small></button>
 </div>
 
 <script src="./board-client.js"></script>
@@ -161,6 +204,14 @@ const MARK_NAME = {num: "number", key: "key word", emph: "stress", cta: "call to
 const $ = (s) => document.querySelector(s);
 const statusEl = $("#status"), sendBtn = $("#send");
 let bc = null, doc = null, words = null, timer = null, seq = 0, boardConfig = {};
+let transitionCuts = [], transitionTotal = null;
+let holdCuts = [], wordSpans = [];
+let strongBeatTimes = [];
+let strongBeatNote = null;
+const STRONG_BEAT_LABEL = "strong beat: good spot for a punch-in or transition";
+// Generated from transitions.MENU; transitions.py --selftest asserts equality.
+const TRANSITION_MENU = {"flash":{"kind":"cut","params":{"color":"color"},"dur_min":1,"dur_max":"ceil(fps/3)"},"whip":{"kind":"cut","moves_aroll":true,"params":{"dir":["l","r","u","d"]},"dur_min":1,"dur_max":"ceil(fps/3)"},"zoom":{"kind":"cut","moves_aroll":true,"params":{},"dur_min":1,"dur_max":"ceil(fps/3)"},"glitch":{"kind":"cut","moves_aroll":true,"params":{},"dur_min":1,"dur_max":"ceil(fps/3)"},"fade":{"kind":"overlay","params":{},"dur_min":1,"dur_max":"min(fps,beat_length/2)"},"push":{"kind":"overlay","params":{"dir":["l","r","u","d"]},"dur_min":1,"dur_max":"min(fps,beat_length/2)"},"wipe":{"kind":"overlay","params":{"dir":["l","r","u","d"]},"dur_min":1,"dur_max":"min(fps,beat_length/2)"},"shader":{"kind":"overlay","params":{"shader":["light-leak","sdf-iris","chromatic-split","cross-warp-morph","flash-through-white","glitch"]},"dur_min":1,"dur_max":"min(fps,beat_length/2)"}};
+let forbidden;
 let sceneCatalog = [], sceneSuggestions = {}, sketchScenes = {}, sceneFieldId = 0;
 let brollClips = [];
 const invalidBroll = new Set();
@@ -404,6 +455,23 @@ function renderStrip() {
       title: "Beat " + n + ", " + (LAYOUT_NAME[b.layout] || "No layout") + ", " + secs(b.start_f) + "–" + secs(b.end_f) + " s",
       "aria-label": "Beat " + n + ", " + (LAYOUT_NAME[b.layout] || "No layout")}));
   });
+  renderStrongBeats();
+}
+
+function renderStrongBeats() {
+  // Suggestions stay outside doc, so neither saving nor Send can apply them to the edit.
+  const total = Math.max(0, ...doc.beats.map(b => b.end_f)) / doc.fps;
+  const times = strongBeatTimes.filter(t => Number.isFinite(t) && t >= 0 && t < total);
+  for (const at of times) {
+    $("#strip").append(el("span", {class: "strong-beat-mark", role: "listitem", "data-time-s": at,
+      style: "left:" + (100 * at / total) + "%", title: STRONG_BEAT_LABEL,
+      "aria-label": at.toFixed(2) + " s: " + STRONG_BEAT_LABEL}));
+  }
+  $("#strong-beat-times").replaceChildren(...times.map(at =>
+    el("li", {text: at.toFixed(2) + " s: " + STRONG_BEAT_LABEL})));
+  $("#strong-beat-suggestions").hidden = !times.length;
+  $("#strong-beat-note").textContent = strongBeatNote || "";
+  $("#strong-beat-note").hidden = !!times.length || !strongBeatNote;
 }
 
 function setMark(span, w, mark) {
@@ -478,6 +546,101 @@ function brollControls(b, i) {
   return wrap;  // Loading never rewrites a saved choice.
 }
 
+function transitionAllowed() {
+  const allowed = doc.transitions?.allowed ?? boardConfig.transitions?.allowed;
+  return Array.isArray(allowed) && allowed.length ? allowed : Object.keys(TRANSITION_MENU);
+}
+
+function transitionProblem() {
+  const used = new Set();
+  let shaderEnd = -1;
+  for (const b of doc.beats) {
+    const t = b.transition;
+    if (t == null) continue;
+    const spec = t && TRANSITION_MENU[t.type];
+    if (!spec || !transitionAllowed().includes(t.type)) return "Choose a transition from the allowed menu, or none.";
+    const cut = spec.kind === "cut";
+    const keys = ["type", "at_cut_frame", "dur_frames", ...Object.keys(spec.params), ...(cut ? [] : ["edge"])];
+    if (Object.keys(t).some(k => !keys.includes(k))) return "The transition has an unknown setting. Pick it again.";
+    const max = cut ? Math.ceil(doc.fps / 3) : Math.floor(Math.min(doc.fps, (b.end_f - b.start_f) / 2));
+    if (!Number.isInteger(t.dur_frames) || t.dur_frames < spec.dur_min || t.dur_frames > max)
+      return "Transition duration must be whole frames from 1 to " + max + ".";
+    for (const [key, choices] of Object.entries(spec.params)) {
+      if (key === "shader" && !(key in t)) return "Choose a shader from the transition menu.";
+      if (!(key in t)) continue;
+      if (choices === "color" ? (typeof t[key] !== "string" || !/^(white|black|#[0-9a-f]{6})$/i.test(t[key])) : !choices.includes(t[key]))
+        return "Check the transition " + key + " before sending.";
+    }
+    if (cut) {
+      const c = t.at_cut_frame, d = t.dur_frames;
+      if (!Number.isInteger(c) || !transitionCuts.includes(c) || c - d < 0 ||
+          (transitionTotal != null && c + d > transitionTotal) || transitionCuts.filter(f => c-d < f && f < c+d).length !== 1)
+        return "A cut transition must name exactly one cut and fit inside the reel. Choose a cut or a shorter duration.";
+      if (used.has(c)) return "Two transitions use the same cut. Keep one.";
+      used.add(c);
+    } else if (t.at_cut_frame !== null || !["in", "out", "both"].includes(t.edge) ||
+               !(b.layout === "overlay" || b.scene || b.broll) || (t.type === "shader" && !b.scene))
+      return "This transition needs an overlay beat (a shader needs a scene), an in/out edge and no cut frame.";
+    if (t.type === "shader") {
+      if (b.start_f < shaderEnd) return "These shader scene beats overlap. Choose fade on one beat.";
+      shaderEnd = Math.max(shaderEnd, b.end_f);
+    }
+  }
+  return null;
+}
+
+function transitionControls(b, i) {
+  const wrap = el("div", {class: "transition-controls"});
+  const type = el("select", {name: "transition", id: "transition-" + i});
+  type.append(el("option", {value: "", text: "None"}));
+  transitionAllowed().filter(t => TRANSITION_MENU[t]).forEach(t => type.append(el("option", {value: t, text: t})));
+  if (b.transition && ![...type.options].some(o => o.value === b.transition.type))
+    type.append(el("option", {value:b.transition.type, text:"Saved transition (outside this menu)"}));
+  type.value = b.transition?.type || "";
+  const detail = el("div");
+  const field = (key, label, values, value) => {
+    const id = "transition-" + key + "-" + i;
+    const control = el(values ? "select" : "input", {id, name: "transition-" + key});
+    if (values) values.forEach(v => control.append(el("option", {value:String(v), text:String(v)})));
+    else { control.type = key === "dur_frames" ? "number" : "text"; if (key === "dur_frames") { control.min = "1"; control.step = "1"; } }
+    control.value = String(value ?? "");
+    control.addEventListener(values ? "change" : "input", () => {
+      b.transition[key] = ["dur_frames", "at_cut_frame"].includes(key) ? (control.value === "" ? null : Number(control.value)) : control.value;
+      edited();
+    });
+    detail.append(el("label", {for:id, text:label}), control);
+  };
+  const refresh = () => {
+    detail.replaceChildren();
+    const t = b.transition, spec = t && TRANSITION_MENU[t.type];
+    if (!spec) return;
+    field("dur_frames", spec.kind === "cut" ? "Frames each side" : "Frames", null, t.dur_frames);
+    if (spec.kind === "cut") {
+      const inside = transitionCuts.filter(f => b.start_f <= f && f <= b.end_f);
+      const before = transitionCuts.filter(f => f < b.start_f).at(-1), after = transitionCuts.find(f => f > b.end_f);
+      const near = [...new Set([...inside, before, after, t.at_cut_frame].filter(Number.isInteger))].sort((a,b)=>a-b);
+      field("at_cut_frame", "Cut frame", near, t.at_cut_frame);
+    } else field("edge", "Edge", ["in", "out", "both"], t.edge);
+    for (const [key, choices] of Object.entries(spec.params))
+      field(key, key === "dir" ? "Direction (left/right/up/down)" : key === "color" ? "Colour (white, black or #RRGGBB)" : key,
+            choices === "color" ? null : choices, t[key] ?? (key === "color" ? "white" : key === "dir" ? "r" : choices[0]));
+  };
+  type.addEventListener("change", () => {
+    if (!type.value) b.transition = null;
+    else {
+      const spec = TRANSITION_MENU[type.value], cut = spec.kind === "cut";
+      const nearest = [...transitionCuts].sort((a,c) => Math.abs(a-b.start_f)-Math.abs(c-b.start_f))[0];
+      const max = cut ? Math.ceil(doc.fps/3) : Math.floor(Math.min(doc.fps,(b.end_f-b.start_f)/2));
+      b.transition = {type:type.value, at_cut_frame:cut ? nearest ?? null : null, dur_frames:Math.max(1,Math.min(6,max))};
+      if (!cut) b.transition.edge = "in";
+      if (type.value === "shader") b.transition.shader = TRANSITION_MENU.shader.params.shader[0];
+    }
+    refresh(); edited();
+  });
+  wrap.append(el("label", {for:type.id, text:"Transition"}), type, detail);
+  refresh(); return wrap;
+}
+
 function row(b, i) {
   const tr = el("tr", {"data-beat": b.id});
   const mark = () => tr.classList.toggle("changed", isChanged(b));
@@ -524,10 +687,180 @@ function row(b, i) {
     el("td", {"data-label": "Layout"}, el("label", {class: "sr", for: fid("layout"), text: "Layout for beat " + (i + 1)}), sel),
     el("td", {"data-label": "Number shown"}, el("label", {class: "sr", for: fid("value"), text: "Number shown in beat " + (i + 1)}), val, err),
     el("td", {class: "shows", "data-label": "What's on screen / why"},
-      el("div", {text: p.shows || "—"}), el("div", {class: "why", text: p.why || ""}), sceneControls(b.id), brollControls(b, i)),
+      el("div", {text: p.shows || "—"}), el("div", {class: "why", text: p.why || ""}), sceneControls(b.id), brollControls(b, i), transitionControls(b, i)),
     el("td", {"data-label": "Your note"}, el("label", {class: "sr", for: fid("note"), text: "Your note on beat " + (i + 1)}), note));
   mark();
   return tr;
+}
+
+function renderLoops() {
+  const rows = (Array.isArray(doc.loops) ? doc.loops : []).map((loop, i) => {
+    if (!loop || typeof loop !== "object") return el("p", {class: "err", text: "Ask Claude to restore this loop row."});
+    const box = el("fieldset", {class: "panel"}, el("legend", {text: "Loop " + (i + 1)}));
+    for (const [key, label] of [["question", "Viewer question"], ["on_screen", "What's on screen"], ["closure_words", "Words that close it"]]) {
+      const id = "loop-" + i + "-" + key;
+      const input = el("input", {id, type: "text"}); input.value = loop[key] || "";
+      input.oninput = () => { loop[key] = input.value; edited(); };
+      box.append(el("label", {for: id, class: "block", text: label}), input);
+    }
+    for (const [key, label] of [["setup_f", "Setup beat"], ["updates_f", "Update beats (optional)"], ["closure_f", "Closure beat"], ["cta_f", "Call to action beat (optional)"]]) {
+      const id = "loop-" + i + "-" + key, multi = key === "updates_f";
+      const select = el("select", {id}); select.multiple = multi;
+      if (multi) select.size = Math.min(4, Math.max(2, doc.beats.length));
+      else select.append(el("option", {value: "", text: key === "cta_f" ? "No call to action" : "Choose a beat"}));
+      const values = multi ? loop[key] || [] : loop[key] == null ? [] : [loop[key]];
+      const offered = new Set();
+      for (const [n, beat] of doc.beats.entries()) {
+        const f = key === "closure_f" ? beat.end_f - 1 : beat.start_f;
+        if (offered.has(f)) continue; offered.add(f);
+        const option = el("option", {value: String(f), text: "Beat " + (n + 1) + " · " + secs(f) + " s"});
+        option.selected = values.includes(f); select.append(option);
+      }
+      for (const f of values.filter(f => !offered.has(f))) {
+        const option = el("option", {value: String(f), text: "Saved moment · " + secs(f) + " s"});
+        option.selected = true; select.append(option);
+      }
+      if (!multi && !values.length) select.value = "";
+      select.onchange = () => {
+        loop[key] = multi ? Array.from(select.selectedOptions, o => Number(o.value)).sort((a,b) => a-b) :
+          select.value === "" ? null : Number(select.value);
+        edited();
+      };
+      box.append(el("label", {for: id, class: "block", text: label}), select);
+    }
+    const remove = el("button", {type: "button", text: "Remove loop"});
+    remove.onclick = () => { doc.loops.splice(i, 1); renderLoops(); edited(); };
+    box.append(remove); return box;
+  });
+  $("#loop-rows").replaceChildren(...rows);
+  $("#add-loop").onclick = () => {
+    if (!doc.loops) doc.loops = [];
+    doc.loops.push({question: "", on_screen: "", setup_f: null, updates_f: [], closure_f: null, closure_words: "", cta_f: null});
+    renderLoops(); edited();
+  };
+}
+
+function loopProblem() {
+  if (doc.loops === undefined) return null;
+  if (!Array.isArray(doc.loops)) return "Ask Claude to restore the open-loop ledger.";
+  if (forbidden.test(JSON.stringify(doc.loops)))
+    return "Use honest trial-reel wording in the loop ledger.";
+  const total = Math.max(0, ...doc.beats.map(b => b.end_f));
+  for (const loop of doc.loops) {
+    if (!loop || typeof loop !== "object") return "Ask Claude to restore this loop row.";
+    const s = loop.setup_f, c = loop.closure_f, a = loop.cta_f, u = loop.updates_f;
+    if (![loop.question, loop.on_screen, loop.closure_words].every(v => typeof v === "string" && v.trim()))
+      return "Each open loop needs a question, what's on screen, and the spoken closure words.";
+    if (!Number.isInteger(s) || !Number.isInteger(c) || s < 0 || s >= c || c >= total || !Array.isArray(u) ||
+        u.some((f,i) => !Number.isInteger(f) || f <= s || f >= c || (i && u[i-1] >= f)) ||
+        (a !== null && (!Number.isInteger(a) || a <= c || a >= total)))
+      return "Keep loop setup before every update, updates before closure, and closure before the call to action.";
+  }
+  return null;
+}
+
+function reminderRuntime() {
+  return (transitionTotal ?? Math.max(0, ...doc.beats.map(b => b.end_f))) / doc.fps;
+}
+
+function holdGaps() {
+  const end = transitionTotal ?? Math.max(0, ...doc.beats.map(b => b.end_f));
+  const events = new Set([0, end, ...holdCuts, ...doc.beats.flatMap(b => [b.start_f, b.end_f])]);
+  const points = [...events].filter(f => Number.isInteger(f) && f >= 0 && f <= end).sort((a,b) => a-b);
+  return points.slice(1).map((b, i) => [points[i], b]).filter(([a,b]) => (b-a) / doc.fps > 2.2);
+}
+
+function reminderNote() {
+  const total = reminderRuntime(), reminder = doc.cta_reminder;
+  $("#reminder-window").textContent = "Aim for " + (total * .6).toFixed(1) + " to " +
+    (total * .8).toFixed(1) + " seconds (60-80% of your video).";
+  const outside = reminder && Number.isFinite(reminder.at_s) &&
+    (reminder.at_s < total * .6 || reminder.at_s > total * .8);
+  $("#reminder-note").hidden = !outside;
+  $("#reminder-note").textContent = outside ? "Your reminder starts outside that window. You can still send it." : "";
+}
+
+function renderReminderHolds() {
+  const reminder = doc.cta_reminder;
+  const enabled = $("#reminder-enabled");
+  enabled.checked = reminder !== undefined;
+  $("#reminder-fields").hidden = !enabled.checked;
+  $("#reminder-keyword").value = reminder?.keyword ?? "";
+  $("#reminder-at").value = reminder?.at_s ?? Number((reminderRuntime() * .7).toFixed(1));
+  $("#reminder-hold").value = reminder?.hold_s ?? 4;
+  $("#reminder-volume").value = reminder?.gain == null ? 0 : reminder.gain * 100;
+  enabled.onchange = () => {
+    if (enabled.checked) doc.cta_reminder = {
+      at_s: Number((reminderRuntime() * .7).toFixed(1)), hold_s: 4, gain: 0, keyword: ""
+    };
+    else delete doc.cta_reminder;
+    renderReminderHolds(); edited();
+  };
+  for (const [id, key] of [["keyword", "keyword"], ["at", "at_s"], ["hold", "hold_s"], ["volume", "gain"]]) {
+    const input = $("#reminder-" + id);
+    input.oninput = () => {
+      if (!doc.cta_reminder) return;
+      doc.cta_reminder[key] = key === "keyword" ? input.value :
+        input.value === "" ? null : Number(input.value) / (key === "gain" ? 100 : 1);
+      reminderNote(); edited();
+    };
+  }
+  reminderNote();
+  const gaps = holdGaps(), holds = Array.isArray(doc.holds) ? doc.holds : [];
+  const rows = gaps.map(([a,b]) => {
+    const saved = holds.find(h => a <= h.at_f && h.at_f < b && typeof h.reason === "string" && h.reason.trim());
+    const id = "hold-reason-" + a;
+    const input = el("input", {id, type: "text"}); input.value = saved?.reason ?? "";
+    input.oninput = () => {
+      doc.holds = (doc.holds || []).filter(h => !(a <= h.at_f && h.at_f < b));
+      if (input.value.trim()) doc.holds.push({at_f: a, reason: input.value});
+      edited();
+    };
+    return el("div", {}, el("p", {text: secs(a) + " s to " + secs(b) +
+      " s: nothing changes on screen for " + secs(b-a) + " s"}),
+      el("label", {class: "block", for: id, text: "Why hold here? (optional)"}), input);
+  });
+  for (const hold of holds.filter(h => !gaps.some(([a,b]) => a <= h.at_f && h.at_f < b))) {
+    const remove = el("button", {type: "button", text: "Remove"});
+    remove.onclick = () => { doc.holds = doc.holds.filter(h => h !== hold); renderReminderHolds(); edited(); };
+    rows.push(el("div", {}, el("p", {text: "Saved reason, no longer a long gap"}),
+      el("p", {text: hold.reason}), remove));
+  }
+  if (!rows.length) rows.push(el("p", {class: "muted", text: "You have no quiet stretches longer than 2.2 seconds."}));
+  $("#hold-rows").replaceChildren(...rows);
+}
+
+function reminderWordingProblem() {
+  return forbidden.test(JSON.stringify([doc.cta_reminder?.keyword, (doc.holds || []).map(h => h.reason)])) ?
+    "Use honest trial-reel wording in your reminder keyword and hold reasons." : null;
+}
+
+function reminderProblem() {
+  const wording = reminderWordingProblem();
+  if (wording) return wording;
+  if (doc.cta_reminder === undefined) return null;
+  const reminder = doc.cta_reminder;
+  if (!reminder || ![reminder.at_s, reminder.hold_s, reminder.gain].every(Number.isFinite))
+    return "Enter numbers for when your reminder starts, how long it shows, and its sound volume.";
+  const {at_s: start, hold_s: hold, gain} = reminder;
+  if (typeof reminder.keyword !== "string" || reminder.keyword.length > 16)
+    return "Keep your reminder keyword to 16 characters or fewer.";
+  if (gain < 0 || gain > .10) return "Set your reminder sound volume between 0% and 10%.";
+  if (hold <= 0) return "Set how long your reminder shows to more than zero seconds.";
+  if (start < 0 || start + hold > reminderRuntime())
+    return "Move your reminder earlier or shorten it so it fits inside your video.";
+  const spans = doc.beats.filter(b => sceneSpec(b.scene?.id)?.category === "cta-end-card")
+    .map(b => [b.start_f / doc.fps, b.end_f / doc.fps]);
+  for (const mark of doc.word_marks || []) {
+    if (mark.mark !== "cta") continue;
+    const word = wordSpans[mark.w];
+    if (!word || !Number.isFinite(Number(word.start)) || !Number.isFinite(Number(word.end)))
+      return "Reload your word times before sending so you can check your reminder against the call to action.";
+    spans.push([Number(word.start), Number(word.end)]);
+  }
+  if (spans.some(([a,b]) => start < b && a < start + hold))
+    return "Move your reminder away from your final call to action or shorten how long it shows.";
+  return null;
 }
 
 function render() {
@@ -537,12 +870,19 @@ function render() {
   $("#words-note").hidden = !!words;
   $("#beats tbody").replaceChildren(...doc.beats.map(row));
   loadEditStyle();
+  renderLoops();
+  renderReminderHolds();
   const needs = $("#needs");
   needs.value = doc.needs || "";
   needs.addEventListener("input", () => { doc.needs = needs.value; edited(); });
 }
 
 function edited() {
+  if (doc.loops && forbidden.test(JSON.stringify(doc.loops))) {
+    clearTimeout(timer); setStatus("error", "Use honest trial-reel wording in the loop ledger."); return;
+  }
+  const wording = reminderWordingProblem();
+  if (wording) { clearTimeout(timer); setStatus("error", wording); return; }
   readEditStyle();
   const mine = ++seq;
   setStatus("saving", "Saving…");
@@ -559,6 +899,12 @@ async function save(mine) {
 }
 
 function problem() {
+  const transitionBad = transitionProblem();
+  if (transitionBad) return transitionBad;
+  const loopBad = loopProblem();
+  if (loopBad) return loopBad;
+  const reminderBad = reminderProblem();
+  if (reminderBad) return reminderBad;
   if (invalidBroll.size) return "B-roll needs a start time of zero seconds or more.";
   if (invalid.size) return "One of the numbers isn't a number yet. Fix the box marked in red first.";
   if (doc.edit_style?.style === "punch-in" && (!Number.isFinite(doc.edit_style.punch_scale) ||
@@ -610,7 +956,13 @@ async function send() {
 
 async function init() {
   try { bc = BoardClient.create({board: "beat-map"}); }
-  catch (e) { setStatus("error", "This board needs to be opened by Claude. Ask Claude to open the beat map."); sendBtn.disabled = true; return; }
+  catch (e) { setStatus("error", "This board needs to be opened by Claude. Ask Claude to open the beat map."); sendBtn.disabled = true; sendBtn.querySelector("[data-loading]").remove(); return; }
+  // The shared wording rule lives with the Trial reels board; the built-in copy keeps the Beat Map working without it.
+  forbidden = /\ba\s*[\/-]?\s*b\s*-?\s*test(?:s|ing|ed)?\b/i;
+  try {
+    const wording = await fetch("../trials/wording.json", {cache: "no-store"});
+    if (wording.ok) forbidden = new RegExp(await wording.json(), "i");
+  } catch (e) { /* keep the built-in copy */ }
   doc = await bc.load();
   if (!doc) doc = await reelJson("beat-map-selection.json");
   if (!doc) {
@@ -618,6 +970,7 @@ async function init() {
     $("#board").hidden = true;
     sendBtn.disabled = true;
     setStatus("empty", "Nothing to send yet.");
+    sendBtn.querySelector("[data-loading]").remove();
     return;
   }
   const p = encPath(doc.words);
@@ -625,11 +978,23 @@ async function init() {
     try {
       const r = await fetch(reelUrl() + p, {cache: "no-store"});
       const j = r.ok ? await r.json() : null;
-      if (j && Array.isArray(j.words)) words = j.words.map((w) => String((w && w.word) || ""));
+      if (j && Array.isArray(j.words)) {
+        wordSpans = j.words;
+        words = j.words.map((w) => String((w && w.word) || ""));
+      }
     } catch (e) { words = null; }
   }
-  const [catalog, suggestions, sketchesState, sketchesSend, config] = await Promise.all(
-    ["scenes/catalog.json", "scenes/suggest.json", "sketches.state.json", "sketches-selection.json", "beat-map.config.json"].map(reelJson));
+  const [catalog, suggestions, sketchesState, sketchesSend, config, cuts, placement] = await Promise.all(
+    ["scenes/catalog.json", "scenes/suggest.json", "sketches.state.json", "sketches-selection.json", "beat-map.config.json", "work/cuts.json", "sound/placement.json"].map(reelJson));
+  const times = placement?.bed?.beat?.big_hits_s;
+  strongBeatTimes = Array.isArray(times) ? times : [];
+  // "No steady beat" only when beat-sync was on and the grid was refused; beat-sync off (or unknown) says nothing.
+  strongBeatNote = !placement?.bed ? null : !placement.bed.beat
+    ? (placement.bed.beat_sync === true ? "No steady beat in the music, so no strong-beat suggestions." : null)
+    : "No standout kick in the part of the song this reel plays.";
+  transitionCuts = (cuts?.segments || []).slice(1).map(s => s.out_in_f).filter(Number.isInteger);
+  holdCuts = (cuts?.segments || []).map(s => s.out_in_f).filter(Number.isInteger);
+  transitionTotal = cuts?.segments?.at(-1)?.out_out_f ?? null;
   boardConfig = config || {};
   sceneCatalog = Array.isArray(catalog) ? catalog : [];
   const clips = await reelJson("broll/clips.json");
@@ -641,6 +1006,8 @@ async function init() {
   if (doc.sent_at) setStatus("sent", "Last sent " + new Date(doc.sent_at).toLocaleString());
   else setStatus("saved", "All changes saved.");
   sendBtn.addEventListener("click", send);
+  sendBtn.querySelector("[data-loading]").remove();
+  sendBtn.disabled = false;
 }
 init();
 </script>

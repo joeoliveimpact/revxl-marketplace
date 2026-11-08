@@ -74,7 +74,7 @@ A GPU read that fails is never a change: `nvidia-smi` times out, exits non-zero,
 ## Where the files live
 
 - **In the workspace (the cwd):** `editor/editor.config.json` and `editor/.platform.json`.
-- **In the state folder:** the machine-level toolchain and models, plus the saved style `styles/default.json`. The state folder is `%LOCALAPPDATA%\revxl\editor-superengine` on Windows and `~/Library/Application Support/revxl/editor-superengine` on macOS. When that Windows path is over 115 characters, the setup installs into a shorter folder (`EDITOR_SE_HOME`) and leaves `home-pointer.txt` in the usual one, naming it; the scripts follow it.
+- **In the state folder:** the machine-level toolchain and models, plus the saved styles folder: `styles/default.json`, named styles and `_index.json` (names and the default). The state folder is `%LOCALAPPDATA%\revxl\editor-superengine` on Windows and `~/Library/Application Support/revxl/editor-superengine` on macOS. When that Windows path is over 115 characters, the setup installs into a shorter folder (`EDITOR_SE_HOME`) and leaves `home-pointer.txt` in the usual one, naming it; the scripts follow it.
 
 ## editor.config.json (setup and machine settings only; taste lives in the saved style)
 

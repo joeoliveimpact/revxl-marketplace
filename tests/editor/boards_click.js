@@ -4,6 +4,7 @@
 //   {do: "frame", sel, wait?, waitFn?}   switch every later action into the iframe at sel
 //   {do: "top"}                          back to the top page
 //   {do: "click", sel}                   centre it, then click (inside the current frame)
+//   {do: "domclick", sel}                the element's own click(), immune to layout shifts under the pointer
 //   {do: "press", key, ctrl?, shift?}    one key press with modifiers
 //   {do: "set", sel, value}              set an input's value, fire "input" and "change"
 //   {do: "seek", t}                      the page's <video id="v"> to t seconds (waits for its metadata and the seek)
@@ -51,12 +52,21 @@ const {pathToFileURL} = require("url");
       } else if (a.do === "click") {
         await ctx.$eval(a.sel, (e) => e.scrollIntoView({block: "center"}));
         await ctx.click(a.sel);
+      } else if (a.do === "domclick") {
+        await ctx.$eval(a.sel, (e) => e.click());
       } else if (a.do === "press") {
         if (a.ctrl) await page.keyboard.down("Control");
         if (a.shift) await page.keyboard.down("Shift");
         await page.keyboard.press(a.key);
         if (a.shift) await page.keyboard.up("Shift");
         if (a.ctrl) await page.keyboard.up("Control");
+      } else if (a.do === "slider") {   // G2-c: exercise the real Tweakpane pointer control
+        await ctx.$eval(a.sel, e => e.scrollIntoView({block: "center"}));
+        const bounds = await (await ctx.$(a.sel)).boundingBox();
+        await page.mouse.move(bounds.x + bounds.width * 0.25, bounds.y + bounds.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(bounds.x + bounds.width * a.fraction, bounds.y + bounds.height / 2, {steps: 8});
+        await page.mouse.up();
       } else if (a.do === "set") {
         await ctx.$eval(a.sel, (e, v) => {
           e.value = String(v);

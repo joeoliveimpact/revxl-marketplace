@@ -1,4 +1,6 @@
 [
+  {"ask": "pick a cover for my reel", "expect": "editor-superengine:reel-cover"},
+  {"ask": "Make trial reels from this approved cut, each with one different opening", "expect": "editor-superengine:reel-trials"},
   {"ask": "Add B-roll: use my own clip as a cutaway over the second point", "expect": "editor-superengine:reel-broll"},
   {"ask": "Generate B-roll: make an AI cutaway for the garden beat", "expect": "editor-superengine:reel-broll"},
   {"ask": "I just installed this editor thing, is it ready to go on my laptop?", "expect": "editor-superengine:editor-doctor"},

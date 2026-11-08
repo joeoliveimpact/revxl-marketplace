@@ -22,6 +22,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from _media import SR, decode, write_wav, workspace, write_json, rt  # noqa: E402
 import cost_ask, measure_sfx  # noqa: E402
+from safe_fetch import download, write_new  # noqa: E402
 
 INDEX = "library-index.json"
 TRIM_DB, KEEP_S = -50.0, 0.01
@@ -56,17 +57,10 @@ def fetch(a):
         return 0
     lib = library()
     fd, tmp = tempfile.mkstemp(suffix=".zip")
+    os.close(fd)
     try:
-        h, n = hashlib.sha256(), 0
-        with os.fdopen(fd, "wb") as out, urllib.request.urlopen(m["url"], timeout=300) as r:
-            if (r.headers.get("Content-Type") or "").split(";")[0].strip().lower() == "text/html":
-                print("The download link opened a web page, not the sound pack, so nothing was unpacked.")
-                return 1
-            for chunk in iter(lambda: r.read(1 << 20), b""):
-                h.update(chunk)
-                n += len(chunk)
-                out.write(chunk)
-        if n != m.get("bytes") or h.hexdigest() != m.get("sha256"):
+        n = download(m["url"], tmp, m.get("bytes"))
+        if n != m.get("bytes") or cost_ask.file_sha256(tmp) != m.get("sha256"):
             print("The sound library download didn't match what was expected (%s), so nothing was unpacked. "
                   "Try again later." % ("size" if n != m.get("bytes") else "checksum"))
             return 1
@@ -82,9 +76,9 @@ def fetch(a):
             for i in names:
                 dest = (lib / i.filename).resolve()
                 dest.parent.mkdir(parents=True, exist_ok=True)
-                dest.write_bytes(z.read(i))
-    except (OSError, zipfile.BadZipFile) as e:
-        print("The sound library couldn't be downloaded or opened (%s). Try again later." % type(e).__name__)
+                write_new(dest, z.read(i))
+    except (OSError, ValueError, zipfile.BadZipFile) as e:
+        print("The sound library couldn't be downloaded or opened: %s" % str(e).strip().splitlines()[0])
         return 1
     finally:
         if os.path.exists(tmp):
@@ -130,16 +124,15 @@ def trim(x):
 def add(a):
     src = Path(a.file)
     lib = library()
-    dest = lib / (src.stem + ".wav")
-    if dest.exists():
-        print("The library already has a sound named %s. Rename the file and add it again." % dest.name)
-        return 1
     y = trim(decode(src))
     if y is None:
         print("%s is silent, so it wasn't added." % src.name)
         return 1
     lib.mkdir(parents=True, exist_ok=True)
-    write_wav(dest, y)
+    with tempfile.TemporaryDirectory(prefix="sound-add-") as folder:
+        encoded = Path(folder) / "sound.wav"
+        write_wav(encoded, y)
+        dest = write_new(lib / (src.stem + ".wav"), encoded.read_bytes())
     row = measure_sfx.measure(dest)
     index = load_index(lib)
     index.setdefault("files", {})[dest.relative_to(lib).as_posix()] = {"sha256": cost_ask.file_sha256(dest), **row}

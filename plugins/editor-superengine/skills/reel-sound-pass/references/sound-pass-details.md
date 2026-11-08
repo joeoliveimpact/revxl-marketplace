@@ -12,8 +12,8 @@ Packages: the scripts need numpy and ffmpeg, which the editor install puts in th
 
 1. **Sound is finished after picture lock.** Cue times are spotted against the locked picture. If the picture
    changes, the cue list is stale: open the board again.
-2. **A ratio the client set by ear is frozen.** Nothing re-levels it: no leveler on the mix, no ducking except the speech dip the
-   client set on the board, no "background/foreground"
+2. **A ratio the client set by ear is frozen.** Nothing re-levels it: no leveler on the mix; the board's voice carve
+   starts at strength 0.8 and lowers only the music's voice bands, with the speech dip as its fallback, and no "background/foreground"
    processing. Auphonic's multitrack mode always re-levels each track to its own targets
    (a quiet bed came back about 12 dB louder, a hot one about 20 dB quieter) and no setting turns that off, so
    board-mixed tracks never go to multitrack.

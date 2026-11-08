@@ -35,6 +35,7 @@ def catalog():
         if not folder.is_dir() or scene_check.scene_problems(folder):
             continue
         spec = json.loads((folder / "scene.json").read_text(encoding="utf-8"))
+        if spec["category"] == "cover-title": continue
         item = {k: spec[k] for k in ("id", "kind", "category", "dur")}
         item["slots"] = [{"name": n, "maxChars": s["maxChars"]} for n, s in spec["slots"].items()]
         item["params"] = [dict(name=n, **{k: p[k] for k in ("type", "min", "max", "enum", "default") if k in p})

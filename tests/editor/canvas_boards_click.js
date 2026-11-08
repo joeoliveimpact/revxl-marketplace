@@ -32,6 +32,7 @@ function readPage() {
       checked: !!q("input[type=radio][name=pick]:checked", s), note: val(q("textarea[name=note]", s))})),
     sketches: all("#sketches article.sketch[data-id]").map((a) => ({id: a.dataset.id, note: val(q("textarea[name=note]", a))})),
     note: val(q("#note")),
+    send: q("#send") ? {disabled: q("#send").disabled, loading: !!q("#send [data-loading]")} : null,
     lock: q("#lock") ? {disabled: q("#lock").disabled} : null,
     locked: !!q("#directions") && q("#directions").classList.contains("locked"),
     localStorage: localStorage.length,
@@ -67,8 +68,16 @@ function readPage() {
         await page.keyboard.press("Backspace");
         await page.type(a.sel, a.text);
       } else if (a.do === "click") {   // centre it first, as a person would: the fixed Send bar covers the bottom
+        if (a.sel === "#send") await page.waitForSelector("#send:not([disabled])");
         await page.$eval(a.sel, (e) => e.scrollIntoView({block: "center"}));
         await page.click(a.sel);
+      } else if (a.do === "slider") {   // G2-c: move the actual Tweakpane slider with the pointer
+        await page.$eval(a.sel, e => e.scrollIntoView({block: "center"}));
+        const bounds = await (await page.$(a.sel)).boundingBox();
+        await page.mouse.move(bounds.x + bounds.width * 0.25, bounds.y + bounds.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(bounds.x + bounds.width * a.fraction, bounds.y + bounds.height / 2, {steps: 8});
+        await page.mouse.up();
       } else if (a.do === "waitState") {
         const sel = `#status[data-state="${a.state}"]`;
         if (a.change)

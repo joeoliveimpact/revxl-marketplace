@@ -8,6 +8,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import wave
 from pathlib import Path
 from unittest.mock import patch
 
@@ -71,6 +72,21 @@ def sample(row):
 
 def case_table(ss):
     rows = {row["key"]: row for row in ss.FIELDS}
+    for key, plain in (("cut.pause_ms", "Pause between lines"), ("cut.nudge_ms", "Cut timing")):
+        assert rows[key] == dict(key=key, default=None, where="saved style",
+            ladder=["reel", "saved", "ask"], plain=plain, type="number",
+            **({"min": 0, "max": 150} if key == "cut.nudge_ms" else {}))
+    for value in (0, 40, 150):
+        ss.validate({"cut": {"nudge_ms": value}})
+    for value in (-40, 150.01):
+        try:
+            ss.validate({"cut": {"nudge_ms": value}})
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"Out-of-range cut timing accepted: {value}")
+    assert rows["music.bed_gain_db"] == dict(key="music.bed_gain_db", default=None,
+        where="saved style", ladder=["reel", "saved", "ask"], plain="Music level", type="number")
     assert len(rows) == len(ss.FIELDS), "Duplicate option rows"
     for row in ss.FIELDS:
         assert {"key", "default", "where", "ladder", "plain"} <= row.keys()
@@ -80,8 +96,8 @@ def case_table(ss):
         assert value != row["default"], row["key"]
         put(data, row["key"], value)
         ss.save(data)
-        assert get(ss.load(), row["key"]) == value, row["key"]
-        assert ss.resolve(row["key"], saved=ss.load()) == (value, "saved"), row["key"]
+        assert get(ss.load(name="default"), row["key"]) == value, row["key"]
+        assert ss.resolve(row["key"], saved=ss.load(name="default")) == (value, "saved"), row["key"]
         assert ss.resolve(row["key"], saved={}) == (None, "ask"), row["key"]
     st = module("reel-canvas-build", "styles")
     defaults = st.check_style({"style": "punch-in"}, "reel", 10)
@@ -118,9 +134,9 @@ def case_table(ss):
     ss.save(data)
     raw = ss.path().read_bytes()
     assert b"\r" not in raw and raw.endswith(b"\n") and "caf\u00e9" in raw.decode("utf-8")
-    assert ss.load() == {**data, "schema": 1}
+    assert ss.load(name="default") == {**data, "schema": 1}
     assert data["schema"] == 99
-    assert raw == (json.dumps(ss.load(), ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    assert raw == (json.dumps(ss.load(name="default"), ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode("utf-8")
     before = raw
     for bad in ({"font": 1}, {"edit_style": []}, {"look": {"strength": True}},
                 {"caption_style": {"line_breaks": 1}}, {"look": {"strength": float("nan")}},
@@ -140,7 +156,7 @@ def case_table(ss):
         else:
             raise AssertionError("Failed replacement was swallowed")
     assert ss.path().read_bytes() == before
-    assert list(ss.path().parent.iterdir()) == [ss.path()], "Temporary write was left behind"
+    assert set(ss.path().parent.iterdir()) == {ss.path(), ss.path().with_name("_index.json")}, "Temporary write was left behind"
     assert doctor.ensure_style(ss.path().parents[1]) is False
     assert ss.path().read_bytes() == before
     fresh = ss.path().parents[1] / "doctor"
@@ -162,8 +178,14 @@ def case_ladder(ss):
 
 
 def case_readback(ss):
+    timing = ss.readback({"cut": {"pause_ms": 120, "nudge_ms": 40}})
+    assert "Pause between lines: 120 ms" in timing and "Cut timing: 40 ms later" in timing
+    for nudge, expected in ((40, ["Cut timing: 40 ms later"]), (-40, []), (0, []),
+                            (200, ["Cut timing: 150 ms later"])):
+        lines = ss.readback({"cut": {"nudge_ms": nudge}})
+        assert [line for line in lines if line.startswith("Cut timing:")] == expected, lines
     full = {"style_id": "coach", "accent": "#FFD84D", "font": "Montserrat",
-            "look": {"id": "warm", "strength": 0.6}, "transitions": {"allowed": ["fade"], "sfx_pair": "soft"},
+            "look": {"id": "warm", "strength": 0.6}, "transitions": {"allowed": ["fade"], "sfx_pair": True},
             "edit_style": {"style": "punch-in", "punch_scale": 1.12},
             "caption_style": {"style": "bold-pop"}, "cut": {"default_attempt": "first"}}
     lines = ss.readback(full)
@@ -201,20 +223,20 @@ def case_bad(ss):
         ss.path().write_bytes(raw)
         output = io.StringIO()
         with contextlib.redirect_stderr(output):
-            assert ss.load() == {}
+            assert ss.load(name="default") == {}
         assert output.getvalue().strip() == note
     with patch.object(Path, "read_text", side_effect=PermissionError("test unreadable file")):
         output = io.StringIO()
         with contextlib.redirect_stderr(output):
-            assert ss.load() == {}
+            assert ss.load(name="default") == {}
         assert output.getvalue().strip() == note
     ss.path().unlink()
     output = io.StringIO()
     with contextlib.redirect_stderr(output):
-        assert ss.load() == {}
+        assert ss.load(name="default") == {}
     assert output.getvalue() == ""
-    for name in ("", "../default", "Default", "a_b", "a/b", "a\\b", "a.json", "a\n", None):
-        for fn in (ss.path, ss.load, lambda n: ss.save({}, n)):
+    for name in ("", "../default", "Default", "a_b", "a/b", "a\\b", "a.json", "a\n"):
+        for fn in (ss.path, lambda n: ss.load(name=n), lambda n: ss.save({}, n)):
             try:
                 fn(name)
             except ValueError as e:
@@ -228,17 +250,48 @@ def case_readers(ss):
             "caption_style": {"style": "boxed"}, "accent": "#123ABC", "font": "Montserrat",
             "cut": {"default_attempt": "first"}}
     ss.save(data)
+    reel = ss.path("default").parent / "reader-reel"
+    ss.pick(reel, "default")
     st = module("reel-canvas-build", "styles")
     cap = module("reel-captions", "captions")
     compose = module("reel-canvas-build", "compose")
     board = module("reel-first-cuts", "make_board")
     with patch.object(ss, "load", wraps=ss.load) as reader:
-        assert st.pick_style({}) == (data["edit_style"], "saved")
-        assert cap.pick_style({}) == (data["caption_style"], "saved")
-        assert cap.check_style({"style": "clean"})["accent"] == "#123ABC"
-        assert compose.saved_brand() == {"accent": "#123ABC", "font": "Montserrat"}
-        assert board.default_attempt() == "first"
-        assert reader.call_count == 5, "A reader bypassed the shared loader"
+        assert st.pick_style({}, reel=reel) == (data["edit_style"], "saved")
+        assert cap.pick_style(reel, {}) == (data["caption_style"], "saved")
+        assert cap.check_style({"style": "clean"}, reel=reel)["accent"] == "#123ABC"
+        assert compose.saved_brand(reel) == {"accent": "#123ABC", "font": "Montserrat"}
+        assert board.default_attempt(reel) == "first"
+        assert board.pause_default(reel) == 150
+        assert reader.call_count == 6, "A reader bypassed the shared loader"
+        assert all(call.args == (reel,) for call in reader.call_args_list)
+    ss.save({**data, "cut": {"default_attempt": "first", "pause_ms": 120}})
+    assert board.pause_default(reel) == 120
+    # Exercise the actual board config: learned presets have integer labels in numeric order.
+    with tempfile.TemporaryDirectory(dir=ss.path().parent) as tmp:
+        root = Path(tmp)
+        ss.pick(root, "default")
+        wav = root / "take.wav"
+        with wave.open(str(wav), "wb") as audio:
+            audio.setparams((1, 2, 16000, 0, "NONE", "not compressed"))
+            audio.writeframes(b"\0\0" * 1600)
+        bem = module("reel-first-cuts", "build_edit_map")
+        em = dict(duration=.1, audio_sha256=bem.audio_sha256(str(wav)), calibration={},
+                  words=[], events=[], silences=[], word_list_hash=bem.word_list_hash([]))
+        (root / "map.json").write_bytes(json.dumps(em).encode("utf-8"))
+        (root / "script.md").write_bytes(b"")
+        (root / "shots.json").write_bytes(b"{}")
+        argv = ["make_board.py", "--script", str(root / "script.md"), "--take", f"1:{root / 'map.json'}:{wav}",
+                "--shots", str(root / "shots.json"), "--reel", "presets", "-o", str(root)]
+        for value in (120.0, 300.0, 580.0):
+            ss.save({"cut": {"pause_ms": value}})
+            with patch.object(sys, "argv", argv), contextlib.redirect_stdout(io.StringIO()):
+                board.main()
+            cfg = json.loads((root / "cut-board.config.json").read_text(encoding="utf-8"))
+            presets = cfg["gap_presets"]
+            assert cfg["gap_default_ms"] == value and [str(int(value)), value] in presets
+            assert presets[-1] == ["As spoken", None]
+            assert [ms for _, ms in presets[:-1]] == sorted(ms for _, ms in presets[:-1])
     assert st.pick_style({"edit_style": {"style": "layout-switch"}})[1] == "reel"
     assert cap.pick_style({"caption_style": {"style": "clean"}})[1] == "reel"
     assert cap.check_style({"style": "clean", "accent": "#ABCDEF"})["accent"] == "#ABCDEF"
@@ -253,7 +306,7 @@ def case_nonobject(ss):
         ss.path().write_bytes(raw)
         output = io.StringIO()
         with contextlib.redirect_stderr(output):
-            assert ss.load() == {}
+            assert ss.load(name="default") == {}
         assert output.getvalue().strip() == ss.NOTE
         with contextlib.redirect_stderr(io.StringIO()):
             try:
@@ -299,7 +352,7 @@ def case_unreadable_writes(ss):
                 ("standing_notes.py", ["add", "Keep my words", "--unmatched"]),
                 ("standing_notes.py", ["match", "a-note-id", "--key", "caption_style.style", "--value", '"boxed"']),
                 ("standing_notes.py", ["remove", "a-note-id"]),
-                ("saved_style.py", ["save-from-reel", str(reel), "--workspace", str(root / "workspace")]),
+                ("saved_style.py", ["save-from-reel", str(reel), "--name", "default", "--workspace", str(root / "workspace")]),
                 ("saved_style.py", ["restore", "default@v1"])):
             result = subprocess.run([sys.executable, "-X", "utf8", "-I", str(SKILLS / "_shared" / script), *args],
                                     capture_output=True, encoding="utf-8", timeout=30)
