@@ -21,8 +21,6 @@ import {
   assertDecision,
   assertCounted,
   assertNotPlain,
-  assertMatch,
-  assertNoMatch,
 } from "../lib.mjs";
 
 // No API key is needed: the guard never calls the API. Transcript fixtures strip PATH and
@@ -77,31 +75,27 @@ export default [
   },
   {
     id: "R5-single-transcript",
-    desc: "a single transcript call asks, with the per-unit price and the cheaper route, and never denies",
+    desc: "a single transcript call is counted at its per-unit worst case, 3, and passes silently within the limit: never denied for being a transcript, never blocked (D28a: counted, not blocked)",
     fn() {
       const r = run(`curl -s "${V1}youtube/video/${TSCRIPT}?id=abc"`, NOLOCAL);
-      assertDecision(r, "ask", "transcript policy is ASK-with-redirect, never deny and never silent");
-      assertMatch(r, /bills 3 credits PER video — 100 of them = 300 credits/, "mandatory per-unit price");
-      assertMatch(r, /Cheaper first: GET youtube\/video\/subtitles/, "mandatory cheaper route");
-      assertNoMatch(r, /I see /, "no local-route claim when no key and no binary are detected");
+      assertCounted(r, 3, "the YouTube transcript per-unit price, 3, counted silently");
     },
   },
   {
     id: "R6-unpriced-cohorts",
-    desc: "an unpriced endpoint asks and refuses to invent a number",
+    desc: "an unpriced endpoint is counted at 0 (no invented number: a stated LIMIT, D28a) and passes silently within the limit",
     fn() {
       const r = run(`curl -s "${V1}cohorts?segment=abc"`);
-      assertDecision(r, "ask", "unpriced must ask");
-      assertMatch(r, /UNPRICED endpoint/, "unpriced wording");
-      assertMatch(r, /do not guess a number/, "must not invent a price");
+      assertDecision(r, null, "an unpriced call is not denied for being unpriced");
+      assert(r.raw === "" && r.state && r.state.spent === 0, `counted 0, nothing invented, read ${r.stateRaw}`, r);
     },
   },
   {
     id: "R7-shellvar-failsafe",
-    desc: "host in a variable => not a plain curl => the not-plain ask, nothing visible to count (R14a.2 folds the shell-variable ask into it)",
+    desc: "host in a variable => not a plain curl => denied with M_NOTPLAIN before anything is counted (R14a.2; D28)",
     fn() {
       const r = run(`H=${HOST}; curl -s "https://$H/v1/prism/creator-vet?handle=abc"`);
-      assertNotPlain(r, 0, "no readable /v1/ URL must fail SAFE");
+      assertNotPlain(r, "no readable /v1/ URL must fail SAFE");
       assert(!r.stateWritten, "the fail-safe path must not write the counter", r);
     },
   },
@@ -112,9 +106,9 @@ export default [
       assertCounted(run(`curl -s "${V1}amazon/shop?q=a"`), 1, "control without deep_scan is the 1cr base");
       const ds = run(`curl -s "${V1}amazon/shop?q=a&deep_scan=true"`);
       assertCounted(ds, 15, "unmeasured deep_scan holds the conservative floor of 15");
-      // The pin is named in the ask; balance unknown makes this call ask (R14a).
+      // Balance unknown (D28a: the fallback limit of 500): the measured 6 is counted, silently.
       const measured = run(`curl -s "${V1}tiktok/comment?url=a&deep_scan=true"`, { balance: null });
-      assertMatch(measured, /pins this call at 6 credits/, "a measured 6 beats the guessed 15");
+      assertDecision(measured, null, "within the fallback limit nothing is decided");
       assert(quoted(measured.state) === 6, `the measured 6 is what is counted, read ${measured.stateRaw}`, measured);
     },
   },

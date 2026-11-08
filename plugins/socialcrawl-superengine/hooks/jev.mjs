@@ -26,6 +26,9 @@
  *
  * THE INVARIANT — the only request this file can make is a POST to DECISIONS. decisionsUrl()
  * builds it and throws on anything else before a transport is handed a URL (ledgerUrl's pattern).
+ * One exception: JEV_API_BASE (a plain http(s) URL, e.g. Aperture's key-injecting OpenRouter
+ * connector) moves the POST to <JEV_API_BASE>/alpha/decisions, the claude-x-jev runner's route; no
+ * key is read or sent then, because the proxy adds it. Every request carries provider zdr + deny.
  * The credit guard hooks the shell and never sees this file's calls, so the lock lives here.
  *
  * FROZEN TEXT. The intake questions, the worth Score shape, the model pin and both lines are
@@ -154,6 +157,18 @@ export function decisionsUrl(path = DECISIONS_PATH) {
   return url;
 }
 
+/* JEV_API_BASE: the proxy base, or null for OpenRouter direct. Anything but a plain http(s) URL is refused. */
+export function proxyBase(env = process.env) {
+  const raw = String(env.JEV_API_BASE || "").trim().replace(/\/+$/, "");
+  if (!raw) return null;
+  let u = null;
+  try { u = new URL(raw); } catch { /* refused below */ }
+  if (!u || !/^https?:$/.test(u.protocol) || u.username || u.password || /[?#]/.test(raw) || CONTROL.test(raw)) {
+    throw new JevError(6, "JEV_API_BASE is not a plain http(s) URL; nothing was sent");
+  }
+  return raw;
+}
+
 /* ------------------------------------------------------------------- key and transport */
 /* A second line, a CR or a NUL can't ride in a header, and fetch's error quotes the header, key and all. */
 const CONTROL = /[\u0000-\u001f\u007f]/;
@@ -172,7 +187,7 @@ export function resolveKey(env = process.env, home = homedir()) {
 async function httpsTransport(url, key, body) {
   const res = await fetch(url, {
     method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    headers: key ? { Authorization: `Bearer ${key}`, "Content-Type": "application/json" } : { "Content-Type": "application/json" },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
@@ -197,15 +212,16 @@ export function assertNoPriceWords(body) {
   walk(body, "");
 }
 
-async function decide(body, key, transport) {
-  const url = decisionsUrl(); // before any transport sees a URL
+async function decide(body, key, transport, url = decisionsUrl()) { // the URL is built before any transport sees it
   assertNoPriceWords(body);
+  body = { ...body, provider: { zdr: true, data_collection: "deny" } };
   let res;
   try {
     res = await transport(url, key, body);
   } catch (e) {
     // A transport error can quote the Authorization header; the key never leaves in an error.
-    throw new JevError(6, `Jev unreachable: ${String((e && e.message) || e).split(key).join("<key>")}`);
+    const msg = String((e && e.message) || e);
+    throw new JevError(6, `Jev unreachable: ${key ? msg.split(key).join("<key>") : msg}`);
   }
   const status = res && res.status;
   if (status === 401 || status === 403) throw new JevError(4, `OpenRouter rejected the key (HTTP ${status})`);
@@ -488,12 +504,14 @@ export async function main(argv, io = {}) {
   try {
     const [mode, file, ...extra] = argv;
     if (!MODES.includes(mode) || !file || extra.length) throw new JevError(6, USAGE);
-    const key = resolveKey(env, home);
-    if (!key) throw new JevError(3, "no OpenRouter key (OPENROUTER_API_KEY or ~/.config/openrouter/api_key); nothing was sent");
+    const base = proxyBase(env);
+    const key = base ? null : resolveKey(env, home);
+    if (!key && !base) throw new JevError(3, "no OpenRouter key (OPENROUTER_API_KEY or ~/.config/openrouter/api_key); nothing was sent");
+    const url = base ? `${base}/alpha/decisions` : decisionsUrl();
     // A leading ~ is the home directory: SKILL.md's no-note ask file arrives quoted, so no shell expanded it.
     const req = readRequest(file.replace(/^~(?=[\\/])/, () => home));
     const read = (p) => JSON.parse(readFileSync(p, "utf8"));
-    const call = (body) => decide(body, key, transport);
+    const call = (body) => decide(body, key, transport, url);
     let result;
     if (mode === "intake") {
       const pkg = read(PACKAGES);

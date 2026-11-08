@@ -129,7 +129,7 @@ TOKEN_CEILING_WAIVERS = {
         "6860 est; was 6164 before 0.13.0's read guard and compaction guard. "
         "Already over at HEAD. Trim to <5000 tracked in SKLLPLG-245",
     "socialcrawl-superengine/socialcrawl":
-        "8590 est; pre-existing 2026-09-01 baseline, untriaged. SKLLPLG-255",
+        "10384 est; pre-existing 2026-09-01 baseline, untriaged. SKLLPLG-255",
     "profile-optimization-superengine/profile-ig-audit":
         "7753 est; pre-existing 2026-09-01 baseline, untriaged. SKLLPLG-255",
     "profile-optimization-superengine/profile-fb-audit":
@@ -145,7 +145,7 @@ TOKEN_CEILING_WAIVERS = {
 ABS_PATH_PATTERNS = ("C:\\Users", "C:/Users", "/Users/", "/home/")
 
 RX_PLUGIN_ROOT = re.compile(r"\$\{CLAUDE_PLUGIN_ROOT\}/([^\s`\"'\)\]\},;:*]+)")
-RX_HOOK_SCRIPT = re.compile(r"[^\s\"']*\.(?:py|sh|js|mjs|cjs|ps1)")
+RX_HOOK_SCRIPT = re.compile(r"[^\s\"']*\.(?:py|sh|js|mjs|cjs|ps1)(?![A-Za-z0-9])")
 
 # Advertised slash-commands. Deliberately narrow -- backticked `/name`, bold
 # **/name**, or a "- /name" bullet -- so file paths and URL fragments can't
