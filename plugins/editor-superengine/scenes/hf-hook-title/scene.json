@@ -8,7 +8,11 @@
   "dur": [2, 6],
   "params": {
     "accent": {"type": "color", "default": "#35c8d9", "hint": "the title fill; the red/blue fringe stays fixed"},
-    "font": {"type": "string", "default": "Inter"}
+    "font": {"type": "string", "default": "Inter"},
+    "entrance": {"type": "string", "default": "fade", "enum": ["fade", "none"], "hint": "none = complete on its first frame (for a reel that opens on it)"},
+    "top": {"type": "number", "default": 220, "hint": "title box top in pixels"},
+    "height": {"type": "number", "default": 1250, "hint": "title box height in pixels"},
+    "size": {"type": "number", "default": 120, "min": 56, "hint": "title font size in pixels"}
   },
   "source": "HyperFrames registry/blocks/yt-prism-title (v0.8.184)",
   "licence": "Apache-2.0"

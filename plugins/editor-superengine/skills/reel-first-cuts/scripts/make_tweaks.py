@@ -112,8 +112,8 @@ def main():
     em = json.loads(path.read_text(encoding="utf-8"))
     fps, speed = cuts["fps"], cuts["speed"]
     cmap = cut_map(cuts)
-    cut_words = [dict(id=w["id"], w=w["word"], t=round(w["out_anchor"], 3))
-                 for w in word_map.build(cuts, em)["words"]]
+    cut_words = [dict(id=w["id"], w=w["word"], t=round(w["out_start"], 3))
+                 for w in word_map.build(cuts, em, word_map.read_edl(out / "work/edl.json"))["words"]]
     pk = peaks(a.cut)
     work = Path(a.work)
     listen = (work / "listen.txt").read_text(encoding="utf-8") if (work / "listen.txt").exists() else ""

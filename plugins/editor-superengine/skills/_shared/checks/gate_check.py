@@ -251,13 +251,103 @@ def run(ctx):
     return rows
 
 
+def selftest():
+    import tempfile
+    from unittest.mock import patch
+    sys.path.insert(0, str(HERE))
+    import layout_check
+    with tempfile.TemporaryDirectory() as home:
+        reel = Path(home)
+        (reel / "work").mkdir()
+        def save(name, data):
+            (reel / name).write_text(json.dumps(data), encoding="utf-8")
+        save("work/cuts.json", {"fps": "25/1", "segments": [{"out_in_f": 0, "out_out_f": 100}]})
+        head = (200, 600, 880, 1900)
+        face = {"track": {"total_f": 100, "keys": [{"f": 0}], "tweens": []},
+                "segments": [(0, 100)], "boxes": {0: head}, "median_box": head,
+                "layouts": {"full": (0, 0, 1080, 1920)}, "stills": [], "notes": []}
+        hook = dict(text="Hi", start_f=0, end_f=50, spoken=False, word_count=1, shown_words=[])
+        for start, y, expected in ((0, 610, None), (49, 610, None), (0, 850, "word-covered"),
+                                   (50, 610, "word-covered"), (0, 670, "caption-on-face")):
+            chunk = dict(i=0, start_f=start, end_f=start + 10, text="Hi", box=[60, y, 960, y + 134],
+                         words=[dict(w=0, text="Hi", start_f=start, mark=None, punch=False)])
+            save("work/captions.json", {"style": {"style": "clean"}, "chunks": [chunk], "hooks": [hook]})
+            with patch.object(layout_check.placer, "load_ctx", return_value=face):
+                rows = layout_check.run({"reel_dir": reel})
+            if expected is None:
+                assert not any(r["level"] == "block" for r in rows), rows
+            else:
+                assert any(r["check"] == expected for r in rows), (start, y, rows)
+        # The Send still names a scene, but this render drew a different-text plain hook.
+        save("beat-map-selection.json", {"beats": [{"start_f": 0, "end_f": 100,
+             "speech_anchor": {"text": "Claude just killed Instagram."}, "scene": {"id": "hf-hook-title"}}]})
+        head = (200, 404, 880, 1580)
+        face.update(boxes={0: head}, median_box=head)
+        record = dict(schema=1, kind="plain", text="Watch this before you post", start_f=0, end_f=100,
+                      box=[90, 280, 930, 445.6], spoken=False, words_shown=0)
+        for y, expected in ((1336, None), (850, "word-covered")):
+            chunk = dict(i=0, start_f=22, end_f=32, text="Hi", box=[60, y, 960, y + 134],
+                         words=[dict(w=0, text="Hi", start_f=22, mark=None, punch=False)])
+            # No legacy hooks in this document: ignoring hook.json must fail the low-caption case.
+            save("work/captions.json", {"style": {"style": "clean"}, "chunks": [chunk]})
+            save("work/hook.json", record)
+            with patch.object(layout_check.placer, "load_ctx", return_value=face):
+                rows = layout_check.run({"reel_dir": reel})
+            if expected is None:
+                assert not any(r["level"] == "block" for r in rows), rows
+                (reel / "work/hook.json").unlink()
+                with patch.object(layout_check.placer, "load_ctx", return_value=face):
+                    legacy = layout_check.run({"reel_dir": reel})
+                assert any(r["check"] in ("word-covered", "caption-on-face") for r in legacy), legacy
+            else:
+                assert any(r["check"] == expected for r in rows), rows
+        # A saved fitted scene is a hook obstacle even without legacy doc hooks.
+        head = (200, 700, 880, 1450)
+        face.update(boxes={0: head}, median_box=head)
+        record.update(kind="scene", text="Nobody tells you this about editing",
+                      end_f=50, box=[60, 220, 960, 660])
+        save("work/hook.json", record)
+        for start, y, collision in ((0, 300, True), (0, 1336, False), (50, 300, False)):
+            chunk = dict(i=0, start_f=start, end_f=start + 10, text="Hi", box=[60, y, 960, y + 134],
+                         words=[dict(w=0, text="Hi", start_f=start, mark=None, punch=False)])
+            save("work/captions.json", {"style": {"style": "clean"}, "chunks": [chunk]})
+            with patch.object(layout_check.placer, "load_ctx", return_value=face):
+                rows = layout_check.run({"reel_dir": reel})
+            assert any(r["check"] == "text-collision" and r["level"] == "block" for r in rows) == collision, rows
+        # Only a kept, fitted hf-hook-title is a scene hook for placement and QA.
+        head = (200, 700, 880, 1250)
+        face.update(boxes={0: head}, median_box=head)
+        for scene_id, y, collision in (("hook-title", 1336, False), ("hf-hook-title", 300, True)):
+            beat = dict(start_f=0, end_f=75, scene=dict(id=scene_id,
+                        slots={"title": "Nobody tells you this about editing"}, params={}))
+            inp = dict(beats=[beat], hooks=[])
+            layout_check.compose.place_hook_titles(inp, face)
+            save("beat-map-selection.json", {"beats": [beat]})
+            save("work/hook.json", layout_check.compose.hook_record(inp))
+            chunk = dict(i=0, start_f=10, end_f=20, text="Hi", box=[60, y, 960, y + 134],
+                         words=[dict(w=0, text="Hi", start_f=10, mark=None, punch=False)])
+            save("work/captions.json", {"style": {"style": "clean"}, "chunks": [chunk]})
+            with patch.object(layout_check.placer, "load_ctx", return_value=face):
+                rows = layout_check.run({"reel_dir": reel})
+            blocks = [r for r in rows if r["level"] == "block"]
+            if collision:
+                assert any(r["check"] == "text-collision" and r["at"] == 0.4 for r in blocks), rows
+            else:
+                assert not blocks, rows
+    print("selftest ok")
+    return 0
+
+
 def main():
     ensure_utf8_output()
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("reel_dir", nargs="?", type=Path)
     ap.add_argument("--render", type=Path)
     ap.add_argument("--list", action="store_true")
+    ap.add_argument("--selftest", action="store_true")
     args = ap.parse_args()
+    if args.selftest:
+        return selftest()
     if args.list:
         for name, entry in GATE_TESTS.items():
             detail = " + ".join(entry.get("modules", ())) or entry.get("reason", "runs here")

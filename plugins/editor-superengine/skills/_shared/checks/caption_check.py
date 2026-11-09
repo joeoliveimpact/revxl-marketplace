@@ -8,6 +8,7 @@ where}], with optional at (seconds). ctx = {reel_dir, fps, cuts, beats, render}.
 Only reel_dir is used: captions, cut words, fps and duration come from the saved
 work/captions.json, work/edit_map.cut.json and work/cuts.json. Nothing is written.
 Missing captions or an empty caption plan declaring every word dropped passes.
+Words supplied by a saved, matching spoken hook count as shown.
 Boxes are placer's (left, top, right, bottom) corners in 1080x1920 master pixels.
 
 Blocks: caption-file (unreadable inputs), caption-word (changed speech),
@@ -26,6 +27,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve()
 sys.path.insert(0, str(HERE.parents[1]))
+sys.path.insert(0, str(HERE.parents[2] / "reel-canvas-build/scripts"))
 from win_encoding import ensure_utf8_output  # noqa: E402
 
 PHASE = "pre"
@@ -136,7 +138,12 @@ def run(ctx):
         return _file("The cut's frame rate or length cannot be read. Make the cut again before checking captions.")
 
     allowance = DRIFT_S + 0.5 / fps
-    rows, shown = [], {}
+    import compose
+    try:
+        hook_shown = compose.hook_shown_positions(compose.saved_hooks(work.parent, doc.get("hooks", [])), words)
+    except (ValueError, KeyError, TypeError):
+        return _file("The saved hook words do not match the speech. Make the captions again.")
+    rows, shown = [], {w: ("hook", words[w]["start"]) for w in hook_shown}
     for index, chunk in enumerate(chunks):
         where = f"caption {index}"
         if not (isinstance(chunk, dict) and isinstance(chunk.get("words"), list)
@@ -218,9 +225,43 @@ def run(ctx):
     return rows
 
 
+def selftest():
+    import tempfile
+    from unittest.mock import patch
+    hook = dict(text="Hello!", start_f=0, end_f=38, spoken=True, word_count=1, shown_words=[0])
+    doc = {"chunks": [dict(i=0, w0=1, w1=1, start_f=10, end_f=20, text="world",
+                           words=[dict(w=1, text="world", start_f=10)])],
+           "declared_drops": [], "hooks": [hook]}
+    docs = {"captions.json": doc,
+            "edit_map.cut.json": {"words": [{"word": "Hello", "start": 0, "end": .2},
+                                             {"word": "world", "start": .4, "end": .7}]},
+            "cuts.json": {"fps": "25/1", "segments": [{"out_out_f": 50}]}}
+    with patch(__name__ + "._read", side_effect=lambda path: docs[path.name]):
+        assert run({"reel_dir": "unused"}) == []  # hook-shown words are displayed, not lost
+        hook["text"] = "Different words"
+        assert any(r["check"] == "caption-file" for r in run({"reel_dir": "unused"}))
+        doc["hooks"] = []
+        assert any(r["check"] == "caption-word-lost" for r in run({"reel_dir": "unused"}))
+        with tempfile.TemporaryDirectory() as home:
+            work = Path(home) / "work"
+            work.mkdir()
+            doc["hooks"] = [dict(hook, text="Stale opening text")]
+            record = dict(schema=1, kind="plain", text="Hello!", start_f=0, end_f=38,
+                          box=[90, 280, 930, 362.8], spoken=True, words_shown=1)
+            (work / "hook.json").write_text(json.dumps(record), encoding="utf-8")
+            assert run({"reel_dir": home}) == []  # hook.json takes priority over stale caption metadata
+            record.update(kind="none", text="", end_f=0, box=[0, 0, 0, 0], spoken=False, words_shown=0)
+            (work / "hook.json").write_text(json.dumps(record), encoding="utf-8")
+            assert any(r["check"] == "caption-word-lost" for r in run({"reel_dir": home}))
+    print("selftest ok")
+    return 0
+
+
 def main(argv=None):
     ensure_utf8_output()
     argv = sys.argv[1:] if argv is None else argv
+    if argv == ["--selftest"]:
+        return selftest()
     if len(argv) != 1:
         print("usage: caption_check.py <reel_dir>")
         return 2

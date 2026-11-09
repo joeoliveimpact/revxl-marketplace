@@ -20,7 +20,9 @@ Cuts with a takes entry read the merged work/cuts.json and each take's map, even
 of the board ruling. edit_map and edit_map_sha256 then hold take-keyed dictionaries; words carry take and
 source_id, with id qualified as tN:<source_id>. Plain single-take fields and IDs keep their existing shape.
 
-A word is kept when its source `start` falls inside a segment's source span: src_in_f/fps <= start < src_out_f/fps.
+A word is kept when its source `start` falls inside a segment's source span, except an unpicked onset in the
+last frame whose word runs past the segment's end (outward rounding's sliver). work/edl.json supplies the user's
+picked source ranges; with no readable EDL, start-based membership applies without a sliver exemption.
 `start` (the edit map's aligned start) is the anchor gaps.py places cuts from: overlaps() (gaps.py:146-147) and
 keep_edge_words() (gaps.py:160-183) test the edit map's start/end, never parakeet_start, and words with status
 "unresolved" (not in the audio) are dropped before any of that (gaps.py:433), so they are dropped here too.
@@ -46,28 +48,50 @@ def in_span(t, a, b):
     return a - EPS <= t < b - EPS
 
 
+def kept_in(word, s0, s1, fps, picked=None):
+    """Start-based membership; only a known unpicked word can be an outward-rounding sliver."""
+    return in_span(word["start"], s0, s1) and not (
+        picked is not None and not any(in_span(word["start"], a, b) for a, b in picked)
+        and word["end"] > s1 and s1 - word["start"] < 1 / fps + EPS)
+
+
+def read_edl(path):
+    """Parsed user ranges, or None when no readable EDL is known. An empty EDL is known to pick nothing."""
+    try:
+        edl = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(edl, list) or any(
+            not isinstance(c, dict) or not all(isinstance(c.get(k), (int, float)) for k in ("src_in", "src_out"))
+            for c in edl):
+        return None
+    return edl
+
+
 def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def build(cuts, edit_map):
-    """The word map's body from parsed cuts.json + edit_map.json (no file reads, no hashes)."""
+def build(cuts, edit_map, edl=None):
+    """The word map's body from parsed cuts, edit map and optional user EDL (no file reads, no hashes)."""
     fps, speed = cuts["fps"], cuts.get("speed", 1.0)
     if "takes" in edit_map:
         out = []
         for k, s in enumerate(cuts["segments"]):
             n = str(s.get("take", 1))
-            one = build(dict(fps=fps, speed=speed, segments=[s]), edit_map["takes"][n])
+            take_edl = None if edl is None else [c for c in edl if str(c.get("take", 1)) == n]
+            one = build(dict(fps=fps, speed=speed, segments=[s]), edit_map["takes"][n], take_edl)
             for w in one["words"]:
                 w.update(seg=k, take=int(n), source_id=w["id"], id=word_id(n, w["id"]))
                 out.append(w)
         return dict(version=1, fps=fps, speed=speed, words=out)
     words = [w for w in edit_map["words"] if w.get("status") != "unresolved"]
+    picked = None if edl is None else [(c["src_in"], c["src_out"]) for c in edl]
     out = []
     for w in words:
         for k, s in enumerate(cuts["segments"]):
             s0, s1, c0 = s["src_in_f"] / fps, s["src_out_f"] / fps, s["out_in_f"] / fps
-            if in_span(w["start"], s0, s1):
+            if kept_in(w, s0, s1, fps, picked):
                 out.append(dict(id=w["id"], word=w["word"].strip(), seg=k, src_start=w["start"], src_end=w["end"],
                                 out_start=round(c0 + (w["start"] - s0) / speed, 6),
                                 out_end=round(c0 + (w["end"] - s0) / speed, 6), parakeet_start=w["parakeet_start"],
@@ -166,7 +190,7 @@ def write(reel_dir):
     if src is None:
         return None
     cuts_p = Path(reel_dir) / cuts
-    m = build(json.loads(cuts_p.read_text(encoding="utf-8")), em)
+    m = build(json.loads(cuts_p.read_text(encoding="utf-8")), em, read_edl(Path(reel_dir) / "work/edl.json"))
     m = dict(version=m.pop("version"), cuts=cuts, cuts_sha256=sha(cuts_p), edit_map=src,
              edit_map_sha256=source_sha(reel_dir, src), **m)
     (Path(reel_dir) / "work" / "word_map.json").write_bytes(json.dumps(m, ensure_ascii=False, indent=1).encode("utf-8"))

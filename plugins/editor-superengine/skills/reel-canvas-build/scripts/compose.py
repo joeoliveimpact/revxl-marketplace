@@ -33,7 +33,9 @@ import re
 import shutil
 import subprocess
 import sys
+import textwrap
 import time
+import unicodedata
 from datetime import datetime
 from fractions import Fraction
 from pathlib import Path
@@ -205,6 +207,123 @@ def hook_box(w, h):
     return (x0 + x1) / 2, RESERVE["top"] * h + 60 * s, (x1 - x0) - 60 * s, 72 * s
 
 
+def hook_words(text):
+    """Spoken-hook comparison ignores case and punctuation, never word order."""
+    return [word for token in text.lower().split()
+            if (word := "".join(c for c in token if not unicodedata.category(c).startswith("P")))]
+
+
+def title_lines(text, width, size):
+    """Estimate Inter wrapping at 0.55 em plus 10% room; retain wide-letter clearance."""
+    text = " ".join(text.split())
+    average = .55 + .4 * sum(c in "MWmw@%" for c in text) / max(1, len(text))
+    chars = max(1, math.floor(width / (size * average * 1.1)))
+    return max(1, len(textwrap.wrap(text, width=chars)))
+
+
+def hook_record(inp):
+    """The opening hook actually drawn, in master pixels, regardless of its source."""
+    import placer
+    opening = next((h for h in inp["hooks"] if h["start_f"] == 0), None)
+    if opening is not None:
+        return dict(schema=1, kind="plain", text=opening["text"], start_f=0, end_f=opening["end_f"],
+                    box=list(placer.hook_still(opening["text"], 0, opening["end_f"])[2]),
+                    spoken=opening["spoken"], words_shown=opening["word_count"] if opening["spoken"] else 0)
+    first = next((b for b in inp["beats"] if b["start_f"] == 0 and b.get("scene")), None)
+    if first is not None and first["scene"]["id"] == "hf-hook-title":
+        scene = first["scene"]
+        params = {k: p["default"] for k, p in scene_params(scene).items()}
+        params.update(scene.get("params", {}))
+        box = [60, params["top"], 960, params["top"] + params["height"]]
+        return dict(schema=1, kind="scene", text=scene.get("slots", {}).get("title", ""),
+                    start_f=0, end_f=first["end_f"], box=box, spoken=False, words_shown=0)
+    return dict(schema=1, kind="none", text="", start_f=0, end_f=0,
+                box=[0, 0, 0, 0], spoken=False, words_shown=0)
+
+
+def saved_hooks(reel, fallback=None):
+    """Hook-file authority for every QA reader; only a missing file uses legacy inputs."""
+    try:
+        record = json.loads((Path(reel) / "work/hook.json").read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return fallback
+    if (not isinstance(record, dict) or record.get("schema") != 1
+            or record.get("kind") not in ("plain", "scene", "none")
+            or not isinstance(record.get("text"), str) or type(record.get("spoken")) is not bool
+            or record.get("start_f") != 0 or type(record.get("end_f")) is not int or record["end_f"] < 0
+            or type(record.get("words_shown")) is not int or record["words_shown"] < 0
+            or not isinstance(record.get("box"), list) or len(record["box"]) != 4
+            or any(type(v) not in (int, float) or not math.isfinite(v) for v in record["box"])):
+        raise ValueError("The saved hook record is incomplete; make the preview again.")
+    later = [h for h in (fallback or []) if h["start_f"] > 0]
+    if record["kind"] == "none":
+        return later
+    count = len(hook_words(record["text"]))
+    if (record["end_f"] <= 0 or record["box"][0] >= record["box"][2]
+            or record["box"][1] >= record["box"][3]
+            or record["words_shown"] != (count if record["spoken"] else 0)):
+        raise ValueError("The saved hook record does not match its words; make the preview again.")
+    return [dict(text=record["text"], start_f=0, end_f=record["end_f"], box=record["box"],
+                 spoken=record["spoken"], word_count=count, shown_words=list(range(record["words_shown"])))] + later
+
+
+def plain_hook(text, first, rate, words, total):
+    """Resolve the opening still once, for rendering, placement and saved QA."""
+    text = " ".join(text.split())
+    tokens = hook_words(text)
+    count = len(tokens)
+    spoken = bool(count and count <= len(words) and tokens == hook_words(" ".join(
+        w["word"] if isinstance(w, dict) else w for w in words[:count])))
+    minimum = round(Fraction(3, 2) * rate)
+    beat_end = first["end_f"] if first else total
+    limit = min(total, max(beat_end, minimum) if spoken else beat_end, round(HOOK_MAX_S * rate))
+    end = limit
+    if spoken and isinstance(words[count - 1], dict):
+        end = min(limit, max(minimum,
+                             round(Fraction(str(words[count - 1]["end"])) * rate)))
+    return dict(text=text, start_f=0, end_f=end, spoken=spoken, word_count=count, shown_words=[])
+
+
+def hook_captions(doc, hooks):
+    """The still supplies all-hook chunks; a mixed or later chunk stays visible."""
+    skipped = 0
+    for hook in hooks:
+        hook["shown_words"] = []
+        kept = []
+        for chunk in doc["chunks"]:
+            positions = list(range(chunk["w0"], chunk["w1"] + 1))
+            if (hook["spoken"] and hook["start_f"] <= chunk["start_f"] < hook["end_f"]
+                    and positions and all(0 <= w < hook["word_count"] for w in positions)):
+                hook["shown_words"].extend(positions)
+                skipped += 1
+            else:
+                kept.append(chunk)
+        doc["chunks"] = kept
+    doc["hooks"] = hooks
+    for i, chunk in enumerate(doc["chunks"]):
+        chunk["i"] = i
+    print(f"info: {skipped} captions are shown by the hook title instead")
+    return skipped
+
+
+def hook_shown_positions(hooks, words):
+    """Validate saved hook coverage before counting omitted captions as shown."""
+    shown = set()
+    for hook in hooks:
+        positions = hook.get("shown_words", [])
+        if not positions:
+            continue
+        count = hook["word_count"]
+        if (not hook["spoken"] or hook["start_f"] != 0 or hook["end_f"] <= 0
+                or type(count) is not int or not 0 < count <= len(words)
+                or len(hook_words(hook["text"])) != count
+                or hook_words(hook["text"]) != hook_words(" ".join(w["word"] for w in words[:count]))
+                or any(type(w) is not int or not 0 <= w < count for w in positions)):
+            raise ValueError("The saved hook words do not match the speech; make the captions again.")
+        shown.update(positions)
+    return shown
+
+
 def build_spans(beats, kinds, hook_f, extra_spans=None):
     """Gate spans: the scenes (spans_from_beats; the a-roll's own moves are not made here) + the compose hook as an
     overlay + extra_spans (the editing style's moves from styles.py, so they face the same VES-1 check)."""
@@ -353,8 +472,8 @@ def load_inputs(reel):
     bm = read_json(reel / SEND, "✗ Send the Beat Map first: press Send on the Beat Map board, then run this again.")
     try:
         words = beat_schema.load_words(reel / beat_schema.DEFAULT_WORDS)
-        timed_words = read_json(reel / beat_schema.DEFAULT_WORDS, "The cut word list is missing.").get("words") if "loops" in bm else None
-        beat_schema.validate_beat_map(bm, words, timed_words)
+        timed_words = read_json(reel / beat_schema.DEFAULT_WORDS, "The cut word list is missing.").get("words")
+        beat_schema.validate_beat_map(bm, words, timed_words if "loops" in bm else None)
         if (reel / "sketches-selection.json").exists():
             beat_schema.validate_sketches(read_json(reel / "sketches-selection.json", ""), bm)
     except beat_schema.SchemaError as e:
@@ -370,7 +489,8 @@ def load_inputs(reel):
     master = reel / "work" / "renders" / f"master-{tag}.mp4"
     if not master.is_file():
         raise Stop(2, f"✗ The cut master work/renders/{master.name} is missing; make the cut first.")
-    return {"bm": bm, "beats": bm["beats"], "words": words, "cuts": cuts, "master": master, "reel_dir": reel}
+    return {"bm": bm, "beats": bm["beats"], "words": words, "timed_words": timed_words,
+            "cuts": cuts, "master": master, "reel_dir": reel}
 
 
 def probe_inputs(inp):
@@ -484,7 +604,7 @@ def saved_brand(reel=None):
     return {key: saved[key] for key in ("accent", "font") if key in saved}
 
 
-def plan(inp, hook_text, extra_spans=None):
+def plan(inp, hook_text, extra_spans=None, *, ctx=None):
     """Notes, scene checks, the hook, and the effect gate; raises Stop before anything renders."""
     beats, rate = inp["beats"], inp["rate"]
     broll_plan(inp)
@@ -534,7 +654,7 @@ def plan(inp, hook_text, extra_spans=None):
             if any(float(t) >= float(secs) for t in params["section_starts"].split(",")):
                 problems.append("The slots section starts must fit inside their existing beat; choose earlier starts or another scene.")
     first = next((b for b in beats if b["start_f"] == 0), None)
-    hook_f, text = 0, None
+    hook_f, text, hooks = 0, None, []
     if any(b["start_f"] == 0 and b["scene"] is not None for b in beats):
         if any(b["start_f"] == 0 and b["id"] not in opens for b in scened):
             print("note: the first beat has a scene, so frame 0 shows that scene rather than a hook title; check that "
@@ -546,19 +666,26 @@ def plan(inp, hook_text, extra_spans=None):
         if len(text) > HOOK_MAX_CHARS:
             raise Stop(1, f"✗ The hook line is long ({len(text)} characters, {HOOK_MAX_CHARS} at most); "
                           f"shorten it or tell me the hook text.")
-        five = round(HOOK_MAX_S * rate)
-        hook_f = min(first["end_f"], five) if first is not None else min(inp["total"], five)
+        hook = plain_hook(text, first, rate, inp.get("timed_words") or inp["words"], inp["total"])
+        hooks.append(hook)
+        hook_f = hook["end_f"]
     else:
         print("note: no beat starts at frame 0, so there's no hook title; tell me the hook text to add one")
+    inp.update(scened=scened, hook_f=hook_f, hook_text=text, hooks=hooks,
+               hook_spoken=bool(hooks and hooks[0]["spoken"]))
+    title_notes = place_hook_titles(inp, ctx) if ctx is not None else []
     kinds = {sid: spec["kind"] for sid, spec in specs.items()}
     try:
-        spans = build_spans(beats, kinds, hook_f, extra_spans)
+        spans = build_spans(beats, kinds, inp["hook_f"], extra_spans)
+        spans.extend(dict(layer="overlay", start_f=h["start_f"], end_f=h["end_f"], id="hook title")
+                     for h in inp["hooks"] if h["start_f"] > 0)
     except ValueError as e:
         raise Stop(1, f"✗ {e}") from None
     problems += [f"BLOCK {p}" for p in effect_gate.check(spans, inp["cut_frames"], inp["fps"], inp["total"])]
     if problems:
         raise Stop(1, *problems, "Nothing was rendered; fix these on the Beat Map board and Send again.")
-    inp.update(scened=scened, hook_f=hook_f, hook_text=text, under=effect_gate.underlay(spans, inp["fps"]))
+    inp["under"] = effect_gate.underlay(spans, inp["fps"])
+    return title_notes
 
 
 def scene_params(scene):
@@ -568,6 +695,81 @@ def scene_params(scene):
         return spec.get("params") or {}
     except (OSError, ValueError, AttributeError):
         return {}
+
+
+def hook_title_placement(ctx, beat):
+    """Fit above the head, or request a plain still instead of covering the face."""
+    import placer
+    explicit = beat["scene"].get("params", {})
+    placed = {"top": 220, "height": 1250, "size": 120}
+    head = placer.head_box_at(ctx, beat["start_f"], beat["end_f"] - 1)
+    if head is None:
+        placed.update({k: explicit[k] for k in placed if k in explicit})
+        return placed, "The hook title wasn't checked against your face because no face anchors were found."
+    safe_top, safe_bottom = placer.SAFE[1], placer.SAFE[3]
+    protected = placer.face_band(head, top=0)
+    ceiling = min(safe_bottom, protected[1] - placer.UNDER_HEAD_GAP)
+    placed.update(top=safe_top, height=max(0, ceiling - safe_top))
+    placed.update({k: explicit[k] for k in placed if k in explicit})
+    title = beat["scene"].get("slots", {}).get("title", "Nobody tells you this about editing")
+
+    def fits(size):
+        # The line is 640px wide; include its breath and the bow's 6-degree tilt.
+        lines = title_lines(title, 640, size)
+        half = lines * size * 1.05 * 1.035 / 2
+        angle = math.radians(6)
+        projected = half * math.cos(angle) / (1 - half * math.sin(angle) / 950)
+        return 2 * projected + 48 <= placed["height"]  # room for fringe and rest blur
+
+    if "size" not in explicit:
+        while placed["size"] > 56 and not fits(placed["size"]):
+            placed["size"] -= 1
+    if (not fits(placed["size"]) or placed["top"] < safe_top
+            or placed["top"] + placed["height"] > ceiling):
+        return None, "The hook title didn't fit above your face, so a plain hook title is used."
+    return placed, None
+
+
+def placement_hooks(inp):
+    """Plain hooks plus fitted scene text boxes, solely for placement and QA."""
+    hooks = list(inp["hooks"])
+    for beat in inp["beats"]:
+        scene = beat.get("scene")
+        if scene and scene["id"] == "hf-hook-title":
+            params = scene["params"]
+            hooks.append(dict(text=scene["slots"]["title"], start_f=beat["start_f"], end_f=beat["end_f"],
+                              box=[60, params["top"], 960, params["top"] + params["height"]],
+                              spoken=False, word_count=len(hook_words(scene["slots"]["title"])), shown_words=[]))
+    return hooks
+
+
+def place_hook_titles(inp, ctx):
+    """Drop unfit prism scenes only for this render; preserve their title in a still."""
+    notes = []
+    for beat in inp["beats"]:
+        scene = beat.get("scene")
+        if not scene or scene["id"] != "hf-hook-title":
+            continue
+        placed, note = hook_title_placement(ctx, beat)
+        if placed is not None:
+            scene.setdefault("params", {}).update(placed)
+        else:
+            beat["scene"] = None
+            text = scene["slots"]["title"]
+            if beat["start_f"] == 0:
+                hook = plain_hook(text, beat, inp["rate"], inp.get("timed_words") or inp["words"], inp["total"])
+                inp["hooks"] = [h for h in inp["hooks"] if h["start_f"] != 0] + [hook]
+                inp.update(hook_text=text, hook_f=hook["end_f"], hook_spoken=hook["spoken"])
+            else:
+                inp["hooks"].append(dict(text=text, start_f=beat["start_f"],
+                                         end_f=min(beat["end_f"], beat["start_f"] + round(HOOK_MAX_S * inp["rate"])),
+                                         spoken=False, word_count=len(hook_words(text)), shown_words=[]))
+        if note and note not in notes:
+            notes.append(note)
+    inp["scened"] = [b for b in inp["beats"] if b.get("scene") is not None]
+    import placer
+    placer.set_hook_stills(ctx, placement_hooks(inp))
+    return notes
 
 
 def choose_audio(reel, inp, tier):
@@ -743,10 +945,10 @@ def main_html(inp, w, h, scene_files, layers="all"):
         raise ValueError("unknown render layers")
     which = layers
     if which == "aroll":
-        inp = dict(inp, beats=[], under=[], hook_f=0, captions=None)
+        inp = dict(inp, beats=[], under=[], hook_f=0, hooks=[], captions=None)
         scene_files = []
     elif which == "captions":
-        inp = dict(inp, beats=[], under=[], hook_f=0, track={"keys": [], "tweens": [], "style": {}})
+        inp = dict(inp, beats=[], under=[], hook_f=0, hooks=[], track={"keys": [], "tweens": [], "style": {}})
         scene_files = []
     elif which == "overlay":
         inp = dict(inp, captions=None)
@@ -835,11 +1037,16 @@ def main_html(inp, w, h, scene_files, layers="all"):
             if b["end_f"] < inp["total"]:
                 tl.append(f"        tl.set({el}, {{ autoAlpha: 0, immediateRender: false }}, {at(b['end_f'], rate)});")
     x, y, bw, size = hook_box(w, h)
-    if inp["hook_f"]:
-        layers.append(f'      <div id="hook">{html.escape(inp["hook_text"])}</div>')
-        # complete and still from frame 0: set (never tweened) at 0 and rendered at once, then a hard cut out
-        tl.append('        tl.set("#hook", { xPercent: -50, autoAlpha: 1, immediateRender: true }, 0);')
-        tl.append(f'        tl.set("#hook", {{ autoAlpha: 0 }}, {ts(inp["hook_f"], rate)});')
+    hooks = inp.get("hooks", [dict(text=inp["hook_text"], start_f=0, end_f=inp["hook_f"])]
+                    if inp["hook_f"] else [])
+    for i, hook in enumerate(hooks):
+        hid = "hook" if hook["start_f"] == 0 else f"hook-{i}"
+        layers.append(f'      <div id="{hid}" class="plain-hook" style="opacity: 0; visibility: hidden">'
+                      f'{html.escape(hook["text"])}</div>')
+        imm = "true" if hook["start_f"] == 0 else "false"
+        tl.append(f'        tl.set("#{hid}", {{ xPercent: -50, autoAlpha: 1, immediateRender: {imm} }}, '
+                  f'{ts(hook["start_f"], rate)});')
+        tl.append(f'        tl.set("#{hid}", {{ autoAlpha: 0, immediateRender: false }}, {ts(hook["end_f"], rate)});')
     caption_css = ""
     doc = inp.get("captions")
     if doc and doc["chunks"]:
@@ -867,7 +1074,7 @@ def main_html(inp, w, h, scene_files, layers="all"):
             "HOOK_W": f"{bw:.1f}", "HOOK_SIZE": f"{size:.1f}", "DURATION": ts(inp["total"], rate),
             "HOOK_SHADOW": f"0 0 {6 * s:.1f}px rgba(0, 0, 0, 0.9), 0 {2 * s:.1f}px {4 * s:.1f}px rgba(0, 0, 0, 0.9)",
             "LAYERS": "\n".join(layers), "TIMELINE": "\n".join(tl), "CAPTION_CSS": caption_css}
-    out = TEMPLATE.read_text(encoding="utf-8")
+    out = TEMPLATE.read_text(encoding="utf-8").replace("#hook {", ".plain-hook {")
     if which in ("overlay", "captions"):
         out = out.replace("background: #000000;", "background: transparent;")
     for k, v in fill.items():
@@ -965,23 +1172,31 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
         raise Stop(e.code, *e.lines) from None
     for line in track["warnings"]:
         print(f"note: {line}")
-    plan(inp, hook_text, track["spans"] + list(extra_spans or []))
-    baked = baked_spans(track, inp["beats"], inp["total"]) if layers != "all" else []
-    require_baked_master(reel, baked, inp["total"], inp["rate"])
-    footage_licences(inp, tier)
     inp["track"] = track
     styles.write_json(reel / styles.TRACK, track)  # S7 reads it
     sys.path.insert(0, str(HERE.parents[1] / "reel-captions" / "scripts"))
     import captions
     import placer  # placer imports compose; keep this import inside render()
     try:
+        ctx = None
+        if any(b.get("scene") and b["scene"]["id"] == "hf-hook-title" for b in inp["beats"]):
+            ctx = placer.load_ctx(reel)
+        title_notes = plan(inp, hook_text, track["spans"] + list(extra_spans or []), ctx=ctx)
+        baked = baked_spans(track, inp["beats"], inp["total"]) if layers != "all" else []
+        require_baked_master(reel, baked, inp["total"], inp["rate"])
+        footage_licences(inp, tier)
         if remember_choices:
-            doc = captions.plan(reel, fps=inp["fps"], style_reel=style_reel)
+            doc = captions.plan(reel, fps=inp["fps"], style_reel=style_reel, render_beats=inp["beats"])
         else:  # N5 scratch renders must not rewrite the shared saved caption choice.
             cs, _ = captions.pick_style(reel, remember=False, style_reel=style_reel)
-            doc = captions.plan(reel, fps=inp["fps"], _style=cs, style_reel=style_reel)
+            doc = captions.plan(reel, fps=inp["fps"], _style=cs, style_reel=style_reel, render_beats=inp["beats"])
+        hook_captions(doc, inp["hooks"])
+        doc["hooks"] = placement_hooks(inp)
+        doc["notes"].extend(title_notes)
         if doc["chunks"]:
-            ctx = placer.load_ctx(reel)
+            if ctx is None:
+                ctx = placer.load_ctx(reel, hook=(inp["hook_text"], inp["hook_f"]) if inp["hook_f"] else None)
+            placer.set_hook_stills(ctx, doc["hooks"])
             spec = captions.STYLES[doc["style"]["style"]]
             bands = []
             for c in doc["chunks"]:
@@ -995,6 +1210,8 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
         raise Stop(2, str(e)) from None
     inp["captions"] = doc
     captions.write(reel, doc)  # S9 reads the placed chunks, including advisory notes
+    if layers == "all":  # layer-only handoffs must not replace the preview/master QA record
+        write_json(reel / "work/hook.json", hook_record(inp))
     for line in doc["notes"]:
         print(f"note: {line}")
     printed_notes = len(doc["notes"])
@@ -1329,6 +1546,8 @@ def selftest():
     expect("extra spans join the gate", any("runs across the cut" in p for p in effect_gate.check(sp, [50], "25/1", 100)))
     for sid, slots, opens, keyed in (("hook-title", {"kicker": "Part 1", "title": "Hi"}, True, True),
                                      ("hook-title", {"kicker": "Part 1", "title": "Hi"}, True, False),
+                                     ("hf-hook-title", {"title": "Hi"}, True, True),
+                                     ("hf-hook-title", {"title": "Hi"}, True, False),
                                      ("lower-third", {"name": "Alex", "title": "Founder"}, False, True)):
         b0 = beat("b1", 0, 50, scene=sid)
         b0["scene"]["slots"], b0["scene"]["params"] = slots, ({"entrance": "fade"} if opens else {})
@@ -1342,6 +1561,164 @@ def selftest():
         expect(f"beat-0 {sid}{'' if keyed else ' (no params key)'}: entrance none only when the scene has it, the warning only when it hasn't, no hook",
                b0["scene"].get("params", {}).get("entrance") == ("none" if opens else None)
                and ("note: the first beat has a scene" in said.getvalue()) != opens and inp["hook_f"] == 0)
+    import placer
+    spoken_words = [{"word": word, "start": i / 10, "end": (i + 1) / 10}
+                    for i, word in enumerate(("Claude", "just", "killed", "Instagram.", "Today"))]
+    for word_end, beat_end, expected in ((.4, 200, 38), (2.4, 200, 60), (8, 200, 125),
+                                         (.4, 20, 20), (8, 60, 60)):
+        first = beat("spoken", 0, beat_end)
+        first["speech_anchor"]["text"] = "Claude just killed Instagram."
+        timed = [dict(w) for w in spoken_words]
+        timed[3]["end"] = word_end
+        opening = {"beats": [first], "rate": Fraction(25), "words": [w["word"] for w in timed],
+                   "timed_words": timed, "total": beat_end, "cut_frames": [], "fps": "25/1"}
+        with contextlib.redirect_stdout(io.StringIO()):
+            plan(opening, "CLAUDE, just killed Instagram!")
+        expect(f"spoken hook: word-end timing and clamps ({word_end}, {beat_end})",
+               opening["hook_spoken"] and opening["hook_f"] == expected)
+    first["end_f"] = 200
+    short_beat = beat("short-opening", 0, 24)
+    short_hook = plain_hook("Claude just killed Instagram.", short_beat, Fraction(30), spoken_words, 600)
+    expect("spoken hook: 0.8-second first beat in a 20-second reel still shows for 1.5 seconds",
+           short_hook["end_f"] == 45)
+    different = plain_hook("Watch this before you post", first, Fraction(25), spoken_words, 200)
+    expect("different-text hook: keeps today's end", not different["spoken"] and different["end_f"] == 125)
+    expect("hook lines: average Inter advances keep the different-text hook to two lines",
+           title_lines("Watch this before you post", 840, 72) == 2)
+    matching = plain_hook("Claude just killed Instagram.", first, Fraction(25), spoken_words, 200)
+    chunks = [{"i": i, "w0": a, "w1": b, "start_f": start, "end_f": start + 10,
+               "text": " ".join(w["word"] for w in spoken_words[a:b + 1]),
+               "words": [{"w": w, "text": spoken_words[w]["word"], "start_f": start,
+                          "mark": None, "punch": False} for w in range(a, b + 1)]}
+              for i, (a, b, start) in enumerate(((0, 1, 0), (2, 4, 5), (0, 0, 38)))]
+    doc = {"chunks": [dict(c) for c in chunks]}
+    with contextlib.redirect_stdout(io.StringIO()) as said:
+        skipped = hook_captions(doc, [matching])
+    expect("spoken hook: drops only all-hook chunks before its end, keeps mixed and later chunks",
+           skipped == 1 and [c["w1"] for c in doc["chunks"]] == [4, 0]
+           and [c["i"] for c in doc["chunks"]] == [0, 1]
+           and hook_shown_positions(doc["hooks"], spoken_words) == {0, 1}
+           and "info: 1 captions are shown by the hook title instead" in said.getvalue())
+    doc = {"chunks": [dict(c) for c in chunks]}
+    with contextlib.redirect_stdout(io.StringIO()):
+        skipped = hook_captions(doc, [different])
+    expect("different-text hook: keeps every caption", skipped == 0 and len(doc["chunks"]) == 3)
+    head = (200, 650, 880, 1250)
+    ctx = {"track": {"total_f": 100, "keys": [{"f": 0}], "tweens": []},
+           "segments": [(0, 100)], "boxes": {0: head}, "median_box": head,
+           "layouts": {"full": (0, 0, 1080, 1920)}, "stills": [], "notes": [], "fps": Fraction(25)}
+    title_beat = beat("title", 0, 50, scene="hf-hook-title")
+    title_beat["scene"]["slots"] = {"title": "Nobody tells you this about editing"}
+    placed, note = hook_title_placement(ctx, title_beat)
+    expect("hook title: shrinks and stays wholly above the head with a gap",
+           placed["top"] >= 220 and placed["top"] + placed["height"] <= 1470
+           and placed["top"] + placed["height"] <= 610
+           and 56 <= placed["size"] < 120 and note is None)
+    title_beat["start_f"] = 50
+    title_beat["end_f"] = 100
+    later, _ = hook_title_placement(ctx, title_beat)
+    expect("hook title: later beats also clear the face", later == placed)
+    ctx["boxes"][0] = ctx["median_box"] = (200, 1320, 880, 1500)
+    title_beat["scene"]["slots"]["title"] = "W" * 40
+    tilted, note = hook_title_placement(ctx, title_beat)
+    expect("hook title: perspective expansion of a tall title also clears the face",
+           tilted["top"] + tilted["height"] <= 1320 and tilted["size"] < 120 and note is None)
+    title_beat["scene"]["slots"]["title"] = "Nobody tells you this about editing"
+    ctx["boxes"][0] = ctx["median_box"] = head
+    title_beat["scene"]["params"] = {"top": 250, "height": 350, "size": 56}
+    explicit, _ = hook_title_placement(ctx, title_beat)
+    expect("hook title: safe explicit placement wins", explicit == {"top": 250, "height": 350, "size": 56})
+    title_beat["scene"]["params"] = {}
+    ctx["boxes"][0] = ctx["median_box"] = (0, 384, 1080, 1920)
+    tight, note = hook_title_placement(ctx, title_beat)
+    expect("hook title: impossible fit asks for a plain replacement",
+           tight is None and note == "The hook title didn't fit above your face, so a plain hook title is used.")
+    mouth = (200, 1400, 880, 1450)
+    expect("hook title: protected top 75% includes the mouth beyond 60%",
+           placer.hits(mouth, placer.face_band(ctx["median_box"], top=0)))
+    title_beat["start_f"], title_beat["end_f"] = 0, 50
+    title_beat["scene"]["slots"]["title"] = "Hi"
+    ctx["boxes"][0] = ctx["median_box"] = (0, 220, 1080, 1920)
+    fallback = {"beats": [title_beat], "scened": [title_beat], "hooks": [], "rate": Fraction(25),
+                "words": ["Hi"], "timed_words": [{"word": "Hi", "start": 0, "end": .2}], "total": 100}
+    notes = place_hook_titles(fallback, ctx)
+    expect("hook title: unfit scene becomes the same plain spoken hook",
+           title_beat["scene"] is None and fallback["scened"] == []
+           and fallback["hook_text"] == "Hi" and fallback["hook_spoken"] and fallback["hook_f"] == 38
+           and notes == ["The hook title didn't fit above your face, so a plain hook title is used."])
+    # The checker's fitted-title probe must survive the same still setup as render().
+    fitted_beat = beat("fitted", 0, 50, scene="hf-hook-title")
+    fitted_beat["scene"]["slots"] = {"title": "Claude just killed Instagram."}
+    head = (200, 700, 880, 1450)
+    fitted_ctx = dict(ctx, boxes={0: head}, median_box=head, stills=[], notes=[])
+    fitted = {"beats": [fitted_beat], "hooks": [], "rate": Fraction(25), "words": [], "total": 100}
+    place_hook_titles(fitted, fitted_ctx)
+    expect("fitted title: checker geometry", fitted_beat["scene"]["params"] == {
+        "top": 220, "height": 440, "size": 93})
+    placer.set_hook_stills(fitted_ctx, placement_hooks(fitted))
+    fitted_box = hook_record(fitted)["box"]
+    caption_box = placer.place(fitted_ctx, 0, 49)
+    expect("fitted title: caption clears the scene text box and face band",
+           placer.active_hook(fitted_ctx, 0) is not None and not placer.hits(caption_box, fitted_box)
+           and not placer.hits(caption_box, placer.face_band(head), placer.CAPTION_PAD))
+    expect("fitted title: exclusive scene end restores base placement", placer.active_hook(fitted_ctx, 50) is None)
+    gated_beat = beat("gated-title", 0, 50, scene="hf-hook-title")
+    gated_beat["scene"]["slots"] = {"title": "Hi"}
+    gated = {"beats": [gated_beat], "rate": Fraction(25), "words": ["Hi"], "total": 100,
+             "cut_frames": [], "fps": "25/1"}
+    with patch.object(effect_gate, "check", wraps=effect_gate.check) as checked, \
+            contextlib.redirect_stdout(io.StringIO()):
+        plan(gated, None, ctx=ctx)
+    expect("gate: fallback is checked as its rendered plain overlay",
+           gated_beat["scene"] is None and checked.call_count == 1
+           and checked.call_args.args[0] == [dict(layer="overlay", start_f=0, end_f=50, id="hook title")])
+    scene_beat = beat("record-scene", 0, 50, scene="hf-hook-title")
+    scene_beat["scene"].update(slots={"title": "Hi"}, params={"top": 220, "height": 390, "size": 64})
+    records = [("plain", hook_record({"hooks": [different], "beats": []})),
+               ("scene", hook_record({"hooks": [], "beats": [scene_beat]})),
+               ("fallback", hook_record(fallback)),
+               ("none", hook_record({"hooks": [], "beats": []}))]
+    with tempfile.TemporaryDirectory() as home:
+        record_path = Path(home) / "work/hook.json"
+        for name, record in records:
+            with patch.object(os, "replace", wraps=os.replace) as replaced:
+                write_json(record_path, record)
+            data = record_path.read_bytes()
+            expect(f"hook record: {name} is written atomically as UTF-8 with LF",
+                   json.loads(data.decode("utf-8")) == record and data.endswith(b"\n") and b"\r" not in data
+                   and replaced.call_count == 1 and not record_path.with_name("hook.json.tmp").exists())
+            expect(f"hook record: {name} describes the render",
+                   record["schema"] == 1 and record["start_f"] == 0
+                   and record["kind"] == ("plain" if name == "fallback" else name))
+        expect("hook record: different text stores the exact still envelope and no spoken coverage",
+               records[0][1]["box"] == [90, 280, 930, 445.6]
+               and records[0][1]["end_f"] == 125 and not records[0][1]["spoken"]
+               and records[0][1]["words_shown"] == 0)
+        expect("hook record: a scene stores its fitted box and lifetime",
+               records[1][1]["box"] == [60, 220, 960, 610] and records[1][1]["end_f"] == 50)
+        write_json(record_path, records[1][1])
+        saved_scene = saved_hooks(Path(home))
+        expect("hook record: QA restores the exact scene box without claiming spoken coverage",
+               len(saved_scene) == 1 and saved_scene[0]["box"] == [60, 220, 960, 610]
+               and saved_scene[0]["end_f"] == 50 and not saved_scene[0]["spoken"]
+               and saved_scene[0]["shown_words"] == [])
+        expect("hook record: fallback preserves spoken words and duration",
+               records[2][1]["spoken"] and records[2][1]["words_shown"] == 1
+               and records[2][1]["end_f"] == 38)
+    title_beat["scene"] = {"id": "hf-hook-title", "slots": {"title": "Hi"}, "params": {}}
+    title_beat["start_f"], title_beat["end_f"] = 50, 100
+    later_fallback = {"beats": [title_beat], "scened": [title_beat], "hooks": [],
+                      "rate": Fraction(25), "words": ["Hi"], "total": 100}
+    place_hook_titles(later_fallback, ctx)
+    expect("hook title: a later replacement stays on its beat",
+           later_fallback["scened"] == [] and later_fallback["hooks"][0]["start_f"] == 50
+           and later_fallback["hooks"][0]["end_f"] == 100 and not later_fallback["hooks"][0]["spoken"])
+    title_beat["scene"] = {"id": "hf-hook-title", "slots": {"title": "Hi"}, "params": {}}
+    ctx["median_box"] = None
+    unchecked, note = hook_title_placement(ctx, title_beat)
+    expect("hook title: missing anchors keep defaults with a face-check note",
+           unchecked == {"top": 220, "height": 1250, "size": 120}
+           and note is not None and "wasn't checked against your face" in note)
     for w, h in TIERS.values():
         x, y, bw, size = hook_box(w, h)
         expect(f"hook box inside the safe zone at {w}x{h}",
@@ -1386,6 +1763,12 @@ def selftest():
                and "\r" not in page)
         expect("page: TRI-4 / F-13 rules", "repeat: -1" not in page and "translateX(-50%" not in page
                and "@keyframes" not in page and "onComplete" not in page and "xPercent: -50" in page)
+        later_hook = dict(text="Later hook", start_f=50, end_f=100)
+        replacement_page = main_html(dict(inp, hooks=[later_hook], hook_f=0), 720, 1280, [])
+        expect("page: later plain replacements are hidden before their beat and end with it",
+               'id="hook-0" class="plain-hook" style="opacity: 0; visibility: hidden"' in replacement_page
+               and 'tl.set("#hook-0", { xPercent: -50, autoAlpha: 1, immediateRender: false }, 2);' in replacement_page
+               and 'tl.set("#hook-0", { autoAlpha: 0, immediateRender: false }, 4);' in replacement_page)
         br["broll"]["fit"] = "blur-fill"
         bpage = main_html(dict(inp, beats=[br]), 720, 1280, [(beat("scene", 50, 100), "scene")])
         expect("broll page: two muted videos with ids, own copies, one offset, tracks distinct from scenes",

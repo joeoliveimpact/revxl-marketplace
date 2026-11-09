@@ -26,6 +26,8 @@ is wrong, where it happens and what to fix. Fix it and run the check again.
 Warnings are suggestions: explain the suggested improvement and let the client
 choose. Pacing and dead zones never block.
 
+If a caption sits on the speaker's face because the hook title leaves no room, shorten the hook to one line with `--hook-text` or drop `--hook-text` so the opening words become the hook; make a new preview.
+
 If the client says a flagged freeze is intentional, Claude records that specific
 moment in `work/qa-ok.json` as `{"allow":[{"check":"frozen","at":<s>}]}`,
 using the finding's time in seconds. Preserve existing approvals when adding it.

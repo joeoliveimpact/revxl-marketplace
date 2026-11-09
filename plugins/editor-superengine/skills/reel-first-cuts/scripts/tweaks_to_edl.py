@@ -18,9 +18,9 @@ gaps.py keeps it whole and a Send with no marks gives back the cut's own cuts.js
 its range overlaps; a tighten/loosen mark touches the segments its --protect range overlaps; a note touches none.
 
 Drift guard: every word time in tweak-board.config.json (words[].t, cut time) must sit within 80 ms of that
-word's out_anchor in word_map.build for this cut and edit map; a missing word or drift fails with one plain line, exit 3.
+word's out_start (aligned start) in word_map.build for this cut and edit map; a missing word or drift fails with one plain line, exit 3.
 """
-import argparse, json, sys
+import argparse, json, os, sys, tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -72,9 +72,10 @@ def main():
 
     em_p = cfg_p.parent / cfg["edit_map"]
     edit_map = json.loads(em_p.read_text(encoding="utf-8"))
+    previous_edl = word_map.read_edl(work / "edl.json")
     expected = {}
-    for w in word_map.build(cuts, edit_map)["words"]:
-        expected.setdefault(w["id"], w["out_anchor"])
+    for w in word_map.build(cuts, edit_map, previous_edl)["words"]:
+        expected.setdefault(w["id"], w["out_start"])
     for w in cfg["words"]:
         if w.get("id") not in expected or abs(w["t"] - expected[w["id"]]) > DRIFT:
             print(f"REFUSED: the Tweak Board has '{w['w']}' at {w['t']:.3f} s in the cut but "
@@ -84,10 +85,11 @@ def main():
                   + ": rebuild the board with make_tweaks.py", file=sys.stderr)
             sys.exit(3)
 
-    cuts_s, protect, notes, touched = [], [], [], set()
+    cuts_s, cut_spans, protect, notes, touched = [], [], [], [], set()
     for m in sel.get("marks", []):
         if m["type"] == "cut" and m.get("b") is not None:
             a0, b0 = sorted([m["a"], m["b"]])
+            cut_spans.append((a0, b0))
             # a cut range may span a segment join: subtract per segment
             for k, (c0, c1, s0, s1) in enumerate(cmap):
                 lo, hi = max(a0, c0), min(b0, c1)
@@ -117,8 +119,53 @@ def main():
             t0 = max(t0, c1)
         if s1 - t0 > 0.04:
             edl.append(dict(src_in=round(t0, 6), src_out=round(s1, 6)))
+    if previous_edl is not None:
+        picked = [(c["src_in"], c["src_out"]) for c in previous_edl]
+        # Snapped slivers must not become new picks, including on held segments.
+        # Leave holds at their original frame spans so the inward EDL stays held.
+        for c in edl:
+            s0, s1 = c["src_in"], c["src_out"]
+            for w in edit_map["words"]:
+                if w.get("status") == "unresolved" or word_map.kept_in(w, s0, s1, fps, picked=picked):
+                    continue
+                if s0 <= w["start"] < s1 and s1 - w["start"] < 1 / fps + word_map.EPS:
+                    c["src_out"] = min(c["src_out"], w["start"])
+                if w["start"] < s0 < w["end"] and w["end"] - s0 < 1 / fps + word_map.EPS:
+                    c["src_in"] = max(c["src_in"], w["end"])
     out = Path(a.out or a.work); out.mkdir(parents=True, exist_ok=True)
     (out / "edl.json").write_text(json.dumps(edl, indent=1), encoding="utf-8")
+    record = work / "tweak-cuts.json"
+    try:
+        data = json.loads(record.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise ValueError("invalid tweak-cut record")
+        if data.get("version") == 1:
+            rounds = {"?": data["words"]}
+        elif data.get("version") == 2:
+            rounds = data["rounds"]
+        else:
+            raise ValueError("unknown tweak-cut version")
+        if not isinstance(rounds, dict) or any(
+                not isinstance(name, str) or not isinstance(words, dict)
+                or any(not isinstance(i, str) or not isinstance(w, str) for i, w in words.items())
+                for name, words in rounds.items()):
+            raise ValueError("invalid tweak-cut rounds")
+    except (OSError, ValueError, KeyError, TypeError):
+        rounds = {}
+    rounds[sel["version"]] = {w["id"]: w["w"] for w in cfg["words"]
+                              if any(word_map.in_span(w["t"], a0, b0) for a0, b0 in cut_spans)}
+    if any(rounds.values()):
+        temp = None
+        try:
+            with tempfile.NamedTemporaryFile(dir=work, prefix=".tweak-cuts-", suffix=".tmp", delete=False) as f:
+                temp = Path(f.name)
+                f.write(json.dumps(dict(version=2, rounds=rounds), ensure_ascii=False, indent=1).encode("utf-8"))
+            os.replace(temp, record)
+        finally:
+            if temp is not None:
+                temp.unlink(missing_ok=True)
+    else:
+        record.unlink(missing_ok=True)
     removed = sum(c1 - c0 for c0, c1 in cuts_s)
     print(f"{len(sel.get('marks', []))} marks: {len(cuts_s)} cut ranges ({removed:.2f}s removed), {len(protect)} pause "
           f"rulings, {len(notes)} notes -> {len(edl)} cuts in {out / 'edl.json'} ({len(hold)} untouched segments held)")

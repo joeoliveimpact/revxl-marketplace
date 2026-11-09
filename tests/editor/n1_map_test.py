@@ -3,7 +3,7 @@
 out_in_f/fps + (src_t - src_in_f/fps)/speed (aligned start) and its board anchor time (parakeet_start), read from
 the edit map the cut was made from; the map check blocks a missing or stale map, a word more than 6 ms off, a
 missing word and a word listed twice, and passes a clean reel (N1.1a). With a Cut Board ruling it also checks the
-cut against the picks (quote checks), checks the Tweak Board's word times against the anchor time (H-N1-9), and the
+cut against the picks (quote checks), checks the Tweak Board's word times against the aligned start (H-S17W1b board-time ruling), and the
 standalone run writes work/map_check.json (H-N1-10) (N1.1b). N1.1c (H-N1-13): the Tweak Board is checked only while
 it was built from the current cuts.json, else one warn (F1); with no edit map, tx.json's word times are checked, and
 with no word times at all one warn and exit 0 (F2); a ruling on take 2 is checked against work/take2/cuts.json (F3).
@@ -431,17 +431,17 @@ def case_take2(S, a):
     write(d / "cut-selection.json", s)
 
 
-# ------------------------------------------------------------------------------------------- anchor (H-N1-9)
+# ------------------------------------------------------------------------------------------- anchor (H-S17W1b board-time ruling)
 def tweak(d, m, shift=None):
-    """tweak-board.config.json words as make_tweaks.py writes them: t = c0 + (parakeet_start - s0)/speed, rounded
-    to 1 ms, every board word whose parakeet_start is in a piece (unresolved ones too). shift = {id: t override}."""
+    """Tweak Board words at aligned start in cut time, rounded to 1 ms (H-S17W1b board-time ruling).
+    Deliberately include unresolved words to exercise the tweak-word warn. shift = {id: t override}."""
     cuts = cs.load(d / "work" / "cuts.json")
     out = []
     for g in cuts["segments"]:
         c0, s0, s1 = g["out_in_f"] / FPS, g["src_in_f"] / FPS, g["src_out_f"] / FPS
         for i, t, s, e, pk, st in BW:
-            if s0 <= pk < s1:
-                out.append(dict(id=i, w=t.strip(), t=round(c0 + (pk - s0) / SPEED, 3)))
+            if s0 <= s < s1:
+                out.append(dict(id=i, w=t.strip(), t=round(c0 + (s - s0) / SPEED, 3)))
     for x in out:
         if shift and x["id"] in shift:
             x["t"] = shift[x["id"]](m)
@@ -459,22 +459,22 @@ def case_anchor(S, a):
     tweak(d, m)
     p, H = check(d)
     print(p.stdout.rstrip())
-    ck("anchor: tweak t from parakeet_start passes; the unresolved 'in' the Tweak Board lists is a warn only, exit 0",
+    ck("anchor: tweak t from aligned start passes; the unresolved 'in' the Tweak Board lists is a warn only, exit 0",
        p.returncode == 0 and kinds(H) == ["tweak-word"] and H[0]["level"] == "warn" and "w_0009" in H[0]["where"],
        (p.returncode, H))
     r = report(d)
     ck("anchor: work/map_check.json lists the warn under warns, no blocks",
        r.get("blocks") == [] and [h["check"] for h in r.get("warns", [])] == ["tweak-word"], r)
     at = lambda by: (lambda m: round(next(w for w in m["words"] if w["id"] == "w_0005")[by[0]] + by[1], 6))
-    tweak(d, m, {"w_0005": at(("out_start", 0))})
+    tweak(d, m, {"w_0005": at(("out_anchor", 0))})
     p, H = check(d)
-    ck("anchor: tweak t from the aligned start (32 ms off the anchor) blocks (tweak-time on w_0005)",
+    ck("anchor: tweak t from parakeet_start (32 ms off aligned start) blocks (tweak-time on w_0005)",
        p.returncode == 1 and [h["check"] for h in blocks(H)] == ["tweak-time"] and "w_0005" in blocks(H)[0]["where"],
        (p.returncode, H))
     for by, ok in ((0.006, True), (0.007, False)):
-        tweak(d, m, {"w_0005": at(("out_anchor", by))})
+        tweak(d, m, {"w_0005": at(("out_start", by))})
         p, H = check(d)
-        ck("anchor: tweak t = anchor + %d ms %s" % (by * 1000, "passes" if ok else "blocks"),
+        ck("anchor: tweak t = aligned start + %d ms %s" % (by * 1000, "passes" if ok else "blocks"),
            (p.returncode == 0 and not blocks(H)) if ok else (p.returncode == 1 and [h["check"] for h in blocks(H)] == ["tweak-time"]),
            (p.returncode, H))
     tweak(d, m)

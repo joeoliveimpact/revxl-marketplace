@@ -310,13 +310,14 @@ def main():
 
     for ln in lines:
         ln["attempts"] = []
+        min_words = min(3, sum(not w.startswith("[") for w in ln["text"].split()))
         for tn, tk in sorted(takes.items(), key=lambda kv: int(kv[0])):
             anc, words, isl = tk["anchors"], tk["words"], tk["islands"]
             for k, (wi, lid, sc) in enumerate(anc):
                 if lid != ln["id"]:
                     continue
                 hi = anc[k + 1][0] if k + 1 < len(anc) else len(words)
-                if hi - wi < 3:
+                if sum(not w["word"].startswith("[") for w in words[wi:hi]) < min_words:
                     continue
                 # drop trailing [vocal]/[breath] tokens from the attempt body
                 while hi - 1 > wi and words[hi - 1]["word"].startswith("["):

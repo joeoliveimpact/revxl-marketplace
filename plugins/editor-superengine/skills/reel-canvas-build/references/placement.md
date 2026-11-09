@@ -24,7 +24,5 @@ seconds overlap part of the speaker's head because the shot is tight; the
 caption step may shorten or drop them." A caption band taller than the safe
 text area still cannot be placed.
 
-Still hook titles and layout card plates may share a caption's space. The
-placer reports overlap notes so Claude can check that both remain readable.
-These notes are advice, not a placement failure. They do not claim to check
-every animated scene or graphic.
+Active still hook titles and layout card plates are kept clear of captions whenever a safe spot exists, including a spot just below the still.
+A spoken opening hook shows its own words instead of duplicate captions; other captions sit just below it when that clears the eyes-to-mouth band, with the full head protected after it ends.

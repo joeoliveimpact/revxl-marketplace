@@ -12,7 +12,7 @@ Writes: work/cuts.json (the kept pieces in whole frames at the master's fps: the
         render.py reads), work/segments.json (seconds, derived from cuts.json for the 0.1.0 path),
         work/gap-plan.txt, work/listen.txt (the targeted checklist Stage 8 hands to the human)
 """
-import argparse, json, re, sys
+import argparse, json, math, re, sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "_shared"))
@@ -438,17 +438,30 @@ def segments(edl, dels, env, min_island, words=(), log=None):
     return out, notes, absorbed, reverted
 
 
-def snap_cuts(pieces_s, fps, speed=1.0, keep=(), log=None):
+def snap_cuts(pieces_s, fps, speed=1.0, keep=(), log=None, words=()):
     """F-3: kept pieces in seconds -> whole frames at the master's fps, and their place in the output.
 
-    src_in_f/src_out_f = round(t * fps). Pieces that touch or overlap after the snap merge. A piece that snaps
+    With words, use the nearest frame in silence without pulling in a word start; otherwise round outward.
+    Without words, src_in_f/src_out_f = round(t * fps). Pieces that touch or overlap after the snap merge. A piece that snaps
     to nothing is dropped, unless its index is in `keep` (it holds words): that one keeps 1 frame. Output frames
     run over the cumulative source frames S: out_in_f = round(S/speed), out_out_f = round((S+len)/speed).
     The one place a cut is quantised: render.py and the tests read its result, cuts.json."""
     log = [] if log is None else log
+
+    def inside(frame):
+        return any(w["start"] < frame / fps < w["end"] for w in words)
+
     frames = []
     for k, (a, b) in enumerate(pieces_s):
-        f0, f1 = round(a * fps), round(b * fps)
+        if words:
+            outer0, outer1 = math.floor(a * fps + 1e-6), math.ceil(b * fps - 1e-6)
+            near0, near1 = round(a * fps), round(b * fps)
+            f0 = near0 if not inside(near0) and not any(
+                near0 / fps <= w["start"] < a for w in words) else outer0
+            f1 = near1 if not inside(near1) and not any(
+                b <= w["start"] < near1 / fps for w in words) else outer1
+        else:
+            f0, f1 = round(a * fps), round(b * fps)
         if f1 <= f0:
             if k not in keep:
                 log.append("  SNAP dropped %.3f-%.3f (under one frame)" % (a, b))
@@ -535,7 +548,7 @@ def main():
                                   a.guard, fps, log, board_cuts(em))
         segs = [[c["src_in"], c["src_out"]] for c in checked]
     keep = {k for k, p in enumerate(segs) if overlaps(words, *p)}
-    cuts = snap_cuts(segs, fps, a.speed, keep, log)
+    cuts = snap_cuts(segs, fps, a.speed, keep, log, words)
     segs = write_cuts(work, cuts)
     # The frame map exists for the single-recording path too. No media bytes are read here.
     from takes import write_timemap

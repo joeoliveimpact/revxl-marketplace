@@ -40,7 +40,7 @@ def run(script, args, d):
 
 def board_words(cuts, em):
     import word_map
-    return [dict(id=w["id"], w=w["word"], t=round(w["out_anchor"], 3))
+    return [dict(id=w["id"], w=w["word"], t=round(w["out_start"], 3))
             for w in word_map.build(cuts, em)["words"]]
 
 

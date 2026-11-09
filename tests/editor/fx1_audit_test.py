@@ -83,9 +83,11 @@ def clipped(scratch):
     # Exercise the optional --edl path rather than the default file.
     write(d / "board-edl.json", edl)
     p = run(d, "--edl", str(d / "board-edl.json"))
-    ck("clipped: board edge asks for a new Send on L07", p.returncode == 1
-       and "A board cut sits on speech (line L07)" in p.stdout and "rebuild that board" in p.stdout
-       and "new Send" in p.stdout and "--hold" not in p.stdout, (p.returncode, p.stdout, p.stderr))
+    ck("clipped: board edge gives actionable choices on L07", p.returncode == 1
+       and "Line L07: a cut the user made on the Cut Board sits on the word 'clipped'." in p.stdout
+       and "Put back the struck word next to it on the Cut Board and press Send again" in p.stdout
+       and "or keep this cut and listen to it on the review page before rendering" in p.stdout
+       and "--hold" not in p.stdout, (p.returncode, p.stdout, p.stderr))
 
 
 def no_probe(scratch):

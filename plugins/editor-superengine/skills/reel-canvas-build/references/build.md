@@ -108,6 +108,7 @@ means a missing input, e.g. no Beat Map Send or no cut yet: go to that step.
 ## 5. What the render does
 
 The saved brand colour and font restyle every scene, with the font applied only when its licensed file ships with the editor; a beat's own choices win.
+The hf-hook-title scene opens complete and fits above the head; if it cannot fit, a plain hook shows the same title, while missing face anchors keep the default position with a note.
 
 - The cut's picture plays untouched underneath, and section 1's hook text opens the reel.
 - A beat that carries a scene gets it over its frames: a first-beat scene opens complete, and back-to-back

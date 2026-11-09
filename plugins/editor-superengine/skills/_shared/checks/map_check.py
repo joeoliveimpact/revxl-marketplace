@@ -11,6 +11,7 @@ cuts.json in the same folder (work/cuts.json, or work/take2/cuts.json for a ruli
 and when present cut-board.config.json + cut-selection.json and tweak-board.config.json, from disk, because
 staleness is a test on the files themselves. With no edit map (no word alignment on this computer), the folder's
 tx.json word times stand in (word_map.sources).
+Reads work/tweak-cuts.json when present for words intentionally cut on the Tweak Board.
 Mixed cuts use work/cuts.json and all selected takes' maps; fingerprints and word identities include the take.
 Run alone, it also writes <reel>/work/map_check.json = {"blocks": [...], "warns": [...]} (the findings, each with
 its plain-English msg; empty lists when clean) on every run.
@@ -35,9 +36,9 @@ unresolved (never in the cut) are left out.
   quote-extra        a piece holds a word no picked line has (a moved cut edge, or a struck word still in)
   quote-order        picked words play out of script order (piece order, then board anchor time inside a piece)
   board-unreadable   cut-board.config.json / cut-selection.json don't fit together (a pick or word index the board lacks)
-Tweak check, only when tweak-board.config.json exists: each words[] {id, w, t} against the word map's out_anchor
-(the board anchor, parakeet_start, in output time; make_tweaks.py places words from it).
-  tweak-time         |t - out_anchor| over 6 ms (block); an id the word map doesn't keep is a warn (tweak-word)
+Tweak check, only when tweak-board.config.json exists: each words[] {id, w, t} against the word map's out_start
+(the aligned start in output time, the cut tool's time; make_tweaks.py shows it on the board).
+  tweak-time         |t - out_start| over 6 ms (block); an id the word map doesn't keep is a warn (tweak-word)
   Only while the Tweak Board was built from this cuts.json (its cuts_sha256, stamped by make_tweaks.py). A board
   from an older cut (a Stage 9 round moved the cut) or with no stamp: no tweak check, one warn (tweak-stale).
 Warns, never blocks:
@@ -93,7 +94,7 @@ def run(ctx):
         return [_hit("word-map-stale", "The word map is out of date: the cut list (%s) or the transcript "
                      "(%s) changed after it was written." % (crel, src) + RERUN, str(map_p))]
 
-    want = word_map.build(cuts, em)["words"]
+    want = word_map.build(cuts, em, word_map.read_edl(work / "edl.json"))["words"]
     out, where = [], lambda w: "work/word_map.json: %s" % w["id"]
     cw, cg = Counter(w["id"] for w in want), Counter(w["id"] for w in got)
     twice = {i for i in cw | cg if cw[i] > 1 or cg[i] > 1}
@@ -126,16 +127,35 @@ def run(ctx):
     try:
         b = word_map.board(reel)
         if b is not None:
-            out += quote_checks(*b, em, want)
+            try:
+                data = json.loads((work / "tweak-cuts.json").read_text(encoding="utf-8"))
+                if not isinstance(data, dict):
+                    raise ValueError("invalid tweak-cut record")
+                if data.get("version") == 1:
+                    rounds = {"?": data["words"]}
+                elif data.get("version") == 2:
+                    rounds = data["rounds"]
+                else:
+                    raise ValueError("unknown tweak-cut version")
+                if not isinstance(rounds, dict) or any(
+                        not isinstance(name, str) or not isinstance(words, dict)
+                        or any(not isinstance(i, str) or not isinstance(w, str) for i, w in words.items())
+                        for name, words in rounds.items()):
+                    raise ValueError("invalid tweak-cut rounds")
+                tweak_cuts = {i for words in rounds.values() for i in words}
+            except (OSError, ValueError, KeyError, TypeError):
+                tweak_cuts = {}
+            out += quote_checks(*b, em, want, tweak_cuts)
     except (ValueError, KeyError, IndexError, TypeError) as e:
         out.append(_hit("board-unreadable", "The Cut Board ruling can't be read (%s), so the cut can't be checked "
                         "against the picks." % e, "cut-selection.json"))
     return out + tweak_checks(reel, want, cuts_p)
 
 
-def quote(cfg, sel, em):
-    """The picked words in script order, [(line id, word id, word)], and {word id: line id} of the struck ones."""
+def quote(cfg, sel, em, tweak_cuts=None):
+    """Picked words [(line id, word id, word)] and {word id: line id} of struck or tweak-cut words."""
     mixed = "takes" in em
+    tweak_cuts = tweak_cuts or {}
     maps = em["takes"] if mixed else {"1": em}
     unresolved = {(word_map.word_id(n, w["id"]) if mixed else w["id"])
                   for n, m in maps.items() for w in m["words"] if w.get("status") == "unresolved"}
@@ -152,15 +172,17 @@ def quote(cfg, sel, em):
             ident = word_map.word_id(att["take"], bw["id"]) if mixed else bw["id"]
             if str(bw["word"]).strip().startswith("[") or ident in unresolved:
                 continue
-            if w["i"] in rm:
+            if w["i"] in rm or (not mixed and ident in tweak_cuts):
                 struck.setdefault(ident, l["id"])
             else:
                 q.append((l["id"], ident, str(bw["word"]).strip()))
     return q, struck
 
 
-def quote_checks(cfg, sel, em, want):
-    q, struck = quote(cfg, sel, em)
+def quote_checks(cfg, sel, em, want, tweak_cuts=None):
+    tweak_cuts = tweak_cuts if "takes" not in em and tweak_cuts else {}
+    _, board_struck = quote(cfg, sel, em)
+    q, struck = quote(cfg, sel, em, tweak_cuts)
     segs = {}
     for w in want:
         segs.setdefault(w["id"], []).append(w)
@@ -178,10 +200,16 @@ def quote_checks(cfg, sel, em, want):
     for w in want:
         if w["id"] in line_of:
             continue
-        if w["id"] in struck:
+        if w["id"] in board_struck:
             out.append(_hit("quote-extra", "line %s: the word '%s' was struck but is still in the cut."
                             " Put that word back on the Cut Board (click it) and press Send again, or strike the words around it too."
-                            % (struck[w["id"]], w["word"]), where(struck[w["id"]], w["id"])))
+                            % (board_struck[w["id"]], w["word"]), where(board_struck[w["id"]], w["id"])))
+            continue
+        if w["id"] in tweak_cuts and w["id"] in struck:
+            lid = struck[w["id"]]
+            out.append(_hit("quote-extra", "line %s: the word '%s' was cut on the Tweak Board but is still in the cut."
+                            " Mark a slightly wider cut around it on the Tweak Board and press Send again."
+                            % (lid, w["word"]), where(lid, w["id"])))
             continue
         near = [x for x in want if x["seg"] == w["seg"] and x["id"] in line_of]
         if near:
@@ -227,11 +255,11 @@ def tweak_checks(reel, want, cuts_p):
                             msg="The Tweak Board shows '%s' at %.3f s, but the cut map doesn't keep that word; "
                                 "check it by ear." % (word, t)))
             continue
-        off = abs(t - w["out_anchor"])
+        off = abs(t - w["out_start"])
         if off > TOL + 1e-9:
             out.append(_hit("tweak-time", "The Tweak Board shows '%s' at %.3f s but the cut has it at %.3f s (%.0f ms "
                             "off; the limit is 6 ms). Rebuild the Tweak Board (make_tweaks.py) from this cut."
-                            % (word, t, w["out_anchor"], off * 1000), where))
+                            % (word, t, w["out_start"], off * 1000), where))
     return out
 
 

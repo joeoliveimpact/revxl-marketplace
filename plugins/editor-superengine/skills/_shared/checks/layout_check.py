@@ -23,9 +23,9 @@ kerning, shadows, strokes and animated pop/punch transforms are not measured.
 Canonical chunk corners are 1080x1920 master pixels. Optional document `width`
 declares stored coordinates at another proportional scale; normalize corners
 before fitting text. Font sizes remain master sizes, as in captions.layer().
-The hook uses compose.hook_box() and placer's conservative three-line envelope;
-only the saved first beat's hook can be recovered (CLI hook overrides are not
-saved). Head envelopes use placer's padded, zoom-aware inclusive frame spans.
+The saved rendered hooks use placer's shared still envelopes and lifetimes,
+including CLI text and plain scene replacements. While a hook is active, the
+protected caption region is the eyes-to-mouth band; otherwise it is the head.
 Collision comparisons exclude a caption's own chunk/words and produce only
 one row per pair of text elements, even if several word boxes also collide.
 """
@@ -87,6 +87,9 @@ def _word_boxes(chunk, box, spec):
 
 
 def _hook(reel, rate):
+    saved = compose.saved_hooks(reel)
+    if saved is not None:
+        return next((h for h in saved if h["start_f"] == 0), None)
     path = reel / "beat-map-selection.json"
     if not path.is_file():
         return None
@@ -96,10 +99,9 @@ def _hook(reel, rate):
         return None
     if not " ".join(first["speech_anchor"]["text"].split()):
         return None
-    x, y, width, size = compose.hook_box(WIDTH, HEIGHT)
-    box = (x - width / 2, y, x + width / 2, y + size * 1.15 * 3)
-    return dict(where="hook", start=0, end=min(first["end_f"], round(compose.HOOK_MAX_S * rate)),
-                box=box, words=[])
+    word_path = reel / "work/edit_map.cut.json"
+    words = _read(word_path)["words"] if word_path.is_file() else []
+    return compose.plain_hook(first["speech_anchor"]["text"], first, rate, words, first["end_f"])
 
 
 def run(ctx):
@@ -124,12 +126,19 @@ def run(ctx):
             box = tuple(v * scale for v in chunk["box"])
             elements.append(dict(where=f"caption {i}", start=chunk["start_f"], end=chunk["end_f"],
                                  box=box, words=_word_boxes(chunk, box, spec)))
-    hook = _hook(reel, rate)
-    if hook is not None:
+    hooks = compose.saved_hooks(reel, doc.get("hooks"))
+    if hooks is None:  # older caption documents did not record the rendered hook
+        fallback = _hook(reel, rate)
+        hooks = [fallback] if fallback else []
+    hook = None
+    for i, saved in enumerate(hooks):
+        a, e, box, _ = placer.hook_still(saved["text"], saved["start_f"], saved["end_f"], saved.get("box"))
+        hook = dict(where="hook" if i == 0 else f"hook {i}", start=a, end=e, box=box, words=[], hook=True)
         elements.append(hook)
 
     try:
         face_ctx = placer.load_ctx(reel)
+        placer.set_hook_stills(face_ctx, hooks)
         if face_ctx["median_box"] is None:
             face_ctx = None
     except INPUT_ERRORS:
@@ -137,9 +146,10 @@ def run(ctx):
     face_unchecked = face_ctx is None
     for element in elements:
         where, start = element["where"], element["start"]
-        boxes = element["words"] if where != "hook" else [("hook title", element["box"])]
+        is_hook = element.get("hook", False)
+        boxes = [("hook title", element["box"])] if is_hook else element["words"]
         for text, box in boxes:
-            if where != "hook":
+            if not is_hook:
                 chunk_box = element["box"]
                 if (box[0] >= chunk_box[0] - 1e-9 and box[1] >= chunk_box[1] - 1e-9
                         and box[2] <= chunk_box[2] + 1e-9 and box[3] <= chunk_box[3] + 1e-9):
@@ -149,25 +159,31 @@ def run(ctx):
                 rows.append(_row("text-off-screen",
                                  f"The text '{text}' sits {outside:g} px off the video; move it inside the frame.",
                                  where, start, rate))
-        if where == "hook" or face_ctx is None:
+        if is_hook or face_ctx is None:
             continue
         try:
             head = placer.head_box_at(face_ctx, start, element["end"] - 1)
+            head = placer.caption_protection(face_ctx, start, head)
         except INPUT_ERRORS:
             face_ctx, face_unchecked = None, True
             continue
         if head is None:
             continue  # The measured head is outside the picture during this span.
+        hook_face = ("sits on the speaker's face because the hook title leaves no room; "
+                     "shorten the hook to one line, or use your opening words as the hook."
+                     if placer.active_hook(face_ctx, start) else None)
         covered = False
         for text, box in element["words"]:
             if _area(box) > 0 and _area(_intersection(box, head)) >= 0.65 * _area(box) - 1e-9:
                 covered = True
                 when = f"{float(Fraction(start) / rate):.2f} s"
                 rows.append(_row("word-covered",
-                                 f"The word '{text}' at {when} sits on the speaker's face; move the caption or ask Claude to re-place it.",
+                                 f"The word '{text}' at {when} " + (hook_face or
+                                 "sits on the speaker's face; move the caption or ask Claude to re-place it."),
                                  where, start, rate))
         if not covered and _area(_intersection(element["box"], head)) > 0:
             rows.append(_row("caption-on-face",
+                             "The caption " + hook_face if hook_face else
                              "The caption touches the speaker's face; move it or ask Claude to re-place it.",
                              where, start, rate))
 
@@ -183,7 +199,7 @@ def run(ctx):
                              f"The text in {a['where']} and {b['where']} overlaps too much; move one so both are clear.",
                              a["where"], start, rate))
     if face_unchecked:
-        first = next((e for e in elements if e["where"] != "hook"), hook)
+        first = next((e for e in elements if not e.get("hook")), hook)
         rows.append(_row("layout-face-unchecked",
                          "The speaker's face could not be checked; run the face and placement steps again before reviewing captions.",
                          first["where"] if first else "hook", first["start"] if first else 0, rate, "warn"))

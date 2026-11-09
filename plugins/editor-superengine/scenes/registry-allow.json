@@ -181,7 +181,7 @@
         "sha256": "db0dd9c48989fed988565f286dfba5c0692584e5c2a1f70952df2e6570b97a25"
       }
     ],
-    "ours_sha256": "3484716a3b6f7174c7b7abf31d479c5388881f7193911ff7810da5f201531f0e",
+    "ours_sha256": "7718fbf82eba937ba728ff2eadafc0525aeb8dae4ecf24e9be550cda38b11a66",
     "changed": true,
     "licence": "Apache-2.0",
     "verdict": "allowed",

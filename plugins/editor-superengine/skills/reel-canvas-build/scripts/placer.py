@@ -33,8 +33,9 @@ hook and plate lifetimes retain their stored exclusive end frames.
 
 ghosts(ctx, bands) accepts records {start_f, end_f, box: (x0, y0, x1, y1)}.
 Missing-anchor and tight-shot notes accumulate in ctx["notes"] (deduplicated).
-place() prefers a clear text-safe candidate. If none is clear, it minimizes
-overlap area with the span's zoomed head envelope; ties use the lower spot.
+place() prefers a text-safe candidate clear of the head. During the hook window,
+active stills are hard obstacles; otherwise they remain advisory via ghosts().
+If none clears both, it keeps stills clear first, then minimizes head overlap.
 The span, band and overlap area are recorded in ctx["fallbacks"]. NoRoom is
 reserved for an impossible band height, not a tight shot.
 An active move uses its whole 0..1 progress grid, conservatively even when a
@@ -56,6 +57,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import compose  # noqa: E402  (reuse the renderer's layout, hook and reserve rules)
+import fps as fpsmod  # noqa: E402
 import styles  # noqa: E402  (reuse anchor validation and the default origin)
 
 WIDTH, HEIGHT = compose.TIERS["master"]
@@ -64,6 +66,7 @@ HEAD_HEIGHT = 0.20      # taste: fixed head/neck height when only a centre was m
 HEAD_PAD = 24          # taste: margin around the measured head, before the zoom
 CAPTION_PAD = 8        # taste: additional screen-pixel clearance around a caption
 UNDER_HEAD_GAP = 40    # taste: space below the protected head for the second candidate
+FACE_BAND_BOTTOM = .75  # eyes through mouth; captions may share the hair above 15%
 LOW_Y = HEIGHT * 0.72  # taste: the port's preferred low caption position
 PROGRESS = tuple(i / 10 for i in range(11))
 SAFE = (round(compose.RESERVE["left"] * WIDTH), round(compose.RESERVE["top"] * HEIGHT),
@@ -129,7 +132,37 @@ def _plate(markup):
     return x, y, x + w, y + h
 
 
-def load_ctx(reel_dir):
+def hook_still(text, start_f, end_f, box=None):
+    if box is not None:
+        return start_f, end_f, tuple(box), "hook title"
+    x, y, w, size = compose.hook_box(WIDTH, HEIGHT)
+    lines = compose.title_lines(text, w, size)
+    return (start_f, end_f, (x - w / 2, y, x + w / 2, y + size * 1.15 * lines), "hook title")
+
+
+def set_hook_stills(ctx, hooks):
+    """Install the exact rendered hook times/text, including a scene replacement."""
+    ctx["stills"] = [s for s in ctx["stills"] if s[3] != "hook title"] + [
+        hook_still(h["text"], h["start_f"], h["end_f"], h.get("box")) for h in hooks]
+
+
+def active_hook(ctx, start_f):
+    return next((s for s in ctx["stills"] if s[3] == "hook title" and s[0] <= start_f < s[1]), None)
+
+
+def face_band(head, top=.15):
+    if head is None:
+        return None
+    height = head[3] - head[1]
+    return head[0], head[1] + top * height, head[2], head[1] + FACE_BAND_BOTTOM * height
+
+
+def caption_protection(ctx, start_f, head):
+    """QA and placement share the hair allowance during the rendered hook."""
+    return face_band(head) if active_hook(ctx, start_f) else head
+
+
+def load_ctx(reel_dir, hook=None):
     """Load existing JSON and layout partials only; no probe, render or new work file."""
     reel = Path(reel_dir)
     track = _read(reel / styles.TRACK)
@@ -140,8 +173,8 @@ def load_ctx(reel_dir):
             not isinstance(a, int) or not isinstance(e, int) or a >= e for a, e in segments
     ) or any(a != previous[1] for previous, (a, _) in zip(segments, segments[1:])):
         raise ValueError("The cut list has missing or overlapping frames; make the cut again.")
-    rate = Fraction(str(track["fps"]))
-    if rate <= 0 or any(abs(float(rate) - float(doc["fps"])) > 0.001 for doc in (cuts, send)):
+    rate = fpsmod.as_fraction(track["fps"])
+    if rate <= 0 or any(abs(float(rate) - float(fpsmod.as_fraction(doc["fps"]))) > 0.001 for doc in (cuts, send)):
         raise ValueError("The style, cut list and Beat Map need the same frame rate; make them again.")
     if track["total_f"] != segments[-1][1] or not track["keys"] or track["keys"][0]["f"] != 0:
         raise ValueError("The style track does not cover this cut; plan its editing style again.")
@@ -165,13 +198,13 @@ def load_ctx(reel_dir):
     stills = []
     beats = send["beats"]
     first = next((b for b in beats if b["start_f"] == 0), None)
-    if first is not None and not any(b["start_f"] == 0 and b.get("scene") is not None for b in beats):
-        text = " ".join(first["speech_anchor"]["text"].split())
+    if (first is not None or hook is not None) and not any(
+            b["start_f"] == 0 and b.get("scene") is not None for b in beats):
+        text, hook_f = hook if hook is not None else (
+            first["speech_anchor"]["text"], min(first["end_f"], round(compose.HOOK_MAX_S * rate)))
+        text = " ".join(text.split())
         if text:
-            x, y, w, size = compose.hook_box(WIDTH, HEIGHT)
-            # The same conservative three-line envelope as compose.py's hook safe-zone check.
-            stills.append((0, min(first["end_f"], round(compose.HOOK_MAX_S * rate)),
-                           (x - w / 2, y, x + w / 2, y + size * 1.15 * 3), "hook title"))
+            stills.append(hook_still(text, 0, hook_f))
     if track["style"].get("style") == "layout-switch":
         stills.extend((b["start_f"], b["end_f"], _plate(layouts[b["layout"]]["plate"]),
                        f"{b['layout']} card plate") for b in beats if b["layout"] != "full")
@@ -265,38 +298,65 @@ def _seconds(ctx, f0, f1):
 
 
 def place(ctx, start_f, end_f, band_h=134):
-    """Try low, below-head, top; otherwise use least overlap, then lowest spot."""
+    """Keep base placement outside hooks; inside, clear active stills first."""
     head = head_box_at(ctx, start_f, end_f)
+    hook = active_hook(ctx, start_f)
+    stills = [box for a, e, box, _ in ctx["stills"] if hook is not None and start_f < e and end_f >= a]
     if not isinstance(band_h, (int, float)) or not math.isfinite(band_h) or band_h <= 0:
         raise ValueError("Caption band height must be a positive number of pixels.")
     x0, top, x1, bottom = SAFE
     last_y = bottom - band_h
     if last_y >= top:
         if ctx["median_box"] is None:
-            note = (f"No head samples for {_seconds(ctx, start_f, end_f)}; using the lowest safe caption spot. "
+            note = (f"No head samples for {_seconds(ctx, start_f, end_f)}; placing captions at the lowest safe spot where possible. "
                     "Check it against the speaker before rendering.")
             if note not in ctx["notes"]:
                 ctx["notes"].append(note)
-            return x0, last_y, x1, bottom
-        spots = [min(LOW_Y, last_y)]
+            low = x0, last_y, x1, bottom
+            if all(not hits(low, still, CAPTION_PAD) for still in stills):
+                return low
+        if hook is not None:
+            y = math.ceil(hook[2][3] + UNDER_HEAD_GAP)
+            box = x0, y, x1, y + band_h
+            protected = caption_protection(ctx, start_f, head)
+            if (top <= y <= last_y and (protected is None or not hits(box, protected, CAPTION_PAD))
+                    and all(not hits(box, still, CAPTION_PAD) for still in stills)):
+                return box
+        spots = [last_y if ctx["median_box"] is None else min(LOW_Y, last_y)]
         if head is not None:
             spots.append(math.ceil(head[3] + UNDER_HEAD_GAP))
+        spots.extend(math.ceil(box[3] + UNDER_HEAD_GAP) for box in stills)
         spots.append(top)
-        covered = []
+        covered, clear_stills = [], []
         for y in spots:
             box = x0, y, x1, y + band_h
             if not top <= y <= last_y:
                 continue
-            if head is None or not hits(box, head, CAPTION_PAD):
+            still_clear = all(not hits(box, still, CAPTION_PAD) for still in stills)
+            if still_clear and (head is None or not hits(box, head, CAPTION_PAD)):
                 return box
-            overlap = (max(0, min(box[2], head[2]) - max(box[0], head[0]))
+            overlap = (0 if head is None else
+                       max(0, min(box[2], head[2]) - max(box[0], head[0]))
                        * max(0, min(box[3], head[3]) - max(box[1], head[1])))
             covered.append((overlap, -y, box))
-        overlap, _, box = min(covered)
-        note = (f"Captions from {_seconds(ctx, start_f, end_f)} overlap part of the speaker's head "
-                "because the shot is tight; the caption step may shorten or drop them.")
-        if note not in ctx["notes"]:
-            ctx["notes"].append(note)
+            if still_clear:
+                clear_stills.append((overlap, -y, box))
+        overlap, _, box = min(clear_stills or covered)
+        if not clear_stills:
+            note = (f"Captions from {_seconds(ctx, start_f, end_f)} overlap the hook title; "
+                    "shorten the hook or ask Claude to move the captions.")
+            if note not in ctx["notes"]:
+                ctx["notes"].append(note)
+        if head is not None and hits(box, head, CAPTION_PAD):
+            note = (f"Captions from {_seconds(ctx, start_f, end_f)} overlap part of the speaker's head "
+                    "because the shot is tight; the caption step may shorten or drop them.")
+            if note not in ctx["notes"]:
+                ctx["notes"].append(note)
+            if hook is not None and hits(box, face_band(head), CAPTION_PAD):
+                reason = "can't fit between your hook title and your face on this shot. "
+                if not any(reason in n for n in ctx["notes"]):
+                    ctx["notes"].append(f"Captions from {_seconds(ctx, start_f, end_f)} {reason}"
+                                        "Shorten the hook to one line, or use your opening words as the hook.")
         fallback = dict(start_f=start_f, end_f=end_f, box=box, overlap_px=overlap)
         if fallback not in ctx.setdefault("fallbacks", []):
             ctx["fallbacks"].append(fallback)
@@ -307,7 +367,7 @@ def place(ctx, start_f, end_f, band_h=134):
 def ghosts(ctx, bands):
     """Plain advisory lines for temporally overlapping hook/plate rectangles.
 
-    Scene boxes do not exist yet and are intentionally not inferred.
+    Fitted hook scenes use their supplied text boxes, never inferred geometry.
     """
     notes = []
     for band in bands:
@@ -321,6 +381,7 @@ def ghosts(ctx, bands):
 
 
 def selftest():
+    from unittest.mock import patch
     assert hits((10, 10, 20, 20), (15, 15, 30, 30))
     assert not hits((0, 0, 10, 10), (10, 0, 20, 10))
     assert hits((0, 0, 10, 10), (10, 0, 20, 10), 1)
@@ -328,6 +389,111 @@ def selftest():
         _map((400, 800, 600, 1000), (0, 960, 1080, 960), 1, styles.ORIGIN), (400, 1280, 600, 1480)))
     assert _map((0, 0, 1080, 1920), (738, 28, 312, 555), 1.43, styles.ORIGIN) == (738, 28, 1050, 583)
     assert _map((0, 0, 100, 100), (0, 0, 1080, 1920), 3, (1, 1)) is None
+    assert compose.title_lines("Watch this before you post", 840, 72) == 2
+    assert math.isclose(hook_still("Watch this before you post", 0, 125)[2][3], 445.6)
+    # Ignoring an active still would pick the top spot, over the hook.
+    head = (200, 850, 880, 1500)
+    ctx = {"track": {"total_f": 100, "keys": [{"f": 0}], "tweens": []},
+           "segments": [(0, 100)], "boxes": {0: head}, "median_box": head,
+           "layouts": {"full": (0, 0, 1080, 1920)}, "fps": Fraction(25),
+           "stills": [(0, 50, (90, 280, 930, 570), "hook title")], "notes": []}
+    box = place(ctx, 0, 49)
+    assert box == (60, 610, 960, 744), box
+    assert not hits(box, head, CAPTION_PAD) and not hits(box, ctx["stills"][0][2])
+    assert not any("can't fit between your hook title" in n for n in ctx["notes"])
+    assert place(ctx, 50, 60) == (60, 220, 960, 354)
+    assert place(ctx, 49, 50) == box  # an inclusive span crossing the hook end
+    # A tight head may force overlap, but a clear still remains a hard obstacle.
+    ctx["boxes"][0] = ctx["median_box"] = (0, 400, 1080, 1920)
+    ctx["stills"][0] = (0, 50, (60, 220, 960, 600), "hook title")
+    box = place(ctx, 0, 49)
+    assert not hits(box, ctx["stills"][0][2]) and ctx["fallbacks"]
+    no_room = ("Captions from 0.00 to 1.96 seconds can't fit between your hook title and your face on this shot. "
+               "Shorten the hook to one line, or use your opening words as the hook.")
+    assert no_room in ctx["notes"], ctx["notes"]
+    place(ctx, 10, 20)
+    assert sum("can't fit between your hook title" in n for n in ctx["notes"]) == 1
+    outside = dict(ctx, boxes={0: (0, 0, 1080, 1920)}, median_box=(0, 0, 1080, 1920), notes=[])
+    place(outside, 50, 60)
+    assert any("because the shot is tight" in n for n in outside["notes"])
+    assert not any("can't fit between your hook title" in n for n in outside["notes"])
+    ctx["stills"][0] = (0, 50, (0, 0, 1080, 1920), "hook title")
+    place(ctx, 0, 49)
+    assert ("Captions from 0.00 to 1.96 seconds overlap the hook title; "
+            "shorten the hook or ask Claude to move the captions.") in ctx["notes"]
+    ctx["median_box"] = None
+    ctx["stills"][0] = (0, 50, (90, 280, 930, 570), "hook title")
+    assert place(ctx, 0, 49) == (60, 1336, 960, 1470)
+    ctx["stills"].append((0, 50, (60, 1300, 960, 1470), "card plate"))
+    assert place(ctx, 0, 49) == (60, 610, 960, 744)
+    # With no hook, plates remain advisory and cannot change base geometry.
+    ctx["stills"] = [(0, 50, (60, 1300, 960, 1470), "card plate")]
+    plated = place(ctx, 0, 49)
+    ctx["stills"] = []
+    assert plated == place(ctx, 0, 49) == (60, 1336, 960, 1470)
+    assert ghosts(dict(ctx, stills=[(0, 50, plated, "card plate")]), [
+        dict(start_f=0, end_f=49, box=plated)])
+    ctx.update(boxes={0: head}, median_box=head)
+    base = place(ctx, 0, 49)
+    ctx["stills"] = [(0, 50, base, "card plate")]
+    assert place(ctx, 0, 49) == base
+    first = {"start_f": 0, "end_f": 300, "layout": "full", "speech_anchor": {"text": "First beat"}}
+    docs = {Path(styles.TRACK).name: {"fps": "25/1", "total_f": 300, "style": {},
+                                    "keys": [{"f": 0, "layout": "full"}], "tweens": []},
+            "cuts.json": {"fps": "25/1", "segments": [{"out_in_f": 0, "out_out_f": 300}]},
+            Path(styles.SEND).name: {"fps": "25/1", "beats": [first]}}
+    with patch(__name__ + "._read", side_effect=lambda path: docs[path.name]), \
+            patch.object(styles, "load_anchors", return_value=None):
+        short = load_ctx("unused", hook=("Hi", 25))["stills"][0]
+        long = load_ctx("unused", hook=("W" * 70, 75))["stills"][0]
+        fallback = load_ctx("unused")["stills"][0]
+        assert short[:2] == (0, 25) and math.isclose(short[2][3], 362.8)
+        assert long[:2] == (0, 75) and long[2][3] > short[2][3]
+        assert fallback[:2] == (0, 125)
+    head = (200, 600, 880, 1900)
+    ctx.update(boxes={0: head}, median_box=head, notes=[], stills=[(0, 50, (90, 280, 930, 570), "hook title")])
+    hair = place(ctx, 0, 49)
+    assert hair == (60, 610, 960, 744) and hits(hair, head)
+    assert not hits(hair, face_band(head), CAPTION_PAD)
+    assert not any("can't fit between your hook title" in n for n in ctx["notes"])
+    assert place(ctx, 49, 60) == hair  # the ruling classifies a chunk by its start
+    # At the exclusive hook end the full head is protected again.
+    assert place(ctx, 50, 60) == (60, 220, 960, 354)
+    ctx["boxes"][0] = ctx["median_box"] = (200, 400, 880, 1500)
+    blocked = place(ctx, 0, 49)
+    assert blocked != hair and ctx["fallbacks"]  # the under-hook spot crosses the face
+    assert not hits(blocked, face_band(ctx["median_box"]), CAPTION_PAD)
+    assert not any("can't fit between your hook title" in n for n in ctx["notes"])
+    # Exercise QA messages through real caption geometry, including the hook end.
+    import tempfile
+    sys.path.insert(0, str(HERE.parents[1] / "_shared/checks"))
+    import layout_check
+    with tempfile.TemporaryDirectory() as home:
+        reel = Path(home)
+        (reel / "work").mkdir()
+        (reel / "work/cuts.json").write_text(json.dumps({"fps": "25/1"}), encoding="utf-8")
+        head = (200, 600, 880, 1900)
+        ctx.update(boxes={0: head}, median_box=head)
+        hook = dict(text="Hi", start_f=0, end_f=50, spoken=False, word_count=1, shown_words=[])
+        for start, y, check in ((0, 850, "word-covered"), (49, 850, "word-covered"),
+                                 (0, 670, "caption-on-face"), (50, 610, "word-covered"),
+                                 (50, 470, "caption-on-face")):
+            chunk = dict(start_f=start, end_f=start + 10, text="Hi", box=[60, y, 960, y + 134],
+                         words=[dict(text="Hi")])
+            doc = {"style": {"style": "clean"}, "chunks": [chunk], "hooks": [hook]}
+            (reel / "work/captions.json").write_text(json.dumps(doc), encoding="utf-8")
+            with patch.object(layout_check.placer, "load_ctx", return_value=ctx):
+                rows = layout_check.run({"reel_dir": reel})
+            row = next(r for r in rows if r["check"] == check)
+            assert row["level"] == "block", rows
+            if start < 50:
+                assert row["msg"].endswith("sits on the speaker's face because the hook title leaves no room; "
+                                           "shorten the hook to one line, or use your opening words as the hook."), rows
+            elif check == "word-covered":
+                assert row["msg"] == ("The word 'Hi' at 2.00 s sits on the speaker's face; "
+                                      "move the caption or ask Claude to re-place it."), rows
+            else:
+                assert row["msg"] == "The caption touches the speaker's face; move it or ask Claude to re-place it.", rows
     print("selftest ok")
     return 0
 

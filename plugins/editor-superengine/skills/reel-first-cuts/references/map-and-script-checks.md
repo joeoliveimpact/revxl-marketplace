@@ -43,10 +43,10 @@ Board is from an older cut, rebuild it to re-check timing"): the render goes ahe
 board from it.
 
 **Two clocks for one word.** Every word has two start times. The board anchor time is the speech model's own
-estimate: the Cut Board, its 80 ms drift guard and the Tweak Board all place words by it, so a ruling lands the
+estimate: the Cut Board and its 80 ms drift guard place words by it, so a ruling lands the
 same way every time. The aligned time is the same word measured again against the audio: gaps.py cuts from it,
 and so does the render. The two can differ, so the word map keeps both, each turned into a time in the cut. The
-render is checked on the aligned time, the Tweak Board's word times on the anchor time.
+render and the Tweak Board's word times are checked on the aligned start, the cut tool's time.
 
 Exit 0 is clean; exit 1 means at least one block. Every run prints one line per finding (`BLOCK <name> <message>
 (<where>)`, or `WARN ...`) and writes `work/map_check.json` (`{"blocks": [...], "warns": [...]}`, each with its
@@ -66,6 +66,8 @@ edit `work/word_map.json` or the check by hand.
 | `quote-missing`, `quote-twice`, `quote-extra`, `quote-order` | The cut doesn't say what the client picked: a picked word is missing or plays twice, a struck or unpicked word plays, or the order changed | A fault in the cut. |
 | `board-unreadable` | The Cut Board's two files don't fit together | A fault in the cut. |
 | `tweak-time` | The Tweak Board's word times don't match this cut, or its file can't be read | What the message says: rebuild the Tweak Board (`make_tweaks.py`) from this cut. |
+
+A word the user cut on the Tweak Board is not missing: tweaks_to_edl records it in work/tweak-cuts.json and the check skips it; a new Cut Board Send clears that record.
 
 `tweak-word` is a warn, not a block: the Tweak Board shows a word this cut doesn't keep. Check it by ear.
 `tweak-stale` (the Tweak Board is from an older cut) and `no-word-times` (no word timings on this computer) are

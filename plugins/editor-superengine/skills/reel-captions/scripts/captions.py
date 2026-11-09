@@ -467,7 +467,7 @@ def _brand_font(notes, reel):
     return fallback
 
 
-def plan(reel_dir, fps=None, *, _style=None, style_reel=None):
+def plan(reel_dir, fps=None, *, _style=None, style_reel=None, render_beats=None):
     """Read the Send, words, cuts and saved style; return a plan without writing."""
     reel = Path(reel_dir)
     style_reel = reel if style_reel is None else style_reel
@@ -491,7 +491,7 @@ def plan(reel_dir, fps=None, *, _style=None, style_reel=None):
         doc["declared_drops"] = [{"w": i, "why": "captions off"} for i in range(len(words))]
         return doc
     doc["font"] = _brand_font(doc["notes"], style_reel)
-    beats = _beats(bm, total)
+    beats = _beats(bm if render_beats is None else dict(bm, beats=render_beats), total)
     switches = sorted({b["start_f"] for a, b in zip(beats, beats[1:]) if a["layout"] != b["layout"]})
     candidates = bm.get("word_marks", [])
     if not isinstance(candidates, list):
@@ -559,7 +559,8 @@ def plan(reel_dir, fps=None, *, _style=None, style_reel=None):
         item = {"i": len(doc["chunks"]), **c, "text": " ".join(w["text"] for w in entries), "words": entries}
         doc["chunks"].append(item)
         if Fraction(c["end_f"] - c["start_f"], 1) / rate < cs["min_read_s"]:
-            doc["notes"].append(f"Caption {item['i']} is short to read; consider a longer hold if you prefer.")
+            when = float(Fraction(c["start_f"]) / rate)
+            doc["notes"].append(f"Caption at {when:.2f} seconds is short to read; consider a longer hold if you prefer.")
     doc["declared_drops"].sort(key=lambda d: d["w"])
     return doc
 
@@ -637,7 +638,7 @@ def layer(doc, boxes, s, t):
         pad = min(16, (x1 - x0) / 8)  # taste: reduce plate padding for very narrow boxes
         size = min(spec["size"], (x1 - x0 - 2 * pad) / (text_width_em(c["text"]) * spec["punch"]["scale"]))
         if size < spec["size"]:
-            note = f"Caption {c['i']} uses a smaller font to fit its safe spot."
+            note = f"Caption at {float(t(c['start_f'])):.2f} seconds uses a smaller font to fit its safe spot."
             if note not in doc["notes"]:
                 doc["notes"].append(note)
         spans, punched, swipes = [], [], []
@@ -854,6 +855,37 @@ def selftest():
         assert e.code == 2
     else:
         raise AssertionError("Unknown style must stop")
+    with tempfile.TemporaryDirectory() as home, patch.object(rt, "state_dir", return_value=Path(home)):
+        beat = {"id": "b1", "start_f": 0, "end_f": 30, "layout": "full",
+                "scene": {"id": "hf-hook-title", "slots": {"title": "a new look"}, "params": {}}}
+        bm = {"beats": [beat], "word_marks": []}
+        docs = {SEND: bm, Path(DEFAULT_WORDS).name: {"words": words},
+                "cuts.json": {"fps": 30, "segments": [{"out_in_f": 0, "out_out_f": 30}]}}
+        cs = {"style": "clean", "echo_suppression": True, "under_small_overlays": False, "loud_emphasis": False}
+        original_read = read_json
+        def fixture(path):
+            return docs[path.name] if path.name in docs else original_read(path)
+        with patch(__name__ + ".read_json", side_effect=fixture):
+            suppressed = plan("unused", _style=cs)
+            replacement = plan("unused", _style=cs, render_beats=[dict(beat, scene=None)])
+        assert not suppressed["chunks"] and replacement["chunks"]
+        assert bm["beats"][0]["scene"] is not None  # a render never rewrites the Send
+        import compose
+        # A hook skip renumbers chunk 1 to 0; reading notes must still identify it.
+        docs[Path(DEFAULT_WORDS).name]["words"] = [
+            {"word": text, "start": i / 10, "end": i / 10 + .08}
+            for i, text in enumerate(("a", "new", "look", "today"))]
+        with patch(__name__ + ".read_json", side_effect=fixture):
+            renumbered = plan("unused", _style={**cs, "min_read_s": 2}, render_beats=[dict(beat, scene=None)])
+        kept_start = renumbered["chunks"][1]["start_f"]
+        hook = dict(text="a new look", start_f=0, end_f=30, spoken=True, word_count=3)
+        with contextlib.redirect_stdout(io.StringIO()):
+            compose.hook_captions(renumbered, [hook])
+        assert len(renumbered["chunks"]) == 1 and renumbered["chunks"][0]["i"] == 0
+        assert any(f"Caption at {float(Fraction(kept_start) / 30):.2f} seconds is short to read" in note
+                   for note in renumbered["notes"]), renumbered["notes"]
+        layer(renumbered, [(60, 1336, 160, 1470)], 1, lambda f: str(float(Fraction(f) / 30)))
+        assert any("Caption at 0.30 seconds uses a smaller font" in note for note in renumbered["notes"])
     print("selftest ok")
     return 0
 

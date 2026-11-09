@@ -3,7 +3,11 @@
 <html lang="en" data-composition-variables='[
   {"id":"title","type":"string","label":"Title","default":"Nobody tells you this about editing"},
   {"id":"accent","type":"color","label":"Accent","default":"#35c8d9"},
-  {"id":"font","type":"string","label":"Font family","default":"Inter"}
+  {"id":"font","type":"string","label":"Font family","default":"Inter"},
+  {"id":"entrance","type":"string","label":"Entrance","default":"fade"},
+  {"id":"top","type":"number","label":"Title box top","default":220},
+  {"id":"height","type":"number","label":"Title box height","default":1250},
+  {"id":"size","type":"number","label":"Title size","default":120}
 ]'>
   <head>
     <meta charset="UTF-8" />
@@ -41,13 +45,24 @@
         root.style.fontFamily = JSON.stringify(v.font);
         root.querySelectorAll("[data-slot]").forEach((el) => { el.textContent = v[el.dataset.slot]; });
         const q = (s) => root.querySelector(s);
+        // Modified by editor-superengine: face-safe box and title size supplied by the compositor.
+        q(".bow").style.top = v.top + "px";
+        q(".bow").style.height = v.height + "px";
+        q(".line").style.fontSize = v.size + "px";
         const DUR = 4, IN = 0.32, O = 4, REST_BLUR = 2.5;
         const tl = gsap.timeline({ paused: true });
+        // Modified by editor-superengine: an opening title is complete at time zero.
+        if (v.entrance === "none") {
+          tl.set(q(".bow"), { opacity: 1, filter: "blur(" + REST_BLUR + "px)", immediateRender: true }, 0);
+          tl.set(q(".copy.r"), { x: -O, opacity: 0.85, immediateRender: true }, 0);
+          tl.set(q(".copy.b"), { x: O, opacity: 0.85, immediateRender: true }, 0);
+        } else {
         // entrance: focus in from heavy blur, red/blue fringe settles from wide to resting
         tl.fromTo(q(".bow"), { opacity: 0 }, { opacity: 1, duration: IN * 1.4, ease: "power2.out" }, 0.1);
         tl.fromTo(q(".bow"), { filter: "blur(18px)" }, { filter: "blur(" + REST_BLUR + "px)", duration: IN * 2.4, ease: "power2.out" }, 0.1);
         tl.fromTo(q(".copy.r"), { x: -O * 4.5, opacity: 0.45 }, { x: -O, opacity: 0.85, duration: IN * 2.4, ease: "power2.out" }, 0.1);
         tl.fromTo(q(".copy.b"), { x: O * 4.5, opacity: 0.45 }, { x: O, opacity: 0.85, duration: IN * 2.4, ease: "power2.out" }, 0.1);
+        }
         // held: slow scale breath and a fringe wobble that returns to rest by the end
         tl.fromTo(q(".line"), { scale: 1 }, { scale: 1.035, duration: DUR - 1, ease: "sine.out" }, 0.4);
         tl.to(q(".copy.r"), { x: -O - 1.4, duration: (DUR - 1.4) / 2, ease: "sine.inOut", yoyo: true, repeat: 1 }, 1.4);

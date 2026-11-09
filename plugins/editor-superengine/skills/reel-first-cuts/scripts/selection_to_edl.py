@@ -142,6 +142,7 @@ def main():
 
     work.mkdir(parents=True, exist_ok=True)
     (work / "edl.json").write_bytes(json.dumps(edl, indent=1).encode("utf-8"))
+    (work / "tweak-cuts.json").unlink(missing_ok=True)
     take = min(takes)
     src = cfg["takes"][str(take)]["wav"]
     dur = sum(c["src_out"] - c["src_in"] for c in edl)
