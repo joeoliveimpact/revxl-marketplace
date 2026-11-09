@@ -60,6 +60,102 @@ class HubRowsTest(unittest.TestCase):
         with patch.object(hub, "goldmine", return_value=None), patch.object(hub, "style_rows", return_value=[]):
             return hub.build(self.root)["reels"][0]
 
+    def test_plain_health_only_flags_chosen_handoff(self):
+        # Copied from the S17W2 walk's status list; this proof never reads that workspace.
+        status = [
+            {"component": "machine", "level": "ok",
+             "detail": "Windows 11 (10.0.26300) AMD64, no NVIDIA GPU, 31.7 GB RAM (4.9 GB free) [test masks: gpu,resolve]",
+             "fix": None},
+            {"component": "python", "level": "ok", "detail": "the editor's own Python 3.12.16 in its venv", "fix": None},
+            {"component": "ffmpeg", "level": "ok", "detail": "ffmpeg 8.1.2 with zscale", "fix": None},
+            {"component": "node", "level": "ok", "detail": "Node.js v22.23.4", "fix": None},
+            {"component": "hyperframes", "level": "ok", "detail": "HyperFrames 0.8.184", "fix": None},
+            {"component": "chrome", "level": "ok", "detail": "Chrome for rendering 152.0.7977.30", "fix": None},
+            {"component": "cutout-model", "level": "ok", "detail": "u2net_human_seg: 1 file(s) match their sha256", "fix": None},
+            {"component": "rvm", "level": "ok", "detail": "RVM cutout ready (torch + torchvision)", "fix": None},
+            {"component": "transcriber", "level": "ok", "detail": "parakeet-cpu packages are installed and load", "fix": None},
+            {"component": "model-parakeet", "level": "ok", "detail": "4 file(s) match their sha256", "fix": None},
+            {"component": "align", "level": "ok", "detail": "align_words with wav2vec2: 7 file(s) match their sha256", "fix": None},
+            {"component": "engine", "level": "ok", "detail": "parakeet-cpu (Windows without an NVIDIA GPU)", "fix": None},
+            {"component": "resolve-installed", "level": "warn",
+             "detail": "DaVinci Resolve isn't installed, so the Resolve hand-off stays off (optional)",
+             "fix": "Nothing is needed for editing. For the Resolve hand-off, install DaVinci Resolve Studio 21.1 or newer from blackmagicdesign.com, then Claude re-runs the doctor."},
+            {"component": "nle", "level": "ok", "detail": "none (the Resolve hand-off stays off)", "fix": None},
+            {"component": "config", "level": "ok", "detail": "editor/editor.config.json is up to date", "fix": None},
+        ]
+        health = hub.plain_health(status, "none")
+        self.assertEqual(len(health), 15)
+        self.assertFalse(any(h["matters"] and h["level"] != "ok" for h in health))
+        self.assertEqual([h["label"] for h in health],
+                         ["This computer", "The editor's Python", "Video tools", "Motion renderer runtime",
+                          "Motion renderer", "Render browser", "Cutout model", "Cutout for moving shots",
+                          "Transcriber", "Transcription model", "Word timing", "Transcription engine",
+                          "DaVinci Resolve", "Editor hand-off", "Editor settings"])
+        self.assertEqual([health[i]["detail"] for i in (6, 9, 10)], ["Downloaded and checked."] * 3)
+        self.assertEqual(health[0]["detail"], "Windows 11, no NVIDIA GPU, 31.7 GB RAM (4.9 GB free)")
+        self.assertEqual([health[i]["detail"] for i in (1, 2, 3, 4, 5, 7, 11)], ["Ready."] * 7)
+        self.assertEqual(health[8]["detail"], "Installed and working.")
+        self.assertEqual(health[13]["detail"], "No editor hand-off chosen (you can ask for one later).")
+        self.assertEqual(health[14]["detail"], "Your editor settings are up to date.")
+        for original, h in zip(status, health):
+            for key in ("component", "level", "fix"):
+                self.assertEqual(h[key], original[key])
+            self.assertNotRegex(h["detail"] + h["label"], r"sha256|test mask")
+            self.assertNotRegex(h["detail"], r"/|\.json|venv|torch|AMD64|\d+\.\d+\.\d+|parakeet-cpu")
+        self.assertIs(next(h for h in health if h["component"] == "resolve-installed")["matters"], False)
+        health = hub.plain_health(status, "resolve")
+        self.assertIs(next(h for h in health if h["component"] == "resolve-installed")["matters"], True)
+        extra = hub.plain_health([dict(component=c, level="missing", detail="missing or damaged: model.bin", fix="Repair it")
+                                  for c in ("gpu", "model-other", "resolve-edition", "resolve-version",
+                                            "resolve-scripting", "other-tool")], "mcp")
+        self.assertEqual([h["label"] for h in extra], ["Graphics card", "Transcription model", "DaVinci Resolve edition",
+                                                       "DaVinci Resolve version", "DaVinci Resolve scripting", "Other tool"])
+        self.assertTrue(all(h["detail"] == "Some of its files are missing or damaged." for h in extra))
+        legacy = "STATUS ffmpeg warn Needs repair"
+        self.assertEqual(hub.plain_health([legacy, None, 7], "none"), [legacy, None, 7])
+        (self.root / "editor/.platform.json").write_bytes((json.dumps({"status": status}) + "\n").encode("utf-8"))
+        cfg_path = self.root / "editor/editor.config.json"
+        cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+        cfg["nle"] = "none"
+        cfg_path.write_bytes((json.dumps(cfg) + "\n").encode("utf-8"))
+        with patch.object(hub, "goldmine", return_value=None), patch.object(hub, "style_rows", return_value=[]):
+            health = hub.build(self.root)["health"]
+        self.assertEqual(len(health), 15)
+        self.assertFalse(any(h["matters"] and h["level"] != "ok" for h in health))
+        self.assertTrue(all(h.get("label") for h in health))
+        self.assertTrue(all("sha256" not in h["detail"] and "test mask" not in h["detail"] for h in health))
+        for h in health:
+            self.assertNotRegex(h["detail"], r"/|\.json|venv|torch|AMD64|\d+\.\d+\.\d+|parakeet-cpu")
+
+    def test_plain_health_handoff_choices(self):
+        for choice, expected in (("none", "No editor hand-off chosen (you can ask for one later)."),
+                                 ("mcp", "Files for another editor"), ("resolve", "DaVinci Resolve")):
+            with self.subTest(choice=choice):
+                row = dict(component="nle", level="ok", detail=choice + " (chosen by you; the doctor keeps it)")
+                self.assertEqual(hub.plain_health([row], choice)[0]["detail"], expected)
+
+    def test_plain_health_machine_keeps_os_gpu_and_ram(self):
+        for architecture in ("AMD64", "arm64", "x86_64"):
+            with self.subTest(architecture=architecture):
+                row = dict(component="machine", level="ok",
+                           detail=f"macOS 15.2.1 {architecture}, NVIDIA GPU, 32 GB RAM (8 GB free)")
+                self.assertEqual(hub.plain_health([row], "none")[0]["detail"],
+                                 "macOS 15, NVIDIA GPU, 32 GB RAM (8 GB free)")
+
+    def test_plain_health_warning_paths_keep_the_problem(self):
+        for level in ("warn", "missing"):
+            for filename in ("editor/editor.config.json", r"C:\editor\editor.config.json",
+                             "editor.config.json", "/tmp/editor/config.dat"):
+                with self.subTest(level=level, filename=filename):
+                    row = dict(component="config", level=level,
+                               detail=f"{filename} isn't valid JSON, so the doctor left it as it is", fix="Repair it")
+                    result = hub.plain_health([row], "none")[0]
+                    self.assertEqual(result["detail"], "a settings file isn't valid JSON, so the doctor left it as it is")
+                    self.assertEqual(result["level"], level)
+                    self.assertEqual(result["fix"], "Repair it")
+        row = dict(component="ffmpeg", level="warn", detail="Video tools need a check")
+        self.assertEqual(hub.plain_health([row], "none")[0]["detail"], "Video tools need a check")
+
     def test_record_layouts(self):
         for names, expected in [([], "Record"), (["RAW.mp4"], "Cut"),
                                 (["raw/x.mp4"], "Cut"), (["raw/x.mp4", "raw/y.MOV"], "Cut"),
@@ -74,6 +170,66 @@ class HubRowsTest(unittest.TestCase):
                 self.assertEqual(self.row()["stage"], expected)
                 for p in made:
                     p.unlink()
+
+    def test_voice_only_mix_without_sketches_or_sound_board(self):
+        (self.reel / "beat-map.state.json").write_bytes(b'{"sent_at": "now"}')
+        (self.reel / "sound").mkdir()
+        (self.reel / "sound/final.mp4").write_bytes(b"mix")
+        row = self.row()
+        stages, _ = hub.cockpit_rules()
+        for name in ("Motion", "Sound"):
+            self.assertTrue(row["done"][next(i for i, s in enumerate(stages) if s["name"] == name)])
+        self.assertIs(row["sound_board"], False)
+        sound = next(l for l in row["lanes"] if l["label"] == "Sound")
+        self.assertEqual((sound["done"], sound["total"]), (1, 1))
+        self.assertNotIn(".mp4", row["render_label"])
+        (self.reel / "config.json").write_bytes(b"{}")
+        self.assertIs(self.row()["sound_board"], True)
+
+    def test_motion_missing_unlocked_locked_and_unreadable(self):
+        stages, _ = hub.cockpit_rules()
+        rule = next(s["rule"] for s in stages if s["name"] == "Motion")
+        self.assertTrue(hub.stage_done(rule, {}, self.reel))
+        p = self.reel / "sketches.state.json"
+        for content, expected in ((b"{}", False), (b'{"locked_at": "now"}', True), (b"bad JSON", False)):
+            p.write_bytes(content)
+            self.assertEqual(hub.stage_done(rule, {}, self.reel), expected)
+        with patch.object(hub.Path, "read_text", side_effect=PermissionError("busy")):
+            self.assertFalse(hub.stage_done(rule, {}, self.reel))
+
+    def test_ear_pass_requires_an_applied_selection(self):
+        (self.reel / "RAW.mp4").write_bytes(b"")
+        (self.reel / "work").mkdir()
+        selection = self.reel / "tweak-selection.json"
+        selection.write_bytes(b"{}")
+        os.utime(selection, (200, 200))
+        for name in ("edl.json", "cuts.json"):
+            p = self.reel / "work" / name
+            p.write_bytes(b"{}")
+            os.utime(p, (100, 100))
+        self.assertEqual(self.row()["stage"], "Ear pass")
+        self.assertFalse(self.row()["done"][2])
+        for name in ("edl.json", "cuts.json"):
+            p = self.reel / "work" / name
+            for stamp in (200, 300):
+                os.utime(p, (stamp, stamp))
+                self.assertTrue(self.row()["done"][2])
+            os.utime(p, (100, 100))
+
+    def test_render_labels_are_plain_words(self):
+        cases = [("renders/New reel Master - 11.08.26.mp4", "Final master"),
+                 ("renders/New reel Preview 720p - 11.08.26.mp4", "Preview (720p)"),
+                 ("work/renders/master-1.1x.mp4", "First cut"), ("RAW.mp4", "Your recording"),
+                 ("raw/take.mp4", "Your recording"), ("work/other.mp4", "Latest render")]
+        for name, expected in cases:
+            with self.subTest(name=name):
+                p = self.reel / name
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.write_bytes(b"video")
+                with patch.object(hub, "filmstrip", return_value=[]), patch.object(hub, "video_info", return_value={}):
+                    self.assertEqual(self.row()["render_label"], expected)
+                p.unlink()
+        self.assertEqual(self.row()["render_label"], "No render yet")
 
     def test_snapshot_open_send_then_ack(self):
         send = self.reel / "beat-map-selection.json"

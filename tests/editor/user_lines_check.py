@@ -1,8 +1,8 @@
-"""F3 check: flags what a coach must never see in a reply (file names, paths, JSON,
+"""F3 check: flags what a user must never see in a reply (file names, paths, JSON,
 STATUS or FIX lines, script names). Prints one line per hit, location and kind only.
 
-usage: python coach_lines_check.py [reply.txt]     (no file: reads stdin)
-       python coach_lines_check.py --selftest
+usage: python user_lines_check.py [reply.txt]     (no file: reads stdin)
+       python user_lines_check.py --selftest
 exit:  0 clean, 1 hits (or a failed selftest)
 """
 import re

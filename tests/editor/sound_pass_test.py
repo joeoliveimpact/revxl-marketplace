@@ -5,7 +5,7 @@ Synthetic media made with ffmpeg here, plus two real beds from EDITOR_TEST_SOUND
 faked in-process, the pack comes from a file:// URL).
 
 usage: EDITOR_SE_HOME=<installed state> <state python> -X utf8 -I tests/editor/sound_pass_test.py
-           [--case free_master|cost_ask|pack|ingest_trim|room_tone|quiet_gate|bake_exact|music_level|music_seam|
+           [--case free_master|cost_ask|pack|pack_setup|pass_offline|ingest_trim|room_tone|quiet_gate|bake_exact|music_level|music_seam|
                    music_licence|music_absent|music_strongest|beat_grid|beat_grid_hard|beat_fit|edl_hash|
                    prefill|peak_offset|beat_steady|beat_drift|beat_half_trap|beat_real_bed|big_hits|sfx_peak_silence|
                    safe-fetch|no-overwrite] [--scratch <dir>]
@@ -348,6 +348,75 @@ def case_pack(scratch):
        str(shipped.get("url") or "").startswith("https://") and len(shipped.get("sha256") or "") == 64
        and all(ch in "0123456789abcdef" for ch in shipped["sha256"]) and type(shipped.get("bytes")) is int
        and shipped["bytes"] > 0, shipped)
+
+
+def case_pack_setup(scratch):
+    sys.path.insert(0, str(PLUGIN_ROOT / "skills" / "editor-doctor" / "scripts"))
+    import check_deps
+    ws = workspace(scratch, "pack_setup")
+    src = Path(scratch) / "pack-setup-src"
+    src.mkdir(parents=True, exist_ok=True)
+    good = Path(scratch) / "pack-setup.zip"
+    with zipfile.ZipFile(good, "w") as z:
+        for rel, x in {"hit-a.wav": tone(0.3, 1000), "beds/bed-a.wav": tone(2.0, 220, 0.2, 0.1)}.items():
+            f = src / rel.replace("/", "_")
+            M.write_wav(f, x)
+            z.write(f, rel)
+    data = good.read_bytes()
+    man = {"url": good.as_uri(), "sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)}
+    cfg = ws / "editor" / "editor.config.json"
+    cfg.write_bytes(json.dumps({"sfx_pack": man}).encode())
+    rep = check_deps.Report()
+    check_deps.sound_pack(rep, ws, True)
+    lib = ws / "editor" / "sound"
+    ck("pack_setup: setup unpacks the starter library", (lib / "hit-a.wav").is_file()
+       and (lib / "beds" / "bed-a.wav").is_file())
+    ck("pack_setup: setup reports one ready row", len(rep.items) == 1 and rep.items[0] == {
+        "component": "sound-pack", "level": "ok", "detail": "the starter sound pack is ready (2 sounds and music tracks)",
+        "fix": None}, rep.items)
+    cfg.write_bytes(json.dumps({"sfx_pack": dict(man, url=(src / "missing.zip").as_uri())}).encode())
+    rep = check_deps.Report()
+    check_deps.sound_pack(rep, ws, True)
+    ck("pack_setup: repeat setup reuses the library without downloading", len(rep.items) == 1
+       and rep.items[0]["level"] == "ok", rep.items)
+    shutil.rmtree(lib)
+    cfg.write_bytes(json.dumps({"sfx_pack": man}).encode())
+    rep = check_deps.Report()
+    check_deps.sound_pack(rep, ws, False)
+    ck("pack_setup: check-only warns and creates no library", len(rep.items) == 1
+       and rep.items[0]["level"] == "warn" and not lib.exists() and not rep.required_missing, rep.items)
+    words = " ".join(str(row.get(key) or "") for row in rep.items for key in ("detail", "fix")).lower()
+    ck("pack_setup: the warning and repair use plain words", bool(words) and all(token not in words for token in
+       ("sha256", ".json", ".py", ".wav", ".zip", "editor/", "/", "\\", str(ws).lower())), words)
+    cfg.write_bytes(json.dumps({"sfx_pack": {"url": None}}).encode())
+    rep = check_deps.Report()
+    check_deps.sound_pack(rep, ws, False)
+    ck("pack_setup: check-only reports no starter pack offered", rep.items == [{
+        "component": "sound-pack", "level": "ok", "detail": "no starter sound pack is offered yet; mixes are voice only",
+        "fix": None}] and not lib.exists(), rep.items)
+
+
+def case_pass_offline(scratch):
+    import re
+    ws = workspace(scratch, "pass_offline")
+    cfg = ws / "editor" / "editor.config.json"
+    shipped = json.loads((SCRIPTS.parent / "pack.json").read_text(encoding="utf-8"))
+    cfg.write_bytes(json.dumps({"sfx_pack": shipped}).encode())
+    before = {p.relative_to(ws) for p in ws.rglob("*")}
+    p = script(ws, "sfx_ingest.py", "verify")
+    ck("pass_offline: missing library exits 1 with a plain voice-only line", p.returncode == 1
+       and p.stdout.strip() == "There is no sound library yet, so the mix will be voice only.", p.all)
+    ck("pass_offline: verify creates nothing", {p.relative_to(ws) for p in ws.rglob("*")} == before)
+    cfg.write_bytes(json.dumps({"sfx_pack": {"url": None}}).encode())
+    p = script(ws, "sfx_ingest.py", "verify")
+    ck("pass_offline: no pack offered exits 0 with a plain voice-only line and creates nothing", p.returncode == 0
+       and p.stdout.strip() == "There is no sound library yet, so the mix will be voice only."
+       and {p.relative_to(ws) for p in ws.rglob("*")} == before, p.all)
+    skill = (SCRIPTS.parent / "SKILL.md").read_text(encoding="utf-8")
+    ck("pass_offline: the sound pass never instructs fetch", 'sfx_ingest.py" fetch' not in skill)
+    commands = re.findall(r'sfx_ingest\.py"\s+([^\s`]+)', skill)
+    ck("pass_offline: every library command is verify or add", bool(commands)
+       and all(cmd in ("verify", "add") for cmd in commands), commands)
 
 
 def case_safe_fetch(scratch):
@@ -1657,6 +1726,7 @@ def case_carve(scratch):
 
 
 CASES = {"carve": case_carve, "free_master": case_free_master, "cost_ask": case_cost_ask, "pack": case_pack, "ingest_trim": case_ingest_trim,
+         "pack_setup": case_pack_setup, "pass_offline": case_pass_offline,
          "room_tone": case_room_tone, "quiet_gate": case_quiet_gate, "bake_exact": case_bake_exact,
          "music_level": case_music_level, "music_seam": case_music_seam, "music_licence": case_music_licence,
          "music_absent": case_music_absent, "music_strongest": case_music_strongest, "beat_grid": case_beat_grid,

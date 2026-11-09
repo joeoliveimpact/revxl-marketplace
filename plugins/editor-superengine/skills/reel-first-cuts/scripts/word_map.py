@@ -38,6 +38,13 @@ from win_encoding import ensure_utf8_output  # noqa: E402
 
 NO_TIMES = "No word timings on this computer, so the word check was skipped; the cut can still render"
 
+EPS = 0.0005   # times are stored to the millisecond
+
+
+def in_span(t, a, b):
+    """Half-open [a, b): a time on a shared boundary belongs to the span that starts there (H-S17W2-3)."""
+    return a - EPS <= t < b - EPS
+
 
 def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
@@ -60,7 +67,7 @@ def build(cuts, edit_map):
     for w in words:
         for k, s in enumerate(cuts["segments"]):
             s0, s1, c0 = s["src_in_f"] / fps, s["src_out_f"] / fps, s["out_in_f"] / fps
-            if s0 <= w["start"] < s1:
+            if in_span(w["start"], s0, s1):
                 out.append(dict(id=w["id"], word=w["word"].strip(), seg=k, src_start=w["start"], src_end=w["end"],
                                 out_start=round(c0 + (w["start"] - s0) / speed, 6),
                                 out_end=round(c0 + (w["end"] - s0) / speed, 6), parakeet_start=w["parakeet_start"],

@@ -1,6 +1,6 @@
-# What the coach hears
+# What the user hears
 
-The person using this editor is a busy coach, not a developer. Every reply should feel like a
+The person using this editor is busy, not a developer. Every reply should feel like a
 finished product talking: calm, plain, and about their reel. This page is how every
 editor-superengine skill talks to them.
 
@@ -8,18 +8,18 @@ editor-superengine skill talks to them.
 
 | Never show | Why |
 |---|---|
-| File names (anything with an extension) | They mean nothing to a coach and make the tool feel unfinished. Say what the thing is: "your first cut", "the teardown page". |
+| File names (anything with an extension) | They mean nothing to the user and make the tool feel unfinished. Say what the thing is: "your first cut", "the teardown page". |
 | Paths and folder trees | Same reason, and they leak how the machine is laid out. Say "saved in your teardowns folder" at most. |
 | JSON, config keys, raw tool output | It reads as an error even when nothing is wrong. |
-| STATUS and FIX lines | They are written for Claude to act on. The coach gets the plain meaning and what happens next. |
-| Script and command names | The coach never runs them and never types a command. Claude runs everything. |
+| STATUS and FIX lines | They are written for Claude to act on. The user gets the plain meaning and what happens next. |
+| Script and command names | The user never runs them and never types a command. Claude runs everything. |
 
-If the coach asks to see a file or the technical detail, show it. The rule is about what we
+If the user asks to see a file or the technical detail, show it. The rule is about what we
 volunteer, not about hiding things they ask for.
 
 ## How to translate
 
-**A STATUS or FIX line becomes one plain sentence.** Say what it means for the coach and what
+**A STATUS or FIX line becomes one plain sentence.** Say what it means for the user and what
 happens next, never the line itself.
 
 - An ok line about the video tools becomes: "Your video tools are in place."
@@ -33,7 +33,7 @@ happens next.
 - "The transcription stopped halfway, so nothing was saved and your recording is untouched. I'll
   try once more; if it stops again I'll tell you what's going on."
 
-Never paste the error itself. Keep the detail for the failure report, where the coach sees it
+Never paste the error itself. Keep the detail for the failure report, where the user sees it
 before anything is sent.
 
 ## A line for each moment
@@ -80,14 +80,14 @@ the moment.
 
 ## Glossing a term once
 
-When a real term helps the coach, say it in plain words first, then the term, once. After that,
+When a real term helps the user, say it in plain words first, then the term, once. After that,
 use the term.
 
 - "Picture lock (the point where the cut is signed off and stops moving)."
 - "The phone changed speed mid-clip, which is called variable frame rate. I've evened it out."
 - "A re-hook (a line that gives viewers a reason to keep watching) at 12 seconds."
 
-Don't gloss the same term twice in one conversation, and don't gloss words a coach already
+Don't gloss the same term twice in one conversation, and don't gloss words the user already
 knows, like "caption" or "hook".
 
 ## Quick check before you reply
@@ -95,4 +95,4 @@ knows, like "caption" or "hook".
 - No file names, paths, JSON, STATUS or FIX lines, or script names?
 - Does it say what happens next?
 - After a failure: does it say whether anything changed or was charged?
-- Any term the coach might not know: glossed once, plain words first?
+- Any term the user might not know: glossed once, plain words first?

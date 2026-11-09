@@ -124,7 +124,7 @@ def main():
         for k in cta:
             print(("CTA missing: %s" if k in gone else "CTA present: %s") % k)
         if not cta:
-            print("no cta keywords in %s" % mp)
+            print("No comment keyword is saved, so the call to action wasn't checked.")
         return 1 if gone else 0
 
     at = {int(k): v for k, v in json.loads(a.at).items()}

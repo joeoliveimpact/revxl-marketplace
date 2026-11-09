@@ -1,6 +1,6 @@
 # Map check and script check
 
-`<editor python>` and the path rule (`work/` is `videos/<reel>/work/`) are in SKILL.md's Ground rules. `<reel>`
+`<editor python>` and the path rule are in SKILL.md's Ground rules. `<reel>`
 is the reel's folder name.
 
 ## Contents
@@ -15,9 +15,9 @@ is the reel's folder name.
 It proves the cut still says what the client picked. Run it after every gaps.py run (Stage 4, and again after
 every Stage 9 round), right after the boundary audit in Stage 3 and before render.py:
 
-`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/word_map.py" videos/<reel>`
+`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/word_map.py" <reel folder>`
 
-`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/checks/map_check.py" videos/<reel>`
+`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/checks/map_check.py" <reel folder>`
 
 `word_map.py` writes `work/word_map.json`: every word the cut keeps, where it sits in the raw and where it lands
 in the cut. It reads `work/cuts.json` and the edit map the cut was made from (the Cut Board take's, else

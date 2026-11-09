@@ -341,6 +341,13 @@ def case_fcp7_srt(root):
 def case_gate(root):
     reel = root / "videos/REEL_A"
     reel.mkdir(parents=True)
+    build.save(reel / "work/render-ok.json", {"preview": "old preview"})
+    before = {p.relative_to(reel): p.read_bytes() for p in reel.rglob("*") if p.is_file()}
+    p = command(SCRIPTS / "build_edit.py", "package", "--reel-dir", reel, cwd=root)
+    ck("missing final video is reported before approval details", p.returncode == 1 and p.stdout.strip() ==
+       "There's no final video yet. Make the final video, then package it." and not p.stderr, p.stdout + p.stderr)
+    ck("missing final video writes nothing", not (reel / "handoff").exists()
+       and {p.relative_to(reel): p.read_bytes() for p in reel.rglob("*") if p.is_file()} == before)
     build.save(root / "editor/editor.config.json", {"nle": "none"})
     p = command(SCRIPTS / "build_edit.py", "resolve-steps", "--reel-dir", reel, cwd=root)
     ck("unconfigured Resolve exits 3 with one line", p.returncode == 3 and len(p.stdout.strip().splitlines()) == 1
@@ -358,6 +365,7 @@ def frame(path, number, alpha=False):
 
 def package_reel(root):
     reel, master = fixture(root)
+    shutil.copyfile(master, reel / f"renders/REEL_A Master - {datetime.now().strftime('%m.%d.%y')}.mp4")
     p = command(SCRIPTS / "build_edit.py", "package", "--reel-dir", reel, cwd=root)
     if not ck("package command", p.returncode == 0, p.stdout + p.stderr):
         raise RuntimeError("Package failed")
@@ -472,7 +480,8 @@ def case_hook_named(root):
 
 
 def case_hook_old_ok(root):
-    reel, _ = fixture(root)
+    reel, master = fixture(root)
+    shutil.copyfile(master, reel / f"renders/REEL_A Master - {datetime.now().strftime('%m.%d.%y')}.mp4")
     approval = fcpx.read(reel / "work/render-ok.json")
     approval.pop("hook_text")
     build.save(reel / "work/render-ok.json", approval)

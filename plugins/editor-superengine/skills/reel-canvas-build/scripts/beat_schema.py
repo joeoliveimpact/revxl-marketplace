@@ -3,9 +3,9 @@
 A beat is one stretch of the cut: exactly {id, start_f, end_f, speech_anchor, layout, value,
 scene, broll, transition}, timed in output frames. Word marks [{w, mark}] tag words of the
 cut's word list (w = list position) as num, key, emph or cta. The beat map document
-(videos/<reel>/beat-map.state.json) holds the beats, marks, Claude's proposed picks and coach
+(videos/<reel>/beat-map.state.json) holds the beats, marks, Claude's proposed picks and user
 notes; the sketches document (videos/<reel>/sketches.state.json) holds the rough preview, the
-directions (the coach picks one) and the per-beat sketches.
+directions (the user picks one) and the per-beat sketches.
 Later steps import this module instead of re-checking the shapes themselves.
 
   beat_schema.py check <beat-map.state.json> [--words <words.json>]
@@ -43,7 +43,7 @@ OPTIONAL_MAP_KEYS = ("edit_style", "caption_style", "loops", "transitions", "cta
 PROPOSED_KEYS = ("layout", "value", "shows", "why")  # Claude's original pick per beat; the board highlights changes
 DEFAULT_WORDS = "work/edit_map.cut.json"  # H-S4b-5: re-transcribed cut words, S3 edit-map shape, index from 0
 SKETCHES_KEYS = ("schema", "reel", "rough", "directions", "pick", "sketches", "note", "sent_at", "locked_at", "scenes", "storyboard")
-DIRECTION_KEYS = ("id", "name", "why", "frames", "note")  # the coach picks ONE direction
+DIRECTION_KEYS = ("id", "name", "why", "frames", "note")  # the user picks ONE direction
 SKETCH_KEYS = ("id", "beat", "title", "media", "note")  # one per-beat preview
 SHOW_MAX = 60  # longest bad value quoted in a message, so one bad blob can't flood the output
 # scene is null or {id: non-empty str, slots: {str: str}, params?: {str: number|str|bool}}.

@@ -7,7 +7,7 @@ description: Sets up and checks the editor's tools, and starts or restarts the e
 
 ## Output contract (every run, in this order)
 
-1. One plain line per STATUS line the doctor prints: ✓ for ok, ⚠ for warn, ✗ for missing. Use plain words. Never paste STATUS or FIX text, file names, paths or JSON to the client.
+1. One plain line per STATUS line the doctor prints: ✓ for ok, ⚠ for warn, ✗ for missing; no line for `resolve-*` unless the `nle` line says `resolve` (item 4 covers Resolve). Use plain words. Never paste STATUS or FIX text, file names, paths or JSON to the client.
 2. Under every ⚠ or ✗: what Claude is doing about it, or the one thing the client does (from its FIX line).
 3. The transcription engine and why, from the `engine` line. On the backup (faster-whisper), show the retake warning from its FIX line word for word.
 4. DaVinci Resolve: only when the `nle` line says `resolve`, say the Resolve hand-off can be offered later. Don't build or start it. With `nle none`, say nothing about Resolve or a hand-off unless the client asks; then explain the `resolve-*` lines. When the `nle` line says `chosen by you`, it is the client's own choice: confirm it in one line, and don't argue with it.
@@ -26,7 +26,7 @@ description: Sets up and checks the editor's tools, and starts or restarts the e
 - **The client never types a command.** Claude runs each command below in the Bash tool, from the client's workspace folder, as one command. Windows and macOS run the same commands.
 - `<editor python>` is the editor's own Python. Windows: `"$(H="$LOCALAPPDATA/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/Scripts/python.exe"`. macOS: `"$(H="$HOME/Library/Application Support/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/bin/python"`. Keep the quotes.
 - The first setup downloads up to about 5 GB. That can take 10 to 40 minutes on a slow connection. Run it with `run_in_background` and wait for it to finish. Tell the client it is working and roughly how long it takes.
-- Plain English for a busy coach. Gloss a term once, e.g. "transcriber (turns speech into timed words)".
+- Plain English for a busy user. Gloss a term once, e.g. "transcriber (turns speech into timed words)".
 - Details (the STATUS format, every component, the config keys, where files live, how Resolve is checked): `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/doctor-details.md`.
 
 ## 1. Setup (only when `<editor python>` doesn't exist yet)
@@ -43,6 +43,8 @@ description: Sets up and checks the editor's tools, and starts or restarts the e
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/scripts/check_deps.py"`
 
 It runs the machine test, picks the engine, and has the setup install that engine. If Parakeet won't install, it switches to the faster-whisper backup and prints the retake warning. It then checks every part, checks Resolve, and writes `editor/editor.config.json` and `editor/.platform.json` in the workspace. It can also run setup downloads, so give it the same long wait as step 1. Only the `STATUS` and `FIX` lines at the end count; installer lines above them are progress.
+
+The doctor also fetches the starter sound pack (about 29 MB of sound effects and music) into the workspace; a `sound-pack` ⚠ line means Claude runs step 2 once more, and if it is still missing, tells the client plainly that sound effects are off for now and mixes are voice only.
 
 - Exit 0: nothing required is missing (⚠ lines may still need a word to the client).
 - Exit 1: something required is missing. `FIX` lines that start `Claude re-runs the setup:` all name the same command. Run the command after the colon once, then run step 2 again. Missing again: the failure report, with step `doctor` and the `STATUS` line (without the word STATUS) as the error line.

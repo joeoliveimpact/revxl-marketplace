@@ -26,7 +26,7 @@ Every run returns, in this order:
    report offer below.
 
 What the client hears follows
-`${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-the-coach-hears.md`: no file
+`${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-the-user-hears.md`: no file
 names, paths, JSON or script names, ever.
 
 ## Re-invoke guard

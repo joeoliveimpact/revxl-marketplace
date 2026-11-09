@@ -157,7 +157,7 @@ def case_freeze(root):
         rows = check(reel, expected)
         ck(f"freeze-{hold}: strictly over 3 s blocks", kinds(rows, "block") == (["frozen"] if expected else []), rows)
         if expected:
-            ck("freeze: coach can OK it and seek to its start", any(
+            ck("freeze: user can OK it and seek to its start", any(
                 r["check"] == "frozen" and abs(r["at"] - 1) <= 1 / FPS
                 and "hub review notes" in r["msg"] and "Claude" in r["msg"] for r in rows), rows)
     # A freeze still continuing at EOF has no freeze_end in ffmpeg's log.

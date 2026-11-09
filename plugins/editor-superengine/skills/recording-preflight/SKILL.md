@@ -12,7 +12,7 @@ description: Checks the client's camera and sound before they record a reel, usi
 3. One plain line per check: ✓ good, ⚠ worth fixing, ✗ must fix.
 4. A last line: "Good to record", or the one or two fixes that matter most.
 
-Speak to the client the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-the-coach-hears.md` says: no file names, paths, script names or raw output.
+Speak to the client the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-the-user-hears.md` says: no file names, paths, script names or raw output.
 
 ## Re-invoke guard
 

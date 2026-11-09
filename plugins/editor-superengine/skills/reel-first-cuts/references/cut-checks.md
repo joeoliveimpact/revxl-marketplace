@@ -1,8 +1,7 @@
 # Cut checks (Stage 7)
 
 Four commands run on every render, after it and before the silence budget (SKILL.md, Stage 7).
-`<editor python>`, CUT.mp4 and the path rule (`work/` is `videos/<reel>/work/`) are in SKILL.md's
-Ground rules.
+`<editor python>`, the master file name and the path rule are in SKILL.md's Ground rules.
 
 ## Contents
 - Render rules (Stage 6)
@@ -21,7 +20,7 @@ render.py reads only `work/cuts.json`, asserts the frame count, conforms to
 
 ## 1. Re-transcribe the cut
 
-`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/transcribe_words.py" CUT.mp4 -o work/cut/tx-cut.json --edit-map work/edit_map.cut.json`
+`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/transcribe_words.py" work/renders/master-<speed>x.mp4 -o work/cut/tx-cut.json --edit-map work/edit_map.cut.json`
 
 The same engine and guards as Stage 1, on the cut. `work/edit_map.cut.json` is what checks 2 and 3 read;
 `work/cut/tx-cut.json`, in cut time, is what names the gaps in the silence budget (Stage 7b).
@@ -44,6 +43,8 @@ else `editor/word-fixes.json`), or `--map <file>`:
   recomputed.
 - A word heard wrong in several reels belongs in `word-fixes.json`, not in `--at`.
 
+Before this check, ask the client the word viewers comment to get the freebie (for example "KILLED"). Save this reel's keyword(s) as `cta` in the word-fixes file, replacing any earlier reel's (an old keyword would read as missing). No keyword: skip the check and say so.
+
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/fix_words.py" work/edit_map.cut.json --cta-check`
 
 Changes nothing: one line per `cta` keyword. Exit 1 = a keyword is missing from the cut. Chat-automation
@@ -52,7 +53,7 @@ board ruling) or misheard (add a fix), and tell the client which.
 
 ## 3. Repeats, restarts and retakes
 
-`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/repeat_check.py" work/edit_map.cut.json --audio CUT.mp4`
+`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/repeat_check.py" work/edit_map.cut.json --audio work/renders/master-<speed>x.mp4`
 
 Finds a word or phrase said twice in a row, a cut-off start ("Man- ManyChat"), a restart (the same 2+
 words again within `--gap` s, default 1.5) and a retake (the same 5+ word sentence again within 15 s).
@@ -91,6 +92,6 @@ fixing). Exit 2 = an input is missing: re-run the stage that writes it.
 
 ## What the client hears
 
-Plain words, per `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-the-coach-hears.md`:
+Plain words, per `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-the-user-hears.md`:
 "I checked the cut for repeated words, missing keywords and any voice the trims touched." Name only the
 hits, by the words around them; never script names, exit codes or dB figures unless they ask.

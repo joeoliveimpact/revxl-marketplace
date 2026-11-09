@@ -13,7 +13,7 @@ description: Finishes the sound of a picture-locked reel. Use on "sound pass", "
 4. A short listening list (the loudest hits, the music stops, the closer).
 5. "The mix is yours. Listen, then say ship or name the moment to change." On ship: with visuals, the next step is the final video (reel-canvas-build); without, the reel is done.
 
-Speak to the client the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-the-coach-hears.md` says: no file names, paths, script names or raw check output.
+Speak to the client the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-the-user-hears.md` says: no file names, paths, script names or raw check output.
 
 ## Re-invoke guard
 
@@ -39,9 +39,11 @@ Speak to the client the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/refe
 
 ### 1. Sound library
 
-`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-sound-pass/scripts/sfx_ingest.py" fetch`
+The sound pass never downloads the sound library.
 
-"No sound library yet": the mix ships voice only (skip the board, go to step 4). A failed download unpacks nothing; run it once more. `verify` re-checks the library; `add "<file>"` adds one of the client's own sounds (dead air trimmed, measured).
+`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-sound-pass/scripts/sfx_ingest.py" verify`
+
+`Sound library verified`: go to step 2. Otherwise, tell the client in one plain line: "The starter sound pack isn't on this computer because its download during setup didn't finish, so this mix is voice only." Skip the board and go to step 4; if they want the sounds now, Claude runs editor-doctor's step 2 to install the pack, then runs `verify` again. `add "<file>"` adds one of the client's own sounds (dead air trimmed, measured).
 
 ### 2. Sound Board
 

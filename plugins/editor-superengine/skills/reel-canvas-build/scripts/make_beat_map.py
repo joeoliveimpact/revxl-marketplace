@@ -30,8 +30,8 @@ import saved_style  # noqa: E402
 
 OUT_NAME = "beat-map.state.json"
 PREV_NAME = OUT_NAME + ".prev"  # same backup name the board server uses
-REFUSE = ("This reel already has a beat map with the coach's edits in it. Re-run with --replace only after "
-          "the coach agrees; the old one is kept as beat-map.state.json.prev.")
+REFUSE = ("This reel already has a beat map with the user's edits in it. Re-run with --replace only after "
+          "the user agrees; the old one is kept as beat-map.state.json.prev.")
 
 
 class Fail(Exception):

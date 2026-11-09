@@ -17,8 +17,8 @@ Only the segments a mark touches are re-gapped. Every other segment goes in as -
 gaps.py keeps it whole and a Send with no marks gives back the cut's own cuts.json. A cut mark touches the segments
 its range overlaps; a tighten/loosen mark touches the segments its --protect range overlaps; a note touches none.
 
-Drift guard: every word time in tweak-board.config.json (words[].t, cut time) is mapped back to source time the
-same way and must sit within 80 ms of that word in the edit map. One that doesn't fails with one plain line, exit 3.
+Drift guard: every word time in tweak-board.config.json (words[].t, cut time) must sit within 80 ms of that
+word's out_anchor in word_map.build for this cut and edit map; a missing word or drift fails with one plain line, exit 3.
 """
 import argparse, json, sys
 from pathlib import Path
@@ -27,7 +27,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[1] / "_shared"))
 from win_encoding import ensure_utf8_output  # noqa: E402
 sys.path.insert(0, str(HERE))
-from build_edit_map import board_sequence  # noqa: E402
+import word_map  # noqa: E402
 from make_tweaks import cut_map  # noqa: E402
 
 DRIFT = 0.080
@@ -36,8 +36,10 @@ GAPS = '"${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/gaps.py"'
 
 def to_src(t, cmap, speed):
     for c0, c1, s0, s1 in cmap:
-        if c0 - 1e-6 <= t <= c1 + 1e-6:
-            return min(s1, s0 + (t - c0) * speed)
+        if word_map.in_span(t, c0, c1):
+            return max(s0, min(s1, s0 + (t - c0) * speed))
+    if abs(t - cmap[-1][1]) <= word_map.EPS:
+        return cmap[-1][3]
     # past either end: the nearer segment edge
     c0, c1, s0, s1 = min(cmap, key=lambda x: min(abs(x[0] - t), abs(x[1] - t)))
     return s0 if abs(c0 - t) < abs(c1 - t) else s1
@@ -69,13 +71,16 @@ def main():
     segs = [[s0, s1] for _, _, s0, s1 in cmap]
 
     em_p = cfg_p.parent / cfg["edit_map"]
-    ref = {x["id"]: x["start"] for x in board_sequence(json.loads(em_p.read_text(encoding="utf-8")))}
+    edit_map = json.loads(em_p.read_text(encoding="utf-8"))
+    expected = {}
+    for w in word_map.build(cuts, edit_map)["words"]:
+        expected.setdefault(w["id"], w["out_anchor"])
     for w in cfg["words"]:
-        st = to_src(w["t"], cmap, speed)
-        if w.get("id") not in ref or abs(st - ref[w["id"]]) > DRIFT:
-            print(f"REFUSED: the Tweak Board has '{w['w']}' at {w['t']:.3f} s in the cut (source {st:.3f} s) but "
-                  + (f"{cfg['edit_map']} has it at {ref[w['id']]:.3f} s ({abs(st - ref[w['id']]) * 1000:.0f} ms apart, "
-                     f"over {DRIFT * 1000:.0f} ms)" if w.get("id") in ref else f"{cfg['edit_map']} has no such word")
+        if w.get("id") not in expected or abs(w["t"] - expected[w["id"]]) > DRIFT:
+            print(f"REFUSED: the Tweak Board has '{w['w']}' at {w['t']:.3f} s in the cut but "
+                  + (f"{cfg['edit_map']} puts it at {expected[w['id']]:.3f} s in this cut "
+                     f"({abs(w['t'] - expected[w['id']]) * 1000:.0f} ms apart, over {DRIFT * 1000:.0f} ms)"
+                     if w.get("id") in expected else f"{cfg['edit_map']} has no such word")
                   + ": rebuild the board with make_tweaks.py", file=sys.stderr)
             sys.exit(3)
 

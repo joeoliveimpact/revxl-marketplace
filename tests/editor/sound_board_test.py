@@ -3,7 +3,7 @@
   EDITOR_SE_HOME=<state> python -X utf8 -I tests/editor/sound_board_test.py [--case <name>]
 
 <state> is an installed editor state folder (node, chrome-headless-shell, puppeteer-core, ffmpeg); it is only read.
-Cases: send, reload, reject_all, reset, writes_guard, tips, hub_tab, music, beat_sync (default: all). Each case builds its own reel
+Cases: send, reload, reject_all, reset, writes_guard, tips, hub_tab, music, beat_sync, voice_only (default: all). Each case builds its own reel
 by hand (config.json, waveforms.json, a tiny mp4) and opens its own browser, so any one can run alone.
 Prints one "✓ <case>" / "✗ <case>: <why>" line per case, then "N passed, M failed". Exit 0 only when all pass.
 """
@@ -96,7 +96,7 @@ def load(p):
 
 def main():
     ensure_utf8_output()
-    names = ["send", "reload", "reject_all", "reset", "writes_guard", "tips", "hub_tab", "music", "beat_sync", "carve"]
+    names = ["send", "reload", "reject_all", "reset", "writes_guard", "tips", "hub_tab", "music", "beat_sync", "carve", "voice_only"]
     ap = argparse.ArgumentParser(description="Sound Board done-test")
     ap.add_argument("--case", choices=names + ["all"], default="all")
     pick = ap.parse_args().case
@@ -184,6 +184,16 @@ def main():
         return [c.get("state") for c in sorted(doc["cues"], key=lambda c: c["id"])]
 
     # ---- cases ----
+    def c_voice_only():
+        (videos / "voice-only-reel").mkdir()
+        read = browse("voice-only-reel", [{"do": "goto", "noRows": True},
+                     {"do": "waitTrue", "js": "document.querySelector('h1')?.textContent === 'No sound cues for this reel'"},
+                     {"do": "eval", "js": "document.dispatchEvent(new KeyboardEvent('keydown', {key: ' '}))"},
+                     {"do": "eval", "js": "({heading: document.querySelector('h1').innerText, text: document.body.innerText})"}])["reads"][-1]
+        need(read["heading"] == "No sound cues for this reel", f"heading: {read['heading']}")
+        need(all(s not in read["text"] for s in ("404", "HTTP", "config.json")), f"raw error shown: {read['text']}")
+        need("voice only" in read["text"] and "Claude" in read["text"], f"missing next step: {read['text']}")
+
     def c_send():
         d = reel("send-reel")
         browse("send-reel", [{"do": "goto"}, {"do": "click", "sel": KEEP % 1}, {"do": "waitSaved"},
@@ -289,6 +299,13 @@ def main():
         r0 = browse("nomusic-reel", [{"do": "goto"}, {"do": "read"}])["reads"][0]["music"]
         need(r0["lines"] == [] and r0["empty"] == "No music yet. Add a free track or use your own.", f"empty list shows {r0}")
         d = reel("music-reel", beds=BEDS, voice_lufs=-12.0, speech_spans=[{"start_s": 0.4, "end_s": 1.2}])
+        labels = browse("music-reel", [{"do": "goto"},
+            {"do": "eval", "js": "({track: document.querySelector('#bedsel option[value]').nextElementSibling.textContent, text: document.body.innerText, level: getComputedStyle(document.getElementById('bedvol')).display})"},
+            {"do": "eval", "js": "localStorage.setItem('editor-controls', 'advanced'); BoardClient.controls.apply(); document.querySelector('#bedsel option[value]').nextElementSibling.textContent"},
+            {"do": "eval", "js": "localStorage.setItem('editor-controls', 'simple'); BoardClient.controls.apply(); document.querySelector('#bedsel option[value]').nextElementSibling.textContent"}])["reads"]
+        need(labels[0]["track"] == "Pack Bed (4 s)" and labels[0]["level"] != "none", f"simple controls: {labels[0]}")
+        need("LUFS" not in labels[0]["text"] and "dB" not in labels[0]["text"], f"simple readouts: {labels[0]['text']}")
+        need("LUFS" in labels[1] and labels[2] == "Pack Bed (4 s)", f"mode changes: {labels[1:]}")
         (d / "beds").mkdir()
         for b in BEDS:  # real files, so the preview decodes and plays
             p = run([tools["ffmpeg"], "-v", "error", "-y", "-f", "lavfi", "-i", "sine=f=220:d=4", "-ac", "2",
@@ -452,6 +469,7 @@ def main():
             raise Fail(f"with snapping off the cue check still passed: {times(rev)}")
 
     fns = {"send": ("send: decide one cue, Send writes sound-selection.json with every undecided cue", c_send),
+           "voice_only": ("voice_only: no config opens a plain empty state without raw errors", c_voice_only),
            "reload": ("reload: decisions come back from disk in a new browser", c_reload),
            "reject_all": ("reject_all: Cancel changes nothing, OK rejects every cue", c_reject_all),
            "reset": ("reset: Cancel changes nothing, OK goes back to the proposals", c_reset),

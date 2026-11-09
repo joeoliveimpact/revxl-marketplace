@@ -15,7 +15,7 @@ Match the colour of takes from different recordings and use the client's saved l
 4. A last line: what the client does next, or what still stops the grade.
 5. On a failure you can't fix in two tries: what went wrong in plain words, then the failure report below.
 
-Speak the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-the-coach-hears.md` says: no file names, paths, script names or raw check output.
+Speak the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-the-user-hears.md` says: no file names, paths, script names or raw check output.
 
 ## Re-invoke guard
 

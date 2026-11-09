@@ -38,7 +38,7 @@ After two failed tries, offer the reel-first-cuts failure report with step `cloc
 
 ## What the client hears
 
-Plain words, per `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-the-coach-hears.md`:
+Plain words, per `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-the-user-hears.md`:
 "Your clips were joined with tiny gaps in the sound, so I lined the sound back up with the
 picture and checked it at several spots." Never the file path, never "CLOCKS AGREE", and no
 millisecond tables unless they ask.

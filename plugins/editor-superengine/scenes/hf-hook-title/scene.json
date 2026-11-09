@@ -3,7 +3,7 @@
   "kind": "overlay",
   "category": "hook-title",
   "slots": {
-    "title": {"maxChars": 40, "default": "Nobody tells you this about editing", "hint": "the hook, as said; wraps to at most 8 lines"}
+    "title": {"maxChars": 40, "required": true, "default": "Nobody tells you this about editing", "hint": "the hook, as said; wraps to at most 8 lines"}
   },
   "dur": [2, 6],
   "params": {

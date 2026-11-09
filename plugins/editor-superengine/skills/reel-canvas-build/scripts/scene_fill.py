@@ -73,17 +73,22 @@ def suggest(scene_id, beat, words, fps):
                       if scene_check.said(value, scene_check.numbers(m.group(0)))), None)
         stat_text = match.group(0) if match else None
     tokens = " ".join(heard).split()
-    slots, pos = {}, 0
-    for name, slot in spec["slots"].items():
-        if stat_text is not None and name in ("stat", "value", "number"):
-            if len(stat_text) > slot["maxChars"]:
-                return None
-            slots[name] = stat_text
-            continue
-        start = pos
-        while pos < len(tokens) and len(" ".join(tokens[start:pos + 1])) <= slot["maxChars"]:
-            pos += 1
-        slots[name] = " ".join(tokens[start:pos])
+    # Preserve listed order unless it leaves a required slot empty; only then retry.
+    for order in (spec["slots"].items(),
+                  sorted(spec["slots"].items(), key=lambda s: s[1].get("required") is not True)):
+        slots, pos = {name: "" for name in spec["slots"]}, 0
+        for name, slot in order:
+            if stat_text is not None and name in ("stat", "value", "number"):
+                if len(stat_text) > slot["maxChars"]:
+                    return None
+                slots[name] = stat_text
+                continue
+            start = pos
+            while pos < len(tokens) and len(" ".join(tokens[start:pos + 1])) <= slot["maxChars"]:
+                pos += 1
+            slots[name] = " ".join(tokens[start:pos])
+        if all(s.get("required") is not True or slots[n].strip() for n, s in spec["slots"].items()):
+            break
     params = {}
     if number_scene and "value" in spec["params"]:
         value = beat.get("value")
@@ -146,6 +151,21 @@ def selftest():
     words = "We helped 47 people make a clear reel today with a useful example".split()
     beat = {"id": "b_001", "start_f": 0, "end_f": 120, "value": 47,
             "speech_anchor": {"w0": 0, "w1": len(words) - 1}}
+    for spoken, title, kicker in (
+            ("Stop editing like this today", "Stop editing like this today", ""),
+            ("Stop editing like this today and start making clear reels",
+             "start making clear reels", "Stop editing like this today and"),
+            ("Stop editing like this today and start making clear reels with a useful example today",
+             "start making clear reels with a useful example", "Stop editing like this today and")):
+        hook_words = spoken.split()
+        hook_beat = dict(beat, speech_anchor={"w0": 0, "w1": len(hook_words) - 1})
+        hook = suggest("hook-title", hook_beat, hook_words, 30)
+        assert hook is not None, "hook-title must fill its required title"
+        assert hook["slots"] == {"kicker": kicker, "title": title}
+        assert list(hook["slots"]) == ["kicker", "title"]
+    assert json.dumps(suggest("lower-third", beat, words, 30)) == json.dumps({
+        "id": "lower-third", "slots": {"name": "We helped 47 people make a",
+                                        "title": "clear reel today with a useful example"}, "params": {}})
     items = catalog()
     assert items, "no shippable scenes"
     for item in items:
@@ -153,6 +173,8 @@ def selftest():
         if fill is not None:
             assert not scene_check.fill_problems(item["id"], dict(beat, scene=fill), words=words)
             remaining = words[:]
+            spec = json.loads((_scene_dir(item["id"]) / "scene.json").read_text(encoding="utf-8"))
+            assert list(fill["slots"]) == list(spec["slots"])
             for slot in item["slots"]:
                 text = fill["slots"][slot["name"]]
                 assert len(text) <= slot["maxChars"]

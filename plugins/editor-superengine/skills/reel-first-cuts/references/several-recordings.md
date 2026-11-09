@@ -5,9 +5,9 @@ Keep each probe, envelope and edit map beside that take's transcript. Paths belo
 
 Before cutting, log each raw:
 
-`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/checks/footage_check.py" add videos/<reel> RAW.mp4 --role aroll --origin own --licence own`
+`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/checks/footage_check.py" add <reel folder> RAW.mp4 --role aroll --origin own --licence own`
 
-Repeat for every recording. `videos/<reel>/footage/ledger.json` holds one row per SHA-256: `id` (`f01`, `f02`, ...),
+Repeat for every recording. `footage/ledger.json` holds one row per SHA-256: `id` (`f01`, `f02`, ...),
 `sha256`, `path`, `role` (`aroll` or `broll`), `origin` (`own` or `ai`), `licence`, and optional `job_id`.
 Adding the same bytes again returns the existing ID. Use the logged path in the take's probe.
 
@@ -35,7 +35,7 @@ Hard rules:
 - Two uses of the same recording bytes cannot overlap in source frames. Touching intervals pass. Picking each scene once is not enforced.
 - Measured frame rates must be within 0.5%. Probe all takes with one master `--out-rate` and use one speed. Per-take frame-rate conversion is not built.
 
-`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/checks/footage_check.py" check videos/<reel> work`
+`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/checks/footage_check.py" check <reel folder> work`
 
 Exit 3 prints each block in plain words. Fix every block before rendering. Mixed reels need a ledger; a legacy
 single-take reel without one keeps its old path.

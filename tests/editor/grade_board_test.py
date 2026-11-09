@@ -18,7 +18,8 @@ boards_click.js under heavy_lock.py (exit 75/76 = unproven). The board is always
              Mutant: a board copy that opens at the measured values -> the identity check fails.
   send       boards.json lets grade-board write only grade-selection.json and every Send name in hooks/mod/logic.ts is
              in some board's writes; a look + strength + Send lands grade-selection.json in the reel folder and no
-             selection.json (a __save of selection.json is refused, 403).
+             selection.json (a __save of selection.json is refused, 403). At 1024x768 in the hub and at a 799 px
+             board width the confirmation is fully visible and inside the header.
   reload     a look, strength and the Suggested fix come back in a new browser from grade-board.state.json. Without
              that file the board opens at the identity again.
   roundtrip  known colour patches on the board: look + strength + Suggested fix + a fine-tune move, Send, then
@@ -268,7 +269,7 @@ def main():
         ok(py(RG, "make_grade.py", "--reel", name, "--video", d / "raw/clip.mp4", "--reel-dir", d), "make_grade.py")
         return d, load(d / "grade/grade-config.json")
 
-    def browse(reel_name, actions, label, ready=True, direct_path=None):
+    def browse(reel_name, actions, label, ready=True, direct_path=None, viewport=None):
         """A NEW headless Chrome (fresh profile) under heavy_lock opens the real hub, the Grade tab, then runs actions."""
         port = server()
         for name in ("board_sync.py", "hub_rows.py"):
@@ -282,6 +283,7 @@ def main():
         if direct_path is not None:
             tab = [{"do": "goto", "path": direct_path, "wait": "#send"}]
         write_json(job, {"base": f"http://127.0.0.1:{port}", "userDataDir": str(scratch / "profiles" / job.stem),
+                         "viewport": viewport,
                          "actions": tab + actions})
         p = sh([sys.executable, "-X", "utf8", "-I", HEAVY, "--wait", "60", "--min-gb", "3", "--",
                 tools["node"], CLICK, tools["pup"], tools["chrome"], job], timeout=150)
@@ -321,7 +323,7 @@ def main():
             {"do": "eval", "js": "document.querySelector('#send').disabled || typeof document.querySelector('#send').onclick === 'function'"},
             {"do": "waitFn", "js": "!document.querySelector('#send').disabled"},
             {"do": "click", "sel": "#send"},
-            {"do": "waitText", "sel": "#saved", "re": "saved grade-selection\\.json|FAILED"}], "early-send", ready=False)
+            {"do": "waitText", "sel": "#saved", "re": "✓ Sent to Claude at |FAILED"}], "early-send", ready=False)
         need(out["reads"] == [True], "Send was enabled before its handler was attached")
         need((d / "grade-selection.json").is_file(), "early Send did not write grade-selection.json")
 
@@ -416,11 +418,43 @@ def main():
                                {"do": "waitFn", "js": "!document.getElementById('strength')"
                                 " && document.querySelector('#rail figure.on').dataset.look === 'none'"}], "refuse")
         need(not (rd / "grade-selection.json").exists(), "a refused look wrote a grade-selection.json")
-        browse("send-reel", [{"do": "domclick", "sel": f'#rail figure[data-look="{pick}"]'},
-                             {"do": "set", "sel": "#strength", "value": "0.6"},
-                             {"do": "waitFn", "js": "!document.querySelector('#send').disabled"},
-                             {"do": "click", "sel": "#send"},
-                             {"do": "waitText", "sel": "#saved", "re": "saved grade-selection\\.json|FAILED"}], "send")
+        def check_visible():
+            # Keep the real hub geometry at 1024x768, then reproduce the walk's
+            # 799 px board itself. A 799 px HUB window gives a much narrower iframe.
+            for width, direct in ((1024, None), (799, "/editor/grade-board/?reel=send-reel")):
+                (d / "grade-selection.json").unlink(missing_ok=True)
+                saved, layout = reads(browse("send-reel", [
+                    {"do": "waitFn", "js": "window.GB && GB.ready"},
+                    {"do": "domclick", "sel": f'#rail figure[data-look="{pick}"]'},
+                    {"do": "set", "sel": "#strength", "value": "0.6"},
+                    {"do": "waitFn", "js": "!document.querySelector('#send').disabled"},
+                    {"do": "click", "sel": "#send"},
+                    {"do": "waitText", "sel": "#saved", "re": "✓ Sent to Claude at |FAILED"},
+                    # No scrollIntoView of #saved: it must be visible immediately after Send.
+                    {"do": "bounds", "sel": "#saved"},
+                    {"do": "eval", "js": "JSON.stringify({width:innerWidth,"
+                     "header:document.querySelector('header').getBoundingClientRect().toJSON(),"
+                     "send:document.querySelector('#send').getBoundingClientRect().toJSON()})"}],
+                    f"send-{width}", direct_path=direct, viewport={"width": width, "height": 768}))
+                need(saved["viewport"] == {"width": width, "height": 768}, f"Grade viewport: {saved}")
+                need(layout["width"] == 799 if direct else 0 < layout["width"] < 1024,
+                     f"Grade board width: {layout}")
+                need(saved["text"].startswith("✓ Sent to Claude at "), f"Grade confirmation: {saved}")
+                need(saved["visible"] and saved["hit"],
+                     f"Grade confirmation is clipped or covered after Send: {saved}; layout: {layout}")
+                box, header = saved["box"], layout["header"]
+                need(box["left"] >= header["left"] and box["right"] <= header["right"]
+                     and box["top"] >= header["top"] and box["bottom"] <= header["bottom"],
+                     f"Grade confirmation overflows the header: {saved}; layout: {layout}")
+                send = layout["send"]
+                same_row = abs((box["top"] + box["bottom"]) / 2 - (send["top"] + send["bottom"]) / 2) <= 12
+                horizontal_gap = max(0, box["left"] - send["right"], send["left"] - box["right"])
+                under = (max(box["left"], send["left"]) < min(box["right"], send["right"])
+                         and 0 <= box["top"] - send["bottom"] <= 12)
+                need((same_row and horizontal_gap <= 24) or under,
+                     f"Grade confirmation is not next to Send: {saved}; layout: {layout}")
+                print(f"    Grade {width} window / {layout['width']} board: {saved}; layout: {layout}", flush=True)
+        check_visible()
         sel = d / "grade-selection.json"
         need(sel.is_file(), "no grade-selection.json in the reel folder after Send")
         need(not (d / "selection.json").exists(), "a selection.json was written too")
@@ -429,6 +463,7 @@ def main():
         need(doc["correction"] == IDENTITY, f"correction sent as {doc['correction']}")
         need(doc["reel"] == "send-reel" and doc["math_version"] == SPEC["version"] and doc["saved_at"],
              f"reel {doc.get('reel')}, math_version {doc.get('math_version')}, saved_at {doc.get('saved_at')}")
+        # The walk's missing-confirmation report did not reproduce in headless Chrome at 1024x768 or 799 px (the header wraps), so the positive visibility/next-to-Send checks stay as a regression guard.
 
     def c_reload():
         d, cfg = reel("reload-reel")
@@ -485,7 +520,7 @@ def main():
             {"do": "click", "sel": "#suggest"}, {"do": "set", "sel": "#tune input[data-k=temp]", "value": "0.2"},
             {"do": "eval", "js": PIXELS}, {"do": "eval", "js": FLOAT},
             {"do": "waitFn", "js": "!document.querySelector('#send').disabled"}, {"do": "click", "sel": "#send"},
-            {"do": "waitText", "sel": "#saved", "re": "saved grade-selection\\.json|FAILED"},
+            {"do": "waitText", "sel": "#saved", "re": "✓ Sent to Claude at |FAILED"},
             {"do": "waitState", "board": "grade-board",
              "js": f"s.A && s.A.look.id === '{look}' && s.A.look.strength === 0.5 && s.A.correction.temp === 0.2"}], "roundtrip")
         board, board_f = reads(out)[:2]

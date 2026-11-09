@@ -53,7 +53,7 @@ Before work on any reel, unless the picker already printed "This reel uses ..." 
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/saved_style.py" picker <reel folder>`
 
-Use `<editor python>` defined below. If it prints the question, ask it as ONE question with those options (default first, recommended). Run the same script's `pick <reel folder> <style name|fresh|copy>` with the client's answer, quoting names with spaces. "Copy a reel I like" goes to `editor-superengine:style-decoder`; after the client approves the decoded style, save it with `${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/saved-styles.md` §5: it becomes a new Style N used on this reel, never the default unless the client asks. Offer the rename and say each "Not copied" line in plain words.
+Use `<editor python>` defined below. If it prints the question, ask it as ONE question with those options (saved styles with the default first, then "Start fresh", then "Copy a reel I like"; with no saved styles, "Start fresh" is first and recommended). Run the same script's `pick <reel folder> <style name|fresh|copy>` with the client's answer, quoting names with spaces. "Copy a reel I like" goes to `editor-superengine:style-decoder`; after the client approves the decoded style, save it with `${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/saved-styles.md` §5: it becomes a new Style N used on this reel, never the default unless the client asks. Offer the rename and say each "Not copied" line in plain words.
 
 When the picker prints "Auto edit with ...", say it word for word, then follow section 5 of house-rules.md (below). "stop" or "normal mode" runs `pick <reel folder> normal`.
 
@@ -113,7 +113,7 @@ command.
 
 The client never sees file names, paths, JSON, STATUS or FIX lines, or script names. Translate
 every one into plain words. How, with a line for each moment:
-`${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-the-coach-hears.md`.
+`${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-the-user-hears.md`.
 
 ## The four shared references
 

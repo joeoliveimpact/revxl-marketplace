@@ -9,7 +9,7 @@ needs to render it:
                           the category it fills, e.g. hf-counter is "counter")
                kind     = "overlay" (sits over the a-roll, leaves most of the frame clear) or
                           "takeover" (may fill the frame)
-               slots    = {<name>: {maxChars: int >= 1, default: sample text, hint?}}: the words a beat fills in
+               slots    = {<name>: {maxChars: int >= 1, default: sample text, required?: boolean, hint?}}: the words a beat fills in
                dur      = [min_s, max_s], 0 < min <= max
                params   = {<name>: {type: number|string|boolean|color, default, min?, max?, maxChars?, enum?, hint?}}
                           enum = the only values a fill may give: a non-empty list of the param's type, holding
@@ -51,7 +51,8 @@ scene.html equals ours_sha256, and scene.html carries the header comment on line
 (whitespace may wrap; the URL in this one comment is not a reach to the internet). A refused item ships no folder.
 
 A fill is one beat's `scene` object {id, slots, params} (a whole beat holding one is accepted too). Every slot
-is given (use "" to leave one empty), no slot is longer than its maxChars, no unknown slot or param, every param
+is given (use "" to leave an optional slot empty; required slots need non-blank text), no slot is longer than its
+maxChars, no unknown slot or param, every param
 has its type and range. The counter's display (prefix + value with commas and decimals + suffix) fits its
 maxChars, and so does its start (prefix + from + suffix); from lies between 0 and the value, so no number shown
 mid-count is longer than the final one. On a whole beat the counter's value equals the beat's value.
@@ -178,6 +179,8 @@ def spec_problems(sid, spec):
                 out.append(f"slot {show(name)} needs a whole-number maxChars of 1 or more")
             elif not isinstance(s.get("default"), str) or len(s["default"]) > mc:
                 out.append(f"slot {show(name)} needs default sample text no longer than its maxChars ({mc})")
+            if isinstance(s, dict) and "required" in s and not isinstance(s["required"], bool):
+                out.append(f"slot {show(name)} required must be true or false")
     d = spec["dur"]
     if not (isinstance(d, list) and len(d) == 2 and all(isinstance(x, (int, float)) and not isinstance(x, bool)
                                                          for x in d) and 0 < d[0] <= d[1]):
@@ -703,10 +706,14 @@ def fill_problems(sid, fill, scenes=SCENES, words=None):
             out.append(f"{sid} has no slot {show(name)}; its slots are {', '.join(spec['slots'])}")
         elif not isinstance(text, str):
             out.append(f"slot {name} must be text, not {show(text)}")
+        elif s.get("required") is True and not text.strip():
+            out.append(f"slot {name} is required for this scene; write the hook as said")
         elif len(text) > s["maxChars"]:
             out.append(f"slot {name} is {len(text)} characters ({show(text, 40)}); it fits {s['maxChars']} at most, "
                        f"so shorten it (F-11)")
-    out += [f"slot {n} is missing; fill it (or give \"\" to leave it empty)" for n in spec["slots"] if n not in slots]
+    out += [(f"slot {n} is required for this scene; write the hook as said" if s.get("required") is True
+             else f"slot {n} is missing; fill it (or give \"\" to leave it empty)")
+            for n, s in spec["slots"].items() if n not in slots]
     for name, v in params.items():
         p = spec["params"].get(name)
         if p is None:
@@ -829,6 +836,23 @@ def selftest():
         expect("over maxChars fails", any("F-11" in p for p in fill_problems("callout", long, SCENES)))
         hook = {"id": "hook-title", "slots": {"kicker": "Part 1", "title": "Hi"}, "params": {"entrance": "none"}}
         expect("enum value allowed passes", fill_problems("hook-title", hook, SCENES) == [])
+        for sid in ("hook-title", "hf-hook-title"):
+            filled = {"id": sid, "slots": {"title": "Hi"}, "params": {}}
+            if sid == "hook-title":
+                filled["slots"]["kicker"] = ""
+            expect(f"{sid}: filled required title and empty optional kicker pass",
+                   fill_problems(sid, filled, SCENES) == [])
+            for text in ("", "   "):
+                empty = dict(filled, slots=dict(filled["slots"], title=text))
+                expect(f"{sid}: empty or space-only required title fails ({text!r})",
+                       any("slot title is required" in p for p in fill_problems(sid, empty, SCENES)))
+            missing = dict(filled, slots={k: v for k, v in filled["slots"].items() if k != "title"})
+            expect(f"{sid}: missing required title fails without offering empty text",
+                   any("slot title is required" in p for p in fill_problems(sid, missing, SCENES)))
+        required_spec = json.loads((SCENES / "hook-title/scene.json").read_text(encoding="utf-8"))
+        required_spec["slots"]["title"]["required"] = "true"
+        expect("required must be a boolean", any("required must be true or false" in p
+               for p in spec_problems("hook-title", required_spec)))
         bad = fill_problems("hook-title", dict(hook, params={"entrance": "slide"}), SCENES)
         expect("enum value outside fails, naming the allowed values", len(bad) == 1 and '"fade", "none"' in bad[0])
         js = good / "hook-title" / "scene.json"

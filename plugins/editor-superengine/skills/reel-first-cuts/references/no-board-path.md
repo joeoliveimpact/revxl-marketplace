@@ -2,7 +2,7 @@
 
 Use this when no board is available (the board server won't start, or there is no Browser pane), or when
 the client asks to do the cut in chat. Every other stage runs as SKILL.md says. `<editor python>` and the
-path rule (`work/` is `videos/<reel>/work/`) are in SKILL.md's Ground rules.
+path rule are in SKILL.md's Ground rules.
 
 ## Contents
 - Stage 2 in chat: the line-selection table
@@ -25,7 +25,7 @@ Score by **direction**, not information content: a line carrying zero informatio
    `backward` or `neutral`) and why:
    `{"lines": [{"id": "L04", "text": "<the line>", "src_in": 12.40, "src_out": 15.10, "direction": "backward", "why": "restates the opening claim"}]}`
 2. Run:
-   `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/line_score.py" videos/<reel>`
+   `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/line_score.py" <reel folder>`
    It prints the ranked table and writes it to `work/line-table.md`: free cuts (backward) first, then
    "your call" (neutral), then keeps (forward). A forward line is never a free cut. It writes no EDL and
    no selection. Exit 2 means it refused and wrote nothing: a line has no id, no direction or no why, an

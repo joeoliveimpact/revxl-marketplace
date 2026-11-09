@@ -22,6 +22,7 @@ sys.path.insert(0, str(HERE.parents[1] / "_shared"))
 from win_encoding import ensure_utf8_output  # noqa: E402
 import runtime as rt  # noqa: E402
 sys.path.insert(0, str(HERE))
+import word_map  # noqa: E402
 from make_board import reel_rel  # noqa: E402
 
 SPEEDS = [1.0, 1.1, 1.15, 1.2]
@@ -65,6 +66,23 @@ def cut_map(cuts):
     return [[s["out_in_f"] / fps, s["out_out_f"] / fps, s["src_in_f"] / fps, s["src_out_f"] / fps] for s in cuts["segments"]]
 
 
+def write_config(out, text):
+    """Preserve identical board bytes and warn when a rewrite invalidates planned trials."""
+    out = Path(out)
+    path = out / "tweak-board.config.json"
+    content = text.encode("utf-8")
+    if path.exists() and path.read_bytes() == content:
+        cfg = json.loads(text)
+        print(f"{cfg['reel']} {cfg['version']}: the Tweak Board is already up to date (nothing changed).")
+        return "same"
+    out.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(content)
+    if (out / "trials/trials.json").exists():
+        print("This changes the Tweak Board, so the trial plan made before it is out of date: "
+              "plan the trials again before making trial versions.")
+    return "written"
+
+
 def main():
     ensure_utf8_output()
     ap = argparse.ArgumentParser()
@@ -88,26 +106,27 @@ def main():
     if str(a.take) not in cfg.get("takes", {}):
         die("take %s is not on this Cut Board (takes: %s)" % (a.take, ", ".join(cfg.get("takes", {})) or "none"))
     tk = cfg["takes"][str(a.take)]
-    words = [w for w in tk["words"] if not w["word"].startswith("[")]
+    path = Path(a.config).parent / tk["edit_map"]
+    if not path.is_file():
+        die("%s is missing: build the Cut Board first" % path.as_posix())
+    em = json.loads(path.read_text(encoding="utf-8"))
     fps, speed = cuts["fps"], cuts["speed"]
     cmap = cut_map(cuts)
-    cut_words = []
-    for c0, c1, s0, s1 in cmap:
-        for w in words:
-            if s0 <= w["start"] < s1:
-                cut_words.append(dict(id=w["id"], w=w["word"].strip(), t=round(c0 + (w["start"] - s0) / speed, 3)))
+    cut_words = [dict(id=w["id"], w=w["word"], t=round(w["out_anchor"], 3))
+                 for w in word_map.build(cuts, em)["words"]]
     pk = peaks(a.cut)
     work = Path(a.work)
     listen = (work / "listen.txt").read_text(encoding="utf-8") if (work / "listen.txt").exists() else ""
     edit_map = reel_rel(Path(a.config).parent / tk["edit_map"], out)
-    out.mkdir(parents=True, exist_ok=True)
-    (out / "tweak-board.config.json").write_text(json.dumps(dict(
+    text = json.dumps(dict(
         reel=cfg["reel"], version=a.version, video=reel_rel(a.cut, out), edit_map=edit_map, take=int(a.take),
         cuts_sha256=hashlib.sha256(cb).hexdigest(),
         duration=round(cmap[-1][1], 6), fps=fps, ship_speed=speed, speed_options=sorted(set(SPEEDS + [speed])),
         bins_per_s=40, peaks=pk, map=cmap, words=cut_words, listen=listen,
         presets=[["Tight", 0], ["150", 150], ["250", 250], ["500", 500], ["Breathe", 800]],
-    )), encoding="utf-8")
+    ))
+    if write_config(out, text) == "same":
+        return
     print(f"{cfg['reel']} {a.version}: {cmap[-1][1]:.2f}s · {len(cmap)} segments · {len(cut_words)} words · "
           f"peaks {len(pk)} -> {out / 'tweak-board.config.json'}")
 

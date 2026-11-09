@@ -38,6 +38,7 @@ CHANGES = {"opening": {"scene", "slots", "params"}, "hook": {"hook_text"},
            "reframe": {"field", "value"}, "grade": {"look", "strength"}}
 MATCH_MAD = 2.0  # 8-bit RGB, downsampled to 160x284; codec noise tolerance, not a taste score
 DIFFER_MAD = .1
+SETTLE_S = 0.2  # First frames after a hard picture change are encoder settle, not content.
 REVIEW_FILES = {"trials.state.json", "trials.state.json.prev", "trials-selection.json",
                 "trials.state.json.tmp", "trials.state.json.prev.tmp", "trials-selection.json.tmp"}
 
@@ -388,11 +389,13 @@ def verify(base, trial, change, opening_f):
     frames = compose.fpsmod.frame_count(base)
     other = compose.fpsmod.frame_count(trial)
     fps = compose.fpsmod.resolve_fps(base)
-    same_rate = compose.fpsmod.resolve_fps(trial) == fps
+    other_fps = compose.fpsmod.resolve_fps(trial)
+    same_rate = other_fps == fps
     audio = compose.packet_md5(base, "a")
     same_audio = bool(audio) and compose.packet_md5(trial, "a") == audio
     checks = {"frames_equal": frames == other, "fps_equal": same_rate, "audio_equal": same_audio,
-              "picture_ok": False, "match_mad_limit": MATCH_MAD}
+              "picture_ok": False, "match_mad_limit": MATCH_MAD,
+              "base_frames": frames, "trial_frames": other, "base_fps": fps, "trial_fps": other_fps}
     if not all((frames == other, same_rate, same_audio)):
         return checks
     values = frame_differences(base, trial, frames)
@@ -404,8 +407,9 @@ def verify(base, trial, change, opening_f):
         window = min(opening_f, frames)
         if change == "hook":
             window = min(window, round(compose.HOOK_MAX_S * compose.fpsmod.as_fraction(fps)))
-        inside, after = values[:window], values[window:]
-        checks.update(opening_differs=bool(inside) and max(inside) > DIFFER_MAD,
+        settle_f = max(1, round(SETTLE_S * compose.fpsmod.as_fraction(fps)))
+        inside, after = values[:window], values[window + settle_f:]
+        checks.update(settle_f=settle_f, opening_differs=bool(inside) and max(inside) > DIFFER_MAD,
                       after_matches=all(value <= MATCH_MAD for value in after),
                       after_max_mad=max(after, default=0.0), opening_max_mad=max(inside, default=0.0))
         checks["picture_ok"] = checks["opening_differs"] and checks["after_matches"]
@@ -417,6 +421,27 @@ def verify(base, trial, change, opening_f):
         checks["third_max_mad"] = [max(part, default=0.0) for part in thirds]
         checks["picture_ok"] = checks["differs_throughout"]
     return checks
+
+
+def failure_reason(checks):
+    reasons = []
+    if checks.get("audio_equal") is False:
+        reasons.append("the sound differs from the approved cut")
+    if checks.get("frames_equal") is False:
+        reasons.append(f"it has {checks['trial_frames']} frames, the approved cut has {checks['base_frames']}")
+    if checks.get("fps_equal") is False:
+        reasons.append(f"the frame rate differs ({checks['trial_fps']} instead of {checks['base_fps']})")
+    if checks.get("opening_differs") is False:
+        reasons.append("the opening doesn't change from the approved cut "
+                       f"(largest difference {checks['opening_max_mad']:.1f}, needed above {DIFFER_MAD})")
+    if checks.get("after_matches") is False:
+        reasons.append("the picture after the opening doesn't match the approved cut "
+                       f"(largest difference {checks['after_max_mad']:.1f}, limit {checks['match_mad_limit']:.1f})")
+    if checks.get("differs_throughout") is False:
+        differences = ", ".join(f"{value:.1f}" for value in checks["third_max_mad"])
+        reasons.append("the picture doesn't change in every third of the reel "
+                       f"(largest differences {differences}, each needed above {DIFFER_MAD})")
+    return "; ".join(reasons) or "the picture check could not finish"
 
 
 def describe(version):
@@ -437,7 +462,7 @@ def record(reel, path, ident, change, checks):
             "audio_md5": compose.packet_md5(path, "a"), "checks": checks}
 
 
-def render(reel, only=None):
+def render(reel, only=None, status=print):
     safe_trials(reel)
     root = reel / "trials"
     planned = read(root / "trials.json")
@@ -488,6 +513,7 @@ def render(reel, only=None):
     save(root / "base" / compose.SEND, doc)
     report["base"] = record(reel, base, "base", "unchanged", base_checks)
     save(report_path, report)
+    failed = []
     for version in versions:
         ident = version["id"]
         if only is not None and only != ident:
@@ -504,7 +530,7 @@ def render(reel, only=None):
                 scratch_render(reel, apply_version(doc, version), version.get("hook_text"), destination)
             checks = verify(base, destination, version["change"], report["opening_f"])
             if not all(checks[key] for key in ("frames_equal", "fps_equal", "audio_equal", "picture_ok")):
-                raise Stop(f'Trial {ident} failed its voice, timing or picture check; its file was deleted.')
+                raise Stop(failure_reason(checks))
             if planned["base_hashes"] != hashes(reel):
                 raise Stop("The reel inputs changed during rendering; the unfinished version was deleted.")
             row = record(reel, destination, ident, version["change"], checks)
@@ -512,9 +538,24 @@ def render(reel, only=None):
             report["versions"].append(row)
             honest(report)
             save(report_path, report)
+        except (Stop, compose.Stop) as error:
+            destination.unlink(missing_ok=True)
+            if planned["base_hashes"] != hashes(reel):
+                raise Stop("The reel inputs changed during rendering; the unfinished version was deleted.") from None
+            report["versions"] = [row for row in report["versions"] if row["id"] != ident]
+            save(report_path, report)
+            failed.append(ident)
+            reason = error.lines[0] if isinstance(error, compose.Stop) and error.lines else str(error)
+            reason = " ".join(reason.split())
+            if isinstance(error, compose.Stop):
+                reason = reason.removeprefix("✗ ").rstrip(".;")
+            line = f"Trial {ident} didn't pass its check: {reason}; its file was deleted."
+            status(line if not FORBIDDEN.search(line) else "Remove the audience-experiment wording and try again.")
         except BaseException:
             destination.unlink(missing_ok=True)
             raise
+    if failed:
+        raise Stop(f"{len(report['versions'])} trial versions ready; {', '.join(failed)} didn't pass (see above).")
     return report
 
 
@@ -537,6 +578,114 @@ def selftest():
         except Stop:
             continue
         raise Stop("A trial spec self-check failed.")
+    @contextlib.contextmanager
+    def patched(namespace, **changes):
+        before = {key: namespace[key] for key in changes}
+        namespace.update(changes)
+        try:
+            yield
+        finally:
+            namespace.update(before)
+
+    with patched(vars(compose.fpsmod), frame_count=lambda path: 169, resolve_fps=lambda path: "30"), \
+            patched(vars(compose), packet_md5=lambda *args: "sound"):
+        values = [40] * 68 + [3.43] + [1.9] * 100
+        with patched(globals(), frame_differences=lambda *args: values):
+            for change in ("opening", "hook"):
+                checks = verify("base", "trial", change, 68)
+                assert checks["picture_ok"], "Encoder settle should not fail the opening check"
+                assert checks["settle_f"] == 6 and checks["after_max_mad"] == 1.9
+                values[78] = 3.43
+                checks = verify("base", "trial", change, 68)
+                assert not checks["after_matches"] and not checks["picture_ok"]
+                assert checks["after_max_mad"] == 3.43
+                values[78] = 1.9
+            assert not verify("base", "trial", "unchanged", 68)["picture_ok"]
+        for checks, words in (
+                ({"audio_equal": False}, ("sound", "approved cut")),
+                ({"frames_equal": False, "trial_frames": 168, "base_frames": 169}, ("168", "169", "frames")),
+                ({"fps_equal": False, "trial_fps": "24", "base_fps": "30"}, ("frame rate", "24", "30")),
+                ({"opening_differs": False, "opening_max_mad": 0}, ("opening", "doesn't change")),
+                ({"after_matches": False, "after_max_mad": 3.43, "match_mad_limit": 2.0},
+                 ("after the opening", "3.4", "2.0")),
+                ({"differs_throughout": False, "third_max_mad": [40, 0, 40]}, ("every third",))):
+            reason = failure_reason(checks)
+            assert all(word in reason for word in words), reason
+        base_refusal = "✗ beat b_001: slot title is required for this scene; write the hook as said"
+        for problem in ("check", "render", "compose", "compose_plain", "wording", "compose_wording",
+                        "inputs", "interrupt", "base_compose"):
+            with tempfile.TemporaryDirectory() as temp:
+                reel = Path(temp)
+                spec = copy.deepcopy(good)
+                spec["versions"].append({"id": "t3", "change": "grade", "look": "warm", "strength": .5})
+                save(reel / compose.SEND, doc)
+                save(reel / "trials/trials.json", dict(spec, base_hashes={}, current_look="none"))
+                changed = {}
+
+                def fake_render(reel, doc, hook, destination):
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    destination.write_bytes(b"trial")
+                    if destination.parent.name == "base" and problem == "base_compose":
+                        raise compose.Stop(1, base_refusal)
+                    if destination.parent.name == "t1":
+                        if problem == "render":
+                            raise Stop("the trial preview could not finish")
+                        if problem == "compose":
+                            raise compose.Stop(1, "the trial preview could not finish")
+                        if problem == "compose_plain":
+                            raise compose.Stop(1, "✗ The preview stopped.", "Do not show this second line.")
+                        if problem == "wording":
+                            raise Stop("A" + "/B" + " test failed")
+                        if problem == "compose_wording":
+                            raise compose.Stop(1, "✗ A" + "/B" + " test failed.;", "Second line.")
+                        if problem == "interrupt":
+                            raise KeyboardInterrupt
+                        if problem == "inputs":
+                            changed["input"] = "changed"
+
+                output = io.StringIO()
+                with patched(globals(), approved=lambda reel: None, hashes=lambda reel: changed.copy(),
+                             source_words=lambda reel: "3 clear cuts", scratch_render=fake_render,
+                             grade=lambda base, version, dest: fake_render(reel, doc, None, dest),
+                             frame_differences=lambda base, trial, count:
+                                 [0 if trial.parent.name in ("base", "t1") else 40] * count), \
+                        patched(vars(compose), latest_preview=lambda path: reel / "approved.mp4"), \
+                        contextlib.redirect_stdout(output):
+                    if problem == "base_compose":
+                        with patched(vars(sys), argv=[__file__, "render", "--reel-dir", str(reel)]):
+                            assert guarded() == 1
+                        assert output.getvalue().splitlines() == [base_refusal], output.getvalue()
+                        continue
+                    try:
+                        main(["render", "--reel-dir", str(reel)])
+                    except Stop as error:
+                        expected = ("inputs changed during rendering" if problem == "inputs" else
+                                    "2 trial versions ready; t1 didn't pass")
+                        assert expected in str(error), str(error)
+                        assert problem != "interrupt"
+                    except KeyboardInterrupt:
+                        assert problem == "interrupt"
+                    else:
+                        raise AssertionError("A failed trial must signal failure")
+                report = read(reel / "trials/trials-report.json")
+                assert not list((reel / "trials/t1").glob("*.mp4"))
+                if problem in ("inputs", "interrupt"):
+                    assert not report["versions"] and not (reel / "trials/t2").exists()
+                else:
+                    assert [row["id"] for row in report["versions"]] == ["t2", "t3"]
+                    assert all((reel / row["file"]).is_file() for row in report["versions"])
+                    if problem in ("wording", "compose_wording"):
+                        assert output.getvalue().splitlines() == ["Remove the audience-experiment wording and try again."]
+                        assert not FORBIDDEN.search(output.getvalue())
+                        continue
+                    if problem == "compose_plain":
+                        assert output.getvalue().splitlines() == [
+                            "Trial t1 didn't pass its check: The preview stopped; its file was deleted."]
+                        continue
+                    reason = ("the opening doesn't change" if problem == "check" else
+                              "the trial preview could not finish")
+                    assert f"Trial t1 didn't pass its check: {reason}" in output.getvalue()
+                    assert "its file was deleted." in output.getvalue()
     print("selftest ok")
     return 0
 
@@ -563,8 +712,10 @@ def main(argv=None):
         raise Stop("Choose plan or render for this trial reel.")
     reel = args.reel_dir.resolve()
     # Tool chatter may contain client text or multiple errors. Only our plain summary leaves this entry point.
+    output = sys.stdout
     with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-        result = plan(reel, args.spec) if args.command == "plan" else render(reel, args.only)
+        result = (plan(reel, args.spec) if args.command == "plan" else
+                  render(reel, args.only, status=lambda line: print(line, file=output, flush=True)))
     count = len(result["versions"])
     print(f"{count} trial versions {'planned' if args.command == 'plan' else 'ready'}.")
     return 0
@@ -573,9 +724,11 @@ def main(argv=None):
 def guarded():
     try:
         return main()
-    except Stop as error:
-        line = " ".join(str(error).split())
-        print(line if not FORBIDDEN.search(line) else "Remove the audience-experiment wording and try again.")
+    except (Stop, compose.Stop) as error:
+        lines = error.lines if isinstance(error, compose.Stop) else (str(error),)
+        for line in lines:
+            line = " ".join(line.split())
+            print(line if not FORBIDDEN.search(line) else "Remove the audience-experiment wording and try again.")
         return 1
     except KeyboardInterrupt:
         print("Trial-reel work was stopped; retry when ready.")

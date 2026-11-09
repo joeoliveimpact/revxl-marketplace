@@ -19,4 +19,4 @@ Invoke `editor-superengine:recording-preflight`, then wait for their take. Run t
 - A failure stops intake; say what failed and ask for the missing detail. Never overwrite a source.
 
 For an existing reel, run this intake once before Stage 0 too. All paths in the cutting stages are relative to
-the configured reel folder. Keep using that folder, even where an example spells the default `videos/<reel>`.
+the configured reel folder. See SKILL.md's Ground rules for the path rule.

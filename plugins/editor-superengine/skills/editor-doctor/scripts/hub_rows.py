@@ -73,19 +73,22 @@ def cockpit_rules(plugin_root=rt.PLUGIN_ROOT):
         if "never: true" in rule:
             stage["rule"] = {"never": True}
         elif "json:" in rule:
-            when = re.search(r"when: s => (?:!!s\.(\w+)|s\.(\w+) != null)$", rule.strip())
+            when = re.fullmatch(r"json: (" + STRING + r"), (?:(missing: true), )?when: s => (?:!!s\.(\w+)|s\.(\w+) != null)", rule.strip())
             if not when:
                 raise ValueError(f"Unrecognised Cockpit JSON rule for {name}")
-            stage["rule"] = {"json": field(rule, "json"), "property": when[1] or when[2],
-                             "test": "truthy" if when[1] else "not-null"}
+            stage["rule"] = {"json": ast.literal_eval(when[1]), "missing": bool(when[2]),
+                             "property": when[3] or when[4], "test": "truthy" if when[3] else "not-null"}
         else:
             primary, *alternative = rule.split(", or: {", 1)
-            match = re.search(r"match: /(.+)/([i]*)(?:,|$)", primary)
-            master = "match: MASTER" in rule
-            if not match and not master:
+            match = re.fullmatch(r"in: (" + STRING + r"), match: (?:/(.+)/([i]*)|(MASTER))"
+                                 r"(?:, (video: true|applied: (\[[^\]]*\])))?", primary.strip())
+            if not match:
                 raise ValueError(f"Unrecognised Cockpit file rule for {name}")
-            stage["rule"] = {"in": field(rule, "in"), "pattern": MASTER.pattern if master else match[1],
-                             "ignore_case": master or "i" in match[2], "video": "video: true" in rule}
+            master = bool(match[4])
+            stage["rule"] = {"in": ast.literal_eval(match[1]), "pattern": MASTER.pattern if master else match[2],
+                             "ignore_case": master or "i" in match[3], "video": match[5] == "video: true"}
+            if match[6]:
+                stage["rule"]["applied"] = ast.literal_eval(match[6])
             if alternative:
                 other = re.fullmatch(r" in: ('[^']+'), match: /(.+)/([i]*) }", alternative[0])
                 if not other:
@@ -145,12 +148,30 @@ def stage_done(rule, folders, reel):
     if rule.get("never"):
         return False
     if "json" in rule:
-        obj = read(reel / rule["json"], {})
+        absent = object()
+        try:
+            obj = read(reel / rule["json"], absent)
+        except (OSError, ValueError):
+            return False
+        if obj is absent:
+            try:
+                (reel / rule["json"]).lstat()
+            except FileNotFoundError:
+                return rule.get("missing", False)
+            except OSError:
+                return False
+            return False
         value = obj.get(rule["property"]) if isinstance(obj, dict) else None
         return value is not None if rule["test"] == "not-null" else bool(value)
     pattern = re.compile(rule["pattern"], re.I if rule["ignore_case"] else 0)
     for path in folders[rule["in"]]:
         if pattern.search(path.name):
+            if "applied" in rule:
+                at = mtime(path)
+                applied = [mtime(p) for rel in rule["applied"]
+                           for p in folders.get(rel.split("/", 1)[0] if "/" in rel else "root", []) if p == reel / rel]
+                if at is None or not any(t is not None and t >= at for t in applied):
+                    continue
             if not rule["video"]:
                 return True
             if path.stat().st_size:
@@ -219,6 +240,51 @@ def goldmine(root):
     return None
 
 
+def plain_health(status, nle):
+    labels = {"machine": "This computer", "python": "The editor's Python", "ffmpeg": "Video tools",
+              "node": "Motion renderer runtime", "hyperframes": "Motion renderer", "chrome": "Render browser",
+              "cutout-model": "Cutout model", "rvm": "Cutout for moving shots", "transcriber": "Transcriber",
+              "align": "Word timing", "engine": "Transcription engine", "nle": "Editor hand-off",
+              "config": "Editor settings", "gpu": "Graphics card"}
+    rows = []
+    for row in status:
+        if not isinstance(row, dict):
+            rows.append(row)
+            continue
+        component = row.get("component", "")
+        label = component.replace("-", " ")
+        label = labels.get(component, label[:1].upper() + label[1:])
+        if component.startswith("model-"):
+            label = "Transcription model"
+        elif component.startswith("resolve-"):
+            label = "DaVinci Resolve" + {"resolve-edition": " edition", "resolve-version": " version",
+                                        "resolve-scripting": " scripting"}.get(component, "")
+        detail = re.sub(r" \[test masks: [^\]]*\]", "", row.get("detail", ""))
+        if re.fullmatch(r"(?:.*: )?\d+ file\(s\) match their sha256", detail):
+            detail = "Downloaded and checked."
+        elif "missing or damaged:" in detail:
+            detail = "Some of its files are missing or damaged."
+        elif row.get("level") == "ok":
+            if component == "machine":
+                detail = re.sub(r" \(\d+(?:\.\d+){2,}\)", "", detail)
+                detail = re.sub(r"\b(\d+)\.\d+(?:\.\d+)+\b", r"\1", detail)
+                detail = re.sub(r"\s+\b(?:AMD64|arm64|x86_64)\b", "", detail, flags=re.I)
+            elif component == "nle":
+                detail = {"none": "No editor hand-off chosen (you can ask for one later).",
+                          "mcp": "Files for another editor", "resolve": "DaVinci Resolve"}.get(detail.split(" ", 1)[0], detail)
+            else:
+                detail = {"config": "Your editor settings are up to date.",
+                          "transcriber": "Installed and working.", "rvm": "Ready.",
+                          "ffmpeg": "Ready.", "node": "Ready.", "hyperframes": "Ready.",
+                          "chrome": "Ready.", "python": "Ready.", "engine": "Ready."}.get(component, detail)
+        if row.get("level") != "ok":
+            detail = re.sub(r"(?:[^\s,;()\"']*[\\/])+[^\s,;()\"']*[\w-]|(?<![\w.])[\w.-]+\.[A-Za-z][A-Za-z0-9]*",
+                            "a settings file", detail)
+        rows.append(dict(component=component, label=label, level=row.get("level"), detail=detail,
+                         fix=row.get("fix"), matters=not (component.startswith("resolve-") and nle != "resolve")))
+    return rows
+
+
 def build(root, plugin_root=rt.PLUGIN_ROOT):
     root = Path(root).resolve()
     editor, videos = workspace_paths(root)
@@ -238,10 +304,10 @@ def build(root, plugin_root=rt.PLUGIN_ROOT):
     for reel in sorted(videos.iterdir() if videos.is_dir() else []):
         if not reel.is_dir() or not is_real(reel) or not REEL.fullmatch(reel.name) or reel.name.endswith((".", " ")):
             continue
-        folders = {f: files(reel if f == "root" else reel / f) for f in ("root", "raw", "work", "renders")}
+        folders = {f: files(reel if f == "root" else reel / f) for f in ("root", "raw", "work", "renders", "sound")}
         done = [stage_done(s["rule"], folders, reel) for s in stages]
         cur = next(i for i, s in enumerate(stages) if not s["optional"] and not done[i])
-        render_files = [p for p in folders["renders"] + folders["work"] + folders["root"]
+        render_files = [p for p in folders["renders"] + folders["work"] + folders["root"] + folders["raw"] + files(reel / "work/renders")
                         if p.suffix.lower() == ".mp4" and p.stat().st_size]
         masters = [p for p in folders["renders"] if MASTER.fullmatch(p.name) and p.stat().st_size]
         previews = [p for p in folders["renders"] if p.match("* Preview 720p - *.mp4")
@@ -253,9 +319,18 @@ def build(root, plugin_root=rt.PLUGIN_ROOT):
         state = {k: {"saved_at": mtime(reel / f"{k}.state.json"),
                      "sends": {n: mtime(reel / n) for n in v.get("writes", [])}} for k, v in manifest.items()}
         beat = read(reel / "beat-map.state.json", {}) or {}
-        sketches = read(reel / "sketches.state.json", {}) or {}
+        try:
+            sketches = read(reel / "sketches.state.json", {}) or {}
+        except (OSError, ValueError):
+            sketches = {}
         sound = read(reel / "sound-board.state.json", {}) or {}
         cues = sound.get("cues", [])
+        voice_only_done = not cues and any(p.name == "final.mp4" for p in folders["sound"])
+        render_label = ("No render yet" if render is None else "Final master" if render in masters
+                        else "Preview (720p)" if render in previews
+                        else "First cut" if render.parent == reel / "work/renders" and render.match("master-*x.mp4")
+                        else "Your recording" if render == reel / "RAW.mp4" or render.parent == reel / "raw"
+                        else "Latest render")
         blocks = (read(reel / "work/map_check.json", {}) or {}).get("blocks", [])
         open_ = open_sends(reel, sends, snapshot.get("baseline"), snapshot.get("acked") or {})
         activity = max([mtime(p) for ps in folders.values() for p in ps] or [0])
@@ -266,12 +341,14 @@ def build(root, plugin_root=rt.PLUGIN_ROOT):
                  lane("Captions", "captions", any(p.suffix in (".ass", ".srt", ".vtt") and "caption" in p.name.lower()
                                                   for p in folders["work"] + folders["root"]) or (reel / "work/captions.json").is_file(), 1, board_for("captions")),
                  lane("Grade", "grade", (reel / "grade.json").is_file(), 1, board_for("grade")),
-                 lane("Sound", "sound", sum(bool(c.get("state")) for c in cues), len(cues), board_for("sound")),
+                 lane("Sound", "sound", 1 if voice_only_done else sum(bool(c.get("state")) for c in cues),
+                      1 if voice_only_done else len(cues), board_for("sound")),
                  lane("Mix and master", "master", bool(masters), 1, "review")]
         rows.append(dict(id=reel.name, title=reel.name, stage=stages[cur]["name"], stage_id=stages[cur]["id"],
                          cur=cur, done=done, waiting_on="claude" if open_ else "you", open_sends=open_,
                          activity=activity, idle=now.timestamp()*1000-activity > 7*86400000,
-                         frames=frames, render_url=url(render), render_label=render.name if render else "No render yet",
+                         frames=frames, render_url=url(render), render_label=render_label,
+                         sound_board=(reel / "config.json").is_file() and is_real(reel / "config.json"),
                          master_url=url(max(masters, key=lambda p: p.stat().st_mtime_ns, default=None)),
                          preview_name=preview.name if preview else "", preview_url=url(preview),
                          cover_url=url(reel / "cover.jpg") if (reel / "cover.json").is_file() and (reel / "cover.jpg").is_file() else "",
@@ -279,12 +356,13 @@ def build(root, plugin_root=rt.PLUGIN_ROOT):
     # Use an existing hub state owner when available; sorting/selection does not move the workspace preference.
     owners = [r["id"] for r in rows if (videos / r["id"] / "hub.state.json").is_file()]
     cfg = rt.read_config(root)
+    nle = cfg.get("nle", "none")
     controls = cfg.get("controls")
-    return dict(schema=1, refreshed=now.isoformat(), config={"nle": cfg.get("nle", "none"),
+    return dict(schema=1, refreshed=now.isoformat(), config={"nle": nle,
                 "controls": controls if controls in ("simple", "advanced") else "simple"},
                 state_reel=next(iter(owners), rows[0]["id"] if rows else None), stages=stages, boards=boards,
                 reels=rows, styles=style_rows(root),
-                health=(read(root / "editor/.platform.json", {}) or {}).get("status", []), goldmine=goldmine(root))
+                health=plain_health((read(root / "editor/.platform.json", {}) or {}).get("status", []), nle), goldmine=goldmine(root))
 
 
 def style_rows(root):

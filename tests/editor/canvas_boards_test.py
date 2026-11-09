@@ -1,7 +1,7 @@
 """S6a done-test: the Beat Map and Sketches boards end to end, plus the ways they must refuse.
 
   EDITOR_SE_HOME=<state> python -X utf8 -I tests/editor/canvas_boards_test.py
-  python -X utf8 -I tests/editor/canvas_boards_test.py --data-only  # static Send + mutant, no browser
+  python -X utf8 -I tests/editor/canvas_boards_test.py --data-only  # static controls + Send, with mutants; no browser
 
 <state> is an installed editor state folder (node, chrome-headless-shell, puppeteer-core); it is only read.
 Prints one "✓ <case>" / "✗ <case>: <why>" line per case, then "N passed, M failed". Exit 0 only when all pass.
@@ -360,6 +360,78 @@ def send_loading_case():
                 raise Fail("loading mutant survived: Send enabled before init")
 
 
+def check_editing_style_controls(html):
+    class StyleParser(HTMLParser):
+        void = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}
+
+        def __init__(self):
+            super().__init__()
+            self.stack, self.nodes, self.ids = [], [], {}
+
+        def handle_starttag(self, tag, attrs):
+            attrs = dict(attrs)
+            index = len(self.nodes)
+            self.nodes.append((tag, attrs, tuple(self.stack)))
+            if "id" in attrs:
+                need(attrs["id"] not in self.ids, f"beat-map: duplicate id #{attrs['id']}")
+                self.ids[attrs["id"]] = index
+            if tag not in self.void:
+                self.stack.append(index)
+
+        def handle_endtag(self, tag):
+            need(self.stack and self.nodes[self.stack[-1]][0] == tag,
+                 f"beat-map: mismatched closing tag </{tag}>")
+            self.stack.pop()
+
+        def handle_startendtag(self, tag, attrs):
+            self.handle_starttag(tag, attrs)
+            if tag not in self.void:
+                self.handle_endtag(tag)
+
+    parser = StyleParser()
+    parser.feed(html)
+    parser.close()
+    need(not parser.stack, "beat-map: unclosed HTML tags")
+    panels = [i for i, (tag, attrs, _) in enumerate(parser.nodes)
+              if tag == "section" and attrs.get("aria-labelledby") == "style-h"]
+    need(len(panels) == 1, "beat-map: expected one Editing style panel")
+    panel = panels[0]
+    advanced = {i for i, (tag, attrs, parents) in enumerate(parser.nodes)
+                if tag == "details" and "advanced-controls" in attrs.get("class", "").split() and panel in parents}
+    need(len(advanced) == 1, "beat-map: Editing style needs exactly one Advanced controls toggle")
+    for id_, folded in (("word-punches", False), ("camera-move", False), ("punch-hint", False),
+                        ("punch-scale", True), ("opening-settle", True), ("follow-cam", True),
+                        ("punch-shape", True), ("open-loops", True), ("reminder-holds", True)):
+        need(id_ in parser.ids, f"beat-map: missing #{id_}")
+        parents = parser.nodes[parser.ids[id_]][2]
+        need(panel in parents, f"beat-map: #{id_} is outside Editing style")
+        folded_parents = [i for i in parents if parser.nodes[i][0] == "details" and
+                          "advanced-controls" in parser.nodes[i][1].get("class", "").split()]
+        need(bool(folded_parents) == folded,
+             f"beat-map: #{id_} must be {'inside' if folded else 'outside'} Advanced controls")
+    for id_ in ("word-punches", "camera-move"):
+        labels = [parents for tag, attrs, parents in parser.nodes if tag == "label" and attrs.get("for") == id_]
+        need(len(labels) == 1 and panel in labels[0] and not advanced.intersection(labels[0]),
+             f"beat-map: #{id_} label must be outside Advanced controls")
+
+
+def editing_style_controls_case():
+    html = (PLUGIN / "skills/reel-canvas-build/boards/beat-map/index.html").read_text(encoding="utf-8")
+    check_editing_style_controls(html)
+    start = '<select id="word-punches">'
+    need(html.count(start) == 1, "Editing style mutant anchor differs")
+    control = start + html.split(start, 1)[1].split("</select>", 1)[0] + "</select>"
+    toggle = '<details class="advanced-controls"><summary>Advanced controls</summary>'
+    need(html.count(toggle) == 1, "Editing style toggle mutant anchor differs")
+    mutant = html.replace(control, "", 1).replace(toggle, toggle + control, 1)
+    try:
+        check_editing_style_controls(mutant)
+    except Fail as e:
+        need(str(e) == "beat-map: #word-punches must be outside Advanced controls", f"wrong mutant rejection: {e}")
+    else:
+        raise Fail("Editing style mutant survived: Word punches folded in Simple mode")
+
+
 def free_port(*taken):
     while True:
         with socket.socket() as s:
@@ -593,6 +665,8 @@ def main():
     if "--data-only" in sys.argv:
         send_loading_case()
         print("Send loading static check + enabled-button mutant passed")
+        editing_style_controls_case()
+        print("Editing style static check + folded Word punches mutant passed")
         return 0
     tools, missing = find_tools()
     if missing:

@@ -225,7 +225,9 @@ async function init() {
     for (const row of data.candidates) {
       const button = document.createElement("button"), label = document.createElement("span"), img = document.createElement("img");
       button.type = "button"; button.dataset.frame = row.frame;
-      label.textContent = row.recommended ? "Recommended: your opening frame, where your text hook is" : "Frame " + row.frame + " · " + row.t.toFixed(1) + " s";
+      label.textContent = row.recommended ? (data.final === true
+        ? "Recommended: your opening frame, where your text hook is"
+        : "Recommended: your opening frame (your text hook is added in the final video)") : "Frame " + row.frame + " · " + row.t.toFixed(1) + " s";
       img.src = baseUrl + "cover/cand-" + row.frame + ".jpg"; img.alt = "Cover frame " + row.frame;
       button.append(label, img);
       button.onclick = () => { state.frame = row.frame; changed(); };

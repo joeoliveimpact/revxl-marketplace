@@ -77,6 +77,7 @@ input[type=range]{accent-color:var(--et-ink)}
 #dirty::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--et-you);box-shadow:0 0 12px var(--et-you);flex:none;animation:et-pulse 2.4s var(--et-ease) infinite}
 #dirty[hidden]{display:none!important}
 #saved{font:400 12px var(--et-mono)}
+.send-status{display:flex;flex-direction:column;align-items:flex-start;gap:4px;max-width:100%}
 @keyframes et-pulse{50%{opacity:.35}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
 main>div,main>aside{position:relative;isolation:isolate;background:var(--et-tile)!important;border:1px solid var(--et-hair)!important;transition:border-color .3s var(--et-ease),box-shadow .3s var(--et-ease),opacity .3s var(--et-ease)}
@@ -121,8 +122,8 @@ pre{color:var(--et-ink2)!important;border-top:1px solid var(--et-hair)!important
  <button id="sheetBtn" title="The face frame through every look, as one picture">contact sheet</button>
 </details>
  <span style="margin-left:auto"></span>
- <button type="button" id="send" class="send" disabled>send to Claude <small data-loading>Loading...</small></button>
- <span id="saved" style="color:var(--ok)"></span> <span id="dirty" class="pend" hidden>changes not sent</span>
+ <div class="send-status"><button type="button" id="send" class="send" disabled>send to Claude <small data-loading>Loading...</small></button>
+ <span id="saved" role="status" aria-live="polite" style="color:var(--ok)"></span></div> <span id="dirty" class="pend" hidden>changes not sent</span>
 </header>
 <main>
  <div>
@@ -373,7 +374,8 @@ function syncAB(){ $('#toggleAB').disabled=!S.B; $('#toggleAB').textContent=S.cu
 /* ---- frames, playback -------------------------------------------------------------------- */
 function setFrame(id,quiet){
   S.frame=id;
-  $('#src').textContent = id==='video' ? 'live video' : id;
+  const frame=(C.frames||[]).find(f=>f.file===id);
+  $('#src').textContent = id==='video' ? 'live video' : frame?.pct!=null ? `still at ${frame.pct}%` : 'still';
   $('#frames').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.f===id));
   if(id==='video'){ srcReady=$('#v').readyState>=2; draw(); }
   else {
@@ -401,7 +403,7 @@ async function send(){
   catch(e){ setSaved('SEND FAILED: no answer from the editor boards (are they running?). Nothing reached Claude; your grade is still on this page.',true); return; }
   if(!r.ok){ setSaved('SEND FAILED (the board server answered '+r.status+'). Nothing reached Claude; your grade is still on this page.',true); return; }
   S.sent=sig(payload); persist();
-  setSaved('saved grade-selection.json '+new Date().toLocaleTimeString());
+  setSaved('✓ Sent to Claude at '+new Date().toLocaleTimeString());
 }
 
 /* ---- boot -------------------------------------------------------------------------------- */

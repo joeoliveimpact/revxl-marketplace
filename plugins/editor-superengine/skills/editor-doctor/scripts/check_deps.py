@@ -61,7 +61,7 @@ BAD_CONFIG = ("editor/editor.config.json isn't valid JSON, so the doctor left it
 
 def run(cmd, **kw):
     return subprocess.run([str(c) for c in cmd], capture_output=True, text=True, encoding="utf-8",
-                          errors="replace", timeout=300, **kw)
+                          errors="replace", timeout=kw.pop("timeout", 300), **kw)
 
 
 class Report:
@@ -80,6 +80,24 @@ class Report:
             if i["fix"]:
                 out.append(f"FIX {i['component']} {i['fix']}")
         return out
+
+
+def sound_pack(rep, cwd, do_install, run=run):
+    script = rt.PLUGIN_ROOT / "skills" / "reel-sound-pass" / "scripts" / "sfx_ingest.py"
+    try:
+        p = run([sys.executable, "-X", "utf8", "-I", script, "fetch" if do_install else "verify"],
+                cwd=cwd, timeout=900 if do_install else 300)
+        ready = re.search(r"^Sound library (?:ready|verified): (\d+) files\.$", p.stdout, re.M)
+        if p.returncode == 0 and ready:
+            rep.add("sound-pack", "ok", f"the starter sound pack is ready ({ready[1]} sounds and music tracks)", required=False)
+            return
+        if p.returncode == 0 and any(line.startswith("There is no sound library yet") for line in p.stdout.splitlines()):
+            rep.add("sound-pack", "ok", "no starter sound pack is offered yet; mixes are voice only", required=False)
+            return
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    rep.add("sound-pack", "warn", "the starter sound pack isn't on this computer yet, so sound effects and starter music are off; "
+            "mixes still work with your voice", "Claude re-runs the doctor to fetch it again (about 29 MB).", required=False)
 
 
 def rerun(engine):
@@ -522,6 +540,7 @@ def doctor(cwd, st, do_install=True, run_install=run_installer, repick=False):
         rep.add("config", "missing", *BAD_CONFIG)
     else:
         rep.add("config", "ok", "editor/editor.config.json is up to date")
+    sound_pack(rep, cwd, do_install)
     ensure_style(st)
     tools = {}
     for n in ("python", "node", "npm-cli", "ffmpeg", "ffprobe", "chrome", "hyperframes"):
@@ -786,7 +805,7 @@ def selftest():
             sw = td / "sw"
             atomic_write(sw / "state.json", json.dumps({"engine": "parakeet-gpu", "engine_reason": "Windows with an NVIDIA GPU",
                                                         "pick_facts": rt.pick_facts(None)[0], "python_packages": {"engine": "parakeet-gpu"}}))
-            atomic_write(rt.config_path(td / "ws-sw"), json.dumps({"language": "es"}))
+            atomic_write(rt.config_path(td / "ws-sw"), json.dumps({"language": "es", "sfx_pack": {"url": None}}))
             os.environ["EDITOR_SE_MASK"] = "resolve"
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):

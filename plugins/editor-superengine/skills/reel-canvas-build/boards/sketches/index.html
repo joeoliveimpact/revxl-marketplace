@@ -174,7 +174,7 @@ function markPicked() {
   showLock();
 }
 
-/* Locked = the coach chose the picked look as final: the picks can't change until Unlock. */
+/* Locked = the user chose the picked look as final: the picks can't change until Unlock. */
 function showLock() {
   const locked = !!doc.locked_at;
   document.querySelectorAll("input[name=pick]").forEach((r) => { r.disabled = locked; });
@@ -222,6 +222,12 @@ async function reelJson(rel) {
 }
 function counterValue(spec, param) { return spec.category === "counter" && param.name === "value"; }
 function sceneSpec(id) { return sceneCatalog.find((s) => s.id === id); }
+function sceneTitle(scene) {
+  const title = scene.title || scene.label;
+  if (title) return title;
+  const words = scene.id.replace(/^hf-/, "").replace(/-/g, " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
 function refreshScenes() {
   document.querySelectorAll(".scene-controls").forEach((e) => e.replaceWith(sceneControls(e.dataset.beat)));
 }
@@ -235,8 +241,8 @@ function sceneControls(beat) {
   for (const item of ordered) {
     const choice = el("button", {type: "button", class: "scene-choice", "data-scene": item.id});
     const url = mediaUrl(item.preview);
-    if (url) choice.append(el("img", {src: url, alt: item.id + " preview"}));
-    choice.append(el("span", {text: item.id}), el("span", {class: "muted", text: item.kind + " · " + item.category}));
+    if (url) choice.append(el("img", {src: url, alt: sceneTitle(item) + " preview"}));
+    choice.append(el("span", {text: sceneTitle(item)}));
     if (!available[item.id]) {
       choice.disabled = true;
       choice.append(el("span", {text: "doesn't fit this beat's words or length"}));
@@ -252,7 +258,7 @@ function sceneControls(beat) {
   wrap.append(add, picker);
   if (!sceneCatalog.length) wrap.append(el("p", {class: "none", text: "Scene choices aren't ready yet. Ask Claude to prepare them."}));
   if (fill) {
-    wrap.append(el("p", {text: fill.id}));
+    wrap.append(el("p", {text: sceneTitle(spec || fill)}));
     if (spec) {
       for (const slot of spec.slots) {
         const id = "scene-field-" + (++sceneFieldId);

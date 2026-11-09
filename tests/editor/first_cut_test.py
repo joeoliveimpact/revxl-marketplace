@@ -11,8 +11,9 @@ Tools come from the editor state folder (EDITOR_SE_HOME, else the default): ffmp
 and libx265, else PATH), and node, Chrome and puppeteer-core for the page click. Missing ones FAIL.
 Known colour (H-R25): CIEDE2000 dE <= 5.0 per patch on the HLG -> SDR case, against the planted value.
 """
-import argparse, importlib.util, json, math, os, re, shlex, shutil, subprocess, sys
+import argparse, importlib.util, json, math, os, re, shlex, shutil, subprocess, sys, tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
@@ -349,12 +350,34 @@ def check_threshold_fallback(S, plugin):
            bool(m) and abs(float(m.group(1)) - want) < 0.2, (p.stdout + p.stderr)[-300:])
 
 
+def check_review_title(plugin):
+    spec = importlib.util.spec_from_file_location("review_page", script(plugin, "review_page.py"))
+    review = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(review)
+    with tempfile.TemporaryDirectory(prefix="cut-review-title-") as tmp, patch.object(review, "duration", return_value=10):
+        reel = Path(tmp) / "A & B"
+        work = reel / "work"
+        work.mkdir(parents=True)
+        for raw in (reel / "RAW.mp4", reel / "raw" / "RAW.mp4"):
+            page = review.write(work, raw, reel / "cut.mp4", [[1, 5]])
+            text = page.read_text(encoding="utf-8")
+            ck("cut review title uses the reel folder: " + raw.parent.name,
+               "<title>Cut review: A &amp; B</title>" in text and "<h1>Cut review: A &amp; B</h1>" in text
+               and "Cut review: RAW.mp4" not in text)
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("scratch")
-    ap.add_argument("--take", required=True)
+    ap.add_argument("scratch", nargs="?")
+    ap.add_argument("--take")
+    ap.add_argument("--data-only", action="store_true", help="check review titles without media or a browser")
     ap.add_argument("--plugin", default=str(REPO / "plugins" / "editor-superengine"))
     a = ap.parse_args()
+    if a.data_only:
+        check_review_title(Path(a.plugin).resolve())
+        return 1 if fails else 0
+    if not a.scratch or not a.take:
+        ap.error("scratch and --take are required unless --data-only is used")
     S, plugin = Path(a.scratch).resolve(), Path(a.plugin).resolve()
     S.mkdir(parents=True, exist_ok=True)
     print("plugin %s\nffmpeg %s" % (plugin, shutil.which("ffmpeg", path=ENV.get("PATH"))))
@@ -363,6 +386,7 @@ def main():
            env=dict(ENV, EDITOR_SE_PLUGIN=str(plugin)))
     ck("VU-5 a: the 6 ported portrait-detection tests pass", p.returncode == 0, p.stderr[-400:])
     check_skill_commands(plugin)
+    check_review_title(plugin)
     check_threshold_fallback(S, plugin)
     check_audio_stream(S, plugin)
     check_hlg(S, plugin)

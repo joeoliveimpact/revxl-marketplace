@@ -365,7 +365,7 @@ def case_cut_send(S, a):
     browse([dict(do="goto", path="/editor/cut-board/?reel=cut-send", **CUT_READY),
             {"do": "click", "sel": '[data-pick="0:1"]'}, {"do": "click", "sel": strike},
             {"do": "waitState", "board": "cut-board", "js": "s.lines[0].pick===1 && (s.lines[2].rm['0']||[]).includes(%d)" % wi},
-            {"do": "click", "sel": "#send"}, {"do": "waitText", "sel": "#saved", "re": "saved cut-selection\\.json|FAILED"}],
+            {"do": "click", "sel": "#send"}, {"do": "waitText", "sel": "#saved", "re": "✓ Sent to Claude at |FAILED"}],
            "cut-send")
     sel = cs.load(d / "cut-selection.json")
     keys = {"v", "reel", "gap_default_ms", "speed", "beat_ms", "word_list_hash", "board_hash", "lines", "saved_at"}
@@ -465,7 +465,7 @@ def case_tweak_silence(S, a):
                      {"do": "waitState", "board": "tweak-board", "js":
                       "s.silences?.[0]?.choice===" + json.dumps(choice) if choice else "!s.silences"},
                      {"do": "click", "sel": "#send"},
-                     {"do": "waitText", "sel": "#saved", "re": "saved tweak-selection\\.json|FAILED"},
+                     {"do": "waitText", "sel": "#saved", "re": "✓ Sent to Claude at |FAILED"},
                      {"do": "eval", "js": "document.querySelector('#dirty').hidden"}], label)
         ck(label + ": dirty before Send, clean after", out["reads"] == [True, True], out["reads"])
         return cs.load(d / "tweak-selection.json")
@@ -515,7 +515,7 @@ def case_tweak_send(S, a):
             {"do": "seek", "t": 1.0}, {"do": "click", "sel": '[data-add="cut"]'},
             {"do": "seek", "t": 1.5}, {"do": "click", "sel": '[data-add="cut"]'},
             {"do": "waitState", "board": "tweak-board", "js": "s.marks.length===1"},
-            {"do": "click", "sel": "#send"}, {"do": "waitText", "sel": "#saved", "re": "saved tweak-selection\\.json|FAILED"}],
+            {"do": "click", "sel": "#send"}, {"do": "waitText", "sel": "#saved", "re": "✓ Sent to Claude at |FAILED"}],
            "tweak-send-1")
     sel = cs.load(d / "tweak-selection.json")
     m = (sel.get("marks") or [{}])[0]
@@ -548,7 +548,7 @@ def case_tweak_fine_tune(S, a):
         {"do": "slider", "sel": '#fine-pane .tp-sldv', "fraction": 0.65},
         {"do": "eval", "js": "S.marks[0].a"},
         {"do": "click", "sel": '#send'},
-        {"do": "waitText", "sel": '#saved', "re": "saved tweak-selection\\.json|FAILED"},
+        {"do": "waitText", "sel": '#saved', "re": "✓ Sent to Claude at |FAILED"},
     ], "tweak-fine-tune")
     marks = cs.load(d / "tweak-selection.json").get("marks", [])
     ck("Tweakpane slider travels through Tweak Send", bool(out["reads"]) and len(marks) == 1
@@ -569,7 +569,7 @@ def case_roundtrip(S, a):
     mine = [s for s in cuts0["segments"] if s["src_out_f"] / fps > l3["src_in"] and s["src_in_f"] / fps < l3["src_out"]]
     ta, tb = mine[0]["out_in_f"] / fps, mine[-1]["out_out_f"] / fps
     send = [{"do": "eval", "js": "document.getElementById('saved').textContent=''"}, {"do": "click", "sel": "#send"},
-            {"do": "waitText", "sel": "#saved", "re": "saved tweak-selection\\.json|FAILED"}]
+            {"do": "waitText", "sel": "#saved", "re": "✓ Sent to Claude at |FAILED"}]
     out = browse([dict(do="goto", path="/editor/tweak-board/?reel=roundtrip", **TWEAK_READY)] + send +
                  [{"do": "eval", "js": "fetch(BASE+'tweak-selection.json',{cache:'no-store'}).then(r=>r.text())"},
                   {"do": "seek", "t": round(ta, 3)}, {"do": "click", "sel": '[data-add="cut"]'},
@@ -814,7 +814,7 @@ def case_hub_roundtrip(S, a):
                   {"do": "click", "sel": '[data-drop="5"]'}, {"do": "click", "sel": strike},
                   {"do": "set", "sel": "#beat", "value": "0.35"},
                   {"do": "waitState", "board": "cut-board", "js": "s.beat_ms===350 && s.lines[5].drop===true"},
-                  {"do": "click", "sel": "#send"}, {"do": "waitText", "sel": "#saved", "re": "saved cut-selection\\.json|FAILED"},
+                  {"do": "click", "sel": "#send"}, {"do": "waitText", "sel": "#saved", "re": "✓ Sent to Claude at |FAILED"},
                   {"do": "top"}, {"do": "eval", "js": "document.querySelector('.frame iframe').getAttribute('src')"}],
                  "hub-roundtrip-1")
     r = out["reads"]
@@ -847,7 +847,7 @@ def case_hub_roundtrip(S, a):
                   dict(do="frame", sel=".frame iframe", **TWEAK_READY),
                   {"do": "eval", "js": "JSON.stringify({d: document.getElementById('v').duration, src: document.getElementById('v').currentSrc, "
                                        "words: C.words, title: document.getElementById('title').textContent})"},
-                  {"do": "click", "sel": "#send"}, {"do": "waitText", "sel": "#saved", "re": "saved tweak-selection\\.json|FAILED"}],
+                  {"do": "click", "sel": "#send"}, {"do": "waitText", "sel": "#saved", "re": "✓ Sent to Claude at |FAILED"}],
                  "hub-roundtrip-2")
     v = json.loads(out["reads"][0]) if out["reads"] else {}
     ck("hub-roundtrip: the Tweak Board tab shows the new cut: video %s, duration %.3f s vs the last out_out_f/fps %.3f s "

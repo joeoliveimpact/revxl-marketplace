@@ -83,16 +83,17 @@ function drawWall() {
 }
 function drawHead() {
   const r = current(), s = stage();
+  const hint = st => st.id === "sound" && r.sound_board === false ? "There are no sound cues to audition because this reel's sound is voice only. Ask Claude for sound effects or music to add some." : st.hint;
   $("crumb").textContent = "All reels / " + r.id;
   $("rhead").innerHTML = `<div><span class="code">${esc(r.id)}</span><h1>${esc(r.title)}</h1>${["resolve","mcp"].includes(DATA.config.nle) ? `<p id="nle">edits in ${esc(DATA.config.nle)}</p>` : ""}</div><div class="pct"><b>${pct(r)}%</b><span>of the edit done</span></div>`;
   $("baton").className = "baton " + r.waiting_on;
-  $("baton").textContent = (r.waiting_on === "claude" ? "Claude's move" : "Your move") + ": " + (r.open_sends[0]?.file || r.stage);
+  $("baton").textContent = (r.waiting_on === "claude" ? "Claude's move" : "Your move") + ": " + (DATA.stages.find(st => st.id === r.open_sends[0]?.board)?.name || r.stage);
   $("lede").textContent = `${r.title} needs ${r.waiting_on === "claude" ? "Claude" : "you"} for ${r.stage.toLowerCase()}.`;
-  $("steps").innerHTML = DATA.stages.map((st,i) => `<li class="${r.done[i] ? "done" : ""} ${i===r.cur ? "now" : ""}"><button class="step" data-step="${i}" ${i===r.cur ? 'aria-current="step"' : ""}><span class="n">${i+1}</span><span class="lb">${esc(st.name)}${st.optional ? " (optional)" : ""}<small>${esc(st.hint)}</small></span></button></li>`).join("");
-  $("lanes").innerHTML = r.lanes.map(l => `<button class="lane" ${l.board ? `data-open="${esc(l.board)}"` : "disabled"}><span>${esc(l.label)}</span><span class="ln">${l.total && l.done ? `${l.done}/${l.total}` : "not started"}</span><span class="track"><i style="width:${l.total ? l.done/l.total*100 : 0}%;--c:var(--${l.layer})"></i></span></button>`).join("");
-  const bid = boardFor(s);
+  $("steps").innerHTML = DATA.stages.map((st,i) => `<li class="${r.done[i] ? "done" : ""} ${i===r.cur ? "now" : ""}"><button class="step" data-step="${i}" ${i===r.cur ? 'aria-current="step"' : ""}><span class="n">${i+1}</span><span class="lb">${esc(st.name)}${st.optional ? " (optional)" : ""}<small>${esc(hint(st))}</small></span></button></li>`).join("");
+  $("lanes").innerHTML = r.lanes.map(l => `<button class="lane" ${l.board ? `data-open="${esc(l.board)}"` : "disabled"}><span>${esc(l.label)}</span><span class="ln">${l.total > 0 && l.done >= l.total ? "done" : l.total > 0 && l.done > 0 ? `${l.done}/${l.total}` : "not started"}</span><span class="track"><i style="width:${l.total ? l.done/l.total*100 : 0}%;--c:var(--${l.layer})"></i></span></button>`).join("");
+  const bid = s.id === "sound" && r.sound_board === false ? null : boardFor(s);
   $("move").className = "move " + r.waiting_on;
-  $("move").innerHTML = `<div class="lead"><span class="big">${r.cur+1}</span><span class="of">Step ${r.cur+1} of ${DATA.stages.length}</span></div><h2>${esc(r.open_sends.length ? "Your Send is ready for Claude" : s.head)}</h2><p class="what">${esc(r.open_sends.length ? "Claude picks it up when you say go. Nothing happens until then." : s.hint)}</p>${bid ? `<button class="btn primary" data-open="${esc(bid)}">Start: ${esc(bid === "review" ? "Master review" : DATA.boards.find(b=>b.id===bid)?.label)}</button>` : ""}`;
+  $("move").innerHTML = `<div class="lead"><span class="big">${r.cur+1}</span><span class="of">Step ${r.cur+1} of ${DATA.stages.length}</span></div><h2>${esc(r.open_sends.length ? "Your Send is ready for Claude" : s.head)}</h2><p class="what">${esc(s.id === "sound" && r.sound_board === false ? hint(s) : r.open_sends.length ? "Claude picks it up when you say go. Nothing happens until then." : hint(s))}</p>${bid ? `<button class="btn primary" data-open="${esc(bid)}">Start: ${esc(bid === "review" ? "Master review" : DATA.boards.find(b=>b.id===bid)?.label)}</button>` : ""}`;
   const frames = r.frames;
   $("strip").innerHTML = frames.map(f => `<img src="${esc(f)}" alt="">`).join("") + '<span class="playhead" id="ph"></span>';
   if (r.frames[0]) { $("glowimg").src = r.frames[0]; $("glow").classList.add("on"); }
@@ -164,9 +165,9 @@ function drawPages() {
   const health = DATA.health;
   $("health-list").innerHTML = health.map(h=>{
     if (typeof h === "string") { const m=h.match(/^STATUS (\S+) (ok|warn|missing) (.*)$/); h=m ? {component:m[1],level:m[2],detail:m[3]} : {detail:h}; }
-    return `<li><span class="word" data-state="${esc(h.level)}">${esc(({ok:"✓ OK",warn:"⚠ Needs a look",missing:"✗ Missing"})[h.level] || "Check")}</span><div><b>${esc(h.component)}</b><span class="dt">${esc(h.detail)}</span>${h.fix ? `<span class="dt">${esc(h.fix)}</span>` : ""}</div></li>`;
+    return `<li><span class="word" data-state="${h.matters === false ? "optional" : esc(h.level)}">${h.matters === false ? "Optional" : esc(({ok:"✓ OK",warn:"⚠ Needs a look",missing:"✗ Missing"})[h.level] || "Check")}</span><div><b>${esc(h.label || h.component)}</b><span class="dt">${esc(h.detail)}</span>${h.fix ? `<span class="dt">${esc(h.fix)}</span>` : ""}</div></li>`;
   }).join("") || '<li>No health check yet. Ask Claude to check my editor.</li>';
-  $("healthwarn").hidden = !health.some(h=>typeof h === "string" ? / (warn|missing) /.test(h) : h.level !== "ok");
+  $("healthwarn").hidden = !health.some(h=>typeof h === "string" ? / (warn|missing) /.test(h) : h.matters !== false && h.level !== "ok");
   const gold = DATA.goldmine;
   $("gold-data").innerHTML = gold ? `<p>From n = ${esc(gold.n)} reels · ${esc(gold.breakouts)} breakouts</p><table><thead><tr><th>Breakout</th><th>Compared with baseline</th><th>Comment rate</th></tr></thead><tbody>${gold.ranking.map((x,i)=>`<tr><td>${esc(x.title || x.label || (x.handle ? "@"+String(x.handle).replace(/^@+/, "") : "") || "Breakout "+(i+1))}</td><td>${x.benchmark_x == null ? "Not enough baseline reels" : esc(typeof x.benchmark_x === "number" ? x.benchmark_x.toFixed(x.benchmark_x >= 10 ? 0 : 1) : x.benchmark_x)+"×"}</td><td>${x.comment_rate == null ? "Not measured" : esc(typeof x.comment_rate === "number" ? (x.comment_rate*100).toFixed(2)+"%" : x.comment_rate)}</td></tr>`).join("")}</tbody></table><p class="writes">CTA comment rates are upper bounds.</p>` : '<div class="empty"><b>No Goldmine run yet.</b> A run uses your SocialCrawl credits; Claude shows the cost and asks first.</div>';
 }

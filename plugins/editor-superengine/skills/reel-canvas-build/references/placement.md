@@ -1,9 +1,10 @@
 # Keeping captions off the face
 
 The face step measures a protected head box, from the top of the head down to
-75% of the person's height. It needs the cut master first, then the
-`face_crop.py anchors` step. See [Follow my face](motion.md#follow-my-face)
-for the command Claude runs. After a new cut, measure the anchors again.
+75% of the person's height. It needs the cut master first. Before every captioned
+preview, follow [build.md, section 2](build.md#2-make-the-preview) to measure any
+missing or older anchors, whatever the Follow my face setting. After a new cut,
+measure the anchors again. Follow my face only moves the camera.
 
 The placer reads the zoom, its centre and the video layout throughout each
 caption's time on screen. It maps the protected box into the final picture,

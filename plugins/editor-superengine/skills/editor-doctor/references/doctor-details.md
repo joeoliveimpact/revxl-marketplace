@@ -44,6 +44,7 @@ FIX <component> <plain fix for this OS>        <- right after every warn or miss
 | `resolve-installed`, `resolve-edition`, `resolve-version`, `resolve-scripting` | the Resolve requirements, all optional (warn, never missing) |
 | `nle` | `resolve` or `none` from detection, or the client's own choice ("chosen by you"), as written to the config |
 | `config` | editor.config.json written (missing if it holds broken JSON, which the doctor leaves alone) |
+| `sound-pack` | the starter sound pack is ready, no pack is offered yet (voice only), or warn: Claude re-runs the doctor to fetch it again (about 29 MB); still missing: sound effects are off for now and mixes are voice only |
 
 ## The engine (TX-1, PB-11, hub rulings 11.04.26)
 

@@ -59,10 +59,10 @@ the renderer keeps the centred crop.
 After the cut master exists, `face_crop.py anchors` measures head positions within
 each cut segment. The first head sample sets that segment's zoom centre; without
 samples, the planner uses its default near the eyes. **Follow my face** moves
-between those samples inside the segment; without them it stays put. Follow the face
-step in [motion.md, Follow my face](motion.md#follow-my-face), including rerunning it
-after a new cut, or deleting the samples when Follow my face is off.
-Neither selecting a style nor previewing automatically makes face measurements.
+between those samples inside the segment; without them it stays put. Before each
+captioned preview, follow the face step in [build.md, section 2](build.md#2-make-the-preview)
+to measure any missing or older anchors, and run it again after a new cut.
+Follow my face only moves the camera; keep the samples for caption placement when it is off.
 
 The measured softness ceiling is currently **1.15**, from
 `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/tuning.json`.

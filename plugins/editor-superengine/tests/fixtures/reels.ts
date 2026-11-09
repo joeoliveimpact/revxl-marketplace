@@ -58,9 +58,11 @@ export function inputOf(tree: Tree, o: { baseline?: number; acked?: Record<strin
 }
 
 // ---- REEL-018 / REEL-020: the stage-relevant shape of two real reels made before 0.2.0 (old per-board subfolders),
-// with the gotchas. Names generic past the reel id. Neither uses a 0.2.0 artifact name.
+// with the gotchas. Names generic past the reel id. Original outputs use no 0.2.0 artifact name; sketches below keep Motion open.
 const OLD = 28   // days ago: both are idle now
 export const REEL_018: Tree = reel('reel-018', {
+  // Keep this old-layout fixture testing its existing done-stage assertions with Motion still open.
+  'sketches.state.json': json(OLD, {}),
   'Clock - 1.1x - 10.07.26.json': f(OLD),
   'REEL-018 Screen Takes - Shot List - 10.07.26.md': f(OLD),
   'beatmap/beatmap.state.json': json(OLD, { saved_at: '2026-10-08', current: {}, sent: null, sent_at: null }),
@@ -93,6 +95,8 @@ export const REEL_018: Tree = reel('reel-018', {
 })
 
 export const REEL_020: Tree = reel('reel-020', {
+  // Keep this old-layout fixture testing its existing done-stage assertions with Motion still open.
+  'sketches.state.json': json(OLD, {}),
   'beatmap/beatmap.state.json': json(OLD - 7, { saved_at: '2026-10-15', current: {}, sent: true, sent_at: '2026-10-15T12:44:09.046Z' }),
   'beatmap/selection.json': json(OLD - 7, { reel: 'reel-020', board: 'beatmap', beats: [] }),
   'cut/segments.json': f(OLD - 7),
@@ -112,8 +116,10 @@ export const REEL_020: Tree = reel('reel-020', {
 // ---- 0.2.0-named reels walking every stage (each one step further than the last), all active.
 const R1 = { 'raw/take1.mp4': f(5) }
 const R2 = { ...R1, 'work/edl.json': f(4) }
-const R3 = { ...R2, 'tweak-selection.json': f(3) }
-const R4 = { ...R3, 'beat-map.state.json': json(2, { sent_at: '2026-11-02T10:00:00Z' }) }
+// Ear pass is applied: its EDL is at least as new as the selection, preserving the walk's stage assertions.
+const R3 = { ...R2, 'tweak-selection.json': f(3), 'work/edl.json': f(3) }
+// The Motion step stays open in this fixture because it has an unlocked sketch direction.
+const R4 = { ...R3, 'beat-map.state.json': json(2, { sent_at: '2026-11-02T10:00:00Z' }), 'sketches.state.json': json(2, {}) }
 const R5 = { ...R4, 'sketches.state.json': json(2, { locked_at: '2026-11-02T11:00:00Z' }) }
 const R6 = { ...R5, 'sound-selection.json': f(1) }
 const R7 = { ...R6, 'renders/r7 Master - 11.03.26.mp4': f(1) }

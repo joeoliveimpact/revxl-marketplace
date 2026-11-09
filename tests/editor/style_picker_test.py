@@ -16,7 +16,8 @@ from editor_test_state import copy_tool_state
 SKELETON = ('{"schema":1,"style_id":null,"accent":null,"font":null,"look":null,'
             '"transitions":{"allowed":[],"sfx_pair":null},"edit_style":null,'
             '"caption_style":null,"cut":{"default_attempt":null}}')
-OPTIONS = ["Which style for this reel?", "- Copy a reel I like", "- Start fresh"]
+OPTIONS = ["Which style for this reel?", "- Start fresh (recommended)", "- Copy a reel I like"]
+SAVED_TAIL = ["- Start fresh", "- Copy a reel I like"]
 
 
 def snapshot():
@@ -60,7 +61,7 @@ def case_two_saves(root):
         data = ss.load(name=name)
         assert "label" not in data and "picks" not in data and "font" not in data
     assert ok("show") == ss.readback(ss.load(name=ss.active_name()))
-    assert ok("picker", reel)[-2:] == OPTIONS[-2:]
+    assert ok("picker", reel)[-2:] == SAVED_TAIL
 
 
 def case_rename(root):
@@ -161,7 +162,7 @@ def case_picker_options(root):
     write(ss.path("default"), json.loads(SKELETON))
     assert ok("picker", reel) == OPTIONS
     _, reel = saves(root)
-    assert ok("picker", reel)[-2:] == OPTIONS[-2:]
+    assert ok("picker", reel)[-2:] == SAVED_TAIL
 
 
 def case_siblings(root):

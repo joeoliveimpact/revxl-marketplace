@@ -23,6 +23,7 @@ import runtime as rt  # noqa: E402
 
 ENGINES = ("auto", "rvm", "remove-background")
 K = 6  # Consecutive copies per sample let recurrent matting settle.
+BATCH = 90  # ffmpeg's select expression fails above ~100 eq() terms.
 BOX_SHARE = .75  # taste: occupied-height share reserved for the head and neck.
 # ponytail: A person-share box is cautious on wide shots; a real face/chin
 # finder is the upgrade path (v0.3.0).
@@ -65,6 +66,11 @@ def sample_frames(cuts, prefix):
 def settled_frames(count):
     """Proxy indices of the last copy of each original sample."""
     return [i * K + K - 1 for i in range(count)]
+
+
+def batches(frames, size=BATCH):
+    """Consecutive chunks of the sorted unique frame list."""
+    return [frames[i:i + size] for i in range(0, len(frames), size)]
 
 
 class HeadBand(tuple):
@@ -216,37 +222,43 @@ def measure(work, source, frames, rate, engine):
     scratch.mkdir(parents=True)
     try:
         unique = sorted(set(frames))
-        clip, matte = scratch / "samples.mp4", scratch / "matte.mov"
-        copies = "".join(f"[copy{i}]" for i in range(K))
-        # Equal timestamps on the split streams interleave as K consecutive
-        # copies of each sample; reset PTS afterwards for the CFR proxy clip.
-        vf = ("[0:v:0]select='" + "+".join(f"eq(n,{f})" for f in unique) + "',"
-              f"setpts=N/(({rate})*TB),scale=540:-2,setsar=1,split={K}{copies};"
-              f"{copies}interleave=nb_inputs={K}:duration=longest,setpts=N/(({rate})*TB)[samples]")
-        graph = scratch / "select.txt"
-        graph.write_bytes(vf.encode("utf-8"))
-        run_tool("ffmpeg", ["-v", "error", "-y", "-i", str(source), "-an", "-sn", "-dn",
-                 "-/filter_complex", str(graph), "-map", "[samples]", "-fps_mode", "cfr", "-r", rate,
-                 "-c:v", "libx264", "-preset", "fast",
-                 "-crf", "10", "-pix_fmt", "yuv420p", str(clip)], "extract the face sample frames")
-        try:
-            p = subprocess.run([sys.executable, "-X", "utf8", "-I", str(HERE / "cutout.py"), str(clip), str(matte),
-                                "--engine", engine, "--tmp", str(scratch)], capture_output=True, env=rt.python_env())
-        except OSError:
-            raise Stop(1, "The editor couldn't start the cutout step; check its Python setup.") from None
-        if p.returncode:
-            raise Stop(1, "The cutout step couldn't matte the face samples; check its setup and try again.")
-        try:
-            summary = json.loads(p.stdout.decode("utf-8").strip().splitlines()[-1])
-            used = summary["engine"]
-            if used not in ENGINES[1:] or summary["frames"] != len(unique) * K:
-                raise ValueError("cutout frame count or engine differs")
-        except (ValueError, KeyError, IndexError, TypeError):
-            raise Stop(1, "The cutout step didn't return every sample frame and its matting engine; nothing was written.") from None
-        video = probe_video(matte)
-        w, h = video["width"], video["height"]
-        points = read_alpha(matte, w, h, unique, scratch)
-        return points, used
+        points = {}
+        for i, chunk in enumerate(batches(unique)):
+            folder = scratch / str(i)
+            folder.mkdir()
+            clip, matte = folder / "samples.mp4", folder / "matte.mov"
+            copies = "".join(f"[copy{i}]" for i in range(K))
+            # Equal timestamps on the split streams interleave as K consecutive
+            # copies of each sample; reset PTS afterwards for the CFR proxy clip.
+            vf = ("[0:v:0]select='" + "+".join(f"eq(n,{f})" for f in chunk) + "',"
+                  f"setpts=N/(({rate})*TB),scale=540:-2,setsar=1,split={K}{copies};"
+                  f"{copies}interleave=nb_inputs={K}:duration=longest,setpts=N/(({rate})*TB)[samples]")
+            graph = folder / "select.txt"
+            graph.write_bytes(vf.encode("utf-8"))
+            run_tool("ffmpeg", ["-v", "error", "-y", "-i", str(source), "-an", "-sn", "-dn",
+                     "-/filter_complex", str(graph), "-map", "[samples]", "-fps_mode", "cfr", "-r", rate,
+                     "-c:v", "libx264", "-preset", "fast",
+                     "-crf", "10", "-pix_fmt", "yuv420p", str(clip)], "extract the face sample frames")
+            try:
+                p = subprocess.run([sys.executable, "-X", "utf8", "-I", str(HERE / "cutout.py"), str(clip), str(matte),
+                                    "--engine", engine, "--tmp", str(folder)], capture_output=True, env=rt.python_env())
+            except OSError:
+                raise Stop(1, "The editor couldn't start the cutout step; check its Python setup.") from None
+            if p.returncode:
+                raise Stop(1, "The cutout step couldn't matte the face samples; check its setup and try again.")
+            try:
+                summary = json.loads(p.stdout.decode("utf-8").strip().splitlines()[-1])
+                used = summary["engine"]
+                if used not in ENGINES[1:] or summary["frames"] != len(chunk) * K:
+                    raise ValueError("cutout frame count or engine differs")
+            except (ValueError, KeyError, IndexError, TypeError):
+                raise Stop(1, "The cutout step didn't return every sample frame and its matting engine; nothing was written.") from None
+            if i == 0:
+                engine = used
+            video = probe_video(matte)
+            w, h = video["width"], video["height"]
+            points.update(read_alpha(matte, w, h, chunk, folder))
+        return points, engine
     finally:
         shutil.rmtree(scratch)
 
@@ -355,6 +367,10 @@ def selftest():
     checks.append(kept == (points | {60: None, 70: None}) and len(notes.getvalue().splitlines()) == 2
                   and statistics.median(p[0] for p in kept.values() if p is not None) == .5)
     checks.append(K == 6 and 3 * K == 18 and settled_frames(3) == [5, 11, 17])
+    chunks = batches(list(range(141)))
+    checks.append(len(chunks) == 2 and all(len(chunk) <= 90 for chunk in chunks)
+                  and [f for chunk in chunks for f in chunk] == list(range(141))
+                  and batches(list(range(90))) == [list(range(90))])
     checks.append(all(head_band(bytes(a if v else 0 for v in alpha), w, h) is None for a in (120, 160, 199)))
     point = head_band(bytes(200 if v else 0 for v in alpha), w, h)
     checks.append(point is not None and abs(point[0] - cx / w) < .02 and abs(point[1] - cy / h) < .02)

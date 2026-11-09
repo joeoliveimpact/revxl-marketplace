@@ -45,7 +45,7 @@ function world(on: any, tree: Tree, o: Opts = {}) {
   on('session.cwd', async () => (o.cwdFails ? { deny: 'forced failure' } : { value: root }))
   on('session.id', async () => o.failHeartbeat === 'id' ? { deny: 'refused' } : { value: 'session-1' })
   on('env.get', async ($: any, e: any) => o.failHeartbeat === 'env' ? { deny: 'refused' }
-    : { value: (o.env ?? { USERPROFILE: 'C:/Users/coach', HOME: '/home/coach' })[e.name] })
+    : { value: (o.env ?? { USERPROFILE: 'C:/Users/user', HOME: '/home/user' })[e.name] })
   on('store.get', async ($: any, e: any) => ({ value: seen.store.get(e.key) }))
   on('store.set', async ($: any, e: any) => {
     if (o.refuseAck && e.key === 'editorAcked') return { deny: 'refused' }
@@ -449,7 +449,7 @@ test('store: baseline once, autostart, toast and ack only; disk writes are heart
   expect([...new Set(seen.sets)].sort()).toEqual(['autostartOff', 'editorAcked', 'editorBaseline', 'editorToasted'])
   expect(seen.sets.filter(k => k === 'editorBaseline')).toHaveLength(1)
   expect(seen.store.get('editorAcked')).toEqual({ 'c/sound-selection.json': NOW + 1 })
-  expect(heartbeats(seen)).toEqual(Array(2).fill('C:/Users/coach/.claude/revxl/heartbeat/editor-superengine/session-1.json'))
+  expect(heartbeats(seen)).toEqual(Array(2).fill('C:/Users/user/.claude/revxl/heartbeat/editor-superengine/session-1.json'))
   expect(snapshots(seen)).toEqual([
     { baseline: NOW, acked: {} }, { baseline: NOW, acked: {} },
     { baseline: NOW, acked: { 'c/sound-selection.json': NOW + 1 } },
@@ -539,8 +539,8 @@ for (const [name, tree, opts] of [
   })
 
 for (const [name, env, home] of [
-  ['USERPROFILE first', { USERPROFILE: 'C:\\Users\\coach', HOME: '/home/other' }, 'C:/Users/coach'],
-  ['HOME fallback', { HOME: '/home/coach' }, '/home/coach'],
+  ['USERPROFILE first', { USERPROFILE: 'C:\\Users\\user', HOME: '/home/other' }, 'C:/Users/user'],
+  ['HOME fallback', { HOME: '/home/user' }, '/home/user'],
 ] as [string, Record<string, string>, string][])
   test(`heartbeat: ${name}; one deferred write with manifest version and ISO seconds`, async ($, on) => {
     const seen = world(on, CONFIG_FILE, { env })
@@ -753,6 +753,38 @@ test('REEL-018 shape: its ruled-name master is probed; mastered and .mov files a
 })
 
 // ---- the mtime cache
+test('voice-only reel: no sketches advances to Sound, and the final mix advances to Master', async ($, on) => {
+  const tree = walk(4)
+  delete tree['videos/r4/sketches.state.json']
+  const seen = world(on, tree)
+  await $.session.start(START)
+  const ui = await mount($, 'terminal')
+  expect((await ui.find({ key: 'main' }))?.props.label).toBe('Open Sound Board  →')
+  Object.assign(tree, reel('r4', { 'sound/final.mp4': f(0.5) }))
+  await ui.redraw()
+  expect(seen.lists).toContain('videos/r4/sound')
+  expect((await ui.find({ key: 'main' }))?.props.label).toBe('Render the master  →')
+})
+
+test('an unreadable sketches file keeps Motion open', async ($, on) => {
+  const tree = { ...walk(4), ...reel('r4', { 'sketches.state.json': f(1, { busy: true }) }) }
+  world(on, tree)
+  await $.session.start(START)
+  const ui = await mount($, 'terminal')
+  expect((await ui.find({ key: 'main' }))?.props.label).toBe('Open Sketches  →')
+})
+
+test('a newer Tweak Send keeps Ear pass current until its EDL is applied', async ($, on) => {
+  const tree = { ...walk(3), ...reel('r3', { 'tweak-selection.json': f(1), 'work/cuts.json': f(2) }) }
+  world(on, tree)
+  await $.session.start(START)
+  const ui = await mount($, 'terminal')
+  expect((await ui.find({ key: 'main' }))?.props.label).toBe('Open Tweak Board  →')
+  Object.assign(tree, reel('r3', { 'work/edl.json': f(1) }))
+  await ui.redraw()
+  expect((await ui.find({ key: 'main' }))?.props.label).toBe('Open Beat Map  →')
+})
+
 test('a state JSON is read once while its mtime holds, and again once it changes; a failed read is not kept', async ($, on) => {
   const path = 'videos/r4/beat-map.state.json'
   const tree: Tree = { ...walk(4) }

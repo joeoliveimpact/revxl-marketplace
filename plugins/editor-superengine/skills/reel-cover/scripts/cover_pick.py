@@ -381,7 +381,8 @@ def candidates(reel, video=None):
     shutil.copyfile(P / "runtime/fonts/Inter-Regular.woff2", folder / "title-font.woff2")
     for row in chosen:
         full_frame(video, row["frame"], duration).save(folder / f'cand-{row["frame"]}.jpg', quality=98, subsampling=0)
-    save(folder / "candidates.json", {"video": str(video), "fps": fps, "candidates": chosen,
+    save(folder / "candidates.json", {"video": str(video), "final": not video.is_relative_to(reel / "work"),
+         "fps": fps, "candidates": chosen,
          "words": sorted(set(tokens(source))), "numbers": list(numbers(source)),
          "number_rules": {"small": check_caption.SMALL, "mult": check_caption.MULT, "suffix": check_caption.SUFFIX,
                           "pattern": check_caption.NUM.pattern},
@@ -533,6 +534,19 @@ def selftest():
     # Missing per-segment samples never borrow a different segment's head.
     assert head_at(31, [{"seg": 0, "samples": [{"f": 0, "box": head}]}],
                    [{"out_in_f": 0, "out_out_f": 30}, {"out_in_f": 30, "out_out_f": 60}]) is None
+    with tempfile.TemporaryDirectory() as folder:
+        reel = Path(folder)
+        for relative, final in (("work/renders/master-1.mp4", False), ("renders/Reel final - 01.01.26.mp4", True)):
+            video = reel / relative
+            video.parent.mkdir(parents=True, exist_ok=True)
+            video.touch()
+            with patch.object(sys.modules[__name__], "video_info", return_value=((4, 4), 30, 1 / 30, 1)), patch.object(
+                    face, "frames", side_effect=lambda video, frames, size, duration:
+                    {f: bytes(size[0] * size[1] * 3) for f in frames}), contextlib.redirect_stdout(io.StringIO()):
+                candidates(reel)
+            board = read(reel / "cover/candidates.json")
+            assert board["video"] == str(video.resolve())
+            assert board.get("final") is final, "candidates must distinguish a cut master from a final video"
     print("cover selftest ok")
 
 

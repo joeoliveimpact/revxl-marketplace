@@ -180,6 +180,7 @@ def quote_checks(cfg, sel, em, want):
             continue
         if w["id"] in struck:
             out.append(_hit("quote-extra", "line %s: the word '%s' was struck but is still in the cut."
+                            " Put that word back on the Cut Board (click it) and press Send again, or strike the words around it too."
                             % (struck[w["id"]], w["word"]), where(struck[w["id"]], w["id"])))
             continue
         near = [x for x in want if x["seg"] == w["seg"] and x["id"] in line_of]

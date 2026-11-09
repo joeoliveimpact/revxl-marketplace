@@ -4,7 +4,7 @@
   "kind": "takeover",
   "slots": {
     "kicker": {"maxChars": 32, "default": "Part 1", "hint": "a small line above the title"},
-    "title": {"maxChars": 48, "default": "Nobody tells you this about editing", "hint": "the hook, as said"}
+    "title": {"maxChars": 48, "required": true, "default": "Nobody tells you this about editing", "hint": "the hook, as said"}
   },
   "dur": [1.5, 5],
   "params": {

@@ -327,10 +327,10 @@ textarea{border-radius:12px!important;font-family:var(--et-mono)!important}
       <div class="row">
         <span class="flexlbl">voice
           <input type="range" id="vvol" min="0" max="100" value="100">
-          <span class="gain" id="vvoll">0 dB</span>
         </span>
         <button class="mini" id="vmute">mute voice</button>
         <details class="advanced-controls"><summary>Advanced controls</summary>
+        <span class="gain" id="vvoll">0 dB</span>
         <span class="flexlbl">sound sync offset
           <input type="number" id="lat" value="0" step="5" style="width:60px"> ms
         </span>
@@ -367,13 +367,13 @@ textarea{border-radius:12px!important;font-family:var(--et-mono)!important}
           <td>
             <span class="flexlbl">
               <input type="range" id="bedvol" min="-40" max="0" step="0.5" value="-18">
-              <span class="gain" id="bedvoll">-18 dB</span>
             </span>
           </td>
-          <td><span class="pk">music level vs your voice (-18 suggested)</span></td>
+          <td><span class="pk">music level vs your voice</span></td>
         </tr>
       </table>
       <details class="advanced-controls"><summary>Advanced controls</summary>
+      <span class="gain" id="bedvoll">-18 dB</span><span class="pk"> (-18 dB suggested)</span>
       <table>
         <tr>
           <td><label><input type="checkbox" id="bedcarve" checked> Carve around the voice</label></td>
@@ -733,6 +733,19 @@ function tipsFor(c){
   return out;
 }
 function defGain(file){ var row = libRow(file); return (row && row.peak_dbfs != null) ? +(-1 - row.peak_dbfs).toFixed(1) : 0; }
+function trackLabel(file, row, metric, unit){
+  var name = row && row.title || file.replace(/\.[^.]+$/, "");
+  var advanced = BoardClient.controls && BoardClient.controls.mode() === "advanced";
+  return name + (row ? " (" + row.duration + " s" + (advanced && row[metric] != null ? ", " + row[metric] + " " + unit : "") + ")" : "");
+}
+document.addEventListener("editor-controls-change", function(){
+  document.querySelectorAll("#bedsel option").forEach(function(o){
+    var row = bedRow(o.value); if(row) o.textContent = trackLabel(o.value, row, "lufs", "LUFS");
+  });
+  document.querySelectorAll("#cuebody select option").forEach(function(o){
+    var row = libRow(o.value); if(row) o.textContent = trackLabel(o.value, row, "peak_dbfs", "dB");
+  });
+});
 function setPick(c, file){
   var oldRow = libRow(c.pick);
   c.pick = file || null;
@@ -810,8 +823,7 @@ function renderCues(){
         var o = document.createElement("option");
         var row = libRow(f);
         o.value = f;
-        o.textContent = f.replace(/\.mp3$/, "")
-          + (row ? "  (" + row.duration + "s, " + row.peak_dbfs + " dB)" : "");
+        o.textContent = trackLabel(f, row, "peak_dbfs", "dB");
         if(f === c.pick) o.selected = true;
         g.appendChild(o);
       });
@@ -828,11 +840,13 @@ function renderCues(){
     td3.appendChild(sel);
     var row = libRow(c.pick);
     if(row){
+      var peakDetails = document.createElement("details"); peakDetails.className = "advanced-controls";
+      peakDetails.innerHTML = "<summary>Advanced controls</summary>";
       var pk = document.createElement("div");
       pk.className = "pk" + (row.peak_dbfs != null && row.peak_dbfs < -6 ? " bad" : "");
       pk.textContent = "peak " + row.peak_dbfs + " dBFS"
         + (row.peak_dbfs != null && row.peak_dbfs < -6 ? "  too quiet" : "");
-      td3.appendChild(pk);
+      peakDetails.appendChild(pk); td3.appendChild(peakDetails);
     }
     tipsFor(c).forEach(function(t){
       var d = document.createElement("div"); d.className = "tip"; d.textContent = t; td3.appendChild(d);
@@ -857,7 +871,10 @@ function renderCues(){
       gl.textContent = (c.gain > 0 ? "+" : "") + c.gain + " dB";
       refreshOut(); saveState();
     };
-    td4.appendChild(gr); td4.appendChild(gl);
+    var gainDetails = document.createElement("details"); gainDetails.className = "advanced-controls";
+    gainDetails.innerHTML = "<summary>Advanced controls</summary>";
+    gainDetails.appendChild(gl);
+    td4.appendChild(gr); td4.appendChild(gainDetails);
 
     /* end behavior: hard cut at a length, or fade the tail */
     var endRow = ext(document.createElement("div"));
@@ -1337,7 +1354,10 @@ function renderMusic(){
 
 /* ---------- boot ---------- */
 (bc ? Promise.all([
-  fetch(BASE + "config.json").then(function(r){ if(!r.ok) throw new Error("HTTP " + r.status); return r.json(); }),
+  fetch(BASE + "config.json").then(function(r){
+    if(!r.ok){ var e = new Error("HTTP " + r.status + " loading config.json"); e.noCues = r.status === 404; throw e; }
+    return r.json();
+  }),
   bc.load()
 ]) : Promise.reject(new Error("open this board with ?reel=<reel> in its address"))).then(function(res){
   var cfg = res[0]; DISK = res[1];
@@ -1359,7 +1379,7 @@ function renderMusic(){
   BEDS.forEach(function(b){
     var o = document.createElement("option");
     o.value = b.file;
-    o.textContent = b.file.replace(/\.mp3$/, "") + "  (" + b.duration + "s, " + b.lufs + " LUFS)";
+    o.textContent = trackLabel(b.file, b, "lufs", "LUFS");
     bs.appendChild(o);
   });
 
@@ -1420,7 +1440,8 @@ function renderMusic(){
   var quiet = cfg.library.filter(function(r){ return r.peak_dbfs != null && r.peak_dbfs < -6; });
   if(quiet.length){
     $("quietnote").style.display = "block";
-    $("quietnote").innerHTML = "<b>" + quiet.length + " sounds are marked too quiet</b> (peak below -6 dBFS). "
+    $("quietnote").innerHTML = "<b>" + quiet.length + " sounds are marked too quiet.</b> "
+      + '<details class="advanced-controls"><summary>Advanced controls</summary>Peak below -6 dBFS.</details>'
       + "Mixing can't fix them; one you pick gets a normalised copy before it ships.";
   }
 
@@ -1444,11 +1465,14 @@ function renderMusic(){
       else $("bedlab").textContent = "waveforms could not size to the page";
     })();
   }).catch(function(e){
-    $("bedlab").textContent = "waveforms unavailable: " + e.message;
+    console.error(e);
+    $("bedlab").textContent = "Waveforms are unavailable. Ask Claude to restart the editor boards.";
   });
 }).catch(function(e){
-  document.body.innerHTML = '<p style="color:#BF4D43;font:14px sans-serif">'
-    + 'Could not open the sound board (config.json): ' + e.message + '</p>';
+  console.error(e);
+  document.body.innerHTML = e.noCues
+    ? '<h1>No sound cues for this reel</h1><p class="sub">The sound is voice only, so there\'s nothing to audition here; ask Claude for sound effects or music to add some.</p>'
+    : '<p class="sub">Ask Claude to restart the editor boards.</p>';
 });
 
 /* ---------- wiring ---------- */
@@ -1783,13 +1807,15 @@ $("send").onclick = function(){
     b.textContent = "sent to Claude"; setMsg(sentMsg);
   }).catch(function(e){
     b.textContent = "send to Claude";
-    setMsg("SEND FAILED (" + e.message + "): nothing was written. Is the board server running? "
+    console.error(e);
+    setMsg("SEND FAILED: nothing was written. Ask Claude to restart the editor boards. "
       + "Open Raw data at the bottom and copy the JSON instead.", true);
   }).then(function(){ b.disabled = false; sending = false; });
 };
 
 document.addEventListener("keydown", function(e){
   var v = $("v");
+  if(!v || !CFG) return;   /* the voice-only empty state has no player or cue controls */
   if(e.key === "Escape"){
     if(placing){ endPlacing(); return; }
     if(loopWin){ endLoop(); return; }

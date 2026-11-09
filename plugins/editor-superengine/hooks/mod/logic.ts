@@ -66,10 +66,10 @@ export function reelNames(videos: Read<Entry[]>): string[] {
 }
 
 /** The folders of a reel the stage rules and its activity look in; `root` is the reel folder itself. */
-export type Folder = 'root' | 'raw' | 'work' | 'renders'
-export const FOLDERS: readonly Folder[] = ['root', 'raw', 'work', 'renders']
+export type Folder = 'root' | 'raw' | 'work' | 'renders' | 'sound'
+export const FOLDERS: readonly Folder[] = ['root', 'raw', 'work', 'renders', 'sound']
 export type Probe = 'video' | 'novideo' | 'unknown'
-/** One reel as register.ts gathered it: its four listings, the reel-root JSON files the rules read (missing when not
+/** One reel as register.ts gathered it: its folder listings, the reel-root JSON files the rules read (missing when not
  *  listed), and ffprobe's answer per master candidate in renders/ (by file name). */
 export type ReelIn = { name: string; lists: Record<Folder, Read<Entry[]>>; json: Record<string, Read<unknown>>; probe: Record<string, Probe> }
 
@@ -91,10 +91,12 @@ export const BOARD_NAME: Readonly<Record<BoardId, string>> = {
 }
 
 /** A stage's done rule. `in` or its optional `or`: a file in that reel folder whose name matches (`video`: also size > 0 and ffprobe did
- *  not say "no video"). `json`: that reel-root JSON parses to an object that passes `when`. `never`: no artifact. */
+ *  not say "no video"). `applied`: at least one reel-relative output is as new as the matched file.
+ *  `json`: that reel-root JSON parses to an object that passes `when`; `missing: true` also accepts an absent file,
+ *  never an unreadable file or listing. `never`: no artifact. */
 export type Rule =
-  | { in: Folder; match: RegExp; video?: true; or?: { in: Folder; match: RegExp } }
-  | { json: string; when: (v: Record<string, unknown>) => boolean }
+  | { in: Folder; match: RegExp; video?: true; applied?: readonly string[]; or?: { in: Folder; match: RegExp } }
+  | { json: string; missing?: true; when: (v: Record<string, unknown>) => boolean }
   | { never: true }
 
 export type ActionId = 'start' | 'next' | 'hub' | 'switch' | 'record' | BoardId | 'master' | 'post' | 'send' | 'cockpit'
@@ -115,13 +117,13 @@ export const STAGES: readonly Stage[] = [
     head: 'Record your take', sub: "Put the recording in this reel's raw folder.", baton: 'record' },
   { name: 'Cut', short: 'Cut', rule: { in: 'work', match: /^(cuts|edl)\.json$/ }, action: 'cut', board: 'cut',
     head: 'Review the cut', sub: 'Pick the takes on the Cut Board, then press Send.' },
-  { name: 'Ear pass', short: 'Ear', rule: { in: 'root', match: /^tweak-selection\.json$/ }, action: 'tweak', board: 'tweak',
+  { name: 'Ear pass', short: 'Ear', rule: { in: 'root', match: /^tweak-selection\.json$/, applied: ['work/cuts.json', 'work/edl.json'] }, action: 'tweak', board: 'tweak',
     head: 'Do the ear pass', sub: 'Play the cut at ship speed, then press Send.' },
   { name: 'Beat map', short: 'Beats', rule: { json: 'beat-map.state.json', when: s => s.sent_at != null }, action: 'beatmap', board: 'beatmap',
     head: 'Rule the beat map', sub: 'Set the beat plan on the Beat Map, then press Send.' },
-  { name: 'Motion', short: 'Motion', rule: { json: 'sketches.state.json', when: s => !!s.locked_at }, action: 'sketches', board: 'sketches',
+  { name: 'Motion', short: 'Motion', rule: { json: 'sketches.state.json', missing: true, when: s => !!s.locked_at }, action: 'sketches', board: 'sketches',
     head: 'Lock the motion', sub: "Lock each beat's motion on the Sketches board." },
-  { name: 'Sound', short: 'Sound', rule: { in: 'root', match: /^sound-selection\.json$/ }, action: 'sound', board: 'sound',
+  { name: 'Sound', short: 'Sound', rule: { in: 'root', match: /^sound-selection\.json$/, or: { in: 'sound', match: /^final\.mp4$/ } }, action: 'sound', board: 'sound',
     head: 'Review the sound', sub: 'Audition the cues on the Sound Board, then press Send.' },
   { name: 'Grade', short: 'Grade', optional: true, rule: { in: 'root', match: /^grade-selection\.json$/ }, action: 'grade', board: 'grade',
     head: 'Grade the picture', sub: 'Optional: grade on the Grade Board, then press Send.' },
@@ -145,9 +147,13 @@ export function isDone(rule: Rule, r: ReelIn): boolean {
   if ('never' in rule) return false
   if ('json' in rule) {
     const j = r.json[rule.json]
+    if (j?.status === 'missing') return !!rule.missing && r.lists.root.status === 'ok'
+      && !r.lists.root.value.some(x => x.name === rule.json)
     return !!j && j.status === 'ok' && isRecord(j.value) && rule.when(j.value)
   }
-  return filesIn(r, rule.in).some(x => rule.match.test(x.name) && (!rule.video || (x.size > 0 && r.probe[x.name] !== 'novideo')))
+  return filesIn(r, rule.in).some(x => rule.match.test(x.name)
+    && (!rule.applied || rule.applied.some(p => (mtimeAt(r, p) ?? -Infinity) >= x.mtimeMs))
+    && (!rule.video || (x.size > 0 && r.probe[x.name] !== 'novideo')))
     || !!rule.or && filesIn(r, rule.or.in).some(x => rule.or!.match.test(x.name))
 }
 

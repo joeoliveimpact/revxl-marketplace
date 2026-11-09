@@ -11,7 +11,7 @@
   sfx_ingest.py add <file>
       adds one sound: leading and trailing near-silence trimmed (50 dB under the sound's own peak, 10 ms kept
       each side), saved as WAV, measured and recorded in the index.
-Runs from the client's workspace folder.
+Runs from the client's workspace folder. The doctor's setup runs fetch; the sound pass only runs verify.
 """
 import argparse, hashlib, json, os, sys, tempfile, urllib.request, zipfile
 from pathlib import Path
@@ -56,6 +56,11 @@ def fetch(a):
         print(NO_LIBRARY)
         return 0
     lib = library()
+    index = load_index(lib)
+    files = index.get("files", {})
+    if m.get("sha256") and index.get("pack", {}).get("sha256") == m["sha256"] and all((lib / rel).is_file() for rel in files):
+        print("Sound library ready: %d files." % len(files))
+        return 0
     fd, tmp = tempfile.mkstemp(suffix=".zip")
     os.close(fd)
     try:
@@ -97,7 +102,7 @@ def verify(a):
     files = load_index(lib).get("files", {})
     if not files:
         print(NO_LIBRARY)
-        return 1
+        return 1 if manifest(None).get("url") else 0
     bad = []
     on_disk = {p.relative_to(lib).as_posix(): p for p in library_files(lib)}
     for rel, row in files.items():

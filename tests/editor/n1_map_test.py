@@ -383,7 +383,7 @@ def case_struck(S, a):
     print(p.stdout.rstrip())
     ck("struck: a struck word inside a kept piece blocks: 'line L02: the word 'half' was struck but is still in the cut.'",
        p.returncode == 1 and kinds(H) == ["quote-extra"]
-       and H[0]["msg"] == "line L02: the word 'half' was struck but is still in the cut.", (p.returncode, H))
+       and "line L02: the word 'half' was struck but is still in the cut." in H[0]["msg"], (p.returncode, H))
     cut_to(d, [(0.9, 2.0), (2.9, 3.58), (3.88, 4.3), (4.9, 6.0)])     # the cut that honours the strike
     word_map(d)
     p, H = check(d)
@@ -566,11 +566,11 @@ def case_real(S, a):
     ck("real: the map check has zero blocks (L21 and L31 gone)", not blocks(H)
        and not any(x in h["msg"] for h in H for x in ("line L21", "line L31")), [h["msg"] for h in blocks(H)])
     plan = (d / "work/gap-plan.txt").read_text(encoding="utf-8")
-    ck("real: gap-plan.txt leaves out 'And' and \"it's\" and keeps L07's 'It's' whole",
-       "EDGE moved to leave out 'And' (not picked)" in plan and "EDGE moved to leave out 'it's' (not picked)" in plan
-       and "EDGE moved to keep 'It's'" in plan, [ln for ln in plan.splitlines() if "EDGE" in ln])
     cuts, byid, tw = cs.load(d / "work/cuts.json"), {w["id"]: w for w in em["words"]}, cfg["takes"]["1"]["words"]
     segs = [(g["src_in_f"] / cuts["fps"], g["src_out_f"] / cuts["fps"]) for g in cuts["segments"]]
+    ck("real: 'And' and \"it's\" (not picked) are out of the cut and L07's 'It's' stays whole",
+       all(all(byid[wid]["end"] <= a0 or byid[wid]["start"] >= b0 for a0, b0 in segs) for wid in ("w_0130", "w_0216"))
+       and "EDGE moved to keep 'It's'" in plan, [ln for ln in plan.splitlines() if "EDGE" in ln])
     lines, picked = {ln["id"]: ln for ln in cfg["lines"]}, []
     for ln in kept:
         for x in lines[ln["id"]]["attempts"][ln["pick"]]["words"]:

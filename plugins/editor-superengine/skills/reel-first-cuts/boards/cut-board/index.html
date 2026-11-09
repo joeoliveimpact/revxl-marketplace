@@ -305,7 +305,7 @@ function render(first){
     const s=S.lines[i], d=document.createElement('section'); d.className='line'+(s.drop?' drop':'')+(i===focus?' focus':''); d.dataset.i=i;
     const kept=!s.drop&&att(i);
     d.innerHTML=`<h2><span class="id">${esc(L.id)}</span> ${esc(L.label)} <span style="margin-left:auto"></span>
-      ${s.flag&&s.drop?`<span class="flag warn">${esc(s.flag)}</span>`:''}<button data-drop="${i}">${s.drop?'restore':'drop line'}</button></h2><div class="script">${esc(L.text)}</div>`;
+      ${s.flag&&s.drop?`<span class="flag warn">${esc(s.flag)}</span>`:''}${L.warn&&!s.drop?`<span class="flag warn">${esc(L.warn)}</span>`:''}<button data-drop="${i}">${s.drop?'restore':'drop line'}</button></h2><div class="script">${esc(L.text)}</div>`;
     if(!L.attempts.length) d.innerHTML+=`<div class="warn">no attempt found in any take</div>`;
     L.attempts.forEach((a,j)=>{
       const on=s.pick===j, row=document.createElement('div'); row.className='att'+(on?' pick':'');
@@ -386,7 +386,7 @@ $('#send').onclick=async()=>{
   try{
     const r=await fetch(BASE+'__save?board=cut-board&name=cut-selection.json',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(S,null,1)});
     if(!r.ok) throw new Error('the board server answered '+r.status);
-    sentCanon=canon(S); setSaved('saved cut-selection.json '+new Date().toLocaleTimeString()); markDirty();
+    sentCanon=canon(S); setSaved('✓ Sent to Claude at '+new Date().toLocaleTimeString()); markDirty();
   }catch(err){ S.saved_at=prev; setSaved('SEND FAILED: '+(err instanceof TypeError?'no answer from the editor boards (are they running?)':err.message)+'. Nothing reached Claude; your changes are still on this page.',true); }
 };
 function showBeat(){ $('#beatv').textContent=(S.beat_ms/1000).toFixed(2)+' s'; }

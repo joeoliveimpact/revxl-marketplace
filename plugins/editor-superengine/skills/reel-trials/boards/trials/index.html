@@ -44,10 +44,11 @@ function renderCard(row, isBase) {
       !row.file.startsWith("trials/" + row.id + "/") || row.file.split("/").some(s => !s || s === "." || s === ".." || /[\\:]/.test(s)))
     throw new Error("file");
   const card = node("article"); card.dataset.id = row.id;
-  card.append(node("h2", isBase ? "Approved cut · unchanged" : "Trial " + row.id));
+  const title = "Trial " + (row.id.match(/\d+/)?.[0] || row.id);
+  card.append(node("h2", isBase ? "Approved cut · unchanged" : title));
   const video = node("video"); video.controls = true; video.muted = true; video.playsInline = true; video.preload = "metadata";
   video.src = baseUrl + row.file.split("/").map(encodeURIComponent).join("/");
-  video.setAttribute("aria-label", isBase ? "Base reel" : "Trial " + row.id); card.append(video); videos.push(video);
+  video.setAttribute("aria-label", isBase ? "Base reel" : title); card.append(video); videos.push(video);
   card.append(node("p", isBase ? "Same cut and voice as every trial." : row.description || "One declared change: " + row.change));
   if (!isBase) {
     const pick = state.versions.find(v => v.id === row.id);

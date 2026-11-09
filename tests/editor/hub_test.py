@@ -96,6 +96,8 @@ class Proof:
             d = self.videos / name
             (d / "raw").mkdir(parents=True)
             (d / "renders").mkdir()
+            # The Cockpit now lists sound/ too; keep the hand-built parity input complete.
+            (d / "sound").mkdir()
             shutil.copyfile(self.clip, d / "raw/take.mp4")
             shutil.copyfile(self.clip, d / "renders" / f"{name} Master - 11.05.26.mp4")
         d = self.videos / "reel-01"
@@ -141,11 +143,12 @@ class Proof:
         timer.cancel()
         need(line == f"Editor boards: {self.base}/", f"server: {line}")
 
-    def browse(self, actions=(), reel="reel-01"):
+    def browse(self, actions=(), reel="reel-01", viewport=None):
         self.start()
         self.jobs += 1
         job = self.scratch / f"job-{self.jobs}.json"
         write(job, {"base": self.base, "userDataDir": str(self.scratch / f"profile-{self.jobs}"),
+                    "viewport": viewport,
                     "actions": [{"do": "goto", "path": f"/editor/hub/?reel={reel}", "waitFn": "window.Hub && Hub.ready"}] + list(actions)})
         p = self.run([sys.executable, "-X", "utf8", "-I", HEAVY, "--wait", "20", "--min-gb", "3", "--",
                       self.tools["node"], HERE / "boards_click.js", self.pup, self.tools["chrome"], job], timeout=65, check=False)
@@ -239,7 +242,7 @@ def case_grade(p):
         (d / "grade-selection.json").unlink(missing_ok=True)
         p.browse([click('#tab-grade-board'), {"do": "frame", "sel": "#panel iframe", "waitFn": "window.GB && GB.ready"},
                   click('#rail figure[data-look="warm"]'), {"do": "set", "sel": "#strength", "value": "0.6"}, click('#send'),
-                  {"do": "waitText", "sel": "#saved", "re": "saved|FAILED"}])
+                  {"do": "waitText", "sel": "#saved", "re": "✓ Sent to Claude at |FAILED"}])
         need((d / "grade-selection.json").is_file(), "Grade Send missing")
         need(read(d / "grade-selection.json")["look"] == {"id": "warm", "strength": 0.6}, "wrong Grade Send")
     check()
@@ -370,11 +373,34 @@ def case_review(p):
     def check():
         d = p.videos / "reel-01"
         (d / "review.json").unlink(missing_ok=True)
-        r = p.snapshot("({preview:document.querySelector('#preview')?.getAttribute('src'),master:document.querySelector('#master')?.getAttribute('src'),qa:document.querySelector('#qa').textContent,"
-            "aids:[...document.querySelectorAll('#qa-aids a')].map(a=>({href:a.getAttribute('href'),label:a.textContent,img:a.querySelector('img')?.getAttribute('src')}))})",
+        _, _, before, status, approve, notes, r = p.browse(
             [click('#tab-review'), {"do": "frame", "sel": "#panel iframe", "waitFn": "window.ReviewReady"},
-             {"do": "set", "sel": "#review-note", "value": "Keep the ending"}, click('#approve'),
-             {"do": "waitText", "sel": "#status", "re": "Sent|Could not"}])
+             {"do": "set", "sel": "#review-note", "value": "Keep the ending"},
+             {"do": "eval", "js": "document.querySelector('#approve').scrollIntoView({block:'center'}); undefined"},
+             {"do": "waitFn", "js": "[...document.querySelectorAll('#qa-aids img')].every(i=>i.complete && i.naturalWidth>0)"
+              " && document.querySelector('#preview').readyState>=1 && document.querySelector('#master').readyState>=1"},
+             {"do": "eval", "js": "const e=document.querySelector('#approve'); e.scrollIntoView({block:'center'});"
+              " parent.scrollBy(0,frameElement.getBoundingClientRect().top+e.getBoundingClientRect().top-parent.innerHeight/2); undefined"},
+             {"do": "bounds", "sel": "#approve"}, click('#approve'),
+             {"do": "waitText", "sel": "#status", "re": "Sent|Could not"},
+             # Do not scroll after Send: its confirmation must already be visible beside the buttons.
+             {"do": "bounds", "sel": "#status"}, {"do": "bounds", "sel": "#approve"},
+             {"do": "bounds", "sel": "#send-review"},
+             {"do": "eval", "js": "JSON.stringify({preview:document.querySelector('#preview')?.getAttribute('src'),master:document.querySelector('#master')?.getAttribute('src'),qa:document.querySelector('#qa').textContent,"
+              "aids:[...document.querySelectorAll('#qa-aids a')].map(a=>({href:a.getAttribute('href'),label:a.textContent,img:a.querySelector('img')?.getAttribute('src')}))})"}],
+            viewport={"width": 1024, "height": 768})
+        need(before["viewport"] == {"width": 1024, "height": 768}, f"review viewport: {before}")
+        need(before["visible"] and before["hit"], f"Approve is clipped or covered before click: {before}")
+        need(status["text"] == "Sent. Preview approved.", f"review confirmation: {status}")
+        for label, bounds in (("confirmation", status), ("Approve", approve), ("Send notes", notes)):
+            need(bounds["visible"] and bounds["hit"], f"review {label} is clipped or covered after click: {bounds}")
+        row = {"left": min(approve["box"]["left"], notes["box"]["left"]),
+               "right": max(approve["box"]["right"], notes["box"]["right"]),
+               "top": min(approve["box"]["top"], notes["box"]["top"]),
+               "bottom": max(approve["box"]["bottom"], notes["box"]["bottom"])}
+        need(max(0, row["left"] - status["box"]["right"], status["box"]["left"] - row["right"],
+                 row["top"] - status["box"]["bottom"], status["box"]["top"] - row["bottom"]) <= 16,
+             f"review confirmation is not next to the buttons: {status}, {approve}, {notes}")
         need(r["preview"] == "/videos/reel-01/renders/" + latest.replace(" ", "%20"), f"review preview: {r}")
         need(r["master"] and "Loudness" in r["qa"] and "Ready to post" in r["qa"], f"review missing master/QA: {r}")
         expected = ["/videos/reel-01/" + path.replace(" ", "%20")
@@ -388,6 +414,7 @@ def case_review(p):
              and doc["preview"] == latest and doc["note"] == "Keep the ending", f"review Send: {doc}")
         need(dt.datetime.fromisoformat(doc["sent_at"].replace("Z", "+00:00")).tzinfo is not None,
              "review timestamp must be ISO with timezone")
+    # The walk's scroll problem did not reproduce in headless Chrome; keep the positive check as a regression guard.
     check()
     empty = p.snapshot("({qa:document.querySelector('#qa').textContent,master:document.querySelector('#master').getAttribute('src')})",
              [click('#tab-review'), {"do": "frame", "sel": "#panel iframe", "waitFn": "window.ReviewReady"},
@@ -576,6 +603,47 @@ def case_health(p):
     p.refresh()
     need("A run uses your SocialCrawl credits" in p.snapshot("document.querySelector('#gold-data').textContent"), "Goldmine empty state")
 
+    # Same 15 status rows as hub_rows_test.py, copied from the S17W2 walk.
+    status = [
+        {"component": "machine", "level": "ok",
+         "detail": "Windows 11 (10.0.26300) AMD64, no NVIDIA GPU, 31.7 GB RAM (4.9 GB free) [test masks: gpu,resolve]",
+         "fix": None},
+        {"component": "python", "level": "ok", "detail": "the editor's own Python 3.12.16 in its venv", "fix": None},
+        {"component": "ffmpeg", "level": "ok", "detail": "ffmpeg 8.1.2 with zscale", "fix": None},
+        {"component": "node", "level": "ok", "detail": "Node.js v22.23.4", "fix": None},
+        {"component": "hyperframes", "level": "ok", "detail": "HyperFrames 0.8.184", "fix": None},
+        {"component": "chrome", "level": "ok", "detail": "Chrome for rendering 152.0.7977.30", "fix": None},
+        {"component": "cutout-model", "level": "ok", "detail": "u2net_human_seg: 1 file(s) match their sha256", "fix": None},
+        {"component": "rvm", "level": "ok", "detail": "RVM cutout ready (torch + torchvision)", "fix": None},
+        {"component": "transcriber", "level": "ok", "detail": "parakeet-cpu packages are installed and load", "fix": None},
+        {"component": "model-parakeet", "level": "ok", "detail": "4 file(s) match their sha256", "fix": None},
+        {"component": "align", "level": "ok", "detail": "align_words with wav2vec2: 7 file(s) match their sha256", "fix": None},
+        {"component": "engine", "level": "ok", "detail": "parakeet-cpu (Windows without an NVIDIA GPU)", "fix": None},
+        {"component": "resolve-installed", "level": "warn",
+         "detail": "DaVinci Resolve isn't installed, so the Resolve hand-off stays off (optional)",
+         "fix": "Nothing is needed for editing. For the Resolve hand-off, install DaVinci Resolve Studio 21.1 or newer from blackmagicdesign.com, then Claude re-runs the doctor."},
+        {"component": "nle", "level": "ok", "detail": "none (the Resolve hand-off stays off)", "fix": None},
+        {"component": "config", "level": "ok", "detail": "editor/editor.config.json is up to date", "fix": None},
+    ]
+    platform = read(p.ws / "editor/.platform.json")
+    platform["status"] = status
+    write(p.ws / "editor/.platform.json", platform)
+    p.refresh()
+
+    def check_optional():
+        r = p.snapshot("({hidden:document.querySelector('#healthwarn').hidden,health:document.querySelector('#health-list').textContent})")
+        need(r["hidden"] is True, "optional Resolve warning raised the health banner")
+        need(all(text in r["health"] for text in ("Optional", "DaVinci Resolve", "This computer")), "plain Health labels missing")
+        need(all(text not in r["health"] for text in ("sha256", "test mask", "⚠ Needs a look")), "technical or warning text in optional-only Health")
+    check_optional()
+    with p.mutant("hub.js", "h.matters !== false && h.level", "h.level"):
+        p.bites(check_optional, "optional Resolve warning raises the health banner")
+
+    status.append({"component": "ffmpeg", "level": "warn", "detail": "Video tools need a check", "fix": None})
+    write(p.ws / "editor/.platform.json", platform)
+    p.refresh()
+    need(p.snapshot("document.querySelector('#healthwarn').hidden") is False, "mattering warning did not raise the health banner")
+
 
 def case_filmstrip(p):
     data = read(p.hub / "hub-data.json")
@@ -587,7 +655,7 @@ def case_filmstrip(p):
     module.write_bytes(stripped.stdout.encode("utf-8"))
     reel = p.videos / "reel-01"
     listing = {}
-    for f in ("root", "raw", "work", "renders"):
+    for f in ("root", "raw", "work", "renders", "sound"):
         folder = reel if f == "root" else reel / f
         listing[f] = {"status": "ok", "value": [{"name": x.name, "kind": "file" if x.is_file() else "dir",
                       "size": x.stat().st_size, "mtimeMs": x.stat().st_mtime * 1000} for x in folder.iterdir()]}
@@ -1118,7 +1186,9 @@ def case_broll(p):
     p.browse(open_map() + [{"do": "waitFn", "js": "document.querySelector('#broll-0').disabled && "
         "document.querySelector('#broll-0').options.length===1 && "
         "document.querySelector('#broll-0').selectedIndex===0 && "
-        "document.querySelector('#broll-0').textContent.includes('Drop your clips')"}])
+        "document.querySelector('#broll-0').textContent.includes('No clips yet. Ask Claude to add your own clips.') && "
+        "!document.querySelector('#broll-0').textContent.includes('videos/') && "
+        "!document.querySelector('#broll-0').textContent.includes('broll/')"}])
     need(sent([set_value('#note-0', 'Keep my saved clip')])["beats"][0]["broll"] == expected,
          "missing catalog changed saved B-roll")
 
@@ -1155,7 +1225,7 @@ def data_checks(p):
     write(p.hub / "cockpit-state.json", snap)
     def parity(expected):
         lists, js = {}, {}
-        for name in ("root", "raw", "work", "renders"):
+        for name in ("root", "raw", "work", "renders", "sound"):
             folder = d if name == "root" else d / name
             lists[name] = {"status": "ok", "value": [{"name": f.name, "kind": "file" if f.is_file() else "dir",
                           "size": f.stat().st_size, "mtimeMs": f.stat().st_mtime*1000} for f in folder.iterdir()]}
@@ -1180,8 +1250,12 @@ def data_checks(p):
     write(cuts, {"segments": []})
     parity("Ear pass")
     write(d / "tweak-selection.json", {})
+    # Preserve the Ear pass assertion: this Send was successfully applied, even with no marks.
+    write(d / "work/edl.json", [])
     parity("Beat map")
     write(d / "beat-map.state.json", {"sent_at": 0})  # != null, not a truthiness test
+    # Preserve the Motion assertion: this fixture has an open direction to lock.
+    write(d / "sketches.state.json", {})
     parity("Motion")
     write(d / "sketches.state.json", {"locked_at": "2026-11-05T12:00:00Z"})
     parity("Sound")

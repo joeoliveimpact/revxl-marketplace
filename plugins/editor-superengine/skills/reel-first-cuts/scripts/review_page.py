@@ -141,8 +141,11 @@ def write(work, raw, edited, segs, speed=1.0):
     data = {"total": round(total, 3), "speed": speed, "lead": LEAD, "top": TOP,
             "keep": [[round(a, 3), round(b, 3)] for a, b in sorted(segs)],
             "cuts": cuts(segs, total, speed)}
+    reel = Path(raw).resolve().parent
+    if reel.name.casefold() == "raw":
+        reel = reel.parent
     page.write_text(PAGE % {
-        "name": html.escape(Path(raw).name), "top": TOP,
+        "name": html.escape(reel.name), "top": TOP,
         "raw": html.escape(src(raw, work.resolve())), "cut": html.escape(src(edited, work.resolve())),
         "data": json.dumps(data).replace("</", "<\\/")}, encoding="utf-8")
     return page

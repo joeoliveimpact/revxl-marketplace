@@ -122,7 +122,7 @@ def case_send(S, a):
                      {"do": "click", "sel": KEEP_FIRST},
                      {"do": "waitState", "board": "cut-board", "js": want},
                      {"do": "eval", "js": "[...document.querySelectorAll('.w.rm[data-w^=\"%d:%d:\"]')].map(e=>+e.dataset.w.split(':')[2])" % (L, J)},
-                     {"do": "click", "sel": "#send"}, {"do": "waitText", "sel": "#saved", "re": "saved cut-selection\\.json|FAILED"},
+                     {"do": "click", "sel": "#send"}, {"do": "waitText", "sel": "#saved", "re": "✓ Sent to Claude at |FAILED"},
                      {"do": "top"}, {"do": "eval", "js": "document.querySelector('.frame iframe').getAttribute('src')"}],
                     "n1-send")
     r = out["reads"]
@@ -156,7 +156,7 @@ def case_reload(S, a):
     want = "s.lines[%d].rm['%d'] && s.lines[%d].rm['%d'].length===%d" % (L, J, L, J, len(second))
     bt.browse([dict(do="goto", path="/editor/cut-board/?reel=reload", **bt.CUT_READY), {"do": "click", "sel": KEEP_FIRST},
                {"do": "waitState", "board": "cut-board", "js": want},
-               {"do": "click", "sel": "#send"}, {"do": "waitText", "sel": "#saved", "re": "saved cut-selection\\.json|FAILED"}],
+               {"do": "click", "sel": "#send"}, {"do": "waitText", "sel": "#saved", "re": "✓ Sent to Claude at |FAILED"}],
               "n1-reload-1")
     out = bt.browse([dict(do="goto", path="/editor/cut-board/?reel=reload", **bt.CUT_READY),
                      {"do": "eval", "js": "JSON.stringify(S.lines[%d].rm)" % L},

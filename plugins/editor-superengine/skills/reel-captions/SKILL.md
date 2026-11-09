@@ -24,7 +24,7 @@ description: Plans burned-in captions for the signed-off spoken cut, proposes tr
 
 - **The client never types a command.** Claude runs each command from the client's workspace folder.
 - `<editor python>` is the editor's own Python. Windows: `"$(H="$LOCALAPPDATA/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/Scripts/python.exe"`. macOS: `"$(H="$HOME/Library/Application Support/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/bin/python"`. Keep the quotes. If it's missing, run `editor-superengine:editor-doctor` first.
-- Plain English for a busy coach. Never show file names, paths or JSON to the client.
+- Plain English for a busy user. Never show file names, paths or JSON to the client.
 - There is no default look. “No captions” is an explicit choice, never a fallback.
 - All looks and options are the client's taste. Read `${CLAUDE_PLUGIN_ROOT}/skills/reel-captions/references/looks.md`.
 - Use Inter Regular only, weight 400, with its licence on file. Use the literal family name Inter.
@@ -52,6 +52,7 @@ description: Plans burned-in captions for the signed-off spoken cut, proposes tr
 
    Use only `num`, `key`, `emph`, `cta`. The returned JSON is the truthful expanded word positions for the
    Beat Map plan's `word_marks`. Preserve the one-punch note; later marks keep their accents.
+    If the Beat Map was already sent, tell the client which marks changed and ask whether to update it; on yes, rebuild it as `reel-canvas-build/references/beat-map.md` says (`--replace`, only after their OK) and have them Send it again; on no, leave it as sent.
    Optionally add `--loud` to suggest marks from louder words. `loud_emphasis: true` uses these only when
    the Send has no word marks. Offer `mark_look: "marker"` for a swipe behind the whole marked phrase;
    the default stays `"accent"`. Both options preserve truthful spans and the one-punch limit.

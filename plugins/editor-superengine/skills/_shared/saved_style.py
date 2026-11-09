@@ -37,6 +37,7 @@ FIELDS = [
     _field("language", None, "editor.config.json", [], "Language", "text"),
     _field("nle", "auto", "editor.config.json", [], "Editing application", "text"),
     _field("nle_source", "auto", "editor.config.json", [], "Editing application choice", "text"),
+    _field("controls", "simple", "editor.config.json", [], "Controls", "text"),
     _field("ports", {"board": 8747}, "editor.config.json", [], "Board ports", "object"),
     _field("ports.board", 8747, "editor.config.json", [], "Board port", "integer"),
     _field("voice_cleanup", "free", "editor.config.json", [], "Voice cleanup", "text"),
@@ -397,7 +398,7 @@ def picker_lines(reel):
     return ["Which style for this reel?", *[f'- {row["label"]}' +
             (" (your default, recommended)" if row["default"] else "")
             for row in sorted(styles(), key=lambda row: not row["default"])],
-            "- Copy a reel I like", "- Start fresh"]
+            "- Start fresh" + (" (recommended)" if not index["styles"] else ""), "- Copy a reel I like"]
 
 
 def pick(reel, choice):

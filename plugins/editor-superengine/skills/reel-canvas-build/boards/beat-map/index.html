@@ -122,7 +122,16 @@
         <option value="layout-switch">Layout switches</option>
       </select>
       <div id="punch-options" hidden>
+        <div class="style-options">
+          <label for="word-punches">Word punches</label>
+          <select id="word-punches"><option value="">Off</option><option value="dramatic">Strong</option><option value="subtle">Gentle</option><option value="ratchet">Steps (ratchet)</option><option value="custom" hidden>Custom (set by Claude)</option></select>
+        </div>
+        <label for="camera-move">Camera move</label>
+        <select id="camera-move"><option value="">Off</option><option value="push">Slow push in</option><option value="ken_burns">Slow drift (Ken Burns)</option><option value="reframe">Keep the top of the frame</option><option value="custom" hidden>Custom (set by Claude)</option></select>
+        <p id="punch-hint" class="muted" hidden>Mark the words to stress first; the punches land on them.</p>
+      </div>
 <details class="advanced-controls"><summary>Advanced controls</summary>
+      <div id="punch-advanced-options" hidden>
         <div class="style-options">
           <label for="punch-scale">Punch level</label>
           <input id="punch-scale" type="number" min="1.00" max="1.30" step="0.01" value="1.12" aria-describedby="punch-level-note">
@@ -130,24 +139,13 @@
           <label><input id="follow-cam" type="checkbox"> Follow my face</label>
         </div>
         <p id="punch-level-note" class="muted" hidden>This saved punch level is outside the usual range; it stays as set.</p>
-</details>
         <div class="style-options">
-          <label for="word-punches">Word punches</label>
-          <select id="word-punches"><option value="">Off</option><option value="dramatic">Strong</option><option value="subtle">Gentle</option><option value="ratchet">Steps (ratchet)</option><option value="custom" hidden>Custom (set by Claude)</option></select>
-<details class="advanced-controls"><summary>Advanced controls</summary>
           <span id="punch-shape-options" hidden>
             <label for="punch-shape">How they land</label>
             <select id="punch-shape"><option value="eased">Smooth</option><option value="hard-cut">Snap</option></select>
           </span>
-</details>
         </div>
-        <label for="camera-move">Camera move</label>
-        <select id="camera-move"><option value="">Off</option><option value="push">Slow push in</option><option value="ken_burns">Slow drift (Ken Burns)</option><option value="reframe">Keep the top of the frame</option><option value="custom" hidden>Custom (set by Claude)</option></select>
-        <p id="punch-hint" class="muted" hidden>Mark the words to stress first; the punches land on them.</p>
       </div>
-    </section>
-
-<details class="advanced-controls"><summary>Advanced controls</summary>
     <details class="panel" id="open-loops">
       <summary>Open loops (optional)</summary>
       <p class="muted">Track a viewer question and the spoken words that close it. Choose moments from this cut.</p>
@@ -177,6 +175,7 @@
       <div id="hold-rows"></div>
     </details>
 </details>
+    </section>
 
     <section class="panel" aria-labelledby="beats-h">
       <h2 id="beats-h">Beats</h2>
@@ -254,6 +253,12 @@ async function reelJson(rel) {
 }
 function counterValue(spec, param) { return spec.category === "counter" && param.name === "value"; }
 function sceneSpec(id) { return sceneCatalog.find((s) => s.id === id); }
+function sceneTitle(scene) {
+  const title = scene.title || scene.label;
+  if (title) return title;
+  const words = scene.id.replace(/^hf-/, "").replace(/-/g, " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
 function refreshScenes() {
   document.querySelectorAll(".scene-controls").forEach((e) => e.replaceWith(sceneControls(e.dataset.beat)));
 }
@@ -268,8 +273,8 @@ function sceneControls(beat) {
   for (const item of ordered) {
     const choice = el("button", {type: "button", class: "scene-choice", "data-scene": item.id});
     const url = mediaUrl(item.preview);
-    if (url) choice.append(el("img", {src: url, alt: item.id + " preview"}));
-    choice.append(el("span", {text: item.id}), el("span", {class: "muted", text: item.kind + " · " + item.category}));
+    if (url) choice.append(el("img", {src: url, alt: sceneTitle(item) + " preview"}));
+    choice.append(el("span", {text: sceneTitle(item)}));
     if (!available[item.id]) {
       choice.disabled = true;
       choice.append(el("span", {text: "doesn't fit this beat's words or length"}));
@@ -285,14 +290,14 @@ function sceneControls(beat) {
   if (!sceneCatalog.length) wrap.append(el("p", {class: "none", text: "Scene choices aren't ready yet. Ask Claude to prepare them."}));
   if (!fill && sketchScenes[beat] && sceneSpec(sketchScenes[beat].id)) {
     const use = el("button", {type: "button", class: "use-sketch-scene",
-      text: sketchScenes[beat].id + " - picked in Sketches"});
+      text: sceneTitle(sceneSpec(sketchScenes[beat].id)) + " - picked in Sketches"});
     use.addEventListener("click", () => {
       b.scene = JSON.parse(JSON.stringify(sketchScenes[beat])); refreshScenes(); edited();
     });
     wrap.append(use);
   }
   if (fill) {
-    wrap.append(el("p", {text: fill.id}));
+    wrap.append(el("p", {text: sceneTitle(spec || fill)}));
     if (spec) {
       const slots = el("details", {class: "advanced-controls", "data-controls-key": "slots-" + beat}, el("summary", {text: "Advanced controls"}));
       wrap.append(slots);
@@ -390,6 +395,7 @@ let savedWordMoves = {}, savedCameraMoves = {}, wordMoveChanged = false, cameraM
 function styleVisibility() {
   const punch = $("#edit-style").value === "punch-in", words = $("#word-punches").value, on = !!words;
   $("#punch-options").hidden = !punch;
+  $("#punch-advanced-options").hidden = !punch;
   $("#punch-shape-options").hidden = !["dramatic", "subtle"].includes(words);
   $("#punch-hint").hidden = !punch || !on || stressWords().length > 0;
   const scale = Number($("#punch-scale").value);
@@ -522,7 +528,7 @@ function brollControls(b, i) {
   const start = el("input", {name: "broll-start", id: "broll-start-" + i, type: "number", min: "0", step: "any"});
   fit.append(el("option", {value: "cover", text: "Cover"}), el("option", {value: "blur-fill", text: "Blurred fill"}));
   if (!brollClips.length) {
-    select.append(el("option", {value: "", disabled: "", text: "Drop your clips in videos/<reel>/broll/ and ask Claude to add them"}));
+    select.append(el("option", {value: "", disabled: "", text: "No clips yet. Ask Claude to add your own clips."}));
     select.disabled = true;
   } else {
     select.append(el("option", {value: "", text: "None"}));

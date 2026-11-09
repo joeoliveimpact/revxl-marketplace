@@ -20,7 +20,7 @@ Hook lines never claim an audience experiment or promise results; hook numbers m
 1. The checklist below, one line each: done, or what's missing.
 2. Suggested fixes, shown as suggestions. Never overwrite the client's wording.
 
-Speak to the client the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-the-coach-hears.md` says: no file names, paths, script names or raw check output.
+Speak to the client the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-the-user-hears.md` says: no file names, paths, script names or raw check output.
 
 ## Re-invoke guard
 

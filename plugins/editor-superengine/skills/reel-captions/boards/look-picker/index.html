@@ -49,7 +49,7 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);flex:none
 </head>
 <body>
 <header><h1>Look Picker</h1><button id="replay" disabled>Replay all</button>
-<button id="send" disabled>Send to Claude</button><span id="saved" role="status" aria-live="polite"></span></header>
+<button id="send" disabled>Send to Claude <small data-loading>Loading…</small></button><span id="saved" role="status" aria-live="polite"></span></header>
 <main>
 <p id="empty" hidden>Ask Claude to get the Look Picker ready for this reel.</p>
 <div id="board" hidden>
@@ -144,9 +144,9 @@ function syncPick(){
   'Preview only. Choose a look above to see it on each layout.';
 }
 function pickLook(id){
- S.caption_style.style=id;syncPick();
+ S.caption_style.style=id;syncPick();persist();
  previews.filter(p=>p.layout).forEach(p=>caption(p,id));
- replayAll();persist();
+ replayAll();
 }
 function keyPick(e){
  const choices=$$('#look-choices [role=radio]'), i=choices.indexOf(e.currentTarget);
@@ -275,6 +275,7 @@ async function send(){
  finally{syncPick();}
 }
 async function init(){
+ $('#send').onclick=send;
  try{
   bc=BoardClient.create({board:'look-picker'});
   const [config,state,last]=await Promise.all([json('work/look-picker.json'),bc.load(),json('look-picker-selection.json')]);
@@ -282,8 +283,9 @@ async function init(){
   C=config;
   if(C.recommended)restore({style:C.recommended.value});
   restore(C.current);restore(last);restore(state);
+  $('#send [data-loading]').remove();
   $('#board').hidden=false;render();$('#replay').disabled=false;
-  $('#replay').onclick=replayAll;$('#send').onclick=send;
+  $('#replay').onclick=replayAll;
   for(const [id,key] of [['mark-look','mark_look'],['under-small-overlays','under_small_overlays'],
    ['line-breaks','line_breaks'],['echo-suppression','echo_suppression'],['loud-emphasis','loud_emphasis']]){
    $('#'+id).onchange=e=>{
@@ -300,9 +302,10 @@ async function init(){
   };
   $('#make-default').onchange=e=>{S.make_default=e.target.checked;persist();};
   if(S.sent_at)status('Last sent '+new Date(S.sent_at).toLocaleString());
-  await document.fonts.ready;
   window.LP.ready=true;
+  document.fonts.ready.then(replayAll);
  }catch(e){$('#board').hidden=true;$('#empty').hidden=false;$('#send').disabled=true;$('#replay').disabled=true;}
+ finally{$('#send [data-loading]')?.remove();}
 }
 init();
 </script>

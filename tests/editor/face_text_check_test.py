@@ -129,7 +129,7 @@ def check(reel, master, explicit=False, count_pulls=False):
                        capture_output=True, text=True, encoding="utf-8", errors="replace",
                        env=rt.python_env(), timeout=120)
     print(p.stdout.rstrip())
-    ck("rows: coach messages and locations", all(
+    ck("rows: user messages and locations", all(
         {"check", "level", "msg", "where"} <= set(r) and r["level"] in ("warn", "block")
         and r["where"] and r["msg"] and "\n" not in r["msg"] for r in rows), rows)
     return rows, p

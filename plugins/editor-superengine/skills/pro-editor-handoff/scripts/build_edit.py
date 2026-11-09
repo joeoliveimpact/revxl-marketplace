@@ -108,6 +108,9 @@ def derive_media(reel, aroll, master=None):
 
 
 def package(reel, which="all"):
+    compose = compose_module()
+    if not any(p.is_file() and compose.MASTER_RE.fullmatch(p.name) for p in (reel / "renders").glob("*")):
+        raise Stop(1, "There's no final video yet. Make the final video, then package it.")
     compose = approved(reel)
     approval = fcpx.read(reel / compose.OK_FILE)
     if "hook_text" not in approval:

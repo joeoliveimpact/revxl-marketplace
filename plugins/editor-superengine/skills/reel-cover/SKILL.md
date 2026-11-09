@@ -25,7 +25,11 @@ Claude runs every command from the client's workspace; the client never types a 
 
 - `<editor python>` is the editor's own Python. Windows: `"$(H="$LOCALAPPDATA/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/Scripts/python.exe"`. macOS: `"$(H="$HOME/Library/Application Support/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/bin/python"`. Keep the quotes. If it's missing, run `editor-superengine:editor-doctor` first. `<reel folder>` is the reel's folder inside the videos folder that `paths.videos` names in `editor/editor.config.json`.
 
-Frame 0 is recommended because the hook text lives there; any frame is fine. If frame 0 is blurry, the sharpest frame within the first half-second is recommended instead. Without face anchors, explain that the suggestions use sharpness alone and the head is not measured.
+Frame 0 is recommended because the hook text lives there (on the cut master, the hook text is added with the final); any frame is fine. If frame 0 is blurry, the sharpest frame within the first half-second is recommended instead. Without face anchors, explain that the suggestions use sharpness alone and the head is not measured.
+
+If `<reel folder>/work/anchors.json` is missing or older than the newest `<reel folder>/work/renders/master-*.mp4`, run as Claude with `run_in_background` and wait for it to finish:
+`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/scripts/face_crop.py" anchors --reel-dir "<reel folder>"`
+If it stops or finds no face, go on and say plainly: "The cover suggestions use sharpness only, and the title sits low."
 
 Run, as Claude:
 

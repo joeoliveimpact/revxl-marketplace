@@ -55,6 +55,7 @@ import styles  # noqa: E402  (S6c: the editing style's plan)
 import scene_check  # noqa: E402  (P/scripts: the G2-a scene contract)
 import licence_rows  # noqa: E402  (G4's licence check, as mix.py imports it)
 import footage_check  # noqa: E402
+import check as qa_check  # noqa: E402
 # --- G5 transitions (VES-1) ---
 import transitions
 # --- end G5 ---
@@ -225,6 +226,54 @@ def run(cmd, env, timeout=None):
 
 def tail(s, n=300):
     return " ".join(s.split())[-n:]
+
+
+def free_ram_mb():
+    """Available physical RAM in MB, or None when this machine cannot report it."""
+    try:
+        if sys.platform == "win32":
+            import ctypes
+
+            class MemoryStatus(ctypes.Structure):
+                _fields_ = [("length", ctypes.c_uint32), ("load", ctypes.c_uint32)] + [
+                    (name, ctypes.c_ulonglong) for name in (
+                        "total_phys", "avail_phys", "total_page", "avail_page",
+                        "total_virtual", "avail_virtual", "avail_extended")]
+
+            status = MemoryStatus()
+            status.length = ctypes.sizeof(status)
+            if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
+                return status.avail_phys // (1024 * 1024)
+        elif sys.platform.startswith("linux"):
+            return os.sysconf("SC_AVPHYS_PAGES") * os.sysconf("SC_PAGE_SIZE") // (1024 * 1024)
+    except Exception:
+        pass  # A failed RAM read uses the conservative one-worker budget.
+    return None
+
+
+def master_budget(free_mb, gpu):
+    # ponytail: GPU and CPU caps are 2; masked-CPU 2 workers took 286 s, peak 2.4 GB Node.
+    # Raise either cap only after a measured 3-worker pass.
+    if free_mb is None:
+        workers = 1
+    elif not gpu:
+        workers = 2 if free_mb >= 4096 else 1
+    else:
+        workers = max(1, min(2, (free_mb - 2048) // 2560))
+    return workers, 1024 + 1536 * workers
+
+
+def render_cause(output):
+    if any(cause in output.lower() for cause in ("heap out of memory", "reached heap limit", "allocation failed")):
+        return "ran out of memory; close other apps first"
+    lines = output.splitlines()
+    fatal = [line for line in lines if "fatal error" in line.lower()]
+    if fatal:
+        return tail(fatal[-1])
+    lines = [line for line in lines if line.strip() and not line.lstrip().startswith("Lint:")
+             and "--strict" not in line and not re.match(r"^\s*\d+:\s+[0-9A-Fa-f]{6,}", line)]
+    errors = [line for line in lines if "error" in line.lower()]
+    return tail(errors[-1] if errors else lines[-1] if lines else output)
 
 
 def kill_warm():
@@ -564,7 +613,7 @@ def lint_or_stop(proj, what="the composition", env=None):
     return not errors, lines
 
 
-def hf_render(proj, out, env, what, extra):
+def hf_render(proj, out, env, what, extra, *, tier=None):
     ok, lines = lint_or_stop(proj, what, env)
     print(f"info: lint {what}: {sum(l.startswith('✗') for l in lines)} errors, "
           f"{sum(l.startswith('warning:') for l in lines)} warnings")
@@ -572,11 +621,25 @@ def hf_render(proj, out, env, what, extra):
         raise Stop(1, *lines, "Nothing was rendered.")
     for line in lines:
         print(line)
+    if tier == "master":
+        free_mb, gpu = free_ram_mb(), rt.has_nvidia_gpu()
+        workers, heap_mb = master_budget(free_mb, gpu)
+        env = dict(env)
+        options = re.sub(r'(?<!\S)(?:"--max-old-space-size(?:=|\s+)\d+"|'
+                         r'--max-old-space-size(?:=|\s+)(?:"\d+"|\d+))(?=\s|$)',
+                         "", env.get("NODE_OPTIONS", "")).strip()
+        env["NODE_OPTIONS"] = f"{options} --max-old-space-size={heap_mb}".strip()
+        extra = [*extra, "--workers", str(workers)]
+        memory = "free RAM unknown" if free_mb is None else f"{free_mb / 1024:.1f} GB free"
+        print(f"info: master render: {workers} worker{'s' if workers != 1 else ''}, {heap_mb} MB Node heap "
+              f"({'NVIDIA GPU' if gpu else 'CPU only'}, {memory})")
     t0 = time.perf_counter()
     rc, o, e = run(rt.hyperframes_cmd("render", proj, *extra, "-o", out), env)
     kill_warm()
     if rc != 0 or not out.is_file():
-        raise Stop(1, f"✗ The {what} render stopped (exit {rc}: {tail(o + e)}); run it again, and if it fails "
+        cause = render_cause(o + "\n" + e)
+        reason = cause if cause.startswith("ran out of memory") else f"stopped (exit {rc}: {cause})"
+        raise Stop(1, f"✗ The {what} render {reason}; run it again, and if it fails "
                       f"twice offer the failure report.")
     print(f"info: {what} rendered in {time.perf_counter() - t0:.1f} s")
 
@@ -1003,7 +1066,7 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
         video = tmp / ("video.mov" if layers in ("overlay", "captions") else "video.mp4")
         hf_render(proj, video, env, f"{tier} ({w}x{h})",
                   ["--fps", inp["fps"], "--frames-cache-dir", cache, *QUALITY[tier],
-                   *(["--format", "mov"] if layers in ("overlay", "captions") else [])])
+                   *(["--format", "mov"] if layers in ("overlay", "captions") else [])], tier=tier)
         renders.mkdir(exist_ok=True)
         t0 = time.perf_counter()
         if layers in ("overlay", "captions"):
@@ -1073,12 +1136,113 @@ def cmd_ok(reel, from_review):
 # ---- selftest ------------------------------------------------------------------------------------------------
 def selftest():
     import tempfile
-    from unittest.mock import patch
+    from unittest.mock import Mock, patch
     fails = []
 
     def expect(name, ok):
         if not ok:
             fails.append(name)
+
+    for free_mb, gpu, wanted in ((None, True, (1, 2560)), (None, False, (1, 2560)),
+                                 (10_650, False, (2, 4096)), (3_000, False, (1, 2560)),
+                                 (4_096, False, (2, 4096)),
+                                 (11_000, True, (2, 4096)), (4_000, True, (1, 2560))):
+        expect(f"master budget: {free_mb}, GPU {gpu}", master_budget(free_mb, gpu) == wanted)
+    trace = "\n" + "  v8::internal::Heap::CollectGarbage\n" * 100
+    for message in ("FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory",
+                    "Reached heap limit", "Allocation failed"):
+        cause = render_cause(message + trace)
+        expect("render cause: memory failure survives the native trace",
+               "ran out of memory" in cause and "close other apps first" in cause and "v8::" not in cause)
+    expect("render cause: plain error", render_cause("Error: boom") == "Error: boom")
+    expect("render cause: last error wins over a native trace",
+           render_cause("Error: first\nerror: last" + trace) == "error: last")
+    lint = ("Lint: 0 error(s), 1 warning(s)\n"
+            "Continuing render despite lint issues. Use --strict to block errors.")
+    native_trace = "  1: 00007FF node::errors::TriggerUncaughtException+123"
+    for output, wanted in (
+            (lint + "\nChrome exited unexpectedly (signal 11)", "Chrome exited unexpectedly (signal 11)"),
+            ("Chrome exited unexpectedly (signal 11)\n" + native_trace + "\n" + lint,
+             "Chrome exited unexpectedly (signal 11)"),
+            ("FATAL ERROR: v8::ToLocalChecked Empty MaybeLocal\n" + native_trace + "\n" + lint,
+             "FATAL ERROR: v8::ToLocalChecked Empty MaybeLocal"),
+            ("fatal error: first\nFaTaL ErRoR: last\nError: later\n" + lint, "FaTaL ErRoR: last"),
+            ("Error: Protocol error (Target closed)\n" + lint, "Error: Protocol error (Target closed)"),
+            ("ERROR: first\nERROR: last\n" + native_trace + "\n" + lint, "ERROR: last"),
+            ("Reached heap limit\nFATAL ERROR: later\n" + native_trace + "\n" + lint,
+             "ran out of memory; close other apps first"),
+            (lint, "Lint: 0 error(s), 1 warning(s) Continuing render despite lint issues. Use --strict to block errors."),
+            ("", ""), ("Error: " + "x" * 400, "x" * 300)):
+        expect(f"render cause: {wanted}", render_cause(output) == wanted)
+    expect("render cause: unknown failure uses the old tail", render_cause("x" * 400) == "x" * 300)
+    with tempfile.TemporaryDirectory() as t:
+        out = Path(t) / "video.mp4"
+        out.write_bytes(b"fixture")
+        for tier, free_mb, gpu, options in (
+                ("master", 11_000, True, "--trace-warnings --max-old-space-size=512 --no-warnings"),
+                ("master", 10_650, False, "--max-old-space-size 512 --trace-warnings"),
+                ("master", None, False, "--trace-warnings"),
+                ("master", 3_000, False, ""), ("master", 4_096, False, ""),
+                ("master", None, True, '"--max-old-space-size=512" --trace-warnings'),
+                ("master", 4_000, True, ""), ("preview", 11_000, True, "--max-old-space-size=512"),
+                (None, 11_000, True, "--trace-warnings")):
+            env = {"NODE_OPTIONS": options, "KEEP": "unchanged"}
+            extra = ["--fps", "30/1"]
+            with patch.dict(globals(), lint_or_stop=lambda *args: (True, []), kill_warm=lambda: None), \
+                    patch.object(rt, "hyperframes_cmd", side_effect=lambda *args: list(args)), \
+                    patch.object(rt, "has_nvidia_gpu", return_value=gpu) as gpu_read, \
+                    patch.dict(globals(), free_ram_mb=lambda: free_mb), \
+                    patch.dict(globals(), run=Mock(return_value=(0, "", ""))) as patched, \
+                    contextlib.redirect_stdout(io.StringIO()) as said:
+                hf_render(Path(t), out, env, "fixture", extra, tier=tier)
+                cmd, used_env = patched["run"].call_args.args
+            expect("master budget: caller's environment and arguments stay unchanged",
+                   env == {"NODE_OPTIONS": options, "KEEP": "unchanged"} and extra == ["--fps", "30/1"])
+            if tier == "master":
+                workers, heap_mb = master_budget(free_mb, gpu)
+                expect("master budget: explicit workers and heap reach HyperFrames",
+                       cmd[cmd.index("--workers") + 1] == str(workers)
+                       and used_env is not env and used_env["KEEP"] == "unchanged"
+                       and used_env["NODE_OPTIONS"].count("--max-old-space-size") == 1
+                       and f"--max-old-space-size={heap_mb}" in used_env["NODE_OPTIONS"]
+                       and "512" not in used_env["NODE_OPTIONS"] and gpu_read.call_count == 1
+                       and said.getvalue().count("info: master render:") == 1)
+                expect("master budget: unrelated Node options survive",
+                       all(flag in used_env["NODE_OPTIONS"] for flag in ("--trace-warnings", "--no-warnings")
+                           if flag in options))
+            else:
+                expect("master budget: previews and scenes keep their environment and worker choice",
+                       used_env is env and "--workers" not in cmd and not gpu_read.called
+                       and "info: master render:" not in said.getvalue())
+
+    with tempfile.TemporaryDirectory() as t:
+        reel = Path(t)
+        block = dict(check="fixture", level="block", msg="Fix the fixture.", module="fixture")
+        warn = dict(check="fixture", level="warn", msg="Check the fixture.", module="fixture")
+        for rows in ([warn, block], [warn], []):
+            rendered = Mock(return_value={"rendered": True})
+            with patch.object(qa_check, "run_checks", return_value=rows) as checks, \
+                    patch.dict(globals(), render=rendered), \
+                    contextlib.redirect_stdout(io.StringIO()) as said:
+                code = main(["master", "--reel-dir", str(reel)])
+            output = said.getvalue()
+            if block in rows:
+                expect("QA: a block stops master before rendering with the next step",
+                       code == 1 and "✗ The QA check blocks the final: Fix the fixture." in output
+                       and "Fix what it names, run the QA check again, then make the final." in output
+                       and not rendered.called)
+            else:
+                expect("QA: warnings and all-clear allow master to render", code == 0 and rendered.call_count == 1)
+            expect("QA: master runs the pre checks in process", checks.call_count == 1
+                   and checks.call_args.args[1] == "pre" and checks.call_args.args[0]["reel_dir"] == reel.resolve())
+            report_path = reel / "work/qa.json"
+            report = json.loads(report_path.read_text(encoding="utf-8")) if report_path.is_file() else {}
+            expect("QA: master saves the standard report with all rows and LF endings",
+                   report.get("phase") == "pre" and report.get("blocks") == int(block in rows)
+                   and report.get("warns") == int(warn in rows) and report.get("render") is None
+                   and bool(report.get("ran_at")) and report.get("checks") == (rows or [dict(
+                       check="all-clear", level="pass", msg="Every check passed.", module="check")])
+                   and b"\r" not in report_path.read_bytes())
 
     spec = {"params": {"accent": {"default": "#4f8cff"}, "font": {"default": "Inter"}}}
     face = '@font-face {font-family: "Inter"; src: url("./fonts/Inter-Regular.woff2");}'
@@ -1163,8 +1327,6 @@ def selftest():
     sp = build_spans([beat("b1", 0, 50), beat("b2", 50, 100)], kinds, 50,
                      [{"layer": "aroll_transform", "start_f": 48, "end_f": 52, "id": "move"}])
     expect("extra spans join the gate", any("runs across the cut" in p for p in effect_gate.check(sp, [50], "25/1", 100)))
-    import contextlib
-    import io
     for sid, slots, opens, keyed in (("hook-title", {"kicker": "Part 1", "title": "Hi"}, True, True),
                                      ("hook-title", {"kicker": "Part 1", "title": "Hi"}, True, False),
                                      ("lower-third", {"name": "Alex", "title": "Founder"}, False, True)):
@@ -1388,6 +1550,25 @@ def main(argv=None):
         return 2
     reel = Path(a.reel_dir).resolve()
     try:
+        if a.cmd == "master":
+            try:
+                ctx = qa_check.build_context(reel)
+            except (OSError, ValueError, KeyError, TypeError, AttributeError):
+                findings = [dict(check="inputs-unreadable", level="block",
+                                 msg="The cut list or Beat Map could not be read. Restore these files and run QA again.",
+                                 where="work/cuts.json, beat-map-selection.json", module="check")]
+            else:
+                findings = qa_check.run_checks(ctx, "pre")
+            if not findings:
+                findings = [dict(check="all-clear", level="pass", msg="Every check passed.", module="check")]
+            blocks = [row for row in findings if row["level"] == "block"]
+            qa_check.write_report(reel, dict(
+                phase="pre", ran_at=datetime.now().astimezone().isoformat(), render=None,
+                blocks=len(blocks), warns=sum(row["level"] == "warn" for row in findings), checks=findings))
+            if blocks:
+                print(f"✗ The QA check blocks the final: {blocks[0]['msg']}")
+                print("Fix what it names, run the QA check again, then make the final.")
+                return 1
         if a.cmd == "layers":
             summary = [render(reel, "master", None, layers=which)
                        for which in (("aroll", "overlay", "captions") if a.which == "all" else (a.which,))]

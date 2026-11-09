@@ -22,10 +22,10 @@ test('Record: RAW.mp4 at the top, one raw video or several raw videos; no take s
 })
 
 test('paths: normPath, folderKey and homeDir', () => {
-  expect(normPath('C:\\Users\\coach\\ws\\')).toBe('C:/Users/coach/ws')
-  expect(normPath('/c/Users/coach')).toBe('C:/Users/coach')
+  expect(normPath('C:\\Users\\user\\ws\\')).toBe('C:/Users/user/ws')
+  expect(normPath('/c/Users/user')).toBe('C:/Users/user')
   expect(folderKey('D:\\Clients\\Reel Studio')).toBe('d:/clients/reel studio')
-  expect(homeDir({ USERPROFILE: 'C:\\Users\\coach' })).toBe('C:/Users/coach')
+  expect(homeDir({ USERPROFILE: 'C:\\Users\\user' })).toBe('C:/Users/user')
   expect(homeDir({})).toBeUndefined()
 })
 
@@ -97,6 +97,39 @@ test('Grade is optional: never current, never blocks Master; its Send marks it d
   const graded = reelView(reel('g', { ...files, 'grade-selection.json': f(1) }), 'g')
   expect([graded.done[6], graded.cur]).toEqual([true, 7])
   expect(reelView(reel('g', { ...WALK[7]![1] }), 'g').cur).toBe(8)
+})
+
+test('Motion: a sent beat map without sketches advances to Sound; unreadable sketches still block', () => {
+  const tree = walk(4), path = 'videos/r4/sketches.state.json'
+  delete tree[path]
+  const r = reelView(tree, 'r4')
+  expect(r.done[4]).toBe(true)
+  expect(STAGES[r.cur]!.name).toBe('Sound')
+  tree[path] = f(1, { busy: true })
+  expect(reelView(tree, 'r4').done[4]).toBe(false)
+  tree[path] = f(1, { text: 'bad JSON' })
+  expect(reelView(tree, 'r4').done[4]).toBe(false)
+  const unread = reelIn(tree, 'r4')
+  unread.lists.root = unreadable('EBUSY')
+  unread.json['sketches.state.json'] = missing()
+  expect(reelOf(unread, NOW, undefined, {}).done[4]).toBe(false)
+})
+
+test('Sound: a voice-only final mix alone completes Sound; temporary mixes do not', () => {
+  expect(reelView(reel('voice', { 'sound/final.mp4': f(1) }), 'voice').done[5]).toBe(true)
+  expect(reelView(reel('voice', { 'sound/final.mp4.tmp': f(1), 'sound/final.mp4.prev': f(1) }), 'voice').done[5]).toBe(false)
+})
+
+test('Ear pass: a selection counts only after an equal or newer EDL or cuts file', () => {
+  const tree = { ...walk(2), ...reel('r2', { 'tweak-selection.json': f(1), 'work/cuts.json': f(2) }) }
+  expect(reelView(tree, 'r2').done[2]).toBe(false)
+  expect(STAGES[reelView(tree, 'r2').cur]!.name).toBe('Ear pass')
+  for (const file of ['work/edl.json', 'work/cuts.json']) {
+    for (const age of [1, 0]) {
+      const applied = { ...tree, ...reel('r2', { [file]: f(age) }) }
+      expect(reelView(applied, 'r2').done[2]).toBe(true)
+    }
+  }
 })
 
 test('Master: the ruled name directly in renders/, .mp4, more than 0 bytes, not "no video"; nothing else lights it', () => {

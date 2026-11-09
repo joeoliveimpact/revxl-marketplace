@@ -15,7 +15,7 @@ description: Turns raw talking-head footage into a finished first cut. The clien
 4. On a failure you can't fix in two tries: what went wrong in plain words, then the failure report
    below.
 
-Speak the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-the-coach-hears.md` says.
+Speak the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-the-user-hears.md` says.
 
 ## Re-invoke guard
 
@@ -32,9 +32,7 @@ Speak the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-th
 ## Ground rules
 
 - **The client never types a command.** Claude runs each one with the Bash tool from the client's
-  workspace folder (the scripts read `editor/editor.config.json` there). A path below that doesn't start
-  with the reel folder is relative to `<paths.videos>/<reel>/` from `editor/editor.config.json`.
-  RAW.mp4 is the raw; CUT.mp4 the master render, `work/renders/master-<speed>x.mp4` (1.15x → `115x`).
+  workspace folder (the scripts read `editor/editor.config.json` there). Every path below is inside the reel folder `<reel folder>` = `<paths.videos>/<reel>/` (editor/editor.config.json): put that folder in front of it when you run it. RAW.mp4 is the raw; the master render is `work/renders/master-<speed>x.mp4` (1.15x → `115x`).
 - `<editor python>` is the editor's own Python. Windows: `"$(H="$LOCALAPPDATA/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/Scripts/python.exe"`. macOS: `"$(H="$HOME/Library/Application Support/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/bin/python"`. If it doesn't exist, run `editor-superengine:editor-doctor` first. Every script runs as `<editor python> -X utf8 -I "<script>" ...`, never a bare `python`; the failure report's commands run exactly as written.
 - No board available, or the client asks to do it in chat: run Stages 2, 3 and 5 as
   `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/no-board-path.md` says.
@@ -109,10 +107,10 @@ as `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/map-and-script-check
 misheard brand names, warns under 25 % match and lists the rest for review.
 
 ### 2 · ⛔ Cut Board — RULING
-With the Write tool, put the approved script in `script.md` (one spoken line per line) and the shots in
+With the Write tool, put the approved script in `script.md` (one spoken line per line) (no script: write it from the transcript, one line per spoken sentence, and tell the client you did) and the shots in
 `shots.json` (`{"vocab": ["talking head", "screen"], "default": "talking head"}`), then:
 
-`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/make_board.py" --script script.md --take 1:work/edit_map.json:work/tx.16k.wav [--take 2:work/take2/edit_map.json:work/take2/tx.16k.wav] --shots shots.json --reel <reel> -o videos/<reel>`
+`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/make_board.py" --script script.md --take 1:work/edit_map.json:work/tx.16k.wav [--take 2:work/take2/edit_map.json:work/take2/tx.16k.wav] --shots shots.json --reel <reel> -o <reel folder>`
 
 Open the Cut Board as `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/boards.md`, "Cut Board", says.
 A line said twice in different words shows Keep first / Keep second / Keep both: the client picks; never cut one yourself. Then:
@@ -127,7 +125,7 @@ After every gaps.py run, before anything renders:
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/boundary_audit.py" work/ work/edit_map.json`
 
-Exit 1 names each boundary inside a word or next to speech energy: re-derive it, never ship it.
+Exit 1 names each boundary inside a word or next to speech energy and prints how to re-derive it: run what it prints, then audit again. Never ship a flagged boundary.
 Not optional: word times are estimates (transcription-contract.md).
 
 Then `word_map.py`, then `map_check.py` (map-and-script-checks.md). Any block means no render: say its
@@ -146,7 +144,7 @@ it surfaces; never resolve one silently.
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/render.py" work/ RAW.mp4 --master --scrub`
 
-If the client approved a grade (reel-grade step 4), add `--grade videos/<reel>/grade.json`, so a new cut keeps the colour.
+If the client approved a grade (reel-grade step 4), add `--grade grade.json`, so a new cut keeps the colour.
 Read `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/cut-checks.md`, "Render rules (Stage 6)".
 
 ### 7 · Verify + cut checks
@@ -155,7 +153,7 @@ order, and act on each hit as it says.
 
 ### 7b · Silence budget — HARD FAIL
 
-`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/silence_budget.py" CUT.mp4 --probe work/probe.json --words work/cut/tx-cut.json`
+`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/silence_budget.py" work/renders/master-<speed>x.mp4 --probe work/probe.json --words work/cut/tx-cut.json`
 
 The share of the **rendered** cut where nobody talks: budget **12%**, exit 1 when over, the offending
 gaps ranked with the words either side. `silencedetect` logs at **info**: never pass it `-v error`. **Within budget is not approval.**
@@ -166,7 +164,7 @@ Hand over the review page, `work/cut-review.html` (raw and cut side by side, the
 **with the checklist** (`work/listen.txt`), and say plainly what the gates cannot see: they passed on
 all four defects the client caught in the reference build. Run `long_silence.py work --json` (short-clips.md, "After the cut"), then:
 
-`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/make_tweaks.py" --cut CUT.mp4 --work work --config cut-board.config.json --take 1 --version v<N> -o videos/<reel>`
+`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/make_tweaks.py" --cut work/renders/master-<speed>x.mp4 --work work --config cut-board.config.json --take 1 --version v<N> -o <reel folder>`
 
 For version numbers and the Tweak Board, follow `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/boards.md`, "Tweak Board".
 Preview rules: `${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/preview-before-render.md`.

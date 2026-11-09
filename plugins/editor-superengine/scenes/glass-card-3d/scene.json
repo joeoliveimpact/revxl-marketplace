@@ -4,7 +4,7 @@
   "kind": "overlay",
   "layer": "3d",
   "slots": {
-    "text": {"maxChars": 28, "default": "Three steps to calm mornings", "hint": "one short line or number the coach said"}
+    "text": {"maxChars": 28, "default": "Three steps to calm mornings", "hint": "one short line or number the speaker said"}
   },
   "dur": [2, 8],
   "params": {

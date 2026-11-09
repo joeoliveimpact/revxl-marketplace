@@ -1,5 +1,5 @@
 // node tests/editor/boards_click.js <puppeteer-core.js> <chrome> <job.json>
-// Drives the Cut Board, the Tweak Board and the test hub for boards_test.py. job = {base, userDataDir, actions:[...]}:
+// Drives the Cut Board, the Tweak Board and the test hub for boards_test.py. job = {base, userDataDir, viewport?, actions:[...]}:
 //   {do: "goto", path, wait?, waitFn?}   open base + path, then wait for a selector and/or a JS expression
 //   {do: "frame", sel, wait?, waitFn?}   switch every later action into the iframe at sel
 //   {do: "top"}                          back to the top page
@@ -12,6 +12,7 @@
 //   {do: "waitText", sel, re}            wait for the element's text to match re; a "FAILED" text fails the run
 //   {do: "waitState", board, js}         poll /videos/<reel>/<board>.state.json until js (s => ...) holds
 //   {do: "eval", js}                     push the value of a JS expression (awaited) onto reads
+//   {do: "bounds", sel}                  snapshot bounds and visibility through the iframe and hub, without scrolling
 //   {do: "sleep", ms}
 // Prints {reads, errors, requests} as JSON: every request URL the page made, from any frame. On a timeout or an
 // error: also {error} and exit code 1.
@@ -24,7 +25,7 @@ const {pathToFileURL} = require("url");
   const job = JSON.parse(fs.readFileSync(jobPath, "utf8"));
   const {default: puppeteer} = await import(pathToFileURL(pup).href);
   const browser = await puppeteer.launch({executablePath: chrome, headless: "shell", args: ["--no-sandbox"],
-                                          userDataDir: job.userDataDir, defaultViewport: {width: 1300, height: 1000}});
+                                          userDataDir: job.userDataDir, defaultViewport: job.viewport || {width: 1300, height: 1000}});
   const out = {reads: [], errors: [], requests: []};
   let page, ctx, step = "start";
   const settle = async (a) => {
@@ -111,6 +112,44 @@ const {pathToFileURL} = require("url");
         }
       } else if (a.do === "eval") {
         out.reads.push(await ctx.evaluate(a.js));
+      } else if (a.do === "bounds") {
+        out.reads.push(await ctx.$eval(a.sel, e => {
+          const box = e.getBoundingClientRect().toJSON();
+          let r = box, target = e, w = window;
+          let visible = box.width > 0 && box.height > 0, hit = true;
+          for (;;) {
+            const root = w.document.documentElement;
+            const rootStyle = w.getComputedStyle(root);
+            // HTML/body overflow can apply to the viewport, rather than clip at the
+            // element's scrolling border box (CSS Overflow 3, viewport propagation).
+            // The viewport is checked below; applying the body box as well rejects
+            // visible controls after document scrolling, especially in review.html.
+            const bodyOverflow = rootStyle.overflowX === "visible" && rootStyle.overflowY === "visible";
+            visible &&= r.left >= 0 && r.top >= 0 && r.right <= root.clientWidth && r.bottom <= root.clientHeight;
+            for (let node = target; node; node = node.parentElement) {
+              const style = w.getComputedStyle(node), clip = node.getBoundingClientRect();
+              visible &&= style.visibility === "visible" && Number(style.opacity) > 0 && style.display !== "none";
+              if (node !== target && node !== root && !(node === w.document.body && bodyOverflow)) {
+                if (style.overflowX !== "visible") visible &&= r.left >= clip.left + node.clientLeft && r.right <= clip.left + node.clientLeft + node.clientWidth;
+                if (style.overflowY !== "visible") visible &&= r.top >= clip.top + node.clientTop && r.bottom <= clip.top + node.clientTop + node.clientHeight;
+              }
+            }
+            // Also catch a sticky header or another element covering the target.
+            const cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2;
+            for (const [x, y] of [[r.left + 1, cy], [r.right - 1, cy],
+                                 [cx, r.top + 1], [cx, r.bottom - 1], [cx, cy]]) {
+              hit &&= target.contains(w.document.elementFromPoint(x, y));
+            }
+            if (w === w.top) break;
+            target = w.frameElement;
+            const f = target.getBoundingClientRect();
+            const x = f.left + target.clientLeft, y = f.top + target.clientTop;
+            r = {left: r.left + x, right: r.right + x, top: r.top + y, bottom: r.bottom + y};
+            w = w.parent;
+          }
+          return JSON.stringify({box, topBox: r, visible, hit, text: e.textContent,
+                                 viewport: {width: w.innerWidth, height: w.innerHeight}});
+        }));
       } else if (a.do === "sleep") {
         await new Promise((r) => setTimeout(r, a.ms));
       } else {

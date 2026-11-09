@@ -46,6 +46,27 @@ def letters(s):
     return LET.sub("", s.lower())
 
 
+def repeat_warns(lines):
+    """Warn on contained default reads and repeats across neighboring default reads."""
+    warns = {}
+    for lid, words in lines:
+        if len(words) < 3:
+            continue
+        for other, longer in lines:
+            if other != lid and any(longer[i:i + len(words)] == words
+                                    for i in range(len(longer) - len(words) + 1)):
+                warns[lid] = other
+                break
+    for (earlier, first), (later, second) in zip(lines, lines[1:]):
+        if not first or not second or later in warns:
+            continue
+        joined = [dict(w=w, n=repeat_check.norm(w), s=k, e=k + 0.5, id=k)
+                  for k, w in enumerate(first + second)]
+        if any(h["first"] < len(first) <= h["second"] for h in repeat_check.find(joined)):
+            warns[later] = earlier
+    return warns
+
+
 def script_lines(path):
     body = Path(path).read_text(encoding="utf-8").split("\n---\n")[-1]
     out = []
@@ -172,12 +193,15 @@ def _next_word_start(words, j, duration):
 
 
 def in_point(words, i, isl):
-    """Boundary just before word i: inside the island between word i-1 and word i."""
+    """A cut before word i never lands inside an earlier word (a struck word is never put back, and a kept word's tail is never clipped; H-S17W2-2)."""
     prev = _prev_word_start(words, i)
     x = gap_island(isl, prev, words[i]["start"] + 0.02)
-    if x:
-        return round(x[1] - min(0.15, (x[1] - x[0]) / 2), 3), x
-    return round(max(0.0, words[i]["start"] - 0.05), 3), None
+    value = (round(x[1] - min(0.15, (x[1] - x[0]) / 2), 3) if x
+             else round(max(0.0, words[i]["start"] - 0.05), 3))
+    floor = max((w["end"] for w in words[:i] if not _is_event(w)), default=None)
+    if floor is not None and floor < words[i]["end"]:
+        value = max(value, round(floor, 3))
+    return value, x
 
 
 def out_point(words, j, isl, duration):
@@ -335,6 +359,14 @@ def main():
         ln["default"] = (js[-1] if which == "last" else js[0]) if js else None
         if not js and ln["attempts"]:
             ln["flag"] = f"not in take {main_take}"
+
+    defaults = [(ln["id"], [n for w in ln["attempts"][ln["default"]]["words"]
+                             if (n := repeat_check.norm(w["w"]))] if ln["default"] is not None else [])
+                for ln in lines]
+    warns = repeat_warns(defaults)
+    for ln in lines:
+        if ln["id"] in warns:
+            ln["warn"] = f"Line {warns[ln['id']]} already says this; keep one (drop this line or strike it there)."
 
     shots = json.loads(Path(a.shots).read_text(encoding="utf-8"))
     cfg = dict(reel=a.reel, rule=f"{which} attempt wins, take {main_take}", main_take=main_take,

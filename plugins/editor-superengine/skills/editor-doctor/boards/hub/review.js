@@ -61,7 +61,7 @@
         $("fallback").hidden = true;
         io.status(approve ? "Sent. Preview approved." : "Sent. Review notes saved.");
       } catch (_) { io.failed(reel, "review.json", body); }
-      finally { pending = false; }
+      finally { pending = false; $("status").scrollIntoView({block: "nearest"}); }
     }
     $("approve").disabled = !r.preview_name;
     $("approve").onclick = () => send(true);
