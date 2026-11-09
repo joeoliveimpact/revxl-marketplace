@@ -89,6 +89,8 @@
     .say { max-width: none; }
     .bar { flex-wrap: wrap; }
   }
+.advanced-controls{border:1px solid var(--line);border-radius:8px;padding:10px;margin:10px 0}
+.advanced-controls>summary{cursor:pointer;font-weight:600}
 </style>
 </head>
 <body>
@@ -120,6 +122,7 @@
         <option value="layout-switch">Layout switches</option>
       </select>
       <div id="punch-options" hidden>
+<details class="advanced-controls"><summary>Advanced controls</summary>
         <div class="style-options">
           <label for="punch-scale">Punch level</label>
           <input id="punch-scale" type="number" min="1.00" max="1.30" step="0.01" value="1.12" aria-describedby="punch-level-note">
@@ -127,13 +130,16 @@
           <label><input id="follow-cam" type="checkbox"> Follow my face</label>
         </div>
         <p id="punch-level-note" class="muted" hidden>This saved punch level is outside the usual range; it stays as set.</p>
+</details>
         <div class="style-options">
           <label for="word-punches">Word punches</label>
           <select id="word-punches"><option value="">Off</option><option value="dramatic">Strong</option><option value="subtle">Gentle</option><option value="ratchet">Steps (ratchet)</option><option value="custom" hidden>Custom (set by Claude)</option></select>
+<details class="advanced-controls"><summary>Advanced controls</summary>
           <span id="punch-shape-options" hidden>
             <label for="punch-shape">How they land</label>
             <select id="punch-shape"><option value="eased">Smooth</option><option value="hard-cut">Snap</option></select>
           </span>
+</details>
         </div>
         <label for="camera-move">Camera move</label>
         <select id="camera-move"><option value="">Off</option><option value="push">Slow push in</option><option value="ken_burns">Slow drift (Ken Burns)</option><option value="reframe">Keep the top of the frame</option><option value="custom" hidden>Custom (set by Claude)</option></select>
@@ -141,6 +147,7 @@
       </div>
     </section>
 
+<details class="advanced-controls"><summary>Advanced controls</summary>
     <details class="panel" id="open-loops">
       <summary>Open loops (optional)</summary>
       <p class="muted">Track a viewer question and the spoken words that close it. Choose moments from this cut.</p>
@@ -169,6 +176,7 @@
       <p class="muted">You can explain why you hold a quiet stretch. These notes never stop you sending.</p>
       <div id="hold-rows"></div>
     </details>
+</details>
 
     <section class="panel" aria-labelledby="beats-h">
       <h2 id="beats-h">Beats</h2>
@@ -286,6 +294,8 @@ function sceneControls(beat) {
   if (fill) {
     wrap.append(el("p", {text: fill.id}));
     if (spec) {
+      const slots = el("details", {class: "advanced-controls", "data-controls-key": "slots-" + beat}, el("summary", {text: "Advanced controls"}));
+      wrap.append(slots);
       for (const slot of spec.slots) {
         const id = "scene-field-" + (++sceneFieldId);
         const input = el("textarea", {id, rows: "2", "data-slot": slot.name});
@@ -305,7 +315,7 @@ function sceneControls(beat) {
           showCount(); edited();
         });
         showCount();
-        wrap.append(el("label", {class: "block", for: id, text: slot.name}), input, count);
+        slots.append(el("label", {class: "block", for: id, text: slot.name}), input, count);
       }
       for (const param of spec.params) {
         if (param.name === "accent" || param.name === "font" || (!param.enum && param.type !== "number")) continue;
@@ -541,8 +551,9 @@ function brollControls(b, i) {
   start.addEventListener("input", update);
   enabled();
   wrap.append(el("label", {for: select.id, text: "B-roll"}), select,
-              el("label", {for: fit.id, text: "Fit"}), fit,
-              el("label", {for: start.id, text: "Starts at (seconds)"}), start);
+              el("details", {class: "advanced-controls", "data-controls-key": "broll-" + b.id}, el("summary", {text: "Advanced controls"}),
+                el("label", {for: fit.id, text: "Fit"}), fit,
+                el("label", {for: start.id, text: "Starts at (seconds)"}), start));
   return wrap;  // Loading never rewrites a saved choice.
 }
 

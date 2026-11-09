@@ -66,7 +66,7 @@ Error responses:
 |------|------|-------|-------------------|
 | standard | 1 credit | 359 endpoints | Profiles, posts, search, comments, GitHub direct calls, HN, Tavily, Perplexity research |
 | advanced | 5 credits | 240 endpoints | Audience, ad libraries, trending, full-profile bundles, GitHub composites (`repo/top-issues`, `repo/dossier`), Twitter AI Search |
-| premium | 10 credits | 46 endpoints | Transcripts (⚠️ gated in this plugin: 10cr **per item**, 3cr per video on YouTube — the guard asks and names a cheaper route), age/gender detection, deep listings-database search |
+| premium | 10 credits | 46 endpoints | Transcripts (⚠️ gated in this plugin: 10cr **per item**, 3cr per video on YouTube — quote a cheaper route, run only on an explicit yes), age/gender detection, deep listings-database search |
 | **flat override** | **0–50 credits** | 98 of the 645 | Prism intelligence bundles (`leads`/`brand-mentions` = **50**, `creator-vet` = **50–75**, `share-of-voice`/`korea-gap` = 40, several reports 25–35), all `content_analysis/*` (20), `search/everywhere` (20), `web/agent` (**25**) — and at the low end `prism/lookup` (1–5, never 0) and the metered `prism/post-stats` (1–500) and `prism/comments` (2–200) |
 
 > The tier label and the actual charge are **not** the same thing: 98 of the 645 tiered

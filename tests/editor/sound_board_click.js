@@ -75,7 +75,10 @@ function readBoard() {
         ctx = await h.contentFrame();
         await ctx.waitForSelector("#cuebody tr.cuerow");
       } else if (a.do === "click") {
-        await ctx.$eval(a.sel, (e) => e.scrollIntoView({block: "center"}));
+        await ctx.$eval(a.sel, (e) => {
+          for (let p=e.parentElement; p; p=p.parentElement) if (p.matches("details.advanced-controls")) p.open=true;
+          e.scrollIntoView({block: "center"});
+        });
         await ctx.click(a.sel);
       } else if (a.do === "dialog") {
         accept = !!a.accept;

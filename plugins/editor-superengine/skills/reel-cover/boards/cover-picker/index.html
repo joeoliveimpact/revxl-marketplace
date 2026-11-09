@@ -38,6 +38,8 @@
     .help { color: #b9c6d6; font-size: 14px; }
     [hidden] { display: none !important; }
     @media (max-width: 520px) { body { padding: 18px; } #candidates { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .advanced-controls { border: 1px solid #536379; border-radius: 8px; padding: 10px; margin: 12px 0; }
+    .advanced-controls > summary { cursor: pointer; color: inherit; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -53,7 +55,9 @@
       </label>
       <p id="title-limit" class="help">Keep the cover title to at most six words and 28 letters.</p>
       <p id="validation" role="status" aria-live="polite"></p>
+      <details class="advanced-controls"><summary>Advanced controls</summary>
       <label><input id="embed" type="checkbox">Use this cover as the first frame of the reel</label>
+      </details>
       <p class="help">The dashed green box protects your head and face (the top 60% of the measured head box). The title goes below it, or above when there is room, and never covers your face. Keep it to two lines. The next render uses your first-frame choice.</p>
       <p id="note" class="help"></p>
       <p id="face-note" class="help" role="status" aria-live="polite" hidden></p>

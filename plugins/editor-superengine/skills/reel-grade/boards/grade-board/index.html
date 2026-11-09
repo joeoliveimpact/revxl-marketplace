@@ -106,6 +106,8 @@ h2 .k{text-transform:none;letter-spacing:0}
 pre{color:var(--et-ink2)!important;border-top:1px solid var(--et-hair)!important}
 @media (max-width:600px){header{padding:10px 16px!important}main{padding:14px 16px!important}}
 #saved.err{color:var(--et-you)!important;font-weight:500}
+.advanced-controls{border:1px solid var(--et-hair);border-radius:8px;padding:8px;margin:8px 0;color:var(--et-ink)}
+.advanced-controls>summary{cursor:pointer;font-weight:600}
 </style>
 <script id="editor-theme-js">document.addEventListener("pointermove",function(e){var t=e.target.closest&&e.target.closest("main>div,main>aside");if(!t)return;var b=t.getBoundingClientRect();t.style.setProperty("--mx",(e.clientX-b.left)+"px");t.style.setProperty("--my",(e.clientY-b.top)+"px");},{passive:true});</script>
 </head><body>
@@ -113,9 +115,11 @@ pre{color:var(--et-ink2)!important;border-top:1px solid var(--et-hair)!important
  <h1 id="title">Grade Board</h1>
  <span class="k" id="src">frame</span>
  <span>frame <span id="frames"></span></span>
+<details class="advanced-controls"><summary>Advanced controls</summary>
  <span>wipe <input id="wipe" type="range" min="0" max="1" step="0.005" value="0" style="width:110px"><span class="k" id="wipev">off</span></span>
  <span id="ab"><button id="holdB" title="Keep a copy of the current grade as B, so you can flip back to it and compare">hold as B</button> <button id="toggleAB" class="b" disabled title="Flip between the grade you are editing (A) and the copy you kept (B)">show B</button></span>
  <button id="sheetBtn" title="The face frame through every look, as one picture">contact sheet</button>
+</details>
  <span style="margin-left:auto"></span>
  <button type="button" id="send" class="send" disabled>send to Claude <small data-loading>Loading...</small></button>
  <span id="saved" style="color:var(--ok)"></span> <span id="dirty" class="pend" hidden>changes not sent</span>
@@ -130,9 +134,11 @@ pre{color:var(--et-ink2)!important;border-top:1px solid var(--et-hair)!important
   </div>
   <h2 title="A first fix to brightness and skin colour, applied before the look">correction <span class="k" id="corrNote"></span></h2>
   <div class="bar"><button id="suggest" title="Set black, white and the skin hue to what was measured on this reel">Suggested fix</button><span class="k">double-click a slider to put it back</span></div>
-  <div id="corr"></div>
+  <details class="advanced-controls"><summary>Advanced controls</summary>
+<div id="corr"></div>
   <h2 title="Small moves on top of the correction, before the look">fine tune</h2>
   <div id="tune"></div>
+</details>
   <pre id="measured"></pre>
  </div>
  <aside>

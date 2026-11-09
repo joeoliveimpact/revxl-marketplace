@@ -187,8 +187,17 @@ def decide_engine(state, language, repick=False):
         # the language compares by its cache key: None, "en" and "en-US" are the same pick (BL1.1)
         if dict(facts, language=lang_key(facts.get("language"))) == dict(cached, language=lang_key(cached.get("language"))) \
                 and not repick:
-            return recorded, rec.get("engine_reason", ""), facts, False
-    return (*pick_engine("auto", language, gpu=facts["gpu"]), facts, False)
+            reason = rec.get("engine_reason", "")
+            if reason == GPU_UNCHECKED:  # the GPU check answered this time: give the real reason, same engine
+                reason = pick_engine("auto", language, gpu=facts["gpu"])[1]
+            return recorded, reason, facts, False
+    engine, reason = pick_engine("auto", language, gpu=facts["gpu"])
+    if not answered and engine == "parakeet-cpu" and platform_key() == "win-x64":
+        reason = GPU_UNCHECKED  # the read failed: say so, never "without an NVIDIA GPU" (S16b, H-HUB8-11)
+    return engine, reason, facts, False
+
+
+GPU_UNCHECKED = "Windows, but the NVIDIA GPU check didn't answer, so the CPU engine for now (the doctor checks again next time)"
 
 
 def pick_engine(requested="auto", language=None, gpu=None):

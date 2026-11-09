@@ -20,7 +20,7 @@ Speak to the client the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/refe
 - If the conversation was compacted since this skill loaded, invoke it again before going on.
 - Re-running is safe. The mix reads the picture and the board's Send and writes only into `videos/<reel>/sound/`. A paid Auphonic result for the same voice track is saved and reused at no charge; a paid job is never started twice.
 - If the picture changed after the board was made, the board and its cue times are stale: run step 2's `new_board.py` again with `--video "<the new locked picture>"`, then reopen the board. Reopening alone keeps the old picture.
-- In Auto edit (the picker printed "Auto edit with ..."), follow section 5 of ${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/house-rules.md.
+- Follow sections 5 and 6 (Auto edit and controls in chat) of ${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/house-rules.md.
 
 ## Ground rules
 
@@ -105,7 +105,7 @@ Tell the client what went wrong in plain words, and whether anything was charged
 2. Draft it. Keep the summary short. Put the summary, step and error line in single quotes, drop any
    apostrophe from them, and use no script names:
 
-`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.1.0 --skill reel-sound-pass --step '<library, prefill, board, music, mix, auphonic or master>' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
+`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.2.0 --skill reel-sound-pass --step '<library, prefill, board, music, mix, auphonic or master>' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
 
 3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
 4. Send, using the path after `DRAFT:`:

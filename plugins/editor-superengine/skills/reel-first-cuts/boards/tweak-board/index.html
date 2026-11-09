@@ -106,14 +106,18 @@ pre{font:400 12px/1.6 var(--et-mono)!important;color:var(--et-ink2)!important;bo
 @media (max-width:600px){header{padding:10px 16px!important}main{padding:14px 16px!important}}
 /* waveform canvas colours (read by draw() via cssVar) */
 :root{--wv-bg:#0A0A0B;--wv-join:rgba(255,255,255,.10);--wv-peak:rgba(243,242,239,.55);--wv-head:#FFFFFF;--wv-tick:rgba(243,242,239,.40)}
+.advanced-controls{border:1px solid var(--et-hair);border-radius:8px;padding:8px;margin:8px 0;color:var(--et-ink)}
+.advanced-controls>summary{cursor:pointer;font-weight:600}
 </style>
 <script id="editor-theme-js">document.addEventListener("pointermove",function(e){var t=e.target.closest&&e.target.closest("main>div,.mark");if(!t)return;var b=t.getBoundingClientRect();t.style.setProperty("--mx",(e.clientX-b.left)+"px");t.style.setProperty("--my",(e.clientY-b.top)+"px");},{passive:true});</script>
 </head><body>
 <header>
  <h1 id="title">Tweak Board</h1>
  <span id="tc" style="font-variant-numeric:tabular-nums;font-weight:600">0:00.00</span>
+<details class="advanced-controls"><summary>Advanced controls</summary>
  <span>zoom <select id="zoom"><option value="0">full</option><option value="20">20 s</option><option value="6" selected>6 s</option><option value="2">2 s</option></select></span>
  <span>speed <select id="speed"></select></span>
+</details>
  <span style="margin-left:auto"></span>
  <button id="send" class="send">send to Claude</button> <span id="saved" style="color:var(--ok)"></span> <span id="dirty" class="pend" hidden>changes not sent</span>
 </header>
@@ -122,8 +126,10 @@ pre{font:400 12px/1.6 var(--et-mono)!important;color:var(--et-ink2)!important;bo
   <video id="v" controls preload="auto"></video>
   <canvas id="wave" height="120"></canvas>
   <div class="tools">
+<details class="advanced-controls"><summary>Advanced controls</summary>
    <button data-step="-1"><b>←</b>frame</button><button data-step="1"><b>→</b>frame</button>
    <button data-step="-3"><b>⇧←</b>0.1 s</button><button data-step="3"><b>⇧→</b>0.1 s</button>
+</details>
    <span class="k">·</span>
    <button data-add="cut"><b>C</b>cut in / out</button>
    <button data-add="tight"><b>T</b>tighten pause</button>
@@ -138,10 +144,12 @@ pre{font:400 12px/1.6 var(--et-mono)!important;color:var(--et-ink2)!important;bo
   <div id="marks"></div>
   <h2 id="listenh" hidden>what to listen for</h2>
   <pre id="listen"></pre>
+<details class="advanced-controls" id="advanced-listen"><summary>Advanced controls</summary>
   <details class="panel" id="long-quiet">
    <summary>Long quiet stretches</summary>
    <div id="quiet-rows"></div>
   </details>
+</details>
  </aside>
 </main>
 
@@ -156,7 +164,7 @@ pre{font:400 12px/1.6 var(--et-mono)!important;color:var(--et-ink2)!important;bo
 // ---- G2-c: Tweakpane fine-tune ----
 import { Pane } from "./tweakpane.min.js";
 const section = document.getElementById("fine-tune");
-document.querySelector("aside").append(section);
+document.getElementById("advanced-listen").append(section);
 const choose = document.getElementById("fine-mark"), empty = document.getElementById("fine-empty");
 let pane = null, selected = null, refreshing = false;
 function buildFine() {
@@ -276,12 +284,12 @@ function render(first){
   S.marks.forEach(m=>{
     const d=document.createElement('div'); d.className='mark '+m.type;
     const range=m.type==='cut'?`${fmt(m.a)} → ${fmt(m.b)} <span style="color:var(--mute)">(−${(m.b-m.a).toFixed(2)}s)</span>`:fmt(m.a);
-    let ctl=`<select data-type="${m.id}" title="change what this mark asks for">${Object.entries(LABEL).map(([k,l])=>`<option value="${k}"${k===m.type?' selected':''}>${l}</option>`).join('')}</select>`;
+    let ctl=`<details class="advanced-controls" data-controls-key="mark-${m.id}"><summary>Advanced controls</summary><select data-type="${m.id}" title="change what this mark asks for">${Object.entries(LABEL).map(([k,l])=>`<option value="${k}"${k===m.type?' selected':''}>${l}</option>`).join('')}</select>`;
     if(m.type==='cut') ctl+=`<button data-nudge="${m.id}:a:-1" title="start one frame earlier">start −f</button><button data-nudge="${m.id}:a:1" title="start one frame later">start +f</button><button data-tohead="${m.id}:a" title="move the start to the playhead">set start</button>`
       +`<button data-nudge="${m.id}:b:-1" title="end one frame earlier">end −f</button><button data-nudge="${m.id}:b:1" title="end one frame later">end +f</button><button data-tohead="${m.id}:b" title="move the end to the playhead">set end</button>`;
     else ctl+=`<button data-nudge="${m.id}:a:-1" title="one frame earlier">−f</button><button data-nudge="${m.id}:a:1" title="one frame later">+f</button>`;
-    ctl+=`<button data-play="${m.id}" title="play from 1.5 s before to 1.5 s after">▶ around</button>`;
     if(m.type==='tight'||m.type==='loose') ctl+=`<span class="chips">${C.presets.map(([n,ms])=>`<button data-ms="${m.id}:${ms}" class="${m.ms===ms?'on':''}">${n}</button>`).join('')}</span>`;
+    ctl+=`</details><button data-play="${m.id}" title="play from 1.5 s before to 1.5 s after">▶ around</button>`;
     ctl+=`<button class="del" data-del="${m.id}" title="delete (Ctrl+Z brings it back)">✕</button>`;
     d.innerHTML=`<div class="t" data-seek="${m.a}">${range}</div><div class="w">${wordsAt(m.a)}</div><div class="row">${ctl}</div>${m.type==='note'?`<input data-text="${m.id}" placeholder="what should change here" value="${esc(m.text||'')}">`:''}`;
     box.appendChild(d);

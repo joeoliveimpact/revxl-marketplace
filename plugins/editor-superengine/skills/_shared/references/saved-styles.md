@@ -45,7 +45,7 @@ This saves a NEW Style N and uses it on this reel when its pick is Copy or missi
 
 Copied choices: the editor edit style, caption look and grade look; the caption-default role's closest available font; the first valid accent colour (brand and captions); minimum caption reading time; and recognised transition types (whip, zoom, glitch, flash, fade, push, wipe, shader). Plain cuts need no setting. This reel's board Sends win over the decoded choices. Shot rhythm and speech distributions do not set the pause between lines.
 
-Before indexing, Claude writes the optional `adapters.editor` object, judging the closest choices from the frames:
+Before `index`, style-decoder writes `adapters.editor`, judging the closest choices from the frames (use `UNKNOWN` where unmeasurable). When the client came from "Copy a reel I like", after approval save the decoded style with this section's command. Allowed choices:
 - `edit_style`: `punch-in`, `layout-switch`, or `UNKNOWN`.
 - `caption_style`: `clean`, `bold-pop`, `boxed`, `karaoke`, `outline-caps`, `none`, or `UNKNOWN`.
 - `look`: `natural`, `warm`, `punchy`, `soft-matte`, `mono`, `none`, or `UNKNOWN`.

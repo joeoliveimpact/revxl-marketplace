@@ -21,7 +21,7 @@ Each superengine is opinionated about audience, tone, and workflow, so it works 
 
 ## The catalog
 
-20 plugins. Versions are current as of catalog `0.1.87`.
+20 plugins. Versions are current as of catalog `0.1.89`.
 
 ### 📣 Marketing & Content
 
@@ -32,11 +32,11 @@ Each superengine is opinionated about audience, tone, and workflow, so it works 
 | [carousel-superengine](plugins/carousel-superengine/) | 0.5.0 | Voice-matched IG/LinkedIn carousel engine: create, render to finished slides, review, teardown competitor decks. 10 skills. |
 | [stories-superengine](plugins/stories-superengine/) | 0.1.0 | Instagram + Facebook Stories: lead-magnet story sets that end on a reply keyword, your own words split into frames, quote cards. Frames in Instagram's native text look with a render check that blocks clipped text; scheduled through Metricool (or Instagram directly) only after your go. 6 skills. |
 | [shortform-superengine](plugins/shortform-superengine/) | 0.6.2 | Short-form reel engine with one front door and no dead ends: a competitor analysis and 10-section roadmap, a weekly content plan from four sources, craft-screened reel scripts in your voice, and a weekly competitor pulse. The Content Goldmine pulls your competitors' best-performing reels and their comments into a private dashboard on claude.ai. **16 skills.** |
-| [editor-superengine](plugins/editor-superengine/) | 0.1.0 | Raw talking-head recording to a finished first cut (waveform-verified boundaries, gap tightening, one render from the raw, a silence budget), then the design-iteration loop for the reel's visuals. Every script ships inside; bundled or bring-your-own Whisper. 3 skills. |
+| [editor-superengine](plugins/editor-superengine/) | 0.2.0 | Raw talking-head recording to a finished reel. It installs and checks its own tools, checks the camera and mic before recording, and cuts on the Cut Board and Tweak Board. Then captions, on-screen design and scenes, B-roll, colour, sound and music, a cover, trial reels, and an editable timeline for Resolve. Saved styles carry a client's look from reel to reel, and a style can be decoded from a reel they like. 15 skills. |
 | [lead-magnet-superengine](plugins/lead-magnet-superengine/) | 0.2.0 | Builds lead magnets three ways: from scratch, from a source, from your existing content. 6 skills + 1 agent. |
 | [profile-optimization-superengine](plugins/profile-optimization-superengine/) | 0.2.0 | Social-profile optimization (bio, pinned content, CTA structure) for coach acquisition. 6 skills. |
 | [focus-group-superengine](plugins/focus-group-superengine/) | 0.1.1 | Synthetic persona-swarm testing for marketing assets before you publish them. 2 skills. |
-| [socialcrawl-superengine](plugins/socialcrawl-superengine/) | 0.3.1 | Deep social research on the SocialCrawl API: 645 endpoints across 68 platforms with exact per-call credits, guided research plays, and priced big-gun one-shots. Every paid call is priced up front and counted against a silent session cap. Bring your own key. 3 skills. |
+| [socialcrawl-superengine](plugins/socialcrawl-superengine/) | 0.4.0 | Deep social research on the SocialCrawl API: 645 endpoints across 68 platforms with exact per-call credits, guided research plays, and priced big-gun one-shots. Every paid call is priced up front and counted against a silent, hard session limit. Bring your own key. 3 skills. |
 | [higgsfield-superengine](plugins/higgsfield-superengine/) | 0.1.6 | Higgsfield image and video generation just by talking to Claude, on your own Higgsfield API key. Every paid job is priced first and held to a spend cap. Prompting best practices built in, plus guided flows for static ads, UGC video ads, product shots and thumbnails. 8 skills. Windows and Mac. |
 
 ### 🤝 Sales & Client Ops

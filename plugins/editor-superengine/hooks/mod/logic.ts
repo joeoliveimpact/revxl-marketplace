@@ -90,10 +90,10 @@ export const BOARD_NAME: Readonly<Record<BoardId, string>> = {
   cut: 'Cut Board', tweak: 'Tweak Board', beatmap: 'Beat Map', sketches: 'Sketches', sound: 'Sound Board', grade: 'Grade Board',
 }
 
-/** A stage's done rule. `in`: a file in that reel folder whose name matches (`video`: also size > 0 and ffprobe did
+/** A stage's done rule. `in` or its optional `or`: a file in that reel folder whose name matches (`video`: also size > 0 and ffprobe did
  *  not say "no video"). `json`: that reel-root JSON parses to an object that passes `when`. `never`: no artifact. */
 export type Rule =
-  | { in: Folder; match: RegExp; video?: true }
+  | { in: Folder; match: RegExp; video?: true; or?: { in: Folder; match: RegExp } }
   | { json: string; when: (v: Record<string, unknown>) => boolean }
   | { never: true }
 
@@ -111,7 +111,7 @@ export const MASTER = /^.+ master - \d{2}\.\d{2}\.\d{2}\.mp4$/i
 
 // The hub may change entries: each rule is one small data entry.
 export const STAGES: readonly Stage[] = [
-  { name: 'Record', short: 'Record', rule: { in: 'raw', match: /\.(mp4|mov|m4v|mkv)$/i }, action: 'record',
+  { name: 'Record', short: 'Record', rule: { in: 'raw', match: /\.(mp4|mov|m4v|mkv)$/i, or: { in: 'root', match: /^RAW\.mp4$/ } }, action: 'record',
     head: 'Record your take', sub: "Put the recording in this reel's raw folder.", baton: 'record' },
   { name: 'Cut', short: 'Cut', rule: { in: 'work', match: /^(cuts|edl)\.json$/ }, action: 'cut', board: 'cut',
     head: 'Review the cut', sub: 'Pick the takes on the Cut Board, then press Send.' },
@@ -148,6 +148,7 @@ export function isDone(rule: Rule, r: ReelIn): boolean {
     return !!j && j.status === 'ok' && isRecord(j.value) && rule.when(j.value)
   }
   return filesIn(r, rule.in).some(x => rule.match.test(x.name) && (!rule.video || (x.size > 0 && r.probe[x.name] !== 'novideo')))
+    || !!rule.or && filesIn(r, rule.or.in).some(x => rule.or!.match.test(x.name))
 }
 
 // ---------------------------------------------------------------- sends ------
@@ -213,7 +214,7 @@ export function reelOf(r: ReelIn, now: number, baseline: number | undefined, ack
 // ---------------------------------------------------------------- labels -----
 
 /** Action id -> button label and the phrase it sends as the person's own message (`<reel>`, `<board>` filled in).
- *  Shape frozen; PROVISIONAL phrases: S15b freezes the wording and wires the router. No phrase: the pane acts itself
+ *  Frozen wording. No phrase: the pane acts itself
  *  (Switch reel asks, Cockpit opens the pane). Labels 22 characters at most, "Create" never "Make", no long dashes. */
 export const LABELS: Readonly<Record<ActionId, { label: string; phrase?: string }>> = {
   start: { label: 'Start a reel', phrase: 'Start a new reel in the editor' },
@@ -228,7 +229,7 @@ export const LABELS: Readonly<Record<ActionId, { label: string; phrase?: string 
   sound: { label: 'Open Sound Board', phrase: 'Open my Sound Board for <reel>' },
   grade: { label: 'Open Grade Board', phrase: 'Open my Grade Board for <reel>' },
   master: { label: 'Render the master', phrase: 'Render the master for <reel>' },
-  post: { label: 'Write my caption', phrase: 'Write the caption for <reel>' },
+  post: { label: 'Write my caption', phrase: 'Write the post caption for <reel>' },
   send: { label: 'Use my Send', phrase: 'Go ahead with my <board> Send for <reel>' },
   cockpit: { label: 'Cockpit' },
 }

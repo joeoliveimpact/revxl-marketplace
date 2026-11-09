@@ -23,7 +23,7 @@ describes; the endpoint may not.
 labels give. Read or process the file (`jq`, python) in a separate Bash call: the typed-out
 path keeps the call countable and its output readable. The guard is silent only inside its plain
 grammar; set-up (`d=…;`), a variable in the path, a loop, or a pipe into any other program than
-`jq` / `head` is outside it and asks every time.
+`jq` / `head` is outside it and is denied.
 
 ## 2. A ledger snapshot before, a diff after each step
 
@@ -64,11 +64,11 @@ it prices nothing itself. The numbers behind a quote live in the option's quote 
 
 ## 5. The guard's session cap is not the mechanism
 
-`credit-guard.mjs` adjudicates a command before it runs, from the command string, and asks only
-at a session cap step, on a call it can't count, or on a command that is not a plain `curl`.
+`credit-guard.mjs` adjudicates a command before it runs, from the command string, and never asks:
+it denies a call that would take the session past its limit, or a command that is not a plain `curl`.
 That is a **spending gate, not a
 reconciliation**: it counts quoted worst cases, it cannot see what was actually billed or a
-refund, and a cap ask answered yes reconciles nothing at all. **The plan and this ledger are
+refund, and a call it lets through reconciles nothing at all. **The plan and this ledger are
 the mechanism.** Mistaking the session cap for the check is the failure this contract exists to
 prevent.
 

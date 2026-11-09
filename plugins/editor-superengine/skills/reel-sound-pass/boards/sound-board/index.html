@@ -276,6 +276,8 @@ textarea{border-radius:12px!important;font-family:var(--et-mono)!important}
 #counts .c-und.hot{color:var(--et-you);border-color:rgba(255,90,60,.45)}
 #sendmsg .changed{color:var(--et-you);font-weight:500}
 #savest.pending::before{background:var(--et-mute);box-shadow:none}
+.advanced-controls{border:1px solid var(--et-hair);border-radius:8px;padding:8px;margin:8px 0;color:var(--et-ink)}
+.advanced-controls>summary{cursor:pointer;font-weight:600}
 </style>
 <script id="editor-theme-js">document.addEventListener("pointermove",function(e){var t=e.target.closest&&e.target.closest(".panel,.tile");if(!t)return;var b=t.getBoundingClientRect();t.style.setProperty("--mx",(e.clientX-b.left)+"px");t.style.setProperty("--my",(e.clientY-b.top)+"px");},{passive:true});</script>
 </head>
@@ -312,10 +314,12 @@ textarea{border-radius:12px!important;font-family:var(--et-mono)!important}
       <div class="row">
         <button class="pri" id="play">play</button>
         <span class="tc" id="tc">0:00.000</span>
+        <details class="advanced-controls"><summary>Advanced controls</summary>
         <button class="mini" data-j="-10">-10f</button>
         <button class="mini" data-j="-1">-1f</button>
         <button class="mini" data-j="1">+1f</button>
         <button class="mini" data-j="10">+10f</button>
+        </details>
         <button id="rew" title="play the reel from the start with every kept cue">play from start</button>
         <button id="suggest">add a sound here</button>
       </div>
@@ -326,9 +330,11 @@ textarea{border-radius:12px!important;font-family:var(--et-mono)!important}
           <span class="gain" id="vvoll">0 dB</span>
         </span>
         <button class="mini" id="vmute">mute voice</button>
+        <details class="advanced-controls"><summary>Advanced controls</summary>
         <span class="flexlbl">sound sync offset
           <input type="number" id="lat" value="0" step="5" style="width:60px"> ms
         </span>
+        </details>
       </div>
 
       <div class="legend">
@@ -366,6 +372,9 @@ textarea{border-radius:12px!important;font-family:var(--et-mono)!important}
           </td>
           <td><span class="pk">music level vs your voice (-18 suggested)</span></td>
         </tr>
+      </table>
+      <details class="advanced-controls"><summary>Advanced controls</summary>
+      <table>
         <tr>
           <td><label><input type="checkbox" id="bedcarve" checked> Carve around the voice</label></td>
           <td></td>
@@ -410,6 +419,7 @@ textarea{border-radius:12px!important;font-family:var(--et-mono)!important}
         <span class="pk">silent from "cut at" to "back at"; the track keeps running underneath</span>
       </div>
       <div id="bstops"></div>
+      </details>
       <div class="note">
         <b>Bed level is the whole decision:</b> keep it well under the voice. The shipped level is measured on the real mix.
       </div>
@@ -756,17 +766,21 @@ function renderCues(){
 
     /* time */
     var td2 = document.createElement("td");
+    var advanced = document.createElement("details"); advanced.className = "advanced-controls";
+    advanced.innerHTML = "<summary>Advanced controls</summary>";
+    advanced.dataset.controlsKey = "cue-" + c.id;
+    td2.appendChild(advanced);
     var ti = document.createElement("input");
     ti.type = "number"; ti.step = String(frame()); ti.value = c.time.toFixed(3);
     ti.style.width = "72px";
     ti.onchange = function(){ c.time = +ti.value; delete scheduled[c.id]; draw(); refreshOut(); saveState(); };
-    td2.appendChild(ti);
+    advanced.appendChild(ti);
     var bHead = ext(document.createElement("button"));
     bHead.className += " mini"; bHead.textContent = "move to playhead";
     bHead.title = "move this cue to the playhead";
     bHead.style.marginTop = "4px";
     bHead.onclick = function(){ c.time = +$("v").currentTime.toFixed(3); delete scheduled[c.id]; mutated(); };
-    td2.appendChild(bHead);
+    advanced.appendChild(bHead);
     var nud = ext(document.createElement("div"));   /* quick nudges: one frame or 100 ms either way */
     nud.style.marginTop = "4px"; nud.style.whiteSpace = "nowrap";
     [[-0.1, "-100ms"], [-frame(), "-1f"], [frame(), "+1f"], [0.1, "+100ms"]].forEach(function(n){
@@ -778,7 +792,7 @@ function renderCues(){
       };
       nud.appendChild(b);
     });
-    td2.appendChild(nud);
+    advanced.appendChild(nud);
     tr.appendChild(td2);
 
     /* sound picker: the cue's own candidates first, then the rest of the library */
@@ -879,7 +893,7 @@ function renderCues(){
       endRow.appendChild(fi);
       endRow.appendChild(document.createTextNode("s"));
     }
-    td4.appendChild(endRow);
+    advanced.appendChild(endRow);
     tr.appendChild(td4);
 
     /* actions */
@@ -916,7 +930,7 @@ function renderCues(){
       $("tl").classList.add("placing");
     };
     td5.appendChild(bKeep); td5.appendChild(bRej);
-    td5.appendChild(bAud); td5.appendChild(bSolo); td5.appendChild(bDup);
+    td5.appendChild(bAud); advanced.appendChild(bSolo); advanced.appendChild(bDup);
     if(c.user){   /* added sounds, duplicates and unmatched leftovers can be removed (ctrl+z brings them back) */
       var bDel = ext(document.createElement("button"));
       bDel.className += " mini"; bDel.textContent = "remove";

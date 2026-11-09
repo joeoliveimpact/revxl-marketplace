@@ -52,8 +52,12 @@
  * a plain curl now takes the one NOT A PLAIN CURL ask at its visible figure, and the plain ones
  * are counted silently. The G-fixtures keep their shapes, re-pointed to that decision; the
  * mechanisms their mutations pinned no longer exist.
+ *
+ * D28 (Joe 10.09.26): the guard never asks. A shape that is not a plain curl is denied with
+ * M_NOTPLAIN and nothing is counted; its visible figure is still read, and the unattended log
+ * carries it (lib.mjs visible()), so the normalisation fixtures keep pinning what it prices.
  */
-import { run, V1, TSCRIPT, quoted, assert, assertDecision, assertCounted, assertNotPlain, assertMatch, assertNoMatch } from "../lib.mjs";
+import { run, visible, V1, TSCRIPT, quoted, assert, assertDecision, assertCounted, assertNotPlain, assertNoMatch } from "../lib.mjs";
 
 const NOLOCAL = { unsetEnv: ["GROQ_API_KEY"], env: { PATH: "" } };
 // A literal backslash, never spelled inline in a URL so the shapes below stay readable.
@@ -62,7 +66,7 @@ const BS = String.fromCharCode(92);
 export default [
   {
     id: "S2-driver-param-no-discount",
-    desc: "S2: no quantity-shaped query param discounts a metered call below its label ceiling (the class the retired `driver` field once opened)",
+    desc: "S2: no quantity-shaped query param discounts a metered call below its label ceiling (the class the retired `driver` field once opened); D28: counted within the limit, and past it M_LIMIT names the full ceiling",
     fn() {
       // The checker's measured quoted-vs-billable shapes. Each param was once a bare word in a
       // _perUnit row's `driver` field (a field R10 retired with that block), and NONE of them
@@ -75,10 +79,9 @@ export default [
         [`curl -X POST "${V1}prism/post-stats?url=1" -d '{}'`, 500, "post-stats ?url=1 (quoted 5)"],
       ];
       // web/sessions was the sixth shape (?ttl_seconds=0, quoted 5 against 20). Its 09-23 label
-      // is a sentence (G7), so it has no ceiling to discount: it must take the no-ceiling ask.
+      // is a sentence (G7), so it has no ceiling to discount: it counts its stated maximum, 20 (D28a).
       const sess = run(`curl -X POST "${V1}web/sessions?ttl_seconds=0" -d '{}'`);
-      assertDecision(sess, "ask", "web/sessions ?ttl_seconds=0: a can't-count call must ask");
-      assertMatch(sess, /NO computable ceiling/, "web/sessions ?ttl_seconds=0: no ceiling, said plainly");
+      assertCounted(sess, 20, "web/sessions ?ttl_seconds=0: its stated maximum, 20, never discounted");
       for (const [cmd, want, label] of cases) {
         assertCounted(run(cmd), want, `${label}: must count the ~${want} ceiling`);
       }
@@ -111,15 +114,18 @@ export default [
         [`curl -X POST "${V1}credits/../web/crawl?limit=10000" -d '{}'`, 10000, /Quote the ~10000 credit worst case/, "credits/.. hid a 10,000cr call"],
         [`curl -s "${V1}prism/lookup/../../prism/creator-vet?h=a"`, 75, /Quote the ~75 credit worst case/, "prism/lookup/../.. quoted 1cr informational for a 75cr call"],
       ];
-      // R14a.2: a dot segment in the path is not a plain curl, so each takes the not-plain ask,
-      // and the figure it parks is still the resolved endpoint's price.
+      // R14a.2: a dot segment in the path is not a plain curl, so each is denied (D28), and the
+      // visible figure it is logged at is still the resolved endpoint's price.
       for (const [cmd, want, , label] of cases) {
-        assertNotPlain(run(cmd), want, `${label}: must price the resolved endpoint`);
+        assertNotPlain(run(cmd), `${label}: a dot segment is not plain`);
+        const l = visible(cmd);
+        assert(l && l.cmdWorst === want, `${label}: must price the resolved endpoint, ${want}, read ${JSON.stringify(l)}`);
       }
-      // A path that walks OUT of /v1/ cannot be priced at all -> the fail-safe ask, never silence.
-      const escaped = run(`curl -s "${V1}../credits/balance"`);
-      assertNotPlain(escaped, 50, "a path that escapes /v1/ must fail SAFE");
-      assertMatch(escaped, /endpoint unreadable/, "an escaped path is unreadable, not free");
+      // A path that walks OUT of /v1/ cannot be priced at all -> the 50 floor, never free.
+      const escaped = `curl -s "${V1}../credits/balance"`;
+      assertNotPlain(run(escaped), "a path that escapes /v1/ must fail SAFE");
+      const le = visible(escaped);
+      assert(le && le.cmdWorst === 50, `an escaped path is unreadable (the 50 floor), not free, read ${JSON.stringify(le)}`);
     },
   },
   {
@@ -142,7 +148,7 @@ export default [
   },
   {
     id: "S5-conditional-surcharges",
-    desc: "S5, re-pointed (Joe 09.28.26: the manual surcharge overlay is deleted): each of its five former rows counts its 09-23 label's max, which already includes the surcharge, and no message claims a charge on top",
+    desc: "S5, re-pointed (Joe 09.28.26: the manual surcharge overlay is deleted): each of its five former rows counts its 09-23 label's max, which already includes the surcharge, silently (D28), and nothing claims a charge on top",
     fn() {
       const cases = [
         [`curl -s "${V1}tiktok/post/${TSCRIPT}?url=X&use_ai_as_fallback=true"`, 10, "tiktok transcript AI fallback: 10 (openapi: included in the endpoint's 10 credits); the overlay said 20"],
@@ -156,12 +162,9 @@ export default [
         assert(quoted(r.state) === want, `${label}: should count ${want}, read ${JSON.stringify(r.state)}`, r);
         assertNoMatch(r, /on top of that endpoint's own price/, `${label}: no surcharge may be claimed on top`);
       }
-      // The transcript ask keeps its per-unit price and the cheaper route, and claims no +10.
+      // The transcript call counts its per-unit price, 10, silently (D28a), with no +10 on top.
       const tk = run(`curl -s "${V1}tiktok/post/${TSCRIPT}?url=X&use_ai_as_fallback=true"`, NOLOCAL);
-      assertDecision(tk, "ask", "the transcript gate still asks");
-      assertMatch(tk, /bills 10 credits PER post/, "the per-unit price is non-negotiable ask content");
-      assertMatch(tk, /Cheaper first/, "the redirect is non-negotiable ask content");
-      assertNoMatch(tk, /\+10 credits/, "the retired +10 surcharge must not be stated");
+      assertCounted(tk, 10, "the transcript per-unit 10, and the retired +10 surcharge is not counted");
     },
   },
   {
@@ -195,7 +198,7 @@ export default [
   },
   {
     id: "S6-repeat-command-position-only",
-    desc: "S6, re-pointed (R14a.2): the words xargs/seq inside a URL or a body of a plain curl are counted silently; a trailing comment is not plain and asks; every real fan-out takes the not-plain ask",
+    desc: "S6, re-pointed (R14a.2; D28): the words xargs/seq inside a URL or a body of a plain curl are counted silently; a trailing comment is not plain and is denied; every real fan-out is denied with M_NOTPLAIN",
     fn() {
       // The checker's five former false positives. Each is a single call that does not repeat.
       const benign = [
@@ -210,10 +213,10 @@ export default [
         assert(r.raw === "" && quoted(r.state) > 0, `${label}: counted, read ${JSON.stringify(r.state)}`, r);
       }
       // A trailing comment is not a full-line comment, so the command is not plain (R14a.2).
-      assertNotPlain(run(`curl -s "${V1}prism/creator-vet?h=a"  # later: pipe to xargs`, NOLOCAL), 75, "a trailing comment");
+      assertNotPlain(run(`curl -s "${V1}prism/creator-vet?h=a"  # later: pipe to xargs`, NOLOCAL), "a trailing comment");
       const cheap = run(`curl -s "${V1}amazon/shop?q=xargs"`, NOLOCAL);
-      assertDecision(cheap, null, "an in-URL 'xargs' must not promote a 1cr call to an ask");
-      // TRUE POSITIVES: every fan-out is not a plain curl, so it asks. The last entry is the 9th
+      assertDecision(cheap, null, "an in-URL 'xargs' must not turn a 1cr call into a deny");
+      // TRUE POSITIVES: every fan-out is not a plain curl, so it is denied. The last entry is the 9th
       // loop shape the round-2 findings list ("until/do newline"), which the D4 fixture's
       // eight shapes do not cover — committed here so all nine are re-runnable.
       const loops = [
@@ -228,15 +231,13 @@ do
 done`, "until/do on separate lines"],
       ];
       for (const [cmd, label] of loops) {
-        const r = run(cmd, NOLOCAL);
-        assertDecision(r, "ask", `${label}: a real fan-out must ask`);
-        assertMatch(r, /NOT A PLAIN CURL/, `${label}: a real fan-out is not a plain curl`);
+        assertNotPlain(run(cmd, NOLOCAL), `${label}: a real fan-out is not a plain curl`);
       }
     },
   },
   {
     id: "S3-repeat-literal-bash-shapes",
-    desc: "S3, re-pointed (R14a.2): curl URL globbing, bash brace expansion, watch, parallel and a recursive function are not plain curls, so each takes the not-plain ask; so do -g and a repeat around a free call",
+    desc: "S3, re-pointed (R14a.2; D28): curl URL globbing, bash brace expansion, watch, parallel and a recursive function are not plain curls, so each is denied with M_NOTPLAIN and its visible one-call figure is logged; so are -g and a repeat around a free call",
     fn() {
       const shapes = [
         [`curl -s "${V1}youtube/video/${TSCRIPT}?id=[1-3]"`, 3, "curl URL globbing, numeric range (3 HTTP requests, measured)"],
@@ -253,13 +254,15 @@ done`, "until/do on separate lines"],
         [`curl -sg "${V1}prism/creator-vet?h=[a-c]"`, 75, "-g bundled into a short-flag group"],
         [`mkdir -p out{1..3}; curl -s "${V1}prism/creator-vet?h=a"`, 75, "a brace range on another command"],
         [`f() { curl -s "${V1}prism/creator-vet?h=a"; }; f`, 75, "define-then-call-once"],
-        // A repeat around a FREE call asks too: free calls go through the allow-list (R14a.2).
+        // A repeat around a FREE call is denied too: free calls go through the allow-list (R14a.2).
         [`watch -n1 curl -s "${V1}credits/balance"`, 0, "a repeat around free credits/* calls"],
       ];
       for (const [cmd, want, label] of shapes) {
         const r = run(cmd, NOLOCAL);
-        assertNotPlain(r, want, `${label}: must ask`);
+        assertNotPlain(r, `${label}: must be denied`);
         assertNoMatch(r, /\b(?:3|100) iterations\b/, `${label}: bounds are deliberately not parsed`);
+        const l = visible(cmd, NOLOCAL);
+        assert(l && l.cmdWorst === want, `${label}: the visible one-call figure, ${want}, read ${JSON.stringify(l)}`);
       }
       // The words in prose or in a URL of a plain curl are not commands: counted silently.
       for (const [cmd, label] of [
@@ -291,20 +294,19 @@ done`, "until/do on separate lines"],
         // on an unknown path is never the safe direction.
         [`curl -s "${V1}credits/..${BS}prism/share-of-voice?brands=a,b"`, 200, /Quote the ~200 credit worst case/, "backslash WITH a query string must not fall silent either"],
       ];
-      // R14a.2: a backslash in the URL is not a plain curl, so each takes the not-plain ask; the
-      // figure it parks is the resolved endpoint's price, never the free credits/* hardcode.
+      // R14a.2: a backslash in the URL is not a plain curl, so each is denied (D28); the visible
+      // figure it is logged at is the resolved endpoint's price, never the free credits/* hardcode.
       for (const [cmd, want, , label] of cases) {
-        assertNotPlain(run(cmd, NOLOCAL), want, `${label}: must price the resolved endpoint`);
+        assertNotPlain(run(cmd, NOLOCAL), `${label}: a backslash in the URL is not plain`);
+        const l = visible(cmd, NOLOCAL);
+        assert(l && l.cmdWorst === want, `${label}: must price the resolved endpoint, ${want}, read ${JSON.stringify(l)}`);
       }
-      // The worst shape of all: the transcript gate is the per-unit-price control that
-      // replaced the hard deny on 08.27.26 (findings 08.27.26b), and a backslash walked
-      // straight past it in silence.
-      const t = run(`curl -s "${V1}credits/..${BS}youtube/video/${TSCRIPT}"`, NOLOCAL);
-      assertDecision(t, "ask", "a backslash must not bypass the transcript gate");
-      assertMatch(t, /NOT A PLAIN CURL/, "a backslash in the URL is not a plain curl (R14a.2)");
-      assertMatch(t, /bills 3 credits PER video/, "the per-unit price is non-negotiable ask content");
-      assertMatch(t, /Cheaper first/, "the cheaper route is non-negotiable ask content");
-      assert(quoted(t.state) === 3, `transcript backslash shape should count 3, read ${JSON.stringify(t.state)}`, t);
+      // The worst shape of all: a backslash walked straight past the transcript gate in silence.
+      // Not plain now, so denied, and its visible figure is the transcript's per-unit 3.
+      const tc = `curl -s "${V1}credits/..${BS}youtube/video/${TSCRIPT}"`;
+      assertNotPlain(run(tc, NOLOCAL), "a backslash in the URL is not a plain curl (R14a.2)");
+      const tl = visible(tc, NOLOCAL);
+      assert(tl && tl.cmdWorst === 3, `transcript backslash shape should read 3, read ${JSON.stringify(tl)}`);
       // MECHANISM, not just the numbers: curl turns `\` into `/`, so every one of these must
       // behave EXACTLY as its forward-slash twin already does (S4, verified round 3). Pinning
       // the equivalence keeps the two paths from ever drifting apart again.
@@ -325,12 +327,17 @@ done`, "until/do on separate lines"],
           `backslash and forward-slash forms of ${tpl} must decide identically — ` +
             `backslash said ${JSON.stringify(bs.raw).slice(0, 300)}, forward slash said ${JSON.stringify(fwd.raw).slice(0, 300)}`
         );
+        // D28 denies both before counting, so the price each one reads is pinned in the log.
+        const lb = visible(tpl.split("@").join(BS), NOLOCAL);
+        const lf = visible(tpl.split("@").join("/"), NOLOCAL);
+        assert(lb && lf && lb.cmdWorst === lf.cmdWorst && JSON.stringify(lb.paths) === JSON.stringify(lf.paths),
+          `backslash and forward-slash forms of ${tpl} must read the same price and path, read ${JSON.stringify(lb)} / ${JSON.stringify(lf)}`);
       }
     },
   },
   {
     id: "SW1-backslash-controls",
-    desc: "SW1 controls: a backslash that is NOT a path separator is left alone — the `\\?` shell escape and a backslash inside a query value still price at 75, now behind the not-plain ask (R14a.2: a backslash or an unquoted URL is not a plain curl)",
+    desc: "SW1 controls: a backslash that is NOT a path separator is left alone — the `\\?` shell escape and a backslash inside a query value still price at 75, now behind the not-plain deny (R14a.2: a backslash or an unquoted URL is not a plain curl; D28)",
     fn() {
       // `curl .../prism/creator-vet\?h=a` is the ordinary shell escape of `?` on an unquoted
       // URL: bash removes the backslash and curl never sees it. Rewriting it to `/` would
@@ -342,7 +349,9 @@ done`, "until/do on separate lines"],
         [`curl -s ${V1}prism/creator-vet?h=a${BS}&x=b`, "escaped & on an unquoted URL"],
         [`curl -s "${V1}prism/creator-vet?h=a${BS}b"`, "a backslash inside a query VALUE, not the path"],
       ]) {
-        assertNotPlain(run(cmd, NOLOCAL), 75, `${label}: must still price at 75`);
+        assertNotPlain(run(cmd, NOLOCAL), `${label}: not a plain curl`);
+        const l = visible(cmd, NOLOCAL);
+        assert(l && l.cmdWorst === 75, `${label}: must still price at 75, read ${JSON.stringify(l)}`);
       }
       // The S4 hardcode controls are untouched by the backslash work.
       for (const p of ["credits/balance", "credits/transactions"]) {
@@ -355,18 +364,15 @@ done`, "until/do on separate lines"],
   },
   {
     id: "SW2-shell-invoker-argument-is-code",
-    desc: "SW2, re-pointed (R14a.2): a loop wrapped in bash/sh/zsh/dash -c or eval is not a plain curl, so it takes the not-plain ask, bare or wrapped, and keeps the transcript price",
+    desc: "SW2, re-pointed (R14a.2; D28): a loop wrapped in bash/sh/zsh/dash -c or eval is not a plain curl, so it is denied with M_NOTPLAIN, bare or wrapped, and the wrapper never changes the visible figure (the transcript's 3 included)",
     fn() {
       const CV = `${V1}prism/creator-vet?h=a`;
       // FLAGSHIP: the D4 defect command with nothing changed but a wrapper. At b1783c9 this
       // quoted 3 credits against 300 credits of billing and never said the call repeats.
-      const flag = run(
-        `bash -c 'for i in $(seq 1 100); do curl -s "${V1}youtube/video/${TSCRIPT}?id=$i"; done'`,
-        NOLOCAL
-      );
-      assertNotPlain(flag, 3, "the wrapped D4 command must ask");
-      assertMatch(flag, /how many times, can't be read/, "the count must be declared unreadable");
-      assertMatch(flag, /bills 3 credits PER video/, "the wrapper must not cost the gate its per-unit price");
+      const FLAG = `bash -c 'for i in $(seq 1 100); do curl -s "${V1}youtube/video/${TSCRIPT}?id=$i"; done'`;
+      assertNotPlain(run(FLAG, NOLOCAL), "the wrapped D4 command must be denied");
+      const fl = visible(FLAG, NOLOCAL);
+      assert(fl && fl.cmdWorst === 3, `the wrapper must not cost the transcript its per-unit price, read ${JSON.stringify(fl)}`);
       // The checker's 9-shape matrix: 9/9 detected bare and 0/9 wrapped at b1783c9.
       const nine = [
         [`for i in $(seq 1 100); do curl -s "${V1}youtube/video/${TSCRIPT}?id=$i"; done`, "for + seq"],
@@ -380,13 +386,11 @@ done`, "until/do on separate lines"],
         [`for i in 1 2 3; do curl -s "${V1}instagram/profile?handle=$i"; done`, "a cheap 1cr call in a loop"],
       ];
       for (const [inner, label] of nine) {
-        const bare = run(inner, NOLOCAL);
-        assertDecision(bare, "ask", `${label}: must ask unwrapped (control)`);
-        assertMatch(bare, /NOT A PLAIN CURL/, `${label}: must be not plain unwrapped (control)`);
-        const wrapped = run(`bash -c '${inner}'`, NOLOCAL);
-        assertDecision(wrapped, "ask", `${label} wrapped in bash -c: must ask`);
-        assertMatch(wrapped, /NOT A PLAIN CURL/, `${label} wrapped in bash -c: the wrapper must not hide it`);
-        assert(quoted(bare.state) === quoted(wrapped.state), `${label}: bare and wrapped park the same figure, read ${JSON.stringify(bare.state)} vs ${JSON.stringify(wrapped.state)}`);
+        assertNotPlain(run(inner, NOLOCAL), `${label}: must be not plain unwrapped (control)`);
+        assertNotPlain(run(`bash -c '${inner}'`, NOLOCAL), `${label} wrapped in bash -c: the wrapper must not hide it`);
+        const bare = visible(inner, NOLOCAL);
+        const wrapped = visible(`bash -c '${inner}'`, NOLOCAL);
+        assert(bare && wrapped && bare.cmdWorst === wrapped.cmdWorst, `${label}: bare and wrapped read the same figure, read ${JSON.stringify(bare)} vs ${JSON.stringify(wrapped)}`);
       }
       // The other repeat shapes and the recursion shape, all through the wrapper.
       const LOOP = `for i in 1 2 3; do curl -s "${CV}"; done`;
@@ -399,7 +403,7 @@ done`, "until/do on separate lines"],
         [`bash -c 'curl -g -s "${V1}prism/creator-vet?h=[a-c]"'`, "a -g inside the -c argument"],
       ];
       for (const [cmd, label] of others) {
-        assertNotPlain(run(cmd, NOLOCAL), 75, `${label} wrapped in bash -c: must still ask`);
+        assertNotPlain(run(cmd, NOLOCAL), `${label} wrapped in bash -c: must still be denied`);
       }
       // Every shell-invoker spelling, and nested or malformed quoting: all not plain.
       const invokers = [
@@ -420,13 +424,13 @@ done`, "until/do on separate lines"],
         [`bash -c 'for i in 1 2 3; do curl -s "${CV}"; done`, "an unterminated wrapper quote"],
       ];
       for (const [cmd, label] of invokers) {
-        assertNotPlain(run(cmd, NOLOCAL), 75, `${label}: must ask`);
+        assertNotPlain(run(cmd, NOLOCAL), `${label}: must be denied`);
       }
     },
   },
   {
     id: "SW2-repeat-negatives-still-silent",
-    desc: "SW2 negatives, re-pointed (R14a.2): the former false positives that are plain curls are counted silently; the ones with a trailing comment or a wrapper take the not-plain ask; a wrapper never changes the figure",
+    desc: "SW2 negatives, re-pointed (R14a.2; D28): the former false positives that are plain curls are counted silently; the ones with a trailing comment or a wrapper are denied with M_NOTPLAIN; a wrapper never changes the figure",
     fn() {
       const CV = `${V1}prism/creator-vet?h=a`;
       for (const [cmd, label] of [
@@ -445,20 +449,21 @@ done`, "until/do on separate lines"],
         [`bash -c 'curl -s "${CV}" # for i in 1 2; do x; done'`, "a comment inside a bash -c argument"],
         [`mesh -c 'for i in 1 2 3; do echo $i; done'; curl -s "${CV}"`, "a -c flag on something that is not a shell"],
       ]) {
-        assertNotPlain(run(cmd, NOLOCAL), 75, `${label}: not a plain curl`);
+        assertNotPlain(run(cmd, NOLOCAL), `${label}: not a plain curl`);
       }
-      // The wrapper must not cost the coster anything either: same figure, wrapped or bare.
+      // The wrapper must not cost the coster anything either: the bare call counts what the wrapped
+      // one is seen at (D28: the wrapped one is denied, its figure in the unattended log).
       const bare = run(`curl -s "${CV}"`, NOLOCAL);
-      const wrapped = run(`bash -c 'curl -s "${CV}"'`, NOLOCAL);
+      const wrapped = visible(`bash -c 'curl -s "${CV}"'`, NOLOCAL);
       assert(
-        bare.state && wrapped.state && bare.state.spent === quoted(wrapped.state),
-        `a bash -c wrapper must not change the quoted figure — bare ${JSON.stringify(bare.state)}, wrapped ${JSON.stringify(wrapped.state)}`
+        bare.state && wrapped && bare.state.spent === wrapped.cmdWorst,
+        `a bash -c wrapper must not change the quoted figure — bare ${JSON.stringify(bare.state)}, wrapped ${JSON.stringify(wrapped)}`
       );
     },
   },
   {
     id: "G1-loop-needs-do",
-    desc: "COVERAGE, re-pointed (R14a.2): loop keywords as prose after an unquoted-URL curl, and real loops, are all not plain, so each asks at the one-call figure",
+    desc: "COVERAGE, re-pointed (R14a.2; D28): loop keywords as prose after an unquoted-URL curl, and real loops, are all not plain, so each is denied with M_NOTPLAIN",
     fn() {
       const CV = `${V1}prism/creator-vet?h=a`;
       for (const [cmd, label] of [
@@ -470,13 +475,13 @@ done`, "until/do on separate lines"],
         [`while true; do curl -s "${CV}"; done`, "while with do"],
         [`until [ -f stop ]; do curl -s "${CV}"; done`, "until with do"],
       ]) {
-        assertNotPlain(run(cmd, NOLOCAL), 75, `${label}: not a plain curl`);
+        assertNotPlain(run(cmd, NOLOCAL), `${label}: not a plain curl`);
       }
     },
   },
   {
     id: "G2-mask-alone-is-load-bearing",
-    desc: "COVERAGE, re-pointed (R14a.2): a pipeline quoted inside a -d body is data, so the curl stays plain and silent; the same pipeline for real, or a trailing comment, is not plain and asks",
+    desc: "COVERAGE, re-pointed (R14a.2; D28): a pipeline quoted inside a -d body is data, so the curl stays plain and silent; the same pipeline for real, or a trailing comment, is not plain and is denied",
     fn() {
       const CVQ = `"${V1}prism/creator-vet?h=a"`;
       for (const [cmd, label] of [
@@ -486,13 +491,13 @@ done`, "until/do on separate lines"],
       ]) {
         assertDecision(run(cmd, NOLOCAL), null, `${label}: quoted text is data, not syntax`);
       }
-      assertNotPlain(run(`curl -s ${CVQ} # next step: ids.txt | xargs -n1 curl`, NOLOCAL), 75, "a pipeline written in a trailing comment");
-      assertNotPlain(run(`cat ids.txt | xargs -n1 curl -s ${CVQ}`, NOLOCAL), 75, "the same pipeline unquoted is a real fan-out");
+      assertNotPlain(run(`curl -s ${CVQ} # next step: ids.txt | xargs -n1 curl`, NOLOCAL), "a pipeline written in a trailing comment");
+      assertNotPlain(run(`cat ids.txt | xargs -n1 curl -s ${CVQ}`, NOLOCAL), "the same pipeline unquoted is a real fan-out");
     },
   },
   {
     id: "G3-command-position-is-load-bearing",
-    desc: "COVERAGE, re-pointed (R14a.2): an unquoted URL is not a plain curl, whatever word its query holds, so each asks; so do xargs and watch in command position",
+    desc: "COVERAGE, re-pointed (R14a.2; D28): an unquoted URL is not a plain curl, whatever word its query holds, so each is denied with M_NOTPLAIN and counts nothing; so are xargs and watch in command position",
     fn() {
       for (const [cmd, want, label] of [
         [`curl -s ${V1}web/search?q=xargs`, null, "an unquoted URL whose query IS the word xargs"],
@@ -503,10 +508,11 @@ done`, "until/do on separate lines"],
         [`xargs -I{} curl -s "${V1}prism/creator-vet?h={}" < ids.txt`, 75, "xargs at the start"],
         [`watch -n1 curl -s "${V1}prism/creator-vet?h=a"`, 75, "watch at the start"],
       ]) {
-        const r = run(cmd, NOLOCAL);
-        assertDecision(r, "ask", `${label}: not a plain curl, so it asks`);
-        assertMatch(r, /NOT A PLAIN CURL/, `${label}: the not-plain ask`);
-        if (want !== null) assert(quoted(r.state) === want, `${label}: parks ${want}, read ${JSON.stringify(r.state)}`, r);
+        assertNotPlain(run(cmd, NOLOCAL), `${label}: not a plain curl, so it is denied`);
+        if (want !== null) {
+          const l = visible(cmd, NOLOCAL);
+          assert(l && l.cmdWorst === want, `${label}: seen at ${want}, read ${JSON.stringify(l)}`);
+        }
       }
     },
   },

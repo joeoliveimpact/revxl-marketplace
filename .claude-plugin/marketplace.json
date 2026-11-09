@@ -7,7 +7,7 @@
     "email": "joe@engineforimpact.com"
   },
   "metadata": {
-    "version": "0.1.87"
+    "version": "0.1.89"
   },
   "plugins": [
     {
@@ -221,10 +221,10 @@
     },
     {
       "name": "editor-superengine",
-      "description": "v0.1.0 · Turn a raw talking-head recording into a finished first cut, then iterate the reel's visuals. reel-first-cuts probes the file, rules the lines with you, builds a waveform-verified cut list, tightens the gaps, renders once from the raw and holds the whole cut to a silence budget; reel-motion-comps runs the design loop (divergent directions over real plates, parametric ladders, measured checks, you rule from frames). Every script ships inside the plugin, including a word-timestamp transcriber. For people editing short-form reels who want the cut to sound right before anything gets drawn on it.",
+      "description": "v0.2.0 · Raw talking-head recording to a finished reel. It installs and checks its own tools, checks the camera and mic before recording, and the client cuts on the Cut Board and Tweak Board. Then captions, on-screen design and scenes, B-roll, colour, sound and music, a cover, trial reels, and an editable timeline for Resolve. Saved styles carry a client's look from reel to reel, and a style can be decoded from a reel they like. 15 skills, no commands to type.",
       "source": "./plugins/editor-superengine",
       "category": "marketing",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"
@@ -249,10 +249,10 @@
     },
     {
       "name": "socialcrawl-superengine",
-      "description": "v0.3.1 · Deep social research superengine on the SocialCrawl API: the full canon — 645 endpoints across 68 platform namespaces — with exact per-call credits, plus guided research plays — voice-of-customer mining, competitor ad-library recon, AI-visibility (GEO) audits, link-in-bio offer mapping, audience demographics, dev/tool radar — and priced big-gun one-shots (creator vetting, lead discovery, share-of-voice). Bring-your-own key; every paid call is priced up front and counted against a silent session cap. Pairs with the RevXL format engines (they detect it and unlock deep plays) or runs standalone.",
+      "description": "v0.4.0 · Deep social research superengine on the SocialCrawl API: the full canon — 645 endpoints across 68 platform namespaces — with exact per-call credits, plus guided research plays — voice-of-customer mining, competitor ad-library recon, AI-visibility (GEO) audits, link-in-bio offer mapping, audience demographics, dev/tool radar — and priced big-gun one-shots (creator vetting, lead discovery, share-of-voice). Bring-your-own key; every paid call is priced up front and counted against a silent, hard session limit. Pairs with the RevXL format engines (they detect it and unlock deep plays) or runs standalone.",
       "source": "./plugins/socialcrawl-superengine",
       "category": "marketing",
-      "version": "0.3.1",
+      "version": "0.4.0",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"

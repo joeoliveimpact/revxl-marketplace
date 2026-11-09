@@ -37,7 +37,7 @@ MAC = sys.platform == "darwin"
 STAMP = "S1a+S1b"
 BLOCKS = ("grade", "scenes", "broll", "music", "transitions", "cover", "trial", "three")
 # H-R3: setup and machine settings only, no brand/look/style keys (those live in the saved style, H-B5).
-DEFAULTS = {"schema": 1, "engine": None, "language": None, "nle": "auto", "nle_source": "auto", "ports": {"board": 8747},
+DEFAULTS = {"schema": 1, "engine": None, "language": None, "nle": "auto", "nle_source": "auto", "controls": "simple", "ports": {"board": 8747},
             "voice_cleanup": "free", "cuts": {"beat_ms": 300}, "paths": {"editor": "editor", "videos": "videos"}, **{b: {} for b in BLOCKS}}
 STYLE_SKELETON = ('{"schema":1,"style_id":null,"accent":null,"font":null,"look":null,'
                   '"transitions":{"allowed":[],"sfx_pair":null},"edit_style":null,'
@@ -424,7 +424,7 @@ def atomic_write(p, text):
 
 
 def write_config(cwd, **keys):
-    """Missing keys added, existing values kept; only `keys` (the doctor's: engine, nle, nle_source) are set. False on bad JSON."""
+    """Missing keys added, existing values kept; only `keys` (engine, nle, nle_source, controls) are set. False on bad JSON."""
     p = rt.config_path(cwd)
     cur = {}
     if p.exists():
@@ -463,6 +463,17 @@ def set_nle(cwd, choice):
     nle, src = (resolve_lines(Report(), detect_resolve()), "auto") if choice == "auto" else (choice, "manual")
     if write_config(Path(cwd), nle=nle, nle_source=src):
         rep.add("nle", "ok", nle_detail(nle, src))
+    else:
+        rep.add("config", "missing", *BAD_CONFIG)
+    print("\n".join(rep.lines()))
+    return 1 if rep.required_missing else 0
+
+
+def set_controls(cwd, choice):
+    """--set-controls: save the workspace's disclosure and chat default; nothing else runs."""
+    rep = Report()
+    if write_config(Path(cwd), controls=choice):
+        rep.add("controls", "ok", choice)
     else:
         rep.add("config", "missing", *BAD_CONFIG)
     print("\n".join(rep.lines()))
@@ -670,7 +681,12 @@ def selftest():
             assert (e2, kept, f2["gpu"]) == ("parakeet-cpu", False, False)
             read[:] = ["no-smi", None]  # no nvidia-smi where no GPU was recorded: an answer, unchanged
             assert rt.decide_engine({"engine": e2, "engine_reason": why2, "pick_facts": f2}, None) == (e2, why2, f2, False)
-            read[:] = ["failed", None]  # first run with a failed read: the pick as before (no GPU)
+            read[:] = ["failed", None]  # first run with a failed read: the CPU pick, and it says the check didn't answer
+            assert rt.decide_engine({}, None)[:2] == ("parakeet-cpu", rt.GPU_UNCHECKED)
+            unchecked = {"engine": "parakeet-cpu", "engine_reason": rt.GPU_UNCHECKED, "pick_facts": rt.decide_engine({}, None)[2]}
+            read[:] = ["no-smi", None]  # a later read answers (no GPU): same engine, the real reason, not the stale one
+            assert rt.decide_engine(unchecked, None)[:2] == ("parakeet-cpu", "Windows without an NVIDIA GPU")
+            read[:] = ["no-smi", None]  # first run with no nvidia-smi at all: a real no-GPU answer
             assert rt.decide_engine({}, None)[:2] == ("parakeet-cpu", "Windows without an NVIDIA GPU")
             rt.gpu_read = saved_gpu[0]
             fake = {}
@@ -683,9 +699,12 @@ def selftest():
             rt.subprocess = types.SimpleNamespace(run=frun, SubprocessError=subprocess.SubprocessError)
             for rc, out, want in ((0, "GPU 0: NVIDIA GeForce RTX 4060 Laptop GPU (UUID: GPU-2f33)\n", ("yes", "NVIDIA GeForce RTX 4060 Laptop GPU")),
                                   (9, "NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver.", ("failed", None)),
-                                  (0, "zz9 qq garbled\n", ("failed", None)), (0, "", ("failed", None)), (0, None, ("failed", None))):
+                                  (0, "zz9 qq garbled\n", ("failed", None)), (0, "", ("failed", None)), (0, None, ("failed", None)),
+                                  (0, "Failed to initialize NVML: Unknown Error\n", ("failed", None))):  # S17 dry run
                 fake.update(rc=rc, out=out)
                 assert rt.gpu_read() == want, (rc, out)
+            # a fake nvidia-smi printing the NVML error on a first run: the CPU pick says the GPU check didn't answer
+            assert rt.decide_engine({}, None)[:2] == ("parakeet-cpu", rt.GPU_UNCHECKED)
             rt.gpu_read, rt.shutil, rt.subprocess = saved_gpu
             n += 3
             # S1b-fix nle_source: a manual nle survives detection; auto (or no nle_source: older configs) follows it
@@ -795,12 +814,16 @@ def main(argv=None):
     ap.add_argument("--repick", action="store_true", help="pick the transcription engine again even if nothing changed")
     ap.add_argument("--set-nle", choices=("mcp", "resolve", "none", "auto"),
                     help="record the client's hand-off choice in editor.config.json (auto = back to detection); nothing else runs")
+    ap.add_argument("--set-controls", choices=("simple", "advanced"),
+                    help="record the workspace's controls default in editor.config.json; nothing else runs")
     ap.add_argument("--selftest", action="store_true", help="offline self-check in temp folders")
     a = ap.parse_args(argv)
     if a.selftest:
         return selftest()
     if a.set_nle:
         return set_nle(Path.cwd(), a.set_nle)
+    if a.set_controls:
+        return set_controls(Path.cwd(), a.set_controls)
     return doctor(Path.cwd(), rt.state_dir(), do_install=not a.no_install, repick=a.repick)
 
 

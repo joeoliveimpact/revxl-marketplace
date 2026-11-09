@@ -10,7 +10,7 @@
 | /search | `query` | 1 | Search Rumble videos |
 | /channel/videos | `handle` / `url` | 1 | List videos for a Rumble channel |
 | /video | `url` | 1 | Get a Rumble video |
-| /video/transcript | `url` | 10 | Get a Rumble video transcript — ⚠️ **Gated in this plugin: 10 credits per video — 100 of them = 1000 credits. The credit guard ASKS before this runs (it no longer hard-denies). Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.** |
+| /video/transcript | `url` | 10 | Get a Rumble video transcript — ⚠️ **Gated in this plugin: 10 credits per video — 100 of them = 1000 credits. Run it only on an explicit yes; the credit guard counts it and never asks. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.** |
 | /video/comments | `url` | 1 | List top-level comments on a Rumble video |
 
 ### Parameter legend
@@ -76,7 +76,7 @@ curl "https://www.socialcrawl.dev/v1/rumble/video?url=<url>" \
 
 Returns the transcript for a Rumble video when captions are available. If Rumble doesn't expose captions, `transcript` is `null` and credits are not deducted.
 
-> ⚠️ **Gated in this plugin: 10 credits per video — 100 of them = 1000 credits. The credit guard ASKS before this runs (it no longer hard-denies). Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.**
+> ⚠️ **Gated in this plugin: 10 credits per video — 100 of them = 1000 credits. Run it only on an explicit yes; the credit guard counts it and never asks. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.**
 
 **Parameters**
 
@@ -109,7 +109,7 @@ curl "https://www.socialcrawl.dev/v1/rumble/video/comments?url=<url>" \
 | A channel's back catalogue | `/channel/videos` | 1 |
 | One video's detail and stats | `/video` | 1 |
 | Audience reaction | `/video/comments` | 1 |
-| Transcript | ⚠️ `/video/transcript` — gated: **10cr per video**, the guard asks first. Cheaper: pull the media URL (1–5cr) and run the local Whisper chain | **10** |
+| Transcript | ⚠️ `/video/transcript` — gated: **10cr per video**, run only on an explicit yes. Cheaper: pull the media URL (1–5cr) and run the local Whisper chain | **10** |
 
 Everything usable here is 1 credit, so Rumble is cheap to explore. There is no `/full`
 composite and no profile endpoint — a creator's footprint is `/channel/videos` plus per-video

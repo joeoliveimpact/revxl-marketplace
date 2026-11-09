@@ -116,11 +116,12 @@ validator, which does not ship with the plugin, enforces both halves of this rul
 
 - **`cohorts/*` and `cohort-queries/*`.** The vendor publishes no price for them, so no honest
   quote exists. The list lives in `costs.json` under `_unpriced`, and
-  `${CLAUDE_PLUGIN_ROOT}/hooks/credit-guard.mjs` reads that same key to stop them at the shell.
+  `${CLAUDE_PLUGIN_ROOT}/hooks/credit-guard.mjs` reads that same key and counts them at 0, so
+  nothing at the shell holds them to a limit.
 - **Every transcript endpoint** — any path carrying a `transcript` token, and any
   `include=transcript` parameter bolted onto another call. The nine known ones are listed in
   `costs.json` under `_gated`, each with the cheaper route to the same words;
-  `${CLAUDE_PLUGIN_ROOT}/hooks/credit-guard.mjs` matches the token itself, so a brand-new one is caught before
+  `${CLAUDE_PLUGIN_ROOT}/hooks/credit-guard.mjs` matches the token itself, so a brand-new one is still counted before
   `costs.json` knows about it. These bill per unit, which means a plan with one in it can be an
   order of magnitude past what its leg count suggests. Never compose one into a plan. If the ask
   genuinely needs spoken words, put the cheaper route from `_gated` in the option's `notes[]` and

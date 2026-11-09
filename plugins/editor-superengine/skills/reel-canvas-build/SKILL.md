@@ -19,7 +19,7 @@ description: Plans, designs and renders what plays on screen over a reel once th
 - Never replace a board the client has edited without asking them first: their edits live in it.
 - Re-opening a board is safe: its work is saved on disk after every change.
 - The final video is made only after the client OKs the latest preview, recorded only by `compose.py ok` (`${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/build.md`, section 3).
-- Run the style picker first if it has not run for this reel (editor-start-here); in Auto edit, follow section 5 of ${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/house-rules.md.
+- Run the style picker first if it has not run for this reel (editor-start-here); follow sections 5 and 6 (Auto edit and controls in chat) of ${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/house-rules.md.
 
 ## Ground rules
 
@@ -66,7 +66,7 @@ Tell the client what went wrong in plain words, and whether anything was charged
 2. Draft it. Keep the summary short. Put the summary, step and error line in single quotes, drop any
    apostrophe from them, and use no script names:
 
-`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.1.0 --skill reel-canvas-build --step '<the plan, the design loop, the render, the cutout or the before-posting check>' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
+`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.2.0 --skill reel-canvas-build --step '<the plan, the design loop, the render, the cutout or the before-posting check>' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
 
 3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
 4. Send, using the path after `DRAFT:`:

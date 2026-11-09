@@ -1,6 +1,6 @@
 ---
 name: editor-superengine:editor-start-here
-description: The router for editor-superengine. Use when someone says "edit my reel", "where do I start with editing", "cut this talking head", "first cut", "Shorts from this long recording", "design the hook", "add a transition", "add captions", "add B-roll", "grade this reel", "match the colour between my recordings", "sound pass", "add music", "pick a cover", "thumbnail", "trial reels", "my saved styles", "auto edit", "check my setup before I record", "write my post caption", "tear down this reel", "copy this creator's editing style", "render it", "make the final video", "open my editor hub", "is the editor ready", or "editor superengine", or any time it is not clear which editing skill an ask belongs to. Names the one skill the ask goes to, says why, and hands it over. Not a skill that edits, renders or installs anything itself.
+description: The router for editor-superengine. Use for "edit my reel", "where do I start with editing", "editor superengine", "what's next", "where am I with this reel", "start a new reel", "go ahead with my board Send", "act on my Send", or when it is not clear which editing skill an ask belongs to. Names the next move, says why, and invokes the skill that owns it.
 ---
 
 # Editor superengine: start here
@@ -19,7 +19,7 @@ Every run returns, in this order:
 ## Re-invoke guard
 
 - If the conversation was compacted since this skill loaded, invoke this skill again before
-  going on. Re-running is safe: the router only reads the ask and hands it over.
+  going on. Re-running is safe: the router refreshes progress and hands work to its owner.
 - One hand-off per ask. Once a skill has the work, don't route again unless the ask changes. In Auto edit, hand over every stage in turn (house-rules section 5).
 
 ## Pipeline order
@@ -53,21 +53,27 @@ Before work on any reel, unless the picker already printed "This reel uses ..." 
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/saved_style.py" picker <reel folder>`
 
-Use `<editor python>` defined below. If it prints the question, ask it as ONE question with those options (default first, recommended). Run the same script's `pick <reel folder> <style name|fresh|copy>` with the client's answer, quoting names with spaces. "Copy a reel I like" goes to `editor-superengine:style-decoder`; after the client approves the decoded style, save it with saved-styles.md §5: it becomes a new Style N used on this reel, never the default unless the client asks. Offer the rename and say each "Not copied" line in plain words.
+Use `<editor python>` defined below. If it prints the question, ask it as ONE question with those options (default first, recommended). Run the same script's `pick <reel folder> <style name|fresh|copy>` with the client's answer, quoting names with spaces. "Copy a reel I like" goes to `editor-superengine:style-decoder`; after the client approves the decoded style, save it with `${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/saved-styles.md` §5: it becomes a new Style N used on this reel, never the default unless the client asks. Offer the rename and say each "Not copied" line in plain words.
 
 When the picker prints "Auto edit with ...", say it word for word, then follow section 5 of house-rules.md (below). "stop" or "normal mode" runs `pick <reel folder> normal`.
+
+## What's next
+
+For "what's next", "what's next in editing <reel>", "where am I with this reel", or "start a new reel",
+read the reel's progress and name the next move. For "go ahead with my <board> Send" or "act on my Send", route that Send to its owner.
+Follow `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/whats-next.md` for both modes and optional steps not done.
 
 ## Which skill
 
 | The ask | Invoke |
 |---|---|
-| first-time setup, "is the editor ready", "check the editor's setup or tools", "open my editor hub", "show all my reels", "start or restart my editor boards", a missing or broken tool, anything another skill says isn't set up | `editor-superengine:editor-doctor` |
-| "before I record", "check my setup" (before filming), "test clip", "will my mic and light work" (light gets advice; the test clip checks the camera and sound) | `editor-superengine:recording-preflight` |
+| first-time setup, "is the editor ready", "check the editor's setup or tools", "open my editor hub", "Open my <board> for <reel>", "switch my editor controls to Advanced or Simple", "show all my reels", "start or restart my editor boards", a missing or broken tool, anything another skill says isn't set up | `editor-superengine:editor-doctor` |
+| "before I record", "I'm about to record", "check my setup" (before filming), "test clip", "will my mic and light work" (light gets advice; the test clip checks the camera and sound) | `editor-superengine:recording-preflight` |
 | a master joined from several clips; words chopped after the first clip in a cut | `editor-superengine:reel-first-cuts` |
 | "cut this", "build the A-roll", "make a first pass", "tighten the gaps", "the pause after X drags", "speed it up", "did the cut clip a word", "two recordings", "several clips", "sync camera and mic", "make Shorts from this long recording" | `editor-superengine:reel-first-cuts` |
 | "grade this reel", "colour grade", "fix the colour", "make it warmer", "the skin looks off", "open the Grade Board", "match the colour between my recordings" | `editor-superengine:reel-grade` |
 | "add B-roll", "generate B-roll", "AI cutaway", "cutaway", "use my clip over ..." | `editor-superengine:reel-broll` |
-| "build the beat map", "plan what goes on screen", "add a scene", "lower third", "counter", "end card", "title card", "pick a layout", "punch-ins", "zoom in on that word", "layout switches", "follow my face", "slow push", "ken burns", "ratchet zoom", "design the hook", "motion comps", "comp the intro", "direction options", "ladder the blur", "will the Instagram buttons cover this", "render it", "make the preview", "make the final video", "export the reel", "add a transition", "whip", "glitch", "fade between" | `editor-superengine:reel-canvas-build` |
+| "build the beat map", "plan what goes on screen", "add a scene", "lower third", "counter", "end card", "title card", "pick a layout", "punch-ins", "zoom in on that word", "layout switches", "follow my face", "slow push", "ken burns", "ratchet zoom", "design the hook", "motion comps", "comp the intro", "direction options", "ladder the blur", "will the Instagram buttons cover this", "render it", "render the master", "make the preview", "make the final video", "export the reel", "add a transition", "whip", "glitch", "fade between" | `editor-superengine:reel-canvas-build` |
 | "sound pass", "add sound effects", "mix the sound", "master the audio", "clean up my voice", "run Auphonic", "add music", "pick a track" | `editor-superengine:reel-sound-pass` |
 | "Run QA for <reel>", "check my reel before I post" | `editor-superengine:reel-canvas-build` |
 | "a hand-off to another editor", "open this reel in Resolve", "editable timeline" | `editor-superengine:pro-editor-handoff` (only when configured `nle` is `resolve` or `mcp`) |
@@ -77,7 +83,7 @@ When the picker prints "Auto edit with ...", say it word for word, then follow s
 | "pick a cover for my reel", "open the Cover Picker", choose a cover frame or add a short cover title, "thumbnail", "cover photo" | `editor-superengine:reel-cover` |
 | tear down a posted reel, "what would we fix", "make a page to send them" | `editor-superengine:reel-teardown` |
 | copy a creator's editing style, measure how a reel is edited, "make mine look like this reel", "decode this reel's style", "build a template from this style" | `editor-superengine:style-decoder` |
-| "save this as my style", "my styles", "rename my style", "make Style 2 my default", "delete a style", "auto edit", "turn off auto edit" | editor-superengine:reel-canvas-build (saved-styles.md) |
+| "save this as my style", "my styles", "rename my style", "make Style 2 my default", "delete a style", "auto edit", "turn off auto edit" | `editor-superengine:reel-canvas-build` (`${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/saved-styles.md`) |
 
 No Beat Map and the sound pass is done: the finished video already exists; say so and offer the visuals or captions as options (both need a Beat Map). 'Render the cut' during the first cut is reel-first-cuts.
 
@@ -113,7 +119,7 @@ every one into plain words. How, with a line for each moment:
 
 | Reference | Applies when |
 |---|---|
-| `${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/house-rules.md` | Always, before the first file. Duplicate the source, fewest generations, never judge picture on a proxy, load the governing docs first; Auto edit (section 5). |
+| `${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/house-rules.md` | Always, before the first file. Duplicate the source, fewest generations, never judge picture on a proxy, load the governing docs first; Auto edit and controls in chat (sections 5 and 6). |
 | `${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/preview-before-render.md` | Before any render, export or master. Cheap previews go to the reviewer first. |
 | `${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/frame-zero-hook.md` | Any time the hook frame is being designed or checked. |
 | `${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/design-prompt.md` | Handing a design canvas the art-director brief. |

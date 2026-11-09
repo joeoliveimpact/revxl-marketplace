@@ -70,11 +70,13 @@ environment: a subagent has no `AskUserQuestion` even when the parent session do
 hits a real decision **returns the open question** and the main session asks it, then
 re-dispatches. If a dispatch prompt contains the words "ask the user", it is wrong.
 
-**Headless or unattended (`claude -p`, a scheduled run, a loop tick) — STOP AND REPORT on any
-paid tier.** Nobody is there: the popup cannot fire and text will not be read. Report exactly
-what you needed and what the run would have cost, and exit without spending.
-**Proceeding on a default is FORBIDDEN wherever a default would spend.** An unattended run may
-continue by itself only while every remaining step is 0cr — a free WebSearch pass or
+**Headless or unattended (a Desktop routine, `claude -p`, a loop tick) — a paid call runs only
+when the run's own prompt names it; anything else that would spend is REPORTED, NEVER RUN.**
+Nobody is there: the popup cannot fire and text will not be read. Report exactly
+what you needed and what the run would have cost, and exit without spending. The rule, and the
+one limit it runs within, are in [credit-guard.md](../../_shared/references/credit-guard.md).
+**Proceeding on a default is FORBIDDEN wherever a default would spend.** Otherwise an unattended
+run may continue by itself only on a call its own prompt names or a 0cr step — a free WebSearch pass or
 `GET /v1/credits/balance`. And never block silently on an answer that cannot arrive: a run that
 stalls on a question is a run that did nothing, and nobody finds out until they check.
 
@@ -90,7 +92,8 @@ suggest-hook notice, handing it the absolute paths of what it reads:
 `${CLAUDE_PLUGIN_ROOT}/skills/research-plays/references/packages.json`,
 `${CLAUDE_PLUGIN_ROOT}/hooks/costs.json` and the
 `${CLAUDE_PLUGIN_ROOT}/skills/socialcrawl/references/` folder. Unsure: questions with why-lines, one popup call, one round, sized by
-`### How to ask` above. Headless, it stops and reports. Otherwise two
+`### How to ask` above. Headless, it stops and reports
+([credit-guard.md](../../_shared/references/credit-guard.md)). Otherwise two
 or three priced options, the curated play leading when it fits, the strongest present, one
 reaching where the curated play does not; the go paragraph in SKILL.md fires the last popup and
 its free-path fourth choice.

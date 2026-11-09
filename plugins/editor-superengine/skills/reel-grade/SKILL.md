@@ -22,7 +22,7 @@ Speak the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-th
 - If the conversation was compacted since this skill loaded, invoke it again before going on.
 - Re-running is safe: the measurement and board steps write into `videos/<reel>/grade/` and `videos/<reel>/grade.json`; step 4 re-renders the cut from the raw only after a new yes.
 - If the video changed after step 1 (a new cut), run step 1 again and ask for a new Send: the old frames and measurements are stale.
-- In Auto edit (the picker printed "Auto edit with ..."), follow section 5 of ${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/house-rules.md.
+- Follow sections 5 and 6 (Auto edit and controls in chat) of ${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/house-rules.md.
 
 ## Ground rules
 
@@ -92,7 +92,7 @@ Tell the client what went wrong in plain words, and whether anything was charged
 2. Draft it. Keep the summary short. Put the summary, step and error line in single quotes, drop any
    apostrophe from them, and use no script names:
 
-`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.1.0 --skill reel-grade --step '<measure, match, sheet, board, bake or apply>' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
+`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.2.0 --skill reel-grade --step '<measure, match, sheet, board, bake or apply>' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
 
 3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
 4. Send, using the path after `DRAFT:`:

@@ -59,6 +59,8 @@
     .grid { grid-template-columns: 1fr; }
     .bar { flex-wrap: wrap; }
   }
+.advanced-controls{border:1px solid var(--line);border-radius:8px;padding:10px;margin:10px 0}
+.advanced-controls>summary{cursor:pointer;font-weight:600}
 </style>
 </head>
 <body>
@@ -86,9 +88,11 @@
       <h2 id="sk-h">Sketches</h2>
       <div id="sketches" class="grid"></div>
     </section>
+    <details class="advanced-controls"><summary>Advanced controls</summary>
     <details class="panel" id="storyboard">
       <summary>How each beat comes in and goes out (optional)</summary>
       <div id="storyboard-rows"></div>
+    </details>
     </details>
 
     <section class="panel">
@@ -271,6 +275,8 @@ function sceneControls(beat) {
         showCount();
         wrap.append(el("label", {class: "block", for: id, text: slot.name}), input, count);
       }
+      const settings = el("details", {class: "advanced-controls", "data-controls-key": "settings-" + beat}, el("summary", {text: "Advanced controls"}));
+      wrap.append(settings);
       for (const param of spec.params) {
         if (param.name === "accent" || param.name === "font" || (!param.enum && param.type !== "number")) continue;
         const id = "scene-field-" + (++sceneFieldId);
@@ -295,7 +301,7 @@ function sceneControls(beat) {
           const bad = !control.checkValidity() || fill.params[param.name] == null;
           control.classList.toggle("bad", bad); control.setAttribute("aria-invalid", String(bad)); edited();
         });
-        wrap.append(el("label", {class: "block", for: id, text: param.name + (locked ? " (from the beat's number)" : "")}), control);
+        settings.append(el("label", {class: "block", for: id, text: param.name + (locked ? " (from the beat's number)" : "")}), control);
       }
     }
     const remove = el("button", {type: "button", class: "remove-scene", text: "Remove scene"});
@@ -487,7 +493,9 @@ init();
 // ---- G2-c: Tweakpane fine-tune ----
 import { Pane } from "./tweakpane.min.js";
 const section = document.getElementById("fine-tune");
-document.getElementById("board").append(section);
+const advanced = document.createElement("details"); advanced.className = "advanced-controls";
+advanced.innerHTML = "<summary>Advanced controls</summary>";
+document.getElementById("board").append(advanced); advanced.append(section);
 const choose = document.getElementById("fine-beat");
 const empty = document.getElementById("fine-empty");
 let pane = null, selected = null, model = {}, bindings = [], refreshing = false;

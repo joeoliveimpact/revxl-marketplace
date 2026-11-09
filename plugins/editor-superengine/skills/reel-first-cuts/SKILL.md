@@ -27,13 +27,13 @@ Speak the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-th
   If it refuses, ask for a new Send.
 - If the reel already has a Sound Board (`config.json`) or a Beat Map Send, a new cut means redoing the sound picks and the visuals plan. Tell the client before re-cutting.
 - Never skip a ⛔ stage, on a re-run either.
-- Run the style picker first if it has not run for this reel (editor-start-here); in Auto edit, follow section 5 of ${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/house-rules.md.
+- Run the style picker first if it has not run for this reel (editor-start-here); follow sections 5 and 6 (Auto edit and controls in chat) of ${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/house-rules.md.
 
 ## Ground rules
 
 - **The client never types a command.** Claude runs each one with the Bash tool from the client's
   workspace folder (the scripts read `editor/editor.config.json` there). A path below that doesn't start
-  with `videos/` is in the reel's folder: put `videos/<reel>/` in front (`<reel>` is its folder name).
+  with the reel folder is relative to `<paths.videos>/<reel>/` from `editor/editor.config.json`.
   RAW.mp4 is the raw; CUT.mp4 the master render, `work/renders/master-<speed>x.mp4` (1.15x → `115x`).
 - `<editor python>` is the editor's own Python. Windows: `"$(H="$LOCALAPPDATA/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/Scripts/python.exe"`. macOS: `"$(H="$HOME/Library/Application Support/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/bin/python"`. If it doesn't exist, run `editor-superengine:editor-doctor` first. Every script runs as `<editor python> -X utf8 -I "<script>" ...`, never a bare `python`; the failure report's commands run exactly as written.
 - No board available, or the client asks to do it in chat: run Stages 2, 3 and 5 as
@@ -75,6 +75,8 @@ re-derive them.
 ## Stages
 
 ### 0 · Probe & calibrate — trust nothing
+
+For a new reel or before probing an existing take, follow `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/recordings.md` (folder creation, either raw layout, single-take copy or several recordings).
 If the raw was joined from several clips, or words chop only after the first clip, fix the
 master first with `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/master-clock.md`.
 A failed proof stops the cut.
@@ -199,7 +201,7 @@ Tell the client what went wrong in plain words, and whether anything was charged
 2. Draft it. Keep the summary short. Put the summary, step and error line in single quotes, drop any
    apostrophe from them, and use no script names:
 
-`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.1.0 --skill reel-first-cuts --step '<the stage that failed>' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
+`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.2.0 --skill reel-first-cuts --step '<the stage that failed>' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
 
 3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
 4. Send, using the path after `DRAFT:`:

@@ -1,6 +1,6 @@
 ---
 name: editor-superengine:style-decoder
-description: Decodes the editing style of a reel saved on the client's computer into a reusable style later edits follow. Use on "decode this reel's style", "make this editing style repeatable", "add this reel to my style X" or "build a template from this style". NOT for a content or hook teardown of a posted reel (that's reel-teardown).
+description: Decodes the editing style of a reel saved on the client's computer into a reusable style later edits follow. Use on "copy this creator's style", "decode this reel's style", "make this editing style repeatable", "add this reel to my style X" or "build a template from this style". NOT for a content or hook teardown of a posted reel (that's reel-teardown).
 ---
 
 # Style Decoder: a reel file → a reusable editing style
@@ -153,7 +153,7 @@ ambiguity. Fix them, then re-run stage 4.
 
 ### 7. Publish
 
-Before `index`, write `adapters.editor` with the closest editor edit style, caption look and grade look judged from the frames, or `UNKNOWN` (allowed values in saved-styles.md §5). When the client came from "Copy a reel I like", save it as in saved-styles.md §5 after approval.
+Before `index`: `${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/saved-styles.md` §5 (adapters and approved copy).
 
 Only after the client approves: set `style.status` to `approved`, then
 `stylespec.py index`. Tell the client that "approved" means the spec faithfully
@@ -198,7 +198,7 @@ Tell the client what went wrong in plain words, and whether anything was charged
 2. Draft it. Keep the summary short. Put the summary, step and error line in single quotes, drop any
    apostrophe from them, and use no script names:
 
-`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.1.0 --skill style-decoder --step '<intake, measure, check, confirm, publish or template>' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
+`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.2.0 --skill style-decoder --step '<intake, measure, check, confirm, publish or template>' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
 
 3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
 4. Send, using the path after `DRAFT:`:

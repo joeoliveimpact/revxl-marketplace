@@ -50,7 +50,10 @@ const {pathToFileURL} = require("url");
       } else if (a.do === "top") {
         ctx = page;
       } else if (a.do === "click") {
-        await ctx.$eval(a.sel, (e) => e.scrollIntoView({block: "center"}));
+        await ctx.$eval(a.sel, (e) => {
+          for (let p=e.parentElement; p; p=p.parentElement) if (p.matches("details.advanced-controls")) p.open=true;
+          e.scrollIntoView({block: "center"});
+        });
         await ctx.click(a.sel);
       } else if (a.do === "domclick") {
         await ctx.$eval(a.sel, (e) => e.click());
@@ -61,7 +64,10 @@ const {pathToFileURL} = require("url");
         if (a.shift) await page.keyboard.up("Shift");
         if (a.ctrl) await page.keyboard.up("Control");
       } else if (a.do === "slider") {   // G2-c: exercise the real Tweakpane pointer control
-        await ctx.$eval(a.sel, e => e.scrollIntoView({block: "center"}));
+        await ctx.$eval(a.sel, e => {
+          for (let p=e.parentElement; p; p=p.parentElement) if (p.matches("details.advanced-controls")) p.open=true;
+          e.scrollIntoView({block: "center"});
+        });
         const bounds = await (await ctx.$(a.sel)).boundingBox();
         await page.mouse.move(bounds.x + bounds.width * 0.25, bounds.y + bounds.height / 2);
         await page.mouse.down();

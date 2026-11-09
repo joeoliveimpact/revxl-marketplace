@@ -410,3 +410,7 @@ body[data-layout=full] .strip img{max-height:52px}
 @media(max-width:1000px){.top{flex-wrap:wrap;position:static}.top .right{flex-wrap:wrap}.side{position:static;max-height:none}body[data-layout=full] .work,.work{grid-template-columns:160px minmax(0,1fr)}.side{grid-column:1/-1}.side .player{max-width:320px}.fresh{display:none}.side .actions{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:700px){body[data-layout=full] .work,.work{grid-template-columns:1fr}.rail,body[data-layout=full] .rail{position:static;max-height:none}.side{grid-column:auto}.top{padding:12px}.top .right{margin-left:0;gap:10px}main{padding:8px 12px 40px}.review-page .review{grid-template-columns:1fr}.side .actions{grid-template-columns:1fr 1fr}}
 
+
+.advanced-controls{border:1px solid var(--hair);border-radius:10px;padding:12px;margin:12px 0}
+.advanced-controls>summary{cursor:pointer;color:var(--ink);font-weight:600}
+.top select{font:inherit;color:var(--ink);background:var(--tile);border:1px solid var(--hair2);border-radius:6px;padding:5px}

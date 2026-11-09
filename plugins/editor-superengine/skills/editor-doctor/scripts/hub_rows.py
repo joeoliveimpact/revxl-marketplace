@@ -1,7 +1,7 @@
 """Refresh the editor hub from disk; the page never runs tools.
 
 <editor python> -X utf8 -I hub_rows.py [--root <workspace>]
-Optional hub/cockpit-state.json holds {baseline: <milliseconds>, acked: {...}} exported by Claude
+Optional hub/cockpit-state.json holds {baseline: <milliseconds>, acked: {...}} exported by the Cockpit mod
 from the Cockpit store. Without a baseline, logic.ts defines no open Sends. No private store is guessed.
 """
 import argparse
@@ -79,12 +79,19 @@ def cockpit_rules(plugin_root=rt.PLUGIN_ROOT):
             stage["rule"] = {"json": field(rule, "json"), "property": when[1] or when[2],
                              "test": "truthy" if when[1] else "not-null"}
         else:
-            match = re.search(r"match: /(.+)/([i]*)(?:,|$)", rule)
+            primary, *alternative = rule.split(", or: {", 1)
+            match = re.search(r"match: /(.+)/([i]*)(?:,|$)", primary)
             master = "match: MASTER" in rule
             if not match and not master:
                 raise ValueError(f"Unrecognised Cockpit file rule for {name}")
             stage["rule"] = {"in": field(rule, "in"), "pattern": MASTER.pattern if master else match[1],
                              "ignore_case": master or "i" in match[2], "video": "video: true" in rule}
+            if alternative:
+                other = re.fullmatch(r" in: ('[^']+'), match: /(.+)/([i]*) }", alternative[0])
+                if not other:
+                    raise ValueError(f"Unrecognised Cockpit alternative rule for {name}")
+                stage["rule"]["or"] = {"in": ast.literal_eval(other[1]), "pattern": other[2],
+                                       "ignore_case": "i" in other[3], "video": False}
         stages.append(stage)
     block = text.split("export const SENDS:", 1)[1].split("= [", 1)[1].split("\n]", 1)[0]
     sends = []
@@ -133,6 +140,8 @@ def filmstrip(src, out):
 
 
 def stage_done(rule, folders, reel):
+    if "or" in rule and stage_done(rule["or"], folders, reel):
+        return True
     if rule.get("never"):
         return False
     if "json" in rule:
@@ -261,7 +270,10 @@ def build(root, plugin_root=rt.PLUGIN_ROOT):
                          qa=read(reel / "work/qa.json"), blocks=blocks, boards=state, lanes=lanes))
     # Use an existing hub state owner when available; sorting/selection does not move the workspace preference.
     owners = [r["id"] for r in rows if (videos / r["id"] / "hub.state.json").is_file()]
-    return dict(schema=1, refreshed=now.isoformat(), config={"nle": rt.read_config(root).get("nle", "none")},
+    cfg = rt.read_config(root)
+    controls = cfg.get("controls")
+    return dict(schema=1, refreshed=now.isoformat(), config={"nle": cfg.get("nle", "none"),
+                "controls": controls if controls in ("simple", "advanced") else "simple"},
                 state_reel=next(iter(owners), rows[0]["id"] if rows else None), stages=stages, boards=boards,
                 reels=rows, styles=style_rows(root),
                 health=(read(root / "editor/.platform.json", {}) or {}).get("status", []), goldmine=goldmine(root))

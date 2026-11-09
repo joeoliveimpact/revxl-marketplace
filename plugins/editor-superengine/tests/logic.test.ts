@@ -4,11 +4,22 @@ import {
   ok, missing, unreadable, STAGES, LABELS, TOGGLE, BOARDS, BATON_NONE, BATON_UNREAD, MASTER, type ActionId, type Entry,
 } from '../hooks/mod/logic'
 import { NOW, DAY, f, json, dir, reel, inputOf, reelIn, list, REEL_018, REEL_020, WALK, walk, CONFIG_FILE, type Tree } from './fixtures/reels'
+import { MERGED_REEL, MERGED_STEPS, mergedReel } from './fixtures/merged-reel'
 
 const view = (tree: Tree, o: Parameters<typeof inputOf>[1] = {}, picked?: string) => cockpit(inputOf(tree, o), picked)
 const reelView = (tree: Tree, name: string, o: { baseline?: number; acked?: Record<string, number>; probe?: any } = {}) =>
   reelOf(reelIn(tree, name, o.probe), NOW, o.baseline, o.acked ?? {})
 const names = (done: boolean[]) => STAGES.filter((_, i) => done[i]).map(s => s.name)
+
+test('Record: RAW.mp4 at the top, one raw video or several raw videos; no take stays at Record', () => {
+  for (const files of [{ 'RAW.mp4': f(1) }, { 'raw/x.mp4': f(1) }, { 'raw/x.mp4': f(1), 'raw/y.MOV': f(1) }]) {
+    const r = reelView(reel('new', files), 'new')
+    expect(r.done[0]).toBe(true)
+    expect(STAGES[r.cur]!.name).toBe('Cut')
+  }
+  expect(reelView({ 'videos/new/': dir }, 'new').done[0]).toBe(false)
+  expect(reelView(reel('new', { 'RAW.mp4.prev': f(1), 'raw/x.mp4.tmp': f(1) }), 'new').done[0]).toBe(false)
+})
 
 test('paths: normPath, folderKey and homeDir', () => {
   expect(normPath('C:\\Users\\coach\\ws\\')).toBe('C:/Users/coach/ws')
@@ -238,6 +249,37 @@ test('LABELS guard: every label 22 chars or fewer, never "Make", no long dash; e
   for (const id of used) expect(LABELS[id]?.label).toBeTruthy()
   for (const s of STAGES) if (s.board) expect(s.action).toBe(s.board)
   expect(BOARDS.map(b => STAGES.findIndex(s => s.board === b) >= 0)).toEqual(BOARDS.map(() => true))
+})
+
+test('LABELS frozen snapshot: all action ids, labels and phrases', () => {
+  expect(LABELS).toEqual({
+    start: { label: 'Start a reel', phrase: 'Start a new reel in the editor' },
+    next: { label: "What's next?", phrase: "What's next in editing <reel>?" },
+    hub: { label: 'Editor hub', phrase: 'Open my editor hub' },
+    switch: { label: 'Switch reel' },
+    record: { label: 'Check my setup', phrase: "I'm about to record <reel>" },
+    cut: { label: 'Open Cut Board', phrase: 'Open my Cut Board for <reel>' },
+    tweak: { label: 'Open Tweak Board', phrase: 'Open my Tweak Board for <reel>' },
+    beatmap: { label: 'Open Beat Map', phrase: 'Open my Beat Map for <reel>' },
+    sketches: { label: 'Open Sketches', phrase: 'Open my Sketches for <reel>' },
+    sound: { label: 'Open Sound Board', phrase: 'Open my Sound Board for <reel>' },
+    grade: { label: 'Open Grade Board', phrase: 'Open my Grade Board for <reel>' },
+    master: { label: 'Render the master', phrase: 'Render the master for <reel>' },
+    post: { label: 'Write my caption', phrase: 'Write the post caption for <reel>' },
+    send: { label: 'Use my Send', phrase: 'Go ahead with my <board> Send for <reel>' },
+    cockpit: { label: 'Cockpit' },
+  })
+})
+
+test('H-UI-11: merged skill outputs light each stage in turn, then a fresh Send opens until acked', () => {
+  for (let i = 0; i <= MERGED_STEPS.length; i++) {
+    const r = reelView(mergedReel(i), MERGED_REEL)
+    expect(names(r.done)).toEqual(MERGED_STEPS.slice(0, i).map(([stage]) => stage))
+    expect(r.cur).toBe(i === 6 ? 7 : i === 7 ? 7 : i === 8 ? 8 : i)
+  }
+  const tree = { ...mergedReel(), ...reel(MERGED_REEL, { 'sound-selection.json': { at: NOW + 1, size: 10 } }) }
+  expect(reelView(tree, MERGED_REEL, { baseline: NOW }).sends).toEqual([{ file: 'sound-selection.json', board: 'sound', mtimeMs: NOW + 1 }])
+  expect(reelView(tree, MERGED_REEL, { baseline: NOW, acked: { [`${MERGED_REEL}/sound-selection.json`]: NOW + 1 } }).sends).toEqual([])
 })
 
 test('Entry shape: list() gives files their size and mtime, folders 0', () => {

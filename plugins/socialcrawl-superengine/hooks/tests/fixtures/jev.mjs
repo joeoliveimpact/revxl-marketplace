@@ -123,6 +123,7 @@ const priceTextHits = (body) => texts(body).filter(([w, t]) => !FROZEN_IDS.inclu
 const scrubbed = (d) => ({
   ...process.env,
   OPENROUTER_API_KEY: "",
+  JEV_API_BASE: "",
   HOME: d,
   USERPROFILE: d,
   SC_REVXL_HOME: join(d, "revxl"),
@@ -199,7 +200,7 @@ function drive(body, { jev = JEV, cfg = {} } = {}) {
       `const CFG = ${JSON.stringify(cfg)};`,
       `const RESPOND = ${respond.toString()};`,
       `const FAKE = ${JSON.stringify(FAKE_KEY)};`,
-      `const T = { calls: [], fn: async (url, key, body) => { T.calls.push({ url, keyOk: key === FAKE, body }); if (CFG.request) new Request(url, { method: "POST", headers: { Authorization: "Bearer " + key } }); const r = RESPOND(body, T.calls.length - 1, CFG); if (r.throws) throw new Error(r.throws === "key" ? "fixture error quoting Bearer " + key : r.throws); return r; } };`,
+      `const T = { calls: [], fn: async (url, key, body) => { T.calls.push({ url, keyOk: key === FAKE, noKey: key == null, body }); if (CFG.request) new Request(url, { method: "POST", headers: { Authorization: "Bearer " + key } }); const r = RESPOND(body, T.calls.length - 1, CFG); if (r.throws) throw new Error(r.throws === "key" ? "fixture error quoting Bearer " + key : r.throws); return r; } };`,
       `const DIR = ${JSON.stringify(d)};`,
       `const ENV = { OPENROUTER_API_KEY: FAKE, SC_REVXL_HOME: DIR + "/revxl" };`,
       `const run = async (argv, o = {}) => { const OUT = [], ERR = []; const before = T.calls.length; const code = await J.main(argv, { transport: T.fn, env: o.env || ENV, home: o.home || DIR, out: (s) => OUT.push(s), err: (s) => ERR.push(s) }); return { code, result: OUT.length ? JSON.parse(OUT.join("")) : null, error: ERR.join(""), calls: T.calls.length - before }; };`,
@@ -253,9 +254,44 @@ export default [
       assert(c.stdout === "" && /no OpenRouter key/.test(c.stderr), `stdout empty, one plain line on stderr\n${J(c)}`);
 
       // KILL: drop the key check. The run walks straight into the transport.
-      const m = mutate([["if (!key) throw new JevError(3,", "if (false) throw new JevError(3,"]]);
+      const m = mutate([["if (!key && !base) throw new JevError(3,", "if (false) throw new JevError(3,"]]);
       const k = drive(`out(await run(["intake", ${J(q)}], { env: {}, home: DIR }));`, { jev: m });
       assert(k.json && k.json.calls === 1, `the mutant must reach the transport, or J1 proves nothing\n${k.stdout}`);
+    },
+  },
+  {
+    id: "J1b-jev-api-base-routes-through-the-proxy-with-no-key",
+    desc: "JEV_API_BASE set (Aperture's key-injecting OpenRouter connector): no key is read or sent, the POST goes to <base>/alpha/decisions, every request carries provider zdr + deny, and a JEV_API_BASE that is not a plain http(s) URL exits 6 with zero requests",
+    fn() {
+      const q = reqFile({ ask: ASK });
+      const base = "http://aperture/v1/connectors/openrouter";
+      const r = drive(
+        `const withFile = DIR + "/withfile"; const fs = await import("node:fs");\n` +
+          `fs.mkdirSync(withFile + "/.config/openrouter", { recursive: true }); fs.writeFileSync(withFile + "/.config/openrouter/api_key", FAKE + "\\n");\n` +
+          `const proxied = await run(["intake", ${J(q)}], { env: { JEV_API_BASE: ${J(base + "/")} }, home: withFile });\n` +
+          `const sent = T.calls.slice(-1)[0];\n` +
+          `const bad = await run(["intake", ${J(q)}], { env: { JEV_API_BASE: "ftp://x" }, home: DIR });\n` +
+          `const userinfo = await run(["intake", ${J(q)}], { env: { JEV_API_BASE: "http://u:p@aperture/x" }, home: DIR });\n` +
+          `const odd = []; for (const v of ["http://a/x?q=1", "http://a/x?", "http://a/x#", "http://a/x#f", "http://a/\tx"]) odd.push(await run(["intake", ${J(q)}], { env: { JEV_API_BASE: v }, home: DIR }));\n` +
+          `const direct = await run(["intake", ${J(q)}], { env: { OPENROUTER_API_KEY: FAKE }, home: DIR });\n` +
+          `out({ proxied, url: sent.url, noKey: sent.noKey, provider: sent.body.provider, bad, userinfo, odd, directProvider: T.calls.slice(-1)[0].body.provider });`
+      );
+      const j = r.json;
+      assert(j && j.proxied && j.proxied.code === 0 && j.proxied.calls === 1, `the proxy route must run without a key\n${r.stdout}${r.stderr}`);
+      assert(j.url === base + "/alpha/decisions", `the POST must go to <base>/alpha/decisions, got ${j.url}`);
+      assert(j.noKey === true, `no key may be read or sent through the proxy, even with a key file present\n${r.stdout}`);
+      for (const p of [j.provider, j.directProvider]) assert(p && p.zdr === true && p.data_collection === "deny", `every request carries provider zdr + deny\n${r.stdout}`);
+      for (const b of [j.bad, j.userinfo, ...j.odd]) assert(b.code === 6 && b.calls === 0, `a JEV_API_BASE that is not a plain http(s) URL exits 6 with zero requests\n${r.stdout}`);
+      assert(!/sk-or-/.test(r.stdout), `no key material may appear in the output\n${r.stdout}`);
+
+      // KILL: read the key on the proxy route too. The key file's key then reaches the proxy.
+      const m = mutate([["const key = base ? null : resolveKey(env, home);", "const key = resolveKey(env, home);"]]);
+      const k = drive(
+        `const fs = await import("node:fs"); fs.mkdirSync(DIR + "/.config/openrouter", { recursive: true }); fs.writeFileSync(DIR + "/.config/openrouter/api_key", FAKE + "\\n");\n` +
+          `await run(["intake", ${J(q)}], { env: { JEV_API_BASE: ${J(base)} }, home: DIR }); out({ noKey: T.calls.slice(-1)[0].noKey });`,
+        { jev: m }
+      );
+      assert(k.json && k.json.noKey === false, `the mutant must send the key, or J1b proves nothing\n${k.stdout}`);
     },
   },
   {

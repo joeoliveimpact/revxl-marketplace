@@ -28,6 +28,16 @@ To copy or refresh the boards without starting the server:
 It prints one plain line per board ("copied", "refreshed", "up to date", or "not built yet, nothing to copy").
 A refresh overwrites only the board's own template files; saved work and the client's files are never touched.
 
+## Open my board for a reel
+
+H-HUB-1 deliberately opens boards inside the hub so the client keeps reel context and the other boards together.
+
+For "Open my <board> for <reel>" (Cut Board, Tweak Board, Beat Map, Sketches, Sound Board or Grade Board),
+refresh the hub data using `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/hub.md`, then start or reuse
+the server with steps 1 and 2 above. Open `{url}editor/hub/?reel=<reel>` in the Browser pane with
+`preview_start`, URL-encoding the reel name. The hub accepts `reel` but has no board-tab query or hash:
+open the hub and name the requested tab for the client, e.g. "Your Sound Board is in the Sound Board tab."
+
 ## A pasted "Restart my editor boards" line
 
 When the server stops while a board is open, the board shows a red banner with a line and a Copy button. The line

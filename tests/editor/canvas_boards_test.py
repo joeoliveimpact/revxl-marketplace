@@ -71,6 +71,7 @@ const fs = require('fs'), {pathToFileURL} = require('url');
     async function click(selector) {
       if (selector === '#send') await frame.waitForSelector('#send:not([disabled])');
       await frame.$eval(selector, e => {
+        for(let p=e.parentElement;p;p=p.parentElement) if(p.matches('details.advanced-controls')) p.open=true;
         e.scrollIntoView({block:'center'});
         // A fixed footer inside the hub iframe also needs the outer page to scroll.
         parent.scrollBy(0, window.frameElement.getBoundingClientRect().top + e.getBoundingClientRect().top - parent.innerHeight / 2);
@@ -228,7 +229,9 @@ const fs = require('fs'), {pathToFileURL} = require('url');
     let frame = await open();
     async function click(s) {
       if (s === '#send') await frame.waitForSelector('#send:not([disabled])');
-      await frame.$eval(s, e => { e.scrollIntoView({block:'center'});
+      await frame.$eval(s, e => {
+        for(let p=e.parentElement;p;p=p.parentElement) if(p.matches('details.advanced-controls')) p.open=true;
+        e.scrollIntoView({block:'center'});
         parent.scrollBy(0, window.frameElement.getBoundingClientRect().top + e.getBoundingClientRect().top - parent.innerHeight/2); });
       await frame.click(s);
     }
@@ -634,7 +637,7 @@ def main():
         return S["port"]
 
     def url(board, reel_name="demo-reel"):
-        return f"http://127.0.0.1:{S['port']}/editor/{board}/?reel={reel_name}"
+        return f"http://127.0.0.1:{S['port']}/editor/{board}/?reel={reel_name}&controls=advanced"
 
     def refresh_hub():
         for name in ("board_sync.py", "hub_rows.py"):

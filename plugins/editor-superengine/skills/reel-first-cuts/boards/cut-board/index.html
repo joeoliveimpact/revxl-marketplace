@@ -135,6 +135,8 @@ button.on,.chips button.on{color:var(--et-ink)!important}   /* undo the dark-tex
 #reset.arm{border-color:var(--et-you)!important;color:var(--et-you)!important;background:rgba(255,90,60,.1)!important}
 @media (max-width:600px){header{padding:10px 16px!important}main{padding:14px 16px 80px!important}.att{grid-template-columns:minmax(0,1fr)!important;gap:6px!important}.att .ctl{justify-content:flex-start}}
 kbd{font:500 11px var(--et-mono);border:1px solid var(--et-hair2);border-bottom-width:2px;border-radius:6px;padding:1px 6px;color:var(--et-ink);background:var(--et-tile2)}
+.advanced-controls{border:1px solid var(--et-hair);border-radius:8px;padding:8px;margin:8px 0;color:var(--et-ink)}
+.advanced-controls>summary{cursor:pointer;font-weight:600}
 </style>
 <script id="editor-theme-js">document.addEventListener("pointermove",function(e){var t=e.target.closest&&e.target.closest(".line");if(!t)return;var b=t.getBoundingClientRect();t.style.setProperty("--mx",(e.clientX-b.left)+"px");t.style.setProperty("--my",(e.clientY-b.top)+"px");},{passive:true});</script>
 </head><body>
@@ -144,9 +146,11 @@ kbd{font:500 11px var(--et-mono);border:1px solid var(--et-hair2);border-bottom-
  <span class="stat">pauses <b id="gaps">–</b></span>
  <span class="stat">lines <b id="nl">–</b></span>
  <span id="mix" class="warn" hidden>mixed takes: render needs one take</span>
+<details class="advanced-controls"><summary>Advanced controls</summary>
  <span>pause default <select id="gapdef"></select></span>
  <span>speed <select id="speed"></select></span>
  <span title="the pause kept after a comma, a full stop or a list word (gaps.py --beat)">pause after commas <input type="range" id="beat" min="0.2" max="0.4" step="0.01" aria-label="pause after commas, seconds"> <b id="beatv"></b></span>
+</details>
  <span id="taketotals"></span>
  <button id="send" class="send keep">send to Claude</button>
  <span id="saved" style="color:var(--ok)"></span> <span id="dirty" class="warn keep" hidden>changes not sent</span>
@@ -250,7 +254,7 @@ function cutSegs(i){
   return segs;
 }
 function playCut(i){ const a=att(i); if(a) playSegs('cut:'+i, a.take, cutSegs(i)); }
-function chipRow(cur, data){ return `<span class="chips">${PRESETS().map(([n,ms])=>`<button data-${data} data-ms="${ms}" class="${cur===ms?'on':''}">${esc(chipName(n,ms))}</button>`).join('')}<button data-${data} data-ms="default" class="${cur==='default'?'on':''}">${msLabel('default')}</button></span>`; }
+function chipRow(cur, data){ return `<details class="advanced-controls" data-controls-key="${esc(data)}"><summary>Advanced controls</summary><span class="chips">${PRESETS().map(([n,ms])=>`<button data-${data} data-ms="${ms}" class="${cur===ms?'on':''}">${esc(chipName(n,ms))}</button>`).join('')}<button data-${data} data-ms="default" class="${cur==='default'?'on':''}">${msLabel('default')}</button></span></details>`; }
 function silLabel(sv, ms){ const len=sv.b-sv.a; const cap= ms==='default'?S.gap_default_ms:ms; if(cap==null) return `keep ${len.toFixed(1)}s`; const kept=Math.min(len,cap/1000); return `✂ ${len.toFixed(1)}s → ${kept.toFixed(2)}s`; }
 
 function attemptHTML(i, j, a, s, picked){
@@ -318,7 +322,7 @@ function render(first){
       d.appendChild(g);
     }
     const f=document.createElement('div'); f.className='foot';
-    f.innerHTML=`<span class="shot">shot <select data-shot="${i}"><option value="">↑ same as above</option>${C.shots.vocab.map(v=>`<option ${s.shot===v?'selected':''}>${esc(v)}</option>`).join('')}</select></span>
+    f.innerHTML=`<details class="advanced-controls" data-controls-key="shot-${i}"><summary>Advanced controls</summary><span class="shot">shot <select data-shot="${i}"><option value="">↑ same as above</option>${C.shots.vocab.map(v=>`<option ${s.shot===v?'selected':''}>${esc(v)}</option>`).join('')}</select></span></details>
       <input placeholder="note" data-note="${i}" value="${esc(s.note)}">`;
     d.appendChild(f); m.appendChild(d);
   });

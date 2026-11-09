@@ -1,7 +1,6 @@
 # House rules
 
-Five rules that govern every editing job in this plugin. They are not style preferences.
-Each one is here because breaking it cost a whole build.
+Six rules govern every editing job. Rules 1–5 protect the build; rule 6 sets how much detail Claude offers.
 
 ---
 
@@ -100,3 +99,11 @@ were wiped.
 ## 5. Auto edit
 
 When this reel's style picker printed "Auto edit with …" (rerun `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/saved_style.py" picker <reel folder>` to check), write each board's Send yourself from the style, or the skill's recommended option where the style has none, and go on without asking. That runs a ⛔ stage; it doesn't skip it. Make the 720p preview without asking. Still stop for any price-and-ask, a failing check, or a `✗` or `BLOCK` line, and never post. Show the finished preview; the client rules on it. "stop" or "normal mode" runs `pick <reel folder> normal`.
+
+## 6. Controls in chat
+
+Read `controls` from the workspace's `editor.config.json`: in `simple` (also missing or invalid), don't offer fine controls (ms, dB, thresholds, offsets or sliders under Advanced controls) unless the client asks; in `advanced`, name them when useful. "Switch my editor controls to Advanced/Simple" runs the doctor with `--set-controls advanced|simple`.
+
+**Why:** In Simple, numbers like ms and dB are choices the client cannot judge; the boards hide them under Advanced controls for the same reason. Describing what a step does (such as a loudness target in a result) is fine; offering the number as a choice is not.
+
+Before handling the current ask, process pending hub controls requests using `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/hub.md`; then use the saved config.

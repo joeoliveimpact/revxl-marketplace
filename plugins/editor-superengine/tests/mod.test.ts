@@ -1,6 +1,7 @@
 import { test, expect, mock } from 'claude-code/testing'
-import { LABELS, BOARD_NAME, STAGES, TOGGLE, BATON_NONE, BATON_UNREAD, fill, folderKey } from '../hooks/mod/logic'
+import { LABELS, BOARD_NAME, STAGES, SENDS, TOGGLE, BATON_NONE, BATON_UNREAD, fill, folderKey } from '../hooks/mod/logic'
 import { NOW, DAY, ROOT, f, json, reel, walk, WALK, list, CONFIG_FILE, REEL_018, REEL_020, type Tree } from './fixtures/reels'
+import { MERGED_REEL, mergedReel } from './fixtures/merged-reel'
 
 // The mod drawn and run through the engine; the test's hooks beneath it stand for the disk, the store, the clock, the
 // dialog, the opener and another plugin's band.
@@ -18,26 +19,38 @@ const typed = (command: string) => ({ command, args: '', origin: { kind: 'compos
 type Opts = {
   busy?: string[]                  // folders (relative to the root) whose listing is refused, as a syncing folder is
   cwdFails?: boolean               // $.session.cwd() refused: the forced failure
+  root?: string
   open?: 'placed' | 'unplaced' | 'refused'
   pick?: (options: string[]) => string | null   // the dialog's answer; null = dismissed
   probe?: (argv: string[]) => { exitCode: number; stdout: string } | 'refuse'
   refuseRegister?: boolean
+  env?: Record<string, string>
+  failHeartbeat?: 'id' | 'env' | 'version' | 'write'
+  refuseAck?: boolean
+  refuseSnapshot?: boolean
 }
 
 function world(on: any, tree: Tree, o: Opts = {}) {
+  const root = o.root ?? ROOT
   const seen = { submits: [] as any[], status: [] as (string | undefined)[], store: new Map<string, unknown>(), sets: [] as string[],
     opens: [] as any[], asks: [] as { question: string; header: string; options: string[] }[], runs: [] as string[][], reads: [] as string[],
-    writes: [] as string[], logs: [] as any[], toasts: [] as string[], registers: [] as any[], clock: undefined as any }
+    writes: [] as string[], writeTexts: [] as string[], lists: [] as string[], logs: [] as any[], toasts: [] as string[], registers: [] as any[], clock: undefined as any }
   const gone = { deny: 'ENOENT: no such file or directory' }, busy = { deny: 'EBUSY: resource busy or locked' }
   // The engine hands fs hooks the OS's own spelling (backslashes on Windows): looked up relative to the root.
   const rel = (e: any): string | undefined => {
     const p = String(e.path).replace(/\\/g, '/')
-    return p.startsWith(`${ROOT}/`) ? p.slice(ROOT.length + 1) : undefined
+    return p.startsWith(`${root}/`) ? p.slice(root.length + 1) : undefined
   }
   seen.clock = mock.clock(on, { now: NOW })
-  on('session.cwd', async () => (o.cwdFails ? { deny: 'forced failure' } : { value: ROOT }))
+  on('session.cwd', async () => (o.cwdFails ? { deny: 'forced failure' } : { value: root }))
+  on('session.id', async () => o.failHeartbeat === 'id' ? { deny: 'refused' } : { value: 'session-1' })
+  on('env.get', async ($: any, e: any) => o.failHeartbeat === 'env' ? { deny: 'refused' }
+    : { value: (o.env ?? { USERPROFILE: 'C:/Users/coach', HOME: '/home/coach' })[e.name] })
   on('store.get', async ($: any, e: any) => ({ value: seen.store.get(e.key) }))
-  on('store.set', async ($: any, e: any) => { seen.sets.push(e.key); seen.store.set(e.key, JSON.parse(JSON.stringify(e.value))); return { value: undefined } })
+  on('store.set', async ($: any, e: any) => {
+    if (o.refuseAck && e.key === 'editorAcked') return { deny: 'refused' }
+    seen.sets.push(e.key); seen.store.set(e.key, JSON.parse(JSON.stringify(e.value))); return { value: undefined }
+  })
   on('ui.status', async ($: any, e: any) => { seen.status.push(e.text); return { value: undefined } })
   on('session.start', async ($: any, e: any) => ({ cwd: e.cwd }))
   on('turn.complete', async ($: any, e: any) => ({ text: e.answer }))
@@ -58,17 +71,24 @@ function world(on: any, tree: Tree, o: Opts = {}) {
     return r !== undefined && list(tree, r) ? { value: { kind: 'dir', size: 0, mtimeMs: 0, isLink: false } } : gone
   })
   on('fs.read', async ($: any, e: any) => {
+    if (String(e.path).replace(/\\/g, '/').endsWith('/.claude-plugin/plugin.json'))
+      return o.failHeartbeat === 'version' ? { value: '{bad json' } : { value: '{"version":"0.1.0"}' }
     const r = rel(e), v = r === undefined ? undefined : tree[r]
     seen.reads.push(r ?? String(e.path))
     return !v ? gone : v.busy ? busy : { value: v.text ?? '' }
   })
   on('fs.list', async ($: any, e: any) => {
     const r = rel(e)
+    seen.lists.push(r ?? String(e.path))
     if (r !== undefined && o.busy?.includes(r)) return busy
     const l = r === undefined ? undefined : list(tree, r)
     return l ? { value: l } : r !== undefined && tree[r] ? { deny: 'ENOTDIR: not a directory' } : gone
   })
-  on('fs.write', async ($: any, e: any) => { seen.writes.push(String(e.path)); return { value: undefined } })
+  on('fs.write', async ($: any, e: any) => {
+    seen.writes.push(String(e.path)); seen.writeTexts.push(e.text)
+    return o.failHeartbeat === 'write' || o.refuseSnapshot && String(e.path).endsWith('cockpit-state.json')
+      ? { deny: 'refused' } : { value: undefined }
+  })
   on('process.run', async ($: any, e: any) => {
     seen.runs.push([...e.argv])
     const a = o.probe ? o.probe(e.argv) : { exitCode: 0, stdout: 'video\n' }
@@ -406,12 +426,18 @@ test('baton follows the disk on a main-loop answer only; a Send made after the b
   expect(seen.status.at(-1)).toBe('Your move: render the master (r5)')
 })
 
-// ---- the store: only editorBaseline and autostartOff are ever written
-test('store: only editorBaseline (once, never moved) and autostartOff are written; nothing goes to disk', async ($, on) => {
-  const seen = world(on, FOUR, { pick: () => 'c' })
+// ---- the store and its two disk exports: heartbeat and the hub's Send snapshot
+const snapshots = (seen: { writes: string[]; writeTexts: string[] }) => seen.writes.flatMap((p, i) =>
+  p.replace(/\\/g, '/').endsWith('/hub/cockpit-state.json') ? [JSON.parse(seen.writeTexts[i]!)] : [])
+const heartbeats = (seen: { writes: string[] }) => seen.writes.map(p => p.replace(/\\/g, '/')).filter(p => !p.endsWith('/hub/cockpit-state.json'))
+
+test('store: baseline once, autostart, toast and ack only; disk writes are heartbeat and Send snapshot only', async ($, on) => {
+  const seen = world(on, { ...FOUR, ...reel('c', { 'sound-selection.json': { at: NOW + 1, size: 10 } }) }, { pick: () => 'c' })
+  on('tool.call', { tool: 'Read' }, () => ({ result: {} }))
   await $.session.start(START)
-  await seen.clock.advance(5 * DAY)
+  await seen.clock.advance(3000)
   await $.session.start(START)
+  await seen.clock.advance(0)
   await $.turn.complete(turn())
   expect(seen.store.get('editorBaseline')).toEqual({ [KEY]: NOW })
   const ui = await mount($, 'desktop')
@@ -419,9 +445,203 @@ test('store: only editorBaseline (once, never moved) and autostartOff are writte
   const strip = await band($, 'desktop')
   for (const b of await strip.findAll({ type: 'Button' })) await strip.press({ key: b.key! })
   await $.command.run(typed('editor'))
-  expect([...new Set(seen.sets)].sort()).toEqual(['autostartOff', 'editorBaseline'])
+  await $.tool.call({ tool: 'Read', file_path: `${ROOT}/videos/c/sound-selection.json` })
+  expect([...new Set(seen.sets)].sort()).toEqual(['autostartOff', 'editorAcked', 'editorBaseline', 'editorToasted'])
   expect(seen.sets.filter(k => k === 'editorBaseline')).toHaveLength(1)
-  expect(seen.writes).toEqual([])
+  expect(seen.store.get('editorAcked')).toEqual({ 'c/sound-selection.json': NOW + 1 })
+  expect(heartbeats(seen)).toEqual(Array(2).fill('C:/Users/coach/.claude/revxl/heartbeat/editor-superengine/session-1.json'))
+  expect(snapshots(seen)).toEqual([
+    { baseline: NOW, acked: {} }, { baseline: NOW, acked: {} },
+    { baseline: NOW, acked: { 'c/sound-selection.json': NOW + 1 } },
+  ])
+})
+
+test('snapshot: existing baseline and acks exported on every session start, to the configured editor folder', async ($, on) => {
+  const seen = world(on, { 'editor/editor.config.json': json(1, { paths: { editor: 'local/boards' } }) })
+  seen.store.set('editorBaseline', { [KEY]: NOW - DAY, elsewhere: 10 })
+  seen.store.set('editorAcked', { 'old/grade-selection.json': 20 })
+  await $.session.start(START)
+  await $.session.start(START)
+  expect(seen.writes.map(p => p.replace(/\\/g, '/'))).toEqual(Array(2).fill(`${ROOT}/local/boards/hub/cockpit-state.json`))
+  expect(snapshots(seen)).toEqual(Array(2).fill({ baseline: NOW - DAY, acked: { 'old/grade-selection.json': 20 } }))
+})
+
+test('snapshot: write refusal is silent at session start and on acknowledgement; Read still succeeds', async ($, on) => {
+  const seen = world(on, SENT, { refuseSnapshot: true })
+  on('tool.call', { tool: 'Read' }, () => ({ result: { content: 'read successfully' } }))
+  await $.session.start(START)
+  expect(await $.tool.call({ tool: 'Read', file_path: `${ROOT}/videos/r5/sound-selection.json` }))
+    .toEqual({ result: { content: 'read successfully' } })
+  expect(seen.store.get('editorAcked')).toEqual({ 'r5/sound-selection.json': NOW - DAY / 2 })
+  expect(snapshots(seen)).toHaveLength(2)
+  expect(seen.logs).toEqual([])
+  expect(seen.toasts).toEqual([])
+})
+
+// ---- S15b: every-turn briefing, heartbeat, toast and Read acknowledgement
+test('H-UI-11: a merged reel Send opens, toasts once, briefs the next prompt, and closes on a main-agent Read', async ($, on) => {
+  const tree = mergedReel(), seen = world(on, tree)
+  on('tool.call', { tool: 'Read' }, () => ({ result: {} }))
+  await $.session.start(START)
+  Object.assign(tree, reel(MERGED_REEL, { 'sound-selection.json': { at: NOW + 1, size: 10 } }))
+  const ui = await mount($, 'terminal')
+  expect((await ui.find({ key: 'main' }))?.props.label).toBe('Use my Send  →')
+  await seen.clock.advance(3000)
+  expect(seen.toasts).toEqual(['Sound Board Send for Reel 3. Say "Go ahead with my Sound Board Send for Reel 3".'])
+  await seen.clock.advance(3000)
+  await $.turn.complete(turn())
+  expect(seen.toasts).toHaveLength(1)
+  expect(seen.store.get('editorToasted')).toEqual([`Reel 3/sound-selection.json@${NOW + 1}`])
+  await $.prompt.submit({ text: 'hi' })
+  const brief = seen.submits.at(-1).context.join('\n')
+  expect(brief).toContain('Sound Board Send for Reel 3')
+  expect(brief).toContain('Go ahead with my Sound Board Send for Reel 3')
+  expect(brief).toContain("Nothing is acted on without the person's next message.")
+  await $.tool.call({ tool: 'Read', file_path: `${ROOT}/videos/Reel 3/sound-selection.json` })
+  expect(seen.store.get('editorAcked')).toEqual({ 'Reel 3/sound-selection.json': NOW + 1 })
+  await ui.redraw()
+  expect((await ui.find({ key: 'main' }))?.props.label).toBe('Write my caption  →')
+  await $.prompt.submit({ text: 'hi again' })
+  expect(seen.submits.at(-1).context ?? []).toEqual([])
+  expect(seen.submits.map(s => s.text)).toEqual(['hi', 'hi again'])
+  expect(seen.asks).toEqual([])
+})
+
+test('briefing: every board on every reel, including idle and unpicked reels; existing context survives', {
+  plugins: [{ name: 'other-context', tier: 'prepend', register(on) {
+    on('prompt.submit', async ($, e, next) => next({ ...e, context: [...(e.context ?? []), 'other context'] }))
+  } }],
+}, async ($, on) => {
+  const tree = { ...SENT, ...reel('idle', Object.fromEntries(SENDS.map(s => [s.file, f(20)]))) }
+  const seen = world(on, tree)
+  seen.store.set('editorBaseline', { [KEY]: NOW - 30 * DAY })
+  await $.prompt.submit({ text: 'hi' })
+  const contexts = seen.submits.at(-1).context
+  expect(contexts).toContain('other context')
+  const brief = contexts.join('\n')
+  for (const s of SENDS) expect(brief).toContain(`Go ahead with my ${BOARD_NAME[s.board]} Send for idle`)
+  expect(brief).toContain('Go ahead with my Sound Board Send for r5')
+  expect(seen.store.has('editorAcked')).toBe(false)
+  // A repeat submit must get a fresh briefing without accumulating last turn's context.
+  await $.prompt.submit({ text: 'next turn' })
+  expect(seen.submits.at(-1).context).toEqual(contexts)
+  expect(seen.asks).toEqual([])
+})
+
+for (const [name, tree, opts] of [
+  ['no baseline', SENT, {}], ['no open Sends', walk(0), {}], ['unreadable workspace', SENT, { cwdFails: true }],
+] as [string, Tree, Opts][])
+  test(`briefing: ${name} passes the prompt through unchanged`, async ($, on) => {
+    const seen = world(on, tree, opts)
+    await $.prompt.submit({ text: 'hi' })
+    expect(seen.submits.at(-1).context).toBeUndefined()
+    expect(seen.submits.at(-1).text).toBe('hi')
+  })
+
+for (const [name, env, home] of [
+  ['USERPROFILE first', { USERPROFILE: 'C:\\Users\\coach', HOME: '/home/other' }, 'C:/Users/coach'],
+  ['HOME fallback', { HOME: '/home/coach' }, '/home/coach'],
+] as [string, Record<string, string>, string][])
+  test(`heartbeat: ${name}; one deferred write with manifest version and ISO seconds`, async ($, on) => {
+    const seen = world(on, CONFIG_FILE, { env })
+    await $.session.start(START)
+    await seen.clock.advance(0)
+    const writes = heartbeats(seen)
+    // Windows resolves an absolute POSIX HOME against its current drive; USERPROFILE stays exact.
+    expect(home.startsWith('/') ? writes.map(p => p.replace(/^[A-Za-z]:/, '')) : writes)
+      .toEqual([`${home}/.claude/revxl/heartbeat/editor-superengine/session-1.json`])
+    expect(JSON.parse(seen.writeTexts[seen.writes.findIndex(p => p.replace(/\\/g, '/').includes('/heartbeat/'))]!)).toEqual({ v: 1, plugin: PLUGIN, version: '0.1.0', pane_command: '/editor',
+      session_id: 'session-1', ts: '2026-11-04T12:00:00Z' })
+  })
+
+for (const failure of ['id', 'env', 'version', 'write', 'no home'] as const)
+  test(`heartbeat: ${failure} failure is silently skipped`, async ($, on) => {
+    const seen = world(on, CONFIG_FILE, failure === 'no home' ? { env: {} } : { failHeartbeat: failure })
+    await $.session.start(START)
+    await seen.clock.advance(0)
+    expect(heartbeats(seen)).toHaveLength(failure === 'write' ? 1 : 0)
+    expect(seen.logs).toEqual([])
+    expect(seen.toasts).toEqual([])
+  })
+
+for (const s of SENDS)
+  test(`toast and ack: ${s.board}, next tick deduplicates; a new mtime reopens and toasts again`, async ($, on) => {
+    const tree = { ...CONFIG_FILE, ...reel('send-reel', { [s.file]: { at: NOW + 1, size: 10 } }) }
+    const seen = world(on, tree)
+    on('tool.call', { tool: 'Read' }, () => ({ result: {} }))
+    await $.session.start({ ...START, surface: null, isInteractive: false })
+    await $.turn.complete(turn())
+    expect(seen.toasts).toHaveLength(1)
+    await seen.clock.advance(3000)
+    expect(seen.toasts).toHaveLength(1)
+    await $.tool.call({ tool: 'Read', file_path: `${ROOT}/videos/send-reel/${s.file}` })
+    expect(seen.store.get('editorAcked')).toEqual({ [`send-reel/${s.file}`]: NOW + 1 })
+    Object.assign(tree, reel('send-reel', { [s.file]: { at: NOW + 2, size: 10 } }))
+    await Promise.all([$.turn.complete(turn()), seen.clock.advance(3000)])
+    expect(seen.toasts).toHaveLength(2)
+    await $.prompt.submit({ text: 'hi' })
+    expect(seen.submits.at(-1).context.join('\n')).toContain(`Go ahead with my ${BOARD_NAME[s.board]} Send for send-reel`)
+    expect(seen.asks).toEqual([])
+  })
+
+test('toast polling: restart cancels the previous timer; a persisted toast key stays deduplicated', async ($, on) => {
+  const seen = world(on, SENT)
+  seen.store.set('editorBaseline', { [KEY]: BASELINE })
+  seen.store.set('editorToasted', [`r5/sound-selection.json@${NOW - DAY / 2}`])
+  await $.session.start(START)
+  await $.session.start(START)
+  seen.lists.length = 0
+  await seen.clock.advance(3000)
+  expect(seen.lists.filter(p => p === 'videos')).toHaveLength(1)
+  expect(seen.toasts).toEqual([])
+})
+
+test('ack: Windows separators and case use the canonical reel key and preserve existing acks', async ($, on) => {
+  const seen = world(on, SENT)
+  seen.store.set('editorAcked', { 'other/grade-selection.json': 10 })
+  on('tool.call', { tool: 'Read' }, () => ({ result: {} }))
+  await $.tool.call({ tool: 'Read', file_path: `${ROOT}/videos/r5/sound-selection.json`.toUpperCase().replace(/\//g, '\\') })
+  expect(seen.store.get('editorAcked')).toEqual({ 'other/grade-selection.json': 10, 'r5/sound-selection.json': NOW - DAY / 2 })
+})
+
+test('ack: concurrent Reads preserve both acknowledgements on every host', async ($, on) => {
+  const tree = { ...SENT, ...reel('r5', { 'grade-selection.json': f(1) }) }
+  const seen = world(on, tree)
+  on('tool.call', { tool: 'Read' }, () => ({ result: {} }))
+  await Promise.all(['sound', 'grade'].map(board => $.tool.call({ tool: 'Read', file_path: `${ROOT}/videos/r5/${board}-selection.json` })))
+  expect(seen.store.get('editorAcked')).toEqual({ 'r5/sound-selection.json': NOW - DAY / 2, 'r5/grade-selection.json': NOW - DAY })
+})
+
+for (const [name, path, agentId, denied] of [
+  ['subagent', `${ROOT}/videos/r5/sound-selection.json`, 'agent-1', false],
+  ['denied Read', `${ROOT}/videos/r5/sound-selection.json`, undefined, true],
+  ['nested file', `${ROOT}/videos/r5/sound/sound-selection.json`, undefined, false],
+  ['other workspace', 'D:/other/videos/r5/sound-selection.json', undefined, false],
+  ['sibling videos prefix', `${ROOT}/videos-other/r5/sound-selection.json`, undefined, false],
+  ['unknown Send', `${ROOT}/videos/r5/selection.json`, undefined, false],
+  ['missing Send', `${ROOT}/videos/r5/grade-selection.json`, undefined, false],
+] as const)
+  test(`ack: ${name} does not acknowledge anything`, async ($, on) => {
+    const seen = world(on, SENT)
+    on('tool.call', { tool: 'Read' }, () => denied ? { deny: 'refused' } : { result: {} })
+    await $.tool.call({ tool: 'Read', file_path: path, ...(agentId ? { agentId } : {}) } as any).catch(() => {})
+    expect(seen.store.has('editorAcked')).toBe(false)
+  })
+
+test('ack: custom videos folder', async ($, on) => {
+  const tree = { 'editor/editor.config.json': { text: '{"paths":{"videos":"media/reels"}}' },
+    ...reel('custom', { 'grade-selection.json': f(1) }, 'media/reels') }
+  const seen = world(on, tree)
+  on('tool.call', { tool: 'Read' }, () => ({ result: { content: 'read successfully' } }))
+  await $.tool.call({ tool: 'Read', file_path: `${ROOT}/media/reels/custom/grade-selection.json` })
+  expect(seen.store.get('editorAcked')).toEqual({ 'custom/grade-selection.json': NOW - DAY })
+})
+
+test('ack: failed bookkeeping preserves the Read result', async ($, on) => {
+  const seen = world(on, SENT, { refuseAck: true })
+  on('tool.call', { tool: 'Read' }, () => ({ result: { content: 'read successfully' } }))
+  expect(await $.tool.call({ tool: 'Read', file_path: `${ROOT}/videos/r5/sound-selection.json` })).toEqual({ result: { content: 'read successfully' } })
+  expect(seen.store.has('editorAcked')).toBe(false)
 })
 
 test('the baseline keeps other workspaces and is set per workspace', async ($, on) => {

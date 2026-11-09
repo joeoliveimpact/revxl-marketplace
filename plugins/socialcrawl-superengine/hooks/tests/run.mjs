@@ -28,6 +28,12 @@ import ledger from "./fixtures/ledger.mjs";
 import price from "./fixtures/price.mjs";
 import jev from "./fixtures/jev.mjs";
 import balance from "./fixtures/balance.mjs";
+import d28 from "./fixtures/d28.mjs";
+import d28b from "./fixtures/d28b.mjs";
+import d28c from "./fixtures/d28c.mjs";
+import d28d from "./fixtures/d28d.mjs";
+import mod from "./fixtures/mod.mjs";
+import report from "./fixtures/report.mjs";
 
 const SUITES = [
   ["close-criteria", closeCriteria],
@@ -43,6 +49,12 @@ const SUITES = [
   ["price", price],
   ["jev", jev],
   ["balance", balance],
+  ["d28", d28],
+  ["d28b", d28b],
+  ["d28c", d28c],
+  ["d28d", d28d],
+  ["mod", mod],
+  ["report", report],
 ];
 
 const filter = process.argv[2] || "";

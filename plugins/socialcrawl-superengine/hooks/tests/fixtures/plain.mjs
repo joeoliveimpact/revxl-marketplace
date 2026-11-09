@@ -1,35 +1,28 @@
 /*
- * R14a.2 — the allow-list (Joe 09.28.26, session 2). The guard stays silent (counted, under the
- * cap) only for a PLAIN command: plain literal curl calls in the plugin's template grammar plus
- * tidy output. Any other command carrying `socialcrawl.dev` gets the one NOT A PLAIN CURL ask,
- * naming the visible counted total, parked as pending attended and denied unattended (never
- * counted, never pending). Mentions (grep, echo, a note, a commit message, a docs URL) ask too,
- * and `dry_run=1` is counted at its full label price.
+ * R14a.2 — the allow-list (Joe 09.28.26, session 2). The guard stays silent (counted, within the
+ * limit) only for a PLAIN command: plain literal curl calls in the plugin's template grammar plus
+ * tidy output. Any other command carrying `socialcrawl.dev` is denied with M_NOTPLAIN (D28),
+ * attended and unattended alike, before anything is read or counted; unattended, its visible
+ * worst case is logged. Mentions (grep, echo, a note, a commit message, a docs URL) are denied
+ * too, and `dry_run=1` is counted at its full label price.
  *
- * Synchronous, every guard run in its own seeded session (balance 800 -> cap 200, spent 0).
+ * Synchronous, every guard run in its own seeded session (balance 800 -> limit 200, spent 0).
  * Zero credits, zero network.
  */
-import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { session, V1, TSCRIPT, GUARD, COSTS, quoted, assert, assertDecision, assertMatch, assertNoMatch } from "../lib.mjs";
+import { session, V1, TSCRIPT, GUARD, COSTS, M_NOTPLAIN, M_NOTBASH, assert, assertDecision } from "../lib.mjs";
 
 const UNATTENDED = { env: { CLAUDE_CODE_SESSION_ATTENDED: "0" } };
 const NOLOCAL = { unsetEnv: ["GROQ_API_KEY"], env: { PATH: "" } };
-const NP = /NOT A PLAIN CURL/;
 const DOCS = "https://docs." + "social" + "crawl" + ".dev";
 const P = `${V1}prism/leads?query=x`;                                  // flat 50
 const LQ = `${V1}linkedin/search/posts?keyword=x&dry_run=1`;          // declares dryRun; 56 in full
 const KEY = `-H "x-api-key: $SOCIALCRAWL_API_KEY"`;
-const sha = (c) => createHash("sha256").update(c).digest("hex");
-const pendingOf = (st) => Object.values((st && st.pending) || {}).reduce((a, v) => a + v, 0);
 // 0.3.1 (a): a command through any tool but Bash (PowerShell first) is never plain.
 const PS = { extra: { tool_name: "PowerShell" } };
-const USE_BASH = /use the Bash tool/;
-const END = "Nothing was counted. If it is needed, run it in an attended session, where it can be confirmed.";
-const ATT = /run it only on a yes|run this only on an explicit yes|every paid call asks|Confirm with the user|Work out what it will cost|Show the user|Re-run it with the full literal URL/i;
-const API = "https://api." + "social" + "crawl" + ".dev/v1/";
+const API ="https://api." + "social" + "crawl" + ".dev/v1/";
 const MIXED = "https://www." + "Social" + "Crawl" + ".DEV/v1/";
 /** A2 (i)-(vii): [label, command, visible worst]. (i) is a valid Bash plain curl. */
 const PS_CASES = [
@@ -43,67 +36,61 @@ const PS_CASES = [
   ["(vii) a mixed-case host", `curl -s "${MIXED}prism/leads?query=x" -o out.json`, 50],
 ];
 
-/** One guard run in a fresh session (spent `spent`); returns the result and the state after. */
+/** One guard run in a fresh session (spent `spent`); returns the result, the state and the log after. */
 function once(command, opts = {}, spent = 0) {
   const s = session(opts);
   s.seed({ spent });
   const r = s.run(command, opts);
   const st = s.state();
+  const log = s.logLines();
   s.cleanup();
-  return { r, st };
+  return { r, st, log };
 }
 
 /**
- * The not-plain contract for one shape: attended it asks with the marker, names the visible total
- * and parks it under sha256(command) with nothing committed; unattended it is denied and nothing
- * is counted or pending. Returns the two printed rows.
+ * The deny contract for one shape (D28): attended and unattended it is denied with exactly
+ * `message`, nothing is counted or written, and unattended its one log line is a not-plain deny
+ * whose visible worst case is `want`. Returns the printed row.
  */
+function denied(label, cmd, want, message, opts) {
+  const row = [];
+  for (const [mode, o] of [["att", opts], ["unatt", { ...opts, env: { ...(opts.env || {}), ...UNATTENDED.env } }]]) {
+    const x = once(cmd, o);
+    assertDecision(x.r, "deny", `${label} (${mode}): denied`);
+    assert(x.r.message === message, `${label} (${mode}): exactly the deny message, read ${JSON.stringify(x.r.message).slice(0, 300)}`, x.r);
+    assert(!x.r.stateWritten && !x.st.spent, `${label} (${mode}): nothing counted or written, read ${JSON.stringify(x.st)}`, x.r);
+    if (mode === "unatt") {
+      assert(x.log.length === 1 && x.log[0].decision === "deny" && x.log[0].kind === "not-plain" && x.log[0].cmdWorst === want,
+        `${label}: one not-plain deny logged at the visible ${want}, read ${JSON.stringify(x.log)}`, x.r);
+    }
+    row.push(`${mode} ${String(x.r.decision).padEnd(5)} spent=${x.st.spent || 0}`);
+  }
+  return `    ${label.padEnd(52)} ${row.join(" | ")} logged ${want}`;
+}
+/** The not-plain contract (R14a.2; D28): denied with exactly M_NOTPLAIN, visible worst case `want`. */
 function notPlain(label, cmd, want, opts = {}) {
-  const a = once(cmd, opts);
-  assertDecision(a.r, "ask", `${label}: attended, not plain, asks`);
-  assertMatch(a.r, NP, `${label}: the not-plain ask`);
-  assertMatch(a.r, new RegExp(`Visible counted total: ~${want} credits`), `${label}: names the visible total`);
-  assert(!a.st.spent && (want ? a.st.pending[sha(cmd)] === want : pendingOf(a.st) === 0),
-    `${label}: pending ${want}, nothing committed, read ${JSON.stringify(a.st)}`, a.r);
-  const u = once(cmd, { ...opts, env: { ...(opts.env || {}), ...UNATTENDED.env } });
-  assertDecision(u.r, "deny", `${label}: unattended, not plain, is denied`);
-  assert(!u.st.spent && pendingOf(u.st) === 0, `${label}: a deny is never counted and never pending, read ${JSON.stringify(u.st)}`, u.r);
-  const fmt = (m, x) => `${m} ${String(x.r.decision).padEnd(5)} spent=${x.st.spent || 0} pending=${pendingOf(x.st)}`;
-  return `    ${label.padEnd(52)} ${fmt("att", a)} | ${fmt("unatt", u)}`;
+  return denied(label, cmd, want, M_NOTPLAIN, opts);
 }
 
-/** The plain contract: silent attended and unattended, `want` committed at once, nothing pending. */
+/** The plain contract: silent attended and unattended, `want` committed at once. */
 function plain(label, cmd, want) {
   const rows = [];
   for (const [mode, opts] of [["att", {}], ["unatt", UNATTENDED]]) {
     const { r, st } = once(cmd, opts);
-    assert(r.exit === 0 && r.raw === "", `${label} (${mode}): a plain curl under the cap emits nothing`, r);
-    assert((st.spent || 0) === want && pendingOf(st) === 0, `${label} (${mode}): committed ${want}, read ${JSON.stringify(st)}`, r);
+    assert(r.exit === 0 && r.raw === "", `${label} (${mode}): a plain curl within the limit emits nothing`, r);
+    assert((st.spent || 0) === want, `${label} (${mode}): committed ${want}, read ${JSON.stringify(st)}`, r);
     rows.push(`${mode} null  spent=${st.spent || 0}`);
   }
   return `    ${label.padEnd(52)} ${rows.join(" | ")}`;
 }
 
 /**
- * (a) 0.3.1: one SocialCrawl command through a tool that is not Bash. Attended it asks, names and parks
- * `want` under sha256(command) with nothing committed; unattended it is denied with nothing counted or
- * pending, its reason ending with the unattended line and carrying no attended instruction. Both
- * reasons say to use the Bash tool. Returns the printed row.
+ * (a) 0.3.1, D28: one SocialCrawl command through a tool that is not Bash is denied with exactly
+ * M_NOTBASH (which says to use the Bash tool), attended and unattended, and nothing is counted;
+ * unattended its visible worst case `want` is logged. Returns the printed row.
  */
 function notBash(label, cmd, want, extra = PS.extra) {
-  const a = once(cmd, { extra });
-  assertDecision(a.r, "ask", `${label}: attended, a SocialCrawl command that is not Bash asks`);
-  assertMatch(a.r, USE_BASH, `${label}: the ask says to use the Bash tool`);
-  assertMatch(a.r, new RegExp(`Visible counted total: ~${want} credits`), `${label}: names the visible total`);
-  assert(!a.st.spent && (want ? a.st.pending[sha(cmd)] === want : pendingOf(a.st) === 0),
-    `${label}: pending ${want}, nothing committed, read ${JSON.stringify(a.st)}`, a.r);
-  const u = once(cmd, { extra, env: UNATTENDED.env });
-  assertDecision(u.r, "deny", `${label}: unattended, it is denied`);
-  assertMatch(u.r, USE_BASH, `${label}: the deny says to use the Bash tool`);
-  assert(u.r.message.endsWith(END) && !ATT.test(u.r.message),
-    `${label}: the deny ends with the unattended line and carries no attended instruction, read …${u.r.message.slice(-160)}`, u.r);
-  assert(!u.st.spent && pendingOf(u.st) === 0, `${label}: a deny is never counted and never pending, read ${JSON.stringify(u.st)}`, u.r);
-  return `    ${label.padEnd(52)} att ${String(a.r.decision).padEnd(5)} pending=${pendingOf(a.st)} | unatt ${u.r.decision} spent=${u.st.spent || 0}`;
+  return denied(label, cmd, want, M_NOTBASH, { extra });
 }
 
 /** A mutant copy of the guard: `anchor` must be present exactly once and is replaced. */
@@ -156,7 +143,7 @@ function templates() {
 export default [
   {
     id: "N1-x8-x11-shapes",
-    desc: "R14a.1's red shapes X8-X11 (brace-list fan-outs, a loop hidden by an apostrophe or piped into bash, Python shelling out after &&, curl config and target options): each takes the not-plain ask attended at its visible total, and is denied unattended",
+    desc: "R14a.1's red shapes X8-X11 (brace-list fan-outs, a loop hidden by an apostrophe or piped into bash, Python shelling out after &&, curl config and target options): each is denied with M_NOTPLAIN attended and unattended, nothing counted, and logged unattended at its visible total (D28)",
     fn() {
       const LOOP = `for i in 1 2 3; do curl -s "${P}"; done`;
       const NOTE = `cat > notes.md <<'EOF'\nJoe's plan\nEOF\n`;
@@ -190,7 +177,7 @@ export default [
   },
   {
     id: "N2-probe-q7-not-plain",
-    desc: "Every not-plain shape in the R14a.2 probe's Q7 table takes the not-plain ask attended at its visible total, and is denied unattended",
+    desc: "Every not-plain shape in the R14a.2 probe's Q7 table is denied with M_NOTPLAIN attended and unattended, nothing counted, and logged unattended at its visible total (D28)",
     fn() {
       const rows = [
         notPlain("glob {a,b,c} inside the quoted URL", `curl -s "${V1}prism/leads?query={a,b,c}"`, 50),
@@ -256,7 +243,7 @@ export default [
   },
   {
     id: "N3-mentions-ask",
-    desc: "MENTIONS (Joe 09.28.26, supersedes R14b Design 3): grep, echo, a heredoc note, git commit -m and a docs.socialcrawl.dev URL each ask attended and are denied unattended; a URL-less mention names a 0 total and parks nothing",
+    desc: "MENTIONS (Joe 09.28.26, supersedes R14b Design 3; D28): grep, echo, a heredoc note, git commit -m and a docs.socialcrawl.dev URL are each denied with M_NOTPLAIN attended and unattended, nothing counted; a URL-less mention is logged at a visible 0",
     fn() {
       const rows = [
         notPlain("grep -rn '<URL>' notes/", `grep -rn "${P}" notes/`, 50),
@@ -309,7 +296,7 @@ export default [
   },
   {
     id: "N5-free-calls-through-the-allow-list",
-    desc: "FREE (R14a.2): a plain credits/* call is silent at 0 attended and unattended, with no state write (the unattended balance call in elicitation.md is plain); a non-plain free command asks, or is denied unattended",
+    desc: "FREE (R14a.2): a plain credits/* call is silent at 0 attended and unattended, with no state write (the unattended balance call in elicitation.md is plain); a non-plain free command is denied with M_NOTPLAIN, attended and unattended (D28)",
     fn() {
       for (const cmd of [`curl -s "${V1}credits/balance"`, `curl -s ${KEY} "${V1}credits/balance"`, `curl -s "${V1}credits/transactions" | jq .`]) {
         for (const opts of [{}, UNATTENDED]) {
@@ -328,7 +315,7 @@ export default [
   },
   {
     id: "N6-dry-run-counted-in-full",
-    desc: "DRY RUN (R14a.2 ruling (b)): dry_run=1 on a declaring endpoint is counted at its full label price, silently in a plain curl and parked in full behind the not-plain ask; the ask then commits it once it runs",
+    desc: "DRY RUN (R14a.2 ruling (b); D28): dry_run=1 on a declaring endpoint is counted at its full label price, silently in a plain curl; any other shape is denied with M_NOTPLAIN and logged at the same full figure; a mention of it is never counted, and a stray Post input for it counts nothing",
     fn() {
       const C = JSON.parse(readFileSync(COSTS, "utf8"));
       assert(C["GET linkedin/search/posts"].dryRun === true, "the fixture endpoint still declares dryRun (the vendor fact stays in costs.json)");
@@ -339,63 +326,63 @@ export default [
       ].join("\n"));
       const s = session().seed({ spent: 0 });
       const cmd = `echo '${LQ}'`;
-      assertDecision(s.run(cmd), "ask", "a mention of a dry run asks");
-      s.post(cmd);
-      assert(s.state().spent === 56 && pendingOf(s.state()) === 0, `the Post run commits the full 56, read ${s.stateRaw()}`);
+      const r = s.run(cmd);
+      assert(r.decision === "deny" && r.message === M_NOTPLAIN, `a mention of a dry run is denied, read ${r.decision}`, r);
+      const p = s.post(cmd);
+      assert(p.raw === "" && s.state().spent === 0, `never counted, and a stray Post counts nothing, read ${s.stateRaw()}`, p);
       s.cleanup();
     },
   },
   {
     id: "N7-not-plain-commit-and-cap",
-    desc: "NOT-PLAIN ASK: its pending total is committed by PostToolUse and PostToolUseFailure; declined, it is never counted; it names the cap step (committed total, cap, balance) only when its visible total crosses one, and the transcript price whenever a transcript URL is visible",
+    desc: "NOT-PLAIN DENY (D28): a not-plain command is denied with exactly M_NOTPLAIN whatever it carries or the session holds — its visible total, a committed total well within, near or past the limit, no balance, a 0 total, a transcript URL — and is never counted, so the next plain call counts from the same total; a stray PostToolUse or PostToolUseFailure input for it writes nothing",
     fn() {
       const cmd = `echo '${P}'`;
       for (const failure of [false, true]) {
         const s = session().seed({ spent: 0 });
-        assertDecision(s.run(cmd), "ask", "the mention asks");
-        s.post(cmd, { failure });
-        assert(s.state().spent === 50 && pendingOf(s.state()) === 0, `${failure ? "PostToolUseFailure" : "PostToolUse"} commits the visible 50, read ${s.stateRaw()}`);
-        assert(!s.post(cmd, { failure }).stateWritten, "a second Post counts nothing");
+        assertDecision(s.run(cmd), "deny", "the mention is denied");
+        const before = s.stateRaw();
+        const p = s.post(cmd, { failure });
+        assert(p.raw === "" && s.stateRaw() === before, `${failure ? "PostToolUseFailure" : "PostToolUse"} writes nothing, read ${s.stateRaw()}`, p);
         s.cleanup();
       }
       const declined = session().seed({ spent: 0 });
       declined.run(cmd);
-      assertDecision(declined.run(`curl -s "${V1}amazon/shop?q=a"`), null, "declined: the next plain call is silent");
-      assert(declined.state().spent === 1, `declined: the mention was never counted, read ${declined.stateRaw()}`);
+      assertDecision(declined.run(`curl -s "${V1}amazon/shop?q=a"`), null, "after the deny the next plain call is silent");
+      assert(declined.state().spent === 1, `the mention was never counted, read ${declined.stateRaw()}`);
       declined.cleanup();
-      const under = once(cmd);
-      assertNoMatch(under.r, /Session cap step|The cap is/, "under the cap: no cap step named");
-      const cross = once(cmd, {}, 190);
-      assertMatch(cross.r, /Session cap step: ~190 credits are committed this session/, "crossing: names the committed total");
-      assertMatch(cross.r, /The cap is 200 credits \(the smaller of 500 and a quarter of your 800-credit balance\)/, "crossing: names the cap and the balance");
-      const unknown = once(cmd, { balance: null });
-      assertMatch(unknown.r, /couldn't read your balance/, "no balance: a paid visible total names the unread balance");
-      const zero = once(`echo ${DOCS}`, { balance: null });
-      assertNoMatch(zero.r, /couldn't read your balance/, "no balance: a 0 total names no cap step");
-      const t = once(`for i in 1 2; do curl -s "${V1}youtube/video/${TSCRIPT}?id=$i"; done`, NOLOCAL);
-      assertMatch(t.r, NP, "a transcript loop is not plain");
-      assertMatch(t.r, /bills 3 credits PER video/, "the per-unit price rides in the not-plain ask");
-      assertMatch(t.r, /Cheaper first/, "the cheaper route rides in the not-plain ask");
-      for (const [label, r] of [["under", under.r], ["cross", cross.r], ["transcript", t.r]]) {
-        assertNoMatch(r, /REPEAT DETECTED|PROGRAM CODE|assembled from shell variables/, `${label}: no retired phrase`);
+      const rows = [];
+      for (const [label, c, opts, spent] of [
+        ["within the limit", cmd, {}, 0],
+        ["near the limit (190)", cmd, {}, 190],
+        ["past the limit (250)", cmd, {}, 250],
+        ["no balance", cmd, { balance: null }, 0],
+        ["a 0 total, no balance", `echo ${DOCS}`, { balance: null }, 0],
+        ["a transcript loop", `for i in 1 2; do curl -s "${V1}youtube/video/${TSCRIPT}?id=$i"; done`, NOLOCAL, 0],
+      ]) {
+        const { r, st } = once(c, opts, spent);
+        rows.push(`    ${label.padEnd(30)} ${r.decision} spent=${(st && st.spent) || 0}`);
+        assert(r.decision === "deny" && r.message === M_NOTPLAIN && ((st && st.spent) || 0) === spent,
+          `${label}: exactly M_NOTPLAIN, nothing counted, read ${r.decision} / ${JSON.stringify(st)} / ${r.message.slice(0, 120)}`, r);
       }
+      console.log(rows.join("\n"));
     },
   },
   {
     id: "N8-templates-machine-check",
-    desc: "TEMPLATES: every curl template line in the plugin's socialcrawl and onboarding references and SKILL.md files and in tools/socialcrawl/curated, placeholders substituted, runs through the guard and none gets the not-plain ask",
+    desc: "TEMPLATES: every curl template line in the plugin's socialcrawl and onboarding references and SKILL.md files and in tools/socialcrawl/curated, placeholders substituted, runs through the guard and none is denied as not plain (D28: within the 200 limit silent, past it the M_LIMIT deny)",
     fn() {
       const lines = [];
       let total = 0;
       for (const src of templates()) {
         if (src.absent) { lines.push(`    ${src.name.padEnd(44)} ABSENT (not in this copy)`); continue; }
-        const tally = { silent: 0, "cap-step ask": 0, "other ask": 0, "not plain": 0 };
+        const tally = { silent: 0, "over-limit deny": 0, "other deny": 0, "not plain": 0 };
         for (const { where, cmd } of src.cmds) {
           const { r } = once(cmd, NOLOCAL);
           assert(r.exit === 0, `${where}: exit ${r.exit}`, r);
-          const k = NP.test(r.message) ? "not plain" : !r.decision ? "silent" : /session cap step/.test(r.message) ? "cap-step ask" : "other ask";
+          const k = r.message === M_NOTPLAIN ? "not plain" : !r.decision ? "silent" : /^SocialCrawl call not run: it would take this session past its credit limit\./.test(r.message) ? "over-limit deny" : "other deny";
           tally[k]++;
-          assert(k !== "not plain", `${where}: a plugin template got the not-plain ask: ${JSON.stringify(cmd)}`, r);
+          assert(k !== "not plain", `${where}: a plugin template was denied as not plain: ${JSON.stringify(cmd)}`, r);
         }
         total += src.cmds.length;
         lines.push(`    ${src.name.padEnd(44)} ${String(src.cmds.length).padStart(4)} templates: ` +
@@ -407,13 +394,15 @@ export default [
   },
   {
     id: "N9-mutants",
-    desc: "MUTANTS: each deleted piece of the allow-list lets a named shape through silently (or unattended); this build asks or denies on every one",
+    desc: "MUTANTS: each deleted piece of the allow-list lets a named shape through silently (or unattended); this build denies every one with M_NOTPLAIN (D28)",
     fn() {
       const dir = mkdtempSync(join(tmpdir(), "sc-guard-np-mutants-"));
       const cases = [
         ["plain-always", "  try { plain = plainCommand(cmd); } catch {}", "  plain = true;",
           `curl -s "${V1}prism/leads?query="{a,b,c}`, {}],
-        ["free-pass-first", "    plain &&\n    cmdWorst === 0 &&", "    cmdWorst === 0 &&",
+        // D28 moved the not-plain deny ahead of the free pass: this mutant lets a not-plain command
+        // with a visible worst case of 0 skip the deny (the old free-pass-first leak).
+        ["free-pass-first", "  if (!plain) {\n", "  if (!plain && cmdWorst > 0) {\n",
           `for i in 1 2 3; do curl -s "${V1}credits/balance"; done`, {}],
         ["url-allows-globs", "/[\\s$`\\\\{}[\\]#\"']/.test(v)", "/[\\s$`\\\\#\"']/.test(v)",
           `curl -s "${V1}prism/leads?query={a,b,c}"`, {}],
@@ -433,7 +422,7 @@ export default [
         const fix = once(cmd, opts);
         rows.push(`    ${name.padEnd(20)} mutant ${String(mut.r.decision).padEnd(5)} | fix ${fix.r.decision}`);
         assert(mut.r.decision === null, `mutant ${name}: the shape slips through silently (what this fixture catches), read ${mut.r.decision}`, mut.r);
-        assert(fix.r.decision === (opts === UNATTENDED ? "deny" : "ask"), `fix: ${name}'s shape asks or denies, read ${fix.r.decision}`, fix.r);
+        assert(fix.r.decision === "deny" && fix.r.message === M_NOTPLAIN, `fix: ${name}'s shape is denied with M_NOTPLAIN, read ${fix.r.decision}`, fix.r);
       }
       // The dry-run reader restored: the declared dry run goes back to free.
       const dry = mutant(dir, "dry-run-reader",
@@ -449,7 +438,7 @@ export default [
   },
   {
     id: "P2-A2-powershell-never-plain",
-    desc: "POWERSHELL (0.3.1, A2-A4, A6, B1, B3): any tool_name but Bash is never plain. Each SocialCrawl command through PowerShell (a valid Bash plain curl, a $env: key header, curl.exe, Invoke-RestMethod, iwr, Invoke-WebRequest, a free credits/balance curl, a mixed-case host) asks attended with its visible total parked and is denied unattended with nothing counted, and every reason says to use the Bash tool; \"powershell\" and \"PowerShell7\" are not Bash either; a missing tool_name is Bash (silent and counted); a PowerShell command with no SocialCrawl URL returns nothing and touches no folder",
+    desc: "POWERSHELL (0.3.1, A2-A4, A6, B1, B3; D28): any tool_name but Bash is never plain. Each SocialCrawl command through PowerShell (a valid Bash plain curl, a $env: key header, curl.exe, Invoke-RestMethod, iwr, Invoke-WebRequest, a free credits/balance curl, a mixed-case host) is denied with exactly M_NOTBASH, which says to use the Bash tool, attended and unattended, with nothing counted and its visible total logged unattended; \"powershell\" and \"PowerShell7\" are not Bash either; a missing tool_name is Bash (silent and counted); a PowerShell command with no SocialCrawl URL returns nothing and touches no folder",
     fn() {
       const rows = [];
       const bad = [];
@@ -458,7 +447,7 @@ export default [
       for (const name of ["powershell", "PowerShell7"]) each(() => notBash(`tool_name ${JSON.stringify(name)}, (i)`, PS_CASES[0][1], 1, { tool_name: name }));
       each(() => {                                        // B3: no tool_name is Bash, so (i) is plain
         const { r, st } = once(PS_CASES[0][1], { extra: { tool_name: undefined } });
-        assert(r.exit === 0 && r.raw === "" && st.spent === 1 && pendingOf(st) === 0, `no tool_name: read as Bash, (i) silent and counted 1, read ${r.decision} / ${JSON.stringify(st)}`, r);
+        assert(r.exit === 0 && r.raw === "" && st.spent === 1, `no tool_name: read as Bash, (i) silent and counted 1, read ${r.decision} / ${JSON.stringify(st)}`, r);
         return `    ${"no tool_name (Bash), (i)".padEnd(52)} att null  spent=${st.spent}`;
       });
       each(() => {                                        // B1: no SocialCrawl URL, the fast path
@@ -475,7 +464,7 @@ export default [
   },
   {
     id: "P2-A5-powershell-post-counts",
-    desc: "POWERSHELL (0.3.1, A5): an attended PowerShell ask parks its visible worst, and its PostToolUse or PostToolUseFailure run (tool_name PowerShell, the same command) commits exactly that, once; a not-plain command ends in the same state through either tool; a declined PowerShell ask is never counted",
+    desc: "POWERSHELL (0.3.1, A5; D28): a PowerShell call is denied with M_NOTBASH and never counted, and its stray PostToolUse or PostToolUseFailure input (tool_name PowerShell, the same command) writes nothing; a not-plain command ends in the same state through either tool, nothing counted; after a PowerShell deny a 1cr Bash call counts from the same total",
     fn() {
       const cmd = PS_CASES[0][1];                         // (i): 1cr, plain only through Bash
       const IRM = PS_CASES[3][1];                         // (iv): 50cr, not plain through either tool
@@ -484,14 +473,13 @@ export default [
         const ev = failure ? "PostToolUseFailure" : "PostToolUse";
         const s = session().seed({ spent: 0 });
         const a = s.run(cmd, PS);
-        const parked = (s.state().pending || {})[sha(cmd)];
-        s.post(cmd, { ...PS, failure });
+        const before = s.stateRaw();
+        const p = s.post(cmd, { ...PS, failure });
         const after = s.state();
-        const again = s.post(cmd, { ...PS, failure });
         s.cleanup();
-        rows.push(`    ${`(i), ${ev}`.padEnd(40)} ${a.decision} parked ${parked} -> spent ${after.spent} pending ${pendingOf(after)} | second Post wrote ${again.stateWritten}`);
-        assert(a.decision === "ask" && parked === 1 && after.spent === 1 && pendingOf(after) === 0 && !again.stateWritten,
-          `(i), ${ev}: the ask parks 1 and its Post run commits it once, read ${a.decision} / ${parked} / ${JSON.stringify(after)}`, a);
+        rows.push(`    ${`(i), ${ev}`.padEnd(40)} ${a.decision} -> spent ${after.spent} | Post wrote ${p.stateWritten}`);
+        assert(a.decision === "deny" && a.message === M_NOTBASH && p.raw === "" && !p.stateWritten && JSON.stringify(after) === before && after.spent === 0,
+          `(i), ${ev}: denied, nothing counted, and the stray Post writes nothing, read ${a.decision} / ${JSON.stringify(after)}`, a);
         const states = [PS, {}].map((o) => {
           const t = session().seed({ spent: 0 });
           t.run(IRM, o);
@@ -501,33 +489,33 @@ export default [
           return JSON.stringify(st);
         });
         rows.push(`    ${`(iv), ${ev}`.padEnd(40)} PowerShell ${states[0]} | Bash ${states[1]}`);
-        assert(states[0] === states[1] && JSON.parse(states[0]).spent === 50, `(iv), ${ev}: PowerShell and Bash end the same, 50 committed, read ${states.join(" / ")}`);
+        assert(states[0] === states[1] && JSON.parse(states[0]).spent === 0, `(iv), ${ev}: PowerShell and Bash end the same, nothing committed, read ${states.join(" / ")}`);
       }
       const d = session().seed({ spent: 0 });
       d.run(cmd, PS);
       const next = d.run(`curl -s "${V1}amazon/shop?q=a"`);
       const dst = d.state();
       d.cleanup();
-      rows.push(`    ${"(i) declined, then a 1cr Bash call".padEnd(40)} next ${next.decision || "pass"}, spent ${dst.spent}, pending ${pendingOf(dst)}`);
-      assert(next.raw === "" && dst.spent === 1 && pendingOf(dst) === 1, `declined: never counted, read ${JSON.stringify(dst)}`, next);
+      rows.push(`    ${"(i) denied, then a 1cr Bash call".padEnd(40)} next ${next.decision || "pass"}, spent ${dst.spent}`);
+      assert(next.raw === "" && dst.spent === 1 && !("pending" in dst), `the deny was never counted, read ${JSON.stringify(dst)}`, next);
       console.log(rows.join("\n"));
     },
   },
   {
     id: "P2-A7-powershell-mutant",
-    desc: "MUTANT (0.3.1, A7, the N9 pattern): with the tool-name check neutralised (every tool read as Bash), a valid Bash plain curl sent through PowerShell slips through silently and is committed, attended and unattended; this build asks attended and denies unattended",
+    desc: "MUTANT (0.3.1, A7, the N9 pattern): with the tool-name check neutralised (every tool read as Bash), a valid Bash plain curl sent through PowerShell slips through silently and is committed, attended and unattended; this build denies it with M_NOTBASH in both (D28)",
     fn() {
       const dir = mkdtempSync(join(tmpdir(), "sc-guard-ps-mutant-"));
       const m = mutant(dir, "tool-check-gone", `NOT_BASH = input.tool_name !== undefined && input.tool_name !== "Bash";`, "NOT_BASH = false;");
       const cmd = PS_CASES[0][1];
       const rows = [];
-      for (const [mode, opts, want] of [["att", PS, "ask"], ["unatt", { ...PS, ...UNATTENDED }, "deny"]]) {
+      for (const [mode, opts] of [["att", PS], ["unatt", { ...PS, ...UNATTENDED }]]) {
         const mut = once(cmd, { ...opts, guard: m });
         const fix = once(cmd, opts);
         rows.push(`    ${mode.padEnd(6)} mutant ${String(mut.r.decision).padEnd(5)} spent=${mut.st.spent || 0} | fix ${fix.r.decision} spent=${fix.st.spent || 0}`);
         assert(mut.r.decision === null && mut.r.raw === "" && mut.st.spent === 1,
           `mutant (${mode}): the PowerShell call slips through silently and is committed (the leak this fixture catches), read ${mut.r.decision} / ${JSON.stringify(mut.st)}`, mut.r);
-        assert(fix.r.decision === want && !fix.st.spent, `fix (${mode}): ${want}, nothing committed, read ${fix.r.decision} / ${JSON.stringify(fix.st)}`, fix.r);
+        assert(fix.r.decision === "deny" && fix.r.message === M_NOTBASH && !fix.st.spent, `fix (${mode}): M_NOTBASH, nothing committed, read ${fix.r.decision} / ${JSON.stringify(fix.st)}`, fix.r);
       }
       console.log(rows.join("\n"));
       rmSync(dir, { recursive: true, force: true });

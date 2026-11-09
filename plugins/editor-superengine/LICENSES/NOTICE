@@ -31,6 +31,8 @@ SOFTWARE.
 runtime/gsap/gsap.min.js
   GSAP 3.15.0 (gsap.min.js from the npm package gsap@3.15.0), unmodified, header kept.
   Copyright 2026 GreenSock (Webflow). Subject to the terms at https://gsap.com/standard-license
+  GSAP is not open source: it is under the GSAP Standard "No Charge" License, not the licence of this plugin.
+  See runtime/gsap/GSAP-NOTICE.
 
 runtime/three/three.module.js, runtime/three/three.core.js
   three.js 0.186.1 (build/three.module.js and build/three.core.js from the npm package three@0.186.1), unmodified;
@@ -88,6 +90,11 @@ skills/reel-captions/scripts/captions.py (its chunk_words part)
   Adapted from video-use, helpers/render.py, chunk_words (Browser Use, https://github.com/browser-use/video-use).
   Changes: cut-word dictionaries, frame lifetimes, layout boundaries, optional punctuation and pause breaks, and
   truthful marked runs kept together. License: MIT, full text below.
+
+skills/reel-canvas-build/scripts/fps.py (its parse_fps part)
+  Follows video-use, helpers/render.py, the frame-rate parsing (Browser Use, https://github.com/browser-use/video-use),
+  reimplemented. Changes: exact rational rates only, no nominal-rate fallback and no default; a rate that can't be
+  read raises an error. License: MIT, full text below.
 
 MIT License
 
@@ -295,3 +302,46 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+Downloaded by the installer, not shipped in this plugin
+--------------------------------------------------------
+The editor's installer (skills/editor-doctor/scripts/install.sh and install.py) downloads these from their
+own release pages, pinned by sha256 in install.sh (uv), skills/editor-doctor/scripts/pins.json and the Python
+lock files in skills/editor-doctor/scripts/python/, and by the npm lock hashes in
+runtime/hyperframes/package-lock.json. They are not changed and each keeps its own licence.
+
+hyperframes 0.8.184 and @hyperframes/shader-transitions 0.8.184 (npm, runtime/hyperframes/package.json)
+  Copyright 2026 HeyGen, Inc. Apache License 2.0 (shader-transitions carries its own LICENSE file; full text
+  in LICENSES/Apache-2.0-HyperFrames.txt). shader-transitions is copied into a reel's render folder at render time
+  from the pinned install; it is never committed to this repository.
+
+onnxruntime-node 1.21.1 (npm, runtime/hyperframes/package.json)
+  Copyright (c) Microsoft Corporation. MIT License.
+
+Parakeet TDT 0.6B v2 speech model (transcription)
+  "parakeet-tdt-0.6b-v2" by NVIDIA (https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2), in the ONNX conversion
+  istupakov/parakeet-tdt-0.6b-v2-onnx (commit 0bbb45a3365852604aef28b538a8f066f4ccaa85), its int8 files used as
+  published. Licensed under Creative Commons Attribution 4.0 International (CC BY 4.0),
+  https://creativecommons.org/licenses/by/4.0/. Changes by the conversion: exported to ONNX and quantised to int8;
+  no further changes by this plugin.
+
+wav2vec2-base-960h speech model (word alignment)
+  facebook/wav2vec2-base-960h (https://huggingface.co/facebook/wav2vec2-base-960h), Meta. Apache License 2.0.
+
+faster-whisper large-v3-turbo speech model (transcription)
+  CTranslate2 conversion (https://huggingface.co/dropbox-dash/faster-whisper-large-v3-turbo, formerly
+  mobiuslabsgmbh/faster-whisper-large-v3-turbo) of OpenAI's
+  whisper-large-v3-turbo (https://huggingface.co/openai/whisper-large-v3-turbo). MIT License.
+
+u2net_human_seg cutout model
+  U^2-Net (Xuebin Qin et al., https://github.com/xuebinqin/U-2-Net), Apache License 2.0; the file is downloaded
+  from the rembg releases (Daniel Gatis, https://github.com/danielgatis/rembg), MIT License.
+
+Pillow 13.0.0 (Python, used by style-decoder; pinned in the three lock files)
+  Copyright (c) 1997-2011 by Secret Labs AB, Copyright (c) 1995-2011 by Fredrik Lundh and contributors,
+  Copyright (c) 2010 by Jeffrey 'Alex' Clark and contributors. MIT-CMU License (Pillow's historical PIL licence,
+  formerly listed as HPND), https://github.com/python-pillow/Pillow/blob/main/LICENSE.
+
+uv 0.13.6, Python, Node.js, ffmpeg, Chrome headless shell, the other Python packages in the lock files and
+the other npm packages in runtime/hyperframes/package-lock.json (among them sharp's libvips, LGPL-3.0-or-later)
+  Downloaded from their official releases as pinned; each keeps its own licence.

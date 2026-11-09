@@ -1,14 +1,15 @@
-import type { Register } from 'claude-code'
+import type { Register, EngineInterface, Timer } from 'claude-code'
 import {
-  cockpit, act, normPath, folderKey, videosDir, reelNames, masterCandidates, probeOf, parseJson, isRecord, ok, missing, unreadable,
-  CONFIG, PLATFORM, FOLDERS, JSON_FILES, STAGES, BOARDS, BOARD_NAME, LABELS, TOGGLE, BATON_UNREAD,
+  cockpit, act, fill, openSends, normPath, folderKey, videosDir, reelNames, masterCandidates, probeOf, parseJson, isRecord, ok, missing, unreadable,
+  CONFIG, PLATFORM, FOLDERS, JSON_FILES, STAGES, SENDS, BOARDS, BOARD_NAME, LABELS, TOGGLE, BATON_UNREAD,
   type Read, type Entry, type Input, type ReelIn, type Probe, type View, type ActionId,
 } from './logic'
 
-// Module state. `$` is never stored or passed: spelled at every call site, closures carry it into load().
+// Module state. `$` is never stored; helpers receiving it are declared at the top level for the mod loader.
 // ponytail: a hot reload or worker respawn drops it (the picked reel, the one autostart); move to $.state if that matters.
 let picked: string | undefined   // the reel Switch reel picked: shown while it still exists
 let autoOpened = false           // the pane opened itself already in this module's life
+let toastQueue = Promise.resolve()   // serialize timer/turn checks so one Send version toasts once
 
 const PANE = 'ed-cockpit'
 const TITLE = 'Editor Cockpit'
@@ -153,12 +154,93 @@ async function repin(io: Io, status: (t: string) => void, log: (what: string, x:
   }
 }
 
+/** Reads for background checks and prompt context: no processes, UI actions or writes. */
+const sendIo = ($: EngineInterface): Io => ({
+  cwd: () => $.session.cwd(), now: () => $.clock.now(), stat: p => $.fs.stat(p), read: p => $.fs.read(p),
+  list: p => $.fs.list(p), store: k => $.store.get(k),
+})
+
+const pending = (input: Input) => input.reels.flatMap(r => openSends(r, input.baseline, input.acked).map(s => ({ ...s, reel: r.name })))
+const sendPhrase = (s: { reel: string; board: keyof typeof BOARD_NAME }) => fill(LABELS.send.phrase!, s.reel, BOARD_NAME[s.board])
+
+/** An optional session-presence record, never a skill input. */
+async function heartbeat($: EngineInterface) {
+  const home = (await $.env.get('USERPROFILE')) ?? (await $.env.get('HOME'))
+  if (!home) return
+  const id = await $.session.id()
+  const version = JSON.parse(await $.fs.read(`${$.plugin.root}/.claude-plugin/plugin.json`)).version
+  const ts = new Date(await $.clock.now()).toISOString().replace(/\.\d{3}Z$/, 'Z')
+  await $.fs.write(`${normPath(home)}/.claude/revxl/heartbeat/${OURS}/${id}.json`, JSON.stringify({
+    v: 1, plugin: OURS, version, pane_command: '/editor', session_id: id, ts,
+  }))
+}
+
+/** Export the current workspace's Send state for hub_rows, with one write; failures never interrupt editing. */
+async function exportCockpit($: EngineInterface) {
+  try {
+    const root = normPath(await $.session.cwd())
+    const config = parseJson(await settle($.fs.read(`${root}/${CONFIG}`)))
+    const paths = config.status === 'ok' && isRecord(config.value) && isRecord(config.value.paths) ? config.value.paths : {}
+    const rel = typeof paths.editor === 'string' && paths.editor ? paths.editor.replace(/\\/g, '/') : 'editor'
+    const parts = rel.split('/').filter(s => s !== '' && s !== '.')
+    if (rel.startsWith('/') || rel.includes(':') || parts.includes('..') || !parts.length) return
+    const baselines = await $.store.get('editorBaseline'), acked = await $.store.get('editorAcked')
+    const baseline = isRecord(baselines) ? baselines[folderKey(root)] : undefined
+    await $.fs.write(`${root}/${parts.join('/')}/hub/cockpit-state.json`, JSON.stringify({
+      baseline: typeof baseline === 'number' ? baseline : null, acked: isRecord(acked) ? acked : {},
+    }))
+  } catch { /* The Cockpit store remains authoritative if the export is unavailable. */ }
+}
+
+/** A successful main-agent Read acknowledges only a known Send directly under a real reel. */
+async function ack($: EngineInterface, filePath: string) {
+  const root = normPath(await $.session.cwd())
+  const config = parseJson(await settle($.fs.read(`${root}/${CONFIG}`)))
+  const videos = `${root}/${videosDir(config)}`
+  const key = (p: string) => /^[A-Za-z]:\//.test(root) ? p.toLowerCase() : p
+  const path = key(normPath(filePath)), prefix = `${key(videos)}/`
+  if (!path.startsWith(prefix)) return
+  const parts = path.slice(prefix.length).split('/')
+  if (parts.length !== 2) return
+  const send = SENDS.find(s => key(s.file) === parts[1])
+  if (!send) return
+  const name = reelNames(await settle($.fs.list(videos))).find(n => key(n) === parts[0])
+  if (!name) return
+  const stat = await $.fs.stat(`${videos}/${name}/${send.file}`)
+  if (stat.kind !== 'file' || stat.isLink) return
+  const old = await $.store.get('editorAcked'), map = isRecord(old) ? old : {}
+  await $.store.set('editorAcked', { ...map, [`${name}/${send.file}`]: stat.mtimeMs })
+  await exportCockpit($)
+}
+
+/** Kept at the top level so the mod loader can follow every use of `$`. */
+async function checkSends($: EngineInterface) {
+  toastQueue = toastQueue.then(async () => {
+    const sends = pending((await load(sendIo($))).input)
+    const old = await $.store.get('editorToasted')
+    const toasted = new Set(Array.isArray(old) ? old.filter((x): x is string => typeof x === 'string') : [])
+    for (const s of sends) {
+      const id = `${s.reel}/${s.file}@${s.mtimeMs}`
+      if (toasted.has(id)) continue
+      toasted.add(id)
+      await $.store.set('editorToasted', [...toasted])
+      $.ui.toast(`${BOARD_NAME[s.board]} Send for ${s.reel}. Say "${sendPhrase(s)}".`)
+    }
+  }).catch(() => {})
+  await toastQueue
+}
+
 export const register: Register = on => {
+  let sendTimer: Timer | undefined
+  // Serialize concurrent Reads so a store read-modify-write cannot lose acknowledgement keys.
+  let ackQueue = Promise.resolve()
+
   on('session.start', async ($, e, next) => {
     const r = await next(e)
+    $.clock.after(0, () => void heartbeat($).catch(() => {}))
+    sendTimer?.cancel()
     const log = (what: string, x: unknown) => $.ui.log(`${OURS}: ${what}: ${why(x)}`, { to: 'debug' })
     await $.command.register({ name: 'editor', description: 'Open the Editor Cockpit' }).catch(x => log('/editor not registered', x))
-    // S15b plugs in here: the heartbeat file and the Send watcher behind the toast.
     let here: string | undefined
     try {
       // The Send baseline: set once, at the first session start in this workspace, never moved.
@@ -168,6 +250,8 @@ export const register: Register = on => {
     } catch (x) {
       log('baseline', x)
     }
+    await exportCockpit($)
+    sendTimer = $.clock.every(3000, () => void checkSends($))
     const io: Io = { cwd: () => $.session.cwd(), now: () => $.clock.now(), stat: p => $.fs.stat(p), read: p => $.fs.read(p),
       list: p => $.fs.list(p), store: k => $.store.get(k), run: argv => $.process.run(argv, { timeoutMs: 15_000 }) }
     const { input } = await repin(io, t => $.ui.status(t), log)
@@ -181,6 +265,27 @@ export const register: Register = on => {
       }
     } catch (x) {
       log('autostart', x)
+    }
+    return r
+  })
+
+  on('prompt.submit', async ($, e, next) => {
+    let brief = ''
+    try {
+      const sends = pending((await load(sendIo($))).input)
+      if (sends.length) brief = [
+        'Open editor Sends. Nothing is acted on without the person\'s next message. Wait for their explicit go-ahead.',
+        ...sends.map(s => `${BOARD_NAME[s.board]} Send for ${s.reel}: "${sendPhrase(s)}"`),
+      ].join('\n')
+    } catch { /* An unavailable workspace must not block the person's prompt. */ }
+    return next(brief ? { ...e, context: [...(e.context ?? []), brief] } : e)
+  })
+
+  on('tool.call', { tool: 'Read' }, async ($, e, next) => {
+    const r = await next(e)
+    if (!e.agentId && !('deny' in r)) {
+      ackQueue = ackQueue.then(() => ack($, e.file_path)).catch(() => {})
+      await ackQueue
     }
     return r
   })
@@ -208,9 +313,9 @@ export const register: Register = on => {
       const io: Io = { cwd: () => $.session.cwd(), now: () => $.clock.now(), stat: p => $.fs.stat(p), read: p => $.fs.read(p),
         list: p => $.fs.list(p), store: k => $.store.get(k), run: argv => $.process.run(argv, { timeoutMs: 15_000 }) }
       await repin(io, t => $.ui.status(t), log)
+      await checkSends($)
       $.ui.invalidate('ui.render')
     }
-    // S15b plugs in here: the prompt.compose briefing of open Sends (and the Read hook that acks one).
     return next(e)
   })
 

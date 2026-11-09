@@ -8,7 +8,7 @@ const current = () => DATA.reels.find(r => r.id === CUR);
 const stage = () => DATA.stages[current().cur];
 const pct = r => Math.round(r.lanes.reduce((n,l) => n + (l.total ? l.done/l.total : 0), 0) / r.lanes.length * 100);
 const ago = at => !at ? "never" : Math.max(0, Math.round((Date.now() - new Date(at).getTime())/60000)) + " min ago";
-const skillLabels = {captions:"Make captions", cover:"Pick a cover", qa:"Run QA", broll:"Add B-roll", trial:"Make a trial version", style:"Save this style", styles:"My styles", health:"Check my editor", goldmine:"Run Goldmine", handoff:"Hand off to your editor"};
+const skillLabels = {captions:"Create captions", cover:"Pick a cover", qa:"Run QA", broll:"Add B-roll", trial:"Create a trial version", style:"Save this style", styles:"My styles", health:"Check my editor", goldmine:"Run Goldmine", handoff:"Hand off to your editor"};
 const adjustments = {};
 
 function pending(fn) {
@@ -18,6 +18,14 @@ function pending(fn) {
   queue = work.finally(() => { Hub.pending--; });
   return queue;
 }
+document.addEventListener("editor-controls-change", e => { $("controls").value = e.detail; });
+if (window.BoardClient?.controls) $("controls").value = BoardClient.controls.mode();  // resolved before this script ran
+$("controls").onchange = async e => {
+  const value = e.target.value;
+  try { localStorage.setItem("editor-controls", value); } catch (_) { /* blocked storage */ }
+  BoardClient.controls.apply();
+  await append(CUR || DATA.state_reel, "hub-requests.json", {kind:"controls", value, at:new Date().toISOString()});
+};
 function applyLayout(layout) {
   document.body.dataset.layout = layout === "full" ? "full" : "guided";
   $("layout").setAttribute("aria-pressed", String(layout === "full"));
@@ -149,7 +157,7 @@ async function drawSaved(reel) {
   const [notes, requests] = await Promise.all([HubIO.json(HubIO.base(reel)+"reel-notes.json",[]),HubIO.json(HubIO.base(reel)+"hub-requests.json",[])]);
   if (reel !== CUR) return;
   $("note-list").innerHTML = (Array.isArray(notes) ? notes : []).map(n=>`<li>${esc(n.kind || "Note")} · ${Math.floor(n.at||0)}s · ${esc(n.text)}</li>`).join("") || '<li class="empty">No notes yet.</li>';
-  $("queue").innerHTML = (Array.isArray(requests) ? requests : []).slice().reverse().map(q=>`<li>${esc(q.ask)}<small>Sent · ${esc(ago(q.at))}</small></li>`).join("") || '<li class="empty">Nothing sent yet.</li>';
+  $("queue").innerHTML = (Array.isArray(requests) ? requests : []).slice().reverse().map(q=>`<li>${esc(q.ask || (q.kind === "controls" ? "Controls: " + q.value : ""))}<small>Sent · ${esc(ago(q.at))}</small></li>`).join("") || '<li class="empty">Nothing sent yet.</li>';
 }
 function drawPages() {
   $("styles").innerHTML = (DATA.styles || []).map(s=>`<form data-style-id="${esc(s.id)}"><p>${esc(s.label)}${s.default ? " (default)" : ""}</p><label class="dfield" for="style-${esc(s.id)}">New name for ${esc(s.label)}<input id="style-${esc(s.id)}" name="label" type="text" size="12" maxlength="40" value="${esc(s.label)}" required></label><button class="btn" type="submit">Rename</button>${s.default ? "" : '<button class="btn" type="button" data-style-action="default">Make default</button>'}${s.auto && (s.auto.ready || s.auto.on) ? `<button class="btn" type="button" data-style-action="auto" aria-pressed="${!!s.auto.on}" aria-label="Auto edit for ${esc(s.label)}">Auto edit: ${s.auto.on ? "On" : "Off"}</button>` : `<small>Auto edit unlocks after ${esc(s.auto ? s.auto.threshold : 3)} smooth reels (${esc(s.auto ? s.auto.good_in_a_row : 0)} so far)</small>`}</form>`).join("") || '<p class="empty">No saved styles yet.</p>';
@@ -174,7 +182,7 @@ async function selectReel(id) {
 function request(skill) {
   if (!current()) { HubIO.status("Add a reel folder before sending a request."); return; }
   const reel=CUR, a=adjustments[reel] || {}, details=$("request-detail").value.trim();
-  if (["trial","broll"].includes(skill) && !details) { $("request-detail").focus(); HubIO.status("Add the details, then send."); return; }
+  if (["trial","broll"].includes(skill) && !details) { $("advanced-request").open=true; $("request-detail").focus(); HubIO.status("Add the details, then send."); return; }
   const ask=skill === "goldmine" ? "Run Goldmine for my niche. Show me the SocialCrawl credit cost and ask before spending anything." :
     skill === "health" ? "Check my editor and fix what's missing." : `${skillLabels[skill] || "Adjust " + skill} for ${reel}.${details ? " " + details : ""}`;
   const entry={at:new Date().toISOString(),reel,skill,ask,choices:{...a}};
@@ -210,6 +218,7 @@ async function load(first=false) {
     DATA=next; $("error").hidden=true; drawPages();
     if (first && DATA.state_reel) { layoutState=await HubIO.json(HubIO.base(DATA.state_reel)+"hub.state.json",{}); applyLayout(layoutState.layout); }
     $("layout").disabled=!DATA.state_reel;
+    $("controls").disabled=!DATA.state_reel;
     $("work").hidden=!DATA.reels.length;
     if (DATA.reels.length) {
       const chosen=DATA.reels.find(r=>r.id===CUR) || DATA.reels.find(r=>r.id===new URLSearchParams(location.search).get("reel")) || [...DATA.reels].sort((a,b)=>b.activity-a.activity)[0];

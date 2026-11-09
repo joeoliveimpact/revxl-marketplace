@@ -12,8 +12,9 @@
  * fixture happens to touch — and assert the invariant
  * directly, so a discount reintroduced on ANY row fails here even if nobody wrote a fixture
  * for that endpoint. The figure compared is the one the guard actually commits to: the worst
- * case it writes into the session counter (R14a: committed at once under the cap, or held as
- * pending behind a cap-step ask until the Post run commits it — countOf reads both).
+ * case it writes into the session counter. D28: each row runs under a 20,000 session budget
+ * (contract §1, the D24 ceiling), above every published ceiling (10,000 at most), so every row is
+ * committed at once rather than denied past the automatic cap, and countOf reads its spent.
  *
  * Direction, restated from the plan's R1 rule: over-quoting is safe and under-quoting is the
  * defect class, so the assertion is >=, never ==.
@@ -26,9 +27,13 @@
  *                                        a 1605 ceiling)   PASS at the fix HEAD.
  */
 import { readFileSync } from "node:fs";
-import { run, V1, COSTS, quoted as countOf, assert, assertDecision, assertMatch } from "../lib.mjs";
+import { run, V1, COSTS, quoted as countOf, assert } from "../lib.mjs";
 
 const NOLOCAL = { unsetEnv: ["GROQ_API_KEY"], env: { PATH: "" } };
+// D28: a budget above every published ceiling, so the figure each row counts is committed.
+const ROOMY = { ...NOLOCAL, budget: { sessionBudget: 20000 } };
+// The stated maximum a no-ceiling row counts (verb-exact, as the guard's STATED_MAX), else 0 (D28a).
+const STATED = { "GET prism/investigate": 200, "POST web/sessions": 20, "GET economy/imports": 20 };
 const ENTRIES = JSON.parse(readFileSync(COSTS, "utf8"));
 const PER_UNIT = Object.fromEntries(
   Object.entries(ENTRIES)
@@ -53,13 +58,13 @@ function rows() {
 
 function invoke(r, query) {
   const verbFlag = r.verb === "GET" ? "-s" : `-X ${r.verb} -d '{}'`;
-  return run(`curl ${verbFlag} "${V1}${r.path}${query}"`, NOLOCAL);
+  return run(`curl ${verbFlag} "${V1}${r.path}${query}"`, ROOMY);
 }
 
 export default [
   {
     id: "P1-per-unit-row-never-below-ceiling",
-    desc: "PROPERTY: with no quantity evidence in the command, every metered row quotes at least its label ceiling, and every no-ceiling row asks",
+    desc: "PROPERTY: with no quantity evidence in the command, every metered row is counted at least at its label ceiling, and every no-ceiling row is counted at exactly its stated maximum or 0, never an invented figure (D28a), silently within the limit",
     fn() {
       const checked = [];
       for (const r of rows()) {
@@ -67,9 +72,9 @@ export default [
         const res = invoke(r, "");
         if (typeof high !== "number" || !Number.isFinite(high)) {
           // A row the vendor's label gives no ceiling for (range null). It must not invent a
-          // number — it takes the dedicated no-ceiling ask instead.
-          assertDecision(res, "ask", `${r.key}: a per-unit row with no published ceiling must ask`);
-          assertMatch(res, /NO computable ceiling/, `${r.key}: must say plainly that no ceiling exists`);
+          // number: it counts its stated maximum, or 0 (D28a, a stated LIMIT), and passes.
+          const want = STATED[r.key] || 0;
+          assert(res.raw === "" && countOf(res.state) === want, `${r.key}: a no-ceiling row counts exactly ${want}, silently, read ${res.decision} / ${res.stateRaw}`, res);
           continue;
         }
         const quoted = countOf(res.state);
@@ -79,7 +84,7 @@ export default [
           res
         );
         assert(
-          quoted >= high,
+          quoted >= high && res.raw === "",
           `${r.key}: quoted ${quoted} is BELOW the published ceiling ${high} with no quantity ` +
             `evidence in the command — that is the under-quote class this property exists to catch`,
           res
@@ -106,7 +111,7 @@ export default [
         );
       }
       // The exact regression the property was written for, stated as a number.
-      const crawl = run(`curl -X POST "${V1}web/crawl?page=1&limit=10000" -d '{}'`);
+      const crawl = run(`curl -X POST "${V1}web/crawl?page=1&limit=10000" -d '{}'`, ROOMY);
       assert(
         countOf(crawl.state) === 10000,
         `web/crawl?page=1 must record 10000, read ${crawl.stateRaw}`,
@@ -116,7 +121,7 @@ export default [
   },
   {
     id: "P3-verb-twin-names-whose-price",
-    desc: "PROPERTY: a free GET whose path has a no-ceiling entry on another verb still asks (path-only fallback), but names whose price it quotes and never pins that price on the GET",
+    desc: "PROPERTY (D28a, A4): a free GET whose path has a no-ceiling entry on another verb (the path-only fallback) passes silently and counts 0, never that other verb's price",
     fn() {
       const twins = Object.entries(ENTRIES)
         .filter(([k, e]) => !k.startsWith("_") && !k.startsWith("GET ") && e && e.range === null)
@@ -125,10 +130,8 @@ export default [
       assert(twins.length > 0, "expected at least one no-ceiling entry with a free GET twin");
       for (const [key, get] of twins) {
         const res = run(`curl -s "${V1}${get.slice(4)}"`, NOLOCAL);
-        assertDecision(res, "ask", `${get}: the path-only fallback still asks`);
-        assert(res.message.includes(`prices ${key} by a sentence`), `${get}: must name ${key} as the price's owner`, res);
-        assertMatch(res, /reads as a GET/, `${get}: must say the command reads as the free verb`);
-        assert(!res.message.includes(`prices ${get} by`), `${get}: a free read never gets another verb's price as its own`, res);
+        assert(res.raw === "" && res.state && res.state.spent === 0,
+          `${get}: passes silently and counts 0, never ${key}'s price, read ${res.decision} / ${res.stateRaw}`, res);
       }
     },
   },

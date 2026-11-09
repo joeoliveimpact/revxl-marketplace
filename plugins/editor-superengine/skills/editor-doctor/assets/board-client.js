@@ -12,11 +12,59 @@
 (function (root, factory) {
   var api = factory();
   if (typeof module === "object" && module.exports) module.exports = api;
-  else root.BoardClient = api;
+  else {
+    root.BoardClient = api;
+    var start = function () { api.controls = api.initControls(root); };
+    if (root.document.readyState === "loading") root.document.addEventListener("DOMContentLoaded", start);
+    else start();
+  }
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
   var HEARTBEAT_MS = 30000;
   var TRIGGER = "Restart my editor boards";
+
+  /* One default for every board, including rows built after load. Only a mode change resets a manual toggle. */
+  function initControls(env) {
+    var mode = null, config = "simple", cacheWritable = true, seen = new WeakSet(), folds = new Map();
+    var key = function (section) { return section.dataset && section.dataset.controlsKey; };
+    var valid = function (v) { return v === "simple" || v === "advanced" ? v : null; };
+    function resolve() {
+      var local = null;
+      try { local = valid(env.localStorage.getItem("editor-controls")); } catch (_) { /* blocked storage */ }
+      return valid(new URLSearchParams(env.location.search).get("controls")) || (cacheWritable && local) || config;
+    }
+    function apply() {
+      var next = resolve(), changed = next !== mode;
+      mode = next;
+      if (changed) folds.clear();
+      env.document.querySelectorAll("details.advanced-controls").forEach(function (section) {
+        if (changed || !seen.has(section))
+          section.open = folds.has(key(section)) ? folds.get(key(section)) : mode === "advanced";
+        seen.add(section);
+      });
+      if (changed && env.CustomEvent)
+        env.document.dispatchEvent(new env.CustomEvent("editor-controls-change", {detail: mode}));
+      return mode;
+    }
+    env.document.addEventListener("toggle", function (e) {
+      if (seen.has(e.target) && key(e.target)) folds.set(key(e.target), e.target.open);
+    }, true);
+    env.addEventListener("storage", function (e) { if (e.key === "editor-controls" || e.key === null) apply(); });
+    if (env.MutationObserver)
+      new env.MutationObserver(apply).observe(env.document.documentElement, {childList: true, subtree: true});
+    apply();
+    var ready = Promise.resolve().then(function () {
+      return env.fetch("/editor/hub/hub-data.json", {cache: "no-store"});
+    }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }).then(function (data) {
+      config = valid(data && data.config && data.config.controls) || "simple";
+      // The workspace config wins on every load. Storage then carries live hub changes to open iframes.
+      if (data) {
+        try { env.localStorage.setItem("editor-controls", config); } catch (_) { cacheWritable = false; }
+      }
+      return apply();
+    });
+    return {ready: ready, apply: apply, mode: function () { return mode; }};
+  }
 
   /* The paste-into-Claude line. Matches the editor-doctor router line ("start / restart my editor boards"). */
   function bannerText(board, reel, state) {
@@ -132,5 +180,5 @@
     bar.querySelector("textarea").value = text;   // always the latest unsaved state
   }
 
-  return {create: create, bannerText: bannerText, mergeCues: mergeCues};
+  return {create: create, bannerText: bannerText, mergeCues: mergeCues, initControls: initControls};
 });

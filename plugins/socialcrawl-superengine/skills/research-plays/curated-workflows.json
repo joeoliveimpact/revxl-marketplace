@@ -59,10 +59,10 @@
     "tested against this field, do not read the 0 as a live control, and do not let a row's",
     "safety rest on one.",
     "",
-    "Quotes are stated in the same direction the credit guard states them: over-quote is safe,",
+    "Quotes are stated in the same direction the credit guard counts: over-quote is safe,",
     "under-quote is the defect class. quote.high for a derivable row equals the sum of each",
     "call's PUBLISHED CEILING x its pinned count, which is exactly what hooks/credit-guard.mjs",
-    "quotes for those same calls. lint_curated.mjs proves that equality by running the guard.",
+    "commits as spent for those same calls. lint_curated.mjs proves that equality by running the guard.",
     "",
     "Build-time data. Nothing here executes; the scripts that check it live in tools/, outside",
     "the plugin, so no runtime agent can run them."
@@ -133,7 +133,7 @@
     "credits/": 0
   },
   "guardHardcodesNote": [
-    "One price the guard states from its own code, not from costs.json, so the derivation has",
+    "One price the guard counts from its own code, not from costs.json, so the derivation has",
     "to state it too or it would disagree with the guard. credits/* are free account-meta",
     "calls and are absent from the generated map. prism/lookup has no hardcode since R10.1",
     "(Joe, 09.24.26): costs.json prices it 1-5 from its own catalogue label, so the guard and",
@@ -394,7 +394,7 @@
       "source": "plugins/socialcrawl-superengine/skills/research-plays/references/big-guns.md",
       "notes": [
         "Cheaper first pass: prism/handle-audit (5-8) plus prism/creator-card (5-8) answer \"is this account worth anything\" for a fraction of the price. They are their own pass, not a leg of this row.",
-        "The play's prose says 50 flat. costs.json publishes 50-75 and the credit guard quotes 75, so 75 is what this row quotes. The prose figure is stale — flagged for R4, not edited here."
+        "The play's prose says 50 flat. costs.json publishes 50-75 and the credit guard counts the 75 ceiling, so 75 is what this row quotes. The prose figure is stale — flagged for R4, not edited here."
       ]
     },
 
@@ -445,7 +445,7 @@
       "artifact": "The flagship page of a competitive audit — the share-of-voice split plus a \"where the gap is\" paragraph.",
       "source": "plugins/socialcrawl-superengine/skills/research-plays/references/big-guns.md",
       "notes": [
-        "costs.json and the credit guard print 40-200 for this endpoint because the guard counts no brands and 40 is the measured single-brand floor. This row quotes a low of 80 instead, because `brands=` will not accept fewer than 2 — a deliberate over-quote against the guard's low, which is the safe direction."
+        "The credit guard counts this endpoint at its 200 ceiling, because the guard counts no brands. 40 is the measured single-brand floor. This row quotes a low of 80 instead, because `brands=` will not accept fewer than 2 — a deliberate over-quote against that floor, which is the safe direction."
       ]
     },
 
@@ -535,7 +535,7 @@
       "artifact": "One-line verdict — \"normal noise\" or \"elevated, here is the source\" — plus the volume numbers. One check per incident; this is not a monitoring loop.",
       "source": "plugins/socialcrawl-superengine/skills/research-plays/references/big-guns.md",
       "notes": [
-        "The play's prose says 15 flat. costs.json publishes 15-45 and the credit guard quotes 45, so 45 is what this row quotes. The prose figure is stale — flagged for R4, not edited here."
+        "The play's prose says 15 flat. costs.json publishes 15-45 and the credit guard counts the 45 ceiling, so 45 is what this row quotes. The prose figure is stale — flagged for R4, not edited here."
       ]
     },
 

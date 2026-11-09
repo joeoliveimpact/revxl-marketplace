@@ -69,10 +69,16 @@ function readPage() {
         await page.type(a.sel, a.text);
       } else if (a.do === "click") {   // centre it first, as a person would: the fixed Send bar covers the bottom
         if (a.sel === "#send") await page.waitForSelector("#send:not([disabled])");
-        await page.$eval(a.sel, (e) => e.scrollIntoView({block: "center"}));
+        await page.$eval(a.sel, (e) => {
+          for (let p=e.parentElement; p; p=p.parentElement) if (p.matches("details.advanced-controls")) p.open=true;
+          e.scrollIntoView({block: "center"});
+        });
         await page.click(a.sel);
       } else if (a.do === "slider") {   // G2-c: move the actual Tweakpane slider with the pointer
-        await page.$eval(a.sel, e => e.scrollIntoView({block: "center"}));
+        await page.$eval(a.sel, e => {
+          for (let p=e.parentElement; p; p=p.parentElement) if (p.matches("details.advanced-controls")) p.open=true;
+          e.scrollIntoView({block: "center"});
+        });
         const bounds = await (await page.$(a.sel)).boundingBox();
         await page.mouse.move(bounds.x + bounds.width * 0.25, bounds.y + bounds.height / 2);
         await page.mouse.down();

@@ -43,6 +43,8 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);flex:none
 #saved{color:#62d69a}
 #saved.error{color:#ff9382}
 @media(max-width:500px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.options{grid-template-columns:1fr}}
+.advanced-controls{border:1px solid var(--line);border-radius:8px;padding:12px;margin:12px 0}
+.advanced-controls>summary{cursor:pointer;color:var(--ink);font-weight:600}
 </style>
 </head>
 <body>
@@ -57,6 +59,7 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);flex:none
 <div id="looks" class="cards" role="presentation"></div>
 <button id="none" class="look-choice" role="radio" aria-checked="false" data-look="none">No captions</button>
 </div></section>
+<details class="advanced-controls"><summary>Advanced controls</summary>
 <section aria-labelledby="layouts-title"><h2 id="layouts-title">Layouts</h2>
 <p id="layout-note">Preview only. Choose a look above to see it on each layout.</p>
 <div id="layouts" class="cards"></div></section>
@@ -68,8 +71,9 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);flex:none
 <label><input id="loud-emphasis" type="checkbox">Stress loud words</label>
 <label for="accent">Accent colour (optional) <input id="accent" type="text" placeholder="#rrggbb" maxlength="7"
  aria-describedby="accent-help" spellcheck="false" autocomplete="off"></label>
-<label><input id="make-default" type="checkbox">Make this my default</label>
 </div><p id="accent-help" class="quiet">Leave the colour empty to use the look's own accent.</p></fieldset>
+</details>
+<label><input id="make-default" type="checkbox">Set as my default</label>
 <aside id="tips" class="quiet" aria-label="Suggestions"></aside>
 </div>
 </main>
