@@ -62,7 +62,9 @@ def fetch(a):
         n = download(m["url"], tmp, m.get("bytes"))
         if n != m.get("bytes") or cost_ask.file_sha256(tmp) != m.get("sha256"):
             print("The sound library download didn't match what was expected (%s), so nothing was unpacked. "
-                  "Try again later." % ("size" if n != m.get("bytes") else "checksum"))
+                  "Any sound library you already have is untouched. If it fails again, the file on our side has likely "
+                  "changed: send a short problem report so it gets fixed, and the mix goes ahead with the sounds you "
+                  "have (voice only if there are none yet)." % ("size" if n != m.get("bytes") else "checksum"))
             return 1
         top = lib.resolve()
         with zipfile.ZipFile(tmp) as z:

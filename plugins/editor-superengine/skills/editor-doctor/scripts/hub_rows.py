@@ -204,8 +204,16 @@ def goldmine(root):
         manifest = export(pointer.get("manifest"))
         if not isinstance(pop, dict) or not isinstance(pop.get("corpus", {}).get("reels_total"), (int, float)):
             return None
+        # Name breakouts by their hook line (never the hook category); odd shapes fall back, never crash the hub.
+        listed = manifest.get("breakouts") if isinstance(manifest, dict) else None
+        titles = {b["id"]: b.get("hook_line") for b in listed if isinstance(b, dict) and isinstance(b.get("id"), str)
+                  and isinstance(b.get("hook_line"), str) and b["hook_line"].strip()} if isinstance(listed, list) else {}
+        rows = pop.get("breakout_ranking")
+        ranking = [dict(x, title=x.get("title") or titles.get(x.get("shortcode") if isinstance(x.get("shortcode"), str)
+                                                              else None)) if isinstance(x, dict) else x
+                   for x in rows] if isinstance(rows, list) else []
         return {"n": pop["corpus"]["reels_total"], "breakouts": manifest.get("count", 0) if manifest else 0,
-                "corpus": pop["corpus"], "ranking": pop.get("breakout_ranking", []),
+                "corpus": pop["corpus"], "ranking": ranking,
                 "retrieval": export((pointer.get("compute") or {}).get("retrieval")),
                 "hooks": export((pointer.get("reads") or {}).get("proven_hooks"))}
     return None

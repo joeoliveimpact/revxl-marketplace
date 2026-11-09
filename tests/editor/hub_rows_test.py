@@ -15,6 +15,35 @@ sys.path.insert(0, str(SCRIPTS))
 import hub_rows as hub
 
 
+class GoldmineShapesTest(unittest.TestCase):
+    """H-S17-2: titles come from manifest hook lines; odd export shapes never crash the hub refresh."""
+    def gold(self, manifest, ranking):
+        with tempfile.TemporaryDirectory() as t:
+            rb = Path(t) / "reel-build"; rb.mkdir()
+            for name, value in (("goldmine-run.json", {"manifest": "manifest.json",
+                                                       "compute": {"popularity": "popularity.json"}}),
+                                ("manifest.json", manifest),
+                                ("popularity.json", {"corpus": {"reels_total": 3}, "breakout_ranking": ranking})):
+                (rb / name).write_text(json.dumps(value), encoding="utf-8")
+            with patch.object(hub.Path, "home", return_value=Path(t)):
+                return hub.goldmine(Path(t))
+
+    def test_titles(self):
+        g = self.gold({"count": 2, "breakouts": [{"id": "A1", "hook_line": "Stop posting daily", "hook": "statement"},
+                                                 {"id": "B2", "hook_line": "", "hook": "none"}]},
+                      [{"shortcode": "A1"}, {"shortcode": "B2"}, {"shortcode": "C3", "title": "kept"}, "odd"])
+        self.assertEqual([r["title"] if isinstance(r, dict) else r for r in g["ranking"]],
+                         ["Stop posting daily", None, "kept", "odd"])
+
+    def test_odd_shapes_do_not_crash(self):
+        for manifest, ranking in (({"count": 1, "breakouts": None}, [{"shortcode": "A1"}]),
+                                  ({"count": 1, "breakouts": [{"id": ["x"], "hook_line": "h"}]}, [{"shortcode": ["x"]}]),
+                                  ({"count": 1, "breakouts": {"A1": {}}}, None)):
+            g = self.gold(manifest, ranking)
+            self.assertIsInstance(g["ranking"], list)
+            self.assertTrue(all(r.get("title") is None for r in g["ranking"]))
+
+
 class HubRowsTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()

@@ -108,9 +108,11 @@ class Proof:
                   "-frames:v", "1", d / "cover.jpg"])
         write(self.ws / "reel-build/goldmine-run.json", {"manifest": "manifest.json",
               "compute": {"popularity": "popularity.json"}})
-        write(self.ws / "reel-build/manifest.json", {"count": 7})
+        write(self.ws / "reel-build/manifest.json", {"count": 7, "breakouts": [
+              {"id": "SC0DE1x", "hook_line": "Stop posting every day"}]})
         write(self.ws / "reel-build/popularity.json", {"corpus": {"reels_total": 123, "creators": 4},
-              "breakout_ranking": [{"benchmark_x": 2.5, "comment_rate": 0.02}]})
+              "breakout_ranking": [{"benchmark_x": 2.5, "comment_rate": 0.02},
+                                   {"shortcode": "SC0DE1x", "benchmark_x": 287.479, "comment_rate": 0.041184951443}]})
 
     def run(self, args, timeout=140, check=True):
         p = subprocess.run([str(a) for a in args], env=self.env, cwd=self.ws if self.ws.exists() else self.scratch,
@@ -564,6 +566,9 @@ def case_health(p):
         r = p.snapshot("({health:document.querySelector('#health-list').textContent,gold:document.querySelector('#gold-data').textContent})")
         need("Video tools are ready" in r["health"] and "Motion needs setup" in r["health"], "STATUS details missing")
         need("123" in r["gold"] and "n =" in r["gold"] and "7" in r["gold"], "Goldmine export/n missing")
+        need("Stop posting every day" in r["gold"] and "SC0DE1x" not in r["gold"], "breakout not named by its title")
+        need("4.12%" in r["gold"] and "2.00%" in r["gold"] and "287×" in r["gold"] and "2.5×" in r["gold"]
+             and "0.0411" not in r["gold"] and "287.479" not in r["gold"], "Goldmine numbers not rounded")
     check()
     with p.mutant("hub.js", "const gold = DATA.goldmine;", "const gold = null;"):
         p.bites(check, "fixture export ignored")
