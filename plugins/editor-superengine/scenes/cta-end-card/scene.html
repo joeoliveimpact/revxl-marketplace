@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"headline","type":"string","label":"Headline","default":"Want more like this?"},
+  {"id":"action","type":"string","label":"Button","default":"Follow for part 2"},
+  {"id":"handle","type":"string","label":"Handle","default":"@samplestudio"},
+  {"id":"accent","type":"color","label":"Accent","default":"#4f8cff"},
+  {"id":"font","type":"string","label":"Font family","default":"Inter"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="./vendor/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Inter"; src: url("./fonts/Inter-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; }
+      #cta-end-card { position: relative; width: 1080px; height: 1920px; z-index: 400; font-family: "Inter"; font-weight: 400; color: #ffffff; --accent: #4f8cff; }
+      #cta-end-card .backdrop { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; background: #0e0f12; }
+      #cta-end-card .col { position: absolute; left: 510px; top: 845px; width: 860px; text-align: center; }
+      #cta-end-card .headline { display: block; font-size: 84px; line-height: 1.1; overflow-wrap: anywhere; }
+      #cta-end-card .button { display: inline-block; max-width: 760px; margin-top: 48px; padding: 26px 44px 30px; border-radius: 999px; background: var(--accent); }
+      #cta-end-card .action { display: block; font-size: 52px; line-height: 1.2; overflow-wrap: anywhere; }
+      #cta-end-card .handle { display: block; margin-top: 40px; font-size: 40px; line-height: 1.2; color: #c9ced8; overflow-wrap: anywhere; }
+    </style>
+  </head>
+  <body>
+    <div id="cta-end-card" data-composition-id="cta-end-card" data-start="0" data-duration="3" data-fps="30" data-width="1080" data-height="1920">
+      <div class="backdrop plate"></div>
+      <div class="col">
+        <span class="headline slot" data-slot="headline"></span>
+        <div class="button plate"><span class="action slot" data-slot="action"></span></div>
+        <span class="handle slot" data-slot="handle"></span>
+      </div>
+    </div>
+    <script>
+      (function () {
+        const v = window.__hyperframes.getVariables();
+        const root = document.getElementById("cta-end-card");
+        root.style.setProperty("--accent", v.accent);
+        root.style.fontFamily = JSON.stringify(v.font);
+        root.querySelectorAll("[data-slot]").forEach((el) => { el.textContent = v[el.dataset.slot]; });
+        const q = (s) => root.querySelector(s);
+        const tl = gsap.timeline({ paused: true });
+        tl.set(q(".col"), { xPercent: -50, yPercent: -50 }, 0);
+        tl.fromTo(q(".backdrop"), { opacity: 0 }, { opacity: 1, duration: 0.25, ease: "power1.out" }, 0);
+        tl.fromTo(q(".headline"), { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, 0.15);
+        tl.fromTo(q(".button"), { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.45, ease: "back.out(1.8)" }, 0.45);
+        tl.fromTo(q(".handle"), { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power1.out" }, 0.75);
+        tl.fromTo(q(".button"), { scale: 1 }, { scale: 1.05, duration: 0.5, ease: "sine.inOut", repeat: 1, yoyo: true }, 1.4);
+        window.__timelines = window.__timelines || {};
+        window.__timelines["cta-end-card"] = tl;
+      })();
+    </script>
+  </body>
+</html>

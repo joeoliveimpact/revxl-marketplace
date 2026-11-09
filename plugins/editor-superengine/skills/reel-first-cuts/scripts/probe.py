@@ -8,13 +8,25 @@ Establishes, by measurement:
   * per-file thresholds: noise floor, speech floor, breath/syllable split
   * the duplicate-frame cost of each candidate output rate
   * which frame-rate flag this ffmpeg supports
+  * the picture: rotation-aware portrait/landscape and the HDR transfer (render.py
+    tone-maps HLG/PQ to SDR in its one encode)
+  * how many audio streams there are, and the ONE the cut uses: stored once as
+    `audio_stream` (0-based, ffmpeg's 0:a:N). The envelope, the render and the
+    transcription all read that stream. --audio-stream picks another.
 
 Writes work/probe.json + work/envelope.json. Prints a human-readable report.
 """
-import argparse, json, math, os, re, shutil, struct, subprocess, sys, wave
+import argparse, json, math, os, re, struct, subprocess, sys, wave
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "_shared"))
+import runtime as rt  # noqa: E402
+
 WIN = 0.010          # envelope resolution, seconds
+DEAD_DB = 30
+HDR_TRANSFERS = ("arib-std-b67", "smpte2084")   # HLG, PQ
+SETUP = "The editor's setup isn't finished: its video tools are missing. Run the editor setup (editor-doctor), then try again."
+FFMPEG = FFPROBE = None
 
 
 def die(msg, code=2):
@@ -22,9 +34,15 @@ def die(msg, code=2):
     raise SystemExit(code)
 
 
-def need(tool):
-    if not shutil.which(tool):
-        die("%s not found on PATH" % tool)
+def find_tools():
+    """ffmpeg/ffprobe come from the editor's install (_shared/runtime.py), never PATH."""
+    global FFMPEG, FFPROBE
+    try:
+        FFMPEG, FFPROBE = rt.tool("ffmpeg"), rt.tool("ffprobe")
+    except (KeyError, OSError, ValueError):
+        die(SETUP)
+    if not (Path(FFMPEG).exists() and Path(FFPROBE).exists()):
+        die(SETUP)
 
 
 def run(cmd):
@@ -32,7 +50,7 @@ def run(cmd):
 
 
 def ffprobe_json(path, args):
-    p = run(["ffprobe", "-v", "error", "-of", "json"] + args + [str(path)])
+    p = run([FFPROBE, "-v", "error", "-of", "json"] + args + [str(path)])
     if p.returncode:
         die("ffprobe failed: %s" % p.stderr.strip())
     return json.loads(p.stdout)
@@ -55,7 +73,7 @@ def true_fps(path):
     declared, avg = frac(s.get("r_frame_rate", "0/1")), frac(s.get("avg_frame_rate", "0/1"))
 
     # packet timestamps need no decode and cover the whole file
-    p = run(["ffprobe", "-v", "error", "-select_streams", "v:0",
+    p = run([FFPROBE, "-v", "error", "-select_streams", "v:0",
              "-show_entries", "packet=pts_time", "-of", "csv=p=0", str(path)])
     ts = sorted(float(x) for x in p.stdout.split() if x.replace(".", "", 1).replace("-", "", 1).isdigit())
     deltas = [round((ts[i + 1] - ts[i]) * 1000) for i in range(len(ts) - 1)] if len(ts) > 1 else []
@@ -74,11 +92,91 @@ def true_fps(path):
             "top_deltas_ms": top, "vfr": vfr}
 
 
+# ----------------------------------------------------------------------- picture
+def video_facts(path):
+    """Coded size, display rotation and colour transfer of the first video stream.
+
+    Phones store "rotated 90" in display-matrix side data; the plain `rotate` tag is
+    not read (ffmpeg ignores it too). Unreadable output falls back to landscape."""
+    p = run([FFPROBE, "-v", "error", "-select_streams", "v:0", "-show_entries",
+             "stream=width,height,color_transfer,color_primaries,color_space:stream_side_data=rotation",
+             "-of", "json", str(path)])
+    try:
+        s = json.loads(p.stdout)["streams"][0]
+        w, h = int(s["width"]), int(s["height"])
+    except (ValueError, KeyError, IndexError, TypeError):
+        return {"portrait": False}
+    rot = 0
+    for sd in s.get("side_data_list") or []:
+        if "rotation" in sd:
+            try:
+                rot = int(round(float(sd["rotation"])))
+            except (TypeError, ValueError):
+                pass
+    dw, dh = (h, w) if rot % 180 else (w, h)
+    return {"width": w, "height": h, "rotation": rot, "display_width": dw,
+            "display_height": dh, "portrait": dh > dw,
+            "color_transfer": s.get("color_transfer", "unknown"),
+            "color_primaries": s.get("color_primaries", "unknown"),
+            "color_space": s.get("color_space", "unknown")}
+
+
+def is_portrait_source(path):
+    return video_facts(path)["portrait"]
+
+
+def count_audio_streams(path):
+    """Audio streams only: data tracks (phone metadata) are not counted."""
+    p = run([FFPROBE, "-v", "error", "-select_streams", "a",
+             "-show_entries", "stream=index", "-of", "csv=p=0", str(path)])
+    return len([x for x in p.stdout.splitlines() if x.strip()])
+
+
+def dead_channel(path, stream=0):
+    """Return the dead stereo side, or None when the measurement is inconclusive."""
+    # ponytail: whole-file RMS can miss a hissy dead input against sparse quiet
+    # speech (safe: behaves as today); upgrade by measuring inside speech windows.
+    try:
+        p = run([FFMPEG, "-hide_banner", "-nostats", "-i", str(path),
+                 "-map", "0:a:%d" % stream, "-vn", "-af",
+                 "astats=measure_overall=none:measure_perchannel=RMS_level+Peak_level", "-f", "null", "-"])
+        if p.returncode:
+            return None
+        channels, channel = {}, None
+        for line in p.stderr.splitlines():
+            m = re.search(r"Channel:\s*(\S+)", line)
+            if m:
+                channel = int(m.group(1))
+                if channel in channels:
+                    return None
+                channels[channel] = {}
+            m = re.search(r"(RMS|Peak) level dB:\s*(\S+)", line)
+            if m:
+                if channel is None or m.group(1) in channels[channel]:
+                    return None
+                channels[channel][m.group(1)] = float(m.group(2))
+        if set(channels) != {1, 2}:
+            return None
+        for levels in channels.values():
+            if set(levels) != {"RMS", "Peak"} or any(
+                    not (math.isfinite(v) or v == -math.inf) for v in levels.values()):
+                return None
+            if levels["RMS"] > levels["Peak"] or ((levels["Peak"] == -math.inf) != (levels["RMS"] == -math.inf)):
+                return None
+        for dead, live, side in ((1, 2, "L"), (2, 1, "R")):
+            if math.isfinite(channels[live]["RMS"]) and (channels[dead]["Peak"] == -math.inf
+                    or channels[live]["RMS"] - channels[dead]["RMS"] >= DEAD_DB):
+                return side
+    except (OSError, UnicodeError, ValueError, TypeError):
+        return None
+    return None
+
+
 # ---------------------------------------------------------------------- envelope
-def envelope(path, workdir):
+def envelope(path, workdir, stream=0):
     wav = Path(workdir) / "_source.wav"
-    p = run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(path), "-vn",
-             "-map", "0:a:0", "-acodec", "pcm_s16le", "-ar", "48000", "-ac", "1", str(wav)])
+    p = run([FFMPEG, "-y", "-loglevel", "error", "-i", str(path), "-vn",
+             "-map", "0:a:%d" % stream, "-acodec", "pcm_s16le", "-ar", "48000", "-ac", "1", str(wav)])
     if p.returncode:
         die("audio extract failed: %s" % p.stderr.strip())
     w = wave.open(str(wav), "rb")
@@ -158,7 +256,7 @@ def dup_table(measured_fps, speeds, out_rate):
 
 
 def fps_flag():
-    h = run(["ffmpeg", "-hide_banner", "-h", "full"]).stdout
+    h = run([FFMPEG, "-hide_banner", "-h", "full"]).stdout
     return "-fps_mode" if re.search(r"^\s*-fps_mode", h, re.M) else "-vsync"
 
 
@@ -168,23 +266,36 @@ def main():
     ap.add_argument("-o", "--work", default="work")
     ap.add_argument("--out-rate", type=float, default=30.0)
     ap.add_argument("--speeds", default="1.00,1.10,1.15")
+    ap.add_argument("--audio-stream", type=int, default=0,
+                    help="which audio stream the cut uses, 0-based (default 0, the first)")
     a = ap.parse_args()
 
-    need("ffmpeg"); need("ffprobe")
+    find_tools()
     src = Path(a.input)
     if not src.exists():
         die("no such file: %s" % src)
     work = Path(a.work); work.mkdir(parents=True, exist_ok=True)
 
+    n_audio = count_audio_streams(src)
+    if n_audio == 0:
+        die("no audio stream in %s" % src)
+    if not 0 <= a.audio_stream < n_audio:
+        die("audio stream %d not found: this file has %d (0 to %d)"
+            % (a.audio_stream, n_audio, n_audio - 1))
+    vid = video_facts(src)
     fps = true_fps(src)
-    env = envelope(src, work)
+    env = envelope(src, work, a.audio_stream)
     cal = calibrate(env)
+    dead = dead_channel(src, a.audio_stream)
     speeds = [float(x) for x in a.speeds.split(",")]
     dups = dup_table(fps["measured_fps"], speeds, a.out_rate)
 
     (work / "envelope.json").write_text(json.dumps({"win_s": WIN, "db": env}), encoding="utf-8")
-    probe = {"input": str(src), "fps": fps, "calibration": cal,
-             "dup_table": dups, "out_rate": a.out_rate, "fps_flag": fps_flag()}
+    probe = {"input": str(src.resolve()), "fps": fps, "calibration": cal,
+             "dup_table": dups, "out_rate": a.out_rate, "fps_flag": fps_flag(),
+             "video": vid, "audio_streams": n_audio, "audio_stream": a.audio_stream}
+    if dead:
+        probe["dead_channel"] = dead
     (work / "probe.json").write_text(json.dumps(probe, indent=1), encoding="utf-8")
 
     L = []
@@ -210,6 +321,19 @@ def main():
         L.append("  %.2fx  %5.2f unique fps  %4.1f%% dup" % (r["speed"], r["unique_fps"], r["dup_pct"]))
     if fps["vfr"]:
         L.append("  (VFR source: faster ramps carry FEWER duplicates. Source-specific.)")
+    L.append("")
+    L.append("PICTURE")
+    L.append("  %sx%s shown, %s%s" % (vid.get("display_width"), vid.get("display_height"),
+             "portrait" if vid["portrait"] else "landscape",
+             " (rotation %d)" % vid["rotation"] if vid.get("rotation") else ""))
+    if vid.get("color_transfer") in HDR_TRANSFERS:
+        L.append("  HDR (%s): the render tone-maps it to SDR" % vid["color_transfer"])
+    L.append("AUDIO")
+    L.append("  %d stream(s); the cut uses stream %d%s" % (n_audio, a.audio_stream,
+             " -- check it is the voice" if n_audio > 1 else ""))
+    if dead:
+        L.append("Your mic recorded on one side only (the %s side is silent); I copied it to both sides."
+                 % ("left" if dead == "L" else "right"))
     L.append("")
     L.append("ffmpeg frame-rate flag: %s" % probe["fps_flag"])
     L.append("wrote %s and %s" % (work / "probe.json", work / "envelope.json"))

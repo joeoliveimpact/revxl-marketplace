@@ -4,6 +4,46 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-11-08
+
+### Added
+- **`editor-doctor`**: installs the editor's tools itself (Python, Node, ffmpeg, Chrome headless
+  shell, HyperFrames, the transcription and cutout models), all pinned by sha256 (HyperFrames by
+  its npm lock hashes), checks them,
+  and starts the editor hub and boards.
+- **`recording-preflight`**: checks the camera and sound from a 10-second test clip before the
+  client records.
+- **Boards**: the Cut Board and Tweak Board (first cut), Beat Map and Sketches (on-screen plan
+  and direction), the caption Look Picker, Grade Board, Sound Board, Cover Picker, the Trials
+  board, and the editor hub that links them.
+- **`reel-captions`**: burned-in captions with truthful word marks and a picked caption look.
+- **`reel-broll`**: own or AI-generated B-roll as cutaways over Beat Map beats.
+- **`reel-grade`**: measured colour options on one contact sheet; the client picks on the Grade
+  Board; recordings matched to each other.
+- **`reel-sound-pass`**: music, sound effects, voice clean-up (free, or Auphonic with a yes
+  gate), mix and master. A starter sound pack is downloaded on first use from a pinned,
+  sha256-checked file; its credits ship in `LICENSES/SOUND-PACK-CREDITS.md`.
+- **`reel-cover`**: a cover frame with an optional short title, usable as frame zero.
+- **`reel-trials`**: trial reels that each change exactly one opening, hook, camera field or look.
+- **`pro-editor-handoff`**: an editable timeline for DaVinci Resolve Studio or another editor.
+- **`style-decoder`**: decodes a reel's editing style into a saved style later edits follow.
+- **`caption-writer`**: writes or audits the post caption under a finished reel.
+- **`reel-teardown`**: tears down a posted reel and shows the same footage rebuilt.
+- **Saved styles**: a client's look (edit, captions, colour, transitions) carried from reel to
+  reel, with a default style and named styles.
+- **Scenes**: 19 on-screen scenes (titles, lower thirds, lists, quotes, stat cards, end cards, a
+  3D glass card), seven adapted from HyperFrames.
+- **Several recordings**: cuts from two recordings, a separate mic synced to the camera, and
+  Shorts cut from one long recording.
+- **`LICENSES/NOTICE`** lists every copied or adapted file and every download the installer
+  makes; GSAP's terms are in `runtime/gsap/GSAP-NOTICE`.
+
+### Changed
+- **`editor-start-here`** routes to all 15 skills.
+- **`reel-first-cuts`** is driven from the Cut Board and Tweak Board.
+- **`reel-canvas-build`** replaces `reel-motion-comps`: plan on the Beat Map, pick a direction
+  on Sketches, design, then render.
+
 ## [0.1.0] — 2026-09-04
 
 First release. The editing half of the short-form pipeline, split out so it can be

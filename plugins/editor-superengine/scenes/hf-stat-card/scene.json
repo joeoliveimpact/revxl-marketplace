@@ -1,0 +1,21 @@
+{
+  "id": "hf-stat-card",
+  "category": "stat-card",
+  "kind": "overlay",
+  "slots": {
+    "label": {"maxChars": 30, "default": "Goals reached", "hint": "what the number means"},
+    "caption": {"maxChars": 48, "default": "Great job, we are getting closer!", "hint": "a short line under the track; \"\" leaves it empty"}
+  },
+  "dur": [3, 8],
+  "params": {
+    "value": {"type": "number", "default": 22, "min": 0, "max": 9999, "maxChars": 10, "hint": "the number as said; it must be in the transcript; value (with commas and decimals) + suffix is at most 10 characters"},
+    "decimals": {"type": "number", "default": 0, "min": 0, "max": 2},
+    "suffix": {"type": "string", "default": "", "maxChars": 2, "hint": "e.g. % or k"},
+    "max": {"type": "number", "default": 30, "min": 1, "max": 9999, "hint": "the track is full at this number and fills to value/max; use the total the speaker gives, or 100 for a percent"},
+    "dark": {"type": "boolean", "default": true, "hint": "true = light text for dark footage; false = the block's dark-on-light scheme"},
+    "accent": {"type": "color", "default": "#7d5cff"},
+    "font": {"type": "string", "default": "Inter"}
+  },
+  "source": "HyperFrames registry/blocks/mk-progress-stat (v0.8.184)",
+  "licence": "Apache-2.0"
+}

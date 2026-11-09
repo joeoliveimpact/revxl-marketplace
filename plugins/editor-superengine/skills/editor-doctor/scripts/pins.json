@@ -1,0 +1,199 @@
+{
+ "_note": "Every download the installer makes, pinned by sha256. Sources and how each hash was established: S1a Build report, 11.03.26.",
+ "python": {
+  "version": "3.12.16",
+  "via": "uv 0.13.6 (uv checks its own built-in sha256 for this build)",
+  "win-x64": {
+   "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.12.16%2B20261026-x86_64-pc-windows-msvc-install_only_stripped.tar.gz",
+   "sha256": "1f2ab53880fc67ea323398c6388e05af28addc99a8e389209f08a51fdff4b149"
+  },
+  "mac-arm64": {
+   "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.12.16%2B20261026-aarch64-apple-darwin-install_only_stripped.tar.gz",
+   "sha256": "353d5f1b4fd2715e7053f12f068435d5bbad16b91e057006b5d01e0925709a7e"
+  },
+  "mac-x64": {
+   "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.12.16%2B20261026-x86_64-apple-darwin-install_only_stripped.tar.gz",
+   "sha256": "37c38fda76fec1fbf310adcbafb7f0d96af13b5511bf8ea954c3aa8eec185734"
+  }
+ },
+ "node": {
+  "version": "22.23.4",
+  "win-x64": {
+   "files": [
+    {
+     "url": "https://nodejs.org/dist/v22.23.4/node-v22.23.4-win-x64.zip",
+     "sha256": "cbc74b5e0982c9dbb41525fd8fb5dcd32fbee237863f7829072f4639a1ce5f20"
+    }
+   ],
+   "bins": {
+    "node": "node-v22.23.4-win-x64/node.exe",
+    "npm-cli": "node-v22.23.4-win-x64/node_modules/npm/bin/npm-cli.js"
+   }
+  },
+  "mac-arm64": {
+   "files": [
+    {
+     "url": "https://nodejs.org/dist/v22.23.4/node-v22.23.4-darwin-arm64.tar.gz",
+     "sha256": "c9e1dbc748b33ed2d14f42445191ecaf14c56259c7a9a26d0042c49ec2b66428"
+    }
+   ],
+   "bins": {
+    "node": "node-v22.23.4-darwin-arm64/bin/node",
+    "npm-cli": "node-v22.23.4-darwin-arm64/lib/node_modules/npm/bin/npm-cli.js"
+   }
+  },
+  "mac-x64": {
+   "files": [
+    {
+     "url": "https://nodejs.org/dist/v22.23.4/node-v22.23.4-darwin-x64.tar.gz",
+     "sha256": "efcc2b0db6f94bf53eddb038fe2b370277a042bd29e4f19b8f8e23598795b819"
+    }
+   ],
+   "bins": {
+    "node": "node-v22.23.4-darwin-x64/bin/node",
+    "npm-cli": "node-v22.23.4-darwin-x64/lib/node_modules/npm/bin/npm-cli.js"
+   }
+  }
+ },
+ "ffmpeg": {
+  "version": "8.1.2",
+  "need_filters": [
+   "zscale",
+   "tonemap",
+   "psnr"
+  ],
+  "need_encoders": [
+   "libx264",
+   "libx265",
+   "prores_ks",
+   "libvpx-vp9",
+   "aac",
+   "libopus"
+  ],
+  "win-x64": {
+   "files": [
+    {
+     "url": "https://github.com/GyanD/codexffmpeg/releases/download/8.1.2/ffmpeg-8.1.2-essentials_build.zip",
+     "sha256": "db580001caa24ac104c8cb856cd113a87b0a443f7bdf47d8c12b1d740584a2ec"
+    }
+   ],
+   "bins": {
+    "ffmpeg": "ffmpeg-8.1.2-essentials_build/bin/ffmpeg.exe",
+    "ffprobe": "ffmpeg-8.1.2-essentials_build/bin/ffprobe.exe"
+   }
+  },
+  "mac-arm64": {
+   "files": [
+    {
+     "url": "https://ffmpeg.martin-riedl.de/download/macos/arm64/1783011502_8.1.2/ffmpeg.zip",
+     "sha256": "ef1aa60006c7b77ce170c1608c08d8e4ba1c30c5746f2ac986ded932d0ac2c3c"
+    },
+    {
+     "url": "https://ffmpeg.martin-riedl.de/download/macos/arm64/1783011502_8.1.2/ffprobe.zip",
+     "sha256": "c39787f4af7a3932502d2d48db6f6feaaa836b48a73ef78c32cc3285df61dfaf"
+    }
+   ],
+   "bins": {
+    "ffmpeg": "ffmpeg",
+    "ffprobe": "ffprobe"
+   }
+  },
+  "mac-x64": {
+   "files": [
+    {
+     "url": "https://ffmpeg.martin-riedl.de/download/macos/amd64/1783018342_8.1.2/ffmpeg.zip",
+     "sha256": "a52ef43883f44c219766d4b3bdde4e635b35465d0b704c01c3a0566b59775df9"
+    },
+    {
+     "url": "https://ffmpeg.martin-riedl.de/download/macos/amd64/1783018342_8.1.2/ffprobe.zip",
+     "sha256": "5408ca588c8c72b0dde3afe676d0a7acf25ef97e55ae6eba5c7bede1cda42695"
+    }
+   ],
+   "bins": {
+    "ffmpeg": "ffmpeg",
+    "ffprobe": "ffprobe"
+   }
+  }
+ },
+ "chrome": {
+  "version": "152.0.7977.30",
+  "win-x64": {
+   "files": [
+    {
+     "url": "https://storage.googleapis.com/chrome-for-testing-public/152.0.7977.30/win64/chrome-headless-shell-win64.zip",
+     "sha256": "5d7df999a6e4a65a1b16b25b61064f7337b8aa8ee2ed1b4e07bfdd24f6e4275e"
+    }
+   ],
+   "bins": {
+    "chrome": "chrome-headless-shell-win64/chrome-headless-shell.exe"
+   }
+  },
+  "mac-arm64": {
+   "files": [
+    {
+     "url": "https://storage.googleapis.com/chrome-for-testing-public/152.0.7977.30/mac-arm64/chrome-headless-shell-mac-arm64.zip",
+     "sha256": "1db16c16e72bedfa747ed01c207a3fe8ee7370c35f2094279eb8878c996e8c79"
+    }
+   ],
+   "bins": {
+    "chrome": "chrome-headless-shell-mac-arm64/chrome-headless-shell"
+   }
+  },
+  "mac-x64": {
+   "files": [
+    {
+     "url": "https://storage.googleapis.com/chrome-for-testing-public/152.0.7977.30/mac-x64/chrome-headless-shell-mac-x64.zip",
+     "sha256": "48bf06f34412f9df5c7d3f3306d61a54a050789f395dd0129bae2234adb0033a"
+    }
+   ],
+   "bins": {
+    "chrome": "chrome-headless-shell-mac-x64/chrome-headless-shell"
+   }
+  }
+ },
+ "hyperframes": {
+  "version": "0.8.184"
+ },
+ "models": {
+  "parakeet": {
+   "repo": "istupakov/parakeet-tdt-0.6b-v2-onnx",
+   "commit": "0bbb45a3365852604aef28b538a8f066f4ccaa85",
+   "files": {
+    "config.json": "666903c76b9798caf2c210afd4f6cd60b08a8dbf9800ec8d7a3bc0d2148ac466",
+    "vocab.txt": "ec182b70dd42113aff6c5372c75cac58c952443eb22322f57bbd7f53977d497d",
+    "encoder-model.int8.onnx": "3e0581fda6ab843888b51e56d7ee78b6d5bc3237ec113af1f732d1d5286aa155",
+    "decoder_joint-model.int8.onnx": "a449f49acd68979d418651dd2dcb737cc0f1bf0225e009e29ee326354edbf7d3"
+   }
+  },
+  "wav2vec2": {
+   "repo": "facebook/wav2vec2-base-960h",
+   "commit": "22aad52d435eb6dbaf354bdad9b0da84ce7d6156",
+   "files": {
+    "config.json": "d3ec255c063d9f95057b553b19c20135b259875834a4fe9deb218a6be25b4cf3",
+    "feature_extractor_config.json": "d3de0c797bf9b65f90bc65c30cb7b303ebeda341f6fc80af33628c4b26b95632",
+    "preprocessor_config.json": "b225d617c025463b9e157e06afea8b90dc7078fc70b013c533328423e0486b4a",
+    "special_tokens_map.json": "bb7068de1150661a10b55f9e4b12a0e77af8bf91f5e45e1b58afaf1d0e17f675",
+    "tokenizer_config.json": "dc790594f5bc351a4311c6624f40acd95850d4aaf2a5cb3c656c9b610720b608",
+    "vocab.json": "19727f8944fe6459fc3f240ae2c198395b740f6a029bd23e06656266b83bcf64",
+    "model.safetensors": "8aa76ab2243c81747a1f832954586bc566090c83a0ac167df6f31f0fa917d74a"
+   }
+  },
+  "faster-whisper": {
+   "repo": "mobiuslabsgmbh/faster-whisper-large-v3-turbo",
+   "download_repo": "dropbox-dash/faster-whisper-large-v3-turbo",
+   "commit": "0a363e9161cbc7ed1431c9597a8ceaf0c4f78fcf",
+   "files": {
+    "config.json": "b0253ea6c0d3bea6b1e19e91a02acfd3b53f4467362efcb5a3e6b16c9b3a9b7e",
+    "preprocessor_config.json": "7ccc62c6f2765af1f3b46c00c9b5894426835a05021c8b9c01eecb6dfb542711",
+    "tokenizer.json": "297b13372ac43916285644fb9687add3cc62ee2a1adb60da3dc25cc94c1871fd",
+    "vocabulary.json": "c69260f2ab26d659b7c398f9a2b2b48ed0df16c3b47d7326782fd9cba71690c1",
+    "model.bin": "e76620f83d5f5b69efd3d87e3dc180c1bd21df9fbebacfd4335e5e1efcc018da"
+   }
+  },
+  "u2net": {
+   "url": "https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net_human_seg.onnx",
+   "sha256": "01eb6a29a5c4d8edb30b56adad9bb3a2a0535338e480724a213e0acfd2d1c73c",
+   "dest": "hyperframes-home/.cache/hyperframes/background-removal/models/u2net_human_seg.onnx"
+  }
+ }
+}

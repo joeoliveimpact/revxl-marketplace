@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sketches</title>
+<style>
+  :root { --bg:#14161b; --panel:#1d2028; --line:#2c313c; --text:#e7e9ee; --muted:#9aa3b2; --accent:#7aa7ff; --bad:#ff8a8a; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1240px; margin: 0 auto; padding: 20px 20px 110px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 0 0 10px; }
+  h3 { font-size: 16px; margin: 0 0 4px; }
+  .muted { color: var(--muted); }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin: 16px 0; }
+  :focus-visible { outline: 3px solid #ffd166; outline-offset: 2px; }
+  video { width: 100%; max-height: 70vh; background: #000; border-radius: 8px; display: block; }
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+  .direction, .sketch { background: #181b22; border: 2px solid var(--line); border-radius: 10px; padding: 14px; }
+  .direction.picked { border-color: var(--accent); box-shadow: 0 0 0 3px #7aa7ff33; }
+  #directions.locked .direction:not(.picked) { opacity: .55; }
+  #locked-note { font-weight: 600; color: #8fe0b0; margin: 0 0 10px; }
+  #lock:disabled { opacity: .5; cursor: default; }
+  .frames { display: flex; gap: 8px; overflow-x: auto; padding: 8px 0; }
+  .frames img { height: 110px; border-radius: 6px; cursor: zoom-in; flex: none; background: #000; }
+  .pick { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; margin: 6px 0 10px; cursor: pointer; }
+  .pick input { width: 18px; height: 18px; accent-color: var(--accent); }
+  .beat { color: var(--muted); font-size: 13px; margin: 0 0 8px; }
+  .none { color: var(--muted); font-style: italic; margin: 8px 0; }
+  label.block { display: block; font-weight: 600; margin: 8px 0 6px; font-size: 14px; }
+  textarea, button { font: inherit; color: var(--text); background: #12141a; border: 1px solid #3a4150; border-radius: 6px; }
+  textarea { width: 100%; min-height: 60px; padding: 8px; resize: vertical; }
+  .scene-controls { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 14px; }
+  .scene-picker { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+  .scene-choice { padding: 8px; text-align: left; overflow-wrap: anywhere; }
+  .scene-choice img { display: block; height: 120px; max-width: 100%; margin: 0 auto 8px; }
+  .scene-choice span { display: block; }
+  .scene-choice:disabled { opacity: .45; cursor: default; }
+  .slot-count { display: block; color: var(--muted); font-size: 12px; }
+  .scene-controls .bad { color: var(--bad); border-color: var(--bad); }
+  .scene-controls input, .scene-controls select { font: inherit; color: var(--text); background: #12141a;
+    border: 1px solid #3a4150; border-radius: 6px; padding: 8px; width: 100%; }
+  .remove-scene { margin-top: 12px; }
+  #lightbox { position: fixed; inset: 0; background: rgba(0, 0, 0, .88); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 20px; }
+  #lightbox img { max-width: 100%; max-height: 100%; border-radius: 8px; }
+  #lightbox button { position: absolute; top: 14px; right: 14px; }
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; background: #0f1116; border-top: 1px solid var(--line);
+         display: flex; gap: 14px; align-items: center; justify-content: flex-end; padding: 12px 20px; }
+  #status { margin: 0; color: var(--muted); flex: 1; }
+  #status[data-state=error] { color: var(--bad); }
+  #status[data-state=sent] { color: #8fe0b0; }
+  button { cursor: pointer; padding: 9px 18px; }
+  #send { background: var(--accent); color: #0d1320; border-color: var(--accent); font-weight: 600; }
+  #send:disabled { opacity: .5; cursor: default; }
+  @media (max-width: 760px) {
+    main { padding: 14px 12px 130px; }
+    .grid { grid-template-columns: 1fr; }
+    .bar { flex-wrap: wrap; }
+  }
+.advanced-controls{border:1px solid var(--line);border-radius:8px;padding:10px;margin:10px 0}
+.advanced-controls>summary{cursor:pointer;font-weight:600}
+</style>
+</head>
+<body>
+<main>
+  <h1>Sketches</h1>
+  <p class="muted">Watch the rough version, pick the look you like best, and leave notes on the sketches. Your changes save by themselves.</p>
+
+  <p id="empty" class="panel" hidden>No sketches yet. Ask Claude to make some.</p>
+
+  <div id="board" hidden>
+    <section class="panel" id="rough-panel" aria-labelledby="rough-h" hidden>
+      <h2 id="rough-h">The rough version</h2>
+      <video id="rough" controls preload="metadata" aria-label="Whole-reel rough preview" hidden></video>
+      <p id="rough-bad" class="none" hidden>This preview can't be shown.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="dir-h">
+      <h2 id="dir-h">Pick a look</h2>
+      <p class="muted">Each look is a different style for the whole video. Pick one; tap a picture to see it bigger.</p>
+      <p id="locked-note" hidden>Locked</p>
+      <div id="directions" class="grid"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="sk-h">
+      <h2 id="sk-h">Sketches</h2>
+      <div id="sketches" class="grid"></div>
+    </section>
+    <details class="advanced-controls"><summary>Advanced controls</summary>
+    <details class="panel" id="storyboard">
+      <summary>How each beat comes in and goes out (optional)</summary>
+      <div id="storyboard-rows"></div>
+    </details>
+    </details>
+
+    <section class="panel">
+      <label class="block" for="note">Anything else for Claude?</label>
+      <textarea id="note" rows="3"></textarea>
+    </section>
+  </div>
+</main>
+
+<div id="lightbox" role="dialog" aria-modal="true" aria-label="Bigger picture" hidden>
+  <img alt="">
+  <button type="button" id="lightbox-close">Close</button>
+</div>
+
+<div class="bar">
+  <p id="status" role="status" aria-live="polite" data-state="empty"></p>
+  <button type="button" id="lock" disabled>Lock this look</button>
+  <button type="button" id="send" disabled>Send to Claude <small data-loading>Loading...</small></button>
+</div>
+
+<script src="./board-client.js"></script>
+<script>
+"use strict";
+const $ = (s) => document.querySelector(s);
+const statusEl = $("#status"), sendBtn = $("#send"), lockBtn = $("#lock"), box = $("#lightbox");
+let bc = null, doc = null, timer = null, seq = 0, opener = null;
+let sceneCatalog = [], sceneSuggestions = {}, sceneFieldId = 0, sceneBeats = [];
+
+function el(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  for (const k in attrs || {}) {
+    if (k === "class") e.className = attrs[k];
+    else if (k === "text") e.textContent = attrs[k];
+    else e.setAttribute(k, attrs[k]);
+  }
+  for (const c of kids) if (c != null) e.append(c);   // strings become text nodes, never markup
+  return e;
+}
+function setStatus(state, msg) { statusEl.dataset.state = state; statusEl.textContent = msg; }
+function reelUrl() { return "/videos/" + encodeURIComponent(new URLSearchParams(location.search).get("reel")) + "/"; }
+/* A reel file's URL, or null when the path could leave the reel folder. */
+function mediaUrl(rel) {
+  if (typeof rel !== "string" || !rel.trim() || rel.includes("\\") || rel.startsWith("/") ||
+      /^[A-Za-z]:/.test(rel) || rel.split("/").includes("..")) return null;
+  return reelUrl() + rel.split("/").map(encodeURIComponent).join("/");
+}
+function cantShow() { return el("p", {class: "none", text: "This preview can't be shown."}); }
+function beatLabel(id) {
+  const m = /^b_0*(\d+)$/.exec(String(id));
+  return "For beat " + (m ? m[1] : String(id));
+}
+function noteBox(id, label, value, onInput) {
+  const t = el("textarea", {name: "note", id: id, rows: "2"});
+  t.value = value || "";
+  t.addEventListener("input", () => { onInput(t.value); edited(); });
+  return [el("label", {class: "block", for: id, text: label}), t];
+}
+
+function openBox(img) {
+  opener = img;
+  const big = box.querySelector("img");
+  big.src = img.src; big.alt = img.alt;
+  box.hidden = false;
+  $("#lightbox-close").focus();
+}
+function closeBox() {
+  box.hidden = true;
+  if (opener) opener.focus();
+}
+box.addEventListener("click", closeBox);
+document.addEventListener("keydown", (e) => {
+  if (box.hidden) return;
+  if (e.key === "Escape") closeBox();
+  else if (e.key === "Tab") { e.preventDefault(); $("#lightbox-close").focus(); }   // Close is the only control inside
+});
+
+function markPicked() {
+  document.querySelectorAll("section.direction").forEach((s) => s.classList.toggle("picked", s.dataset.id === doc.pick));
+  showLock();
+}
+
+/* Locked = the coach chose the picked look as final: the picks can't change until Unlock. */
+function showLock() {
+  const locked = !!doc.locked_at;
+  document.querySelectorAll("input[name=pick]").forEach((r) => { r.disabled = locked; });
+  $("#directions").classList.toggle("locked", locked);
+  $("#locked-note").hidden = !locked;
+  lockBtn.textContent = locked ? "Unlock" : "Lock this look";
+  lockBtn.disabled = !locked && doc.pick == null;
+}
+
+function toggleLock() {
+  doc.locked_at = doc.locked_at ? null : new Date().toISOString();
+  showLock();
+  clearTimeout(timer);
+  setStatus("saving", "Saving…");
+  save(++seq);   // right away, no wait
+}
+
+function direction(d, i) {
+  const name = d.name || "Look " + (i + 1);
+  const sec = el("section", {class: "direction", "data-id": d.id}, el("h3", {text: name}));
+  if (d.why) sec.append(el("p", {class: "muted", text: d.why}));
+  const frames = el("div", {class: "frames"});
+  (d.frames || []).forEach((f, n) => {
+    const url = mediaUrl(f);
+    if (!url) { frames.append(cantShow()); return; }
+    const img = el("img", {src: url, loading: "lazy", alt: name + ", frame " + (n + 1), tabindex: "0", role: "button"});
+    img.addEventListener("click", () => openBox(img));
+    img.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openBox(img); } });
+    frames.append(img);
+  });
+  if (frames.childNodes.length) sec.append(frames);
+  const radio = el("input", {type: "radio", name: "pick", value: d.id, "aria-label": "Pick " + name});
+  radio.checked = doc.pick === d.id;
+  radio.addEventListener("change", () => { if (radio.checked) { doc.pick = d.id; markPicked(); edited(); } });
+  sec.append(el("label", {class: "pick"}, radio, "Pick this one"),
+    ...noteBox("dir-note-" + i, "Your note on this look", d.note, (v) => { d.note = v; }));
+  return sec;
+}
+
+async function reelJson(rel) {
+  const url = mediaUrl(rel);
+  if (!url) return null;
+  try { const r = await fetch(url, {cache: "no-store"}); return r.ok ? await r.json() : null; }
+  catch (e) { return null; }
+}
+function counterValue(spec, param) { return spec.category === "counter" && param.name === "value"; }
+function sceneSpec(id) { return sceneCatalog.find((s) => s.id === id); }
+function refreshScenes() {
+  document.querySelectorAll(".scene-controls").forEach((e) => e.replaceWith(sceneControls(e.dataset.beat)));
+}
+function sceneControls(beat) {
+  const wrap = el("div", {class: "scene-controls", "data-beat": beat});
+  const fill = (doc.scenes || {})[beat], spec = fill && sceneSpec(fill.id);
+  const add = el("button", {type: "button", class: "add-scene", text: "Add a scene", "aria-expanded": "false"});
+  const picker = el("div", {class: "scene-picker", hidden: ""});
+  const available = sceneSuggestions[beat] || {};
+  const ordered = [...sceneCatalog].sort((a, b) => Number(!!available[b.id]) - Number(!!available[a.id]));
+  for (const item of ordered) {
+    const choice = el("button", {type: "button", class: "scene-choice", "data-scene": item.id});
+    const url = mediaUrl(item.preview);
+    if (url) choice.append(el("img", {src: url, alt: item.id + " preview"}));
+    choice.append(el("span", {text: item.id}), el("span", {class: "muted", text: item.kind + " · " + item.category}));
+    if (!available[item.id]) {
+      choice.disabled = true;
+      choice.append(el("span", {text: "doesn't fit this beat's words or length"}));
+    } else choice.addEventListener("click", () => {
+      if (!doc.scenes) doc.scenes = {};
+      doc.scenes[beat] = JSON.parse(JSON.stringify(available[item.id]));
+      refreshScenes(); edited();
+    });
+    picker.append(choice);
+  }
+  add.disabled = !sceneCatalog.length;
+  add.addEventListener("click", () => { picker.hidden = !picker.hidden; add.setAttribute("aria-expanded", String(!picker.hidden)); });
+  wrap.append(add, picker);
+  if (!sceneCatalog.length) wrap.append(el("p", {class: "none", text: "Scene choices aren't ready yet. Ask Claude to prepare them."}));
+  if (fill) {
+    wrap.append(el("p", {text: fill.id}));
+    if (spec) {
+      for (const slot of spec.slots) {
+        const id = "scene-field-" + (++sceneFieldId);
+        const input = el("textarea", {id, rows: "2", "data-slot": slot.name});
+        input.value = (fill.slots || {})[slot.name] || "";
+        const count = el("span", {class: "slot-count", id: id + "-count"});
+        input.setAttribute("aria-describedby", id + "-count");
+        function showCount() {
+          const n = Array.from(input.value).length, bad = n > slot.maxChars;
+          count.textContent = n + " / " + slot.maxChars;
+          count.classList.toggle("bad", bad); input.classList.toggle("bad", bad);
+          input.setAttribute("aria-invalid", String(bad));
+        }
+        input.addEventListener("input", () => {
+          // The test flag proves the same overflow assertion fails without this guard.
+          if (!window.__testSkipSceneMaxChars) input.value = Array.from(input.value).slice(0, slot.maxChars).join("");
+          fill.slots[slot.name] = input.value;
+          showCount(); edited();
+        });
+        showCount();
+        wrap.append(el("label", {class: "block", for: id, text: slot.name}), input, count);
+      }
+      const settings = el("details", {class: "advanced-controls", "data-controls-key": "settings-" + beat}, el("summary", {text: "Advanced controls"}));
+      wrap.append(settings);
+      for (const param of spec.params) {
+        if (param.name === "accent" || param.name === "font" || (!param.enum && param.type !== "number")) continue;
+        const id = "scene-field-" + (++sceneFieldId);
+        const control = el(param.enum ? "select" : "input", {id, "data-param": param.name});
+        const value = Object.hasOwn(fill.params || {}, param.name) ? fill.params[param.name] : param.default;
+        if (param.enum) {
+          param.enum.forEach((v, i) => control.append(el("option", {value: String(i), text: String(v)})));
+          control.value = String(param.enum.indexOf(value));
+        } else {
+          control.type = "number"; control.step = "any";
+          if (param.min != null) control.min = param.min;
+          if (param.max != null) control.max = param.max;
+          control.value = value;
+        }
+        const locked = counterValue(spec, param);
+        if (locked) control.readOnly = true;
+        control.addEventListener(param.enum ? "change" : "input", () => {
+          if (locked) return;
+          if (!fill.params) fill.params = {};
+          fill.params[param.name] = param.enum ? param.enum[Number(control.value)] :
+            (control.value.trim() === "" ? null : Number(control.value));
+          const bad = !control.checkValidity() || fill.params[param.name] == null;
+          control.classList.toggle("bad", bad); control.setAttribute("aria-invalid", String(bad)); edited();
+        });
+        settings.append(el("label", {class: "block", for: id, text: param.name + (locked ? " (from the beat's number)" : "")}), control);
+      }
+    }
+    const remove = el("button", {type: "button", class: "remove-scene", text: "Remove scene"});
+    remove.addEventListener("click", () => { delete doc.scenes[beat]; refreshScenes(); edited(); });
+    wrap.append(remove);
+  }
+  return wrap;
+}
+
+function sceneProblem() {
+  for (const [beat, fill] of Object.entries(doc.scenes || {})) {
+    const spec = fill && sceneSpec(fill.id);
+    if (!spec) return "A saved scene isn't in the catalog. Remove it or ask Claude to prepare the scenes.";
+    for (const slot of spec.slots) {
+      const text = (fill.slots || {})[slot.name];
+      if (typeof text !== "string" || Array.from(text).length > slot.maxChars)
+        return "Shorten the " + slot.name + " scene text to " + slot.maxChars + " characters before sending.";
+    }
+    for (const param of spec.params) {
+      const value = Object.hasOwn(fill.params || {}, param.name) ? fill.params[param.name] : param.default;
+      if (counterValue(spec, param)) {
+        const b = sceneBeats.find((b) => b.id === beat);
+        if (!b || typeof b.value !== "number" || value !== b.value)
+          return "The counter must match the beat's number. Change the number on the Beat Map or pick the scene again.";
+      }
+      if ((param.enum && !param.enum.includes(value)) || (param.type === "number" &&
+          (typeof value !== "number" || !Number.isFinite(value) || (param.min != null && value < param.min) ||
+           (param.max != null && value > param.max)))) return "Check the " + param.name + " scene value before sending.";
+    }
+  }
+  return null;
+}
+
+function sketch(s, i) {
+  const title = s.title || "Sketch " + (i + 1);
+  const art = el("article", {class: "sketch", "data-id": s.id},
+    el("h3", {text: title}), el("p", {class: "beat", text: beatLabel(s.beat)}));
+  if (s.media == null) art.append(el("p", {class: "none", text: "No preview yet"}));
+  else {
+    const url = mediaUrl(s.media);
+    art.append(url ? el("video", {src: url, controls: "", preload: "metadata", "aria-label": title + " preview"}) : cantShow());
+  }
+  art.append(...noteBox("sk-note-" + i, "Your note on this sketch", s.note, (v) => { s.note = v; }));
+  if (doc.sketches.findIndex((row) => row.beat === s.beat) === i) art.append(sceneControls(s.beat));
+  return art;
+}
+
+function render() {
+  renderStoryboard();
+  if (doc.rough != null) {
+    $("#rough-panel").hidden = false;
+    const url = mediaUrl(doc.rough);
+    if (url) { $("#rough").src = url; $("#rough").hidden = false; } else $("#rough-bad").hidden = false;
+  }
+  const dirs = doc.directions || [], sks = doc.sketches || [];
+  $("#directions").replaceChildren(...(dirs.length ? dirs.map(direction) : [el("p", {class: "none", text: "No looks to pick from yet."})]));
+  $("#sketches").replaceChildren(...(sks.length ? sks.map(sketch) : [el("p", {class: "none", text: "No sketches yet."})]));
+  markPicked();
+  const note = $("#note");
+  note.value = doc.note || "";
+  note.addEventListener("input", () => { doc.note = note.value; edited(); });
+}
+
+function edited() {
+  const mine = ++seq;
+  setStatus("saving", "Saving…");
+  clearTimeout(timer);
+  timer = setTimeout(() => save(mine), 400);
+}
+
+async function save(mine) {
+  const r = await bc.save(doc);
+  if (mine !== seq) return;   // a newer edit is on its way
+  if (r.ok) setStatus("saved", "All changes saved.");
+  else setStatus("error", "Couldn't save just now. Your work is kept in this browser. Try again in a moment; if it keeps failing, tell Claude.");
+}
+
+function problem() {
+  for (const [list, what] of [[doc.directions || [], "looks"], [doc.sketches || [], "sketches"]]) {
+    const ids = list.map((x) => x && x.id);
+    if (ids.some((id) => typeof id !== "string" || !id) || new Set(ids).size !== ids.length)
+      return "Two of the " + what + " got mixed up. Ask Claude to check the sketches.";
+  }
+  if (doc.pick != null && !(doc.directions || []).some((d) => d.id === doc.pick))
+    return "The look you picked isn't on the page any more. Pick one again.";
+  if (doc.locked_at && doc.pick == null) return "Nothing is picked, so there's no look to lock. Unlock, pick one, then lock it.";
+  return sceneProblem();
+}
+
+async function send() {
+  clearTimeout(timer);
+  const latestBeats = await reelJson("beat-map.state.json") || await reelJson("beat-map-selection.json");
+  sceneBeats = (latestBeats && latestBeats.beats) || [];
+  const bad = problem();
+  if (bad) { setStatus("error", bad); return; }
+  sendBtn.disabled = true;
+  ++seq;
+  setStatus("saving", "Sending…");
+  try {
+    doc.sent_at = new Date().toISOString();
+    const s = await bc.save(doc);
+    if (!s.ok) { setStatus("error", "Couldn't save just now. Your work is kept in this browser. Try again in a moment; if it keeps failing, tell Claude."); return; }
+    const r = await fetch(reelUrl() + "__save?board=sketches&name=sketches-selection.json",
+      {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(doc)});
+    const j = await r.json().catch(() => null);
+    if (r.ok && j && j.ok) setStatus("sent", "Sent. Tell Claude: your sketch picks are ready.");
+    else setStatus("error", "Couldn't send. Your work is saved; try Send again in a moment.");
+  } catch (e) {
+    setStatus("error", "Couldn't send. Your work is saved; try Send again in a moment.");
+  } finally {
+    sendBtn.disabled = false;
+  }
+}
+
+async function init() {
+  try { bc = BoardClient.create({board: "sketches"}); }
+  catch (e) { setStatus("error", "This board needs to be opened by Claude. Ask Claude to open the sketches."); sendBtn.disabled = true; sendBtn.querySelector("[data-loading]").remove(); return; }
+  doc = await bc.load();
+  if (!doc) {
+    $("#empty").hidden = false;
+    sendBtn.disabled = true;
+    setStatus("empty", "Nothing to send yet.");
+    sendBtn.querySelector("[data-loading]").remove();
+    return;
+  }
+  [sceneCatalog, sceneSuggestions] = await Promise.all(["scenes/catalog.json", "scenes/suggest.json"].map(reelJson));
+  const beatMap = await reelJson("beat-map.state.json") || await reelJson("beat-map-selection.json");
+  sceneBeats = (beatMap && beatMap.beats) || [];
+  if (!Array.isArray(sceneCatalog)) sceneCatalog = [];
+  if (!sceneSuggestions || typeof sceneSuggestions !== "object") sceneSuggestions = {};
+  $("#board").hidden = false;
+  render();
+  if (doc.sent_at) setStatus("sent", "Last sent " + new Date(doc.sent_at).toLocaleString());
+  else setStatus("saved", "All changes saved.");
+  sendBtn.addEventListener("click", send);
+  sendBtn.querySelector("[data-loading]").remove();
+  sendBtn.disabled = false;
+  lockBtn.addEventListener("click", toggleLock);
+}
+function renderStoryboard(){
+  const rows = $("#storyboard-rows");
+  rows.replaceChildren();
+  sceneBeats.forEach((beat, i) => {
+    const row = el("fieldset", {"data-beat": beat.id}, el("legend", {text: beatLabel(beat.id)}));
+    const saved = doc.storyboard?.beats?.[beat.id] || {};
+    for (const [field, label, options] of [
+      ["in", "Comes in", ["", "fade", "slide", "zoom", "hold", "cut"]],
+      ["out", "Goes out", ["", "fade", "slide", "zoom", "hold", "cut"]],
+      ["ease_in", "Ease in", ["", "soft", "snappy", "steady"]],
+      ["ease_out", "Ease out", ["", "soft", "snappy", "steady"]]]) {
+      const id = "storyboard-" + i + "-" + field;
+      const select = el("select", {id, "data-field": field});
+      for (const value of options) select.append(el("option", {value, text: value}));
+      select.value = saved[field] || "";
+      select.addEventListener("change", () => {
+        const beats = doc.storyboard?.beats || {};
+        const values = beats[beat.id] || {};
+        if (select.value) values[field] = select.value; else delete values[field];
+        if (Object.keys(values).length) beats[beat.id] = values; else delete beats[beat.id];
+        if (Object.keys(beats).length) doc.storyboard = {beats}; else delete doc.storyboard;
+        renderStoryboardTips(); edited();
+      });
+      row.append(el("label", {class: "block", for: id, text: label}), select);
+    }
+    rows.append(row);
+  });
+  renderStoryboardTips();
+}
+function renderStoryboardTips(){
+  $("#storyboard-rows").querySelectorAll(".storyboard-tip").forEach(e => e.remove());
+  const beats = doc.storyboard?.beats || {};
+  sceneBeats.slice(0, -1).forEach((beat, i) => {
+    const out = beats[beat.id]?.out, next = beats[sceneBeats[i + 1].id]?.in;
+    if (out && next && out !== next) $("#storyboard-rows").children[i].append(el("p", {class: "muted storyboard-tip",
+      text: "Tip: match this exit to how the next beat comes in for a smoother join."}));
+  });
+}
+init();
+</script>
+
+<!-- ---- G2-c: Tweakpane fine-tune ---- -->
+<section id="fine-tune" class="panel" hidden aria-label="Fine-tune scene">
+  <label class="block" for="fine-beat">Fine-tune beat</label>
+  <select id="fine-beat"></select>
+  <p id="fine-empty" class="muted"></p>
+  <div id="fine-pane"></div>
+</section>
+<script type="module">
+// ---- G2-c: Tweakpane fine-tune ----
+import { Pane } from "./tweakpane.min.js";
+const section = document.getElementById("fine-tune");
+const advanced = document.createElement("details"); advanced.className = "advanced-controls";
+advanced.innerHTML = "<summary>Advanced controls</summary>";
+document.getElementById("board").append(advanced); advanced.append(section);
+const choose = document.getElementById("fine-beat");
+const empty = document.getElementById("fine-empty");
+let pane = null, selected = null, model = {}, bindings = [], refreshing = false;
+function refreshFineValues() {
+  const fill = doc?.scenes?.[selected], spec = fill && sceneSpec(fill.id);
+  if (!spec || !pane) return;
+  for (const param of bindings) model[param.name] = fill.params?.[param.name] ?? param.default;
+  // refresh() can clamp the display model and emit change; never echo it back.
+  refreshing = true;
+  try { pane.refresh(); } finally { refreshing = false; }
+}
+function buildFine() {
+  pane?.dispose(); pane = null; bindings = []; model = {};
+  const beats = Object.keys(doc?.scenes || {});
+  if (!beats.includes(selected)) selected = beats[0] || null;
+  choose.replaceChildren(...beats.map(beat => new Option(beatLabel(beat), beat)));
+  choose.value = selected || ""; choose.disabled = !beats.length;
+  section.hidden = !doc;
+  const fill = doc?.scenes?.[selected], spec = fill && sceneSpec(fill.id);
+  bindings = (spec?.params || []).filter(p => p.type === "number" || p.type === "color");
+  empty.textContent = bindings.length ? "" : "This beat has no numeric or colour scene values to fine-tune.";
+  if (!bindings.length) return;
+  pane = new Pane({container: document.getElementById("fine-pane"), title: "Fine-tune", expanded: false});
+  for (const param of bindings) {
+    model[param.name] = fill.params?.[param.name] ?? param.default;
+    const options = {label: param.name, disabled: counterValue(spec, param)};
+    if (param.type === "number") {
+      if (param.min != null) options.min = param.min;
+      if (param.max != null) options.max = param.max;
+    } else options.view = "color";
+    pane.addBinding(model, param.name, options).on("change", event => {
+      if (refreshing || counterValue(spec, param)) return;
+      fill.params ||= {}; fill.params[param.name] = event.value;
+      const row = [...document.querySelectorAll(".scene-controls")].find(e => e.dataset.beat === selected);
+      const control = row && [...row.querySelectorAll("[data-param]")].find(e => e.dataset.param === param.name);
+      if (control) {
+        control.value = event.value;
+        control.dispatchEvent(new Event("input", {bubbles: true}));
+      } else edited();
+      refreshFineValues();
+    });
+  }
+}
+choose.addEventListener("change", () => { selected = choose.value; buildFine(); });
+document.getElementById("sketches").addEventListener("focusin", event => {
+  const beat = event.target.closest(".scene-controls")?.dataset.beat;
+  if (beat && doc?.scenes?.[beat] && beat !== selected) { selected = beat; buildFine(); }
+});
+document.getElementById("sketches").addEventListener("input", refreshFineValues);
+new MutationObserver(buildFine).observe(document.getElementById("sketches"), {childList: true, subtree: true});
+buildFine();
+</script>
+</body>
+</html>

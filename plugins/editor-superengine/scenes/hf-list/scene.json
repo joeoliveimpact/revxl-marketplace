@@ -1,0 +1,26 @@
+{
+  "id": "hf-list",
+  "category": "list",
+  "kind": "overlay",
+  "slots": {
+    "label1": {"maxChars": 14, "default": "Design", "hint": "row 1 trait or spec name"},
+    "value1": {"maxChars": 36, "default": "Minimal, clean lines", "hint": "row 1 detail; empty shows the label alone"},
+    "label2": {"maxChars": 14, "default": "Typography", "hint": "empty hides row 2"},
+    "value2": {"maxChars": 36, "default": "Inter Regular"},
+    "label3": {"maxChars": 14, "default": "Motion", "hint": "empty hides row 3"},
+    "value3": {"maxChars": 36, "default": "Restrained, no bounce"},
+    "label4": {"maxChars": 14, "default": "Color", "hint": "empty hides row 4"},
+    "value4": {"maxChars": 36, "default": "Stage + one accent"},
+    "label5": {"maxChars": 14, "default": "Shapes", "hint": "empty hides row 5"},
+    "value5": {"maxChars": 36, "default": "Capsules & rounded cards"}
+  },
+  "dur": [3, 10],
+  "params": {
+    "underline": {"type": "boolean", "default": true, "hint": "accent underline sweep under each row"},
+    "scrim": {"type": "number", "default": 1, "min": 0, "max": 1, "hint": "strength of the dark left-edge scrim behind the rows"},
+    "accent": {"type": "color", "default": "#7d5cff"},
+    "font": {"type": "string", "default": "Inter"}
+  },
+  "source": "HyperFrames registry/blocks/mk-specs-list (v0.8.184)",
+  "licence": "Apache-2.0"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "cta-end-card",
+  "category": "cta-end-card",
+  "kind": "takeover",
+  "slots": {
+    "headline": {"maxChars": 36, "default": "Want more like this?", "hint": "the closing line"},
+    "action": {"maxChars": 22, "default": "Follow for part 2", "hint": "what to do next, on the button"},
+    "handle": {"maxChars": 28, "default": "@samplestudio", "hint": "the account name or link text"}
+  },
+  "dur": [2, 6],
+  "params": {
+    "accent": {"type": "color", "default": "#4f8cff"},
+    "font": {"type": "string", "default": "Inter"}
+  },
+  "source": "editor-superengine original (PB-34)",
+  "licence": "own"
+}

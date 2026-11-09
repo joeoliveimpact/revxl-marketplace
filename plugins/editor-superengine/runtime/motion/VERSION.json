@@ -1,0 +1,9 @@
+{
+  "package": "motion",
+  "version": "14.6.0",
+  "tarball_sha256": "c95d4f404fcd111d85e3e22497956cc3afc1d17c01f5ce1c218aaafb6095693b",
+  "files": {
+    "motion.js": "5cd165acfdf8e14ca5358c3d876142e5465419ee0d100bcf195da474cf8db2bf",
+    "LICENSE": "1bf0dc3f7727723e5a032ed12164a47cf92c05204cb1a3485f123c24e2833ed1"
+  }
+}

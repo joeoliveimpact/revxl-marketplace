@@ -1,0 +1,25 @@
+GSAP in this plugin
+===================
+
+File: runtime/gsap/gsap.min.js, GSAP 3.15.0 from the npm package gsap@3.15.0, unmodified, header kept.
+Copyright 2026 GreenSock (Webflow).
+
+GSAP is NOT open source and is NOT covered by this plugin's licence. It is used under the
+GSAP Standard "No Charge" License, https://gsap.com/standard-license (effective 04.30.25,
+last modified 05.30.25 when this plugin was built).
+
+What the licence allows: using GSAP in websites, web apps and digital interfaces, including
+commercial ones, at no charge.
+
+What it does not allow without written consent from Webflow: using GSAP in tools that let
+people build visual animations without code in a way that competes with Webflow's visual
+animation builder.
+
+What it does not allow at all: reverse engineering GSAP to build a competing product, and
+removing or changing GSAP's notices or branding.
+
+How this plugin uses it: GSAP plays the plugin's own prebuilt video scenes (titles, lower
+thirds, cards) when a reel is rendered. People pick a scene and change its words, colours and
+timing settings; they do not build their own animations in a visual editor.
+
+If you copy GSAP out of this plugin, the GSAP Standard License applies to that copy.

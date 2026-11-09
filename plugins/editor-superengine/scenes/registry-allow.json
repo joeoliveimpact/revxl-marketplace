@@ -1,0 +1,224 @@
+[
+  {
+    "id": "hf-lower-third",
+    "category": "lower-third",
+    "source": "registry/blocks/lt-clean-bar",
+    "tag": "v0.8.184",
+    "tag_commit": "d15a274c198cf18bc1df177cbe20df95392a8947",
+    "files": [
+      {
+        "path": "registry/blocks/lt-clean-bar/lt-clean-bar.html",
+        "blob": "143fe94dc38115cc7776e0b14dd85ca673494612",
+        "sha256": "6648b428ea74128368545a5cdf8d83a82e75dc468e9d3bbbac933e1463df5a67"
+      },
+      {
+        "path": "registry/blocks/lt-clean-bar/registry-item.json",
+        "blob": "1266d7e6450581053a4ed6b54ca4742dcb584b29",
+        "sha256": "8ee55069c2f348c65c963fa8911daad5200a3c39c4df8986fbb2ba29d94d233c"
+      }
+    ],
+    "ours_sha256": "285a79a06d673cd13cab9936f22d59b6c194cd849d48931c945c9dd696a4ea60",
+    "changed": true,
+    "licence": "Apache-2.0",
+    "verdict": "allowed",
+    "reason": "Every file of the item (lt-clean-bar.html, registry-item.json) has the v0.8.184 tag's git blob id (git hash-object vs GIT_NO_LAZY_FETCH=1 git ls-tree -r d15a274c, offline). No asset files: the item ships only lt-clean-bar.html, registry-item.json; its only outside references are the jsDelivr GSAP 3.14.2 script (rewritten to ./vendor/gsap.min.js, GSAP 3.15.0) and font-family names with no font file (remapped to the shipped Inter Regular 400). Not named in PIN/CREDITS.md, nor in its 'to be confirmed' list."
+  },
+  {
+    "id": "hf-callout",
+    "category": "callout",
+    "source": "registry/blocks/mk-callout-highlight",
+    "tag": "v0.8.184",
+    "tag_commit": "d15a274c198cf18bc1df177cbe20df95392a8947",
+    "files": [
+      {
+        "path": "registry/blocks/mk-callout-highlight/mk-callout-highlight.html",
+        "blob": "f1176a4629d5984e5d0075fb16ab8f3b2881dd04",
+        "sha256": "ab80d94b07373fd1bb136c3560183e916876e9318729202698fd26c2e999dd46"
+      },
+      {
+        "path": "registry/blocks/mk-callout-highlight/registry-item.json",
+        "blob": "9d4d2452a1218c8c91d513a7f25a5612e3019785",
+        "sha256": "8f31105590e9c0577eb8027d45fd36b0d2f7496fa028f0d3e40de0fd249a36fa"
+      }
+    ],
+    "ours_sha256": "37c9a4213e39653b6f500292dd69257582edd5ff6e6ac627d3832ecfa2a46f33",
+    "changed": true,
+    "licence": "Apache-2.0",
+    "verdict": "allowed",
+    "reason": "Every file of the item (mk-callout-highlight.html, registry-item.json) has the v0.8.184 tag's git blob id (git hash-object vs GIT_NO_LAZY_FETCH=1 git ls-tree -r d15a274c, offline). No asset files: the item ships only mk-callout-highlight.html, registry-item.json; its only outside references are the jsDelivr GSAP 3.14.2 script (rewritten to ./vendor/gsap.min.js, GSAP 3.15.0) and font-family names with no font file (remapped to the shipped Inter Regular 400). Not named in PIN/CREDITS.md, nor in its 'to be confirmed' list."
+  },
+  {
+    "id": "hf-counter",
+    "category": "counter",
+    "source": "registry/components/count-up",
+    "tag": "v0.8.184",
+    "tag_commit": "d15a274c198cf18bc1df177cbe20df95392a8947",
+    "files": [
+      {
+        "path": "registry/components/count-up/README.md",
+        "blob": "3c84bcc24695ce96cd6291bee962e0044da85ee3",
+        "sha256": "15d92a660a2f7f92e7e19a4f88ad459fe93222475169153b48749c5b5ed7512b"
+      },
+      {
+        "path": "registry/components/count-up/count-up.html",
+        "blob": "b1861253939312f93449811124e00dcddafbb601",
+        "sha256": "6b34b9873a243fedb060d23f4eb5cef1b61a5b169ec1ae064030b70b48beea66"
+      },
+      {
+        "path": "registry/components/count-up/demo.html",
+        "blob": "3510ee3f376b84b9646a3c588383e87cef90a1b6",
+        "sha256": "751028d28d858503d73361709cd2484a506192da4271e6b82ffd31a541b98cd0"
+      },
+      {
+        "path": "registry/components/count-up/registry-item.json",
+        "blob": "fc8c9489711bd19eb57be57793b7d1c32ca52c2f",
+        "sha256": "fb88cf0cf8be798bb47cebc8c1a981701cda24e74ef24529ccbe4581d87863c5"
+      }
+    ],
+    "ours_sha256": null,
+    "changed": false,
+    "licence": "Apache-2.0",
+    "verdict": "refused",
+    "reason": "Refused (Q2): registry-item.json differs from the tag (HF61 blob fc8c9489711bd19eb57be57793b7d1c32ca52c2f, tag blob e1f271c1ec769f5d33225c9adfbbf6f15cb4d6c4, not stored in the pinned clone, so its content cannot be read offline). count-up.html, README.md and demo.html match the tag. Assets were clean (no files; CDN GSAP and a font-family name only). No substitute vendored (brief step 5); category counter has no vendored scene."
+  },
+  {
+    "id": "hf-list",
+    "category": "list",
+    "source": "registry/blocks/mk-specs-list",
+    "tag": "v0.8.184",
+    "tag_commit": "d15a274c198cf18bc1df177cbe20df95392a8947",
+    "files": [
+      {
+        "path": "registry/blocks/mk-specs-list/mk-specs-list.html",
+        "blob": "b0af58c46ddca97ae487b89f34bb332d8a062ba8",
+        "sha256": "5bff5b3726cb6041c8419d3b157ad27db76bb8b64f4bd975498d5049ea3bd699"
+      },
+      {
+        "path": "registry/blocks/mk-specs-list/registry-item.json",
+        "blob": "30732b4c58e8f6a95b37e369cfd3c781187fa6dc",
+        "sha256": "0fd4aa6b24455695dfad40ea385c69fa7cf5d541ac8af58db2153b4aacca5df9"
+      }
+    ],
+    "ours_sha256": "90163f5645ea966b56bb4fd7765e9571dc4e007d4e957aaa0b76b4ecb6689a63",
+    "changed": true,
+    "licence": "Apache-2.0",
+    "verdict": "allowed",
+    "reason": "Every file of the item (mk-specs-list.html, registry-item.json) has the v0.8.184 tag's git blob id (git hash-object vs GIT_NO_LAZY_FETCH=1 git ls-tree -r d15a274c, offline). No asset files: the item ships only mk-specs-list.html, registry-item.json; its only outside references are the jsDelivr GSAP 3.14.2 script (rewritten to ./vendor/gsap.min.js, GSAP 3.15.0) and font-family names with no font file (remapped to the shipped Inter Regular 400). Not named in PIN/CREDITS.md, nor in its 'to be confirmed' list."
+  },
+  {
+    "id": "hf-quote",
+    "category": "quote",
+    "source": "registry/components/testimonial-proof-card",
+    "tag": "v0.8.184",
+    "tag_commit": "d15a274c198cf18bc1df177cbe20df95392a8947",
+    "files": [
+      {
+        "path": "registry/components/testimonial-proof-card/README.md",
+        "blob": "ea81c9464fcba7b53ed816454cf5a48286ef141f",
+        "sha256": "e03d0ca759936b8d93c5178e1dcdf7d9681203259c13466b511133317c98f886"
+      },
+      {
+        "path": "registry/components/testimonial-proof-card/demo.html",
+        "blob": "490f7f7c171afe2b9094869a931a6444f234a852",
+        "sha256": "200f199a6b4d3bf64deacbd7ea26f535a56384cccc466cd4b22f4c620395e2c0"
+      },
+      {
+        "path": "registry/components/testimonial-proof-card/registry-item.json",
+        "blob": "1425e22c81947bde01d9ccfdae223cb644cfe726",
+        "sha256": "c8faacebee02e331fb9a9f080b0a6f8c016140aadd7643d95088f46074700135"
+      },
+      {
+        "path": "registry/components/testimonial-proof-card/testimonial-proof-card.html",
+        "blob": "e6a1d0d5d87c623ea826c2b43bb24a79a550ec9c",
+        "sha256": "b22d6ef8a02fefcccc8a48d67f6fe1bc5cc9349789733ca383d08bbf7c172ea5"
+      }
+    ],
+    "ours_sha256": "76c2bff6e1fc33bd0893bcfa54727882a4360cdb5d1997e30bbbcca51febd976",
+    "changed": true,
+    "licence": "Apache-2.0",
+    "verdict": "allowed",
+    "reason": "Every file of the item (README.md, demo.html, registry-item.json, testimonial-proof-card.html) has the v0.8.184 tag's git blob id (git hash-object vs GIT_NO_LAZY_FETCH=1 git ls-tree -r d15a274c, offline). No asset files: the item ships only README.md, demo.html, registry-item.json, testimonial-proof-card.html; its only outside references are the jsDelivr GSAP 3.14.2 script (rewritten to ./vendor/gsap.min.js, GSAP 3.15.0) and font-family names with no font file (remapped to the shipped Inter Regular 400). Not named in PIN/CREDITS.md, nor in its 'to be confirmed' list."
+  },
+  {
+    "id": "hf-stat-card",
+    "category": "stat-card",
+    "source": "registry/blocks/mk-progress-stat",
+    "tag": "v0.8.184",
+    "tag_commit": "d15a274c198cf18bc1df177cbe20df95392a8947",
+    "files": [
+      {
+        "path": "registry/blocks/mk-progress-stat/mk-progress-stat.html",
+        "blob": "a1c0852a7ef0d85832867fe9911cb456f488babe",
+        "sha256": "2c6d9e0dedf250a8e25b53c87057b511ae20545f30e7c1b1ec27b366bec74178"
+      },
+      {
+        "path": "registry/blocks/mk-progress-stat/registry-item.json",
+        "blob": "14117871d3492fa6769d06d7e5a45dc12e25720c",
+        "sha256": "88840aea1ab4b900efa1d47dd686e399fdab41354a90b7559334948261c522bd"
+      }
+    ],
+    "ours_sha256": "b2daa042e8410a5b1923eba3587ffdf77d7b51adab3ef76e48c6b810b8064238",
+    "changed": true,
+    "licence": "Apache-2.0",
+    "verdict": "allowed",
+    "reason": "Every file of the item (mk-progress-stat.html, registry-item.json) has the v0.8.184 tag's git blob id (git hash-object vs GIT_NO_LAZY_FETCH=1 git ls-tree -r d15a274c, offline). No asset files: the item ships only mk-progress-stat.html, registry-item.json; its only outside references are the jsDelivr GSAP 3.14.2 script (rewritten to ./vendor/gsap.min.js, GSAP 3.15.0) and font-family names with no font file (remapped to the shipped Inter Regular 400). Not named in PIN/CREDITS.md, nor in its 'to be confirmed' list."
+  },
+  {
+    "id": "hf-hook-title",
+    "category": "hook-title",
+    "source": "registry/blocks/yt-prism-title",
+    "tag": "v0.8.184",
+    "tag_commit": "d15a274c198cf18bc1df177cbe20df95392a8947",
+    "files": [
+      {
+        "path": "registry/blocks/yt-prism-title/registry-item.json",
+        "blob": "16c20a0a0c91404d3fbb8ffd602849f1732e7f9b",
+        "sha256": "74b661ec180ea1e20471fe3ecfcc039a98ab943b3b9803f841003c4b00867d43"
+      },
+      {
+        "path": "registry/blocks/yt-prism-title/yt-prism-title.html",
+        "blob": "fd26b6193fbb3301cee311c57e1fec9822055e69",
+        "sha256": "db0dd9c48989fed988565f286dfba5c0692584e5c2a1f70952df2e6570b97a25"
+      }
+    ],
+    "ours_sha256": "3484716a3b6f7174c7b7abf31d479c5388881f7193911ff7810da5f201531f0e",
+    "changed": true,
+    "licence": "Apache-2.0",
+    "verdict": "allowed",
+    "reason": "Every file of the item (registry-item.json, yt-prism-title.html) has the v0.8.184 tag's git blob id (git hash-object vs GIT_NO_LAZY_FETCH=1 git ls-tree -r d15a274c, offline). No asset files: the item ships only registry-item.json, yt-prism-title.html; its only outside references are the jsDelivr GSAP 3.14.2 script (rewritten to ./vendor/gsap.min.js, GSAP 3.15.0) and font-family names with no font file (remapped to the shipped Inter Regular 400). Not named in PIN/CREDITS.md, nor in its 'to be confirmed' list."
+  },
+  {
+    "id": "hf-cta-end-card",
+    "category": "cta-end-card",
+    "source": "registry/components/cta-close",
+    "tag": "v0.8.184",
+    "tag_commit": "d15a274c198cf18bc1df177cbe20df95392a8947",
+    "files": [
+      {
+        "path": "registry/components/cta-close/README.md",
+        "blob": "e717c3b7fcbe75aba36fb70a903723175beca77d",
+        "sha256": "8ab1e44f44307bbeac4205ad58ac17ca5bb385fa61ab0ae36a193d675a24368d"
+      },
+      {
+        "path": "registry/components/cta-close/cta-close.html",
+        "blob": "e31bcece39e4988e207bf0aa55fff07c5c8815df",
+        "sha256": "1aff42f1ddfaebcd961b64987e59ed8a3bd1961b4d40d44d24e117093801c46f"
+      },
+      {
+        "path": "registry/components/cta-close/demo.html",
+        "blob": "4f7a474c57feda8070b82ef019c1ce0749fc90a5",
+        "sha256": "f1685b7f778ac13d6762f0f96ee43682979b6fc237bf726d1c75f8296e0a5d10"
+      },
+      {
+        "path": "registry/components/cta-close/registry-item.json",
+        "blob": "be72d4cc9998b279353d368f9c1979d5368b94d3",
+        "sha256": "2e11f1cbf53c4cf8a8bf79f645ba1d3b6dd32fe1cb14ff21b37e686fd2c20c70"
+      }
+    ],
+    "ours_sha256": "fd43f67fe5cbd9b3274ffc7557fb122f366c8b33f978dfef6aed0fdb9b2b8b1f",
+    "changed": true,
+    "licence": "Apache-2.0",
+    "verdict": "allowed",
+    "reason": "Every file of the item (README.md, cta-close.html, demo.html, registry-item.json) has the v0.8.184 tag's git blob id (git hash-object vs GIT_NO_LAZY_FETCH=1 git ls-tree -r d15a274c, offline). No asset files: the item ships only README.md, cta-close.html, demo.html, registry-item.json; its only outside references are the jsDelivr GSAP 3.14.2 script (rewritten to ./vendor/gsap.min.js, GSAP 3.15.0) and font-family names with no font file (remapped to the shipped Inter Regular 400). Not named in PIN/CREDITS.md, nor in its 'to be confirmed' list."
+  }
+]

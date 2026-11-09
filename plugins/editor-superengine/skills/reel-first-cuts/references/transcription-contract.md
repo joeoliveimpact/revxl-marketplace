@@ -1,5 +1,64 @@
 # Transcription contract
 
+## Contents
+- Engines
+- Transcript guards (HF-5, hard rule)
+- The edit map
+- The backup's settings
+- Batching is conditional
+- Precision and batch size are NOT part of the contract
+- Vocabulary is opt-in, per call, never a default
+- Word timings are estimates — always
+- A second trap: contiguous word times
+
+## Engines
+
+`transcribe_words.py` uses the engine the doctor's machine test picked (`engine` in the editor's state):
+
+| Engine | When | Word times |
+|---|---|---|
+| Parakeet TDT 0.6B v2, int8 (`parakeet_local.py`) | the default, on the GPU or the CPU; English only | token starts; each end is the next word's start |
+| faster-whisper `large-v3-turbo` (the backup) | where Parakeet can't install, or the workspace `language` isn't English | the settings table below |
+
+The backup always prints its plain warning (it can drop a retake), so Parakeet's absence is never
+silent. Either engine reads a 16 kHz mono copy of probe.json's `audio_stream`.
+
+All workspaces share one install, which holds one engine. When this workspace's language needs the
+other one (an English workspace after a Spanish one), the run first calls the editor doctor, which
+re-picks for this workspace, says in its STATUS line that it is switching, and reinstalls.
+
+## Transcript guards (HF-5, hard rule)
+
+Every transcript gets them, the raw one and the re-transcribed cut:
+
+1. **Silent tail.** The tail level follows the clip: its loudest point minus 12 dB, never louder than
+   -35 dB (H-HF5-1); `silencedetect` uses this level for 0.6 s. Known limit (H-HF5-6): there is no
+   noise-floor bound, so on a quiet clip with steady hiss an invented word after the speech can survive;
+   it shows in the captions and can be fixed, while real speech is never dropped.
+   When the clip ends in more than 0.8 s of
+   silence, words that start more than 0.4 s after the sound ends are dropped: the engine invented
+   them. `guards.tail_dropped` lists them.
+2. **Near silence.** The chosen track's mean loudness (ffmpeg `volumedetect`) is stored as
+   `mean_loudness_db` in `work/probe.json`; the sound pass's quiet-recording gate reuses it. Under
+   -45 dB the run stops (exit 4) with a plain message that names the file's other audio tracks.
+3. **Untimed words.** A word with no time shares the span between its timed neighbours, and a word
+   with no length ends where the next later word starts (`filled`).
+
+## The edit map
+
+`--edit-map work/edit_map.json` runs three steps on the same words and track:
+
+- `align_words.py`: wav2vec2 forced alignment, a real start and end per word on a 20 ms grid.
+- `vocal_truth.py`: the voiced sounds the engine left out, as `[vocal]` and `[breath]` events.
+- `build_edit_map.py`: words, events and silence islands, validated before anything is written.
+
+`parakeet_start` is the cut anchor; with the backup it holds the backup's start time.
+`--report-md` on the last two writes a readable report, and refuses to overwrite any file that
+isn't one of its own reports. Intel Macs skip alignment (no tested torch), so they get words but
+no edit map.
+
+## The backup's settings
+
 The **model and mode are fixed. The runtime is not.** Any backend satisfying the table below
 works — the bundled `transcribe_words.py`, another local library, an HTTP endpoint, a GPU box on
 a tailnet.
@@ -13,10 +72,10 @@ a tailnet.
 | `hotwords` / vocabulary | **OFF by default** | See below. |
 | output | `{text, words: [{word, start, end}]}` | **Hard-fail if `words` is empty or absent.** |
 
-The bundled transcriber implements this table:
+The bundled backup implements this table, through the same command:
 
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/transcribe_words.py RAW.mp4 -o work/tx.json
+<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/transcribe_words.py" RAW.mp4 -o work/tx.json --probe work/probe.json
 ```
 
 VAD and word timestamps are always on and cannot be turned off. Batching is `--batched N`,
@@ -62,6 +121,10 @@ A reference box runs `int8_float16` with `batch_size 4` because it has **8 GB of
 and 535 MB of measured headroom at peak**. Inheriting that would ship a needlessly quantized
 model to a machine with room to spare. **Where memory allows, `float16` is more accurate than
 `int8_float16`.** Derive both from the hardware actually running.
+
+Keep scratch and work folders off synced folders (OneDrive, Dropbox, iCloud): the sync app locks and
+re-uploads the large WAVs and renders while they are written. Use `pathlib` for paths so the same code runs
+on Windows and macOS.
 
 ## Vocabulary is opt-in, per call, never a default
 

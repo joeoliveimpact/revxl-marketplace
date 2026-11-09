@@ -4,6 +4,19 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.89] ... 2026-11-08
+
+### Changed
+- **editor-superengine v0.2.0** ... from 3 skills to 15. The editor now installs and checks its
+own tools (editor-doctor), checks the camera and mic before recording, and the client cuts on the
+Cut Board and fixes the cut on the Tweak Board, from one recording or several. After the cut:
+burned-in captions, on-screen design with 19 scenes, B-roll, colour on the Grade Board, sound and
+music on the Sound Board, a cover, trial reels, and an editable timeline for Resolve or another
+editor. Saved styles carry a client's look from reel to reel, and style-decoder turns a reel they
+like into a style. Also caption-writer for the post caption and reel-teardown for a posted reel.
+Third-party notices are in `plugins/editor-superengine/LICENSES/NOTICE`; GSAP is under its own
+Standard licence (`runtime/gsap/GSAP-NOTICE`).
+
 ## [0.1.88] ... 2026-11-03
 
 ### Changed

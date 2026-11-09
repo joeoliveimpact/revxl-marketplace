@@ -1,0 +1,54 @@
+<!doctype html>
+<!-- Adapted from HyperFrames registry/blocks/lt-clean-bar (https://github.com/heygen-com/hyperframes, tag v0.8.184, d15a274c), Apache License 2.0, Copyright 2026 HeyGen, Inc. Modified by editor-superengine: portrait 1080x1920, local GSAP 3.15.0, Inter 400, scene contract. -->
+<html lang="en" data-composition-variables='[
+  {"id":"name","type":"string","label":"Name","default":"Dr. Maya Chen"},
+  {"id":"title","type":"string","label":"Title","default":"Host · Neuroscientist"},
+  {"id":"accent","type":"color","label":"Accent","default":"#ff5a36"},
+  {"id":"font","type":"string","label":"Font family","default":"Inter"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="./vendor/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Inter"; src: url("./fonts/Inter-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; }
+      #hf-lower-third { position: relative; width: 1080px; height: 1920px; z-index: 400; font-family: "Inter"; font-weight: 400; --accent: #ff5a36; }
+      #hf-lower-third .lt { position: absolute; left: 80px; bottom: 470px; max-width: 840px; display: flex; align-items: stretch; border-radius: 18px; overflow: hidden; background: #ffffff; box-shadow: 0 14px 44px rgba(15, 17, 21, 0.18); }
+      #hf-lower-third .lt-tab { width: 14px; flex-shrink: 0; background: var(--accent); }
+      #hf-lower-third .lt-body { min-width: 0; padding: 26px 44px 28px 34px; display: flex; flex-direction: column; gap: 8px; }
+      #hf-lower-third .lt-name { display: block; font-size: 60px; line-height: 1.06; letter-spacing: -0.015em; color: #0f1115; overflow-wrap: anywhere; }
+      #hf-lower-third .lt-role { display: block; font-size: 38px; line-height: 1.2; letter-spacing: 0.01em; color: #5a6170; overflow-wrap: anywhere; }
+    </style>
+  </head>
+  <body>
+    <div id="hf-lower-third" data-composition-id="hf-lower-third" data-start="0" data-duration="4.8" data-fps="30" data-width="1080" data-height="1920">
+      <div class="lt plate">
+        <div class="lt-tab plate"></div>
+        <div class="lt-body">
+          <span class="lt-name slot" data-slot="name"></span>
+          <span class="lt-role slot" data-slot="title"></span>
+        </div>
+      </div>
+    </div>
+    <script>
+      (function () {
+        const v = window.__hyperframes.getVariables();
+        const root = document.getElementById("hf-lower-third");
+        root.style.setProperty("--accent", v.accent);
+        root.style.fontFamily = JSON.stringify(v.font);
+        root.querySelectorAll("[data-slot]").forEach((el) => { el.textContent = v[el.dataset.slot]; });
+        const q = (s) => root.querySelector(s);
+        const tl = gsap.timeline({ paused: true });
+        // The card wipes in from the left (clip-path), the accent tab grows down, the text rises with a small stagger.
+        tl.fromTo(q(".lt"), { clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: 0.55, ease: "power3.out" }, 0.1);
+        tl.fromTo(q(".lt-tab"), { scaleY: 0, transformOrigin: "50% 0%" }, { scaleY: 1, duration: 0.45, ease: "power2.out" }, 0.28);
+        tl.fromTo(q(".lt-name"), { y: 22, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power3.out" }, 0.34);
+        tl.fromTo(q(".lt-role"), { y: 22, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power3.out" }, 0.44);
+        window.__timelines = window.__timelines || {};
+        window.__timelines["hf-lower-third"] = tl;
+      })();
+    </script>
+  </body>
+</html>

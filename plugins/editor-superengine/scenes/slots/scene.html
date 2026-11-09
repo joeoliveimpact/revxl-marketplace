@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"label1","type":"string","label":"Slot one","default":"First idea"},
+  {"id":"label2","type":"string","label":"Slot two","default":"Next idea"},
+  {"id":"label3","type":"string","label":"Slot three","default":""},
+  {"id":"label4","type":"string","label":"Slot four","default":""},
+  {"id":"label5","type":"string","label":"Slot five","default":""},
+  {"id":"label6","type":"string","label":"Slot six","default":""},
+  {"id":"count","type":"number","label":"Chosen slot count","default":2},
+  {"id":"section_starts","type":"string","label":"Section starts in local seconds","default":"2,4"},
+  {"id":"accent","type":"color","label":"Accent","default":"#4f8cff"},
+  {"id":"font","type":"string","label":"Font family","default":"Inter"}
+]'>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1080, height=1920">
+<script src="./vendor/gsap.min.js"></script>
+<style>
+@font-face{font-family:"Inter";src:url("./fonts/Inter-Regular.woff2") format("woff2");font-weight:400;font-style:normal}
+*{margin:0;padding:0;box-sizing:border-box}html,body{width:1080px;height:1920px;overflow:hidden}
+#slots{position:relative;width:1080px;height:1920px;z-index:400;font-family:"Inter";font-weight:400;color:#fff;--accent:#4f8cff}
+.list{position:absolute;left:90px;top:360px;width:840px;display:grid;gap:18px}
+.row{position:relative;height:92px;padding:25px 28px 25px 96px;font-size:28px;line-height:40px;overflow-wrap:anywhere}
+.back{position:absolute;inset:0;border:2px solid #647084;border-radius:12px;background:#141b26}
+.check{position:absolute;left:28px;top:29px;width:32px;height:32px;border:2px solid var(--accent);border-radius:5px}
+.filled{position:absolute;inset:5px;background:var(--accent);border-radius:2px;opacity:0}
+.slot{position:relative;display:block}
+</style>
+</head>
+<body>
+<div id="slots" data-composition-id="slots" data-start="0" data-duration="6" data-fps="30" data-width="1080" data-height="1920">
+<div class="list">
+<div class="row"><div class="back plate"></div><div class="check plate"><div class="filled plate"></div></div><span class="slot" data-slot="label1"></span></div>
+<div class="row"><div class="back plate"></div><div class="check plate"><div class="filled plate"></div></div><span class="slot" data-slot="label2"></span></div>
+<div class="row"><div class="back plate"></div><div class="check plate"><div class="filled plate"></div></div><span class="slot" data-slot="label3"></span></div>
+<div class="row"><div class="back plate"></div><div class="check plate"><div class="filled plate"></div></div><span class="slot" data-slot="label4"></span></div>
+<div class="row"><div class="back plate"></div><div class="check plate"><div class="filled plate"></div></div><span class="slot" data-slot="label5"></span></div>
+<div class="row"><div class="back plate"></div><div class="check plate"><div class="filled plate"></div></div><span class="slot" data-slot="label6"></span></div>
+</div></div>
+<script>
+(function(){
+  const v = window.__hyperframes.getVariables(), root = document.getElementById("slots");
+  root.style.setProperty("--accent",v.accent); root.style.fontFamily = JSON.stringify(v.font);
+  const rows = Array.from(root.querySelectorAll(".row")), list = root.querySelector(".list");
+  rows.forEach((row,i) => {
+    row.style.display = i < v.count ? "block" : "none";
+    const slot = row.querySelector("[data-slot]"); slot.textContent = v[slot.dataset.slot];
+  });
+  const starts = String(v.section_starts).split(",").map(Number), tl = gsap.timeline({paused:true});
+  tl.set(list,{opacity:0},Math.min(1.5,starts[0]));
+  starts.slice(0,v.count).forEach((at,i) => {
+    tl.set(list,{opacity:1},at); tl.set(rows[i].querySelector(".filled"),{opacity:1},at);
+    if(i < v.count-1) tl.set(list,{opacity:0},Math.min(at+1.5,starts[i+1]));
+  });
+  window.__timelines = window.__timelines || {}; window.__timelines["slots"] = tl;
+})();
+</script>
+</body>
+</html>

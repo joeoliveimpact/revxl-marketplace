@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Master review</title><link rel="stylesheet" href="hub.css"><script src="common.js" defer></script><script src="review.js" defer></script></head>
+<body class="review-page"><main><h1>Master review</h1><p id="reel-name"></p><p id="error" role="alert"></p>
+<div class="review"><div><h2>Latest preview</h2><video id="preview" controls playsinline preload="metadata"></video><p id="render-label"></p>
+<div id="master-section" hidden><h2>Latest master</h2><video id="master" controls playsinline preload="metadata"></video></div></div>
+<section><h2>Quality check</h2><div id="qa"></div><label for="review-note">Review notes</label>
+<textarea id="review-note" rows="4" placeholder="What should change before it posts?"></textarea>
+<div class="sendrow"><button class="btn primary" id="approve">Approve</button><button class="btn" id="send-review">Send notes</button></div>
+</section></div>
+<div id="delivery"><p id="status" role="status" aria-live="polite"></p><div id="fallback" hidden role="alert"><p>Could not send. Copy this line into Claude:</p>
+<textarea id="fallback-line" readonly aria-label="Line to paste into Claude"></textarea><button class="btn" id="copy">Copy</button></div></div>
+</main></body></html>

@@ -1,6 +1,6 @@
 # The correction loop (Stage 9)
 
-The human names a gap in plain language. You find it, measure it, and fix the
+The client names a gap in plain language. You find it, measure it, and fix the
 **mechanism** — not the instance.
 
 **This stage exists because it is where the real defects were found.** In the reference build the
@@ -30,7 +30,7 @@ A fix aimed at the symptom would have addressed one and left three.
 
 ### 4. Fix the mechanism, not the instance
 A hardcoded exception for one timestamp is a bug waiting to recur, and it will not survive the
-next reel. Each mechanism fix in the reference build **caught siblings the human had not yet
+next reel. Each mechanism fix in the reference build **caught siblings the client had not yet
 noticed** — the absorb/revert change fixed two named gaps plus the lead-in nobody had mentioned.
 
 ### 5. Re-verify BOTH directions
@@ -52,7 +52,7 @@ Report the **trade**, not just the win. If a fix moved a threshold, say what it 
 saying out loud, because the next person reading a "loudest deletion" line will otherwise assume
 the floor held.
 
-## Calibrating the human's ear
+## Calibrating the client's ear
 
 Hand over `work/listen.txt` with the review page. It names, from the run's own decisions:
 - every gap deliberately left above cap
@@ -63,7 +63,7 @@ Hand over `work/listen.txt` with the review page. It names, from the run's own d
 
 **Aim the ear. Do not ask it to wander.**
 
-## When the human is right and the measurement disagrees
+## When the client is right and the measurement disagrees
 
 They were right every time in the reference build. If the envelope says a gap is within cap and
 they say it drags, the **cap is wrong for that position**, not the ear. Beat-change joins are the

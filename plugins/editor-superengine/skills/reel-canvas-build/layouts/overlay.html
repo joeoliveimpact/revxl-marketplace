@@ -1,0 +1,20 @@
+<!--
+  Layout: overlay (9:16). A partial for the editor-superengine compositor: compose.py reads it, it is not a page.
+  Source: hyperframes-skills v0.8.184 (HeyGen, https://github.com/heygen-com/hyperframes),
+    skills/talking-head-recut/references/layouts/overlay.html
+  Copyright 2026 HeyGen, Inc. Licensed under the Apache License 2.0; full text in LICENSES/Apache-2.0-HyperFrames.txt.
+  That layout is itself adapted from notedit/vtake-skills (https://github.com/notedit/vtake-skills),
+  MIT License, Copyright (c) 2026 leeoxiang (its full MIT text joins LICENSES/NOTICE at merge, H-S6b-24).
+  Changed by REVXL: rewritten from the source's 1920x1080 demo page into this partial: only the portrait geometry from the
+    source's notes is kept, as a card plate plus the a-roll box in data attributes; the source's 0.6 s tween
+    of #video-wrap is replaced by compose.py setting the a-roll box hard on the cut frame (a move between cuts
+    comes from styles.py); the video stays full frame; the plate is the source's portrait glass card (24 1280
+    1032 564); the source's legibility gradient is left out.
+  How compose.py reads it: every length is on the 1080x1920 grid and is scaled by (render width / 1080).
+  data-box = the a-roll box (x y w h): the video sits inside it at object-fit: cover and is never animated itself.
+  The card root is transparent; only the plate is filled.
+-->
+<div class="layout-card" data-layout="overlay" data-box="0 0 1080 1920"
+     style="position: absolute; left: 0px; top: 0px; width: 1080px; height: 1920px; background: transparent;">
+  <div class="layout-plate" style="position: absolute; left: 24px; top: 1280px; width: 1032px; height: 564px; background: rgba(15, 16, 22, 0.78); border-radius: 18px; backdrop-filter: blur(22px) saturate(140%); box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.45);"></div>
+</div>

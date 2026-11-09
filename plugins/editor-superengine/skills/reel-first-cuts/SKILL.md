@@ -1,11 +1,43 @@
 ---
 name: editor-superengine:reel-first-cuts
-description: Turn a raw talking-head recording into a finished first cut — line selection, a waveform-verified EDL, gap tightening, ear-driven gap corrections, and a speed ramp — in one build pass. Use whenever someone has raw camera footage plus an approved script and wants the spoken edit assembled, on asks like "cut this reel", "build the A-roll", "tighten the gaps", "the pause after X is too long", "make it 1.15x", "why does this cut sound clipped". Also use when a cut already exists and the complaint is audible — an orphaned word, a gap that drags, a clipped consonant. Not for graphics, captions, layout or compositing; those come after picture lock.
+description: Turns raw talking-head footage into a finished first cut. The client picks lines and takes on the Cut Board, then fixes the cut on the Tweak Board. Use on "cut this reel", "open the Cut Board", "fix it on the Tweak Board", "tighten the gaps", "several clips", "two recordings", "sync camera and mic", "make Shorts from this long recording", long recordings, or a master joined from several clips (words chopping only after the first clip). Not for captions or sound.
 ---
 
 # Reel First Cuts
 
-Raw recording → finished spoken cut. One build pass, **three human rulings**, one ear pass.
+## Output contract (every run, in this order)
+
+1. At each ⛔ ruling: the board open in the Browser pane and one plain line on what to do there, then stop
+   for its Send. At the hard fail: what failed, in plain words.
+2. After the render: the runtime, the silence-budget and cut-check results, and the review page with the
+   listening checklist (Stage 8).
+3. A last line: what the client does next, or what still stops the cut.
+4. On a failure you can't fix in two tries: what went wrong in plain words, then the failure report
+   below.
+
+Speak the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-the-coach-hears.md` says.
+
+## Re-invoke guard
+
+- If the conversation was compacted since this skill loaded, invoke it again before going on.
+- Re-running is safe: the scripts read the raw and write only into `work/` and the board files. Re-run
+  from the stage that changed; never render from an earlier render.
+- If the raw or its edit map changed after a board was built, build that board again: its Send is stale.
+  To carry a Send over, follow `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/boards.md`, "Carry a Send over".
+  If it refuses, ask for a new Send.
+- If the reel already has a Sound Board (`config.json`) or a Beat Map Send, a new cut means redoing the sound picks and the visuals plan. Tell the client before re-cutting.
+- Never skip a ⛔ stage, on a re-run either.
+- Run the style picker first if it has not run for this reel (editor-start-here); follow sections 5 and 6 (Auto edit and controls in chat) of ${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/house-rules.md.
+
+## Ground rules
+
+- **The client never types a command.** Claude runs each one with the Bash tool from the client's
+  workspace folder (the scripts read `editor/editor.config.json` there). A path below that doesn't start
+  with the reel folder is relative to `<paths.videos>/<reel>/` from `editor/editor.config.json`.
+  RAW.mp4 is the raw; CUT.mp4 the master render, `work/renders/master-<speed>x.mp4` (1.15x → `115x`).
+- `<editor python>` is the editor's own Python. Windows: `"$(H="$LOCALAPPDATA/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/Scripts/python.exe"`. macOS: `"$(H="$HOME/Library/Application Support/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/bin/python"`. If it doesn't exist, run `editor-superengine:editor-doctor` first. Every script runs as `<editor python> -X utf8 -I "<script>" ...`, never a bare `python`; the failure report's commands run exactly as written.
+- No board available, or the client asks to do it in chat: run Stages 2, 3 and 5 as
+  `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/no-board-path.md` says.
 
 ## Definition of done
 
@@ -13,202 +45,170 @@ A rendered cut where:
 - every cut boundary sits in verified silence, not an ASR estimate
 - no deletion contains sustained speech
 - no segment is a stranded fragment
-- **the whole cut is inside its silence budget** (Stage 7b) — every other check is local, this one is the sum
-- the human has heard it and signed off
+- **the whole cut is inside its silence budget** (Stage 7b): every other check is local, this one is the sum
+- the client has heard it and signed off
 
 ## The stages, in order
 
 | # | Stage | Script |
 |---|---|---|
-| 0 | Probe & calibrate | `probe.py` |
-| 1 | Transcribe (word timestamps) | `transcribe_words.py` |
-| 2 | ⛔ Line selection — RULING | — |
-| 3 | ⛔ EDL + waveform verification — HARD FAIL | — |
+| 0 | Probe & calibrate | `clock_fix.py` (joined clips only), `probe.py` |
+| 1 | Transcribe (words, edit map) | `transcribe_words.py` |
+| 2 | ⛔ Cut Board — RULING | `make_board.py`, `selection_to_edl.py` |
+| 3 | ⛔ Boundary audit + map check — HARD FAIL | `boundary_audit.py`, `word_map.py`, `map_check.py` |
 | 4 | Tighten gaps | `gaps.py` |
-| 5 | ⛔ Speed — RULING | — |
+| 5 | Speed (ruled on the boards) | — |
 | 6 | Render once, from the raw | `render.py` |
-| 7 | Verify (round-trip) | `transcribe_words.py` |
+| 7 | Verify + cut checks | `transcribe_words.py`, `fix_words.py`, `repeat_check.py`, `cut_qa.py` |
 | 7b | Silence budget — HARD FAIL | `silence_budget.py` |
-| 8 | ⛔ Ear pass — RULING | — |
-| 9 | Gap corrections | — |
+| 8 | ⛔ Ear pass + Tweak Board — RULING | `make_tweaks.py` |
+| 9 | Gap corrections | `tweaks_to_edl.py`, then Stages 3 to 8 again |
 
-Every script lives at `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/`. Three ⛔ stages
-stop for a human. **Do not reorder the stages** — the order puts the strongest check first, and
-this job took eight passes by hand because each check was weaker than the one run next.
+**Do not reorder the stages**: the order puts the strongest check first.
 
 ## The governing rule
 
-**Calibrate from the file. Never ship a magic number.**
-
-Where a threshold decides something *audible*, the script proposes and **you dispose** — with the
-measured evidence in front of you. Eleven hardcoded constants were wrong in the reference build,
-and every one produced confident, plausible, wrong output. See
-`${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/why-constants-fail.md` before you are
-tempted to hardcode one.
-
-**Corollary:** when a script and your own measurement disagree, measure again — do not adjust the
-script until you know which is wrong.
-
-**Second corollary — run this skill, do not re-derive it.** The reference build hand-rolled the
-whole pipeline from scratch: word timings, segment construction, boundary refinement, gap capping,
-render, round-trip. It arrived empirically at a **150ms** gap cap, which is `gaps.py`'s own
-`--internal`/`--join` default. The cost of not reaching for the skill was shipping its
-already-known-bad first version to the human, twice. The scripts exist; start there.
+**Calibrate from the file; never ship a magic number.** Before hardcoding a threshold, read
+`${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/why-constants-fail.md`. Run the scripts; don't
+re-derive them.
 
 ## Stages
 
 ### 0 · Probe & calibrate — trust nothing
-```bash
-python ${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/probe.py RAW.mp4 -o work/
-```
-Establishes, **by measurement**:
-- **True frame rate.** Read `avg_frame_rate` and a PTS-delta histogram over the whole file.
-  **Never `r_frame_rate`** — it is a container header and it lies (declared 60, was 22.31 VFR).
-- **The RMS envelope of the source audio**, extracted once. This is the single measurement
-  surface for every later stage. Nothing downstream re-derives it, and **nothing requires a
-  render to exist.**
-- **Per-file thresholds**: noise floor, speech floor, and the breath/syllable duration split.
-- **The duplicate-frame table** for each candidate output rate.
-- ffmpeg version → `-fps_mode` (≥5.1) or `-vsync`.
 
-⚠️ On VFR source, speeding up *reduces* duplicate frames — 25.9% at 1.00x vs 14.9% at 1.15x in the
-reference build. **That is source-specific.** Report the table; never assert the rule.
+For a new reel or before probing an existing take, follow `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/recordings.md` (folder creation, either raw layout, single-take copy or several recordings).
+If the raw was joined from several clips, or words chop only after the first clip, fix the
+master first with `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/master-clock.md`.
+A failed proof stops the cut.
+
+`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/probe.py" RAW.mp4 -o work/`
+
+It measures the true frame rate (never `r_frame_rate`), the source RMS envelope every later stage reads,
+per-file thresholds, the duplicate-frame table per speed (report it, never assert a rule), the picture
+and `audio_stream` (`--audio-stream N` picks another; with several, confirm it is the voice).
+Pass on, word for word, the one-side mic note if probe prints it.
+
+**Several recordings:** each is a take; run Stages 0–1 in its own folder and log it with `footage_check.py add`.
+Flow, limits and commands: `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/several-recordings.md`.
+**One long recording, several Shorts, or long quiet stretches:** `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/short-clips.md`.
 
 ### 1 · Transcribe — a contract, not a vendor
-```bash
-python ${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/transcribe_words.py RAW.mp4 -o work/tx.json
-```
-That is the default route: it implements the contract, hard-fails on an empty word list, and has
-no vocabulary option. Any other backend is fine if it satisfies
+
+`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/transcribe_words.py" RAW.mp4 -o work/tx.json --probe work/probe.json --edit-map work/edit_map.json`
+
+It writes `work/tx.16k.wav` and the edit map. Pass on, word for word, the backup engine's warning and the stop for a nearly silent track.
+Engines and guards:
 `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/transcription-contract.md`.
 
-Fixed: **`large-v3-turbo`, VAD on, `word_timestamps` on, vocabulary off.** **Batching is
-conditional:** on for raw multi-take footage (`--batched 8`), **off for an already-cut file**,
-where batched-8 misheard a trigger word as a different real word. Precision and batch size come
-from *this* machine. **Hard-fail if word timings are missing** — sentence precision is what
-produces the half-second errors this pipeline exists to catch.
+If it says word alignment isn't available on this Mac, there's no edit map and no Cut Board: run Stages
+2, 3 and 5 by the no-board path, using `work/tx.json` wherever a command says `work/edit_map.json`.
+Skip cut checks 2 and 3 (both read the cut's edit map), and say so.
 
-### 2 · ⛔ Line selection — RULING
-Score every trim candidate and present a ranked table. **Never auto-apply.**
-Score by **direction**, not information content: a line carrying zero information but pointing
-*forward* opens a loop the viewer stays for; a line restating something already said closes one.
-**Only backward-facing lines are free cuts.** In the reference build, two of four proposed
-"restatement" cuts were the reel's strongest rehooks.
+**Script check** (only if the client names their script file): run `script_diff.py` before any Cut Board,
+as `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/map-and-script-checks.md` says. It fixes
+misheard brand names, warns under 25 % match and lists the rest for review.
 
-### 3 · ⛔ EDL + waveform verification — HARD FAIL
-Build the EDL (pads, neighbour clamp, merge rule), then audit **every** boundary against the
-envelope. Anything above the measured speech floor is **re-derived**, not shipped.
-- Mid-sentence trims clamp against the next **word**, not the next sentence.
-- Assert zero source overlaps.
+### 2 · ⛔ Cut Board — RULING
+With the Write tool, put the approved script in `script.md` (one spoken line per line) and the shots in
+`shots.json` (`{"vocab": ["talking head", "screen"], "default": "talking head"}`), then:
 
-**This gate is not optional even when transcription is configured perfectly.** Word timings are
-estimates by nature; the reference build measured errors up to **0.54s** with every setting
-correct — enough to amputate the punchline of the best line in the reel.
+`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/make_board.py" --script script.md --take 1:work/edit_map.json:work/tx.16k.wav [--take 2:work/take2/edit_map.json:work/take2/tx.16k.wav] --shots shots.json --reel <reel> -o videos/<reel>`
+
+Open the Cut Board as `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/boards.md`, "Cut Board", says.
+A line said twice in different words shows Keep first / Keep second / Keep both: the client picks; never cut one yourself. Then:
+
+`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/selection_to_edl.py" cut-selection.json cut-board.config.json`
+
+It writes `work/edl.json` with each cut's take and prints the gaps.py command (takes.py for a mixed ruling);
+Stage 4 runs that line. `REFUSED` (exit 3: word times drifted over 80 ms, or a stale board): rebuild the board and ask for a new Send.
+
+### 3 · ⛔ Boundary audit + map check — HARD FAIL
+After every gaps.py run, before anything renders:
+
+`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/boundary_audit.py" work/ work/edit_map.json`
+
+Exit 1 names each boundary inside a word or next to speech energy: re-derive it, never ship it.
+Not optional: word times are estimates (transcription-contract.md).
+
+Then `word_map.py`, then `map_check.py` (map-and-script-checks.md). Any block means no render: say its
+line to the client in plain words (also in `work/map_check.json`).
 
 ### 4 · Tighten gaps — in source coordinates, no render
-```bash
-python ${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/gaps.py work/ --plan
-```
-Per-function caps (internal / join / beat-join / lead / tail) plus a protect list.
-- Every deletion **proven** free of *sustained* speech — a single loud 10ms window at a splice is
-  a decay tail, not a word.
-- **Orphan guard on post-split segments**: a silent runt is *absorbed*; a speech-bearing runt
-  *reverts* the deletion. Checking before the cut-boundary split misses the fragment entirely.
-- Every borderline decision is surfaced for the agent to rule on, not silently resolved.
+Run the gaps.py or takes.py command Stage 2 (or 9) printed, exactly as printed. It writes `work/cuts.json` (whole
+frames; `segments.json` is derived for the old path), `work/gap-plan.txt` and `work/listen.txt`. Each deletion is proven free of *sustained*
+speech; a silent runt is absorbed, a speech-bearing runt reverts its deletion. Rule on every borderline
+it surfaces; never resolve one silently.
 
-### 5 · ⛔ Speed — RULING
-Present runtime **and measured duplicate-frame %** per candidate. `atempo` preserves pitch.
+### 5 · Speed — ruled on the boards
+`atempo` keeps the pitch.
 
 ### 6 · Render once, from the raw
-```bash
-python ${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/render.py work/ RAW.mp4 --speed 1.15 --master --scrub
-```
-Single `filter_complex`: `trim` + `atrim` + `concat` + `setpts`/`atempo`.
-- Master: CRF 14 `slow`, **`-g <fps>`**.
-- Scrub copy: 1080p CRF 20, `-g <fps/2>`.
 
-**Dense GOP is not optional on anything a human will scrub.** `preset slow` defaults to a
-250-frame GOP; seeks measured 678–1527ms and dragging the playhead felt dead.
+`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/render.py" work/ RAW.mp4 --master --scrub`
 
-Never build from an intermediate. Grade, speed and captions fold into one pass. See rule 2 of
-`${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/house-rules.md`.
+If the client approved a grade (reel-grade step 4), add `--grade videos/<reel>/grade.json`, so a new cut keeps the colour.
+Read `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/cut-checks.md`, "Render rules (Stage 6)".
 
-### 7 · Verify
-Round-trip transcribe every segment. **A transcript diff flags a DIFFERENCE, not a DEFECT** —
-adjudicate acoustically before calling anything broken. Quiet function words drop out of ASR when
-surrounding pauses shorten; that is a pacing artifact. In the reference build this false alarm
-nearly triggered two "fixes" to audio that was never damaged.
-
-⚠️ **And it fails the other way too — a clean round-trip is not a clean cut.** In the reference
-build every word round-tripped perfectly (204 in, 204 out) on a cut that was slicing word tails at
-**−16 dB, full speech level, on 7 of 13 boundaries.** ASR reconstructs a word from partial
-phonemes, so a sheared tail is exactly what it papers over. **The waveform is the instrument for
-boundary damage; the transcript is only the instrument for missing content.** Never let a passing
-round-trip stand in for Stage 3.
-
-Then emit the **targeted listening checklist** (Stage 8 depends on it).
+### 7 · Verify + cut checks
+Run the four checks in `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/cut-checks.md`, in its
+order, and act on each hit as it says.
 
 ### 7b · Silence budget — HARD FAIL
-```bash
-python ${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/silence_budget.py CUT.mp4 --words work/tx.json
-```
-Measures what fraction of the **rendered** cut is nobody talking. Default budget **12%**; exits 1
-when over, and ranks the offending gaps by length with the words either side.
 
-**Every other gate in this skill is local** — is this boundary clean, is this gap under its cap, is
-this fragment an orphan. A cut can pass all of them and still drag, because the defect is the
-**sum**. The reference build shipped to the human at 70.85s with **16.63s of silence, 23% of the
-reel** — and every boundary gate was green. He caught it by ear in one pass, named three gaps, and
-the real finding was systemic: 48 gaps, none individually fatal.
+`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/silence_budget.py" CUT.mp4 --probe work/probe.json --words work/cut/tx-cut.json`
 
-Re-running the gate on that rejected cut reports **23%, and ranks his three complaints in his own
-order of severity.** It would have caught it before he ever saw it.
+The share of the **rendered** cut where nobody talks: budget **12%**, exit 1 when over, the offending
+gaps ranked with the words either side. `silencedetect` logs at **info**: never pass it `-v error`. **Within budget is not approval.**
 
-⚠️ `silencedetect` logs at **info**. Passing `-v error` makes the detector output vanish and the
-cut reads as having no silence at all.
+### 8 · ⛔ Ear pass + Tweak Board — RULING
+A cut whose `work/cuts.json` has `takes` has no Tweak Board yet: follow `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/several-recordings.md`. Otherwise:
+Hand over the review page, `work/cut-review.html` (raw and cut side by side, the 20 largest cuts),
+**with the checklist** (`work/listen.txt`), and say plainly what the gates cannot see: they passed on
+all four defects the client caught in the reference build. Run `long_silence.py work --json` (short-clips.md, "After the cut"), then:
 
-**Within budget is not approval.** It says nothing about whether any single gap is *right*, and
-nothing about whether the cut sounds good. Stage 8 still runs.
+`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/make_tweaks.py" --cut CUT.mp4 --work work --config cut-board.config.json --take 1 --version v<N> -o videos/<reel>`
 
-### 8 · ⛔ Ear pass — RULING
-Hand over the review page **and the checklist**, and state plainly what the gates cannot see.
-The preview rules apply:
-`${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/preview-before-render.md`.
-
-**Every automated gate passed on all four defects the human caught in the reference build.** This
-stage is not a formality.
+For version numbers and the Tweak Board, follow `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/boards.md`, "Tweak Board".
+Preview rules: `${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/preview-before-render.md`.
 
 ### 9 · Gap corrections — the ear-driven loop
-Full protocol:
-`${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/correction-loop.md`.
+Only for cuts without `takes`; otherwise follow Stage 8's Cut Board path.
 
-The human names a gap in plain language ("the pause after that line drags", "there's an orphan
-word after the second beat"). For each:
+`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/tweaks_to_edl.py" tweak-selection.json work`
 
-1. **Locate it.** Map the phrase → source time → current output time. Never guess from the beat
-   table.
-2. **Measure it.** Print the envelope around it. State what is actually there.
-3. **Diagnose before fixing.** In the reference build the four complaints had *four different*
-   causes: an orphan guard stranding a word; the same guard over-reverting and restoring a full
-   gap; a peak test tripping on a single sample; and a breath being read as speech.
-4. **Fix the mechanism, not the instance.** A hardcoded exception for one timestamp is a bug
-   waiting to recur. Each of those four fixes generalised and caught siblings the human had not
-   yet noticed.
-5. **Re-verify both directions** — the gap is fixed *and* nothing else regressed. Every fix in the
-   reference build broke something else on the first attempt.
+It maps the marks back to source time (exit 3 on a word time drifted over 80 ms), holds untouched
+segments whole, carries the Cut Board's beat, writes `work/edl.json` and prints the next gaps.py
+command. Run it, then Stages 3 to 8 again.
 
-Loop until the human signs off.
+A complaint in plain words instead ("that pause drags"): **diagnose before fixing** and fix the
+mechanism, as `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/correction-loop.md` says. Loop
+until the client signs off.
 
 ## What this skill will not decide
 
-- **Which lines to cut** — scoring is mechanical, the ruling is not.
-- **Runtime and speed.**
-- **Protected beats.** Comedic timing is unmarked in audio. Propose candidates from the script,
-  then ask.
+- **Lines, takes, runtime and speed**: the client rules on the boards.
+- **Protected beats.** Comedic timing is unmarked in audio: propose candidates from the script, then ask.
 - **Whether it sounds right.**
 
-## Portability
+## Failure report (offer after any failure you can't fix in two tries)
 
-Nothing here is machine-specific. Do not inherit another box's `compute_type`, `batch_size`,
-paths, or interpreter. Detect `python3`/`python`, check the ffmpeg version, use `pathlib`, keep
-scratch off synced folders, and never print non-ASCII to a Windows console.
+Tell the client what went wrong in plain words, and whether anything was charged or changed. Then offer:
+"Want me to send Joe a short report so he can fix it? You'll see exactly what's in it first."
+
+1. With the Write tool, put the details in `editor-superengine/reports/report-body.md`: what the client asked for, the step
+   that failed, the command shape, and the error output. Never a key, and never the client's own content
+   (their notes, contacts, messages, file text).
+2. Draft it. Keep the summary short. Put the summary, step and error line in single quotes, drop any
+   apostrophe from them, and use no script names:
+
+`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.2.0 --skill reel-first-cuts --step '<the stage that failed>' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
+
+3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
+4. Send, using the path after `DRAFT:`:
+
+`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" send "<draft path>"`
+
+`SENT` means Joe has it. `SAVED LOCALLY: <path>` means it couldn't be sent; tell the client where the file is
+so they can email it to Joe. Skip instead:
+
+`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" skip "<draft path>"`

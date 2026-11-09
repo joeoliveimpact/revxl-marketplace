@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"kicker","type":"string","label":"Kicker","default":"Part 1"},
+  {"id":"title","type":"string","label":"Title","default":"Nobody tells you this about editing"},
+  {"id":"accent","type":"color","label":"Accent","default":"#4f8cff"},
+  {"id":"font","type":"string","label":"Font family","default":"Inter"},
+  {"id":"entrance","type":"string","label":"Entrance","default":"fade"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="./vendor/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Inter"; src: url("./fonts/Inter-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; }
+      #hook-title { position: relative; width: 1080px; height: 1920px; z-index: 400; font-family: "Inter"; font-weight: 400; color: #ffffff; --accent: #4f8cff; }
+      #hook-title .backdrop { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; background: #0e0f12; }
+      #hook-title .block { position: absolute; left: 90px; top: 845px; width: 840px; }
+      #hook-title .bar { width: 120px; height: 12px; margin-bottom: 36px; border-radius: 6px; background: var(--accent); }
+      #hook-title .kicker { display: block; margin-bottom: 24px; font-size: 44px; line-height: 1.2; color: var(--accent); overflow-wrap: anywhere; }
+      #hook-title .title { display: block; font-size: 92px; line-height: 1.08; overflow-wrap: anywhere; }
+    </style>
+  </head>
+  <body>
+    <div id="hook-title" data-composition-id="hook-title" data-start="0" data-duration="3" data-fps="30" data-width="1080" data-height="1920">
+      <div class="backdrop plate"></div>
+      <div class="block">
+        <div class="bar plate"></div>
+        <span class="kicker slot" data-slot="kicker"></span>
+        <span class="title slot" data-slot="title"></span>
+      </div>
+    </div>
+    <script>
+      (function () {
+        const v = window.__hyperframes.getVariables();
+        const root = document.getElementById("hook-title");
+        root.style.setProperty("--accent", v.accent);
+        root.style.fontFamily = JSON.stringify(v.font);
+        root.querySelectorAll("[data-slot]").forEach((el) => { el.textContent = v[el.dataset.slot]; });
+        const q = (s) => root.querySelector(s);
+        const tl = gsap.timeline({ paused: true });
+        if (v.entrance === "none") {
+          // complete on its first frame (a reel that opens on it): every piece set to its end state at 0, no tween
+          tl.set(q(".block"), { yPercent: -50, immediateRender: true }, 0);
+          tl.set(q(".backdrop"), { opacity: 1, immediateRender: true }, 0);
+          tl.set(q(".bar"), { scaleX: 1, transformOrigin: "left center", immediateRender: true }, 0);
+          tl.set(q(".kicker"), { opacity: 1, y: 0, immediateRender: true }, 0);
+          tl.set(q(".title"), { opacity: 1, y: 0, immediateRender: true }, 0);
+        } else {
+          tl.set(q(".block"), { yPercent: -50 }, 0);
+          tl.fromTo(q(".backdrop"), { opacity: 0 }, { opacity: 1, duration: 0.25, ease: "power1.out" }, 0);
+          tl.fromTo(q(".bar"), { scaleX: 0, transformOrigin: "left center" }, { scaleX: 1, duration: 0.4, ease: "power2.out" }, 0.15);
+          tl.fromTo(q(".kicker"), { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 0.2);
+          tl.fromTo(q(".title"), { opacity: 0, y: 48 }, { opacity: 1, y: 0, duration: 0.55, ease: "power3.out" }, 0.3);
+        }
+        window.__timelines = window.__timelines || {};
+        window.__timelines["hook-title"] = tl;
+      })();
+    </script>
+  </body>
+</html>

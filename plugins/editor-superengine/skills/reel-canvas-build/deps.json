@@ -1,0 +1,1 @@
+{"needs": ["python", "ffmpeg", "node", "hyperframes", "chrome", "cutout-model"]}

@@ -1,0 +1,22 @@
+{
+  "id": "slots",
+  "category": "slots",
+  "kind": "overlay",
+  "slots": {
+    "label1": {"maxChars": 24, "default": "First idea", "hint": "one or two words"},
+    "label2": {"maxChars": 24, "default": "Next idea", "hint": "one or two words"},
+    "label3": {"maxChars": 24, "default": "", "hint": "empty when unused"},
+    "label4": {"maxChars": 24, "default": "", "hint": "empty when unused"},
+    "label5": {"maxChars": 24, "default": "", "hint": "empty when unused"},
+    "label6": {"maxChars": 24, "default": "", "hint": "empty when unused"}
+  },
+  "dur": [1.5, 60],
+  "params": {
+    "count": {"type": "number", "default": 2, "min": 2, "max": 6, "hint": "how many slots the client chose"},
+    "section_starts": {"type": "string", "default": "2,4", "hint": "one increasing local second per slot; use the spoken section starts"},
+    "accent": {"type": "color", "default": "#4f8cff"},
+    "font": {"type": "string", "default": "Inter"}
+  },
+  "source": "editor-superengine original",
+  "licence": "own"
+}

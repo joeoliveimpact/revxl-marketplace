@@ -1,0 +1,1846 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Sound mixing board</title>
+<!-- ============================================================
+     Sibling of the screenshare selector. Two things it does that
+     the selector could not:
+       1. schedules hits on an AudioContext against the video clock,
+          so a cue lands on the frame instead of "about then"
+       2. loops a cue window so you can hear it five times in a row
+     Served by the editor board server (board_server.py: Range, __state,
+     __save). Open as /editor/sound-board/?reel=<reel>; reel files load
+     from /videos/<reel>/. Send writes sound-selection.json there.
+     ============================================================ -->
+<style>
+:root{
+  --paper:#F5F4EE; --sunken:#EFEDE3; --line:#E7E4D8; --line2:#D7D3C4;
+  --ink:#1A1915; --mid:#4C483E; --mute:#938C7B;
+  --coral:#D96A3C; --coral-d:#A04A2C; --green:#5B7F54; --red:#BF4D43;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:14px/1.5 "Segoe UI",system-ui,sans-serif;padding:18px}
+h1{font:600 21px/1.2 Georgia,serif;margin:0 0 3px}
+h1 em{color:var(--coral);font-style:italic}
+.sub{color:var(--mute);font-size:12.5px;margin:0 0 14px}
+.wrap{display:grid;grid-template-columns:minmax(0,1fr) 520px;gap:20px;align-items:start}
+/* picture + transport stay on screen while the cue list scrolls */
+.leftcol{position:sticky;top:56px;max-height:calc(100vh - 56px);overflow-y:auto}
+.leftcol video{max-height:52vh;width:auto;max-width:100%;margin:0 auto}
+/* sticky makes .leftcol its own stacking context, trapping .tl.placing under #overlay (z 50);
+   lift the whole column above the overlay while a duplicate is being placed */
+.leftcol:has(.tl.placing){z-index:60}
+.panel{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px}
+.panel + .panel{margin-top:14px}
+h2{font:600 11px/1 "Segoe UI",sans-serif;text-transform:uppercase;letter-spacing:.07em;
+  color:var(--mute);margin:0 0 10px}
+.stage{background:#000;border-radius:8px;overflow:hidden;position:relative}
+video{width:100%;display:block}
+button{font:inherit;background:#fff;color:var(--ink);border:1px solid var(--line2);
+  border-radius:6px;padding:5px 10px;cursor:pointer}
+button:hover{border-color:var(--mute)}
+button.pri{background:var(--coral);border-color:var(--coral);color:#fff;font-weight:600}
+button.pri:hover{background:var(--coral-d)}
+button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+button:disabled{opacity:.4;cursor:default}
+.row{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:9px}
+.tc{font:600 19px/1 "JetBrains Mono",Consolas,monospace;font-variant-numeric:tabular-nums;
+  min-width:96px}
+.tl{position:relative;height:44px;background:var(--sunken);border:1px solid var(--line);
+  border-radius:6px;margin-top:10px;cursor:pointer;overflow:hidden}
+.tl .cue{position:absolute;top:0;bottom:14px;width:2px;background:var(--coral)}
+.tl .cue.rej{background:var(--line2)}
+.tl .cue.keep{background:var(--green);width:3px}
+.tl .btick{position:absolute;top:0;bottom:0;width:1px;background:var(--line2);pointer-events:none}
+.tl .ph{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:var(--ink);pointer-events:none}
+.tl .ph::before{content:"";position:absolute;top:-1px;left:-5px;width:12px;height:12px;
+  border-radius:50%;background:var(--ink)}
+.tl, #wvoice{cursor:ew-resize;touch-action:none}
+.tl.scrub, #wvoice.scrub{cursor:grabbing}
+.tl .lab{position:absolute;bottom:1px;font-size:9px;color:var(--mute);transform:translateX(-50%);
+  white-space:nowrap;pointer-events:none}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th{text-align:left;font-weight:600;color:var(--mute);font-size:11px;text-transform:uppercase;
+  letter-spacing:.05em;padding:0 5px 6px;border-bottom:1px solid var(--line)}
+td{padding:7px 5px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr.cuerow.keep{background:#f4f7f2}
+tr.cuerow.rej{opacity:.45}
+tr.cuerow.playing{background:#fdf2ec}
+.beat{font-weight:600}
+.beat small{display:block;font-weight:400;color:var(--mute);font-size:11px;line-height:1.35}
+input[type=number]{font:inherit;width:66px;padding:3px 5px;border:1px solid var(--line2);
+  border-radius:5px;font-variant-numeric:tabular-nums}
+select{font:inherit;font-size:12.5px;padding:3px 4px;border:1px solid var(--line2);
+  border-radius:5px;max-width:170px}
+input[type=range]{width:104px;vertical-align:middle}
+.pk{font:11px/1 "JetBrains Mono",Consolas,monospace;color:var(--mute)}
+.pk.bad{color:var(--red);font-weight:700}
+.mini{padding:3px 7px;font-size:11px}
+.gain{font:600 11px/1 "JetBrains Mono",Consolas,monospace;min-width:44px;display:inline-block;
+  text-align:right}
+.note{border:1px solid #E8D9CF;background:#FBF6F2;padding:10px 13px;font-size:12.5px;
+  color:var(--mid);border-radius:7px;margin-top:12px;line-height:1.55}
+.note b{color:var(--ink)}
+.warn{border-color:#E9C9C4;background:#FDF3F1}
+#saved{font-size:12.5px;color:var(--green);margin-top:8px;min-height:17px}
+#saved.err{color:var(--red)}
+textarea{width:100%;height:120px;font:11px/1.45 "JetBrains Mono",Consolas,monospace;
+  border:1px solid var(--line);border-radius:6px;padding:8px;background:var(--sunken);
+  color:var(--mid);margin-top:8px}
+.legend{font-size:11px;color:var(--mute);margin-top:9px}
+kbd{background:var(--sunken);border:1px solid var(--line2);border-radius:4px;padding:0 4px;
+  font:11px/1.5 "JetBrains Mono",Consolas,monospace}
+.flexlbl{display:flex;align-items:center;gap:6px;font-size:12.5px}
+#overlay{position:fixed;inset:0;background:rgba(26,25,21,.62);z-index:50;display:none;
+  align-items:flex-start;justify-content:center;padding-top:90px}
+#overlay.show{display:flex}
+/* the message lives outside #overlay so it stays above the lifted .leftcol (z 60) */
+#placemsg{display:none;position:fixed;top:90px;left:50%;transform:translateX(-50%);z-index:70;
+  pointer-events:none;background:#fff;border-radius:10px;padding:16px 26px;font-size:15px;
+  font-weight:600;box-shadow:0 18px 46px rgba(0,0,0,.35)}
+#overlay.show + #placemsg{display:block}
+#placemsg small{display:block;font-weight:400;color:var(--mute);margin-top:4px}
+.tl.placing{z-index:60;outline:3px solid var(--coral);background:#fff}
+.wavebox{position:relative;margin-top:6px}
+.wavebox canvas{display:block;width:100%;height:46px;border:1px solid var(--line);
+  border-radius:4px;background:var(--sunken)}
+#wbed{cursor:grab;margin-top:3px}
+#wbed.drag{cursor:grabbing}
+.wavelab{font-size:11px;color:var(--mute);margin:2px 0 3px;display:flex;
+  justify-content:space-between}
+.wavebox .ph2{position:absolute;top:0;bottom:0;width:1px;background:var(--ink);
+  pointer-events:none;z-index:2}
+.endtog{font-size:11px;padding:3px 7px}
+input.tiny{width:52px;font-size:12.5px;padding:2px 4px}
+/* UI audit 10.08.26: top strip, focused row, collapsed rows, narrow layout */
+#strip{position:sticky;top:0;z-index:40;background:var(--paper);border-bottom:1px solid var(--line);
+  margin:0 -18px 14px;padding:8px 18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:12.5px}
+#savest,#sendmsg{color:var(--mute)}
+#savest.err,#sendmsg.err{color:var(--red);font-weight:700}
+#counts{color:var(--mid);font-variant-numeric:tabular-nums}
+#cues td{vertical-align:top}
+tr.cuerow{scroll-margin-top:64px}
+tr.cuerow.focus{outline:2px solid var(--coral)}
+tr.cuerow:not(.focus) .ext{display:none}
+.tip{font-size:11.5px;color:var(--mute);margin-top:4px;line-height:1.35}
+details.raw summary{cursor:pointer;color:var(--mute);font-size:12.5px}
+/* music row: one line per track */
+.mline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+.mline .mt{font-weight:600}
+.mtag,.mbadge{font-size:11px;border:1px solid var(--line2);border-radius:999px;padding:1px 8px;color:var(--mute)}
+@media (max-width:1000px){
+  .wrap{grid-template-columns:minmax(0,1fr)}
+  .leftcol{position:static;max-height:none;overflow:visible}
+  .panel{overflow-x:auto}
+}
+</style>
+<style id="editor-theme">/* Editor Hub look, theme layer only (10.08.26). Delete this block to undo. */
+:root{color-scheme:dark;--et-bg:#0A0A0B;--et-tile:#111113;--et-tile2:#17171A;--et-hair:rgba(255,255,255,.08);--et-hair2:rgba(255,255,255,.18);
+  --et-ink:#F3F2EF;--et-ink2:rgba(243,242,239,.68);--et-mute:rgba(243,242,239,.44);--et-you:#FF5A3C;
+  --et-sans:"Geist","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;--et-mono:"Geist Mono",ui-monospace,Consolas,monospace}
+html,body{background:var(--et-bg)!important;color:var(--et-ink)}
+body{font-family:var(--et-sans)!important;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--et-sans)!important;font-weight:300!important;letter-spacing:-.02em}
+h1 em{font-style:normal!important;color:var(--et-you)!important}
+input,select,textarea{background:var(--et-tile2)!important;color:var(--et-ink)!important;border:1px solid var(--et-hair2)!important;border-radius:8px}
+video{border-radius:12px}
+::selection{background:rgba(255,90,60,.35)}
+
+:root{--paper:#0A0A0B;--sunken:#17171A;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.18);--ink:#F3F2EF;
+  --mid:rgba(243,242,239,.72);--mute:rgba(243,242,239,.45);--coral:#FF5A3C;--coral-d:#FF7A60;--green:#62D69A;--red:#FF6B5E;
+  --cv-post:#F3F2EF;--cv-stop:rgba(255,255,255,.12);--et-ease:cubic-bezier(.2,.8,.2,1)}
+/* 10.08.26 design pass: the hub main page's language (tiles, spotlight, pills, mono eyebrows, one coral puncture) */
+body{font-size:14px;overflow-x:hidden}
+:focus-visible{outline:1.5px solid var(--et-ink);outline-offset:3px}
+h1{font:300 clamp(32px,4.2vw,52px)/1.05 var(--et-sans)!important;letter-spacing:-.035em!important;margin:4px 0 8px!important;text-wrap:balance}
+.sub{color:var(--et-ink2)!important;font-size:14px!important;max-width:72ch;margin:0 0 18px!important}
+h2{font:500 11px/1 var(--et-mono)!important;letter-spacing:.14em!important;text-transform:uppercase;color:var(--et-mute)!important;margin:0 0 16px!important}
+/* sticky strip: glass bar */
+#strip{background:rgba(10,10,11,.72)!important;backdrop-filter:blur(16px) saturate(1.4);-webkit-backdrop-filter:blur(16px) saturate(1.4);
+  border-bottom:1px solid var(--et-hair)!important;padding:10px 18px!important;gap:12px!important;margin-bottom:22px!important}
+#savest{display:inline-flex;align-items:center;gap:8px;font:500 11px var(--et-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--et-ink2)!important}
+#savest::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green);flex:none}
+#savest.err{color:var(--et-you)!important;font-weight:500!important}
+#savest.err::before{background:var(--et-you);box-shadow:0 0 12px var(--et-you);animation:et-pulse 2.4s var(--et-ease) infinite}
+#counts{font:500 12px var(--et-mono);font-variant-numeric:tabular-nums;color:var(--et-ink);border:1px solid var(--et-hair2);border-radius:999px;padding:6px 14px;white-space:nowrap}
+#counts:empty{display:none}
+#send{padding:0 18px!important;font-weight:500}
+#sendmsg{font:400 12px var(--et-mono);color:var(--et-mute)!important;flex:1 1 220px;min-width:0}
+#sendmsg.err{color:var(--et-you)!important;font-weight:500!important}
+/* panels as tiles with the cursor spotlight (--mx/--my set by editor-theme-js) */
+.panel{position:relative;background:var(--et-tile)!important;border:1px solid var(--et-hair)!important;border-radius:18px!important;padding:20px!important;
+  transition:border-color .3s var(--et-ease)}
+.panel + .panel{margin-top:14px}
+.panel::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .3s var(--et-ease);
+  background:radial-gradient(420px circle at var(--mx,50%) var(--my,50%),rgba(255,255,255,.06),transparent 60%)}
+.panel:hover{border-color:var(--et-hair2)!important}
+.panel:hover::before{opacity:1}
+.panel:has(> details.raw){background:transparent!important;border-style:dashed!important;padding:14px 20px!important}
+.panel:has(> details.raw)::before{display:none}
+.stage{border-radius:12px!important;background:#000}
+/* buttons: pills */
+button{background:transparent!important;color:var(--et-ink)!important;border-radius:999px!important;min-height:32px;padding:0 14px;font-size:13px;border:1px solid var(--et-hair2);
+  transition:border-color .25s var(--et-ease),background-color .25s var(--et-ease),color .25s var(--et-ease),opacity .25s var(--et-ease)}
+button.mini{padding:0 12px;font-size:12px}
+button:hover{border-color:var(--et-ink)!important}
+button.pri,button.on{background:var(--et-ink)!important;color:var(--et-bg)!important;border-color:var(--et-ink)!important}
+button:disabled{opacity:.4}
+.tip{font-size:12px!important;color:var(--et-ink2)!important}
+.tip::before{content:"tip: ";color:var(--et-mute)}
+.row{gap:8px!important;margin-top:12px!important}
+/* inputs */
+select,input[type=number]{min-height:32px;padding:0 10px!important;border-radius:10px!important;border-color:var(--et-hair2)!important;
+  transition:border-color .25s var(--et-ease)}
+select:hover,input[type=number]:hover,select:focus,input[type=number]:focus{border-color:var(--et-ink)!important}
+input[type=number]{font-family:var(--et-mono)!important;font-size:12px!important;font-variant-numeric:tabular-nums}
+input[type=number]{padding:0 6px!important}
+input.tiny{width:64px!important}
+input[type=range]{accent-color:var(--et-ink)}
+.tc{font:500 20px/1 var(--et-mono)!important;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.gain,.pk{font-family:var(--et-mono)!important;font-variant-numeric:tabular-nums}
+.gain{font-weight:500!important;color:var(--et-ink)}
+.pk{color:var(--et-mute)!important}
+.pk.bad{color:var(--et-you)!important;font-weight:500!important}
+.flexlbl{font-size:13px!important;color:var(--et-ink2);flex-wrap:wrap;min-width:0}
+.flexlbl b{color:var(--et-ink);font-weight:500}
+/* timeline strips: SFX marks, voice + bed waveforms */
+.wavelab{font:500 10.5px var(--et-mono)!important;letter-spacing:.14em;text-transform:uppercase;color:var(--et-mute)!important;margin:12px 0 6px!important}
+.tl{height:48px!important;background:rgba(255,255,255,.03)!important;border:1px solid var(--et-hair)!important;border-radius:12px!important}
+.tl .cue{background:var(--et-you)!important;box-shadow:0 0 8px rgba(255,90,60,.75)}
+.tl .cue.keep{background:var(--green)!important;box-shadow:0 0 8px rgba(98,214,154,.7)}
+.tl .cue.rej{background:var(--et-hair2)!important;box-shadow:none}
+.tl .lab{font:400 9px var(--et-mono)!important;color:var(--et-mute)!important;letter-spacing:.04em}
+.tl .ph,.wavebox .ph2{background:#fff!important;box-shadow:0 0 12px rgba(255,255,255,.6)}
+.tl .ph::before{background:#fff!important;box-shadow:0 0 10px rgba(255,255,255,.7)}
+.tl.placing{outline:2px solid var(--et-you)!important;box-shadow:0 0 24px rgba(255,90,60,.35)}
+.wavebox canvas{border:1px solid var(--et-hair)!important;border-radius:12px!important;background:rgba(255,255,255,.03)!important}
+#wvoice{filter:grayscale(1) brightness(1.5)}   /* voice wave is drawn warm-grey in JS; neutral here so the bed stays the one colour */
+/* the cue table needs ~620px; the old 520px column overflowed the page (it did before this pass too) */
+@media (min-width:1001px){.wrap{grid-template-columns:minmax(0,1fr) min(720px,62vw)}}
+.panel:has(#cues){overflow-x:auto}
+/* proposed cues: rows as tiles */
+#cues{border-collapse:separate;border-spacing:0 8px;margin-top:-8px;font-size:13px}
+#cues th{font:500 11px var(--et-mono)!important;letter-spacing:.12em;text-transform:uppercase;color:var(--et-mute)!important;border-bottom:0!important;padding:0 8px 2px!important}
+#cuebody td{padding:12px 6px!important;background:rgba(255,255,255,.025);border-top:1px solid var(--et-hair)!important;border-bottom:1px solid var(--et-hair)!important;
+  transition:background-color .25s var(--et-ease),border-color .25s var(--et-ease),box-shadow .25s var(--et-ease)}
+#cuebody td:first-child{border-left:1px solid var(--et-hair);border-radius:14px 0 0 14px;padding-left:14px!important}
+#cuebody td:last-child{border-right:1px solid var(--et-hair);border-radius:0 14px 14px 0;padding-right:12px!important}
+tr.cuerow{transition:transform .25s var(--et-ease),opacity .25s var(--et-ease),filter .25s var(--et-ease)}
+tr.cuerow:hover td{background:rgba(255,255,255,.04)}
+tr.cuerow.keep{background:transparent!important}
+tr.cuerow.keep td:first-child{box-shadow:inset 3px 0 0 var(--green)}
+tr.cuerow.rej{opacity:.45}
+tr.cuerow.rej .beat{text-decoration:line-through;text-decoration-color:var(--et-ink2)}
+tr.cuerow.playing{background:transparent!important}
+tr.cuerow.playing td{background:rgba(255,90,60,.08)}
+tr.cuerow.focus{outline:0!important;transform:translateY(-1px);filter:drop-shadow(0 0 14px rgba(255,90,60,.22))}
+tr.cuerow.focus td{background:#1B1B1F;border-color:rgba(255,90,60,.55)!important}
+tr.cuerow.rej.focus{opacity:.7}
+.beat{font-weight:500!important;font-size:14px;letter-spacing:-.005em;color:var(--et-ink)}
+.beat small{display:-webkit-inline-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;width:100%;
+  margin-top:3px;font-size:12px!important;line-height:1.4!important;color:var(--et-mute)!important;font-weight:400}
+tr.cuerow.focus .beat small{-webkit-line-clamp:unset}
+#cuebody tr.cuerow:not(.keep):not(.rej) .beat::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;margin:0 7px 2px 0;
+  vertical-align:middle;background:var(--et-you);box-shadow:0 0 10px var(--et-you);animation:et-pulse 2.4s var(--et-ease) infinite}
+#cuebody td:last-child{white-space:nowrap}
+#cuebody td:last-child > button{margin:0 0 6px}
+#cuebody td:last-child > button:nth-child(n+3):not(.ext),#cuebody tr.cuerow.focus td:last-child > button:nth-child(n+3){display:block}   /* keep|reject pair on top, the rest stack under; never un-hides the board's collapsed .ext controls */
+#cuebody td:last-child > button:nth-child(1){border-radius:999px 0 0 999px!important}
+#cuebody td:last-child > button:nth-child(2){border-radius:0 999px 999px 0!important;margin-left:-1px}
+#cuebody td:last-child > button:nth-child(2).on{background:transparent!important;color:var(--et-ink)!important;border-color:var(--et-ink)!important}
+#cuebody td:last-child > button.on:nth-child(3){background:rgba(255,90,60,.12)!important;color:var(--et-you)!important;border-color:var(--et-you)!important}
+/* notes, legend, raw fold */
+.note{background:rgba(255,255,255,.03)!important;border:1px solid var(--et-hair)!important;border-radius:12px!important;color:var(--et-ink2)!important;padding:12px 14px!important;font-size:13px!important}
+.note b{color:var(--et-ink)!important;font-weight:500}
+.warn{background:rgba(255,90,60,.07)!important;border-color:rgba(255,90,60,.35)!important}
+.legend{font-size:12px!important;color:var(--et-mute)!important;line-height:2.1!important;margin-top:14px!important}
+kbd{display:inline-block;min-width:20px;text-align:center;background:rgba(255,255,255,.04)!important;border:1px solid var(--et-hair2)!important;border-bottom-width:2px!important;
+  border-radius:6px!important;padding:0 6px!important;margin:0 1px;font:500 11px/18px var(--et-mono)!important;color:var(--et-ink)}
+details.raw summary{font:500 11px var(--et-mono)!important;letter-spacing:.14em;text-transform:uppercase;color:var(--et-mute)!important;transition:color .25s var(--et-ease)}
+details.raw summary:hover,details.raw[open] summary{color:var(--et-ink2)!important}
+#saved{font:400 12px var(--et-mono)!important}
+textarea{border-radius:12px!important;font-family:var(--et-mono)!important}
+#overlay{background:rgba(5,5,6,.72)!important;backdrop-filter:blur(4px)}
+#placemsg{background:var(--et-tile2)!important;color:var(--et-ink)!important;border:1px solid var(--et-hair2);border-radius:14px!important;font-weight:500!important}
+#placemsg small{color:var(--et-mute)!important}
+@keyframes et-pulse{50%{opacity:.35}}
+@media (max-width:1000px){tr.cuerow{scroll-margin-top:110px}}   /* the strip wraps taller here */
+@media (max-width:600px){body{padding:16px!important}#strip{margin:0 -16px 18px!important;padding:10px 16px!important}h1{font-size:34px!important}}
+@media (prefers-reduced-motion:reduce){*,*::before{transition:none!important;animation:none!important}tr.cuerow.focus{transform:none}}
+/* strip hooks (10.08.26): three count chips, the "changed" warning, a quiet dot while saving */
+#counts{border:none!important;padding:0!important;display:inline-flex;gap:6px;flex-wrap:wrap}
+#counts span{border:1px solid var(--et-hair2);border-radius:999px;padding:6px 12px}
+#counts .c-keep{color:var(--green)}
+#counts .c-und.hot{color:var(--et-you);border-color:rgba(255,90,60,.45)}
+#sendmsg .changed{color:var(--et-you);font-weight:500}
+#savest.pending::before{background:var(--et-mute);box-shadow:none}
+.advanced-controls{border:1px solid var(--et-hair);border-radius:8px;padding:8px;margin:8px 0;color:var(--et-ink)}
+.advanced-controls>summary{cursor:pointer;font-weight:600}
+</style>
+<script id="editor-theme-js">document.addEventListener("pointermove",function(e){var t=e.target.closest&&e.target.closest(".panel,.tile");if(!t)return;var b=t.getBoundingClientRect();t.style.setProperty("--mx",(e.clientX-b.left)+"px");t.style.setProperty("--my",(e.clientY-b.top)+"px");},{passive:true});</script>
+</head>
+<body>
+
+<h1 id="h1">Sound <em>mixing board</em></h1>
+<p class="sub" id="sub">loading...</p>
+
+<div id="strip">
+  <span id="savest" class="pending">not saved yet</span>
+  <span id="counts"></span>
+  <button class="pri" id="send">send to Claude</button>
+  <span id="sendmsg"></span>
+</div>
+
+<div class="wrap">
+
+  <!-- ============ LEFT: picture + transport ============ -->
+  <div class="leftcol">
+    <div class="panel">
+      <div class="stage"><video id="v" preload="auto" playsinline></video></div>
+
+      <div class="wavelab" style="margin-top:10px"><span>sound effects</span></div>
+      <div class="tl" id="tl" style="margin-top:0"><div class="ph" id="ph"></div></div>
+
+      <div class="wavebox" id="wavebox">
+        <div class="wavelab"><span>voice</span></div>
+        <canvas id="wvoice" height="46"></canvas>
+        <div class="wavelab"><span id="bedlab">no bed selected</span></div>
+        <canvas id="wbed" height="46" title="drag to slide which part of the track plays"></canvas>
+        <div class="ph2" id="ph2"></div>
+      </div>
+
+      <div class="row">
+        <button class="pri" id="play">play</button>
+        <span class="tc" id="tc">0:00.000</span>
+        <details class="advanced-controls"><summary>Advanced controls</summary>
+        <button class="mini" data-j="-10">-10f</button>
+        <button class="mini" data-j="-1">-1f</button>
+        <button class="mini" data-j="1">+1f</button>
+        <button class="mini" data-j="10">+10f</button>
+        </details>
+        <button id="rew" title="play the reel from the start with every kept cue">play from start</button>
+        <button id="suggest">add a sound here</button>
+      </div>
+
+      <div class="row">
+        <span class="flexlbl">voice
+          <input type="range" id="vvol" min="0" max="100" value="100">
+          <span class="gain" id="vvoll">0 dB</span>
+        </span>
+        <button class="mini" id="vmute">mute voice</button>
+        <details class="advanced-controls"><summary>Advanced controls</summary>
+        <span class="flexlbl">sound sync offset
+          <input type="number" id="lat" value="0" step="5" style="width:60px"> ms
+        </span>
+        </details>
+      </div>
+
+      <div class="legend">
+        Shortcuts work after you click inside the board (not while typing in a box).<br>
+        <kbd>space</kbd> play &middot; <kbd>&larr;</kbd><kbd>&rarr;</kbd> frame (<kbd>shift</kbd> 10)
+        &middot; <kbd>&uarr;</kbd><kbd>&darr;</kbd> cue &middot; <kbd>[</kbd><kbd>]</kbd> sound
+        &middot; <kbd>-</kbd><kbd>=</kbd> volume &middot; <kbd>,</kbd><kbd>.</kbd> nudge
+        &middot; <kbd>h</kbd> move to playhead &middot; <kbd>k</kbd> keep &middot; <kbd>x</kbd> reject
+        &middot; <kbd>a</kbd> loop &middot; <kbd>Esc</kbd> stop loop &middot; <kbd>ctrl</kbd>+<kbd>z</kbd> undo
+      </div>
+
+      <div class="note">
+        <b>Judge a hit in the loop, not one pass.</b> If every hit is late by the same amount, adjust the sound sync offset.
+      </div>
+      <div class="note warn" id="quietnote" style="display:none"></div>
+    </div>
+
+    <div class="panel">
+      <h2>music bed</h2>
+      <div id="musiclist"></div>
+      <div class="row">
+        <button class="mini" id="mfree">Add a free track</button>
+        <button class="mini" id="mown">Use my own track</button>
+        <span class="pk" id="mreqnote"></span>
+      </div>
+      <table>
+        <tr>
+          <td style="width:150px"><span class="beat">bed</span></td>
+          <td><select id="bedsel"></select></td>
+          <td>
+            <span class="flexlbl">
+              <input type="range" id="bedvol" min="-40" max="0" step="0.5" value="-18">
+              <span class="gain" id="bedvoll">-18 dB</span>
+            </span>
+          </td>
+          <td><span class="pk">music level vs your voice (-18 suggested)</span></td>
+        </tr>
+      </table>
+      <details class="advanced-controls"><summary>Advanced controls</summary>
+      <table>
+        <tr>
+          <td><label><input type="checkbox" id="bedcarve" checked> Carve around the voice</label></td>
+          <td></td>
+          <td><span id="carvestrengthwrap" class="flexlbl">
+            <input type="range" id="carvestrength" min="0.25" max="1" step="0.05" value="0.8" aria-label="Carve strength">
+            <span class="gain" id="carvestrengthl">0.8</span>
+          </span></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td><span class="beat">dip under voice</span></td>
+          <td></td>
+          <td>
+            <span class="flexlbl">
+              <input type="range" id="bedduck" min="4" max="12" step="0.5" value="6">
+              <span class="gain" id="bedduckl">6 dB</span>
+            </span>
+          </td>
+          <td><span class="pk">how far the music dips while someone speaks</span></td>
+        </tr>
+      </table>
+      <div class="row">
+        <span class="flexlbl">in at <input type="number" id="bentry" class="tiny" step="0.1" value="0"> s
+          <button class="mini" id="bentryhead" title="set entry to the playhead">move to playhead</button></span>
+        <span class="flexlbl">out at <input type="number" id="bexit" class="tiny" step="0.1"> s
+          <button class="mini" id="bexithead" title="set exit to the playhead">move to playhead</button></span>
+        <span class="flexlbl">start track at <input type="number" id="boffset" class="tiny" step="0.1" value="0"> s</span>
+      </div>
+      <div class="row">
+        <label class="flexlbl" title="start the music on a beat"><input type="checkbox" id="bsync"> Beat-sync</label>
+        <button class="mini" id="bsnap" title="move every cue that sits close to a beat onto it">Snap cues to the beat</button>
+        <span class="pk" id="bsyncnote"></span>
+      </div>
+      <div class="row">
+        <span class="flexlbl">fade in <input type="number" id="bfin" class="tiny" step="0.1" min="0" max="5" value="0.5"> s</span>
+        <span class="flexlbl">fade out <input type="number" id="bfout" class="tiny" step="0.1" min="0" max="5" value="1.5"> s</span>
+        <span class="pk">drag the lower waveform to slide the track. voice sits above it, aligned to the reel.</span>
+      </div>
+      <div class="row">
+        <span class="flexlbl"><b>music stops</b>
+          <button class="mini" id="bstopadd" title="add a 1 s stop starting at the playhead">+ stop at playhead</button></span>
+        <span class="pk">silent from "cut at" to "back at"; the track keeps running underneath</span>
+      </div>
+      <div id="bstops"></div>
+      </details>
+      <div class="note">
+        <b>Bed level is the whole decision:</b> keep it well under the voice. The shipped level is measured on the real mix.
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ RIGHT: cues ============ -->
+  <div>
+    <div class="panel">
+      <h2>proposed cues</h2>
+      <table id="cues">
+        <thead><tr>
+          <th style="width:132px">beat</th>
+          <th style="width:62px">time</th>
+          <th>sound</th>
+          <th style="width:150px">volume</th>
+          <th style="width:104px"></th>
+        </tr></thead>
+        <tbody id="cuebody"></tbody>
+      </table>
+      <div class="row">
+        <button id="keepall" class="mini">keep all</button>
+        <button id="rejall" class="mini">reject all</button>
+        <button id="reset" class="mini" title="back to the proposed cues and bed: clears every decision">reset</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <details class="raw"><summary>Raw data (fallback)</summary>
+        <div class="row"><button id="copy">copy JSON</button></div>
+        <div id="saved"></div>
+        <textarea id="out" readonly></textarea>
+      </details>
+    </div>
+  </div>
+
+</div>
+
+<div id="overlay"></div>
+<div id="placemsg" class="msg">click on the timeline to place the duplicate
+  <small>press Esc or click anywhere else to cancel</small></div>
+
+<script src="./board-client.js"></script>
+<script>
+"use strict";
+var $ = function(id){ return document.getElementById(id); };
+/* state + Send go through the board server; the reel comes from this page's own ?reel= (works inside the hub's iframe too) */
+var REEL = new URLSearchParams(location.search).get("reel") || "";
+var BASE = "/videos/" + encodeURIComponent(REEL) + "/";
+var bc = null;
+try{ bc = BoardClient.create({board: "sound-board"}); }catch(e){ bc = null; }
+function reelUrl(p){ return /^\//.test(p) ? p : BASE + p; }   /* config paths are relative to the reel folder */
+var CFG = null, CUES = [], LIB = {}, BEDS = [];
+var ctx = null, buffers = {}, videoGain = null;
+var focusIdx = 0;
+var loopWin = null;          // {a,b,cue} while auditioning
+var scheduled = {};          // cue id -> true, cleared on seek
+var bedNode = null, bedGainNode = null;
+var placing = null;          // cue being duplicated while the overlay is up
+var userCount = 0;           // numbering for "user added sound N"
+var WAVES = null;            // waveforms.json: voice + per-bed peak arrays
+var BED = { entry: 0, exit: null, offset: 0, fadeIn: 0.5, fadeOut: 1.5, stops: [], beatSync: false };   /* stops: [{a, b, label}] reel seconds */
+var STOP_FO = 0.3, STOP_FI = 0.5;   /* default fades into / out of a music stop, s */
+function stopFo(s){ return Math.max(0.01, s.fo != null ? s.fo : STOP_FO); }
+function stopFi(s){ return Math.max(0.01, s.fi != null ? s.fi : STOP_FI); }
+var bedEnvGain = null;       // envelope node; bedGainNode stays the volume node
+var MREQ = null;             // music_request: null | "free" | "own" (Claude walks the client through it on Send)
+var RIGHTS = {};             // own-track file -> true once the client ticks "I have the rights"
+var mprev = null;            // {file, src} while a track preview plays
+
+/* ---------- persistence: keeps survive a reload ---------- */
+/* sound-board.state.json on disk is the source of truth (any port, any browser);
+   BoardClient keeps this browser's copy as the fallback */
+var DISK = null, diskTimer = null;
+var hist = [], hpos = -1, histAt = 0, restoring = false;   /* undo: in-memory snapshots of the saved state */
+function stateJson(){
+  return JSON.stringify({
+    cues: CUES.map(function(c){
+      return {id:c.id, time:c.time, pick:c.pick, gain:c.gain, state:c.state,
+              beat:c.beat, why:c.why, short:c.short, candidates:c.candidates,
+              user:!!c.user, dupOf:c.dupOf, len:c.len, endMode:c.endMode, fade:c.fade};
+    }),
+    userCount: userCount,
+    bed: {file: $("bedsel").value, gain: +$("bedvol").value,
+          entry: BED.entry, exit: BED.exit, offset: BED.offset,
+          fadeIn: BED.fadeIn, fadeOut: BED.fadeOut, stops: BED.stops, duck: +$("bedduck").value, beatSync: BED.beatSync,
+          carve: carveSettings()},
+    music_request: MREQ, rights: RIGHTS,
+    latency: +$("lat").value || 0,
+    vvol: +$("vvol").value
+  });
+}
+function setSave(txt, bad, kind){ $("savest").textContent = txt; $("savest").className = bad ? "err" : (kind || ""); }
+function saveState(){
+  var json = stateJson();
+  if(!restoring && json !== hist[hpos]){
+    var now = Date.now();
+    /* ponytail: edits under 0.5 s apart merge into one undo step (a slider drag = one step) */
+    if(now - histAt < 500 && hpos > 0 && hpos === hist.length - 1) hist[hpos] = json;
+    else {
+      hist = hist.slice(0, hpos + 1); hist.push(json);
+      if(hist.length > 50) hist.shift();
+      hpos = hist.length - 1;
+    }
+    histAt = now;
+  }
+  updateStrip();
+  setSave("saving...", false, "pending");
+  clearTimeout(diskTimer);
+  diskTimer = setTimeout(function(){
+    var only = ": only this browser has your changes";
+    bc.save(JSON.parse(json)).then(function(r){
+      if(r.ok) setSave("Saved " + new Date().toLocaleTimeString([], {hour: "numeric", minute: "2-digit"}));
+      else if(r.status) setSave("NOT SAVED (" + r.status + ")" + only, true);
+      else setSave("NOT SAVED: board server not reachable" + only, true);
+    });
+  }, 400);
+}
+function restore(json){
+  var s = JSON.parse(json);
+  restoring = true;
+  CUES = s.cues.map(function(c){ return Object.assign({}, c); });
+  userCount = s.userCount || 0;
+  $("bedsel").value = s.bed.file || "";
+  $("bedvol").value = s.bed.gain; $("bedvoll").textContent = s.bed.gain + " dB";
+  BED.entry = s.bed.entry; BED.exit = s.bed.exit; BED.offset = s.bed.offset;
+  BED.fadeIn = s.bed.fadeIn; BED.fadeOut = s.bed.fadeOut; BED.stops = s.bed.stops; BED.beatSync = !!s.bed.beatSync;
+  setDuck(s.bed.duck); setCarve(s.bed.carve || {on:false}); MREQ = s.music_request; RIGHTS = Object.assign({}, s.rights);
+  $("lat").value = s.latency;
+  $("vvol").value = s.vvol; $("vvol").oninput();
+  loopWin = null; scheduled = {};
+  focusIdx = Math.min(focusIdx, CUES.length - 1);
+  bedStateToInputs(); bedChanged(); mutated();
+  restoring = false;
+}
+function undo(){ if(hpos > 0){ hpos--; histAt = 0; restore(hist[hpos]); } }
+function redo(){ if(hpos < hist.length - 1){ hpos++; histAt = 0; restore(hist[hpos]); } }
+
+/* top strip: counts + whether the board still matches the last Send */
+var sentSig = null, sentMsg = "", sending = false;
+function setMsg(txt, bad){ $("sendmsg").textContent = txt; $("sendmsg").className = bad ? "err" : ""; }
+function undecided(){ return CUES.filter(function(c){ return c.state !== "keep" && c.state !== "rej"; }).length; }
+function updateStrip(){
+  var k = CUES.filter(function(c){ return c.state === "keep"; }).length;
+  var r = CUES.filter(function(c){ return c.state === "rej"; }).length, u = undecided();
+  /* three chips so each count can be styled on its own; numbers only, so innerHTML is safe */
+  $("counts").innerHTML = '<span class="c-keep">' + k + ' kept</span><span class="c-rej">' + r + ' rejected</span><span class="c-und' + (u ? ' hot' : '') + '">' + u + ' undecided</span>';
+  if(sending) return;
+  if(sentSig !== null && JSON.stringify(payload()) === sentSig){
+    $("send").textContent = "sent to Claude"; setMsg(sentMsg); return;
+  }
+  $("send").textContent = "send to Claude";
+  /* fixed strings + a number only, so innerHTML is safe; "changed" gets its own colour */
+  $("sendmsg").className = "";
+  $("sendmsg").innerHTML = (sentSig !== null ? '<span class="changed">changed since last send.</span> ' : "")
+    + (u ? u + " cue" + (u > 1 ? "s" : "") + " still undecided: Claude will ask about " + (u > 1 ? "them" : "it") : "");
+}
+function mutated(){ renderCues(); draw(); refreshOut(); saveState(); }
+
+/* ---------- helpers ---------- */
+function tc(s){
+  if(!isFinite(s)) s = 0;
+  var m = Math.floor(s/60), r = s - m*60;
+  return m + ":" + (r<10?"0":"") + r.toFixed(3);
+}
+function dbToLin(db){ return Math.pow(10, db/20); }
+function frame(){ return 1 / (CFG ? CFG.fps : 30); }
+
+/* ---------- audio ---------- */
+function audio(){
+  if(!ctx){
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if(ctx.state === "suspended") ctx.resume();
+  return ctx;
+}
+function loadBuf(url){
+  if(buffers[url]) return Promise.resolve(buffers[url]);
+  return fetch(url).then(function(r){
+    if(!r.ok) throw new Error(r.status + " " + url);
+    return r.arrayBuffer();
+  }).then(function(ab){
+    return new Promise(function(res, rej){ audio().decodeAudioData(ab, res, rej); });
+  }).then(function(buf){ buffers[url] = buf; return buf; });
+}
+/* play a buffer at an absolute AudioContext time.
+   opts: {len, endMode, fade, from} - len caps playback (hard cut, measured from the file start), fade rolls the
+   tail off, from skips the file's head (s) so a cue joined late still lands its hit on time. */
+function fire(url, gainDb, when, opts){
+  opts = opts || {};
+  return loadBuf(url).then(function(buf){
+    var a = audio();
+    var src = a.createBufferSource();
+    var g = a.createGain();
+    src.buffer = buf;
+    var lin = dbToLin(gainDb);
+    g.gain.value = lin;
+    src.connect(g).connect(a.destination);
+    var t0 = (when === undefined) ? a.currentTime : Math.max(when, a.currentTime);
+    var end = buf.duration, from = Math.max(0, opts.from || 0);
+    if(opts.len && opts.len > 0 && opts.len < end) end = opts.len;
+    var dur = end - from;
+    if(dur <= 0) return src;                         /* joined after the sound ended: nothing to play */
+    if(opts.endMode === "fade"){
+      var f = Math.min(Math.max(opts.fade || 0.25, 0.02), dur);
+      g.gain.setValueAtTime(lin, t0 + dur - f);
+      g.gain.linearRampToValueAtTime(0.0001, t0 + dur);
+    }
+    src.start(t0, from);
+    if(end < buf.duration - 0.01) src.stop(t0 + dur);
+    return src;
+  });
+}
+function cueOpts(c){ return {len: c.len, endMode: c.endMode, fade: c.fade}; }
+
+/* ---------- cue state ---------- */
+function cueUrl(c){ return c.pick ? reelUrl("sfx/" + c.pick) : null; }
+function libRow(file){ return LIB[file] || null; }
+/* peak_s: seconds from the file start to its hit (config library rows); 0 when unknown. The file starts at
+   time - peak_s, so the hit lands on the marker, in the preview and in the bake alike. */
+function peakOf(c){ var p = +((libRow(c.pick) || {}).peak_s); return p > 0 ? p : 0; }
+function cueStart(c){ return c.time - peakOf(c); }
+var SCHED = {};              // cue id -> reel time its file was last scheduled to start (the board test reads it)
+
+function payload(){
+  return {
+    project: CFG.board_name || "Sound mixing board",
+    picture: CFG.picture,
+    fps: CFG.fps,
+    latency_ms: +$("lat").value || 0,
+    bed: {
+      file: $("bedsel").value || null,
+      gain_db: +$("bedvol").value,
+      entry_s: +BED.entry.toFixed(3),
+      exit_s: +bedExit().toFixed(3),
+      offset_s: +BED.offset.toFixed(3),
+      fade_in_s: BED.fadeIn,
+      fade_out_s: BED.fadeOut,
+      stops: BED.stops.map(function(s){
+        return {start_s: +s.a.toFixed(3), end_s: +s.b.toFixed(3), label: s.label || "",
+                fade_out_s: stopFo(s), fade_in_s: stopFi(s)};   /* fade out ends at start_s; fade in starts at end_s */
+      }),
+      duck_db: +$("bedduck").value,
+      carve: carveSettings(),
+      rights_confirmed: !!(bedRow($("bedsel").value) && (bedRow($("bedsel").value).rights_confirmed === true || RIGHTS[$("bedsel").value])),
+      beat_sync: syncOn()   /* true: offset_s is already on a beat of the track */
+    },
+    music_request: MREQ,
+    unassigned: CUES.filter(function(c){ return c.state === "keep" && !c.pick; })
+                    .map(function(c){ return {beat:c.beat, time:+c.time.toFixed(3)}; }),
+    cues: CUES.filter(function(c){ return c.state === "keep" && c.pick; }).map(function(c){
+      return {
+        id: c.id,
+        beat: c.beat,
+        time: +c.time.toFixed(3),
+        file: c.pick,
+        gain_db: +c.gain,
+        length_s: c.len || null,
+        end_mode: c.endMode || "hard",
+        fade_out_s: (c.endMode === "fade") ? c.fade : null,
+        source_peak_dbfs: (libRow(c.pick)||{}).peak_dbfs,
+        duration: (libRow(c.pick)||{}).duration,
+        peak_s: peakOf(c)
+      };
+    }),
+    rejected: CUES.filter(function(c){ return c.state === "rej"; })
+                  .map(function(c){ return {beat:c.beat, file:c.pick}; }),
+    /* every cue the client has not kept or rejected, so a Send never drops one */
+    undecided: CUES.filter(function(c){ return c.state !== "keep" && c.state !== "rej"; }).map(function(c){
+      return {id: c.id, beat: c.beat, time: +c.time.toFixed(3), file: c.pick || null, gain_db: +c.gain, peak_s: peakOf(c)};
+    })
+  };
+}
+function refreshOut(){ $("out").value = JSON.stringify(payload(), null, 1); }
+
+/* ---------- rendering ---------- */
+/* focused row: the class flips on click (not pointerdown) so collapsing rows never move the target mid-click */
+var ptrDown = false;
+document.addEventListener("pointerdown", function(){ ptrDown = true; }, true);
+document.addEventListener("pointerup", function(){ ptrDown = false; }, true);
+function showFocus(scroll){
+  focusIdx = Math.max(0, Math.min(CUES.length - 1, focusIdx));
+  var rows = $("cuebody").children;
+  for(var j = 0; j < rows.length; j++) rows[j].classList.toggle("focus", j === focusIdx);
+  if(scroll && rows[focusIdx]) rows[focusIdx].scrollIntoView({block: "nearest"});
+}
+function ext(el){ el.classList.add("ext"); return el; }   /* shown on the focused row only */
+/* taste tips: shown beside a cue that will play (not rejected, sound picked). Tips only:
+   they never block Send and never change a cue. Speech spans come from config.speech_spans
+   ([{start_s, end_s}] or [[start, end]]) when the config carries them. */
+function playLen(c){ var row = libRow(c.pick); var d = row ? row.duration : null; return (c.len && (d == null || c.len < d)) ? c.len : d; }
+function tipsFor(c){
+  var out = [];
+  if(!c.pick || c.state === "rej") return out;
+  var len = playLen(c);
+  if(len != null && len > 1.5 && c.endMode !== "fade")
+    out.push("this sound runs " + (+len).toFixed(1) + " s; long swooshes and echo tails usually feel heavy. A shorter length or a fade-out keeps it subtle.");
+  var live = CUES.filter(function(x){ return x.pick && x.state !== "rej"; });
+  if(live.some(function(x){ return x !== c && x.pick === c.pick && Math.abs(x.time - c.time) <= 0.5; }))
+    out.push("the same sound plays again within half a second; it can sound doubled.");
+  var last = live.reduce(function(a, x){ return (!a || x.time > a.time) ? x : a; }, null);
+  var spans = (CFG && CFG.speech_spans) || [];
+  if(last === c && spans.length){
+    var end = c.time + (len || 0);
+    var hit = spans.some(function(s){
+      var a = Array.isArray(s) ? s[0] : s.start_s, b = Array.isArray(s) ? s[1] : s.end_s;
+      return c.time < b && end > a;
+    });
+    if(hit) out.push("this is the last sound and it plays over speech; a closer usually lands best in a quiet moment.");
+  }
+  return out;
+}
+function defGain(file){ var row = libRow(file); return (row && row.peak_dbfs != null) ? +(-1 - row.peak_dbfs).toFixed(1) : 0; }
+function setPick(c, file){
+  var oldRow = libRow(c.pick);
+  c.pick = file || null;
+  var row = libRow(c.pick);
+  /* keep the level you set: match the new file's peak to where the old one sat (was: reset to -1 dBFS) */
+  if(row && row.peak_dbfs != null){
+    c.gain = (oldRow && oldRow.peak_dbfs != null)
+      ? +(c.gain + oldRow.peak_dbfs - row.peak_dbfs).toFixed(1)
+      : +(-1 - row.peak_dbfs).toFixed(1);
+  }
+  delete scheduled[c.id];
+}
+function renderCues(){
+  var tb = $("cuebody");
+  var active = document.activeElement;
+  tb.innerHTML = "";
+  CUES.forEach(function(c, i){
+    var tr = document.createElement("tr");
+    tr.className = "cuerow" + (c.state === "keep" ? " keep" : c.state === "rej" ? " rej" : "")
+                 + (loopWin && loopWin.cue === c.id ? " playing" : "")
+                 + (i === focusIdx ? " focus" : "");
+    /* every control in the row focuses the row, so k / x / a act on the row you touched */
+    tr.addEventListener("pointerdown", function(){ focusIdx = i; }, true);
+    tr.addEventListener("focusin", function(){ focusIdx = i; if(!ptrDown) showFocus(); });
+    tr.addEventListener("click", function(){ focusIdx = i; showFocus(); });
+
+    /* beat */
+    var td1 = document.createElement("td");
+    td1.innerHTML = '<span class="beat">' + c.beat + '<small>' + (c.why || "") + '</small></span>';
+    tr.appendChild(td1);
+
+    /* time */
+    var td2 = document.createElement("td");
+    var advanced = document.createElement("details"); advanced.className = "advanced-controls";
+    advanced.innerHTML = "<summary>Advanced controls</summary>";
+    advanced.dataset.controlsKey = "cue-" + c.id;
+    td2.appendChild(advanced);
+    var ti = document.createElement("input");
+    ti.type = "number"; ti.step = String(frame()); ti.value = c.time.toFixed(3);
+    ti.style.width = "72px";
+    ti.onchange = function(){ c.time = +ti.value; delete scheduled[c.id]; draw(); refreshOut(); saveState(); };
+    advanced.appendChild(ti);
+    var bHead = ext(document.createElement("button"));
+    bHead.className += " mini"; bHead.textContent = "move to playhead";
+    bHead.title = "move this cue to the playhead";
+    bHead.style.marginTop = "4px";
+    bHead.onclick = function(){ c.time = +$("v").currentTime.toFixed(3); delete scheduled[c.id]; mutated(); };
+    advanced.appendChild(bHead);
+    var nud = ext(document.createElement("div"));   /* quick nudges: one frame or 100 ms either way */
+    nud.style.marginTop = "4px"; nud.style.whiteSpace = "nowrap";
+    [[-0.1, "-100ms"], [-frame(), "-1f"], [frame(), "+1f"], [0.1, "+100ms"]].forEach(function(n){
+      var b = document.createElement("button");
+      b.className = "mini nudge"; b.textContent = n[1]; b.title = "move this cue " + n[1];
+      b.onclick = function(){
+        c.time = Math.max(0, Math.min(CFG.dur, +(c.time + n[0]).toFixed(3)));
+        delete scheduled[c.id]; mutated();
+      };
+      nud.appendChild(b);
+    });
+    advanced.appendChild(nud);
+    tr.appendChild(td2);
+
+    /* sound picker: the cue's own candidates first, then the rest of the library */
+    var td3 = document.createElement("td");
+    var sel = document.createElement("select");
+    if(!c.pick){
+      var ph = document.createElement("option");
+      ph.value = ""; ph.textContent = "(pick a sound)"; ph.selected = true;
+      sel.appendChild(ph);
+    }
+    function addGroup(label, files){
+      if(!files.length) return;
+      var g = document.createElement("optgroup"); g.label = label;
+      files.forEach(function(f){
+        var o = document.createElement("option");
+        var row = libRow(f);
+        o.value = f;
+        o.textContent = f.replace(/\.mp3$/, "")
+          + (row ? "  (" + row.duration + "s, " + row.peak_dbfs + " dB)" : "");
+        if(f === c.pick) o.selected = true;
+        g.appendChild(o);
+      });
+      sel.appendChild(g);
+    }
+    addGroup("Suggested", c.candidates);
+    addGroup(c.candidates.length ? "All sounds" : "Library",
+             Object.keys(LIB).filter(function(f){ return c.candidates.indexOf(f) < 0; }));
+    sel.onchange = function(){
+      setPick(c, sel.value);
+      if(c.pick) audition(c); else renderCues();   /* picking a sound starts its loop */
+      refreshOut(); saveState();
+    };
+    td3.appendChild(sel);
+    var row = libRow(c.pick);
+    if(row){
+      var pk = document.createElement("div");
+      pk.className = "pk" + (row.peak_dbfs != null && row.peak_dbfs < -6 ? " bad" : "");
+      pk.textContent = "peak " + row.peak_dbfs + " dBFS"
+        + (row.peak_dbfs != null && row.peak_dbfs < -6 ? "  too quiet" : "");
+      td3.appendChild(pk);
+    }
+    tipsFor(c).forEach(function(t){
+      var d = document.createElement("div"); d.className = "tip"; d.textContent = t; td3.appendChild(d);
+    });
+    tr.appendChild(td3);
+
+    /* volume */
+    var td4 = document.createElement("td");
+    var gr = document.createElement("input");
+    gr.type = "range"; gr.min = "-24"; gr.max = "12"; gr.step = "0.5"; gr.value = c.gain;
+    gr.style.width = "104px";
+    gr.title = "double-click to reset to the matched level";
+    var gl = document.createElement("span");
+    gl.className = "gain"; gl.textContent = (c.gain > 0 ? "+" : "") + c.gain + " dB";
+    gr.oninput = function(){
+      c.gain = +gr.value;
+      gl.textContent = (c.gain > 0 ? "+" : "") + c.gain + " dB";
+      refreshOut(); saveState();
+    };
+    gr.ondblclick = function(){   /* exact matched level, not snapped to the slider step */
+      c.gain = defGain(c.pick); gr.value = c.gain;
+      gl.textContent = (c.gain > 0 ? "+" : "") + c.gain + " dB";
+      refreshOut(); saveState();
+    };
+    td4.appendChild(gr); td4.appendChild(gl);
+
+    /* end behavior: hard cut at a length, or fade the tail */
+    var endRow = ext(document.createElement("div"));
+    endRow.style.marginTop = "5px";
+    var fileDur = row ? row.duration : null;
+    var li = document.createElement("input");
+    li.type = "number"; li.className = "tiny"; li.step = "0.05"; li.min = "0.1";
+    li.title = "play length in seconds (blank = whole file)";
+    li.placeholder = fileDur != null ? String(fileDur) : "";
+    if(c.len) li.value = c.len;
+    li.onchange = function(){
+      c.len = +li.value > 0 ? +li.value : null;
+      refreshOut(); saveState();
+    };
+    var tog = document.createElement("button");
+    tog.className = "mini endtog" + (c.endMode === "fade" ? " on" : "");
+    tog.textContent = c.endMode === "fade" ? "fade out" : "hard cut";
+    tog.title = "how this sound ends";
+    tog.onclick = function(){
+      c.endMode = (c.endMode === "fade") ? "hard" : "fade";
+      renderCues(); refreshOut(); saveState();
+    };
+    endRow.appendChild(li); endRow.appendChild(document.createTextNode("s "));
+    endRow.appendChild(tog);
+    if(c.endMode === "fade"){
+      var fi = document.createElement("input");
+      fi.type = "number"; fi.className = "tiny"; fi.step = "0.05";
+      fi.min = "0.05"; fi.max = "1"; fi.value = c.fade;
+      fi.title = "fade length in seconds";
+      fi.onchange = function(){ c.fade = Math.min(1, Math.max(0.05, +fi.value || 0.25));
+                               fi.value = c.fade; refreshOut(); saveState(); };
+      endRow.appendChild(document.createTextNode(" "));
+      endRow.appendChild(fi);
+      endRow.appendChild(document.createTextNode("s"));
+    }
+    advanced.appendChild(endRow);
+    tr.appendChild(td4);
+
+    /* actions */
+    /* keep + reject come first so they never move when the row expands */
+    var td5 = document.createElement("td");
+    var bKeep = document.createElement("button");
+    bKeep.className = "mini" + (c.state === "keep" ? " on" : "");
+    bKeep.textContent = c.state === "keep" ? "kept" : "keep";
+    bKeep.onclick = function(){
+      c.state = (c.state === "keep") ? null : "keep"; mutated();
+    };
+    var bRej = document.createElement("button");
+    bRej.className = "mini" + (c.state === "rej" ? " on" : "");
+    bRej.textContent = c.state === "rej" ? "rejected" : "reject";
+    bRej.onclick = function(){
+      c.state = (c.state === "rej") ? null : "rej"; mutated();
+    };
+    var looping = !!(loopWin && loopWin.cue === c.id);
+    var bAud = document.createElement("button");
+    if(!looping) ext(bAud);
+    bAud.className += " mini" + (looping ? " on" : "");
+    bAud.textContent = looping ? "stop loop" : "loop with picture";
+    bAud.onclick = function(){ if(looping) endLoop(); else audition(c); };
+    var bSolo = ext(document.createElement("button"));
+    bSolo.className += " mini"; bSolo.textContent = "sound only";
+    bSolo.onclick = function(){ if(c.pick) fire(cueUrl(c), c.gain, undefined, cueOpts(c)); };
+    var bDup = ext(document.createElement("button"));
+    bDup.className += " mini"; bDup.textContent = "add duplicate";
+    bDup.title = "place a copy of this sound elsewhere on the timeline";
+    bDup.onclick = function(){
+      if(!c.pick) return;
+      placing = c;
+      $("overlay").classList.add("show");
+      $("tl").classList.add("placing");
+    };
+    td5.appendChild(bKeep); td5.appendChild(bRej);
+    td5.appendChild(bAud); advanced.appendChild(bSolo); advanced.appendChild(bDup);
+    if(c.user){   /* added sounds, duplicates and unmatched leftovers can be removed (ctrl+z brings them back) */
+      var bDel = ext(document.createElement("button"));
+      bDel.className += " mini"; bDel.textContent = "remove";
+      bDel.onclick = function(){
+        if(loopWin && loopWin.cue === c.id) loopWin = null;
+        CUES.splice(CUES.indexOf(c), 1); mutated();
+      };
+      td5.appendChild(bDel);
+    }
+    tr.appendChild(td5);
+
+    tb.appendChild(tr);
+  });
+  if(active && active.id) { var el = $(active.id); if(el && el.focus) el.focus(); }
+}
+
+function draw(){
+  var tl = $("tl");
+  Array.prototype.slice.call(tl.querySelectorAll(".cue,.lab,.btick")).forEach(function(n){ n.remove(); });
+  var dur = CFG.dur;
+  reelBeats().forEach(function(r){   /* faint beat ticks while beat-sync is on */
+    var d = document.createElement("div");
+    d.className = "btick"; d.style.left = (r / dur * 100) + "%";
+    tl.appendChild(d);
+  });
+  CUES.forEach(function(c){
+    var d = document.createElement("div");
+    d.className = "cue" + (c.state === "keep" ? " keep" : c.state === "rej" ? " rej" : "");
+    d.style.left = (c.time / dur * 100) + "%";
+    d.title = c.beat + "  " + c.time.toFixed(3) + "s";
+    tl.appendChild(d);
+    var l = document.createElement("div");
+    l.className = "lab";
+    l.style.left = (c.time / dur * 100) + "%";
+    l.textContent = c.short || "";
+    tl.appendChild(l);
+  });
+}
+
+/* ---------- transport ---------- */
+function audition(c){
+  var v = $("v");
+  if(!c.pick) return;
+  /* MUST open the AudioContext here. This is a user gesture, and without it the
+     tick loop's scheduling branch is skipped and the cue fires silently nowhere. */
+  audio();
+  loopWin = { a: Math.max(0, cueStart(c) - 1.6), b: Math.min(CFG.dur, c.time + 1.4), cue: c.id };   /* lead-in before the file starts */
+  scheduled = {};
+  v.currentTime = loopWin.a;
+  v.play();
+  renderCues();
+}
+function stopLoop(){ loopWin = null; scheduled = {}; renderCues(); }   /* cleared so kept cues fire again */
+function endLoop(){ stopLoop(); $("v").pause(); }                     /* "stop loop" button and Esc */
+
+/* schedule any cue that falls inside the lookahead window */
+function tick(){
+  var v = $("v");
+  var t = v.currentTime;
+  $("ph").style.left = (t / CFG.dur * 100) + "%";
+  $("tc").textContent = tc(t);
+
+  /* Belt and braces: any route that starts playback without having opened the
+     context would otherwise schedule nothing and report nothing. */
+  if(!v.paused && !ctx) audio();
+
+  if(!v.paused && ctx){
+    var lat = (+$("lat").value || 0) / 1000;
+    var look = 0.25;
+    var list = loopWin
+      ? CUES.filter(function(c){ return c.id === loopWin.cue; })
+      : CUES.filter(function(c){ return c.state === "keep"; });
+    list.forEach(function(c){
+      if(!c.pick) return;
+      if(scheduled[c.id]) return;
+      var dt = cueStart(c) - t;   /* the file starts peak_s before the hit */
+      if(c.time - t >= -0.05 && dt < look){
+        scheduled[c.id] = true;
+        var o = cueOpts(c);
+        o.from = dt < -0.05 ? -dt : 0;   /* joined after the file's start (a seek, a head before 0): skip its head, the hit stays on time */
+        SCHED[c.id] = t + Math.max(0, dt) - o.from;
+        fire(cueUrl(c), c.gain, ctx.currentTime + Math.max(0, dt) + lat, o);
+      }
+    });
+  }
+
+  if(loopWin && $("v").currentTime >= loopWin.b){
+    scheduled = {};
+    $("v").currentTime = loopWin.a;
+  }
+  $("ph2").style.left = (t / CFG.dur * 100) + "%";
+  requestAnimationFrame(tick);
+}
+
+/* drag the bed waveform to slide the track under the reel */
+(function(){
+  var down = null;
+  $("wbed").addEventListener("mousedown", function(e){
+    if(!$("bedsel").value) return;
+    down = {x: e.clientX, offset: BED.offset};
+    $("wbed").classList.add("drag");
+    e.preventDefault();
+  });
+  window.addEventListener("mousemove", function(e){
+    if(!down) return;
+    var w = $("wbed").clientWidth;
+    var dSec = (e.clientX - down.x) / w * CFG.dur;
+    /* dragging the waveform right pulls earlier track content under the reel */
+    var f = $("bedsel").value;
+    var bd = (WAVES && WAVES.beds[f]) ? WAVES.beds[f].duration : 9999;
+    BED.offset = Math.min(Math.max(0, down.offset - dSec), Math.max(0, bd - 0.5));
+    bedStateToInputs(); drawWaves();
+  });
+  window.addEventListener("mouseup", function(){
+    if(!down) return;
+    down = null;
+    $("wbed").classList.remove("drag");
+    bedChanged();
+  });
+})();
+
+/* ---------- bed: locked to the reel clock ----------
+   Placement model: the bed occupies reel window [entry, exit]. At reel time t
+   inside the window, the track plays from position offset + (t - entry).
+   Envelope: fadeIn after entry, fadeOut into exit, on a dedicated gain node so
+   the volume slider stays live and independent. */
+function stopBed(){
+  if(bedNode){ try{ bedNode.stop(); }catch(e){} bedNode = null; bedEnvGain = null; }
+}
+function bedExit(){ return (BED.exit == null) ? CFG.dur : BED.exit; }
+function startBed(){
+  var v = $("v"), f = $("bedsel").value;
+  if(!f || v.paused) return;
+  stopBed();
+  var want = f;
+  loadBuf(reelUrl("beds/" + f)).then(function(buf){
+    if($("bedsel").value !== want || $("v").paused) return;
+    var a = audio();
+    var t = $("v").currentTime;
+    var entry = BED.entry, exit = Math.min(bedExit(), CFG.dur);
+    if(t >= exit) return;
+    var startReel = Math.max(entry, t);              /* reel time the bed becomes audible */
+    var bufOff = BED.offset + (startReel - entry);
+    if(bufOff >= buf.duration - 0.05) return;        /* slid past the end of the track */
+    var now0 = a.currentTime + (+$("lat").value || 0) / 1000;   /* sound sync offset shifts the bed like the cues */
+    var when = now0 + (startReel - t);
+    if(when < a.currentTime){ bufOff += a.currentTime - when; when = a.currentTime; }   /* negative offset: start further in */
+    var stopAt = now0 + (exit - t);
+
+    bedNode = a.createBufferSource();
+    bedEnvGain = a.createGain();
+    bedGainNode = a.createGain();
+    bedNode.buffer = buf;
+    bedGainNode.gain.value = dbToLin(bedGainDb());
+    var stopGain = a.createGain();                   /* music stops, on their own node */
+    var duckGain = a.createGain();                   /* the dip under speech, on its own node */
+    var tail = bedNode;
+    var carveData = previewCarve();
+    if(carveData){
+      carveData.bands.forEach(function(b){
+        var filter = a.createBiquadFilter(); filter.type = "peaking";
+        filter.frequency.value = b.freq; filter.Q.value = b.q;
+        var lane = carveData.points.filter(function(p){ return p.freq === b.freq; })[0].points;
+        var c = Math.max(a.currentTime, now0), reelT = t + (c - now0);
+        filter.gain.setValueAtTime(carveValue(lane, reelT), c);
+        lane.forEach(function(p){
+          if(p.t > reelT) filter.gain.linearRampToValueAtTime(p.v, now0 + p.t - t);
+        });
+        tail.connect(filter); tail = filter;
+      });
+    }
+    tail.connect(bedEnvGain).connect(stopGain).connect(duckGain).connect(bedGainNode).connect(a.destination);
+    /* fixed dip from config.speech_spans: full depth inside a span, 80 ms in before it, 300 ms back after,
+       straight lines in dB; sampled every 10 ms from now to the bed's exit */
+    var D = +$("bedduck").value, sp = speechSpans(), c0 = Math.max(a.currentTime, now0), T0 = t + (c0 - now0);
+    if(!carveData && D > 0 && sp.length && exit > T0 + 0.02){
+      var n = Math.max(2, Math.ceil((exit - T0) * 100)), curve = new Float32Array(n);
+      for(var i = 0; i < n; i++){
+        var T = T0 + (exit - T0) * i / (n - 1), k = 0;
+        sp.forEach(function(s){ k = Math.max(k, T < s[0] ? 1 - (s[0] - T) / 0.08 : T <= s[1] ? 1 : 1 - (T - s[1]) / 0.3); });
+        curve[i] = dbToLin(-D * k);
+      }
+      duckGain.gain.setValueCurveAtTime(curve, c0, exit - T0);
+    }
+    var sg = stopGain.gain;
+    sg.setValueAtTime(1, a.currentTime);
+    /* each stop: fade out ENDS at the cut (a), fade in STARTS at the return (b) */
+    BED.stops.slice().sort(function(x, y){ return x.a - y.a; }).forEach(function(s){
+      var fo = stopFo(s), fi = stopFi(s), now = Math.max(a.currentTime, now0);
+      if(s.b + fi <= t) return;
+      var at = function(T){ return now + (T - t); };
+      if(t < s.a - fo){ sg.setValueAtTime(1, at(s.a - fo)); sg.linearRampToValueAtTime(0.0001, at(s.a)); }
+      else if(t < s.a){ sg.setValueAtTime(Math.max(0.0001, (s.a - t) / fo), now); sg.linearRampToValueAtTime(0.0001, at(s.a)); }
+      if(t < s.b){ sg.setValueAtTime(0.0001, t >= s.a ? now : at(s.a)); sg.setValueAtTime(0.0001, at(s.b)); sg.linearRampToValueAtTime(1, at(s.b + fi)); }
+      else { sg.setValueAtTime(Math.max(0.0001, (t - s.b) / fi), now); sg.linearRampToValueAtTime(1, at(s.b + fi)); }
+    });
+
+    /* envelope in ctx time; reel T maps to a.currentTime + (T - t) */
+    var g = bedEnvGain.gain;
+    var fi = BED.fadeIn, fo = BED.fadeOut;
+    var fiEnd = entry + fi;
+    g.cancelScheduledValues(a.currentTime);
+    if(fi > 0 && startReel < fiEnd){
+      var v0 = (startReel - entry) / fi;             /* joining mid-fade-in */
+      g.setValueAtTime(Math.max(v0, 0.0001), when);
+      g.linearRampToValueAtTime(1, now0 + (fiEnd - t));
+    } else {
+      g.setValueAtTime(1, when);
+    }
+    if(fo > 0){
+      var foStart = Math.max(exit - fo, startReel, fiEnd);
+      g.setValueAtTime(1, Math.max(a.currentTime, now0 + (foStart - t)));
+      g.linearRampToValueAtTime(0.0001, stopAt);
+    }
+    bedNode.start(when, bufOff);
+    bedNode.stop(stopAt + 0.02);
+  });
+}
+
+/* canvas colours follow the theme layer when one is present */
+function CV(name, dflt){ var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim(); return v || dflt; }
+
+/* the board as seeded from config.json: boot uses it, and "start over" goes back to it */
+function seedFromConfig(cfg){
+  userCount = 0;
+  BED.entry = 0; BED.exit = null; BED.offset = 0; BED.fadeIn = 0.5; BED.fadeOut = 1.5; BED.beatSync = false;
+  $("bedsel").value = ""; $("bedvol").value = -18; $("bedvoll").textContent = "-18 dB";
+  setDuck(6); setCarve({on:true, strength:0.8}); MREQ = null; RIGHTS = {};   /* reset clears the music request and the rights tick */
+  BED.stops = (cfg.bed_stops || []).map(function(s){   /* seeded stops; a saved session overrides them */
+    return {a: +s.start_s, b: +s.end_s, label: s.label || "", fo: s.fade_out_s, fi: s.fade_in_s};
+  });
+  CUES = cfg.cues.map(function(c, i){
+    var pick = c.candidates[0];
+    var row = LIB[pick];
+    return {
+      id: c.id || ("cue" + i),
+      beat: c.beat, why: c.why || "", short: c.short || "",
+      time: c.time,
+      candidates: c.candidates,
+      pick: pick,
+      /* start each candidate at a gain that brings its measured peak to about -1 dBFS,
+         so a quiet master is not silently far below the rest of the mix */
+      gain: (row && row.peak_dbfs != null) ? +(-1 - row.peak_dbfs).toFixed(1) : 0,
+      state: null,
+      len: c.len || null, endMode: c.endMode || "hard", fade: c.fade || 0.25   /* a seeded cue may preset its length/end */
+    };
+  });
+  /* optional preset bed from config; a saved session overrides it at boot */
+  var bd = cfg.bed_default;
+  if(bd){
+    $("bedsel").value = bd.file;
+    $("bedvol").value = bd.gain_db;
+    $("bedvoll").textContent = bd.gain_db + " dB";
+    BED.entry = bd.entry_s || 0; BED.exit = bd.exit_s; BED.offset = bd.offset_s || 0;
+    BED.fadeIn = bd.fade_in_s; BED.fadeOut = bd.fade_out_s;
+    if(bd.duck_db != null) setDuck(bd.duck_db);
+    if(bd.carve) setCarve(bd.carve);
+  }
+}
+
+/* ---------- music row: one line per track in config.beds ---------- */
+function carveSettings(){ return {on: $("bedcarve").checked, strength: +$("carvestrength").value}; }
+function setCarve(settings){
+  $("bedcarve").checked = settings.on === true;
+  var s = settings.strength == null ? 0.8 : +settings.strength;
+  $("carvestrength").value = isFinite(s) ? Math.max(0.25, Math.min(1, s)) : 0.8;
+  $("carvestrengthl").textContent = $("carvestrength").value;
+  $("carvestrengthwrap").style.display = $("bedcarve").checked ? "" : "none";
+}
+function previewCarve(){
+  if(!$("bedcarve").checked || !CFG.carve) return null;
+  var data = CFG.carve.profiles ? CFG.carve.profiles[(+$("carvestrength").value).toFixed(2)] : CFG.carve;
+  if(!data || !data.bands || !data.bands.length || !data.points) return null;
+  if(Math.abs(data.strength - +$("carvestrength").value) > 0.001) return null;
+  return data.bands.every(function(b){
+    return data.points.some(function(p){ return p.freq === b.freq && p.points && p.points.length; });
+  }) ? data : null;
+}
+function carveValue(points, t){
+  if(t <= points[0].t) return points[0].v;
+  for(var i = 1; i < points.length; i++){
+    if(t < points[i].t){
+      var left = points[i-1], right = points[i];
+      return left.v + (right.v - left.v) * (t - left.t) / (right.t - left.t);
+    }
+  }
+  return points[points.length-1].v;
+}
+function setDuck(db){
+  db = (db == null || !isFinite(+db)) ? 6 : Math.min(12, Math.max(4, +db));
+  $("bedduck").value = db; $("bedduckl").textContent = db + " dB";
+}
+function speechSpans(){
+  return ((CFG && CFG.speech_spans) || []).map(function(s){ return Array.isArray(s) ? [+s[0], +s[1]] : [+s.start_s, +s.end_s]; });
+}
+function bedRow(f){ return BEDS.filter(function(b){ return b.file === f; })[0] || null; }
+/* beat-sync: config beds[i].grid = {bpm, period_s, phase_s, downbeat_s, confidence} in TRACK seconds, null when the
+   track has no steady beat. Beats sit at phase_s + k*period_s; with offset o and entry e, track beat b plays at
+   reel time e + (b - o). Off by default; snapping never touches the speech, only the music start and the cues. */
+var BEAT_SNAP_OFF = false;   // test hook: the board test's reverse run turns every snap off with it
+function bedGrid(){ var r = bedRow($("bedsel").value), g = r && r.grid; return (g && +g.period_s > 0) ? g : null; }
+function syncOn(){ return !!(BED.beatSync && bedGrid()); }
+function snapOffset(){   /* the track starts on its nearest beat */
+  var g = bedGrid();
+  if(!syncOn() || BEAT_SNAP_OFF) return;
+  var p = +g.period_s, ph = +g.phase_s, k = Math.round((BED.offset - ph) / p);
+  if(ph + k * p < 0) k++;
+  BED.offset = ph + k * p;
+  $("boffset").value = BED.offset.toFixed(2);
+}
+function reelBeats(){   /* reel times of the track's beats inside the bed window [entry, exit) */
+  if(!syncOn()) return [];
+  var g = bedGrid(), p = +g.period_s, ph = +g.phase_s, out = [];
+  var e = BED.entry, x = Math.min(bedExit(), CFG.dur), o = BED.offset, len = (bedRow($("bedsel").value) || {}).duration;
+  for(var k = Math.ceil((o - ph) / p - 1e-9); ; k++){
+    var b = ph + k * p, r = e + (b - o);
+    if(r >= x || (len != null && b >= len)) break;
+    if(r >= e - 1e-9) out.push(r);
+  }
+  return out;
+}
+function renderSync(){
+  var g = bedGrid();
+  $("bsync").disabled = !g; $("bsync").checked = syncOn(); $("bsnap").disabled = !syncOn();
+  $("bsyncnote").textContent = $("bedsel").value && !g ? "no steady beat found in this track" : "";
+}
+/* the bake's bed gain: (voice LUFS - bed LUFS) + level, voice taken as -14 when the config has no voice_lufs;
+   bed LUFS = play_lufs (the stretch that plays) when present, else lufs; with neither, the level alone */
+function bedGainDb(){
+  var row = bedRow($("bedsel").value), level = +$("bedvol").value;
+  var voice = (CFG && CFG.voice_lufs != null) ? +CFG.voice_lufs : -14;
+  var bed = row ? (row.play_lufs != null ? row.play_lufs : row.lufs) : null;
+  return bed != null ? (voice - bed) + level : level;
+}
+function originLabel(o){
+  return o === "free" ? "Free library" : o === "own" ? "Your track" : /pack$/.test(o || "") ? "Starter pack" : (o || "");
+}
+function mss(s){ s = Math.round(+s || 0); return Math.floor(s / 60) + ":" + (s % 60 < 10 ? "0" : "") + (s % 60); }
+function useBed(b){
+  $("bedsel").value = b ? b.file : "";
+  /* suggest_entry_s is a track position (its strongest part), so it sets where the track starts playing */
+  if(b && b.suggest_entry_s != null) BED.offset = Math.max(0, +b.suggest_entry_s);
+  audio(); bedStateToInputs(); bedChanged();
+}
+function stopPreview(){
+  if(mprev && mprev.src){ try{ mprev.src.stop(); }catch(e){} }
+  mprev = null;
+}
+/* about 8 s from the track's strongest part, at standard loudness; a second click stops it */
+function previewBed(b){
+  var again = mprev && mprev.file === b.file;
+  stopPreview();
+  if(again){ renderMusic(); return; }
+  var me = mprev = {file: b.file, src: null};
+  var a = audio();   /* opened inside the click so the browser lets it play */
+  loadBuf(reelUrl("beds/" + b.file)).then(function(buf){
+    if(mprev !== me) return;
+    var src = a.createBufferSource(), g = a.createGain();
+    src.buffer = buf;
+    g.gain.value = dbToLin(b.lufs != null ? Math.min(12, -14 - b.lufs) : 0);
+    src.connect(g).connect(a.destination);
+    src.onended = function(){ if(mprev === me){ mprev = null; renderMusic(); } };
+    src.start(a.currentTime, Math.min(Math.max(0, +b.suggest_entry_s || 0), Math.max(0, buf.duration - 0.1)), 8);
+    me.src = src; renderMusic();
+  }).catch(function(){
+    if(mprev === me){ mprev = null; renderMusic(); $("mreqnote").textContent = "That track could not play here."; }
+  });
+}
+function renderMusic(){
+  var box = $("musiclist"), cur = $("bedsel").value;
+  box.innerHTML = "";
+  if(!BEDS.length){
+    var p = document.createElement("div"); p.className = "pk";
+    p.textContent = "No music yet. Add a free track or use your own."; box.appendChild(p);
+  }
+  BEDS.forEach(function(b){
+    var line = document.createElement("div"); line.className = "mline";
+    function el(tag, cls, txt){ var e = document.createElement(tag); e.className = cls; if(txt != null) e.textContent = txt; line.appendChild(e); return e; }
+    var on = !!(mprev && mprev.file === b.file && mprev.src);
+    var bp = el("button", "mini mplay" + (on ? " on" : ""), on ? "■ stop" : "▶ play");
+    bp.title = "hear it from its strongest part";
+    bp.onclick = function(){ previewBed(b); };
+    el("span", "mt", b.title || b.file.replace(/\.[^.]+$/, ""));
+    if(b.mood) el("span", "mtag", b.mood);
+    el("span", "pk", mss(b.duration));
+    el("span", "mbadge", originLabel(b.origin));
+    var use = el("button", "mini muse" + (b.file === cur ? " on" : ""), b.file === cur ? "in use" : "use");
+    use.onclick = function(){ useBed(b.file === cur ? null : b); };
+    if(b.origin === "own" && b.rights_confirmed !== true){
+      var lab = el("label", "flexlbl"), cb = document.createElement("input");
+      cb.type = "checkbox"; cb.className = "mrights"; cb.checked = !!RIGHTS[b.file];
+      cb.onchange = function(){ if(cb.checked) RIGHTS[b.file] = true; else delete RIGHTS[b.file]; refreshOut(); saveState(); };
+      lab.appendChild(cb); lab.appendChild(document.createTextNode(" I have the rights to use this track"));
+    } else if(b.origin !== "own" && b.licence_ok === false){
+      el("span", "pk", "needs a licence row: Claude will ask");
+    }
+    box.appendChild(line);
+  });
+  $("mfree").classList.toggle("on", MREQ === "free");
+  $("mown").classList.toggle("on", MREQ === "own");
+  $("mreqnote").textContent = MREQ ? "Press Send and Claude will walk you through it." : "";
+  renderSync();
+}
+
+/* ---------- boot ---------- */
+(bc ? Promise.all([
+  fetch(BASE + "config.json").then(function(r){ if(!r.ok) throw new Error("HTTP " + r.status); return r.json(); }),
+  bc.load()
+]) : Promise.reject(new Error("open this board with ?reel=<reel> in its address"))).then(function(res){
+  var cfg = res[0]; DISK = res[1];
+  CFG = cfg;
+  cfg.library.forEach(function(row){ LIB[row.file] = row; });
+  BEDS = cfg.beds || [];
+
+  $("sub").innerHTML = cfg.blurb || "";
+  var boardName = cfg.board_name || "Sound mixing board";
+  document.title = boardName;
+  $("h1").innerHTML = boardName.replace(/(\S+)\s*$/, "<em>$1</em>");
+  var v = $("v");
+  v.src = reelUrl(cfg.picture_url);
+
+  var bs = $("bedsel");
+  var none = document.createElement("option");
+  none.value = ""; none.textContent = "(no bed)";
+  bs.appendChild(none);
+  BEDS.forEach(function(b){
+    var o = document.createElement("option");
+    o.value = b.file;
+    o.textContent = b.file.replace(/\.mp3$/, "") + "  (" + b.duration + "s, " + b.lufs + " LUFS)";
+    bs.appendChild(o);
+  });
+
+  seedFromConfig(cfg);
+
+  /* restore a previous session's decisions: disk first, then this browser (BoardClient.load).
+     Cue ids are positional (c01, c02...), so a refill that adds a cue renumbers
+     the rest. Match on id+beat, then beat alone; anything unplaced is kept and
+     flagged UNMATCHED, never dropped and never applied to the wrong cue. */
+  var saved = DISK;
+  if(saved && saved.cues){
+    var claimed = {};
+    saved.cues.forEach(function(s){
+      var c = null;
+      if(!s.user){
+        c = CUES.filter(function(x){ return !claimed[x.id] && x.id === s.id && x.beat === s.beat; })[0]
+         || CUES.filter(function(x){ return !claimed[x.id] && x.beat === s.beat; })[0];
+      }
+      if(c){
+        claimed[c.id] = true;
+        c.time = s.time; c.gain = s.gain; c.state = s.state;
+        if(s.pick) c.pick = s.pick;
+        if(s.len !== undefined) c.len = s.len;
+        if(s.endMode) c.endMode = s.endMode;
+        if(s.fade) c.fade = s.fade;
+      } else {
+        var flag = s.user ? "" : "UNMATCHED after refill (was " + s.id + "): ";
+        CUES.push({id: s.user ? s.id : s.id + "-was", beat:s.beat, why: flag + (s.why || ""), short:s.short || "",
+                   time:s.time, candidates:s.candidates || [], pick:s.pick,
+                   gain:s.gain, state:s.state, user:true, dupOf:s.dupOf,
+                   len:s.len || null, endMode:s.endMode || "hard", fade:s.fade || 0.25});
+      }
+    });
+    CUES.sort(function(a, b){ return a.time - b.time; });
+    userCount = saved.userCount || 0;
+    if(saved.bed && saved.bed.file !== undefined){
+      $("bedsel").value = saved.bed.file || "";
+      $("bedvol").value = saved.bed.gain;
+      $("bedvoll").textContent = saved.bed.gain + " dB";
+      if(saved.bed.entry !== undefined){
+        BED.entry = saved.bed.entry || 0;
+        BED.exit = saved.bed.exit;
+        BED.offset = saved.bed.offset || 0;
+        if(saved.bed.fadeIn !== undefined) BED.fadeIn = saved.bed.fadeIn;
+        if(saved.bed.fadeOut !== undefined) BED.fadeOut = saved.bed.fadeOut;
+        if(Array.isArray(saved.bed.stops)) BED.stops = saved.bed.stops;
+      }
+      if(saved.bed.duck !== undefined) setDuck(saved.bed.duck);
+      setCarve(saved.bed.carve || {on:false});
+      if(saved.bed.beatSync !== undefined) BED.beatSync = !!saved.bed.beatSync;
+    }
+    if(saved.music_request !== undefined) MREQ = saved.music_request;
+    if(saved.rights) RIGHTS = Object.assign({}, saved.rights);
+    if(saved.latency) $("lat").value = saved.latency;
+    if(saved.vvol != null){ $("vvol").value = saved.vvol; $("vvol").oninput && $("vvol").oninput(); }
+  }
+
+  var quiet = cfg.library.filter(function(r){ return r.peak_dbfs != null && r.peak_dbfs < -6; });
+  if(quiet.length){
+    $("quietnote").style.display = "block";
+    $("quietnote").innerHTML = "<b>" + quiet.length + " sounds are marked too quiet</b> (peak below -6 dBFS). "
+      + "Mixing can't fix them; one you pick gets a normalised copy before it ships.";
+  }
+
+  bedStateToInputs();
+  renderCues(); draw(); refreshOut();
+  hist = [stateJson()]; hpos = 0;   /* undo floor = the state the board opened with */
+  updateStrip();
+  if(DISK) setSave("Saved (your last session is back)");
+  requestAnimationFrame(tick);
+  fetch(BASE + "waveforms.json").then(function(r){ return r.json(); }).then(function(wv){
+    WAVES = wv;
+    /* drawWaves bails when the canvas has no width yet (background tab, layout
+       not settled). Without a retry the waveforms silently never paint and
+       nothing says why. A timer is used rather than ResizeObserver because
+       observer callbacks ride the rendering loop, which a hidden page does not
+       run. Later resizes are already covered by the window resize listener. */
+    var tries = 0;
+    (function paintWhenSized(){
+      if($("wvoice").clientWidth > 0){ drawWaves(); return; }
+      if(++tries < 20) setTimeout(paintWhenSized, 250);
+      else $("bedlab").textContent = "waveforms could not size to the page";
+    })();
+  }).catch(function(e){
+    $("bedlab").textContent = "waveforms unavailable: " + e.message;
+  });
+}).catch(function(e){
+  document.body.innerHTML = '<p style="color:#BF4D43;font:14px sans-serif">'
+    + 'Could not open the sound board (config.json): ' + e.message + '</p>';
+});
+
+/* ---------- wiring ---------- */
+$("play").onclick = function(){
+  var v = $("v");
+  audio();
+  if(v.paused){ scheduled = {}; v.play(); } else { v.pause(); }
+};
+$("v").addEventListener("play", function(){ $("play").textContent = "pause"; startBed(); });
+$("v").addEventListener("pause", function(){ $("play").textContent = "play"; stopBed(); if(loopWin) stopLoop(); });
+$("v").addEventListener("seeking", function(){ scheduled = {}; stopBed(); });
+$("v").addEventListener("seeked", function(){ startBed(); });
+$("rew").onclick = function(){   /* play from start, with every kept cue */
+  stopLoop(); scheduled = {}; audio();
+  var v = $("v"); v.currentTime = 0; v.play();
+};
+Array.prototype.slice.call(document.querySelectorAll("[data-j]")).forEach(function(b){
+  b.onclick = function(){
+    var v = $("v");
+    v.currentTime = Math.max(0, Math.min(CFG.dur, v.currentTime + (+b.dataset.j) * frame()));
+  };
+});
+$("tl").onclick = function(e){
+  var r = $("tl").getBoundingClientRect();
+  var t = +((e.clientX - r.left) / r.width * CFG.dur).toFixed(3);
+  if(placing){
+    var src = placing;
+    endPlacing();
+    var n = CUES.filter(function(x){ return x.dupOf === src.id; }).length + 2;
+    CUES.push({
+      id: src.id + "-dup" + Date.now() % 100000,
+      dupOf: src.id,
+      beat: src.beat + " (x" + n + ")",
+      why: "duplicate of " + (src.pick || "").replace(/\.mp3$/, ""),
+      short: src.short, time: t,
+      candidates: src.candidates.slice(),
+      pick: src.pick, gain: src.gain,
+      len: src.len, endMode: src.endMode, fade: src.fade,   /* a duplicate keeps its trim */
+      state: "keep", user: true
+    });
+    CUES.sort(function(a, b){ return a.time - b.time; });
+    focusIdx = CUES.findIndex(function(x){ return x.time === t; });
+    mutated();
+    return;
+  }
+  /* a click within ~6 px of a cue mark focuses that cue's row */
+  var px = e.clientX - r.left, near = -1, best = 7;
+  CUES.forEach(function(c, i){
+    var d = Math.abs(c.time / CFG.dur * r.width - px);
+    if(d < best){ best = d; near = i; }
+  });
+  stopLoop(); scheduled = {};
+  if(near >= 0){ focusIdx = near; showFocus(true); }
+  $("v").currentTime = t;
+};
+/* press and drag on the cue strip or the voice waveform to scrub the playhead */
+function scrubber(el){
+  var drag = false, resume = false;
+  function seekTo(e){
+    var r = el.getBoundingClientRect();
+    var t = Math.max(0, Math.min(CFG.dur, (e.clientX - r.left) / r.width * CFG.dur));
+    $("v").currentTime = +t.toFixed(3);
+  }
+  el.addEventListener("pointerdown", function(e){
+    if(placing || e.button !== 0) return;   /* placing a duplicate stays a click */
+    var v = $("v");
+    drag = true; resume = !v.paused;
+    if(resume) v.pause();
+    stopLoop(); scheduled = {};
+    try { el.setPointerCapture(e.pointerId); } catch(_){}   /* keeps the drag when the mouse leaves the strip */
+    el.classList.add("scrub");
+    seekTo(e); e.preventDefault();
+  });
+  el.addEventListener("pointermove", function(e){ if(drag) seekTo(e); });
+  function end(){
+    if(!drag) return;
+    drag = false; el.classList.remove("scrub");
+    if(resume){ scheduled = {}; $("v").play(); }
+  }
+  el.addEventListener("pointerup", end);
+  el.addEventListener("pointercancel", end);
+}
+scrubber($("tl"));
+scrubber($("wvoice"));
+function endPlacing(){
+  placing = null;
+  $("overlay").classList.remove("show");
+  $("tl").classList.remove("placing");
+}
+
+/* ---------- waveforms ---------- */
+function drawWaves(){
+  if(!WAVES || !CFG) return;
+  var bps = WAVES.bins_per_s;
+  var cv = $("wvoice"), cb = $("wbed");
+  var w = cv.clientWidth; if(!w) return;
+  cv.width = w; cb.width = w;
+  var h = cv.height;
+
+  /* voice: fixed, aligned to the reel */
+  var g = cv.getContext("2d");
+  g.clearRect(0, 0, w, h);
+  g.fillStyle = "#938C7B";
+  var vp = WAVES.voice.peaks;
+  for(var x = 0; x < w; x++){
+    var t = x / w * CFG.dur;
+    var b = Math.min(vp.length - 1, Math.floor(t * bps));
+    var amp = vp[b] * (h / 2 - 2);
+    g.fillRect(x, h / 2 - amp, 1, amp * 2 || 1);
+  }
+
+  /* bed: drawn where its window covers the reel, content shifted by offset */
+  var q = cb.getContext("2d");
+  q.clearRect(0, 0, w, h);
+  var f = $("bedsel").value;
+  if(!f || !WAVES.beds[f]){ $("bedlab").textContent = "no bed selected"; return; }
+  var bed = WAVES.beds[f];
+  var entry = BED.entry, exit = Math.min(bedExit(), CFG.dur);
+  $("bedlab").textContent = f.replace(/\.mp3$/, "") + "  in " + entry.toFixed(2)
+    + "s  out " + exit.toFixed(2) + "s  track starts at " + BED.offset.toFixed(2) + "s";
+  q.fillStyle = "#D96A3C";
+  for(var x2 = 0; x2 < w; x2++){
+    var t2 = x2 / w * CFG.dur;
+    if(t2 < entry || t2 > exit) continue;
+    var p = BED.offset + (t2 - entry);
+    if(p < 0 || p >= bed.duration) continue;
+    var b2 = Math.min(bed.peaks.length - 1, Math.floor(p * bps));
+    /* fade envelope shown in the ink itself */
+    var env = 1;
+    if(BED.fadeIn > 0 && t2 < entry + BED.fadeIn) env = (t2 - entry) / BED.fadeIn;
+    if(BED.fadeOut > 0 && t2 > exit - BED.fadeOut) env = Math.min(env, (exit - t2) / BED.fadeOut);
+    BED.stops.forEach(function(s){                                     /* music stop + its fades */
+      var fo = stopFo(s), fi = stopFi(s), k = 1;
+      if(t2 >= s.a && t2 < s.b) k = 0;
+      else if(t2 >= s.a - fo && t2 < s.a) k = (s.a - t2) / fo;
+      else if(t2 >= s.b && t2 < s.b + fi) k = (t2 - s.b) / fi;
+      env = Math.min(env, k);
+    });
+    var amp2 = bed.peaks[b2] * env * (h / 2 - 2);
+    q.fillRect(x2, h / 2 - amp2, 1, amp2 * 2 || 1);
+  }
+  /* entry/exit posts */
+  q.fillStyle = CV("--cv-post", "#1A1915");
+  q.fillRect(entry / CFG.dur * w, 0, 2, h);
+  q.fillRect(exit / CFG.dur * w - 2, 0, 2, h);
+  /* music stops: shaded windows */
+  q.fillStyle = CV("--cv-stop", "rgba(26,25,21,.18)");
+  BED.stops.forEach(function(s){
+    q.fillRect(s.a / CFG.dur * w, 0, Math.max(2, (s.b - s.a) / CFG.dur * w), h);
+  });
+}
+function renderStops(){
+  var box = $("bstops"); box.innerHTML = "";
+  BED.stops.sort(function(x, y){ return x.a - y.a; });
+  BED.stops.forEach(function(s, i){
+    var row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML = '<span class="flexlbl">' + (s.label ? '<b>' + s.label + '</b>&nbsp;' : '')
+      + 'cut at <input type="number" class="tiny" step="0.01" data-k="a" value="' + s.a.toFixed(2) + '"> s '
+      + '<button class="mini" data-h="a" title="set to the playhead">move to playhead</button> '
+      + 'back at <input type="number" class="tiny" step="0.01" data-k="b" value="' + s.b.toFixed(2) + '"> s '
+      + '<button class="mini" data-h="b" title="set to the playhead">move to playhead</button> '
+      + 'fade out <input type="number" class="tiny" step="0.05" min="0.01" max="3" data-k="fo" value="' + stopFo(s) + '"> '
+      + 'fade in <input type="number" class="tiny" step="0.05" min="0.01" max="3" data-k="fi" value="' + stopFi(s) + '"> s '
+      + '<button class="mini" data-go="1" title="play from 1 s before the cut">hear</button> '
+      + '<button class="mini" data-del="1" title="remove this stop">remove</button></span>';
+    function set(k, val){
+      if(k === "fo" || k === "fi"){
+        s[k] = +Math.min(3, Math.max(0.01, +val || 0.01)).toFixed(2); renderStops(); bedChanged(); return;
+      }
+      val = Math.max(0, Math.min(CFG.dur, +val));
+      if(k === "a" && val >= s.b) return renderStops();
+      if(k === "b" && val <= s.a) return renderStops();
+      s[k] = +val.toFixed(3); renderStops(); bedChanged();
+    }
+    row.querySelectorAll("input").forEach(function(inp){
+      inp.onchange = function(){ set(inp.dataset.k, inp.value); };
+    });
+    row.querySelectorAll("[data-h]").forEach(function(b){
+      b.onclick = function(){ set(b.dataset.h, $("v").currentTime); };
+    });
+    row.querySelector("[data-go]").onclick = function(){
+      var v = $("v"); stopLoop(); scheduled = {};
+      v.currentTime = Math.max(0, s.a - 1); audio(); v.play();
+    };
+    row.querySelector("[data-del]").onclick = function(){
+      BED.stops.splice(i, 1); renderStops(); bedChanged();
+    };
+    box.appendChild(row);
+  });
+}
+function bedInputsToState(){
+  BED.entry = Math.max(0, +$("bentry").value || 0);
+  BED.exit = Math.min(CFG.dur, +$("bexit").value || CFG.dur);
+  if(BED.exit <= BED.entry) BED.exit = CFG.dur;
+  BED.offset = Math.max(0, +$("boffset").value || 0);
+  BED.fadeIn = Math.min(5, Math.max(0, +$("bfin").value || 0));
+  BED.fadeOut = Math.min(5, Math.max(0, +$("bfout").value || 0));
+}
+function bedStateToInputs(){
+  $("bentry").value = BED.entry.toFixed(2);
+  $("bexit").value = bedExit().toFixed(2);
+  $("boffset").value = BED.offset.toFixed(2);
+  $("bfin").value = BED.fadeIn;
+  $("bfout").value = BED.fadeOut;
+  renderStops(); renderMusic();
+}
+function bedChanged(){
+  snapOffset(); renderSync();     /* beat-sync on: every placement change lands the track start on a beat */
+  drawWaves(); draw();
+  stopBed(); startBed();          /* re-schedule with the new placement if playing */
+  refreshOut(); saveState();
+}
+$("overlay").onclick = endPlacing;
+
+$("suggest").onclick = function(){
+  userCount++;
+  var t = +$("v").currentTime.toFixed(3);
+  CUES.push({
+    id: "user" + userCount,
+    beat: "user added sound " + userCount,
+    why: "you flagged this moment as missing a sound",
+    short: "u" + userCount, time: t,
+    candidates: [], pick: null, gain: 0,
+    state: "keep", user: true
+  });
+  CUES.sort(function(a, b){ return a.time - b.time; });
+  focusIdx = CUES.findIndex(function(x){ return x.id === "user" + userCount; });
+  mutated();
+};
+$("vvol").oninput = function(){
+  var pct = +$("vvol").value;
+  $("v").volume = pct / 100;
+  saveState();
+  $("vvoll").textContent = pct === 0 ? "muted"
+    : (20 * Math.log10(pct / 100)).toFixed(1) + " dB";
+};
+$("vmute").onclick = function(){
+  var v = $("v"); v.muted = !v.muted;
+  $("vmute").classList.toggle("on", v.muted);
+  $("vmute").textContent = v.muted ? "voice muted" : "mute voice";
+};
+$("bedvol").oninput = function(){
+  $("bedvoll").textContent = $("bedvol").value + " dB";
+  if(bedGainNode) bedGainNode.gain.value = dbToLin(bedGainDb());
+  refreshOut(); saveState();
+};
+$("bedduck").oninput = function(){ setDuck(+$("bedduck").value); bedChanged(); };
+$("bedcarve").onchange = function(){ setCarve(carveSettings()); bedChanged(); };
+$("carvestrength").oninput = function(){ setCarve(carveSettings()); bedChanged(); };
+["mfree", "mown"].forEach(function(id){
+  $(id).onclick = function(){
+    var want = id === "mfree" ? "free" : "own";
+    MREQ = (MREQ === want) ? null : want;   /* a second click clears it */
+    renderMusic(); refreshOut(); saveState();
+  };
+});
+$("bedsel").onchange = function(){
+  audio();
+  snapOffset();
+  renderMusic();
+  drawWaves(); draw();
+  stopBed(); startBed();
+  refreshOut(); saveState();
+};
+["bentry", "bexit", "boffset", "bfin", "bfout"].forEach(function(id){
+  $(id).onchange = function(){ bedInputsToState(); bedStateToInputs(); bedChanged(); };
+});
+$("bstopadd").onclick = function(){
+  var t = +$("v").currentTime.toFixed(3);
+  BED.stops.push({a: t, b: +Math.min(CFG.dur, t + 1).toFixed(3), label: ""});
+  renderStops(); bedChanged();
+};
+$("bentryhead").onclick = function(){
+  BED.entry = +$("v").currentTime.toFixed(2);
+  if(bedExit() <= BED.entry) BED.exit = CFG.dur;
+  bedStateToInputs(); bedChanged();
+};
+$("bexithead").onclick = function(){
+  var t = +$("v").currentTime.toFixed(2);
+  if(t > BED.entry){ BED.exit = t; bedStateToInputs(); bedChanged(); }
+};
+window.addEventListener("resize", drawWaves);
+$("bsync").onchange = function(){ BED.beatSync = $("bsync").checked; bedChanged(); };   /* off moves nothing back */
+$("bsnap").onclick = function(){   /* cues within min(period/8, 80 ms) of a beat move onto it; the rest stay */
+  var beats = reelBeats();
+  if(!beats.length || BEAT_SNAP_OFF) return;
+  var win = Math.min(+bedGrid().period_s / 8, 0.08);
+  CUES.forEach(function(c){
+    var near = beats.reduce(function(a, r){ return Math.abs(r - c.time) < Math.abs(a - c.time) ? r : a; });
+    if(Math.abs(near - c.time) <= win + 1e-9){ c.time = +near.toFixed(3); delete scheduled[c.id]; }
+  });
+  mutated();
+};
+
+$("keepall").onclick = function(){
+  CUES.forEach(function(c){ c.state = "keep"; }); mutated();
+};
+/* both ask first; cancelling changes nothing (ctrl+z still undoes either) */
+$("rejall").onclick = function(){
+  if(!CFG || !confirm("Reject every cue on the board?")) return;
+  CUES.forEach(function(c){ c.state = "rej"; }); mutated();
+};
+$("reset").onclick = function(){
+  if(!CFG || !confirm("Reset the board? Every decision goes back to the proposed cues and bed.")) return;
+  stopLoop(); seedFromConfig(CFG); focusIdx = 0;
+  bedStateToInputs(); bedChanged(); mutated();
+};
+$("lat").onchange = function(){ refreshOut(); saveState(); stopBed(); startBed(); };
+
+$("copy").onclick = function(){
+  navigator.clipboard.writeText($("out").value).then(function(){
+    $("saved").className = ""; $("saved").textContent = "copied to clipboard";
+  });
+};
+$("send").onclick = function(){
+  var b = $("send"), u = undecided();
+  sending = true; b.disabled = true; b.textContent = "sending..."; setMsg("");
+  fetch(BASE + "__save?board=sound-board&name=sound-selection.json", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(payload(), null, 1)
+  }).then(function(r){
+    return r.json().catch(function(){ return {ok: false, error: "HTTP " + r.status}; }).then(function(j){
+      if(!r.ok || !j.ok) throw new Error(j.error || r.status);
+      return j;
+    });
+  }).then(function(j){
+    sentSig = JSON.stringify(payload());
+    sentMsg = "written to sound-selection.json (" + j.bytes + " bytes). Tell Claude it is ready."
+      + (u ? " " + u + " cue" + (u > 1 ? "s" : "") + " sent as undecided." : "");
+    b.textContent = "sent to Claude"; setMsg(sentMsg);
+  }).catch(function(e){
+    b.textContent = "send to Claude";
+    setMsg("SEND FAILED (" + e.message + "): nothing was written. Is the board server running? "
+      + "Open Raw data at the bottom and copy the JSON instead.", true);
+  }).then(function(){ b.disabled = false; sending = false; });
+};
+
+document.addEventListener("keydown", function(e){
+  var v = $("v");
+  if(e.key === "Escape"){
+    if(placing){ endPlacing(); return; }
+    if(loopWin){ endLoop(); return; }
+  }
+  var t = e.target.tagName;
+  if((t === "INPUT" && e.target.type !== "range") || t === "TEXTAREA" || t === "SELECT") return;
+  if((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === "z" || e.key === "Z")){
+    e.preventDefault(); if(e.shiftKey) redo(); else undo(); return;
+  }
+  if(e.ctrlKey || e.altKey || e.metaKey) return;
+  var c = CUES[focusIdx];
+  var once = " kxah[]".indexOf(e.key) >= 0;   /* one-shot keys ignore auto-repeat */
+  if(once && e.repeat) return;
+  if(e.key === " "){
+    e.preventDefault();
+    if(document.activeElement && document.activeElement.blur) document.activeElement.blur();   /* no double-fire on a focused button */
+    $("play").onclick();
+  }
+  else if(e.key === "ArrowLeft"){
+    e.preventDefault();
+    v.currentTime = Math.max(0, v.currentTime - frame() * (e.shiftKey ? 10 : 1));
+  }
+  else if(e.key === "ArrowRight"){
+    e.preventDefault();
+    v.currentTime = Math.min(CFG.dur, v.currentTime + frame() * (e.shiftKey ? 10 : 1));
+  }
+  else if(e.key === "ArrowUp" || e.key === "ArrowDown"){
+    e.preventDefault();
+    focusIdx += (e.key === "ArrowUp" ? -1 : 1); showFocus(true);
+  }
+  else if(!c) return;
+  else if(e.key === "k"){ c.state = "keep"; mutated(); }
+  else if(e.key === "x"){ c.state = "rej"; mutated(); }
+  else if(e.key === "a"){ if(loopWin && loopWin.cue === c.id) endLoop(); else audition(c); }
+  else if(e.key === "[" || e.key === "]"){
+    var list = c.candidates.length ? c.candidates : Object.keys(LIB);
+    if(!list.length) return;
+    var at = list.indexOf(c.pick);
+    at = (e.key === "]") ? (at + 1) % list.length : (at <= 0 ? list.length - 1 : at - 1);
+    setPick(c, list[at]); audition(c); refreshOut(); saveState();
+  }
+  else if(e.key === "-" || e.key === "="){
+    c.gain = Math.max(-24, Math.min(12, +(c.gain + (e.key === "=" ? 0.5 : -0.5)).toFixed(1)));
+    renderCues(); refreshOut(); saveState();
+  }
+  else if(e.key === "," || e.key === "."){
+    c.time = Math.max(0, Math.min(CFG.dur, +(c.time + (e.key === "." ? 1 : -1) * frame()).toFixed(3)));
+    delete scheduled[c.id]; mutated();
+  }
+  else if(e.key === "h"){ c.time = +v.currentTime.toFixed(3); delete scheduled[c.id]; mutated(); }
+});
+</script>
+</body>
+</html>

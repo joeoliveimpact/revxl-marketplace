@@ -1,82 +1,135 @@
 ---
 name: editor-superengine:editor-start-here
-description: The router for editor-superengine. Use when someone says "edit my reel", "cut this talking head", "first cut", "tighten the gaps", "design the hook", "motion comps", "where do I start with editing", or "editor superengine". Also use any time it is not yet clear whether the ask is about the spoken cut or the visuals. Names the pipeline order, sends the work to the right skill, and runs the dependency check before anything touches a file.
+description: The router for editor-superengine. Use for "edit my reel", "where do I start with editing", "editor superengine", "what's next", "where am I with this reel", "start a new reel", "go ahead with my board Send", "act on my Send", or when it is not clear which editing skill an ask belongs to. Names the next move, says why, and invokes the skill that owns it.
 ---
 
 # Editor superengine: start here
 
-Two build skills, one order, four shared references. This skill decides which one you are
-in and checks the machine can run it.
+## Output contract
+
+Every run returns, in this order:
+
+1. One plain line naming the job and why, never a skill name, e.g. "This is your raw recording,
+   so I'll start your first cut."
+2. That skill, invoked with the Skill tool by its full name from the table below.
+3. When nothing fits, say so plainly: "That isn't something the editor does." When the ask is on
+   the not-built list, say "That part of the editor isn't built yet; it's coming in a later update."
+   One follow-up is allowed: "If the reel has a Beat Map, I can leave a note on that moment for later." Never improvise either one.
+
+## Re-invoke guard
+
+- If the conversation was compacted since this skill loaded, invoke this skill again before
+  going on. Re-running is safe: the router refreshes progress and hands work to its owner.
+- One hand-off per ask. Once a skill has the work, don't route again unless the ask changes. In Auto edit, hand over every stage in turn (house-rules section 5).
 
 ## Pipeline order
 
 ```
-raw recording
-   -> reel-first-cuts      spoken edit: probe, transcribe, rulings, waveform gate,
-                           gaps, render, silence budget, ear pass
-   -> PICTURE LOCK         the cut is signed off and the timeline stops moving
-   -> reel-motion-comps    visuals: directions, ladders, rulings from frames
+recording-preflight      before recording: check the setup, test clip
+   -> recording
+   -> reel-first-cuts    the spoken edit (fixes a joined master first)
+   -> PICTURE LOCK       the cut is signed off and the timeline stops moving
+   -> reel-grade   the colour (optional; before the visuals and the sound)
+   -> reel-canvas-build  the visuals: plan and looks (cutaway clips come in through reel-broll, on the Beat Map)
+   -> reel-captions      the words on the video: the look and the marked words (needs the Beat Map Send)
+   -> reel-sound-pass    the sound, mixed on the cut (after the lock, before the final video)
+   -> reel-canvas-build  the render: a 720p preview, then the final video once the client OKs it (it draws the captions and carries the finished sound)
+   -> reel-cover  optional: after the 720p preview, before the final video
+   -> reel-trials  optional: needs the OK'd preview
+   (pre check before the final video, full check after it: reel-canvas-build's qa-check.md)
+   -> pro-editor-handoff  only when asked
+
+caption-writer           any time after the cut
+reel-teardown            separate: someone else's reel, or an old posted one
+style-decoder            separate: measure how a reel is edited, to copy the style
 ```
 
-**Nothing about the visuals starts before picture lock.** Every comp is timed against the
-cut, so a cut that moves invalidates every timing derived from it.
+**Nothing about the visuals starts before picture lock.** Every comp is timed against the cut,
+so a cut that moves invalidates every timing derived from it.
 
-**Sound design, music and captions come after motion comps and are not in 0.1.0.** If the
-ask is a sound pass, mastering levels or burned-in captions, say so plainly rather than
-improvising it here.
+## Pick a style for each reel
+
+Before work on any reel, unless the picker already printed "This reel uses ..." or "Auto edit with ..." for this reel in this conversation, run:
+
+`<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/saved_style.py" picker <reel folder>`
+
+Use `<editor python>` defined below. If it prints the question, ask it as ONE question with those options (default first, recommended). Run the same script's `pick <reel folder> <style name|fresh|copy>` with the client's answer, quoting names with spaces. "Copy a reel I like" goes to `editor-superengine:style-decoder`; after the client approves the decoded style, save it with `${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/saved-styles.md` §5: it becomes a new Style N used on this reel, never the default unless the client asks. Offer the rename and say each "Not copied" line in plain words.
+
+When the picker prints "Auto edit with ...", say it word for word, then follow section 5 of house-rules.md (below). "stop" or "normal mode" runs `pick <reel folder> normal`.
+
+## What's next
+
+For "what's next", "what's next in editing <reel>", "where am I with this reel", or "start a new reel",
+read the reel's progress and name the next move. For "go ahead with my <board> Send" or "act on my Send", route that Send to its owner.
+Follow `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/whats-next.md` for both modes and optional steps not done.
 
 ## Which skill
 
-| The ask | Go to |
+| The ask | Invoke |
 |---|---|
-| "cut this", "build the A-roll", "make a first pass" | `reel-first-cuts` |
-| "tighten the gaps", "the pause after X drags", "there's an orphan word" | `reel-first-cuts`, Stage 9 |
-| "why does this sound clipped", "did the cut damage a word" | `reel-first-cuts`, Stage 3 |
-| "how long is it", "speed it up", "1.15x" | `reel-first-cuts`, Stage 5 |
-| "design the hook", "comp the intro", "direction options" | `reel-motion-comps` |
-| "ladder the blur", "iterate this element" | `reel-motion-comps`, step 3 |
-| "will this get covered by the Instagram UI" | `reel-motion-comps`, safe-zone pre-check |
-| a sound pass, music, captions, compositing | not in 0.1.0, say so |
+| first-time setup, "is the editor ready", "check the editor's setup or tools", "open my editor hub", "Open my <board> for <reel>", "switch my editor controls to Advanced or Simple", "show all my reels", "start or restart my editor boards", a missing or broken tool, anything another skill says isn't set up | `editor-superengine:editor-doctor` |
+| "before I record", "I'm about to record", "check my setup" (before filming), "test clip", "will my mic and light work" (light gets advice; the test clip checks the camera and sound) | `editor-superengine:recording-preflight` |
+| a master joined from several clips; words chopped after the first clip in a cut | `editor-superengine:reel-first-cuts` |
+| "cut this", "build the A-roll", "make a first pass", "tighten the gaps", "the pause after X drags", "speed it up", "did the cut clip a word", "two recordings", "several clips", "sync camera and mic", "make Shorts from this long recording" | `editor-superengine:reel-first-cuts` |
+| "grade this reel", "colour grade", "fix the colour", "make it warmer", "the skin looks off", "open the Grade Board", "match the colour between my recordings" | `editor-superengine:reel-grade` |
+| "add B-roll", "generate B-roll", "AI cutaway", "cutaway", "use my clip over ..." | `editor-superengine:reel-broll` |
+| "build the beat map", "plan what goes on screen", "add a scene", "lower third", "counter", "end card", "title card", "pick a layout", "punch-ins", "zoom in on that word", "layout switches", "follow my face", "slow push", "ken burns", "ratchet zoom", "design the hook", "motion comps", "comp the intro", "direction options", "ladder the blur", "will the Instagram buttons cover this", "render it", "render the master", "make the preview", "make the final video", "export the reel", "add a transition", "whip", "glitch", "fade between" | `editor-superengine:reel-canvas-build` |
+| "sound pass", "add sound effects", "mix the sound", "master the audio", "clean up my voice", "run Auphonic", "add music", "pick a track" | `editor-superengine:reel-sound-pass` |
+| "Run QA for <reel>", "check my reel before I post" | `editor-superengine:reel-canvas-build` |
+| "a hand-off to another editor", "open this reel in Resolve", "editable timeline" | `editor-superengine:pro-editor-handoff` (only when configured `nle` is `resolve` or `mcp`) |
+| "make a trial version", "trial reels", "try several openings from this cut" | `editor-superengine:reel-trials` (needs an approved preview) |
+| words on the video: "add captions", "burned-in captions", "subtitles", "karaoke captions", "pick a caption look", "open the Look Picker", "highlight these words", "change the caption colour", "turn captions off", "make this my default caption look" | `editor-superengine:reel-captions` |
+| write or check the post caption (the text under the post), the hook line, alt text, hashtags | `editor-superengine:caption-writer` |
+| "pick a cover for my reel", "open the Cover Picker", choose a cover frame or add a short cover title, "thumbnail", "cover photo" | `editor-superengine:reel-cover` |
+| tear down a posted reel, "what would we fix", "make a page to send them" | `editor-superengine:reel-teardown` |
+| copy a creator's editing style, measure how a reel is edited, "make mine look like this reel", "decode this reel's style", "build a template from this style" | `editor-superengine:style-decoder` |
+| "save this as my style", "my styles", "rename my style", "make Style 2 my default", "delete a style", "auto edit", "turn off auto edit" | `editor-superengine:reel-canvas-build` (`${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/saved-styles.md`) |
 
-Invoke each with the Skill tool by its full name: `editor-superengine:reel-first-cuts`, `editor-superengine:reel-motion-comps`.
+No Beat Map and the sound pass is done: the finished video already exists; say so and offer the visuals or captions as options (both need a Beat Map). 'Render the cut' during the first cut is reel-first-cuts.
+
+An ask that says "caption" but not which: ask once, "The words on the video, or the text under
+the post?" The text under the post is caption-writer. Words on the video are `editor-superengine:reel-captions`.
+
+Every skill here is invoked as `editor-superengine:<skill folder>`.
+
+### Not built yet
+
+Goldmine, Motion easing on the glass card,
+graphics placed around the face, and matching the colour
+of takes inside one recording: say "That part of the editor isn't built yet; it's coming in a later update."
+One follow-up is allowed: "If the reel has a Beat Map, I can leave a note on that moment for later."
+Never improvise it here or in another skill.
+
+## Before the first skill that runs anything
+
+`<editor python>` is the editor's own Python. Windows: `"$(H="$LOCALAPPDATA/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/Scripts/python.exe"`. macOS: `"$(H="$HOME/Library/Application Support/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/bin/python"`. Keep the quotes.
+Check that it exists with a file check only: `[ -f <editor python> ]`.
+
+If it doesn't exist, or any skill reports a missing tool, invoke
+`editor-superengine:editor-doctor`. Nothing here installs anything, and the client never types a
+command.
+
+## What the client hears
+
+The client never sees file names, paths, JSON, STATUS or FIX lines, or script names. Translate
+every one into plain words. How, with a line for each moment:
+`${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-the-coach-hears.md`.
 
 ## The four shared references
 
 | Reference | Applies when |
 |---|---|
-| `${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/house-rules.md` | Always, before the first file. Duplicate the source, fewest generations, never judge picture on a proxy, load the governing docs first. |
+| `${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/house-rules.md` | Always, before the first file. Duplicate the source, fewest generations, never judge picture on a proxy, load the governing docs first; Auto edit and controls in chat (sections 5 and 6). |
 | `${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/preview-before-render.md` | Before any render, export or master. Cheap previews go to the reviewer first. |
 | `${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/frame-zero-hook.md` | Any time the hook frame is being designed or checked. |
 | `${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/design-prompt.md` | Handing a design canvas the art-director brief. |
-
-## Dependency check, run it first
-
-```bash
-ffmpeg -version
-ffprobe -version
-python --version
-python -c "import faster_whisper; print(faster_whisper.__version__)"
-python ${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/transcribe_words.py --selftest
-```
-
-- **ffmpeg and ffprobe** must both resolve. Every measurement, gate and render is ffmpeg.
-  Note the version: `-fps_mode` needs 5.1 or newer, older builds want `-vsync`.
-- **Python 3.10 or newer.** Detect `python3` or `python`; do not assume either name.
-- **faster-whisper** is only needed for the bundled transcriber. If the import fails, you
-  can still run the pipeline with a bring-your-own transcript that satisfies
-  `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/transcription-contract.md`.
-  Install it with `pip install faster-whisper`.
-- The `--selftest` line proves the transcriber's own device and precision derivations
-  without downloading a model.
-
-Report what is missing before starting, not halfway through Stage 4.
 
 ## The one rule that outranks the router
 
 **The human rules from frames and from the ear, never from prose.**
 
-Do not ask for approval of a description, a plan or a table when the thing being judged is
-a picture or a sound. Render the frame. Serve the cut. Every gate in this plugin measures
-*fit*; none of them measures whether it lands. Three stages of `reel-first-cuts` stop for a
-ruling, and every pick in `reel-motion-comps` comes off a rendered comp. That is the design,
-not a formality.
+Do not ask for approval of a description, a plan or a table when the thing being judged is a
+picture or a sound. Render the frame. Serve the cut. Every gate in this plugin measures *fit*;
+none of them measures whether it lands. Three stages of `reel-first-cuts` stop for a ruling, and
+every look in `reel-canvas-build` is picked off a rendered comp; the Beat Map only plans which look goes where. That is the design, not a
+formality. In Auto edit, the client rules on the finished preview instead (house-rules section 5).

@@ -1,0 +1,16 @@
+{
+  "id": "quote",
+  "category": "quote",
+  "kind": "overlay",
+  "slots": {
+    "quote": {"maxChars": 90, "default": "Simple beats clever when people are scrolling fast.", "hint": "the line, word for word"},
+    "attribution": {"maxChars": 30, "default": "Sample Speaker", "hint": "who said it"}
+  },
+  "dur": [3, 10],
+  "params": {
+    "accent": {"type": "color", "default": "#4f8cff"},
+    "font": {"type": "string", "default": "Inter"}
+  },
+  "source": "editor-superengine original (PB-34)",
+  "licence": "own"
+}

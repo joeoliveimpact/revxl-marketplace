@@ -1,0 +1,5 @@
+# Windows + NVIDIA GPU: Parakeet on onnxruntime-gpu, CUDA 12 + cuDNN 9 runtime from pip.
+# 1.24.x is the last onnxruntime-gpu on PyPI built for CUDA 12 (1.27+ is CUDA 13).
+-r align.in
+onnx-asr[hub]==0.12.0
+onnxruntime-gpu[cuda,cudnn]==1.24.4

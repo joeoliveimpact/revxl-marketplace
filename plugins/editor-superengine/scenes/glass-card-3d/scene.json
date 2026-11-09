@@ -1,0 +1,22 @@
+{
+  "id": "glass-card-3d",
+  "category": "3d",
+  "kind": "overlay",
+  "layer": "3d",
+  "slots": {
+    "text": {"maxChars": 28, "default": "Three steps to calm mornings", "hint": "one short line or number the coach said"}
+  },
+  "dur": [2, 8],
+  "params": {
+    "place": {"type": "string", "enum": ["top", "bottom"], "default": "bottom"},
+    "accent": {"type": "color", "default": "#4f8cff"},
+    "font": {"type": "string", "default": "Inter"},
+    "seed": {"type": "number", "default": 7, "min": 0, "max": 999999},
+    "mode": {"type": "string", "enum": ["auto", "webgl", "css"], "default": "auto"},
+    "glow": {"type": "string", "enum": ["soft", "bloom"], "default": "bloom"},
+    "dust": {"type": "string", "enum": ["points", "quarks"], "default": "quarks"}
+  },
+  "regions": {"top": [60, 260, 960, 760], "bottom": [60, 1100, 960, 1460]},
+  "source": "editor-superengine original (N3, PB-38 pitch A)",
+  "licence": "own"
+}

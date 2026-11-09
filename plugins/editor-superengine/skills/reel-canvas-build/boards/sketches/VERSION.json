@@ -1,0 +1,12 @@
+{
+  "package": "tweakpane",
+  "version": "4.0.5",
+  "tarball_sha256": "8cf819860e51128ea6031528c2ec6a92413785928d49c16170562d3f9f39134d",
+  "files": {
+    "tweakpane.min.js": "0cde7776e6d8a6cd32d128d21e3f203b7e152adc5a5ea8a9b86ff78c0276696c"
+  },
+  "licence": {
+    "source_url": "https://raw.githubusercontent.com/cocopon/tweakpane/4.0.5/LICENSE.txt",
+    "sha256": "385accdd560bac0013a2965fe9d39c45808b7542d2bbb3ef0cceeb60b7da71c3"
+  }
+}

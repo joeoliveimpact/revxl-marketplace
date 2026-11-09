@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Look Picker</title>
+<style id="caption-font">
+
+</style>
+<style>
+:root{color-scheme:dark;--bg:#0a0a0b;--panel:#111113;--ink:#f3f2ef;--dim:#aaa8a5;--line:#353537;--accent:#ff5a3c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 "Segoe UI",system-ui,sans-serif}
+[hidden]{display:none!important}
+header{display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line)}
+h1{font-size:24px;font-weight:400;margin:0 auto 0 0;letter-spacing:-.02em}
+main{max-width:1500px;margin:auto;padding:8px 18px 28px}
+h2{font-size:19px;font-weight:500;margin:24px 0 4px}
+p{color:var(--dim);margin:4px 0 14px}
+button,input{font:inherit}
+button{color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:7px 15px;cursor:pointer}
+button:hover{border-color:var(--ink)}
+button:disabled{opacity:.45;cursor:default}
+#send{background:var(--ink);color:var(--bg);font-weight:600}
+:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.look-card,.layout-card{display:block;min-width:0;padding:8px;border:1px solid var(--line);border-radius:12px;background:var(--panel);text-align:left;color:var(--ink)}
+.look-card{cursor:pointer}
+.look-card[aria-checked=true]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.look-card .label,.layout-card .label{display:block;padding:8px 2px 2px;font-weight:500}
+.viewport{position:relative;width:100%;aspect-ratio:9/16;overflow:hidden;border-radius:7px;background:#0e0f12}
+.preview{position:absolute;left:0;top:0;width:1080px;height:1920px;transform-origin:0 0;pointer-events:none}
+.layout-card{cursor:pointer;border-radius:12px}
+#none{margin-top:12px;border-radius:20px;padding:7px 15px}
+fieldset{margin:24px 0 12px;padding:16px;border:1px solid var(--line);border-radius:12px}
+legend{padding:0 6px;font-weight:500}
+.options{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px 24px}
+.options label{display:flex;align-items:center;gap:9px}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);flex:none}
+#accent{width:120px;padding:6px 9px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+.quiet{color:var(--dim);font-size:13px}
+#tips p{margin:5px 0}
+#saved{color:#62d69a}
+#saved.error{color:#ff9382}
+@media(max-width:500px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.options{grid-template-columns:1fr}}
+.advanced-controls{border:1px solid var(--line);border-radius:8px;padding:12px;margin:12px 0}
+.advanced-controls>summary{cursor:pointer;color:var(--ink);font-weight:600}
+</style>
+</head>
+<body>
+<header><h1>Look Picker</h1><button id="replay" disabled>Replay all</button>
+<button id="send" disabled>Send to Claude</button><span id="saved" role="status" aria-live="polite"></span></header>
+<main>
+<p id="empty" hidden>Ask Claude to get the Look Picker ready for this reel.</p>
+<div id="board" hidden>
+<section aria-labelledby="looks-title"><h2 id="looks-title">Looks</h2>
+<p>Choose a caption look for your words. Click a card to replay it.</p>
+<div role="radiogroup" aria-label="Caption look" id="look-choices">
+<div id="looks" class="cards" role="presentation"></div>
+<button id="none" class="look-choice" role="radio" aria-checked="false" data-look="none">No captions</button>
+</div></section>
+<details class="advanced-controls"><summary>Advanced controls</summary>
+<section aria-labelledby="layouts-title"><h2 id="layouts-title">Layouts</h2>
+<p id="layout-note">Preview only. Choose a look above to see it on each layout.</p>
+<div id="layouts" class="cards"></div></section>
+<fieldset><legend>Caption options</legend><div class="options">
+<label><input id="mark-look" type="checkbox">Marker highlight</label>
+<label><input id="under-small-overlays" type="checkbox" checked>Captions under small overlays</label>
+<label><input id="line-breaks" type="checkbox" checked>Natural line breaks</label>
+<label><input id="echo-suppression" type="checkbox">Hide captions that repeat on-screen text</label>
+<label><input id="loud-emphasis" type="checkbox">Stress loud words</label>
+<label for="accent">Accent colour (optional) <input id="accent" type="text" placeholder="#rrggbb" maxlength="7"
+ aria-describedby="accent-help" spellcheck="false" autocomplete="off"></label>
+</div><p id="accent-help" class="quiet">Leave the colour empty to use the look's own accent.</p></fieldset>
+</details>
+<label><input id="make-default" type="checkbox">Set as my default</label>
+<aside id="tips" class="quiet" aria-label="Suggestions"></aside>
+</div>
+</main>
+<script src="./board-client.js"></script>
+<script>
+'use strict';
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const REEL=new URLSearchParams(location.search).get('reel')||'';
+const BASE='/videos/'+encodeURIComponent(REEL)+'/';
+// lane fix: the licensed Inter font comes from the reel's picker folder (captions.py picker copies it)
+const INTER=new FontFace('Inter',"url('"+BASE+"work/look-picker/Inter-Regular.woff2') format('woff2')",{weight:'400'});
+document.fonts.add(INTER);INTER.load().catch(()=>{});
+const reelUrl=p=>BASE+String(p).split('/').map(encodeURIComponent).join('/');
+const LAYOUTS=['full','split','stack','pip','overlay'];
+const LABELS={full:'Full frame',split:'Split',stack:'Stack',pip:'Picture in picture',overlay:'Overlay'};
+const S={schema:1,reel:REEL,caption_style:{style:null,mark_look:'accent',under_small_overlays:true,
+ line_breaks:true,echo_suppression:false,loud_emphasis:false},make_default:false,sent_at:null};
+let C=null, bc=null, timer=null, saving=Promise.resolve();
+const previews=[];
+window.LP={S,ready:false,replayAll};
+const colourOK=()=>!S.caption_style.accent||/^#[0-9a-f]{6}$/i.test(S.caption_style.accent);
+function status(text,bad=false){$('#saved').textContent=text;$('#saved').className=bad?'error':'';}
+async function json(path){
+ try{const r=await fetch(reelUrl(path),{cache:'no-store'});return r.ok?await r.json():null;}
+ catch(e){return null;}
+}
+// Serialize autosaves so a slow earlier request cannot overwrite a newer edit or Send.
+function saveState(){
+ const snapshot=JSON.parse(JSON.stringify(S));
+ saving=saving.then(()=>bc.save(snapshot));
+ return saving;
+}
+function persist(){
+ S.sent_at=null;
+ clearTimeout(timer);
+ timer=setTimeout(()=>saveState().then(r=>{if(!r.ok)status('AUTO-SAVE FAILED. Try again in a moment.',true);}),400);
+ status('Changes not sent.');
+}
+function restore(source){
+ if(!source||typeof source!=='object')return;
+ const pick=source.caption_style||source;
+ if(pick.style==='none'||Object.hasOwn(C.looks,pick.style))S.caption_style.style=pick.style;
+ if(['accent','marker'].includes(pick.mark_look))S.caption_style.mark_look=pick.mark_look;
+ for(const key of ['under_small_overlays','line_breaks','echo_suppression','loud_emphasis'])
+  if(typeof pick[key]==='boolean')S.caption_style[key]=pick[key];
+ if(typeof pick.accent==='string'&&pick.accent)S.caption_style.accent=pick.accent;
+ else delete S.caption_style.accent;
+ if(typeof source.make_default==='boolean')S.make_default=source.make_default;
+ if(Object.hasOwn(source,'sent_at'))S.sent_at=typeof source.sent_at==='string'?source.sent_at:null;
+}
+function syncControls(){
+ const pick=S.caption_style;
+ $('#mark-look').checked=pick.mark_look==='marker';
+ for(const [id,key] of [['under-small-overlays','under_small_overlays'],['line-breaks','line_breaks'],
+  ['echo-suppression','echo_suppression'],['loud-emphasis','loud_emphasis']])$('#'+id).checked=pick[key];
+ $('#accent').value=pick.accent||'';$('#accent').setAttribute('aria-invalid',String(!colourOK()));
+ $('#make-default').checked=S.make_default;
+ syncPick();
+}
+function syncPick(){
+ const choices=$$('#look-choices [role=radio]');
+ for(const el of choices)el.setAttribute('aria-checked',String(el.dataset.look===S.caption_style.style));
+ const focus=choices.find(el=>el.dataset.look===S.caption_style.style)||choices[0];
+ for(const el of choices)el.tabIndex=el===focus?0:-1;
+ $('#send').disabled=!S.caption_style.style||!colourOK();
+ $('#layout-note').textContent=S.caption_style.style==='none'?'Preview only. Captions are off.':
+  S.caption_style.style?'Preview only. Layout choices stay in your Beat Map.':
+  'Preview only. Choose a look above to see it on each layout.';
+}
+function pickLook(id){
+ S.caption_style.style=id;syncPick();
+ previews.filter(p=>p.layout).forEach(p=>caption(p,id));
+ replayAll();persist();
+}
+function keyPick(e){
+ const choices=$$('#look-choices [role=radio]'), i=choices.indexOf(e.currentTarget);
+ let n=null;
+ if(e.key==='ArrowRight'||e.key==='ArrowDown')n=(i+1)%choices.length;
+ if(e.key==='ArrowLeft'||e.key==='ArrowUp')n=(i+choices.length-1)%choices.length;
+ if(e.key==='Home')n=0;if(e.key==='End')n=choices.length-1;
+ if(n!==null){e.preventDefault();choices[n].focus();pickLook(choices[n].dataset.look);}
+}
+function frameVars(v){
+ return {opacity:v.autoAlpha??1,transform:`translateX(-50%) translateY(${v.y??0}px) scale(${v.scale??1})`};
+}
+// # taste: cubic-bezier approximations of the engine's GSAP power eases for still previews.
+function ease(name){
+ const curves={'power1.out':'.25,.46,.45,.94','power2.out':'.215,.61,.355,1',
+  'power3.out':'.165,.84,.44,1','power4.out':'.23,1,.32,1','back.out':'.175,.885,.32,1.275'};
+ if(name==='none'||name==='linear')return 'linear';
+ return 'cubic-bezier('+(curves[name]||curves['power2.out'])+')';
+}
+function replay(p){
+ const el=p.root.querySelector('.caption'), look=C.looks[p.look];
+ if(!el||!look)return;
+ el.getAnimations({subtree:true}).forEach(a=>a.cancel());
+ const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+ const opts={duration:reduced?0:look.pop.seconds*1000,easing:ease(look.pop.ease),fill:'both'};
+ el.style.visibility='visible';
+ el.animate([frameVars(look.pop.from),frameVars(look.pop.to)],opts);
+ if(S.caption_style.mark_look==='marker'){
+  // The marker is a real element in the supplied marker markup, behind the marked words.
+  p.markers.forEach(mark=>{
+   mark.style.transformOrigin='left center';
+   mark.animate([{transform:'scaleX(0)'},{transform:'scaleX(1)'}],opts);
+  });
+ }
+}
+function replayAll(){previews.forEach(replay);}
+function caption(p,id){
+ p.look=id;
+ const look=C.looks[id], style=p.root.querySelector('style[data-look]'), band=p.root.querySelector('#captions');
+ // Font faces are registered once in the document, including for captions inside shadow roots.
+ style.textContent=look?look.css.replace(/@font-face\s*\{[^}]*\}/gi,''):'';
+ band.innerHTML=look?look.html[S.caption_style.mark_look]:'';
+ p.markers=[];
+ if(look&&S.caption_style.mark_look==='marker'){
+  // lane fix: the swipe is the engine's .cap-marker-swipe strip behind each marked run (captions.layer)
+  p.markers=[...band.querySelectorAll('.cap-marker-swipe')];
+ }
+ const accent=S.caption_style.accent;
+ if(look&&accent&&colourOK()){
+  // Both generated CSS and inline marker markup may carry the look's accent literal.
+  const own=look.css.match(/\.marked\s*\{[^}]*color:\s*(#[\da-f]{6})/i);
+  if(own){style.textContent=style.textContent.replace(new RegExp(own[1],'gi'),accent);
+   for(const el of band.querySelectorAll('[style]'))el.setAttribute('style',
+    el.getAttribute('style').replace(new RegExp(own[1],'gi'),accent));}
+ }
+ replay(p);
+}
+function preview(card,layout,look,isLayout){
+ const viewport=document.createElement('div');viewport.className='viewport';viewport.setAttribute('aria-hidden','true');
+ const host=document.createElement('div');host.className='preview';viewport.append(host);card.append(viewport);
+ // Each look owns its CSS and caption IDs; shadow roots prevent the five styles from leaking into one another.
+ const root=host.attachShadow({mode:'open'}), baseStyle=document.createElement('style');
+ baseStyle.textContent=':host{display:block}.band{position:absolute;inset:0;pointer-events:none}'+
+  '#captions{z-index:600}.caption{transform:translateX(-50%);visibility:visible}';
+ root.append(baseStyle);
+ const style=document.createElement('style');style.dataset.look='';root.append(style);
+ const lay=C.layouts[layout], [x,y,w,h]=lay.box;
+ const image=document.createElement('img');image.src=reelUrl(C.frames[layout]);image.alt='';
+ image.style.cssText=`position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;object-fit:cover;`+
+  `border-radius:${lay.radius}px;box-shadow:${lay.shadow};z-index:${layout==='pip'?500:100}`;
+ root.append(image);
+ const plate=document.createElement('div');plate.className='band';plate.style.zIndex='400';plate.innerHTML=lay.plate;
+ root.append(plate);
+ const band=document.createElement('div');band.id='captions';band.className='band';root.append(band);
+ const p={root,host,viewport,look,layout:isLayout};previews.push(p);caption(p,look);
+ const size=()=>{host.style.transform=`scale(${viewport.clientWidth/1080})`;};
+ new ResizeObserver(size).observe(viewport);size();
+ return p;
+}
+function render(){
+ for(const [id,look] of Object.entries(C.looks)){
+  const card=document.createElement('button');card.className='look-card';card.dataset.look=id;
+  card.setAttribute('role','radio');card.setAttribute('aria-label',look.label);
+  preview(card,'full',id,false);
+  const label=document.createElement('span');label.className='label';label.textContent=look.label;card.append(label);
+  card.onclick=()=>{pickLook(id);replay(previews.find(p=>p.host.parentNode.parentNode===card));};
+  card.onkeydown=keyPick;$('#looks').append(card);
+ }
+ $('#none').onclick=()=>pickLook('none');$('#none').onkeydown=keyPick;
+ if(C.recommended){
+  const card=$$('#look-choices [role=radio]').find(el=>el.dataset.look===C.recommended.value);
+  if(card){
+   const badge=document.createElement('small');badge.className='quiet';badge.textContent='Your last pick';
+   badge.style.display='block';card.append(badge);
+  }
+ }
+ for(const layout of LAYOUTS){
+  const card=document.createElement('button');card.className='layout-card';card.dataset.layout=layout;
+  card.setAttribute('aria-label','Replay '+LABELS[layout]+' preview');
+  const p=preview(card,layout,S.caption_style.style,true);
+  const label=document.createElement('span');label.className='label';label.textContent=LABELS[layout];card.append(label);
+  card.onclick=()=>replay(p);$('#layouts').append(card);
+ }
+ for(const tip of C.tips||[]){const p=document.createElement('p');p.textContent=tip;$('#tips').append(p);}
+ syncControls();
+}
+function localISO(){
+ const now=new Date(), offset=-now.getTimezoneOffset(), sign=offset<0?'-':'+';
+ const pad=n=>String(Math.abs(n)).padStart(2,'0');
+ return new Date(now.getTime()+offset*60000).toISOString().slice(0,-1)+sign+pad(Math.trunc(offset/60))+':'+pad(offset%60);
+}
+async function send(){
+ if(!S.caption_style.style||!colourOK())return;
+ clearTimeout(timer);$('#send').disabled=true;status('Sending...');
+ S.sent_at=localISO();
+ const doc=JSON.parse(JSON.stringify(S));
+ try{
+  const saved=await saveState();
+  if(!saved.ok)throw new Error('state');
+  const r=await fetch(BASE+'__save?board=look-picker&name=look-picker-selection.json',
+   {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(doc)});
+  const answer=await r.json().catch(()=>null);
+  if(!r.ok||!answer||!answer.ok)throw new Error('send');
+  status('saved. Tell Claude your caption look is ready.');
+ }catch(e){status('FAILED. Try Send again in a moment.',true);}
+ finally{syncPick();}
+}
+async function init(){
+ try{
+  bc=BoardClient.create({board:'look-picker'});
+  const [config,state,last]=await Promise.all([json('work/look-picker.json'),bc.load(),json('look-picker-selection.json')]);
+  if(!config){$('#empty').hidden=false;return;}
+  C=config;
+  if(C.recommended)restore({style:C.recommended.value});
+  restore(C.current);restore(last);restore(state);
+  $('#board').hidden=false;render();$('#replay').disabled=false;
+  $('#replay').onclick=replayAll;$('#send').onclick=send;
+  for(const [id,key] of [['mark-look','mark_look'],['under-small-overlays','under_small_overlays'],
+   ['line-breaks','line_breaks'],['echo-suppression','echo_suppression'],['loud-emphasis','loud_emphasis']]){
+   $('#'+id).onchange=e=>{
+    S.caption_style[key]=key==='mark_look'?(e.target.checked?'marker':'accent'):e.target.checked;
+    if(key==='mark_look')previews.forEach(p=>caption(p,p.look));
+    persist();
+   };
+  }
+  $('#accent').oninput=e=>{
+   const value=e.target.value.trim();if(value)S.caption_style.accent=value;else delete S.caption_style.accent;
+   e.target.setAttribute('aria-invalid',String(!colourOK()));
+   previews.forEach(p=>caption(p,p.look));syncPick();persist();
+   if(!colourOK())status('Use a colour like #ffcc44, or leave it empty.',true);
+  };
+  $('#make-default').onchange=e=>{S.make_default=e.target.checked;persist();};
+  if(S.sent_at)status('Last sent '+new Date(S.sent_at).toLocaleString());
+  await document.fonts.ready;
+  window.LP.ready=true;
+ }catch(e){$('#board').hidden=true;$('#empty').hidden=false;$('#send').disabled=true;$('#replay').disabled=true;}
+}
+init();
+</script>
+</body>
+</html>

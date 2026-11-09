@@ -1,0 +1,82 @@
+<!doctype html>
+<!-- Adapted from HyperFrames registry/components/cta-close (https://github.com/heygen-com/hyperframes, tag v0.8.184, d15a274c), Apache License 2.0, Copyright 2026 HeyGen, Inc. Modified by editor-superengine: portrait 1080x1920, local GSAP 3.15.0, Inter 400, scene contract. -->
+<html lang="en" data-composition-variables='[
+  {"id":"action_line","type":"string","label":"Action line","default":"Make it happen"},
+  {"id":"button_label","type":"string","label":"Button label","default":"Start now"},
+  {"id":"accent","type":"color","label":"Accent","default":"#71f5a7"},
+  {"id":"font","type":"string","label":"Font family","default":"Inter"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="./vendor/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Inter"; src: url("./fonts/Inter-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; }
+      #hf-cta-end-card { position: relative; width: 1080px; height: 1920px; z-index: 400; font-family: "Inter"; font-weight: 400; color: #f8fafc; --accent: #71f5a7; }
+      #hf-cta-end-card .ground { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; background: #0b0c0e; }
+      #hf-cta-end-card .lockup { position: absolute; left: 510px; top: 845px; width: 900px; display: flex; flex-direction: column; align-items: center; gap: 96px; text-align: center; }
+      #hf-cta-end-card .action { display: block; line-height: 1.02; letter-spacing: -0.035em; white-space: nowrap; }
+      #hf-cta-end-card .w { display: inline-block; }
+      #hf-cta-end-card .button { display: block; padding: 32px 56px; border-radius: 999px; background: var(--accent); color: #0b0c0e; line-height: 1; letter-spacing: -0.01em; white-space: nowrap; transform-origin: 50% 50%; }
+    </style>
+  </head>
+  <body>
+    <div id="hf-cta-end-card" data-composition-id="hf-cta-end-card" data-start="0" data-duration="3.5" data-fps="30" data-width="1080" data-height="1920">
+      <div class="ground plate"></div>
+      <div class="lockup">
+        <div class="action slot" data-slot="action_line"></div>
+        <div class="button plate slot" data-slot="button_label"></div>
+      </div>
+    </div>
+    <script>
+      (function () {
+        const v = window.__hyperframes.getVariables();
+        const root = document.getElementById("hf-cta-end-card");
+        const q = (s) => root.querySelector(s);
+        root.style.setProperty("--accent", v.accent);
+        root.style.fontFamily = JSON.stringify(v.font);
+        const clean = (s) => String(s).trim().replace(/\s+/g, " ");
+        const actionText = clean(v.action_line);
+        const buttonText = clean(v.button_label);
+        const action = q(".action");
+        const button = q(".button");
+
+        // The line lands per word: one span per word, the spaces kept between them.
+        (actionText ? actionText.split(" ") : []).forEach((word, i) => {
+          if (i > 0) action.appendChild(document.createTextNode(" "));
+          const span = document.createElement("span");
+          span.className = "w";
+          span.textContent = word;
+          action.appendChild(span);
+        });
+        button.textContent = buttonText;
+
+        // Character-aware fit, fixed before layout so every render sizes the same. Each character counts as at
+        // least its Inter Regular advance (W = 0.985 em), so the widest fill still fits the 900 px safe width.
+        // ponytail: the widths are Inter's; a wider brand font would need its own table.
+        const NARROW = "fIijlrt1.,:;'!|()[]{}/-";
+        const WIDE = "MWmw@%";
+        const em = (ch) => ch === " " ? 0.29 : NARROW.includes(ch) ? 0.47 : WIDE.includes(ch) ? 1
+          : /[a-z0-9]/.test(ch) ? 0.65 : ch < "\u007f" ? 0.77 : 1;
+        const ems = (s) => Array.from(s).reduce((a, ch) => a + em(ch), 0) || 1;
+        action.style.fontSize = Math.min(220, 860 / ems(actionText)).toFixed(2) + "px";
+        button.style.fontSize = Math.min(64, 748 / ems(buttonText)).toFixed(2) + "px";
+
+        const tl = gsap.timeline({ paused: true });
+        tl.set(q(".lockup"), { xPercent: -50, yPercent: -50 }, 0);
+        // IN, phase one: the action line lands per word at display scale.
+        tl.fromTo(root.querySelectorAll(".w"), { opacity: 0, y: 100 },
+          { opacity: 1, y: 0, duration: 0.62, ease: "power3.out", stagger: 0.1 }, 0.06);
+        // IN, phase two: the capsule pops beneath with one restrained overshoot.
+        tl.fromTo(button, { scale: 0.85, y: 40 }, { scale: 1, y: 0, duration: 0.6, ease: "back.out(1.5)" }, 0.72);
+        tl.fromTo(button, { opacity: 0 }, { opacity: 1, duration: 0.22, ease: "power2.out" }, 0.72);
+        // HOLD: dead still to the end of the scene; the empty set pins the timeline to the full duration.
+        tl.set({}, {}, parseFloat(root.dataset.duration));
+        window.__timelines = window.__timelines || {};
+        window.__timelines["hf-cta-end-card"] = tl;
+      })();
+    </script>
+  </body>
+</html>

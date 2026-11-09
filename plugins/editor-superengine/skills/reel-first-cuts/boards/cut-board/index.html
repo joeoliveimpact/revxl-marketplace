@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Cut Board</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--bg:#f6f3ee;--ink:#1f1d1a;--mute:#7a746c;--line:#e2dcd2;--card:#fffdf9;--acc:#c8553d;--ok:#2f7d4f;--warn:#b7791f;--pick:#fbe9e2;--cut:#2f5d7d}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,Segoe UI,sans-serif}
+header{position:sticky;top:0;background:var(--card);border-bottom:1px solid var(--line);padding:10px 18px;display:flex;gap:18px;align-items:center;flex-wrap:wrap;z-index:5}
+header h1{font-size:18px;margin:0 12px 0 0;font-weight:600}
+.stat{font-variant-numeric:tabular-nums}.stat b{font-size:18px}
+button,select{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:6px;padding:4px 10px;cursor:pointer}
+button.on{background:var(--ink);color:#fff;border-color:var(--ink)}button.send{background:var(--acc);color:#fff;border-color:var(--acc);font-weight:600}
+main{max-width:1080px;margin:0 auto;padding:16px 18px 80px}
+.line{background:var(--card);border:1px solid var(--line);border-radius:10px;margin:0 0 10px;padding:12px 14px}
+.line.drop{opacity:.45}.line h2{font-size:14px;margin:0 0 6px;display:flex;gap:10px;align-items:center;color:var(--mute);font-weight:600}
+.line h2 .id{color:var(--ink)}.line .script{color:var(--mute);font-size:12px;margin-bottom:8px}
+.att{display:grid;grid-template-columns:82px 1fr auto;gap:10px;align-items:start;padding:7px 8px;border-radius:7px;border:1px solid transparent;margin:2px 0}
+.att.pick{background:var(--pick);border-color:#efc9bc}.att .tag{font-size:12px;color:var(--mute);white-space:nowrap}.att .tag b{color:var(--ink)}
+.att .txt{font-size:14px}.att .ctl{display:flex;gap:6px}
+.w{cursor:pointer;border-radius:3px;padding:0 1px}.w:hover{background:#f3d3c8;outline:1px solid #e6a995}
+.w.rm{text-decoration:line-through;color:var(--mute);background:#f1ece3}
+.w.hard{box-shadow:inset 0 -2px 0 var(--acc)}
+.sil{display:inline-block;font-size:12px;padding:0 6px;margin:0 3px;border-radius:9px;border:1px solid var(--line);background:#f1ece3;color:var(--mute);cursor:pointer;vertical-align:1px}
+.sil.on{border-color:var(--acc);color:var(--acc);background:#fdf1ec}.sil.open{outline:2px solid var(--acc)}
+.chips{display:inline-flex;gap:4px;margin:0 4px;vertical-align:1px}.chips button{padding:1px 7px;font-size:12px}.chips button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.sub{font-size:12px;color:var(--warn);margin-top:4px}.sub label{cursor:pointer}
+.sub.review{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.sub.review .why{color:var(--mute)}
+.hint{font-size:12px;color:var(--mute);margin:2px 0 0 8px}
+.gap{display:flex;gap:6px;align-items:center;margin:6px 0 10px 8px;font-size:12px;color:var(--mute)}
+.foot{display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap}.foot input{font:inherit;border:1px solid var(--line);border-radius:6px;padding:4px 8px;flex:1;min-width:200px}
+.shot{font-size:12px}.warn{color:var(--acc);font-weight:600}
+/* UI audit */
+.line.focus{border-color:var(--acc)}
+.hint.top{margin:0 0 12px;font-size:12.5px}
+.unsnap{color:var(--mute);font-size:11px;cursor:help;border-bottom:1px dotted var(--mute)}
+#reset.arm{border-color:var(--acc);color:var(--acc)}
+.danger{max-width:1080px;margin:0 auto;padding:0 18px 40px;display:flex;justify-content:flex-end;gap:10px;align-items:center;font-size:12px;color:var(--mute)}
+@media(max-width:700px){header>*:not(.keep):not(.err){display:none}}
+</style>
+<style id="editor-theme">/* Editor Hub look, theme layer only. Delete this block to undo. */
+:root{color-scheme:dark;--et-bg:#0A0A0B;--et-tile:#111113;--et-tile2:#17171A;--et-hair:rgba(255,255,255,.08);--et-hair2:rgba(255,255,255,.18);
+  --et-ink:#F3F2EF;--et-ink2:rgba(243,242,239,.68);--et-mute:rgba(243,242,239,.44);--et-you:#FF5A3C;
+  --et-sans:"Geist","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;--et-mono:"Geist Mono",ui-monospace,Consolas,monospace}
+html,body{background:var(--et-bg)!important;color:var(--et-ink)}
+body{font-family:var(--et-sans)!important;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--et-sans)!important;font-weight:300!important;letter-spacing:-.02em}
+h1 em{font-style:normal!important;color:var(--et-you)!important}
+input,select,textarea{background:var(--et-tile2)!important;color:var(--et-ink)!important;border:1px solid var(--et-hair2)!important;border-radius:8px}
+video{border-radius:12px}
+::selection{background:rgba(255,90,60,.35)}
+
+:root{--bg:#0A0A0B;--ink:#F3F2EF;--mute:rgba(243,242,239,.48);--line:rgba(255,255,255,.08);--card:#111113;
+  --acc:#FF5A3C;--ok:#62D69A;--warn:#F2CD52;--pick:rgba(255,90,60,.12);--cut:#5CD3D9}
+.att.pick{border-color:rgba(255,90,60,.45)!important}
+.w:hover{background:rgba(255,90,60,.22)!important}
+.w.rm,.sil{background:rgba(255,255,255,.06)!important}
+.sil.on{background:rgba(255,90,60,.16)!important}
+button.on,.chips button.on{color:#0A0A0B!important}   /* the base board puts white text on --ink; --ink is light here */
+
+:root{--et-ease:cubic-bezier(.2,.8,.2,1)}
+:focus-visible{outline:1.5px solid var(--et-ink);outline-offset:3px}
+header{position:sticky;top:0;z-index:8;background:rgba(10,10,11,.72)!important;backdrop-filter:blur(16px) saturate(1.4);-webkit-backdrop-filter:blur(16px) saturate(1.4);
+  border-bottom:1px solid var(--et-hair)!important;padding:10px 18px!important;gap:12px!important;font-size:12.5px;color:var(--et-ink2)}
+header h1{font:300 22px/1.1 var(--et-sans)!important;letter-spacing:-.025em!important;margin:0 8px 0 0!important;color:var(--et-ink)}
+button{background:transparent!important;color:var(--et-ink)!important;border:1px solid var(--et-hair2)!important;border-radius:999px!important;
+  min-height:30px;padding:0 14px;font:400 13px var(--et-sans);cursor:pointer;
+  transition:border-color .25s var(--et-ease),background-color .25s var(--et-ease),color .25s var(--et-ease),opacity .25s var(--et-ease)}
+button:hover{border-color:var(--et-ink)!important}
+button.on{background:rgba(243,242,239,.14)!important;color:var(--et-ink)!important;border-color:var(--et-ink)!important}   /* toggled on: soft fill, so Send stays the one solid */
+button:disabled{opacity:.4;cursor:default}
+button:disabled:hover{border-color:var(--et-hair2)!important}
+#send{background:var(--et-ink)!important;color:var(--et-bg)!important;border-color:var(--et-ink)!important;font-weight:500!important;padding:0 18px!important;min-height:34px}
+#send:hover{background:#fff!important}
+select,input[type=text],input:not([type]){min-height:30px;padding:0 10px;border-radius:10px!important;transition:border-color .25s var(--et-ease)}
+textarea{border-radius:10px!important;transition:border-color .25s var(--et-ease)}
+select:hover,select:focus,input:hover,input:focus,textarea:hover,textarea:focus{border-color:var(--et-ink)!important;outline:0}
+input[type=range]{accent-color:var(--et-ink)}
+#dirty{display:inline-flex;align-items:center;gap:7px;font:500 11px var(--et-mono)!important;letter-spacing:.12em;text-transform:uppercase;color:var(--et-you)!important}
+#dirty::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--et-you);box-shadow:0 0 12px var(--et-you);flex:none;animation:et-pulse 2.4s var(--et-ease) infinite}
+#dirty[hidden]{display:none!important}
+#saved{font:400 12px var(--et-mono)}
+kbd{display:inline-block;min-width:20px;text-align:center;background:rgba(255,255,255,.04);border:1px solid var(--et-hair2);border-bottom-width:2px;
+  border-radius:6px;padding:0 6px;margin:0 1px;font:500 11px/18px var(--et-mono);color:var(--et-ink)}
+@keyframes et-pulse{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+.line{position:relative;isolation:isolate;background:var(--et-tile)!important;border:1px solid var(--et-hair)!important;transition:border-color .3s var(--et-ease),box-shadow .3s var(--et-ease),opacity .3s var(--et-ease)}
+.line::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .3s var(--et-ease);background:radial-gradient(420px circle at var(--mx,50%) var(--my,50%),rgba(255,255,255,.06),transparent 60%)}
+.line:hover{border-color:var(--et-hair2)!important}
+.line:hover::before{opacity:1}
+
+button.on,.chips button.on{color:var(--et-ink)!important}   /* undo the dark-text rule above: on-state is a soft fill now */
+.stat{font:500 10.5px var(--et-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--et-mute)}
+.stat b{font:500 15px var(--et-mono);letter-spacing:0;color:var(--et-ink);margin-left:4px;font-variant-numeric:tabular-nums}
+#mix{font:500 11px var(--et-mono);letter-spacing:.1em;text-transform:uppercase}
+#saved.err{color:var(--et-you)!important;font-weight:500}
+.hint.top{font-size:12.5px!important;line-height:1.7;color:var(--et-ink2)!important;background:rgba(255,255,255,.03);border:1px solid var(--et-hair);border-radius:12px;padding:12px 14px;margin:4px 0 16px!important}
+/* lines as tiles; the j/k line wears the coral ring */
+.line{border-radius:18px!important;padding:16px 18px!important;margin:0 0 12px!important}
+.line.focus{border-color:rgba(255,90,60,.6)!important;box-shadow:0 0 0 1px rgba(255,90,60,.3),0 0 28px -6px rgba(255,90,60,.4)}
+.line.drop{opacity:.38;background:transparent!important;border-style:dashed!important}
+.line.drop::before{display:none}
+.line.drop .script{text-decoration:line-through}
+.line h2{font:500 14px/1.3 var(--et-sans)!important;letter-spacing:-.005em!important;color:var(--et-ink2)!important;margin:0 0 6px!important}
+.line h2 .id{font:500 11px/1 var(--et-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--et-ink);border:1px solid var(--et-hair2);border-radius:999px;padding:5px 10px}
+.line h2 button{min-height:28px;font-size:12px}
+.line .script{color:var(--et-mute)!important;font-size:12.5px!important}
+.att{border-radius:12px!important;padding:9px 10px!important;transition:background-color .25s var(--et-ease),border-color .25s var(--et-ease)}
+.att:hover{background:rgba(255,255,255,.025)}
+.att.pick{background:rgba(255,90,60,.07)!important;border-color:rgba(255,90,60,.4)!important}
+.att .tag{font:400 11.5px/1.5 var(--et-mono)!important;color:var(--et-mute)!important;font-variant-numeric:tabular-nums}
+.att .tag b{font-weight:500;color:var(--et-ink)}
+.att .txt{font-size:15px!important;line-height:1.75;min-width:0;overflow-wrap:anywhere}
+.att .ctl{flex-wrap:wrap;justify-content:flex-end}
+.att .ctl button{min-height:28px;padding:0 12px;font-size:12px}
+/* words: struck ones read as gone */
+.w{border-radius:4px!important;transition:background-color .15s var(--et-ease),color .15s var(--et-ease)}
+.w:hover{outline:0!important}
+.w.rm{color:var(--et-mute)!important;background:transparent!important;opacity:.55;text-decoration-color:var(--et-ink2)}
+.w.rm:hover{opacity:1}
+/* pause chips: pills */
+.sil{font:500 11px/20px var(--et-mono)!important;padding:0 9px!important;border-radius:999px!important;border:1px solid var(--et-hair2)!important;background:transparent!important;
+  color:var(--et-mute)!important;transition:border-color .2s var(--et-ease),color .2s var(--et-ease)}
+.sil:hover{border-color:var(--et-ink)!important;color:var(--et-ink)!important}
+.sil.on{border-color:rgba(255,90,60,.6)!important;color:var(--et-you)!important;background:rgba(255,90,60,.1)!important}
+.sil.open{outline:0!important;border-color:var(--et-you)!important;box-shadow:0 0 0 3px rgba(255,90,60,.25)}
+.chips{flex-wrap:wrap}
+.chips button{min-height:24px;padding:0 10px!important;font:500 11px var(--et-mono)!important}
+.sub{font-size:12px!important}
+.gap{font:400 12px var(--et-mono)!important;color:var(--et-mute)!important;flex-wrap:wrap}
+.foot{gap:10px!important}
+.foot input{min-width:0!important;flex:1 1 200px!important}
+.shot{font:500 10.5px var(--et-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--et-mute)}
+.shot select{font:400 13px var(--et-sans);text-transform:none;letter-spacing:0;max-width:100%}
+.unsnap{font-family:var(--et-mono)}
+.danger{font:400 12px var(--et-mono)!important;color:var(--et-mute)!important;flex-wrap:wrap}
+#reset.arm{border-color:var(--et-you)!important;color:var(--et-you)!important;background:rgba(255,90,60,.1)!important}
+@media (max-width:600px){header{padding:10px 16px!important}main{padding:14px 16px 80px!important}.att{grid-template-columns:minmax(0,1fr)!important;gap:6px!important}.att .ctl{justify-content:flex-start}}
+kbd{font:500 11px var(--et-mono);border:1px solid var(--et-hair2);border-bottom-width:2px;border-radius:6px;padding:1px 6px;color:var(--et-ink);background:var(--et-tile2)}
+.advanced-controls{border:1px solid var(--et-hair);border-radius:8px;padding:8px;margin:8px 0;color:var(--et-ink)}
+.advanced-controls>summary{cursor:pointer;font-weight:600}
+</style>
+<script id="editor-theme-js">document.addEventListener("pointermove",function(e){var t=e.target.closest&&e.target.closest(".line");if(!t)return;var b=t.getBoundingClientRect();t.style.setProperty("--mx",(e.clientX-b.left)+"px");t.style.setProperty("--my",(e.clientY-b.top)+"px");},{passive:true});</script>
+</head><body>
+<header>
+ <h1 id="title">Cut Board</h1>
+ <span class="stat keep">length <b id="len">–</b></span>
+ <span class="stat">pauses <b id="gaps">–</b></span>
+ <span class="stat">lines <b id="nl">–</b></span>
+ <span id="mix" class="warn" hidden>mixed takes: render needs one take</span>
+<details class="advanced-controls"><summary>Advanced controls</summary>
+ <span>pause default <select id="gapdef"></select></span>
+ <span>speed <select id="speed"></select></span>
+ <span title="the pause kept after a comma, a full stop or a list word (gaps.py --beat)">pause after commas <input type="range" id="beat" min="0.2" max="0.4" step="0.01" aria-label="pause after commas, seconds"> <b id="beatv"></b></span>
+</details>
+ <span id="taketotals"></span>
+ <button id="send" class="send keep">send to Claude</button>
+ <span id="saved" style="color:var(--ok)"></span> <span id="dirty" class="warn keep" hidden>changes not sent</span>
+</header>
+<main id="main"></main>
+<div class="danger">wipes every ruling on this page (Ctrl+Z brings it back) <button id="reset">reset to proposed</button></div>
+<script src="./board-client.js"></script>
+<script>
+// state and Send go through the editor boards; the reel comes from this page's own ?reel= (works inside the hub's iframe too)
+const REEL = new URLSearchParams(location.search).get('reel') || '', BASE = '/videos/' + encodeURIComponent(REEL) + '/';
+let bc = null; try { bc = BoardClient.create({board: 'cut-board'}); } catch (e) { bc = null; }
+const reelUrl = p => BASE + String(p).split('/').map(encodeURIComponent).join('/');   // config paths are relative to the reel folder
+let C, S, audio = {}, playing = null, openSil = null, openGap = null, lastWord = null, focus = 0;
+const $ = s => document.querySelector(s);
+// script, label, word, note and shot text is data, never markup (R4-01)
+const esc = v => String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = t => `${Math.floor(t/60)}:${(t%60).toFixed(1).padStart(4,'0')}`;
+const PRESETS = () => C.gap_presets;  // [[name, ms|null], ...]
+// one word ("pause") and a unit on every value (UI audit T3)
+const chipName = (n, ms) => ms == null ? n : /^\d+$/.test(String(n)) ? `${n} ms` : `${n} · ${ms} ms`;
+const msLabel = v => v === 'default' ? `default (${S.gap_default_ms} ms)` : v == null ? 'as spoken' : `${v} ms`;
+
+function seedRm(l){
+  const rm={};
+  l.attempts.forEach((a,j)=>{ const ids=a.words.filter(w=>a.sub_retakes.some(sr=>w.s>=sr.src_from-0.01&&w.s<sr.src_to-0.01)).map(w=>w.i); if(ids.length) rm[String(j)]=ids; });
+  return rm;
+}
+// reworded retakes (make_board's attempts[].review) are never struck by default; the client's keep is stored as rm,
+// so it rides the Send and comes back on reload. Nothing struck = both kept.
+function keepOf(rm,h){ const f=h.first.some(x=>rm.includes(x)), sc=h.second.some(x=>rm.includes(x));
+  return !f&&h.second.every(x=>rm.includes(x))?'first':!sc&&h.first.every(x=>rm.includes(x))?'second':!f&&!sc?'both':null; }
+function reviewHTML(i,j,a,s){ const rm=(s.rm||{})[String(j)]||[];
+  return (a.review||[]).map((h,r)=>{ const k=keepOf(rm,h);
+    return `<div class="sub review" data-review="${i}:${j}:${r}"><b class="rflag">Said twice in different words: pick one</b> <span class="why">${esc(h.why)}</span>`+
+      [['first','Keep first'],['second','Keep second'],['both','Keep both']].map(([v,n])=>`<button data-keep="${i}:${j}:${r}:${v}" class="${k===v?'on':''}" aria-pressed="${k===v}">${n}</button>`).join('')+'</div>'; }).join(''); }
+function fresh(){
+  return { v:2, reel:C.reel, gap_default_ms:C.gap_default_ms, speed:C.speed_default, beat_ms:C.beat_ms,
+    // the board this ruling is made on, fixed when the ruling starts and never re-stamped at save (R1)
+    word_list_hash:Object.fromEntries(Object.entries(C.takes).map(([n,t])=>[n,t.word_list_hash])), board_hash:C.board_hash,
+    lines: C.lines.map(l => ({ id:l.id, pick:l.default, drop:l.default==null, flag:l.flag||null, note:'',
+      gap_after:{mode:'default'}, shot:null, rm:seedRm(l), sil:{} })) };
+}
+function att(i){ const l=S.lines[i]; return l.pick==null?null:C.lines[i].attempts[l.pick]; }
+function rmIntervals(a, rm){
+  // runs of removed words -> [from, to) in source seconds: the removed word's in-point to the next kept word's in-point
+  const out=[]; let run=null;
+  a.words.forEach((w,n)=>{ const gone=rm.includes(w.i); if(gone&&run==null) run=n; if(!gone&&run!=null){ out.push([a.words[run].cin, w.cin]); run=null; } });
+  if(run!=null) out.push([a.words[run].cin, a.src_out]);
+  return out;
+}
+// seconds of silence k that survive its ruling (shared by the length stat and "play as cut")
+function silKept(s,j,k,sv){ const ms=((s.sil||{})[j]||{})[k]; const cap= ms===undefined?S.gap_default_ms:ms; const len=sv.b-sv.a; return cap==null?len:Math.min(len,cap/1000); }
+function lineDur(i){
+  // speech kept in the picked read after drops, and the pauses it keeps after the rulings
+  const a=att(i), s=S.lines[i]; if(!a||s.drop) return {speech:0, pauses:0};
+  const j=String(s.pick);
+  let d=a.src_out-a.src_in;
+  const drops=rmIntervals(a,(s.rm||{})[j]||[]);
+  drops.sort((x,y)=>x[0]-y[0]); let t=-1; drops.forEach(([x,y])=>{ const x2=Math.max(x,t); if(y>x2) d-=y-x2; t=Math.max(t,y); });
+  let pauses=0;
+  a.silences.forEach((sv,k)=>{
+    if(drops.some(([x,y])=>sv.a>=x&&sv.b<=y)) return;           // inside a drop: gone anyway
+    const len=sv.b-sv.a, kept=silKept(s,j,k,sv);
+    d-=len-kept; pauses+=kept;
+  });
+  return {speech:d-pauses, pauses};
+}
+function gapMs(i){ const g=S.lines[i].gap_after; if(g.mode==='override') return g.ms; return S.gap_default_ms; }
+function totals(){
+  const kept=S.lines.map((l,i)=>i).filter(i=>!S.lines[i].drop&&att(i));
+  let speech=0,pauses=0; kept.forEach(i=>{ const r=lineDur(i); speech+=r.speech; pauses+=r.pauses; });
+  const live=kept.filter(i=>{ const r=lineDur(i); return r.speech+r.pauses>0.05; });   // a fully struck line emits no cut, so no gap after it (R4-03, matches selection_to_edl.py)
+  live.forEach((i,k)=>{ if(k<live.length-1){ const g=gapMs(i); pauses+= g==null?0.6:g/1000; } });
+  $('#len').textContent=fmt((speech+pauses)/S.speed); $('#gaps').textContent=pauses.toFixed(1)+'s'; $('#nl').textContent=kept.length+'/'+C.lines.length;
+  const takes=new Set(live.map(i=>att(i).take)); $('#mix').hidden=takes.size<2;   // only lines that emit a cut count (R5-02)
+}
+function setPlayButtons(){ document.querySelectorAll('[data-play]').forEach(b=>{ const on=playing&&playing.key===b.dataset.play, lab=b.dataset.label; b.textContent=on?(lab?'■ stop':'■'):(lab||'▶'); b.classList.toggle('on',!!on); b.title=on?'stop':(lab?'play the picked read as it will be cut: struck words skipped, pauses at their ruled length (space)':'play this read as recorded'); }); }
+// segs = [[from, to], ...] in source seconds. Checked every animation frame, so a stop lands within a frame
+// instead of at the next ~0.25 s timeupdate (UI audit T3).
+function playSegs(key, take, segs){
+  if(playing&&playing.key===key){ stop(); return; } stop(); if(!segs.length) return;
+  const el=audio[take]; let n=0;
+  el.currentTime=segs[0][0]; el.preservesPitch=true; el.playbackRate=S.speed||1; el.play();   /* hear gaps at ship speed */
+  const p=playing={el,key,raf:0};
+  const check=()=>{ if(playing!==p) return; if(el.ended||el.currentTime>=segs[n][1]){ if(++n>=segs.length){ stop(); return; } el.currentTime=segs[n][0]; } };
+  const loop=()=>{ check(); if(playing===p) p.raf=requestAnimationFrame(loop); };
+  el.ontimeupdate=check;   // still fires in a background tab, where animation frames pause
+  p.raf=requestAnimationFrame(loop); setPlayButtons();
+}
+function play(key,take,a,b){ playSegs(key,take,[[a,b]]); }
+function stop(){ if(playing){ cancelAnimationFrame(playing.raf); playing.el.pause(); playing.el.ontimeupdate=null; playing=null; setPlayButtons(); } }
+// "play as cut": the picked read minus struck-word runs, each pause shortened to its ruled length (same math as lineDur)
+function cutSegs(i){
+  const a=att(i), s=S.lines[i]; if(!a||s.drop) return [];
+  const j=String(s.pick), drops=rmIntervals(a,(s.rm||{})[j]||[]), skip=drops.slice();
+  a.silences.forEach((sv,k)=>{ if(drops.some(([x,y])=>sv.a>=x&&sv.b<=y)) return; const kept=silKept(s,j,k,sv); if(sv.b-sv.a-kept>0.005) skip.push([sv.a+kept, sv.b]); });
+  skip.sort((x,y)=>x[0]-y[0]);
+  const segs=[]; let t=a.src_in;
+  skip.forEach(([x,y])=>{ if(x-t>0.01) segs.push([t,Math.min(x,a.src_out)]); t=Math.max(t,y); });
+  if(a.src_out-t>0.01) segs.push([t,a.src_out]);
+  return segs;
+}
+function playCut(i){ const a=att(i); if(a) playSegs('cut:'+i, a.take, cutSegs(i)); }
+function chipRow(cur, data){ return `<details class="advanced-controls" data-controls-key="${esc(data)}"><summary>Advanced controls</summary><span class="chips">${PRESETS().map(([n,ms])=>`<button data-${data} data-ms="${ms}" class="${cur===ms?'on':''}">${esc(chipName(n,ms))}</button>`).join('')}<button data-${data} data-ms="default" class="${cur==='default'?'on':''}">${msLabel('default')}</button></span></details>`; }
+function silLabel(sv, ms){ const len=sv.b-sv.a; const cap= ms==='default'?S.gap_default_ms:ms; if(cap==null) return `keep ${len.toFixed(1)}s`; const kept=Math.min(len,cap/1000); return `✂ ${len.toFixed(1)}s → ${kept.toFixed(2)}s`; }
+
+function attemptHTML(i, j, a, s, picked){
+  const jj=String(j), rm=(s.rm||{})[jj]||[], silSt=(s.sil||{})[jj]||{};
+  const silAfter={}; a.silences.forEach((sv,k)=>{ (silAfter[sv.after]=silAfter[sv.after]||[]).push([sv,k]); });
+  let html='';
+  a.words.forEach((w,n)=>{
+    const gone=rm.includes(w.i);
+    const prevGone=n>0&&rm.includes(a.words[n-1].i);
+    const hard=!w.snapped&&((gone&&!prevGone)||(!gone&&prevGone));   // a cut boundary with no silence to sit in
+    html+=`<span class="w${gone?' rm':''}${hard?' hard':''}" data-w="${i}:${j}:${w.i}" title="${hard?'no silence before this word: the cut lands mid-speech and gets waveform-checked at Stage 3 · ':''}${gone?'click to put this word back · shift-click puts back the run':'click to remove this word · shift-click removes the run'}">${esc(w.w)}</span> `;
+    (silAfter[w.i]||[]).forEach(([sv,k])=>{
+      const ms= silSt[k]===undefined?'default':silSt[k];
+      const isOpen= openSil&&openSil[0]===i&&openSil[1]===j&&openSil[2]===k;
+      html+=`<span class="sil${ms!=='default'?' on':''}${isOpen?' open':''}" data-sil="${i}:${j}:${k}" title="this pause is trimmed automatically - click to keep it or change the trim">${silLabel(sv,ms)}</span>`;
+      if(isOpen) html+=chipRow(ms, `silset="${i}:${j}:${k}"`);
+    });
+  });
+  return html;
+}
+
+// "changes not sent" = the board differs from the last Send (cut-selection.json), ignoring saved_at;
+// before any Send, from how the board opened (UI audit #8)
+const canon=o=>JSON.stringify(o,(k,v)=>{ if(k==='saved_at') return undefined; if(Array.isArray(v)) return v.every(x=>typeof x==='number')?[...v].sort((x,y)=>x-y):v; if(v&&typeof v==='object') return Object.fromEntries(Object.keys(v).sort().map(x=>[x,v[x]])); return v; });
+let sentCanon=null, baseCanon=null;
+function markDirty(){ const d=$('#dirty'); if(d) d.hidden= canon(S)===(sentCanon??baseCanon); }
+function setSaved(msg, bad){ const el=$('#saved'); el.textContent=msg; el.style.color=bad?'var(--acc)':'var(--ok)'; el.classList.toggle('err',!!bad); }
+// undo: in-memory snapshots taken at every save, newest last (UI audit E)
+let hist=[], fut=[], snap=null, snapKey=null;
+// cut-board.state.json on disk is the source of truth (any port, any browser); BoardClient keeps this browser's copy as the fallback
+let diskT=null;
+function persist(key){ const j=JSON.stringify(S);
+  if(snap!=null&&j!==snap){ if(!(key&&key===snapKey)){ hist.push(snap); if(hist.length>50) hist.shift(); } fut=[]; snapKey=key||null; }   // typing one note is one undo step
+  snap=j;
+  clearTimeout(diskT); diskT=setTimeout(()=>bc.save(JSON.parse(j)).then(r=>{ if(!r.ok) setSaved(r.status?'AUTO-SAVE FAILED ('+r.status+'): only this browser has your changes':'AUTO-SAVE FAILED: no answer from the editor boards, only this browser has your changes',true); }),400);
+  markDirty(); }
+function restore(j){ S=JSON.parse(j); snap=j; openSil=openGap=null; bind(); render(); }
+function undo(){ if(hist.length){ fut.push(snap); restore(hist.pop()); } }
+function redo(){ if(fut.length){ hist.push(snap); restore(fut.pop()); } }
+function setFocus(i, scroll){ focus=i; document.querySelectorAll('section.line').forEach(x=>x.classList.toggle('focus',+x.dataset.i===i)); if(scroll){ const x=document.querySelector(`section.line[data-i="${i}"]`); if(x) x.scrollIntoView({block:'nearest'}); } }
+function render(first){
+  if(first){ snap=JSON.stringify(S); markDirty(); } else persist();   // opening the board is not a change
+  const m=$('#main'); m.innerHTML='';
+  const top=document.createElement('div'); top.className='hint top';
+  top.innerHTML='Click a word to remove it, click a struck word to put it back (shift-click does a whole run). ✂ chips are pauses already trimmed: click one to keep it as spoken or change it.<br><kbd>j</kbd> <kbd>k</kbd> next / previous line · <kbd>space</kbd> plays the picked read as cut · <kbd>1</kbd>-<kbd>9</kbd> picks that read · <kbd>d</kbd> drops or restores · <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo · <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> redo · <kbd>Esc</kbd> stops';
+  m.appendChild(top);
+  C.lines.forEach((L,i)=>{
+    const s=S.lines[i], d=document.createElement('section'); d.className='line'+(s.drop?' drop':'')+(i===focus?' focus':''); d.dataset.i=i;
+    const kept=!s.drop&&att(i);
+    d.innerHTML=`<h2><span class="id">${esc(L.id)}</span> ${esc(L.label)} <span style="margin-left:auto"></span>
+      ${s.flag&&s.drop?`<span class="flag warn">${esc(s.flag)}</span>`:''}<button data-drop="${i}">${s.drop?'restore':'drop line'}</button></h2><div class="script">${esc(L.text)}</div>`;
+    if(!L.attempts.length) d.innerHTML+=`<div class="warn">no attempt found in any take</div>`;
+    L.attempts.forEach((a,j)=>{
+      const on=s.pick===j, row=document.createElement('div'); row.className='att'+(on?' pick':'');
+      row.innerHTML=`<div class="tag"><b>take ${a.take}</b> #${a.attempt}<br>${a.src_in.toFixed(2)}–${a.src_out.toFixed(2)}${a.snapped.every(x=>x)?'':' <span class="unsnap" title="some word edges in this read have no silence to sit in: a cut there lands mid-speech and gets waveform-checked at Stage 3">unsnapped</span>'}</div>
+        <div class="txt">${attemptHTML(i,j,a,s,on)}${a.sub_retakes.length?`<div class="sub">repeated phrase: first read removed, last kept (${a.sub_retakes.map(sr=>(sr.src_to-sr.src_from).toFixed(1)+'s').join(', ')}) - click any word to put it back</div>`:''}${reviewHTML(i,j,a,s)}</div>
+        <div class="ctl"><button data-play="${i}:${j}">▶</button>${on&&kept?`<button data-play="cut:${i}" data-label="▶ as cut">▶ as cut</button>`:''}<button data-pick="${i}:${j}" class="${on?'on':''}">${on?'picked':'use'}</button></div>`;
+      d.appendChild(row);
+    });
+    const nxt=C.lines.slice(i+1).findIndex((_,k)=>!S.lines[i+1+k].drop);
+    if(kept&&nxt>=0){
+      const g=document.createElement('div'); g.className='gap';
+      const cur=s.gap_after.mode==='override'?s.gap_after.ms:'default', open=openGap===i;
+      g.innerHTML=`pause after this line <span class="sil${cur!=='default'?' on':''}${open?' open':''}" data-gapopen="${i}" title="click to change the pause after this line">${msLabel(cur)}</span>${open?chipRow(cur, `gap="${i}"`):''}`;
+      d.appendChild(g);
+    }
+    const f=document.createElement('div'); f.className='foot';
+    f.innerHTML=`<details class="advanced-controls" data-controls-key="shot-${i}"><summary>Advanced controls</summary><span class="shot">shot <select data-shot="${i}"><option value="">↑ same as above</option>${C.shots.vocab.map(v=>`<option ${s.shot===v?'selected':''}>${esc(v)}</option>`).join('')}</select></span></details>
+      <input placeholder="note" data-note="${i}" value="${esc(s.note)}">`;
+    d.appendChild(f); m.appendChild(d);
+  });
+  totals(); setPlayButtons();
+}
+const msOf = v => v==='default' ? 'default' : (v==='null' ? null : +v);
+document.addEventListener('click',e=>{
+  const sec=e.target.closest('section.line'); if(sec&&+sec.dataset.i!==focus) setFocus(+sec.dataset.i,false);
+  const w=e.target.closest('.w'); if(w){
+    const [i,j,k]=w.dataset.w.split(':').map(Number); const s=S.lines[i];
+    const a=C.lines[i].attempts[j]; const jj=String(j); const arr=s.rm[jj]||(s.rm[jj]=[]);
+    const idx=a.words.findIndex(x=>x.i===k);
+    if(e.shiftKey&&lastWord&&lastWord[0]===i&&lastWord[1]===j){
+      // shift-click applies the clicked word's NEW state to the whole run: struck word -> the run comes back, kept word -> the run goes
+      const from=Math.min(lastWord[2],idx), to=Math.max(lastWord[2],idx), removing=!arr.includes(k);
+      for(let n=from;n<=to;n++){ const wi=a.words[n].i, p=arr.indexOf(wi); if(removing&&p<0) arr.push(wi); if(!removing&&p>=0) arr.splice(p,1); }
+    } else { const p=arr.indexOf(k); if(p>=0) arr.splice(p,1); else arr.push(k); }
+    lastWord=[i,j,idx]; render(); return;
+  }
+  const go=e.target.closest('[data-gapopen]'); if(go){ const i=+go.dataset.gapopen; openGap= openGap===i?null:i; render(); return; }
+  const sil=e.target.closest('.sil'); if(sil){ const t=sil.dataset.sil.split(':').map(Number); openSil= openSil&&openSil.join(':')===t.join(':')?null:t; render(); return; }
+  const b=e.target.closest('button'); if(!b) return; let v;
+  if((v=b.dataset.play)){ if(v.startsWith('cut:')) playCut(+v.slice(4)); else { const [i,j]=v.split(':').map(Number), a=C.lines[i].attempts[j]; play(v,a.take,a.src_in,a.src_out); } }
+  else if((v=b.dataset.pick)){ const [i,j]=v.split(':').map(Number); S.lines[i].pick=j; S.lines[i].drop=false; S.lines[i].flag=null; render(); }
+  else if((v=b.dataset.keep)){ const [i,j,r,k]=v.split(':'), h=C.lines[+i].attempts[+j].review[+r], s=S.lines[+i], both=h.first.concat(h.second);
+    s.rm[j]=(s.rm[j]||[]).filter(x=>!both.includes(x)).concat(k==='first'?h.second:k==='second'?h.first:[]); render(); }
+  else if((v=b.dataset.drop)){ const s=S.lines[+v]; s.drop=!s.drop; if(!s.drop) s.flag=null; render(); }
+  else if((v=b.dataset.gap)){ const ms=msOf(b.dataset.ms); S.lines[+v].gap_after= ms==='default'?{mode:'default'}:{mode:'override',ms}; openGap=null; render(); }
+  else if((v=b.dataset.silset)){ const [i,j,k]=v.split(':').map(Number); const st=S.lines[i].sil[String(j)]||(S.lines[i].sil[String(j)]={}); const ms=msOf(b.dataset.ms); if(ms==='default') delete st[k]; else st[k]=ms; openSil=null; render(); }
+  // every line on its last take-N read, un-dropped; a line with no take-N read is dropped and flagged, so Send never mixes takes
+  else if((v=b.dataset.all)){ const n=+v; C.lines.forEach((L,i)=>{ const js=L.attempts.map((a,j)=>a.take===n?j:-1).filter(j=>j>=0), s=S.lines[i];
+    if(js.length){ s.pick=js[js.length-1]; s.drop=false; s.flag=null; } else { s.drop=true; s.flag='not in take '+n; } }); render(); }
+});
+document.addEventListener('change',e=>{
+  const t=e.target; let v;
+  if((v=t.dataset.shot)!=null){ S.lines[+v].shot=t.value||null; persist(); }
+  else if(t.id==='gapdef'){ S.gap_default_ms=+t.value; render(); }
+  else if(t.id==='speed'){ S.speed=+t.value; persist(); totals(); }   // remembered and marked unsent like every other control (R5-03)
+});
+document.addEventListener('input',e=>{ if(e.target.id==='beat'){ S.beat_ms=Math.round(+e.target.value*1000); showBeat(); persist('beat'); return; }   // one drag is one undo step
+  const v=e.target.dataset.note; if(v!=null){ S.lines[+v].note=e.target.value; persist('note:'+v); } });
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){ stop(); return; }
+  const t=e.target; if(t.isContentEditable||/^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)||!C) return;   // typing a note or using a dropdown
+  const k=e.key.toLowerCase();
+  if((e.ctrlKey||e.metaKey)&&!e.altKey&&k==='z'){ e.preventDefault(); if(!e.repeat){ if(e.shiftKey) redo(); else undo(); } return; }
+  if(e.ctrlKey||e.altKey||e.metaKey||e.repeat) return;
+  if(k==='j'||k==='k') setFocus(Math.max(0,Math.min(C.lines.length-1,focus+(k==='j'?1:-1))),true);
+  else if(k===' '){ e.preventDefault(); if(t.tagName==='BUTTON') t.blur(); playCut(focus); }
+  else if(/^[1-9]$/.test(k)){ const j=+k-1; if(j<C.lines[focus].attempts.length){ S.lines[focus].pick=j; S.lines[focus].drop=false; S.lines[focus].flag=null; render(); } }
+  else if(k==='d'){ const s=S.lines[focus]; s.drop=!s.drop; if(!s.drop) s.flag=null; render(); }
+});
+// two clicks within 3 s: one stray click can no longer wipe every ruling (UI audit #10)
+let resetT=null;
+$('#reset').onclick=()=>{ const b=$('#reset');
+  if(!resetT){ b.textContent='click again to reset'; b.classList.add('arm'); resetT=setTimeout(()=>{ resetT=null; b.textContent='reset to proposed'; b.classList.remove('arm'); },3000); return; }
+  clearTimeout(resetT); resetT=null; b.textContent='reset to proposed'; b.classList.remove('arm');
+  S=fresh(); openSil=openGap=null; bind(); render(); };
+$('#send').onclick=async()=>{
+  const prev=S.saved_at; S.saved_at=new Date().toISOString();
+  try{
+    const r=await fetch(BASE+'__save?board=cut-board&name=cut-selection.json',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(S,null,1)});
+    if(!r.ok) throw new Error('the board server answered '+r.status);
+    sentCanon=canon(S); setSaved('saved cut-selection.json '+new Date().toLocaleTimeString()); markDirty();
+  }catch(err){ S.saved_at=prev; setSaved('SEND FAILED: '+(err instanceof TypeError?'no answer from the editor boards (are they running?)':err.message)+'. Nothing reached Claude; your changes are still on this page.',true); }
+};
+function showBeat(){ $('#beatv').textContent=(S.beat_ms/1000).toFixed(2)+' s'; }
+function bind(){
+  $('#gapdef').innerHTML=PRESETS().filter(p=>p[1]!=null).map(([n,ms])=>`<option value="${ms}" ${ms===S.gap_default_ms?'selected':''}>${esc(chipName(n,ms))}</option>`).join('');
+  $('#speed').innerHTML=C.speed_options.map(v=>`<option ${v===S.speed?'selected':''}>${v}</option>`).join('');
+  $('#beat').value=(S.beat_ms/1000).toFixed(2); showBeat();
+  const tk=Object.keys(C.takes);   // with one take "all take 1" does nothing (UI audit #9)
+  $('#taketotals').innerHTML=tk.length>1?tk.map(t=>`<button data-all="${t}" title="every line on its last read from take ${t}; a line with no take-${t} read is dropped and flagged">all take ${t}</button>`).join(' '):'';
+}
+(bc?Promise.all([fetch(BASE+'cut-board.config.json').then(r=>{ if(!r.ok) throw new Error('no cut-board.config.json for this reel (HTTP '+r.status+')'); return r.json(); }), bc.load(),
+  fetch(BASE+'cut-selection.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null)]):Promise.reject(new Error('open this board with ?reel=<reel> in its address'))).then(([c,disk,sent])=>{
+  C=c; $('#title').textContent='Cut Board · '+C.reel+' · '+C.rule;
+  Object.values(C.takes).forEach(t=>{ const a=new Audio(reelUrl(t.wav)); a.preload='auto'; audio[t.n]=a; });
+  S=fresh();
+  try{ const st=disk; if(st){ const f=fresh();
+    // restore only a ruling made on THIS board: a rebuilt board shifts word, attempt and silence indices (R1)
+    if(st.reel===C.reel&&Array.isArray(st.lines)&&st.lines.length===f.lines.length&&st.board_hash&&st.board_hash===f.board_hash&&JSON.stringify(st.word_list_hash)===JSON.stringify(f.word_list_hash)){
+      const lines=f.lines.map((fl,i)=>{ const o=Object.assign(fl, st.lines[i]||{}); const seed=seedRm(C.lines[i]); o.rm=o.rm||{}; Object.keys(seed).forEach(k=>{ if(!(k in o.rm)) o.rm[k]=seed[k]; }); return o; });   // seed only reads with no stored entry; never overwrite
+      S=Object.assign(f, st, {lines}); S.lines.forEach((l,i)=>{ if(l.pick!=null&&!(l.pick<C.lines[i].attempts.length)) l.pick=C.lines[i].default; }); } else { const sv=$('#saved'); if(sv) sv.textContent='stored ruling was made on a different board: started fresh'; } } }catch(e){}
+  // the last Send counts only if it was ruled on this board
+  try{ if(sent){ const o=sent; if(o.reel===C.reel&&o.board_hash&&o.board_hash===C.board_hash) sentCanon=canon(o); } }catch(e){}
+  baseCanon=canon(S);
+  bind(); render(true);
+}).catch(err=>{ $('#title').textContent='Cut Board: '+err.message; });
+</script></body></html>

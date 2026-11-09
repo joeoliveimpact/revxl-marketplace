@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"quote","type":"string","label":"Quote","default":"Simple beats clever when people are scrolling fast."},
+  {"id":"attribution","type":"string","label":"Who said it","default":"Sample Speaker"},
+  {"id":"accent","type":"color","label":"Accent","default":"#4f8cff"},
+  {"id":"font","type":"string","label":"Font family","default":"Inter"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="./vendor/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Inter"; src: url("./fonts/Inter-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; }
+      #quote { position: relative; width: 1080px; height: 1920px; z-index: 400; font-family: "Inter"; font-weight: 400; color: #ffffff; --accent: #4f8cff; }
+      #quote .card { position: absolute; left: 510px; top: 845px; width: 860px; padding: 64px 48px 52px; border-radius: 28px; background: rgba(12, 14, 18, 0.86); }
+      #quote .bar { position: absolute; left: 48px; top: 30px; width: 96px; height: 10px; border-radius: 5px; background: var(--accent); }
+      #quote .text { display: block; font-size: 52px; line-height: 1.25; overflow-wrap: anywhere; }
+      #quote .who { display: block; margin-top: 24px; font-size: 36px; line-height: 1.25; color: var(--accent); overflow-wrap: anywhere; }
+    </style>
+  </head>
+  <body>
+    <div id="quote" data-composition-id="quote" data-start="0" data-duration="4" data-fps="30" data-width="1080" data-height="1920">
+      <div class="card plate">
+        <div class="bar plate"></div>
+        <span class="text slot" data-slot="quote"></span>
+        <span class="who slot" data-slot="attribution"></span>
+      </div>
+    </div>
+    <script>
+      (function () {
+        const v = window.__hyperframes.getVariables();
+        const root = document.getElementById("quote");
+        root.style.setProperty("--accent", v.accent);
+        root.style.fontFamily = JSON.stringify(v.font);
+        root.querySelectorAll("[data-slot]").forEach((el) => { el.textContent = v[el.dataset.slot]; });
+        const q = (s) => root.querySelector(s);
+        const tl = gsap.timeline({ paused: true });
+        tl.set(q(".card"), { xPercent: -50, yPercent: -50 }, 0);
+        tl.fromTo(q(".card"), { opacity: 0, scale: 0.94 }, { opacity: 1, scale: 1, duration: 0.5, ease: "power3.out" }, 0);
+        tl.fromTo(q(".bar"), { scaleX: 0 }, { scaleX: 1, duration: 0.4, ease: "power2.out" }, 0.2);
+        tl.fromTo(q(".text"), { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 0.25);
+        tl.fromTo(q(".who"), { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power1.out" }, 0.7);
+        window.__timelines = window.__timelines || {};
+        window.__timelines["quote"] = tl;
+      })();
+    </script>
+  </body>
+</html>

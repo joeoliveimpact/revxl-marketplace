@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"name","type":"string","label":"Name","default":"Alex Rivera"},
+  {"id":"title","type":"string","label":"Title","default":"Founder, Sample Studio"},
+  {"id":"accent","type":"color","label":"Accent","default":"#4f8cff"},
+  {"id":"font","type":"string","label":"Font family","default":"Inter"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="./vendor/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Inter"; src: url("./fonts/Inter-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; }
+      #lower-third { position: relative; width: 1080px; height: 1920px; z-index: 400; font-family: "Inter"; font-weight: 400; color: #ffffff; --accent: #4f8cff; }
+      #lower-third .card { position: absolute; left: 80px; bottom: 470px; width: 840px; padding: 28px 36px 30px 52px; border-radius: 18px; background: rgba(12, 14, 18, 0.84); }
+      #lower-third .bar { position: absolute; left: 0; top: 0; bottom: 0; width: 12px; border-radius: 18px 0 0 18px; background: var(--accent); }
+      #lower-third .name { display: block; font-size: 60px; line-height: 1.15; overflow-wrap: anywhere; }
+      #lower-third .title { display: block; margin-top: 10px; font-size: 38px; line-height: 1.25; color: #c9ced8; overflow-wrap: anywhere; }
+    </style>
+  </head>
+  <body>
+    <div id="lower-third" data-composition-id="lower-third" data-start="0" data-duration="3" data-fps="30" data-width="1080" data-height="1920">
+      <div class="card plate">
+        <div class="bar plate"></div>
+        <span class="name slot" data-slot="name"></span>
+        <span class="title slot" data-slot="title"></span>
+      </div>
+    </div>
+    <script>
+      (function () {
+        const v = window.__hyperframes.getVariables();
+        const root = document.getElementById("lower-third");
+        root.style.setProperty("--accent", v.accent);
+        root.style.fontFamily = JSON.stringify(v.font);
+        root.querySelectorAll("[data-slot]").forEach((el) => { el.textContent = v[el.dataset.slot]; });
+        const q = (s) => root.querySelector(s);
+        const tl = gsap.timeline({ paused: true });
+        tl.fromTo(q(".card"), { opacity: 0, x: -60 }, { opacity: 1, x: 0, duration: 0.5, ease: "power3.out" }, 0);
+        tl.fromTo(q(".name"), { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 0.15);
+        tl.fromTo(q(".title"), { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 0.3);
+        window.__timelines = window.__timelines || {};
+        window.__timelines["lower-third"] = tl;
+      })();
+    </script>
+  </body>
+</html>

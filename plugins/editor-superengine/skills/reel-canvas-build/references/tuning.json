@@ -1,0 +1,16 @@
+{
+  "softness_ceiling": 1.15,
+  "tri2": {
+    "black_gap_s": 0.5,
+    "frozen_s": 3
+  },
+  "measured_on": "11.05.26, 60 s cut, 3840x2160 source, Master 1080x1920, HyperFrames delivery",
+  "softness_rule": "largest tested scale keeping >= 60 % of the unscaled face sharpness (variance of the Laplacian), H-S6c-2",
+  "softness_table": {
+    "1.00": 1.0,
+    "1.15": 0.619,
+    "1.20": 0.591,
+    "1.25": 0.561,
+    "1.30": 0.533
+  }
+}

@@ -1,8 +1,8 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "editor-superengine",
-  "description": "Takes a raw talking-head recording all the way to a finished spoken cut: it probes and calibrates the file instead of trusting its container, transcribes with word timestamps, scores trim candidates for a human ruling, verifies every cut boundary against the measured waveform rather than an ASR estimate, tightens gaps in source coordinates, and gates the whole cut against a silence budget before anyone listens to it. Then it runs the design-iteration loop for the reel's visuals: divergent direction comps over real plates, parametric ladders for craft tweaks, measured verification, and rulings taken from frames instead of prose. For people editing short-form talking-head reels for Instagram and TikTok who want the boring verification done properly. It is not a captioner and not a compositor: captions, sound design and final compositing come after picture lock and live elsewhere.",
-  "version": "0.1.0",
+  "description": "Raw talking-head recording to a finished reel. It installs and checks its own tools, checks the camera and mic before recording, and the client cuts on the Cut Board and Tweak Board. Then captions, on-screen design and scenes, B-roll, colour, sound and music, a cover, trial reels, and an editable timeline for Resolve. Saved styles carry a client's look from reel to reel, and a style can be decoded from a reel they like. 15 skills, no commands to type.",
+  "version": "0.2.0",
   "author": {
     "name": "Joe Olive",
     "email": "joe@engineforimpact.com"

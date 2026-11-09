@@ -1,0 +1,10 @@
+{
+  "name": "editor-superengine-hyperframes-runtime",
+  "version": "0.0.0",
+  "private": true,
+  "dependencies": {
+    "hyperframes": "0.8.184",
+    "@hyperframes/shader-transitions": "0.8.184",
+    "onnxruntime-node": "1.21.1"
+  }
+}

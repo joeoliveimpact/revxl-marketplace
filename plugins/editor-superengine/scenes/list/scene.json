@@ -1,0 +1,18 @@
+{
+  "id": "list",
+  "category": "list",
+  "kind": "overlay",
+  "slots": {
+    "title": {"maxChars": 30, "default": "Three quick tips", "hint": "what the list is about"},
+    "item1": {"maxChars": 34, "default": "Start with the problem"},
+    "item2": {"maxChars": 34, "default": "Show one clear example"},
+    "item3": {"maxChars": 34, "default": "End with the next step", "hint": "leave empty for a two-item list"}
+  },
+  "dur": [3, 10],
+  "params": {
+    "accent": {"type": "color", "default": "#4f8cff"},
+    "font": {"type": "string", "default": "Inter"}
+  },
+  "source": "editor-superengine original (PB-34)",
+  "licence": "own"
+}

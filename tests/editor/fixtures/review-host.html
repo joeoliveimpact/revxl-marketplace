@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Review host (test fixture)</title>
+<!-- Test fixture only, never shipped: render_engine_test.py (hub-review) copies it to <workspace>/editor/hub/index.html.
+     One "Master review" tab frames ./review.html (copied next to it), passing this page's ?reel=&preview= through. -->
+<style>
+body{margin:0;font:14px system-ui,sans-serif}
+.frame{height:900px}
+.frame iframe{width:100%;height:100%;border:0;display:block}
+</style>
+</head>
+<body>
+<div class="tabs" role="tablist"><button role="tab" id="tab-review" aria-selected="false">Master review</button></div>
+<section class="boards" id="boards"></section>
+<script>
+document.getElementById("tab-review").onclick = function () {
+  this.setAttribute("aria-selected", "true");
+  var box = document.createElement("div"), f = document.createElement("iframe");
+  box.className = "frame";
+  f.title = "Master review";
+  f.src = "./review.html" + location.search;
+  box.appendChild(f);
+  document.getElementById("boards").replaceChildren(box);
+};
+</script>
+</body>
+</html>

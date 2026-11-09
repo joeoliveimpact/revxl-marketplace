@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[
+  {"id":"label","type":"string","label":"Label","default":"happy customers"},
+  {"id":"from","type":"number","label":"Count from","default":0},
+  {"id":"value","type":"number","label":"Final value","default":250},
+  {"id":"decimals","type":"number","label":"Decimals","default":0},
+  {"id":"prefix","type":"string","label":"Prefix","default":""},
+  {"id":"suffix","type":"string","label":"Suffix","default":""},
+  {"id":"animate","type":"boolean","label":"Count up","default":true},
+  {"id":"accent","type":"color","label":"Accent","default":"#4f8cff"},
+  {"id":"font","type":"string","label":"Font family","default":"Inter"}
+]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="./vendor/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Inter"; src: url("./fonts/Inter-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; }
+      #counter { position: relative; width: 1080px; height: 1920px; z-index: 400; font-family: "Inter"; font-weight: 400; color: #ffffff; --accent: #4f8cff; }
+      #counter .card { position: absolute; left: 510px; top: 640px; width: 860px; padding: 48px 40px 52px; border-radius: 36px; background: rgba(12, 14, 18, 0.82); text-align: center; }
+      #counter .bar { position: absolute; left: 40px; right: 40px; top: 0; height: 10px; border-radius: 0 0 10px 10px; background: var(--accent); }
+      #counter .num { display: block; font-size: 112px; line-height: 1.1; white-space: nowrap; color: var(--accent); }
+      #counter .label { display: block; margin-top: 16px; font-size: 52px; line-height: 1.2; overflow-wrap: anywhere; }
+    </style>
+  </head>
+  <body>
+    <div id="counter" data-composition-id="counter" data-start="0" data-duration="3" data-fps="30" data-width="1080" data-height="1920">
+      <div class="card plate">
+        <div class="bar plate"></div>
+        <span class="num">0</span>
+        <span class="label slot" data-slot="label"></span>
+      </div>
+    </div>
+    <script>
+      (function () {
+        const v = window.__hyperframes.getVariables();
+        const root = document.getElementById("counter");
+        const card = root.querySelector(".card");
+        const num = root.querySelector(".num");
+        root.style.setProperty("--accent", v.accent);
+        root.style.fontFamily = JSON.stringify(v.font);
+        root.querySelector('[data-slot="label"]').textContent = v.label;
+        const d = Math.max(0, Math.min(2, Math.round(Number(v.decimals) || 0)));
+        const fmt = (n) => v.prefix + Number(n).toFixed(d).replace(/^(-?\d+)/, (m) => m.replace(/\B(?=(\d{3})+$)/g, ",")) + v.suffix;
+        const value = Number(v.value);
+        const from = Number(v.from);
+        // GSAP sets the count through this getter/setter while it renders, so a seek to any frame shows that frame's number.
+        const counter = { n: function (x) { if (x === undefined) return this._n; this._n = x; num.textContent = fmt(x); } };
+        counter._n = from;
+        const tl = gsap.timeline({ paused: true });
+        tl.set(card, { xPercent: -50, yPercent: -50 }, 0);
+        tl.fromTo(card, { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.45, ease: "back.out(1.6)" }, 0);
+        if (v.animate) {
+          tl.fromTo(counter, { n: from }, { n: value, duration: 1.4, ease: "power2.out" }, 0.25);
+        } else {
+          num.textContent = fmt(value);
+        }
+        window.__timelines = window.__timelines || {};
+        window.__timelines["counter"] = tl;
+      })();
+    </script>
+  </body>
+</html>

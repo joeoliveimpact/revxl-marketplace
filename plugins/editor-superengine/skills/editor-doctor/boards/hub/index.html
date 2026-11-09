@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Editor Superengine hub</title><link rel="stylesheet" href="hub.css">
+<script src="board-client.js" defer></script><script src="common.js" defer></script><script src="hub.js" defer></script></head>
+<body data-layout="guided">
+<div class="glow" id="glow"><img id="glowimg" alt=""></div>
+<header class="top">
+  <a class="mark" href="#reels">Editor Superengine</a><span id="crumb" class="writes">All reels</span>
+  <nav class="views" aria-label="Hub pages"><a href="#reels">Reels</a><a href="#goldmine">Goldmine</a><a href="#health">Health</a></nav>
+  <div class="right"><a class="warn" id="healthwarn" href="#health" hidden>Tools need a look</a>
+    <span class="baton" id="baton"></span><span class="fresh" id="fresh"></span>
+    <label for="controls">Controls: <select id="controls" disabled><option value="simple">Simple</option><option value="advanced">Advanced</option></select></label>
+    <button class="ghostbtn" id="layout" aria-pressed="false">Full workspace</button><button class="ghostbtn" id="reload">Reload</button></div>
+</header>
+<main>
+  <p id="error" class="empty" role="alert" hidden></p>
+  <section id="v-reels" aria-label="Reels">
+    <div class="wallhead"><h2>Your reels</h2><p class="lede" id="lede"></p>
+      <div class="chips" aria-label="Show reels"><button class="chip" data-filter="all" aria-pressed="true">All</button>
+        <button class="chip" data-filter="you" aria-pressed="false">Your move</button><button class="chip" data-filter="claude" aria-pressed="false">Claude's move</button></div>
+    </div>
+    <div class="wall" id="wall" data-filter="all"></div>
+    <div class="work" id="work" hidden>
+      <aside class="rail" aria-label="Steps and reels"><nav id="reel-list" aria-label="Reel list"></nav>
+        <h3 class="sec">Steps</h3><ol class="steps" id="steps"></ol>
+        <h3 class="sec">Progress by layer</h3><div class="lanes" id="lanes"></div>
+      </aside>
+      <div class="center">
+        <header class="rhead" id="rhead"></header>
+        <div class="stripwrap"><div class="strip" id="strip" tabindex="0" role="slider" aria-label="Filmstrip. Arrows step; Enter plays." aria-valuemin="0" aria-valuemax="11" aria-valuenow="0"></div>
+          <span class="writes">Move across to scrub. Click to play.</span></div>
+        <section class="move" id="move" aria-live="polite"></section>
+        <section class="tile" id="attention-card" hidden><h3>Needs attention</h3><ul id="attention"></ul></section>
+        <section class="boards" id="boards" aria-label="Boards">
+          <div class="bhead"><h3 class="sec">All boards</h3><a class="ghostbtn" id="owntab" target="_blank" rel="noopener" hidden>Open in its own tab</a></div>
+          <div class="tabs" id="tabs" role="tablist" aria-label="Reel boards"></div>
+          <div id="panel" class="panel" role="tabpanel"><p class="empty">Choose a board to begin.</p></div><p class="hint" id="bhint"></p>
+        </section>
+      </div>
+      <aside class="side" aria-label="Video, quick adjust and notes">
+        <figure class="player"><video id="vid" controls playsinline preload="metadata"></video><figcaption id="vidcap"></figcaption></figure>
+        <div class="coverbox" id="coverbox"></div>
+        <details class="advanced-controls" id="advanced-adjust"><summary>Advanced controls</summary>
+        <section class="quick"><h3 class="sec">Quick adjust</h3><div id="adjust"></div></section>
+        </details>
+        <section class="notes"><h3 class="sec">Notes for this reel</h3><p class="writes">Claude reads these. Stamped at the player's time.</p>
+          <form id="notes-form"><label for="note">Note for Claude</label><textarea id="note" rows="3" placeholder="Keep the laugh at the end"></textarea>
+            <label for="note-kind">Kind of note</label><select id="note-kind"><option value="fix">Fix</option><option value="good">Good</option><option value="cut">Cut</option></select>
+            <button class="btn primary" id="notes-send">Send note</button></form><ul id="note-list" class="notelist"></ul>
+        </section>
+        <section class="ask"><h3 class="sec">Ask Claude</h3><div class="actions" id="actions"></div>
+          <details class="advanced-controls" id="advanced-request"><summary>Advanced controls</summary>
+          <label for="request-detail">B-roll or trial details</label><textarea id="request-detail" rows="2" placeholder="What should change, and where?"></textarea>
+          </details>
+          <h4>Sent to Claude</h4><ul class="queue" id="queue"></ul>
+        </section>
+        <section class="closing"><h3>Save this style</h3><p>Save this reel's choices as a new style.</p><button class="btn" data-skill="style">Save this style</button></section>
+        <section class="closing"><h3>My styles</h3><div id="styles"></div></section>
+      </aside>
+    </div>
+  </section>
+  <section id="v-health" class="page" hidden><h1>Health</h1><p>The last check Claude ran, in plain words.</p><ul class="health" id="health-list"></ul>
+    <button class="btn" data-skill="health">Ask Claude to check my editor</button></section>
+  <section id="v-goldmine" class="page" hidden><h1>Goldmine</h1><div id="gold-data"></div>
+    <button class="btn" data-skill="goldmine">Ask Claude about a Goldmine run</button></section>
+</main>
+<div id="delivery"><p id="status" role="status" aria-live="polite"></p><div id="fallback" hidden role="alert"><p>Could not send. Copy this line into Claude:</p>
+  <textarea id="fallback-line" readonly aria-label="Line to paste into Claude"></textarea><button id="copy" class="btn">Copy</button></div></div>
+</body></html>

@@ -1,0 +1,17 @@
+{
+  "package": "three.quarks",
+  "version": "0.17.1",
+  "tarball_sha256": "512c3cd57f52ec2d77a2be7562273ceecc20c2d61ad313dcc6bcb078f05040f7",
+  "files": {
+    "three.quarks.js": {
+      "sha256": "4ae4d78cdc15e260807dbe96f407ae5383b3c17c1743c793d820540372603557",
+      "upstream_sha256": "d9f03b24fea79ba5b6aec1d759ab95a7156bacf29108eb96ab01268277240598",
+      "line_endings": "CRLF->LF"
+    },
+    "LICENSE-three.quarks": {
+      "sha256": "4846c46a25cd0baab940d02389c40475cee79bfd4e06195c844a00c71663fbd1",
+      "upstream_sha256": "a5475475eea369815620d571431d6293996ee2492c02c41f0c47596f6fbcd4dd",
+      "line_endings": "CRLF->LF"
+    }
+  }
+}
