@@ -5,8 +5,7 @@
 The voice control is the PROCESSED voice (cleaned and re-gained, the one that went into the mix): the raw voice
 stem would false-fail, because a clean-up changes the quiet stretches by tens of dB. Each track's level is solved by
 least squares (mix = gv*voice + sum gl*lane + gb*music), so nothing has to be taken on trust.
-  cue survival: in each cue's first 0.5 s (from where its sound starts: time - peak_s, not before 0), what is left after everything else is taken away must match the cue
-                (correlation >= 0.9).
+  cue survival: in each cue's highest-energy placed 0.5 s inside the reel (the whole cue if shorter), what is left after everything else is taken away must match the cue (correlation >= 0.9); windows under 50 ms are weak.
   music ratio:  in 0.5 s windows where the voice speaks under audible music, the music-to-voice level is solved
                 again; its spread (10th to 90th percentile) must stay under 1 dB, so nothing dynamic re-levelled it.
 Prints JSON; exit 0 pass, 1 fail.
@@ -49,7 +48,7 @@ def check(final, voice_path, sound):
         one = np.zeros(N)
         one[s:e] = x[:max(0, e - s)]
         lanes[c["lane"]] += one
-        alone.append(one)
+        alone.append((one, s, e))
 
     A = np.stack([voice] + lanes + [bed], 1)
     g, *_ = np.linalg.lstsq(A, y, rcond=None)
@@ -58,14 +57,26 @@ def check(final, voice_path, sound):
     gains = {n: (round(20 * np.log10(abs(v)), 2) if abs(v) > 1e-6 else None) for n, v in zip(names, g)}
 
     cues = []
-    for c, one in zip(P["cues"], alone):
-        s = int(round(max(0.0, c["time"] - c.get("peak_s", 0)) * SR))    # where the cue's sound starts
-        e = min(N, s + int(min(c["seconds"], 0.5) * SR))
+    for c, (one, cue_start, cue_end) in zip(P["cues"], alone):
+        placed = one[cue_start:cue_end]
+        if np.any(placed):
+            win = min(SR // 2, len(placed))
+            # Prefix sums score every sample-aligned window in linear time.
+            energy = np.concatenate(([0.0], np.cumsum((g[1 + c["lane"]] * placed) ** 2)))
+            s = cue_start + int(np.argmax(energy[win:] - energy[:-win]))
+            e = s + win
+        else:  # silent cue: retain the timing fallback, still bounded by the cue's end
+            s = int(round(max(0.0, c["time"] - c.get("peak_s", 0)) * SR))
+            e = min(N, cue_end, s + int(min(c["seconds"], 0.5) * SR))
         own = (g[1 + c["lane"]] * one)[s:e]
         rest = (y - model)[s:e] + own                 # everything else taken away
-        corr = float(np.corrcoef(rest, own)[0, 1]) if e - s > 1 and np.std(own) > 0 else 0.0
-        cues.append({"id": c["id"], "beat": c["beat"][:24], "corr": round(corr, 3),
-                     "over_voice_db": round(rms_db(own) - rms_db(g[0] * voice[s:e]), 1)})
+        too_short = e - s < SR * 0.05
+        corr = float(np.corrcoef(rest, own)[0, 1]) if not too_short and np.std(own) > 0 else 0.0
+        row = {"id": c["id"], "beat": c["beat"][:24], "corr": round(corr, 3),
+               "over_voice_db": round(rms_db(own) - rms_db(g[0] * voice[s:e]), 1)}
+        if too_short:
+            row["too_short"] = True
+        cues.append(row)
 
     ratios = []
     if np.abs(bed).max() > 0:

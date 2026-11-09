@@ -51,6 +51,33 @@ def rational(value):
     return Fraction(str(value))
 
 
+def on_grid(t, rate):
+    """Snap to the nearest reel frame, rounding half-frame ties to even."""
+    return Fraction(round(t * rate), rate)
+
+
+def fit_clip(clip, reel_end, source_duration, rate):
+    """Return a fitted copy, allowing at most half a frame at either boundary."""
+    clip = clip.copy()
+    tolerance = Fraction(1, 2) / rate
+    error = "An original sound clip extends beyond its source or the reel"
+    if clip["offset"] < -tolerance or clip["start"] < -tolerance:
+        raise ValueError(error)
+    clip["offset"] = max(Fraction(0), clip["offset"])
+    clip["start"] = max(Fraction(0), clip["start"])
+    # Check both overruns before trimming, so one trim cannot hide the other.
+    if clip["offset"] + clip["duration"] - reel_end > tolerance \
+            or clip["start"] + clip["duration"] - source_duration > tolerance:
+        raise ValueError(error)
+    clip["duration"] = min(clip["duration"], reel_end - clip["offset"], source_duration - clip["start"])
+    if clip["duration"] <= 0:
+        raise ValueError(error)
+    for key in ("fade_in", "fade_out"):
+        if key in clip:
+            clip[key] = min(clip[key], clip["duration"])
+    return clip
+
+
 def stamp(value):
     value = rational(value)
     return f"{value.numerator}/{value.denominator}s"
@@ -189,6 +216,10 @@ def load_model(reel, aroll, overlay, captions=None):
         gain = rational(bed["level"]["gain_db_applied"])
         keys = sorted((rational(k["t_s"]), rational(k["gain_db"])) for k in bed.get("duck", {}).get("keyframes", []))
         for a, b, fi, fo in bed_parts(bed):
+            # The source-start expression below shifts by exactly the same amount as a.
+            a, b = on_grid(a, rate), on_grid(b, rate)
+            if b == a:
+                continue
             selected = [(t - a, gain + db) for t, db in keys if a <= t <= b]
             # On a split, preserve interpolation at its new boundaries as well as the original volume points.
             for edge in (a, b):
@@ -209,11 +240,10 @@ def load_model(reel, aroll, overlay, captions=None):
         ref = asset(original(reel, relative, "sfx"))
         source = next(p for p in assets.values() if p["id"] == ref)
         effects.append({"ref": ref, "lane": -2 - int(cue["lane"]), **sfx_timing(picked, source["duration"])})
-    for clip in beds + effects:
-        source = next(p for p in assets.values() if p["id"] == clip["ref"])
-        if clip["offset"] < 0 or clip["offset"] + clip["duration"] > cursor / rate \
-                or clip["start"] < 0 or clip["start"] + clip["duration"] > source["duration"]:
-            raise ValueError("An original sound clip extends beyond its source or the reel")
+    for clips in (beds, effects):
+        for i, clip in enumerate(clips):
+            source = next(p for p in assets.values() if p["id"] == clip["ref"])
+            clips[i] = fit_clip(clip, cursor / rate, source["duration"], rate)
     return {"name": reel.name, "rate": rate, "total": cursor, "segments": segments, "assets": list(assets.values()),
             "aroll": ar, "overlay": ov, "captions": cap, "beds": beds, "effects": effects,
             "width": picture["width"], "height": picture["height"], "master": master, "baked_spans": baked,

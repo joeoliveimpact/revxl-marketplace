@@ -79,7 +79,7 @@ Free is the default (`voice_cleanup` in `editor/editor.config.json`). If the cli
 It stops on a nearly silent recording, bakes the stems from the board's Send, cleans the voice, keeps the board's levels, masters to -14 LUFS and a -1 dBTP peak, puts the sound on the picture, and checks the delivered file. If reel-first-cuts rendered again after the board was made (the cut master is newer than `videos/<reel>/config.json`), the board's cue times are stale: tell the client, propose the cues again on the new cut, rebuild the board (Re-invoke guard) and wait for a new Send before mixing. `--video` is only for exit 2.
 
 - Exit 0: delivered. Tell the client in plain words.
-- Exit 1: a check stopped it; the line says which. Nearly silent: ask whether the right microphone was recording. A sound effect that didn't come through: ask about that cue (often its level on the board).
+- Exit 1: a check stopped it; the line says which. Nearly silent: ask whether the right microphone was recording. Failed mix check: preview and final use voice without music or effects; fix the named moment or music level on the Sound Board, then mix again.
 - Exit 2: no picture found. Pass `--video`.
 - Exit 3: Auphonic without the client's yes. Show the plan first.
 - No Auphonic key: it says so and uses the free clean-up. Tell the client.

@@ -163,9 +163,14 @@ def run(a):
     write_json(sound / "mix-report.json", report)
     g = report["passes"][-1]["gate"]
     if not report["pass"]:
-        print("Mixed, but the check found a problem: %s. Listen to sound/final.mp4 before using it." % (
-            ", ".join("cue %s didn't come through" % c["id"] for c in report["mix_check"]["weak_cues"])
-            or "the music level moved under the voice"))
+        print("Mixed, but %s. Until the mix passes, the preview and the final video use your voice without music "
+              "or sound effects. %s" % (
+                  ("the check couldn't hear the sound effect on %s in the result" % ", ".join(
+                      c["beat"] for c in report["mix_check"]["weak_cues"]))
+                  if report["mix_check"]["weak_cues"] else "the music level moved under the voice",
+                  "Pick another sound or raise its level for that moment on the Sound Board, or drop it, then mix again."
+                  if report["mix_check"]["weak_cues"] else
+                  "Adjust the music level on the Sound Board, then mix again."))
         return 1
     print("Mixed: sound/final.mp4 (%.1f LUFS, peak %.1f dBTP, %s voice clean-up, %d sound effect%s)." % (
         g["integrated_lufs"], g["true_peak_dbtp"], mode, len(placement["cues"]), "" if len(placement["cues"]) == 1 else "s"))
