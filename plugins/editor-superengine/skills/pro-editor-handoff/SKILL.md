@@ -48,7 +48,7 @@ Then check the saved results, including a partial failure:
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/pro-editor-handoff/scripts/build_edit.py" resolve-check --reel-dir "videos/<reel>" --result "videos/<reel>/handoff/resolve-result.json"`
 
-Read `handoff/resolve-report.json`. Only claim success if the checker passes. It checks linked files, tracks, the bed's applied level and available frames; relay any note about a skipped frame comparison. Relay any MP3 timing note: Resolve may play original MP3 effects about 50 ms late.
+Read `handoff/resolve-report.json`. Only claim success if the checker passes. It checks linked files, tracks, the bed's applied level and available frames; relay any note about a skipped frame comparison. Say which picture checks were skipped because B-roll or other pictures cover their frames. Relay any MP3 timing note: Resolve may play original MP3 effects about 50 ms late.
 
 For `nle: mcp`, or the Another editor (files) choice, hand over the folder: FCPXML opens in Final Cut or Resolve; FCP7 XML opens in Premiere and other compatible editors; SRT supplies editable subtitles. Keep the referenced original music, effects and finished Master available alongside the reel; the XML points to those files.
 

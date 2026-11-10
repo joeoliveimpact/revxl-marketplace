@@ -3,7 +3,8 @@
 Usage: <editor python> -X utf8 -I tests/editor/handoff_test.py [--case NAME]
 Set EDITOR_SE_HOME to the editor state. Cases: selftest, package, fcpxml,
 fcp7_srt, gate, hub, steps, rcheck, layout-switch, no-scale-track, hook-long,
-hook-named, hook-old-ok; default all. Prints PASS/FAIL per check.
+hook-named, hook-old-ok, proof-broll, rcheck-broll, rcheck-covered,
+real-handoff-broll; default all. Prints PASS/FAIL per check.
 Package uses the shared heavy lock; missing lock exits 75. Live Resolve
 proof runs separately through its native MCP. EDITOR_SE_TEST_TAKE is hashed read only
 before and after every case. All generated media stays in a temporary folder.
@@ -36,7 +37,8 @@ import export_edit as legacy
 
 rt = fcpx.rt
 CASES = ("selftest", "package", "fcpxml", "fcp7_srt", "gate", "hub", "steps", "rcheck",
-         "layout-switch", "no-scale-track", "hook-long", "hook-named", "hook-old-ok")
+         "layout-switch", "no-scale-track", "hook-long", "hook-named", "hook-old-ok",
+         "proof-broll", "rcheck-broll", "rcheck-covered", "real-handoff-broll")
 HEAVY = Path("C:/Workspaces/Content Studio/output/scripts/heavy_lock.py")
 FAILS = []
 
@@ -246,9 +248,17 @@ def case_fcpxml(root):
     placement["bed"]["stops"] = [{"start_s": 1, "end_s": 1.4, "fade_out_s": .1, "fade_in_s": .2}]
     build.save(ntsc_reel / "sound/placement.json", placement)
     write(ntsc_reel, ntsc_master, None, ntsc)
-    beds = ET.parse(ntsc).findall('.//asset-clip[@lane="-1"]')
-    ck("stops remain gaps with source continuity and fades", len(beds) == 2 and beds[1].get("start") == "8/5s"
-       and len(ET.parse(ntsc).findall(".//fadeIn")) == 2 and len(ET.parse(ntsc).findall(".//fadeOut")) == 3)
+    tree = ET.parse(ntsc)
+    beds = tree.findall('.//asset-clip[@lane="-1"]')
+    # NTSC snapping gives pieces at [6, 30) and [42, 78), with the source advancing across the gap.
+    frame_duration = Fraction(1001, 30000)
+    ck("stops remain gaps with source continuity and fades", len(beds) == 2
+       and [(fcpx.seconds(b.get("offset")), fcpx.seconds(b.get("duration"))) for b in beds]
+       == [(6 * frame_duration, 24 * frame_duration), (42 * frame_duration, 36 * frame_duration)]
+       and beds[1].get("start") == "8007/5000s"
+       and fcpx.seconds(beds[1].get("start")) - fcpx.seconds(beds[0].get("start"))
+       == fcpx.seconds(beds[1].get("offset")) - fcpx.seconds(beds[0].get("offset"))
+       and len(tree.findall(".//fadeIn")) == 2 and len(tree.findall(".//fadeOut")) == 3)
     # Only synthetic ffmpeg media: no second compositor render is needed for the layout fallback.
     composite = ntsc_reel / "renders/REEL_A Master - 11.06.26.mp4"
     track = {"keys": [{"f": 0, "layout": "full", "scale": 1, "ox": .5, "oy": .38},
@@ -405,8 +415,10 @@ def case_package(root):
     pix = next(s["pix_fmt"] for s in compose.streams(captions) if s["codec_type"] == "video")
     ck("captions MOV has alpha, no sound and all frames", captions.suffix == ".mov" and compose.alpha_pix_fmt(pix)
        and not fcpx.probe(captions)["audio"] and fcpx.fpsmod.frame_count(captions) == 84)
-    ck("captions layer contains visible text and a transparent corner", frame(captions, 15, True)[:, :, 3].max() > 0
-       and frame(captions, 15, True)[0, 0, 3] == 0)
+    # The hook supplies the opening words; frame 60 is inside the later caption at [48, 66).
+    caption_image = frame(captions, 60, True)
+    ck("captions layer contains visible text and a transparent corner", caption_image[:, :, 3].max() > 0
+       and caption_image[0, 0, 3] == 0)
     inp = compose.load_inputs(reel)
     compose.probe_inputs(inp)
     inp.update(track=fcpx.read(reel / "work/scale_track.json"), captions=fcpx.read(reel / "work/captions.json"), under=[], hook_f=0)
@@ -631,6 +643,82 @@ def case_steps(root):
         ck("proof returns whichever frames exist", build.proof_frames(reel) == expected)
 
 
+def case_proof_broll(root):
+    reel = root / "reel"
+    build.save(reel / "work/cuts.json", {"fps": 30, "segments": [{"out_out_f": 100}]})
+    build.save(reel / "handoff/handoff.json", {"baked_spans": []})
+    track = {"keys": [{"f": 0, "scale": 1}, {"f": 50, "scale": 1.18}], "tweens": []}
+    build.save(reel / "work/scale_track.json", track)
+
+    def beat(id_, start, end, **changes):
+        return dict({"id": id_, "start_f": start, "end_f": end, "layout": "full",
+                     "scene": None, "broll": None, "transition": None}, **changes)
+
+    beats = [beat("plain", 20, 30, broll={"fit": "cover"}),
+             beat("punch", 70, 80, broll={"fit": "blur-fill"})]
+    build.save(reel / "beat-map-selection.json", {"beats": beats})
+    frames = build.proof_frames(reel)
+    ck("B-roll proofs choose the middle eligible frames", frames == {"unpunched": 30, "punched": 80}, frames)
+    ck("both proofs avoid every B-roll beat", len(frames) == 2 and all(
+       not b["start_f"] <= frame < b["end_f"] for frame in frames.values() for b in beats))
+    track["tweens"] = [{"prop": "scale", "start_f": 50, "end_f": 90, "from": 1, "to": 1.18}]
+    build.save(reel / "work/scale_track.json", track)
+    ck("covered proofs still require a settled punch", build.proof_frames(reel) == {"unpunched": 30, "punched": 95})
+    track["tweens"] = []
+    for changes in ({"scene": {"id": "cta-end-card"}}, {"layout": "split"}):
+        track["style"] = {"style": "layout-switch"}
+        build.save(reel / "work/scale_track.json", track)
+        build.save(reel / "beat-map-selection.json", {"beats": [
+            beat("plain", 20, 30, **changes), beat("punch", 70, 80, **changes)]})
+        ck("other covering pictures exclude their frames " + next(iter(changes)),
+           build.proof_frames(reel) == {"unpunched": 30, "punched": 80})
+    build.save(reel / "beat-map-selection.json", {"beats": [
+        beat("first", 15, 20, scene={"id": "cta-end-card"}),
+        beat("next", 30, 35, scene={"id": "cta-end-card"})]})
+    ck("takeover underlay gaps cannot supply proof frames", build.proof_frames(reel)["unpunched"] == 35)
+    build.save(reel / "beat-map-selection.json", {"beats": []})
+    for tweened in (False, True):
+        layout_track = {"keys": [{"f": 0, "scale": 1, "layout": "full"},
+                                 {"f": 50, "scale": 1.18, "layout": "full"}], "tweens": []}
+        if tweened:
+            layout_track["tweens"] = [
+                {"prop": "layout", "start_f": 20, "end_f": 30, "from": "full", "to": "split"},
+                {"prop": "layout", "start_f": 35, "end_f": 40, "from": "split", "to": "full"}]
+        else:
+            layout_track["keys"] += [{"f": 20, "scale": 1, "layout": "split"},
+                                     {"f": 40, "scale": 1, "layout": "full"}]
+        build.save(reel / "work/scale_track.json", layout_track)
+        ck("layout holds and returns preserve eligible frames " + str(tweened),
+           build.proof_frames(reel) == {"unpunched": 15, "punched": 75})
+    build.save(reel / "work/scale_track.json", track)
+    build.save(reel / "beat-map-selection.json", {"beats": [
+        beat("plain", 0, 50, transition={"type": "flash", "at_cut_frame": 25, "dur_frames": 5}),
+        beat("punch", 50, 100, transition={"type": "flash", "at_cut_frame": 75, "dur_frames": 5})]})
+    ck("covering transitions exclude their windows", build.proof_frames(reel) == {"unpunched": 30, "punched": 80})
+    track = {"keys": [{"f": 0, "scale": 1}], "tweens": []}
+    build.save(reel / "work/scale_track.json", track)
+    build.save(reel / "beat-map-selection.json", {"beats": [beat("cover", 0, 100, broll={"fit": "cover"})]})
+    frames, notes = build.proof_selection(reel)
+    ck("absent punch is not described as covered", frames == {} and any(
+       "no settled punched frame" in note and "B-roll" not in note for note in notes))
+    build.save(reel / "handoff/handoff.json", {"baked_spans": [{"start_f": 0, "end_f": 100}]})
+    frames, notes = build.proof_selection(reel)
+    ck("finished-picture spans keep their original skip reason", frames == {} and all("B-roll" not in note for note in notes))
+
+
+def case_real_handoff_broll(root):
+    value = os.environ.get("EDITOR_SE_TEST_REEL_HANDOFF_BROLL")
+    if not value:
+        print("SKIP real handoff B-roll: EDITOR_SE_TEST_REEL_HANDOFF_BROLL is unset", flush=True)
+        return
+    reel = Path(value)
+    beats = [b for b in fcpx.read(reel / "beat-map-selection.json")["beats"] if b.get("broll")]
+    ck("real handoff has B-roll and a finished package", bool(beats) and (reel / "handoff/handoff.json").is_file())
+    frames = build.proof_frames(reel)
+    ck("real handoff proofs avoid every B-roll beat", all(
+       not b["start_f"] <= frame < b["end_f"] for frame in frames.values() for b in beats))
+
+
 def case_rcheck(root, frame_mode=None):
     reel, master = steps_fixture(root)
     manifest = fcpx.read(reel / "handoff/handoff.json")
@@ -642,12 +730,18 @@ def case_rcheck(root, frame_mode=None):
         build.save(reel / "work/scale_track.json", compose.styles.plan(reel, fps="30"))
     elif frame_mode == "no-scale-track":
         (reel / "work/scale_track.json").unlink()
+    elif frame_mode in ("broll", "covered"):
+        bm = fcpx.read(reel / "beat-map-selection.json")
+        for b in bm["beats"]:
+            if frame_mode == "covered" or b["start_f"] == 42:
+                b["broll"] = {"fit": "cover"}
+        build.save(reel / "beat-map-selection.json", bm)
     p = command(SCRIPTS / "build_edit.py", "resolve-steps", "--reel-dir", reel, cwd=root)
     if not ck("rcheck prepares native steps", p.returncode == 0, p.stdout + p.stderr):
         return
     steps = fcpx.read(reel / "handoff/resolve-steps.json")
     frames = build.proof_frames(reel)
-    if frame_mode:
+    if frame_mode in ("layout-switch", "no-scale-track"):
         ck(frame_mode + " has only an unpunched frame", frames == {"unpunched": 42}, frames)
         ck(frame_mode + " notes skipped punched comparison in steps", any("punched comparison was skipped" in note
            for step in steps for note in step.get("notes", [])))
@@ -687,6 +781,32 @@ def case_rcheck(root, frame_mode=None):
         ck(label + " writes report", (out / "resolve-report.json").is_file()
            and bool(fcpx.read(out / "resolve-report.json")["problems"]) == bool(expected))
     check_result(good, "synthetic native result passes", 0)
+    if frame_mode in ("broll", "covered"):
+        wanted = {"unpunched": 21} if frame_mode == "broll" else {}
+        ck(frame_mode + " omits covered proof frames", frames == wanted, frames)
+        notes = [note for step in steps for note in step.get("notes", [])]
+        report = fcpx.read(out / "resolve-report.json")
+        skipped = ("punched",) if frame_mode == "broll" else ("unpunched", "punched")
+        for kind in skipped:
+            for source, messages in (("steps", notes), ("report", report["notes"])):
+                ck(frame_mode + " names covered " + kind + " proof in " + source,
+                   any(f"The {kind} picture check was skipped" in note and "B-roll" in note for note in messages))
+        ck(frame_mode + " compares only eligible frames", set(report["frame_differences"]) == set(wanted))
+        bad = copy.deepcopy(good)
+        bad["report"]["width"] = "1920"
+        check_result(bad, frame_mode + " still rejects structural mismatch", 1, "size")
+        for step in ("ready", "project", "import", "captions", "report"):
+            bad = copy.deepcopy(good)
+            bad[step] = {"ok": False, "error": "Step refused"}
+            check_result(bad, frame_mode + " still rejects failed " + step, 1, "Step refused")
+            ck(frame_mode + " keeps skip notes after failed " + step,
+               fcpx.read(out / "resolve-report.json")["notes"] == report["notes"])
+        if frame_mode == "broll" and "unpunched" in frames:
+            target = out / f"resolve-still-{frames['unpunched']}.png"
+            must([rt.tool("ffmpeg"), "-v", "error", "-y", "-f", "lavfi", "-i",
+                  "color=c=black:s=1080x1920", "-frames:v", "1", target])
+            check_result(good, "covered punch never hides a real unpunched mismatch", 1, "does not match")
+        return
     if frame_mode:
         report = fcpx.read(out / "resolve-report.json")
         ck(frame_mode + " verifies available frame and notes skipped comparison",
@@ -738,6 +858,14 @@ def case_layout_switch(root):
 
 def case_no_scale_track(root):
     case_rcheck(root, "no-scale-track")
+
+
+def case_rcheck_broll(root):
+    case_rcheck(root, "broll")
+
+
+def case_rcheck_covered(root):
+    case_rcheck(root, "covered")
 
 
 def main():

@@ -202,14 +202,51 @@ def checked_manifest(reel):
     return manifest
 
 
-def proof_frames(reel):
-    """Pick whichever plain and clearly scaled frames exist outside baked spans."""
+def picture_covers(reel, track, cuts):
+    """Reuse the compositor's gate, underlay and layout geometry; do not render."""
+    compose = compose_module()
+    beats = fcpx.read(reel / compose.SEND, {}).get("beats", [])
+    kinds = {b["scene"]["id"]: fcpx.read(compose.scene_check.SCENES / b["scene"]["id"] / "scene.json")["kind"]
+             for b in beats if b.get("scene")}
+    spans = compose.build_spans(beats, kinds, 0)
+    labels = {"broll": "B-roll", "takeover": "full-frame scenes", "transition": "transition pictures"}
+    covers = [(s["start_f"], s["end_f"], labels[s["layer"]]) for s in spans if s["layer"] in labels]
+    if kinds:
+        covers += [(s["start_f"], s["end_f"], "full-frame scenes")
+                   for s in compose.effect_gate.underlay(spans, cuts["fps"])]
+    total = cuts["segments"][-1]["out_out_f"]
+    full = compose.layout("full", 1)["box"]
+
+    def changed(name):
+        return compose.layout(name, 1)["box"] != full
+
+    keys = sorted(track.get("keys", []), key=lambda k: k["f"])
+    moves = sorted((t for t in track.get("tweens", []) if t["prop"] == "layout"), key=lambda t: t["start_f"])
+    edges = sorted({0, total, *(k["f"] for k in keys),
+                    *(m[k] for m in moves for k in ("start_f", "end_f"))})
+    for start, end in zip(edges, edges[1:]):
+        last = max((k for k in keys if k["f"] <= start), key=lambda k: k["f"], default={"f": -1})
+        names = [last.get("layout", "full")]
+        for move in moves:
+            if last["f"] <= move["start_f"] <= start:
+                names = [move["to"]] if start >= move["end_f"] else [move["from"], move["to"]]
+        if any(changed(name) for name in names):
+            covers.append((start, end, "another layout"))
+    if track.get("style", {}).get("style") == "layout-switch":
+        covers += [(b["start_f"], b["end_f"], "another layout") for b in beats if changed(b["layout"])]
+    return covers
+
+
+def proof_selection(reel):
+    """Pick middle eligible plain/settled punch frames, and explain missing proofs."""
     cuts = fcpx.read(reel / "work/cuts.json")
     total = cuts["segments"][-1]["out_out_f"]
     track = fcpx.read(reel / "work/scale_track.json", {})
     keys = sorted(track.get("keys", []), key=lambda k: k["f"])
     tweens = sorted((t for t in track.get("tweens", []) if t["prop"] == "scale"), key=lambda t: t["start_f"])
     baked = fcpx.read(reel / "handoff/handoff.json").get("baked_spans", [])
+    covers = picture_covers(reel, track, cuts)
+    covered = {"unpunched": set(), "punched": set()}
     plain, punched = [], []
     for frame in range(total):
         if any(s["start_f"] <= frame < s["end_f"] for s in baked):
@@ -227,20 +264,33 @@ def proof_frames(reel):
                 # from its settled key/endpoint so easing cannot create a false candidate.
                 moving = True
                 scale = max(float(tween["from"]), float(tween["to"]))
-        if abs(scale - 1) < 1e-6:
-            plain.append(frame)
-        elif scale >= 1.05 and not moving:
-            punched.append(frame)
-    return {kind: candidates[len(candidates) // 2] for kind, candidates in
-            (("unpunched", plain), ("punched", punched)) if candidates}
+        kind = "unpunched" if abs(scale - 1) < 1e-6 else "punched" if scale >= 1.05 and not moving else None
+        if kind:
+            reasons = {reason for start, end, reason in covers if start <= frame < end}
+            if reasons:
+                covered[kind].update(reasons)
+            else:
+                (plain if kind == "unpunched" else punched).append(frame)
+    frames = {kind: candidates[len(candidates) // 2] for kind, candidates in
+              (("unpunched", plain), ("punched", punched)) if candidates}
+    return frames, frame_notes(frames, covered)
 
 
-def frame_notes(frames):
+def proof_frames(reel):
+    return proof_selection(reel)[0]
+
+
+def frame_notes(frames, covered=None):
     notes = []
-    if "unpunched" not in frames:
-        notes.append("The unpunched comparison was skipped because this reel has no unpunched frame outside finished-picture spans")
-    if "punched" not in frames:
-        notes.append("The punched comparison was skipped because this reel has no settled punched frame outside finished-picture spans")
+    for kind, description in (("unpunched", "unpunched"), ("punched", "settled punched")):
+        if kind in frames:
+            continue
+        reasons = (covered or {}).get(kind)
+        if reasons:
+            notes.append(f"The {kind} picture check was skipped: every {description} frame outside finished-picture spans "
+                         "is covered by " + " or ".join(sorted(reasons)) + ".")
+        else:
+            notes.append(f"The {kind} comparison was skipped because this reel has no {description} frame outside finished-picture spans")
     return notes
 
 
@@ -272,8 +322,7 @@ def native_steps(reel, manifest, project_name=None):
     fmt = manifest["summaries"]["fcpxml"]["format"]
     rate = 1 / fcpx.seconds(fmt["frameDuration"])
     base = project_name or f"{reel.name} hand-off {datetime.now().strftime('%m.%d.%y')}"
-    frames = proof_frames(reel)
-    notes = frame_notes(frames)
+    frames, notes = proof_selection(reel)
     stills = [{"frame": n, "path": str(outdir / f"resolve-still-{n}.png")} for n in frames.values()]
     srt = outdir / f"{reel.name} - Captions.srt"
     has_srt = srt.name in manifest["sha256"]
@@ -421,12 +470,13 @@ def verify_result(reel, manifest, results):
     summary = manifest["summaries"]["fcpxml"]
     fmt = summary["format"]
     problems, differences = [], {}
+    frames, notes = proof_selection(reel)
     for id_ in ("ready", "project", "import", "captions", "report"):
         step = results.get(id_, {})
         if step.get("ok") is not True:
             problems.append(f"Resolve step {id_} failed: " + " ".join(str(step.get("error", "no successful result")).split())[:220])
     if problems:
-        return {"problems": problems, "frame_differences": differences}
+        return {"problems": problems, "frame_differences": differences, "notes": notes}
     ready = results["ready"]
     if "studio" not in str(ready.get("product", "")).lower() or tuple(int(n) for n in ready.get("version", [])[:2]) < (21, 1):
         problems.append("The hand-off needs DaVinci Resolve Studio 21.1 or newer")
@@ -507,8 +557,6 @@ def verify_result(reel, manifest, results):
     if srt.name in manifest["sha256"] and not any(c.get("path") and normal_path(c["path"]) == normal_path(srt)
                                                  for c in report.get("pool", [])):
         problems.append("The editable SRT is missing from the Media Pool")
-    frames = proof_frames(reel)
-    notes = frame_notes(frames)
     stills = report.get("stills", [])
     if len(stills) != len(frames):
         problems.append("Resolve did not export all requested still frames")
