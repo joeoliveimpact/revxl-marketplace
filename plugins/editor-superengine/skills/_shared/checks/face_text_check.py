@@ -16,13 +16,14 @@ Scenes/b-roll hiding the a-roll are skipped too (pip remains above them).
 
 Face differences must exceed 36 RGB levels in at least 12% of the protected
 box, allowing normal compression/resampling noise. Contrast is the WCAG-style
-ratio of mean linear RGB luminance in the brightest/darkest 10% of the caption
+ratio of the caption fill's linear luminance to the median of its rendered
 box; below 3 blocks. This is a rendered-pixel heuristic, not text recognition.
 Missing face inputs warn once; missing captions produce no contrast findings.
 """
 import argparse
 import json
 import math
+import statistics
 import subprocess
 import sys
 from fractions import Fraction
@@ -32,6 +33,8 @@ HERE = Path(__file__).resolve()
 sys.path.insert(0, str(HERE.parents[1]))
 import runtime as rt  # noqa: E402
 from win_encoding import ensure_utf8_output  # noqa: E402
+sys.path.insert(0, str(HERE.parents[2] / "reel-captions/scripts"))
+from captions import STYLES, drawn  # noqa: E402
 
 PHASE = "post"
 LINEAR = tuple(v / 255 / 12.92 if v / 255 <= 0.04045 else
@@ -99,7 +102,12 @@ def pixel_box(box, size, master_size=(1080, 1920)):
             max(0, min(h, math.floor(y1 * h / mh))))
 
 
-def contrast(data, size, box):
+def color_luminance(color):
+    red, green, blue = (int(color[i:i + 2], 16) for i in (1, 3, 5))
+    return 0.2126 * LINEAR[red] + 0.7152 * LINEAR[green] + 0.0722 * LINEAR[blue]
+
+
+def contrast(data, size, box, fill):
     w, _ = size
     x0, y0, x1, y1 = pixel_box(box, size)
     luminance = []
@@ -110,9 +118,7 @@ def contrast(data, size, box):
                              + 0.0722 * LINEAR[data[i + 2]])
     if not luminance:
         raise ValueError("The caption box has no visible pixels.")
-    luminance.sort()
-    count = max(1, math.ceil(len(luminance) * 0.1))
-    return (sum(luminance[-count:]) / count + 0.05) / (sum(luminance[:count]) / count + 0.05)
+    return (fill + 0.05) / (statistics.median(luminance) + 0.05)
 
 
 def aroll_path(reel, cuts):
@@ -203,7 +209,13 @@ def run(ctx):
                     "check the cut files and render it again.", render)]
     caps_path = reel / "work/captions.json"
     try:
-        chunks = read(caps_path)["chunks"] if caps_path.is_file() else []
+        captions = read(caps_path) if caps_path.is_file() else {}
+        style = captions.get("style", {"style": "clean"})
+        chunks = captions["chunks"] if caps_path.is_file() else []
+        if style.get("style") == "none":
+            chunks = []
+        fill = color_luminance(STYLES[style["style"]]["color"]) if chunks else 1
+        accent = color_luminance(style.get("accent", STYLES[style["style"]]["accent"])) if chunks else fill
         for chunk in chunks:
             a, e = chunk["start_f"], chunk["end_f"]
             box = chunk["box"]
@@ -253,10 +265,19 @@ def run(ctx):
             for chunk in chunks:
                 if (chunk["start_f"] + chunk["end_f"]) // 2 != number:
                     continue
-                ratio = contrast(picture, size, chunk["box"])
+                text = fill
+                if style.get("mark_look", "accent") == "accent" and any(
+                        word.get("mark") for word in chunk.get("words", [])):
+                    text = min(fill, accent)
+                # Judge only the part the words (and any plate) cover, not the empty rest of the band.
+                x0, y0, x1, y1 = chunk["box"]
+                width = min(x1 - x0, drawn(chunk.get("text", ""), chunk["box"], STYLES[style["style"]])[2])
+                middle = (x0 + x1) / 2
+                ratio = contrast(picture, size, (middle - width / 2, y0, middle + width / 2, y1), text)
                 if ratio < 3:
                     out.append(row("low-contrast", "block", f"The caption at {at:.2f} seconds is hard to read "
-                                   "against the picture behind it. Use a clearer text or plate colour.",
+                                   "against the picture behind it. Pick the Boxed caption look, or ask Claude "
+                                   "to move this caption off the light part of the picture.",
                                    caps_path, at=at))
             if pc is None:
                 continue

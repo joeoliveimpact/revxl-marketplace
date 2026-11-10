@@ -22,7 +22,7 @@ the review page, work/cut-review.html.
 Dense GOP is not optional on anything a human will scrub. preset slow defaults to
 a 250-frame GOP; seeks measured 678-1527ms and dragging the playhead felt dead.
 """
-import argparse, hashlib, json, os, subprocess, sys
+import argparse, hashlib, json, os, queue, re, subprocess, sys, threading, time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -244,7 +244,8 @@ def count_frames(path):
         return -1
 
 
-def encode(raw, graph_path, out, fps, fps_flag, crf, preset, gop, abitrate):
+def encode(raw, graph_path, out, fps, fps_flag, crf, preset, gop, abitrate, expected_duration=None,
+           label="the cut"):
     find_tools()
     inputs = raw if isinstance(raw, (list, tuple)) else [raw]
     cmd = [FFMPEG, "-y", "-loglevel", "error", "-stats"]
@@ -257,10 +258,51 @@ def encode(raw, graph_path, out, fps, fps_flag, crf, preset, gop, abitrate):
            "-pix_fmt", "yuv420p", "-color_primaries", "bt709", "-color_trc", "bt709",
            "-colorspace", "bt709", "-color_range", "tv", fps_flag, "cfr", "-r", str(fps),
            "-c:a", "aac", "-b:a", abitrate, "-movflags", "+faststart", str(out)]
-    p = subprocess.run(cmd, capture_output=True, text=True)
-    if p.returncode:
-        die("encode failed: %s" % " ".join(p.stderr.strip().splitlines())[-1500:])
-    return p.stderr
+    # Universal newlines split ffmpeg's CR stats; a reader keeps heartbeats alive
+    # even when ffmpeg hasn't written another line. Retain the complete error log.
+    pending, output = queue.Queue(), []
+    start = last = time.monotonic()
+    step, percent = 0, None
+    with subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True,
+                          encoding="utf-8", errors="replace") as process:
+        def read_stderr():
+            try:
+                for line in process.stderr:
+                    pending.put(line)
+            finally:
+                pending.put(None)
+        reader = threading.Thread(target=read_stderr, daemon=True)
+        reader.start()
+        while True:
+            try:
+                line = pending.get(timeout=1)
+            except queue.Empty:
+                line = ""
+            if line is None:
+                break
+            output.append(line)
+            found = re.search(r"time=(\d+):(\d+):(\d+(?:\.\d+)?)", line)
+            if found and expected_duration and expected_duration > 0:
+                seconds = int(found[1]) * 3600 + int(found[2]) * 60 + float(found[3])
+                percent = max(percent or 0, min(100, int(seconds / expected_duration * 100)))
+            now = time.monotonic()
+            elapsed = max(0, int(now - start))
+            advances = list(range(step + 10, (percent or 0) + 1, 10))
+            for advance in advances:
+                print(f"Rendering {label}: {advance}% ({elapsed // 60}:{elapsed % 60:02d} elapsed)", flush=True)
+                step = advance
+            if advances:
+                last = now
+            elif now - last >= 30:
+                amount = f"{percent}% " if percent is not None else ""
+                print(f"Rendering {label}: {amount}({elapsed // 60}:{elapsed % 60:02d} elapsed)", flush=True)
+                last = now
+        reader.join()
+        code = process.wait()
+    stderr = "".join(output)
+    if code:
+        die("encode failed: %s" % " ".join(stderr.strip().splitlines())[-1500:])
+    return stderr
 
 
 def probe_out(path):
@@ -368,13 +410,14 @@ def main():
         g = work / ("_graph-master-%s.txt" % tag)
         g.write_text(build_graph(cuts, sr, vfilter, astream, dead), encoding="utf-8")
         out = outdir / ("master-%s.mp4" % tag)
-        encode(inputs, g, out, fps, fps_flag, 14, "slow", int(round(fps)), "192k")
+        encode(inputs, g, out, fps, fps_flag, 14, "slow", int(round(fps)), "192k", expected_duration=expected)
         results.append(("master", out))
     if a.scrub:
         g = work / ("_graph-scrub-%s.txt" % tag)
         g.write_text(build_graph(cuts, sr, vfilter, astream, dead), encoding="utf-8")
         out = outdir / ("scrub-%s.mp4" % tag)
-        encode(inputs, g, out, fps, fps_flag, 20, "veryfast", max(1, int(round(fps / 2))), "160k")
+        encode(inputs, g, out, fps, fps_flag, 20, "veryfast", max(1, int(round(fps / 2))), "160k", expected_duration=expected,
+               label="the scrubbing copy")
         results.append(("scrub", out))
 
     print()

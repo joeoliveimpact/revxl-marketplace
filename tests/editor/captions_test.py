@@ -285,6 +285,49 @@ def layer_checks(tmp):
         assert sum("tl.fromTo" in line and "-punch-" in line for line in group_tl) == 1
 
 
+def broll_backing_checks(tmp):
+    reel = tmp / "backing"
+    items = words("one. two. three. four.", 1)
+    # Full overlap, partial overlap, and touching exclusive edges respectively.
+    beats = [{"start_f": 0, "end_f": 30, "layout": "full", "broll": {"id": "own"}},
+             {"start_f": 42, "end_f": 72, "layout": "full", "broll": {"id": "ai"}},
+             {"start_f": 72, "end_f": 180, "layout": "full", "broll": None}]
+    for style in captions.STYLES:
+        fixture(reel, items, {"style": style}, beats=beats)
+        doc = captions.plan(reel)
+        assert [bool(c.get("backing")) for c in doc["chunks"]] == (
+            [False] * 4 if style == "boxed" else [True, True, True, False]), "B-roll overlaps need backing"
+        boxes = [(100, 1200, 900, 1400)] * 4
+        css, layers, _ = captions.layer(doc, boxes, 0.5, lambda f: str(f / 30))
+        markup = "\n".join(layers)
+        if style == "boxed":
+            assert 'class="caption backed"' not in markup and '.caption.backed' not in css
+            assert 'background: rgba(0,0,0,0.72); border-radius: 8px;' in css
+        else:
+            assert markup.count('class="caption backed"') == 3
+            assert 'class="caption" id="cap-3"' in markup
+            assert '.caption.backed {background: rgba(0,0,0,0.6); border-radius: 8px;}' in css
+            assert 'padding: 8px;' in css and 'text-shadow:' in css
+            if style == "bold-pop":
+                assert '-webkit-text-stroke: 1.5px #000000;' in css
+        captions.write(reel, doc)
+        assert json.loads((reel / "work/captions.json").read_text(encoding="utf-8")) == doc
+        # Compose's resolved beats (also used by the Look Picker) take precedence.
+        resolved = captions.plan(reel, render_beats=[dict(b, broll=None) for b in beats])
+        assert not any(c.get("backing") for c in resolved["chunks"])
+    picker = captions.picker_doc(reel)
+    for sid, look in picker["looks"].items():
+        assert ('backed' in look["html"]["accent"]) == (sid != "boxed")
+        assert 'marker-mode' in look["html"]["marker"], "Backed picker captions need marker mode too"
+    # Hand-off's subtitle export accepts the persisted field without changing timing/text.
+    sys.path.insert(0, str(SCRIPT.parents[2] / "pro-editor-handoff/scripts"))
+    import export_edit
+    srt = reel / "handoff/captions.srt"
+    with patch.object(export_edit, "reel_rate", return_value=30):
+        summary = export_edit.write_srt(reel, srt)
+    assert summary["entries"] == 4 and not export_edit.check_srt(srt)
+
+
 def cli_checks(tmp):
     reel = tmp / "cli"
     fixture(reel, words("this doesn't work."))
@@ -497,7 +540,7 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
         for check in (style_checks, brand_checks, brand_font_checks, brand_font_missing_checks,
                       reel_beats_saved_checks, chunk_checks, mark_checks, truth_checks, coverage_checks, layer_checks,
-                      cli_checks, picker_style_checks, marker_width_checks, loud_checks, picker_doc_checks,
+                      broll_backing_checks, cli_checks, picker_style_checks, marker_width_checks, loud_checks, picker_doc_checks,
                       remembered_unpicked_checks):
             root = Path(tmp) / check.__name__
             root.mkdir()

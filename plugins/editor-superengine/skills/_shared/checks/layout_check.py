@@ -169,6 +169,8 @@ def run(ctx):
             continue
         if head is None:
             continue  # The measured head is outside the picture during this span.
+        if placer.speaker_hidden(face_ctx, start, element["end"] - 1):
+            continue  # Full-frame B-roll hides the speaker, so there is no face to cover.
         hook_face = ("sits on the speaker's face because the hook title leaves no room; "
                      "shorten the hook to one line, or use your opening words as the hook."
                      if placer.active_hook(face_ctx, start) else None)

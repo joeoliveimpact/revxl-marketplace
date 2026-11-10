@@ -41,13 +41,14 @@ def write_timemap(work, cuts, raw=None, reel_dir=None, take=1):
     work = Path(work)
     reel = Path(reel_dir) if reel_dir is not None else work.parent
     ledger = footage_check.rows(reel)
-    hashes = {footage_check.normalized(footage_check.asset(reel, r["path"])): r["sha256"] for r in ledger}
+    resolved = footage_check.resolve_rows(reel, ledger)
+    hashes = {footage_check.normalized(path): r["sha256"] for r, path in resolved}
     takes, segs = cuts.get("takes") or {}, []
     for s in cuts["segments"]:
         n = s.get("take", take)
         file = takes[str(n)]["raw"] if takes else raw
         segs.append(dict(out_in_f=s["out_in_f"], out_out_f=s["out_out_f"], take=n, file=file,
-                         sha256=hashes.get(footage_check.normalized(footage_check.asset(reel, file))) if file else None,
+                         sha256=hashes.get(footage_check.normalized(footage_check.asset(reel, file, resolved))) if file else None,
                          src_in_f=s["src_in_f"], src_out_f=s["src_out_f"]))
     doc = dict(fps=cuts["fps"], speed=cuts.get("speed", 1.0), segments=segs)
     (work / "timemap.json").write_bytes((json.dumps(doc, indent=1) + "\n").encode("utf-8"))

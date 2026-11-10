@@ -631,18 +631,24 @@ def case_filtercomplex(S, a):
         return
     gaps, render = module("gaps.py"), module("render.py")
     gaps.write_cuts(w, gaps.snap_cuts([(0.2, 1.0), (2.0, 2.8)], load(w / "probe.json")["out_rate"], 1.0))
-    calls, real = [], subprocess.run
+    calls, popens, real, real_popen = [], [], subprocess.run, subprocess.Popen
 
     def spy(cmd, *x, **k):
         p = real(cmd, *x, **k)
         calls.append(([str(c) for c in cmd], p.returncode))
         return p
 
-    subprocess.run = spy
+    class SpyPopen(real_popen):  # the encode streams its progress through Popen
+        def __init__(self, cmd, *x, **k):
+            super().__init__(cmd, *x, **k)
+            popens.append(([str(c) for c in cmd], self))
+
+    subprocess.run, subprocess.Popen = spy, SpyPopen
     try:
         rc, _, master, _ = tiny_render(w, src)
     finally:
-        subprocess.run = real
+        subprocess.run, subprocess.Popen = real, real_popen
+    calls += [(c, p.returncode) for c, p in popens]
     enc = [(c, r) for c, r in calls if Path(c[0]).stem == "ffmpeg" and "-map" in c]
     ver = sh(["ffmpeg", "-version"]).stdout.split("\n")[0]
     ck("F-6: the encode command uses -/filter_complex, never -filter_complex_script",
@@ -749,6 +755,7 @@ def case_tools(S, a):
         cfg = d / "cut-board.config.json"
         cfg.write_text(json.dumps({"reel": "tools", "takes": {"1": {"words": [], "edit_map": "work/edit_map.json"}}}),
                        encoding="utf-8")
+        (w / "edit_map.json").write_text(json.dumps({"words": []}), encoding="utf-8")  # the Cut Board's map (FX1-W1d)
         p = run("make_tweaks.py", "--cut", master, "--work", w, "--config", cfg, "--take", "1", "-o", d)
         ck("tools: make_tweaks.py writes tweak-board.config.json with the editor's own tools",
            p.returncode == 0 and (d / "tweak-board.config.json").is_file(), (p.returncode, p.stderr[-300:]))

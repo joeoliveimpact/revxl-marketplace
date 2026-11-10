@@ -46,7 +46,7 @@ def reuse(reel, request_sha256):
                 continue
             path = reel / clip["src"]
             matches = [r for r in ledger if r.get("id") == clip["ledger_id"] and
-                       footage_check.normalized(footage_check.asset(reel, r["path"])) ==
+                       footage_check.normalized(footage_check.locate(reel, r)) ==
                        footage_check.normalized(path)]
             if (len(matches) == 1 and matches[0].get("role") == "broll" and
                     matches[0].get("origin") == "ai" and clip.get("job_id") and
@@ -87,7 +87,7 @@ def ingest(reel, ai=None, job_id=None, request_sha256=None):
     folder = reel / "broll"
     out = folder / "clips.json"
     previous = json.loads(out.read_text(encoding="utf-8"))["clips"] if out.is_file() else []
-    logged = {footage_check.normalized(footage_check.asset(reel, row["path"]))
+    logged = {footage_check.normalized(footage_check.locate(reel, row))
               for row in footage_check.rows(reel)}
     for key, recording in recordings.items():
         if key not in logged:
@@ -111,7 +111,7 @@ def ingest(reel, ai=None, job_id=None, request_sha256=None):
         partial = None
         try:
             ledger = footage_check.rows(reel)
-            matches = [r for r in ledger if footage_check.normalized(footage_check.asset(reel, r["path"])) ==
+            matches = [r for r in ledger if footage_check.normalized(footage_check.locate(reel, r)) ==
                        footage_check.normalized(dst)]
             if dst.exists():
                 sha = footage_check.digest(dst)
@@ -157,7 +157,7 @@ def ingest(reel, ai=None, job_id=None, request_sha256=None):
             if row.get("origin") != ("ai" if ai else "own") or (ai and
                     (row.get("role") != "broll" or row.get("job_id") != job_id)):
                 raise ValueError("the prepared clip belongs to a different footage entry")
-            logged = footage_check.asset(reel, row["path"]).resolve()
+            logged = footage_check.locate(reel, row).resolve()
             rel = logged.relative_to(reel).as_posix()
             if not logged.is_file() or footage_check.digest(logged) != row["sha256"]:
                 raise ValueError("the logged clip is missing or changed")

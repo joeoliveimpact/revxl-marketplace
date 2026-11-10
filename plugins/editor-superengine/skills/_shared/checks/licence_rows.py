@@ -67,10 +67,11 @@ def footage(ctx):
 
     try:
         ledger = footage_check.rows(reel)
+        resolved = footage_check.resolve_rows(reel, ledger)
         used, out = {}, []
         for clip in clips:
-            matches = [r for r in ledger if r.get("id") == clip["ledger_id"] and
-                       footage_check.normalized(footage_check.asset(reel, r["path"])) ==
+            matches = [r for r, path in resolved if r.get("id") == clip["ledger_id"] and
+                       footage_check.normalized(path) ==
                        footage_check.normalized(reel / clip["src"])]
             if len(matches) != 1:
                 out.append(block(f"the footage {clip['src']} has no matching licence row"))
@@ -85,8 +86,8 @@ def footage(ctx):
                              "work/probe.json"))
         if cuts.get("segments") and (cuts.get("takes") or raw):
             for use in footage_check.cut_uses(cuts, raw):
-                key = footage_check.normalized(footage_check.asset(reel, use["path"]))
-                matches = [r for r in ledger if footage_check.normalized(footage_check.asset(reel, r["path"])) == key]
+                key = footage_check.normalized(footage_check.asset(reel, use["path"], resolved))
+                matches = [r for r, path in resolved if footage_check.normalized(path) == key]
                 if len(matches) != 1:
                     out.append(block(f"the recording {Path(use['path']).name} has no matching licence row"))
                 else:

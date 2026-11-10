@@ -104,12 +104,17 @@ def case_selftest(root):
 
 def case_footage(root):
     fc = trials.compose.footage_check
-    for mode in ("logged", "no_broll", "unlogged"):
+    for mode in ("logged", "legacy", "no_broll", "unlogged"):
         reel, doc, _ = pure_reel(root / mode)
         clip = reel / "footage/own.mp4"
         clip.parent.mkdir(parents=True)
         clip.write_bytes(b"your own B-roll")
-        ident = fc.add(reel, clip, role="broll", origin="own", licence="own") if mode == "logged" else "f01"
+        ident = fc.add(reel, clip, role="broll", origin="own", licence="own") if mode in ("logged", "legacy") else "f01"
+        if mode == "legacy":
+            rows = fc.rows(reel)
+            rows[0]["path"] = str(clip)
+            rows[0].pop("size", None)
+            trials.save(reel / "footage/ledger.json", rows)
         if mode != "no_broll":
             doc["beats"][0].update(start_f=90, end_f=120,
                 broll={"src": "footage/own.mp4", "in": 0, "out": 30, "ledger_id": ident})

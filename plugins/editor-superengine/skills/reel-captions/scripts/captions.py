@@ -557,6 +557,10 @@ def plan(reel_dir, fps=None, *, _style=None, style_reel=None, render_beats=None)
             entries.append({"w": i, "text": text, "start_f": max(c["start_f"], round(words[i]["start"] * rate)),
                             "mark": mark, "punch": punch, "run": run_ids.get(i)})
         item = {"i": len(doc["chunks"]), **c, "text": " ".join(w["text"] for w in entries), "words": entries}
+        if not STYLES[cs["style"]]["plate"] and any(
+                b.get("broll") is not None and b["start_f"] < c["end_f"] and c["start_f"] < b["end_f"]
+                for b in beats):
+            item["backing"] = True
         doc["chunks"].append(item)
         if Fraction(c["end_f"] - c["start_f"], 1) / rate < cs["min_read_s"]:
             when = float(Fraction(c["start_f"]) / rate)
@@ -590,6 +594,14 @@ def text_width_em(text):
         units, widths = 1000, {}
     return sum(widths[ch] / units if ch in widths and _num(widths[ch]) and widths[ch] >= 0 else 0.6
                for ch in text) or 0.6
+
+
+def drawn(text, box, spec):
+    """(padding, font size, drawn width) of one caption centred in its placed box, in master pixels."""
+    x0, _, x1, _ = box
+    pad = min(16, (x1 - x0) / 8)  # taste: reduce plate padding for very narrow boxes
+    size = min(spec["size"], (x1 - x0 - 2 * pad) / (text_width_em(text) * spec["punch"]["scale"]))
+    return pad, size, text_width_em(text) * size + 2 * pad
 
 
 def layer(doc, boxes, s, t):
@@ -628,6 +640,8 @@ def layer(doc, boxes, s, t):
            f'background: {accent}; opacity: 0.38; transform: scaleX(0); transform-origin: left center; z-index: 0;}}\n'
            + ('' if marker else f'#captions .marked {{color: {accent};}}\n')
            + ('#captions .cap-word {opacity: 0.55;}\n' if spec["karaoke"] else ''))
+    if not spec["plate"] and any(c.get("backing") for c in doc["chunks"]):
+        css += f'#captions .caption.backed {{background: rgba(0,0,0,0.6); border-radius: {16*s:g}px;}}\n'
     layers, tl = ['<div class="band" id="captions" style="z-index: 600">'], []
     for c in doc["chunks"]:
         box = boxes[c["i"]]
@@ -635,8 +649,7 @@ def layer(doc, boxes, s, t):
         if not (s > 0 and x1 > x0 and y1 > y0):
             raise Stop(2, "A caption needs a positive-size box and output scale. Place it again.")
         # Reserve plate and punch space around measured character advances.
-        pad = min(16, (x1 - x0) / 8)  # taste: reduce plate padding for very narrow boxes
-        size = min(spec["size"], (x1 - x0 - 2 * pad) / (text_width_em(c["text"]) * spec["punch"]["scale"]))
+        pad, size, _ = drawn(c["text"], box, spec)
         if size < spec["size"]:
             note = f"Caption at {float(t(c['start_f'])):.2f} seconds uses a smaller font to fit its safe spot."
             if note not in doc["notes"]:
@@ -678,7 +691,8 @@ def layer(doc, boxes, s, t):
                 spans.append(" ")
         if group:
             spans.append('</span>')
-        layers.append(f'<div class="caption" id="cap-{c["i"]}" style="left: {(x0+x1)/2*s:g}px; '
+        classes = "caption backed" if c.get("backing") and not spec["plate"] else "caption"
+        layers.append(f'<div class="{classes}" id="cap-{c["i"]}" style="left: {(x0+x1)/2*s:g}px; '
                       f'top: {y0*s:g}px; font-size: {size*s:g}px; padding: {pad*s:g}px; visibility: hidden">{"".join(spans)}</div>')
         el = f'"#cap-{c["i"]}"'
         tl.append(f'tl.set({el}, {{xPercent: -50, autoAlpha: 0, immediateRender: true}}, 0);')  # lane fix: lint's set-at-0 rule
@@ -752,6 +766,8 @@ def picker_doc(reel_dir):
     ctx = None
     if (reel / "work/scale_track.json").is_file():
         try:
+            import broll_bands
+            notes.extend(broll_bands.measure(reel))
             ctx = placer.load_ctx(reel)
         except ValueError as exc:
             raise Stop(2, str(exc)) from None
@@ -780,7 +796,7 @@ def picker_doc(reel_dir):
             sheets.append(css)
         # Scope both mark variants within their caption so one card's CSS cannot recolour another.
         css = sheets[0].replace('#captions .marked', '#captions .caption:not(.marker-mode) .marked')
-        variants["marker"] = variants["marker"].replace('class="caption"', 'class="caption marker-mode"')
+        variants["marker"] = variants["marker"].replace('class="caption', 'class="caption marker-mode', 1)
         variants["marker"] = variants["marker"].replace('class="cap-marker-swipe"', 'class="cap-marker-swipe" style="transform: scaleX(1)"')
         looks[sid] = {"label": spec["label"], "css": css, "html": variants,
                       "pop": {"from": dict(spec["pop"]["from"]), "to": dict(spec["pop"]["to"]),

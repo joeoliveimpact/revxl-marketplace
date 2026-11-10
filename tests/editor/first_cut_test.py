@@ -11,7 +11,7 @@ Tools come from the editor state folder (EDITOR_SE_HOME, else the default): ffmp
 and libx265, else PATH), and node, Chrome and puppeteer-core for the page click. Missing ones FAIL.
 Known colour (H-R25): CIEDE2000 dE <= 5.0 per patch on the HLG -> SDR case, against the planted value.
 """
-import argparse, importlib.util, json, math, os, re, shlex, shutil, subprocess, sys, tempfile
+import argparse, contextlib, importlib.util, io, json, math, os, queue, re, shlex, shutil, subprocess, sys, tempfile, threading, time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -366,15 +366,128 @@ def check_review_title(plugin):
                and "Cut review: RAW.mp4" not in text)
 
 
+def check_encode_log(plugin):
+    spec = importlib.util.spec_from_file_location("cut_render_log", script(plugin, "render.py"))
+    render = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(render)
+    popen = subprocess.Popen
+    log = "first line\r" + "x" * 1600 + "\nlast line\n"
+    for code in (0, 1):
+        def child(cmd, *args, **kwargs):
+            return popen([sys.executable, "-c", "import sys; sys.stderr.write(%r); sys.exit(%d)" % (log, code)],
+                         *args, **kwargs)
+        error = io.StringIO()
+        with patch.object(render, "find_tools"), patch.object(render, "FFMPEG", "fake-ffmpeg"), \
+                patch.object(render.subprocess, "Popen", side_effect=child), contextlib.redirect_stderr(error):
+            try:
+                got = render.encode("raw", "graph", "out", 30, "-fps_mode", 14, "slow", 30, "192k")
+            except SystemExit as exc:
+                ck("first cut: encode failure keeps its exact message", code == 1 and exc.code == 2 and
+                   error.getvalue() == "ERROR: encode failed: " + " ".join(log.strip().splitlines())[-1500:] + "\n",
+                   error.getvalue())
+            else:
+                ck("first cut: full stderr is retained", code == 0 and got == log.replace("\r", "\n"), got)
+    # Bytes that are not UTF-8 must not kill the reader and leave ffmpeg blocked on a full pipe.
+    junk = "import os; os.write(2, bytes([0x81, 0xff]) + b'\\n' + b'frame=1 time=00:00:01.00\\r' * 20000)"
+
+    def junk_child(cmd, *args, **kwargs):
+        return popen([sys.executable, "-c", junk], *args, **kwargs)
+    with patch.object(render, "find_tools"), patch.object(render, "FFMPEG", "fake-ffmpeg"), \
+            patch.object(render.subprocess, "Popen", side_effect=junk_child), contextlib.redirect_stdout(io.StringIO()):
+        started = time.monotonic()
+        got = render.encode("raw", "graph", "out", 30, "-fps_mode", 14, "slow", 30, "192k", expected_duration=10)
+    ck("first cut: stderr that is not UTF-8 neither crashes nor hangs the encode",
+       time.monotonic() - started < 30 and "\ufffd" in got and got.count("time=00:00:01.00") == 20000, len(got))
+
+
+def check_encode_progress(plugin):
+    """A real child emits CR stats, then pauses: progress must arrive while it is still alive."""
+    with tempfile.TemporaryDirectory(prefix="cut-progress-") as tmp:
+        root = Path(tmp)
+        work = root / "work"
+        work.mkdir()
+        (work / "cuts.json").write_bytes((json.dumps(dict(fps=30, speed=1, segments=[dict(
+            src_in_f=0, src_out_f=300, out_in_f=0, out_out_f=300)])) + "\n").encode("utf-8"))
+        (work / "probe.json").write_bytes(b'{"video": {}}\n')
+        done = root / "child-exited"
+        fake = root / "fake_ffmpeg.py"
+        fake.write_bytes((
+            "import pathlib, sys, time\n"
+            "for second in range(1, 11):\n"
+            "    sys.stderr.write('frame=1 time=00:00:%05.2f speed=1x\\r' % second)\n"
+            "    sys.stderr.flush()\n"
+            "    time.sleep(0.08)\n"
+            "sys.stderr.write('fake ffmpeg tail\\n')\n"
+            "sys.stderr.flush()\n"
+            "time.sleep(0.6)\n"
+            "pathlib.Path(sys.argv[1]).touch()\n").encode("utf-8"))
+        runner = root / "run_render.py"
+        runner.write_bytes((
+            "import importlib.util, pathlib, subprocess, sys\n"
+            "spec = importlib.util.spec_from_file_location('cut_render', sys.argv[1])\n"
+            "m = importlib.util.module_from_spec(spec)\n"
+            "spec.loader.exec_module(m)\n"
+            "fake, done = sys.argv[3:5]\n"
+            "real_popen = subprocess.Popen\n"
+            "def popen(cmd, *args, **kwargs):\n"
+            "    if '-/filter_complex' in cmd:\n"
+            "        cmd = [sys.executable, '-u', fake, done]\n"
+            "    return real_popen(cmd, *args, **kwargs)\n"
+            "m.subprocess.Popen = popen\n"
+            "m.FFMPEG = 'fake-ffmpeg'\n"
+            "m.find_tools = lambda: None\n"
+            "m.conform = lambda video: 'null'\n"
+            "m.sample_rate = lambda *args: 48000\n"
+            "m.count_frames = lambda path: 300\n"
+            "m.probe_out = lambda path: dict(format=dict(duration=10), streams=[{}])\n"
+            "m.review_page.write = lambda *args: 'review.html'\n"
+            "sys.argv = [sys.argv[0], sys.argv[2], 'raw.mp4', '--master']\n"
+            "m.main()\n").encode("utf-8"))
+        pending, lines, live, flushed = queue.Queue(), [], [], []
+        with subprocess.Popen([sys.executable, "-u", str(runner), str(script(plugin, "render.py")),
+                               str(work), str(fake), str(done)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                              text=True, encoding="utf-8", errors="replace") as process:
+            def read_lines():
+                for line in process.stdout:
+                    pending.put(line)
+                pending.put(None)
+            reader = threading.Thread(target=read_lines, daemon=True)
+            reader.start()
+            deadline = time.monotonic() + 15
+            while time.monotonic() < deadline:
+                try:
+                    line = pending.get(timeout=0.2)
+                except queue.Empty:
+                    continue
+                if line is None:
+                    break
+                lines.append(line)
+                if line.startswith("Rendering the cut:"):
+                    flushed.append(not done.exists())
+                    found = re.search(r": (\d+)%", line)
+                    if found:
+                        live.append(int(found[1]))
+            else:
+                process.kill()
+            code = process.wait(timeout=5)
+            reader.join(timeout=5)
+        ck("first cut: progress arrives before the ffmpeg child exits",
+           bool(flushed) and all(flushed), "".join(lines))
+        ck("first cut: every 10 percent is printed", [p for p in live if p] == list(range(10, 101, 10)), live)
+        ck("first cut: render completes", code == 0, "".join(lines))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("scratch", nargs="?")
     ap.add_argument("--take")
-    ap.add_argument("--data-only", action="store_true", help="check review titles without media or a browser")
+    ap.add_argument("--data-only", action="store_true", help="check review titles and render progress without media or a browser")
     ap.add_argument("--plugin", default=str(REPO / "plugins" / "editor-superengine"))
     a = ap.parse_args()
     if a.data_only:
         check_review_title(Path(a.plugin).resolve())
+        check_encode_log(Path(a.plugin).resolve())
+        check_encode_progress(Path(a.plugin).resolve())
         return 1 if fails else 0
     if not a.scratch or not a.take:
         ap.error("scratch and --take are required unless --data-only is used")
@@ -387,6 +500,8 @@ def main():
     ck("VU-5 a: the 6 ported portrait-detection tests pass", p.returncode == 0, p.stderr[-400:])
     check_skill_commands(plugin)
     check_review_title(plugin)
+    check_encode_log(plugin)
+    check_encode_progress(plugin)
     check_threshold_fallback(S, plugin)
     check_audio_stream(S, plugin)
     check_hlg(S, plugin)

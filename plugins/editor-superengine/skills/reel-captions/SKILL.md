@@ -26,6 +26,7 @@ description: Plans burned-in captions for the signed-off spoken cut, proposes tr
 - `<editor python>` is the editor's own Python. Windows: `"$(H="$LOCALAPPDATA/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/Scripts/python.exe"`. macOS: `"$(H="$HOME/Library/Application Support/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/bin/python"`. Keep the quotes. If it's missing, run `editor-superengine:editor-doctor` first.
 - Plain English for a busy user. Never show file names, paths or JSON to the client.
 - There is no default look. “No captions” is an explicit choice, never a fallback.
+- Your captions automatically get a dark backing over B-roll when your chosen look has no plate.
 - All looks and options are the client's taste. Read `${CLAUDE_PLUGIN_ROOT}/skills/reel-captions/references/looks.md`.
 - Use Inter Regular only, weight 400, with its licence on file. Use the literal family name Inter.
 - Keep the smallest truthful phrase: “doesn't work”, never “work” alone.

@@ -592,12 +592,15 @@ def broll_plan(inp):
     reel = inp["reel_dir"]
     uses = [dict(path=b["broll"]["src"], src_in_f=b["broll"]["in"], src_out_f=b["broll"]["out"]) for b in clips]
     problems = ["BLOCK " + p for p in footage_check.check(reel, uses)]
+    if problems:
+        raise Stop(1, *problems)
     try:
         ledger = footage_check.rows(reel)
+        resolved = footage_check.resolve_rows(reel, ledger)
         for b in clips:
             clip = b["broll"]
-            matches = [r for r in ledger if r.get("id") == clip["ledger_id"] and
-                       footage_check.normalized(footage_check.asset(reel, r["path"])) ==
+            matches = [r for r, path in resolved if r.get("id") == clip["ledger_id"] and
+                       footage_check.normalized(path) ==
                        footage_check.normalized(reel / clip["src"])]
             if len(matches) != 1:
                 problems.append(f"BLOCK beat {b['id']}: the clip needs its matching footage ledger row")
@@ -1247,9 +1250,12 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
     sys.path.insert(0, str(HERE.parents[1] / "reel-captions" / "scripts"))
     import captions
     import placer  # placer imports compose; keep this import inside render()
+    import broll_bands
     try:
         ctx = None
+        band_notes = []
         if any(b.get("scene") and b["scene"]["id"] == "hf-hook-title" for b in inp["beats"]):
+            band_notes.extend(broll_bands.measure(reel, inp["beats"]))
             ctx = placer.load_ctx(reel)
         title_notes = plan(inp, hook_text, track["spans"] + list(extra_spans or []), ctx=ctx)
         baked = baked_spans(track, inp["beats"], inp["total"]) if layers != "all" else []
@@ -1265,6 +1271,7 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
         doc["notes"].extend(title_notes)
         if doc["chunks"]:
             if ctx is None:
+                band_notes.extend(broll_bands.measure(reel, inp["beats"]))
                 ctx = placer.load_ctx(reel, hook=(inp["hook_text"], inp["hook_f"]) if inp["hook_f"] else None)
             placer.set_hook_stills(ctx, doc["hooks"])
             spec = captions.STYLES[doc["style"]["style"]]
@@ -1274,6 +1281,7 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
                 c["box"] = placer.place(ctx, c["start_f"], c["end_f"] - 1, captions.band_h(spec))
                 bands.append(dict(start_f=c["start_f"], end_f=c["end_f"] - 1, box=c["box"]))
             doc["notes"].extend(ctx["notes"] + placer.ghosts(ctx, bands))
+        doc["notes"].extend(band_notes)
     except captions.Stop as e:
         raise Stop(e.code, *e.lines) from None
     except (placer.NoRoom, ValueError) as e:

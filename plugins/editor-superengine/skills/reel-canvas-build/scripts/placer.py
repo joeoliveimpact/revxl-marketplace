@@ -59,6 +59,7 @@ sys.path.insert(0, str(HERE))
 import compose  # noqa: E402  (reuse the renderer's layout, hook and reserve rules)
 import fps as fpsmod  # noqa: E402
 import styles  # noqa: E402  (reuse anchor validation and the default origin)
+import broll_bands  # noqa: E402  (read cached measurements only)
 
 WIDTH, HEIGHT = compose.TIERS["master"]
 HEAD_WIDTH = 0.22       # taste: fixed head/neck width when only a centre was measured
@@ -211,7 +212,7 @@ def load_ctx(reel_dir, hook=None):
     return {"track": track, "segments": segments, "beats": beats, "fps": rate,
             "master_size": (WIDTH, HEIGHT), "boxes": boxes, "median_box": median,
             "layouts": {name: tuple(lay["box"]) for name, lay in layouts.items()},
-            "stills": stills, "notes": []}
+            "stills": stills, "notes": [], "broll_bands": broll_bands.read_cache(reel)}
 
 
 def _lerp(a, b, progress):
@@ -297,6 +298,58 @@ def _seconds(ctx, f0, f1):
     return f"{float(Fraction(f0) / ctx['fps']):.2f} to {float(Fraction(f1) / ctx['fps']):.2f} seconds"
 
 
+def speaker_hidden(ctx, start_f, end_f):
+    """True when full-frame B-roll covers most of the inclusive span, so the speaker's face is not on screen."""
+    covered = 0
+    for beat in ctx.get("beats", []):
+        clip = beat.get("broll")
+        if clip and beat.get("layout") == "full" and clip.get("fit") == "cover":
+            covered += max(0, min(end_f + 1, beat["end_f"]) - max(start_f, beat["start_f"]))
+    return covered * 2 > end_f - start_f + 1
+
+
+def _broll_profiles(ctx, start_f, end_f):
+    profiles = []
+    duration = 0
+    cache = ctx.get("broll_bands", {})
+    for beat in ctx.get("beats", []):
+        clip = beat.get("broll")
+        overlap = min(end_f + 1, beat["end_f"]) - max(start_f, beat["start_f"])
+        if overlap <= 0 or not clip or beat["layout"] != "full" or clip["fit"] != "cover":
+            continue
+        entry = cache.get(broll_bands.beat_key(beat))
+        if entry is None:
+            continue
+        duration += overlap
+        profiles.append(entry["rows"])
+    return profiles if duration * 2 > end_f - start_f + 1 else []
+
+
+def _detail_score(rows, y, band_h):
+    lo = max(0, math.floor((y - CAPTION_PAD) / broll_bands.ROW_PX))
+    hi = min(len(rows), math.ceil((y + band_h + CAPTION_PAD) / broll_bands.ROW_PX))
+    return sum(rows[lo:hi]) / (hi - lo)
+
+
+def _broll_place(ctx, start_f, end_f, band_h, stills):
+    profiles = _broll_profiles(ctx, start_f, end_f)
+    if not profiles:
+        return None
+    x0, top, x1, bottom = SAFE
+    last_y = bottom - band_h
+    preferred = min(LOW_Y, last_y)
+    # Include every whole-pixel spot the old placer could choose, so a coarse
+    # grid cannot miss a plainer band than the old placement.
+    candidates = set(range(top, math.floor(last_y) + 1)) | {last_y, preferred}
+    clear = []
+    for y in candidates:
+        box = x0, y, x1, y + band_h
+        if all(not hits(box, still, CAPTION_PAD) for still in stills):
+            score = max(_detail_score(rows, y, band_h) for rows in profiles)
+            clear.append((score, abs(y - preferred), -y, box))
+    return min(clear)[-1] if clear else None
+
+
 def place(ctx, start_f, end_f, band_h=134):
     """Keep base placement outside hooks; inside, clear active stills first."""
     head = head_box_at(ctx, start_f, end_f)
@@ -307,6 +360,9 @@ def place(ctx, start_f, end_f, band_h=134):
     x0, top, x1, bottom = SAFE
     last_y = bottom - band_h
     if last_y >= top:
+        broll_box = _broll_place(ctx, start_f, end_f, band_h, stills)
+        if broll_box is not None:
+            return broll_box
         if ctx["median_box"] is None:
             note = (f"No head samples for {_seconds(ctx, start_f, end_f)}; placing captions at the lowest safe spot where possible. "
                     "Check it against the speaker before rendering.")
@@ -437,6 +493,24 @@ def selftest():
     base = place(ctx, 0, 49)
     ctx["stills"] = [(0, 50, base, "card plate")]
     assert place(ctx, 0, 49) == base
+    # Full-frame B-roll hides the head; choose detail bands, still clearing the hook.
+    clip_beat = dict(start_f=0, end_f=100, layout="full",
+                     broll=dict(src="clip.mp4", **{"in": 0, "out": 100}, fit="cover"))
+    profile = {"rows": [10] * 65 + [0] * 55}
+    bctx = dict(ctx, beats=[clip_beat], stills=[], notes=[],
+                broll_bands={broll_bands.beat_key(clip_beat): profile})
+    assert place(bctx, 0, 49) == (60, 1336, 960, 1470)
+    profile["rows"] = [10] * 40 + [0] * 25 + [10] * 55
+    middle = place(bctx, 0, 49)
+    assert 648 <= middle[1] and middle[3] <= 1032
+    profile["rows"] = [10] * 120
+    profile["rows"][15:36] = [0] * 21
+    profile["rows"][55:75] = [1] * 20
+    bctx["stills"] = [(0, 50, (60, 220, 960, 600), "hook title")]
+    blocked = place(bctx, 0, 49)
+    assert 888 <= blocked[1] and blocked[3] <= 1192
+    clip_beat["end_f"] = 25
+    assert place(bctx, 25, 49) == place(dict(bctx, broll_bands={}), 25, 49)
     first = {"start_f": 0, "end_f": 300, "layout": "full", "speech_anchor": {"text": "First beat"}}
     docs = {Path(styles.TRACK).name: {"fps": "25/1", "total_f": 300, "style": {},
                                     "keys": [{"f": 0, "layout": "full"}], "tweens": []},

@@ -337,9 +337,10 @@ def scratch_render(reel, doc, hook, destination):
         if ledger_path.is_file():
             ledger = compose.footage_check.rows(scratch)
             for row in ledger:
-                path = Path(row["path"])
-                if path.is_absolute() and path.resolve().is_relative_to(reel.resolve()):
-                    row["path"] = str(scratch / path.resolve().relative_to(reel.resolve()))
+                if Path(row["path"]).is_absolute():
+                    path = compose.footage_check.locate(reel, row).resolve()
+                    if path.is_relative_to(reel.resolve()):
+                        row["path"] = path.relative_to(reel.resolve()).as_posix()
             save(ledger_path, ledger)
         save(scratch / compose.SEND, doc)
         # Both import-time callers and caption placement share the same compose module.

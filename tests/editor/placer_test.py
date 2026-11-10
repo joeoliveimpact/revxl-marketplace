@@ -5,10 +5,15 @@ Run: python -X utf8 -I tests/editor/placer_test.py
 """
 import copy
 import json
+import math
+import os
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.dont_write_bytecode = True
 REPO = Path(__file__).resolve().parents[2]
@@ -78,6 +83,9 @@ class PlacerTests(unittest.TestCase):
         anchors = {0: [sample((400, 1050, 680, 1290))]}
         plain = self.ctx(anchors=anchors)
         punched = self.ctx(keys=[key(scale=1.12)], anchors=anchors)
+        # FX2b prefers under-hook captions; isolate this head-only punch case.
+        for ctx in (plain, punched):
+            placer.set_hook_stills(ctx, [])
         naive = placer.place(plain, 0, 49)
         self.assertEqual(naive, (60, 1336, 960, 1470))
         self.clear(naive, placer.head_box_at(plain, 0, 49))
@@ -106,6 +114,8 @@ class PlacerTests(unittest.TestCase):
                 ((400, 0, 680, 1390), (60, 1336, 960, 1470), 25584)):
             with self.subTest(head=measured):
                 ctx = self.ctx(anchors={0: [sample(measured)]})
+                # Least head overlap applies when no hook excludes a candidate.
+                placer.set_hook_stills(ctx, [])
                 head = placer.head_box_at(ctx, 0, 49)
                 box = placer.place(ctx, 0, 49)
                 self.assertEqual(box, expected)
@@ -134,6 +144,8 @@ class PlacerTests(unittest.TestCase):
         ctx = self.ctx(segments=[(0, 25), (25, 50)], keys=[key(), key(25)], anchors={
             0: [sample((400, 260, 680, 1500))],
             1: [sample((400, 0, 680, 1390), f=25)]})
+        # Keep the envelope/tie-break proof independent of FX2b's hook obstacle.
+        placer.set_hook_stills(ctx, [])
         self.assertEqual(placer.place(ctx, 0, 24), (60, 220, 960, 354))
         box = placer.place(ctx, 0, 49)
         self.assertEqual(box, (60, 1336, 960, 1470))
@@ -254,7 +266,249 @@ class PlacerTests(unittest.TestCase):
         union = placer.head_box_at(ctx, 49, 50)
         self.assertEqual(union, (min(first[0], second[0]), min(first[1], second[1]),
                                  max(first[2], second[2]), max(first[3], second[3])))
-        self.clear(placer.place(ctx, 49, 50), union)
+        placed = placer.place(ctx, 49, 50)
+        # FX2b allows hair under an active hook, but still protects the face
+        # across both cut segments, classifying the caption by its start.
+        self.assertTrue(placer.hits(placed, union))
+        self.clear(placed, placer.caption_protection(ctx, 49, union))
+        self.assertFalse(placer.hits(placed, ctx["stills"][0][2], placer.CAPTION_PAD))
+
+    def broll_ctx(self, rows, end=50, layout="full", fit="cover"):
+        b = beat(end=end, layout=layout, scene={"id": "opening"})
+        b["broll"] = dict(src="clip.mp4", **{"in": 0, "out": end}, fit=fit)
+        ctx = self.ctx(beats=[b], anchors={0: [sample((200, 850, 880, 1500))]})
+        # This is the on-disk cache contract, independent of the measuring code.
+        identity = json.dumps([0, end, "clip.mp4", 0, end, fit, layout], separators=(",", ":"))
+        cache = {"schema": 1, "beats": {identity: dict(rows=rows, mtime_ns=1, size=1)}}
+        reel = self.root / str(self.serial)
+        (reel / "work/broll-bands.json").write_bytes(json.dumps(cache).encode("utf-8"))
+        return placer.load_ctx(reel)
+
+    def test_g_broll_dense_top_uses_plain_bottom_ignoring_hidden_head(self):
+        ctx = self.broll_ctx([10] * 65 + [0] * 55)
+        box = placer.place(ctx, 0, 49)
+        self.assertEqual(box, (60, 1336, 960, 1470))
+        self.assertTrue(placer.hits(box, placer.head_box_at(ctx, 0, 49)))
+        self.assertEqual(ctx["notes"], [])
+
+    def test_g_broll_dense_bottom_uses_plain_middle(self):
+        ctx = self.broll_ctx([10] * 40 + [0] * 25 + [10] * 55)
+        box = placer.place(ctx, 0, 49)
+        self.assertGreaterEqual(box[1], 648)
+        self.assertLessEqual(box[3], 1032)
+        self.safe(box)
+
+    def test_g_broll_hook_blocks_plainest_band(self):
+        ctx = self.broll_ctx([10] * 120)
+        rows = next(iter(ctx["broll_bands"].values()))["rows"]
+        rows[15:36] = [0] * 21
+        rows[55:75] = [1] * 20
+        ctx["stills"] = [(0, 50, (60, 220, 960, 600), "hook title")]
+        box = placer.place(ctx, 0, 49)
+        self.assertGreaterEqual(box[1], 888)
+        self.assertLessEqual(box[3], 1192)
+        self.assertFalse(placer.hits(box, ctx["stills"][0][2], placer.CAPTION_PAD))
+
+    def test_g_aroll_minority_missing_profile_and_other_fits_keep_old_placement(self):
+        for end, layout, fit, missing in ((24, "full", "cover", False),
+                                          (25, "full", "cover", False),
+                                          (50, "split", "cover", False),
+                                          (50, "full", "contain", False),
+                                          (50, "full", "cover", True)):
+            with self.subTest(end=end, layout=layout, fit=fit, missing=missing):
+                ctx = self.broll_ctx([10] * 65 + [0] * 55, end, layout, fit)
+                if missing:
+                    ctx["broll_bands"] = {}
+                old = placer.place(dict(ctx, broll_bands={}), 0, 49)
+                self.assertEqual(placer.place(ctx, 0, 49), old)
+        ctx = self.broll_ctx([10] * 65 + [0] * 55, end=26)
+        self.assertEqual(placer.place(ctx, 0, 49)[1], 1336)
+
+    def test_g_aroll_span_after_broll_is_unchanged(self):
+        ctx = self.broll_ctx([0] * 120, end=25)
+        self.assertEqual(placer.place(ctx, 25, 49),
+                         placer.place(dict(ctx, broll_bands={}), 25, 49))
+
+    def test_g_adjacent_broll_beats_count_together_for_majority(self):
+        ctx = self.broll_ctx([10] * 65 + [0] * 55, end=25)
+        second = copy.deepcopy(ctx["beats"][0])
+        second.update(start_f=25, end_f=50)
+        ctx["beats"].append(second)
+        identity = json.dumps([25, 50, "clip.mp4", 0, 25, "cover", "full"], separators=(",", ":"))
+        ctx["broll_bands"][identity] = dict(rows=[20] * 65 + [0] * 55)
+        self.assertEqual(placer.place(ctx, 0, 49), (60, 1336, 960, 1470))
+
+    def test_g_load_ctx_only_reads_cache_without_decoding_or_writing(self):
+        self.broll_ctx([10] * 65 + [0] * 55)
+        reel = self.root / str(self.serial)
+        with patch.object(placer.broll_bands.subprocess, "run", side_effect=AssertionError("decoded in load_ctx")), \
+                patch.object(Path, "write_bytes", side_effect=AssertionError("wrote in load_ctx")):
+            ctx = placer.load_ctx(reel)
+            self.assertEqual(placer.place(ctx, 0, 49)[1], 1336)
+
+
+class BrollMeasurementTests(unittest.TestCase):
+    def setUp(self):
+        import broll_bands
+        self.bands = broll_bands
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.reel = Path(self.temp.name)
+        (self.reel / "work").mkdir()
+        self.beat = beat(scene={"id": "opening"})
+        self.beat["broll"] = dict(src="clip.mkv", **{"in": 0, "out": 50}, fit="cover")
+        (self.reel / "beat-map-selection.json").write_bytes(json.dumps(
+            dict(fps=25, beats=[self.beat])).encode("utf-8"))
+
+    def clip(self, changing=False):
+        try:
+            ffmpeg = self.bands.rt.tool("ffmpeg")
+        except (OSError, KeyError, ValueError):
+            self.skipTest("SKIP: editor ffmpeg is not installed")
+        graph = "color=white:s=270x480:r=25:d=2,drawbox=x=0:y=288:w=270:h=192:color=gray:t=fill"
+        for y in range(8, 280, 16):
+            graph += f",drawbox=x=20:y={y}:w=210:h=4:color=black:t=fill"
+            if changing:
+                graph += ":enable='lt(t,1)'"
+        if changing:
+            for y in range(300, 470, 16):
+                graph += f",drawbox=x=20:y={y}:w=210:h=4:color=black:t=fill:enable='gte(t,1)'"
+        result = subprocess.run([ffmpeg, "-v", "error", "-y", "-f", "lavfi", "-i", graph,
+                                 "-c:v", "ffv1", str(self.reel / "clip.mkv")],
+                                capture_output=True, env=self.bands.rt.python_env(), timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_h_measured_clip_plainest_region_is_lower_and_cache_refreshes_on_mtime(self):
+        self.clip()
+        self.bands.measure(self.reel)
+        cache = self.bands.read_cache(self.reel)
+        rows = next(iter(cache.values()))["rows"]
+        self.assertEqual(len(rows), 120)
+        self.assertGreater(sum(rows[15:65]), sum(rows[75:110]))
+        self.assertLessEqual(min(rows[75:90]), min(rows[15:65]))
+        cached_bytes = (self.reel / "work/broll-bands.json").read_bytes()
+        with patch.object(self.bands.subprocess, "run", side_effect=AssertionError("decoded a fresh cache")):
+            self.bands.measure(self.reel)
+        self.assertEqual((self.reel / "work/broll-bands.json").read_bytes(), cached_bytes)
+        clip = self.reel / "clip.mkv"
+        stat = clip.stat()
+        os.utime(clip, ns=(stat.st_atime_ns, stat.st_mtime_ns + 2_000_000_000))
+        # Poison the old result: freshness must cause real decoding, not only new metadata.
+        path = self.reel / "work/broll-bands.json"
+        stale = json.loads(path.read_text(encoding="utf-8"))
+        next(iter(stale["beats"].values()))["rows"] = [999] * 120
+        path.write_bytes(json.dumps(stale).encode("utf-8"))
+        self.bands.measure(self.reel)
+        updated = next(iter(self.bands.read_cache(self.reel).values()))
+        self.assertEqual(updated["mtime_ns"], clip.stat().st_mtime_ns)
+        self.assertLess(max(updated["rows"]), 999)
+        self.assertEqual(updated["rows"], rows)
+
+    def test_h_sampled_range_and_beat_edits_refresh_profile(self):
+        self.clip(changing=True)
+        self.beat["end_f"] = self.beat["broll"]["out"] = 25
+        self.assertEqual(self.bands.measure(self.reel, [self.beat]), [])
+        first = next(iter(self.bands.read_cache(self.reel).values()))["rows"]
+        self.assertGreater(sum(first[15:65]), sum(first[80:110]))
+        self.beat["broll"].update({"in": 25, "out": 50})
+        self.assertEqual(self.bands.measure(self.reel, [self.beat]), [])
+        last = self.bands.read_cache(self.reel)
+        self.assertEqual(len(last), 1)
+        rows = next(iter(last.values()))["rows"]
+        self.assertGreater(sum(rows[80:110]), sum(rows[15:65]))
+
+    def test_h_unreadable_clip_has_no_profile_and_plain_note(self):
+        (self.reel / "clip.mkv").write_bytes(b"not a clip")
+        notes = self.bands.measure(self.reel)
+        self.assertEqual(self.bands.read_cache(self.reel), {})
+        self.assertTrue(any("clip.mkv" in n and "could not" in n.lower() for n in notes), notes)
+
+
+class RealBrollTests(unittest.TestCase):
+    def check_reel(self, variable):
+        import broll_bands
+        sys.path.insert(0, str(SCRIPTS.parents[1] / "reel-captions/scripts"))
+        import captions
+        original = Path(os.environ[variable])
+        with tempfile.TemporaryDirectory(prefix="broll-placement-") as home:
+            reel = Path(home)
+            for path in list(original.glob("*.json")) + list((original / "work").rglob("*.json")):
+                target = reel / path.relative_to(original)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(path, target)
+            send = json.loads((reel / "beat-map-selection.json").read_text(encoding="utf-8"))
+            for b in send["beats"]:
+                if b.get("broll"):
+                    relative = Path(b["broll"]["src"])
+                    self.assertFalse(relative.is_absolute())
+                    target = (reel / relative).resolve()
+                    self.assertTrue(target.is_relative_to(reel.resolve()))
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(original / relative, target)
+            (reel / "work/broll-bands.json").unlink(missing_ok=True)
+            notes = broll_bands.measure(reel)
+            self.assertEqual(notes, [])
+            ctx = placer.load_ctx(reel)
+            doc = json.loads((reel / "work/captions.json").read_text(encoding="utf-8"))
+            placer.set_hook_stills(ctx, doc["hooks"])
+            height = captions.band_h(captions.STYLES[doc["style"]["style"]])
+            checked = 0
+            for chunk in doc["chunks"]:
+                start, end = chunk["start_f"], chunk["end_f"] - 1
+                old = placer.place(dict(ctx, broll_bands={}, notes=[]), start, end, height)
+                new = placer.place(ctx, start, end, height)
+                seconds = float(start / ctx["fps"])
+                stop = float((end + 1) / ctx["fps"])
+                spotlight = (seconds < 34 and stop > 30) or (seconds < 52 and stop > 49)
+                overlapping = [b for b in send["beats"] if start < b["end_f"] and end >= b["start_f"]]
+                beat_info = "; ".join(
+                    f"{b['id']} [{b['start_f']},{b['end_f']}) layout={b['layout']} "
+                    + (f"B-roll fit={b['broll']['fit']} profile="
+                       f"{broll_bands.beat_key(b) in ctx['broll_bands']}" if b.get("broll") else "a-roll")
+                    for b in overlapping)
+                full = [b for b in send["beats"] if b.get("broll") and b["layout"] == "full"
+                        and b["broll"]["fit"] == "cover" and b["start_f"] <= start and end < b["end_f"]]
+                if full:
+                    checked += 1
+                    rows = ctx["broll_bands"][broll_bands.beat_key(full[0])]["rows"]
+                    def score(y):
+                        lo, hi = max(0, math.floor((y - 8) / 16)), min(120, math.ceil((y + height + 8) / 16))
+                        return sum(rows[lo:hi]) / (hi - lo)
+                    scores = []
+                    # Match the complete whole-pixel candidate set, so equality
+                    # to the best proves that a retained top band is plainest.
+                    for y in set(range(220, math.floor(1470 - height) + 1)) | {
+                            1470 - height, min(placer.LOW_Y, 1470 - height)}:
+                        box = (60, y, 960, y + height)
+                        if placer.active_hook(ctx, start) is None or all(
+                                not placer.hits(box, still, 8) for a, e, still, _ in ctx["stills"]
+                                if start < e and end >= a):
+                            scores.append(score(y))
+                    if spotlight:
+                        print(f"{variable} {seconds:.2f}-{stop:.2f}s: old y={old[1]}, new y={new[1]}; "
+                              f"score chosen={score(new[1]):.6f}, best={min(scores):.6f}, "
+                              f"worst={max(scores):.6f}; hook={placer.active_hook(ctx, start) is not None}; "
+                              + beat_info)
+                    self.assertAlmostEqual(score(new[1]), min(scores), delta=1e-9)
+                    self.assertLessEqual(score(new[1]), score(old[1]) + 1e-9)
+                    self.assertLessEqual(score(new[1]), sorted(scores)[len(scores) // 4] + 1e-9)
+                elif not any(b.get("broll") for b in overlapping):
+                    self.assertEqual(new, old)
+                    if spotlight:
+                        print(f"{variable} {seconds:.2f}-{stop:.2f}s: old y={old[1]}, new y={new[1]}; "
+                              "score chosen/best/worst=N/A; reason=a-roll, no B-roll profile applies; " + beat_info)
+                elif spotlight:
+                    print(f"{variable} {seconds:.2f}-{stop:.2f}s: old y={old[1]}, new y={new[1]}; "
+                          "reason=caption crosses a beat boundary or is outside full/cover B-roll; " + beat_info)
+            self.assertGreater(checked, 0, "No caption chunks inside full-frame B-roll were checked")
+
+    @unittest.skipUnless(os.environ.get("EDITOR_SE_TEST_REEL_W2E"), "SKIP: EDITOR_SE_TEST_REEL_W2E is unset")
+    def test_w2e_broll_chunks_use_plainest_quarter(self):
+        self.check_reel("EDITOR_SE_TEST_REEL_W2E")
+
+    @unittest.skipUnless(os.environ.get("EDITOR_SE_TEST_REEL_W1E"), "SKIP: EDITOR_SE_TEST_REEL_W1E is unset")
+    def test_w1e_broll_chunks_use_plainest_quarter(self):
+        self.check_reel("EDITOR_SE_TEST_REEL_W1E")
 
 
 if __name__ == "__main__":

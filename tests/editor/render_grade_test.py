@@ -73,6 +73,15 @@ class Capture:
     def __init__(self):
         self.encodes = []
 
+    PIPE, DEVNULL = subprocess.PIPE, subprocess.DEVNULL
+
+    def Popen(self, cmd, **kw):
+        # The streaming encoder uses Popen; retain the same command/graph proof.
+        if "-/filter_complex" in cmd:
+            self.run(cmd)
+            return subprocess.Popen([sys.executable, "-c", "pass"], **kw)
+        return subprocess.Popen(cmd, **kw)
+
     def run(self, cmd, **kw):
         if "-/filter_complex" in cmd:
             self.encodes.append((list(cmd), Path(cmd[cmd.index("-/filter_complex") + 1]).read_bytes()))
@@ -310,6 +319,11 @@ def main():
                     "look": {"id": look, "strength": 1.0}}).encode("utf-8"))
                 w = work()
                 env = dict(os.environ, EDITOR_SE_HOME=str(home))
+                # Saved styles apply per reel once picked (H-STY-1); a bare default.json is not a pick.
+                p = subprocess.run([sys.executable, "-X", "utf8", "-I", "-B", str(PLUGIN / "skills/_shared/saved_style.py"),
+                                    "pick", str(w.parent), "default"], env=env, capture_output=True, text=True,
+                                   encoding="utf-8", errors="replace", timeout=60)
+                need(p.returncode == 0, "could not pick the saved style for the reel: " + (p.stdout + p.stderr)[-300:])
                 p = subprocess.run([sys.executable, "-X", "utf8", "-I", "-B",
                                     str(PLUGIN / "skills/reel-grade/scripts/grade_match.py"),
                                     "--video", str(src), "--reel-dir", str(w.parent),
@@ -324,6 +338,10 @@ def main():
                      "the saved look was not baked")
                 board = scratch / ("board-" + look)
                 (board / "grade").mkdir(parents=True)
+                p = subprocess.run([sys.executable, "-X", "utf8", "-I", "-B", str(PLUGIN / "skills/_shared/saved_style.py"),
+                                    "pick", str(board), "default"], env=env, capture_output=True, text=True,
+                                   encoding="utf-8", errors="replace", timeout=60)
+                need(p.returncode == 0, "could not pick the saved style for the board reel: " + (p.stdout + p.stderr)[-300:])
                 (board / "grade-selection.json").write_bytes(json.dumps({
                     "math_version": bg.gm.SPEC["version"], "correction": {}}).encode("utf-8"))
                 (board / "grade/grade-config.json").write_bytes(json.dumps({

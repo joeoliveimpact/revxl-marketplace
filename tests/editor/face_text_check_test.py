@@ -10,9 +10,11 @@ or treating missing face data as a block must fail these proofs.
 import argparse
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 HERE = Path(__file__).resolve().parent
 SKILLS = HERE.parents[1] / "plugins/editor-superengine/skills"
@@ -22,7 +24,7 @@ from win_encoding import ensure_utf8_output  # noqa: E402
 
 CHECK = SKILLS / "_shared/checks/face_text_check.py"
 FPS, TOTAL = 30, 60
-CASES = ("clean", "face", "contrast", "noface", "nocaps", "many")
+CASES = ("synthetic", "clean", "face", "contrast", "noface", "nocaps", "many", "w2e")
 fails = []
 
 
@@ -91,9 +93,12 @@ def fixture(scratch, name, zoom=False, split=False):
         # Only frame 45 is planted in the face case: the checker must pull by number.
         enabled = (":enable='eq(n,45)'" if name == "face" else
                    "" if name == "many" else ":enable='between(n,30,59)'")
-        color = "0x303030" if name == "contrast" else "white"
-        filters.append(f"drawbox=x={x}:y={y}:w={w}:h={h}:color=0x282828:t=fill{enabled}")
+        color = "white"
+        background = "white" if name == "contrast" else "0x282828"
+        filters.append(f"drawbox=x={x}:y={y}:w={w}:h={h}:color={background}:t=fill{enabled}")
         for left in (x + 20, x + 70, x + 120):
+            if name == "contrast":
+                filters.append(f"drawbox=x={left - 5}:y={y + 20}:w=40:h=40:color=black:t=fill{enabled}")
             filters.append(f"drawbox=x={left}:y={y + 25}:w=30:h=30:color={color}:t=fill{enabled}")
     if name == "many":
         filters.append("drawbox=x=90:y=145:w=180:h=80:color=black:t=fill:enable='eq(n,47)'")
@@ -135,7 +140,87 @@ def check(reel, master, explicit=False, count_pulls=False):
     return rows, p
 
 
+def synthetic(scratch):
+    spec = importlib.util.spec_from_file_location("face_text_synthetic", CHECK)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    reel = scratch / "synthetic"
+    master = reel / "renders/Synthetic Master - test.mp4"
+    master.parent.mkdir(parents=True, exist_ok=True)
+    master.touch()
+    caps = dict(style=dict(style="bold-pop", accent="#FFD84D"), chunks=[dict(
+        start_f=30, end_f=60, box=[0, 0, 1080, 1920], words=[],
+        text="STEP TWO, THEN JUST TELL HIM TO CONNECT")])  # long enough to span the whole band
+
+    def picture(background, plate=False):
+        data = bytearray([background] * (100 * 100 * 3))
+        def rect(x0, y0, x1, y1, value):
+            for y in range(y0, y1):
+                for x in range(x0, x1):
+                    data[(y * 100 + x) * 3:(y * 100 + x) * 3 + 3] = bytes([value] * 3)
+        if plate:
+            rect(0, 0, 100, 100, 40)
+        for x in (10, 40, 70):
+            rect(x, 20, x + 20, 80, 0)  # black stroke covers more than 10% of the box
+            rect(x + 4, 25, x + 16, 75, 255)
+        return data
+
+    def findings(data):
+        write(reel / "work/captions.json", caps)
+        with patch.object(module, "dimensions", return_value=(100, 100, "30", 2)), \
+                patch.object(module, "frames", return_value={45: data}):
+            return [r for r in module.run(dict(reel_dir=reel, render=master, cuts={}))
+                    if r["check"] == "low-contrast"]
+
+    rows = findings(picture(255))
+    ck("white text with black stroke on white blocks with time and fix",
+       len(rows) == 1 and rows[0]["level"] == "block" and rows[0]["at"] == 1.5
+       and "1.50 seconds" in rows[0]["msg"] and "Boxed" in rows[0]["msg"], rows)
+    ck("white text on dark stays readable", findings(picture(20)) == [])
+    ck("white text over a dark plate stays readable", findings(picture(255, plate=True)) == [])
+    caps["style"]["accent"] = "#101010"
+    caps["chunks"][0]["words"] = [dict(mark="emph")]
+    ck("dark marked accent is checked too", len(findings(picture(20))) == 1)
+    caps["style"]["mark_look"] = "marker"
+    ck("marker keeps the white fill", findings(picture(20)) == [])
+    # A short caption's plate covers only the middle of its band; the empty band around it is not behind the words.
+    caps["style"].update(mark_look="accent", accent="#FFD84D")
+    caps["chunks"][0].update(text="HIM,", words=[])
+    narrow = bytearray([255] * (100 * 100 * 3))
+    for y in range(100):
+        for x in range(35, 65):
+            value = 255 if 45 <= x < 55 and 40 <= y < 60 else 40
+            narrow[(y * 100 + x) * 3:(y * 100 + x) * 3 + 3] = bytes([value] * 3)
+    ck("a short caption on its own dark plate over a white page stays readable", findings(narrow) == [])
+    caps["style"]["style"] = "none"
+    ck("captions off skips contrast", findings(picture(255)) == [])
+
+
+def real_w2e():
+    value = os.environ.get("EDITOR_SE_TEST_REEL_W2E")
+    if not value:
+        print("SKIP W2e real-frame regression: EDITOR_SE_TEST_REEL_W2E is unset")
+        return
+    reel = Path(value)
+    spec = importlib.util.spec_from_file_location("face_text_w2e", CHECK)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    masters = sorted(reel.glob("renders/* Master - *.mp4"), key=lambda m: m.stat().st_mtime_ns)
+    if not masters:
+        ck("W2e: the reel has a rendered Master", False, reel)
+        return
+    rows = module.run(dict(reel_dir=reel, render=masters[-1]))
+    blocks = [r for r in rows if r["level"] == "block"]
+    ck("W2e: exactly the three unreadable captions block",
+       [(r["check"], round(r.get("at", -1), 2)) for r in blocks] ==
+       [("low-contrast", 30.83), ("low-contrast", 31.57), ("low-contrast", 32.03)], blocks)
+
+
 def case(scratch, name):
+    if name == "synthetic":
+        return synthetic(scratch)
+    if name == "w2e":
+        return real_w2e()
     reel, master = fixture(scratch, name)
     rows, p = check(reel, master, explicit=name == "contrast", count_pulls=name == "many")
     blocks = [r for r in rows if r["level"] == "block"]

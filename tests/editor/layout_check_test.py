@@ -152,16 +152,18 @@ def case_offscreen(scratch):
 def case_collision(scratch):
     d, doc = fixture(scratch, "collision")
     x, y, width, size = compose.hook_box(1080, 1920)
-    bottom = y + size * 1.15 * 3
+    height = size * 1.15 * compose.title_lines("A useful title", width, size)
+    bottom = y + height
+    # Equal widths make the overlap fraction relative to the smaller still.
     for fraction in (0.4, 0.35, 0.3, 0.25, 0.2):
-        top = bottom - fraction * 140
-        doc["chunks"][0]["box"] = [x - 380, top, x + 380, top + 140]
+        top = bottom - fraction * min(height, 140)
+        doc["chunks"][0]["box"] = [x - width / 2, top, x + width / 2, top + 140]
         examine(d, doc, f"collision {fraction:.0%}", ["text-collision"] if fraction > 0.3 else [],
                 1 if fraction > 0.3 else 0)
     # Same geometry after the hook disappears must be clear (exclusive ends).
     doc["chunks"][0].update(start_f=60, end_f=75)
-    top = bottom - 0.4 * 140
-    doc["chunks"][0]["box"] = [x - 380, top, x + 380, top + 140]
+    top = bottom - 0.4 * min(height, 140)
+    doc["chunks"][0]["box"] = [x - width / 2, top, x + width / 2, top + 140]
     examine(d, doc, "collision after hook", [], 0)
     bm = cs.load(d / "beat-map-selection.json")
     bm["beats"][0]["scene"] = {"id": "unused-fixture-scene"}
@@ -172,27 +174,59 @@ def case_collision(scratch):
 
 def case_covered(scratch):
     d, doc = fixture(scratch, "covered")
+    # The second caption starts after frame 60, so the whole head is protected.
     for fraction in (0.7, 0.65, 0.6):
         top = HEAD[3] - fraction * (64 * 1.2) - 16
-        doc["chunks"][0]["box"] = [160, top, 920, top + 140]
+        doc["chunks"][1]["box"] = [160, top, 920, top + 140]
         rows = examine(d, doc, f"covered {fraction:.0%}",
                        ["word-covered"] if fraction >= 0.65 else ["caption-on-face"], 1)
         if fraction == 0.7:
             ck("covered: plain message", len(rows) == 1 and rows[0]["msg"] ==
-               "The word 'Extraordinary.' at 0.50 s sits on the speaker's face; move the caption or ask Claude to re-place it.", rows)
+               "The word 'Coaching.' at 3.00 s sits on the speaker's face; move the caption or ask Claude to re-place it.", rows)
             p = cs.sh([cs.PY, "-X", "utf8", "-I", CHECKS / "check.py", d, "--phase", "pre"])
             qa = cs.load(d / "work/qa.json")
             ck("covered: entry point blocks and saves word-covered", p.returncode == 1 and any(
                 r["check"] == "word-covered" and r["module"] == "layout_check"
-                and r["level"] == "block" and r["where"] == "caption 0" and r["at"] == 0.5
+                and r["level"] == "block" and r["where"] == "caption 1" and r["at"] == 3.0
                 for r in qa.get("checks", [])), (p.stdout, p.stderr, qa))
+
+
+def case_hook_face(scratch):
+    d, doc = fixture(scratch, "hook-face")
+    # FX2b protects 15%-75% of the head while the opening hook is active.
+    face_top = HEAD[1] + 0.15 * (HEAD[3] - HEAD[1])
+    face_bottom = HEAD[1] + 0.75 * (HEAD[3] - HEAD[1])
+    top = face_top - 140
+    doc["chunks"][0]["box"] = [160, top, 920, face_top]
+    examine(d, doc, "hook allows caption over hair", [], 0)
+    for fraction in (0.7, 0.65, 0.6):
+        top = face_bottom - fraction * (64 * 1.2) - 16
+        doc["chunks"][0]["box"] = [160, top, 920, top + 140]
+        examine(d, doc, f"hook face covered {fraction:.0%}",
+                ["word-covered"] if fraction >= 0.65 else ["caption-on-face"], 1)
+
+
+def case_broll(scratch):
+    d, doc = fixture(scratch, "broll")
+    # This caption is inside the hook span: overlap its protected face band.
+    face_bottom = HEAD[1] + 0.75 * (HEAD[3] - HEAD[1])
+    top = face_bottom - 0.7 * (64 * 1.2) - 16
+    doc["chunks"][0]["box"] = [160, top, 920, top + 140]
+    bm = json.loads((d / "beat-map-selection.json").read_text(encoding="utf-8"))
+    bm["beats"][0]["broll"] = {"src": "broll/clip.mp4", "in": 0, "out": 60, "fit": "cover"}
+    save(d / "beat-map-selection.json", bm)
+    examine(d, doc, "over full-frame B-roll the hidden face is not covered", [], 0)
+    bm["beats"][1]["broll"] = bm["beats"][0].pop("broll")
+    save(d / "beat-map-selection.json", bm)
+    examine(d, doc, "B-roll on another beat leaves this face showing", ["word-covered"], 1)
 
 
 def case_touch(scratch):
     d, doc = fixture(scratch, "touch")
-    doc["chunks"][0]["box"] = [160, 1098, 920, 1238]
+    # Test whole-head contact after the hook ends, using the later caption.
+    doc["chunks"][1]["box"] = [160, 1098, 920, 1238]
     examine(d, doc, "touch 2px", ["caption-on-face"], 1)
-    doc["chunks"][0]["box"] = [160, 1100, 920, 1240]
+    doc["chunks"][1]["box"] = [160, 1100, 920, 1240]
     examine(d, doc, "touch edge only", [], 0)
 
 
@@ -209,7 +243,8 @@ def case_noface(scratch):
 
 
 CASES = {"clean": case_clean, "offscreen": case_offscreen, "collision": case_collision,
-         "covered": case_covered, "touch": case_touch, "noface": case_noface}
+         "covered": case_covered, "hook-face": case_hook_face, "broll": case_broll,
+         "touch": case_touch, "noface": case_noface}
 
 
 @isolated_home()

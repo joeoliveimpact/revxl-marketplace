@@ -634,7 +634,7 @@ def c_broll_recording_paths(root):
                                  ledger_id=clip["ledger_id"])
         write_send(reel, beats, 25)
         ledger = fc.rows(reel)
-        raw_rows = [r for r in ledger if r["path"] == str(raw.resolve())]
+        raw_rows = [r for r in ledger if fc.normalized(fc.locate(reel, r)) == fc.normalized(raw)]
         ck(f"{label}: ingest logs one own recording with matching bytes", len(raw_rows) == 1
            and raw_rows[0]["role"] == "aroll" and raw_rows[0]["origin"] == "own"
            and raw_rows[0]["licence"] == "own" and raw_rows[0]["sha256"] == fc.digest(raw), raw_rows)
@@ -666,7 +666,7 @@ def c_broll_blocks(root):
     if not ck("real ingest starts with no footage ledger", rc == 0, out):
         raise RuntimeError(out)
     ledger = fc.rows(reel)
-    raw_rows = [r for r in ledger if fc.normalized(fc.asset(reel, r["path"])) == fc.normalized(raw)]
+    raw_rows = [r for r in ledger if fc.normalized(fc.locate(reel, r)) == fc.normalized(raw)]
     ck("ingest logs the a-roll's role, own rights and raw sha256", len(raw_rows) == 1 and
        raw_rows[0]["role"] == "aroll" and raw_rows[0]["origin"] == "own" and
        raw_rows[0]["licence"] == "own" and raw_rows[0]["sha256"] == fc.digest(raw), raw_rows)
@@ -737,7 +737,7 @@ def c_broll_blocks(root):
     original = prepared.read_bytes()
     prepared.write_bytes(original[:-1] + bytes([original[-1] ^ 1]))
     _, stopped, text = preflight()
-    ck("changed B-roll bytes BLOCK before rendering", stopped is not None and "BLOCK" in text and "changed after it was logged" in text, text)
+    ck("changed B-roll bytes BLOCK before rendering", stopped is not None and "BLOCK" in text and "This B-roll clip changed after it was added" in text, text)
     prepared.write_bytes(original)
     beats[1]["broll"] = dict(own, **{"in": 25, "out": 75})
     _, stopped, text = preflight()
