@@ -29,11 +29,13 @@ import io
 import json
 import math
 import os
+import queue
 import re
 import shutil
 import subprocess
 import sys
 import textwrap
+import threading
 import time
 import unicodedata
 from datetime import datetime
@@ -334,13 +336,80 @@ def build_spans(beats, kinds, hook_f, extra_spans=None):
 
 
 # ---- tools ---------------------------------------------------------------------------------------------------
-def run(cmd, env, timeout=None):
+class RenderProgress:
+    """Plain, flushed updates at each 10% advance or after 30 seconds of silence."""
+
+    def __init__(self, what):
+        self.what = what
+        self.start = self.last = time.monotonic()
+        self.step, self.percent = -1, None
+
+    def __call__(self, line=""):
+        now = time.monotonic()
+        found = re.search(r"(?<![\d.])(100|\d{1,2})(?:\.\d+)?\s*%", line)
+        if found:
+            self.percent = max(self.percent or 0, int(found[1]))
+        step = self.percent // 10 if self.percent is not None else -1
+        if step <= self.step and now - self.last < 30:
+            return
+        elapsed = max(0, int(now - self.start))
+        percent = f"{self.percent}% " if self.percent is not None else ""
+        print(f"Rendering the {self.what}: {percent}({elapsed // 60}:{elapsed % 60:02d} elapsed)", flush=True)
+        self.step, self.last = step, now
+
+
+def run(cmd, env, timeout=None, *, progress=None):
     try:
+        if progress is not None:
+            return stream_render(cmd, env, progress, timeout)
         r = subprocess.run([str(c) for c in cmd], capture_output=True, text=True, encoding="utf-8",
                            errors="replace", env=env, timeout=timeout)
         return r.returncode, r.stdout, r.stderr
     except (OSError, subprocess.TimeoutExpired) as e:
         return -1, "", str(e)
+
+
+def stream_render(cmd, env, what, timeout=None):
+    """Drain the render pipe while it runs; retain its log for the existing failure parser."""
+    progress, output, pending = RenderProgress(what), [], queue.Queue()
+    with subprocess.Popen([str(c) for c in cmd], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                          text=True, encoding="utf-8", errors="replace", bufsize=1, env=env) as process:
+        def read_output():
+            try:
+                for line in process.stdout:
+                    pending.put(line)
+            finally:
+                pending.put(None)
+
+        reader = threading.Thread(target=read_output, daemon=True)
+        reader.start()
+        try:
+            while True:
+                if timeout is not None and time.monotonic() - progress.start >= timeout:
+                    raise subprocess.TimeoutExpired(cmd, timeout)
+                try:
+                    line = pending.get(timeout=1)
+                except queue.Empty:
+                    progress()
+                    continue
+                if line is None:
+                    break
+                output.append(line)
+                progress(line)
+            while process.poll() is None:
+                if timeout is not None and time.monotonic() - progress.start >= timeout:
+                    raise subprocess.TimeoutExpired(cmd, timeout)
+                try:
+                    process.wait(timeout=1)
+                except subprocess.TimeoutExpired:
+                    progress()
+            return process.returncode, "".join(output), ""
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait()
+            reader.join()
+            process.stdout.close()
 
 
 def tail(s, n=300):
@@ -836,7 +905,8 @@ def hf_render(proj, out, env, what, extra, *, tier=None):
         print(f"info: master render: {workers} worker{'s' if workers != 1 else ''}, {heap_mb} MB Node heap "
               f"({'NVIDIA GPU' if gpu else 'CPU only'}, {memory})")
     t0 = time.perf_counter()
-    rc, o, e = run(rt.hyperframes_cmd("render", proj, *extra, "-o", out), env)
+    print(f"Rendering the {what}.", flush=True)
+    rc, o, e = run(rt.hyperframes_cmd("render", proj, *extra, "-o", out), env, progress=what)
     kill_warm()
     if rc != 0 or not out.is_file():
         cause = render_cause(o + "\n" + e)
@@ -1359,6 +1429,27 @@ def selftest():
     def expect(name, ok):
         if not ok:
             fails.append(name)
+
+    with contextlib.redirect_stdout(io.StringIO()) as said:
+        with patch.object(time, "monotonic", return_value=0):
+            progress = RenderProgress("preview")
+        for percent in range(0, 101):
+            with patch.object(time, "monotonic", return_value=percent / 10):
+                progress(f"Rendering frames: {percent}%")
+    expect("render progress: every 10% step is printed",
+           [int(re.search(r"(\d+)%", line)[1]) for line in said.getvalue().splitlines()]
+           == list(range(0, 101, 10)))
+    with contextlib.redirect_stdout(io.StringIO()) as said:
+        with patch.object(time, "monotonic", return_value=0):
+            progress = RenderProgress("master")
+            progress("Rendering frames: 10%")
+        with patch.object(time, "monotonic", return_value=29):
+            progress()
+        expect("render progress: no early heartbeat", len(said.getvalue().splitlines()) == 1)
+        with patch.object(time, "monotonic", return_value=30):
+            progress()
+    expect("render progress: silent renderer gets a 30 second heartbeat",
+           len(said.getvalue().splitlines()) == 2 and "0:30 elapsed" in said.getvalue())
 
     for free_mb, gpu, wanted in ((None, True, (1, 2560)), (None, False, (1, 2560)),
                                  (10_650, False, (2, 4096)), (3_000, False, (1, 2560)),

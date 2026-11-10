@@ -52,7 +52,7 @@ It is off unless chosen. The effect gate refuses any move across a cut.
 When the client turns it on, after the cut master exists and before a preview
 with no fresh anchors, run with
 `run_in_background`: `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/scripts/face_crop.py" anchors --reel-dir "<reel folder>"`.
-`✓ Face anchors: 0 segments` means no face was found: the camera stays put; tell the client.
+`Face anchors saved: 0 frames` means no face was found: the camera stays put; tell the client.
 Exit 2: the cut master is missing; make the cut first. After any new cut, run it again before
 the preview. Turning Follow my face off only stops the camera moving; keep the head
 samples because caption placement uses them.

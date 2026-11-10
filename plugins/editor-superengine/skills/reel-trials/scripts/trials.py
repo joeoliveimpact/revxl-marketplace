@@ -333,6 +333,14 @@ def scratch_render(reel, doc, hook, destination):
             return [name for name in names if name == "render-tmp"]
 
         shutil.copytree(reel, scratch, ignore=ignore, copy_function=shutil.copy2)
+        ledger_path = scratch / "footage/ledger.json"
+        if ledger_path.is_file():
+            ledger = compose.footage_check.rows(scratch)
+            for row in ledger:
+                path = Path(row["path"])
+                if path.is_absolute() and path.resolve().is_relative_to(reel.resolve()):
+                    row["path"] = str(scratch / path.resolve().relative_to(reel.resolve()))
+            save(ledger_path, ledger)
         save(scratch / compose.SEND, doc)
         # Both import-time callers and caption placement share the same compose module.
         summary = compose.render(scratch, "preview", hook, remember_choices=False, style_reel=reel)

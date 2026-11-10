@@ -37,6 +37,7 @@ HEAVY = Path("C:/Workspaces/Content Studio/output/scripts/heavy_lock.py")
 NAMES = ["reels", "tabs", "grade", "review", "sends", "health", "filmstrip", "layout", "attention", "sync", "edit_style", "look", "broll", "styles", "reminder_holds", "strong_beats"]
 NAMES.append("storyboard")
 NAMES.append("rapid_sends")
+NAMES.append("walk_polish")
 
 
 class Blocked(RuntimeError):
@@ -230,6 +231,19 @@ def case_tabs(p):
         urls = p.snapshot("[...document.querySelectorAll('a[href],iframe[src]')].map(e=>e.getAttribute('href')||e.getAttribute('src'))")
         need(all(not u.endswith('/') and not u.startswith('file:') for u in urls), f"folder or local URL: {urls}")
     check()
+    # Read contrast in the same task as selection, before a colour transition can finish.
+    for layout in ("guided", "full"):
+        contrast = p.browse([{"do": "eval", "js": """(() => {
+            document.body.dataset.layout = %s;
+            const tab = document.querySelector('#tab-grade-board'); tab.click();
+            const style = getComputedStyle(tab);
+            const luminance = colour => colour.match(/[\\d.]+/g).slice(0,3).map(Number)
+              .map(c => c/255).map(c => c <= .04045 ? c/12.92 : ((c+.055)/1.055)**2.4)
+              .reduce((sum,c,i) => sum+c*[.2126,.7152,.0722][i],0);
+            const a=luminance(style.color), b=luminance(style.backgroundColor);
+            return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+        })()""" % json.dumps(layout)}], viewport={"width": 1024, "height": 768})[-1]
+        need(contrast >= 4.5, f"selected tab contrast in {layout}: {contrast}")
     with p.mutant("hub.js", "const tabs = DATA.boards;", "const tabs = DATA.boards.filter(b=>b.id==='cut-board');"):
         p.bites(check, "fixed board list")
 
@@ -299,8 +313,9 @@ def case_look(p):
             {"do": "frame", "sel": "#panel iframe", "waitFn": "window.LP && LP.ready"},
             {"do": "eval", "js": "JSON.stringify({badges:[...document.querySelectorAll('#look-choices small')]"
              ".filter(e=>e.textContent==='Your last pick').map(e=>e.closest('[data-look]').dataset.look),"
-             "picked:document.querySelector('#look-choices [aria-checked=true]')?.dataset.look})"}])
-        need(opening[0] == {"badges": ["boxed"], "picked": "boxed"}, f"remembered look: {opening}")
+             "picked:document.querySelector('#look-choices [aria-checked=true]')?.dataset.look,"
+             "disabled:document.querySelector('#send').disabled})"}])
+        need(opening[0] == {"badges": ["boxed"], "picked": "boxed", "disabled": False}, f"remembered look (not sent on this reel yet, so Send is ready): {opening}")
         need(not dest.exists(), "Opening the Look Picker sent the remembered look")
         rows = p.browse([click('#tab-look-picker'),
             {"do": "frame", "sel": "#panel iframe", "waitFn": "window.LP && LP.ready"},
@@ -317,12 +332,19 @@ def case_look(p):
             {"do": "eval", "js": "JSON.stringify([...document.querySelectorAll('.preview')].map(e=>"
              "{const c=e.shadowRoot.querySelector('.caption');return !!c && c.getAnimations({subtree:true}).some(a=>"
              "a.effect.target!==c && a.effect.getKeyframes().some(k=>/^scaleX\\(/.test(k.transform||'')))}))"},
+            {"do": "eval", "js": "JSON.stringify({enabled:!document.querySelector('#send').disabled,"
+             "text:document.querySelector('#saved').textContent,colour:getComputedStyle(document.querySelector('#saved')).color})"},
             click('#send'),
-            {"do": "waitText", "sel": "#saved", "re": "saved|FAILED"}])
+            {"do": "waitText", "sel": "#saved", "re": "^Sent\\b|FAILED"},
+            {"do": "eval", "js": "JSON.stringify({text:document.querySelector('#saved').textContent,"
+             "disabled:document.querySelector('#send').disabled})"}])
         need(rows[0]["looks"] == 5 and rows[0]["layouts"] == 5, f"picker cards: {rows[0]}")
         need(len(rows[0]["frames"]) == 10 and all(n > 0 for n in rows[0]["frames"]), "picker frame missing")
         need(len(rows[1]) == 10 and all(rows[1]), "Replay all missed a caption")
         need(len(rows[2]) == 10 and all(rows[2]), "Marker highlight missed a swipe")
+        need(rows[3]["enabled"] and rows[3]["text"] == "Changes not sent." and
+             rows[3]["colour"] != "rgb(98, 214, 154)", f"dirty look status: {rows[3]}")
+        need(rows[4]["text"].startswith("Sent.") and rows[4]["disabled"], f"first Send: {rows[4]}")
         need(dest.is_file(), "Look Picker Send missing")
         doc = read(dest)
         need(doc["schema"] == 1 and doc["reel"] == d.name, "wrong picker envelope")
@@ -333,6 +355,14 @@ def case_look(p):
         need(set(doc) == {"schema", "reel", "caption_style", "make_default", "sent_at"}, "layout leaked into Send")
         need(re.fullmatch(r".*[+-]\d{2}:\d{2}", doc.get("sent_at", "")) and
              dt.datetime.fromisoformat(doc["sent_at"]).utcoffset() is not None, "picker Send needs local ISO offset")
+        failed = p.browse([click('#tab-look-picker'),
+            {"do": "frame", "sel": "#panel iframe", "waitFn": "window.LP && LP.ready"},
+            click('#none'), {"do": "eval", "js": "const realFetch=window.fetch; window.fetch=(url,...args)=>"
+             "String(url).includes('__save?')?Promise.resolve(new Response('{}',{status:500})):realFetch(url,...args); 0"},
+            click('#send'), {"do": "waitFn", "js": "/FAILED/.test(document.querySelector('#saved').textContent)"},
+            {"do": "eval", "js": "JSON.stringify({error:document.querySelector('#saved').classList.contains('error'),"
+             "colour:getComputedStyle(document.querySelector('#saved')).color,enabled:!document.querySelector('#send').disabled})"}])[-1]
+        need(failed == {"error": True, "colour": "rgb(255, 147, 130)", "enabled": True}, f"send failure: {failed}")
     check()
     live = p.editor / "look-picker/index.html"
     original = live.read_bytes()
@@ -1161,7 +1191,7 @@ def case_broll(p):
 
     labels = p.browse(open_map() + [{"do": "eval", "js":
         "JSON.stringify(Array.from(document.querySelector('#broll-0').options, o => o.textContent))"}])[-1]
-    need(labels == ["None", "My own clip.mov", "Too short.mov", "Garden.mp4 (AI)"],
+    need(labels == ["None", "My own clip", "Too short", "Garden (AI)"],
          f"AI option label differs: {labels}")
     ai_doc = sent([set_value('#broll-0', 'f03')])
     need(ai_doc["beats"][0]["broll"] == {"src": ai["src"], "in": 0, "out": length,
@@ -1191,6 +1221,34 @@ def case_broll(p):
         "!document.querySelector('#broll-0').textContent.includes('broll/')"}])
     need(sent([set_value('#note-0', 'Keep my saved clip')])["beats"][0]["broll"] == expected,
          "missing catalog changed saved B-roll")
+
+
+def case_walk_polish(p):
+    d = p.videos / "reel-01"
+    write(d / "tweak-selection.json", {})
+    os.utime(d / "tweak-selection.json", (100, 100))
+    write(d / "beat-map.state.json", {"sent_at": "now"})
+    library = p.editor / "sound"
+    write(library / "library-index.json", {"files": {"tick.wav": {"sha256": "fixture"}}})
+    (library / "tick.wav").write_bytes(b"sound")
+    p.refresh()
+    rows = p.browse([
+        {"do": "eval", "js": "JSON.stringify({head:document.querySelector('#move h2').textContent,"
+         "hint:document.querySelector('#move .what').textContent,step:document.querySelectorAll('#steps small')[5].textContent})"},
+        {"do": "eval", "js": "current().sound_pass_ran=true;current().sound_voice_only=true;drawHead();"
+         "JSON.stringify(document.querySelectorAll('#steps small')[5].textContent)"},
+        {"do": "eval", "js": "current().sound_pass_ran=false;current().sound_pack_installed=false;drawHead();"
+         "JSON.stringify(document.querySelectorAll('#steps small')[5].textContent)"}])
+    need("No sound pass yet" in rows[0]["hint"] and "starter pack" in rows[0]["hint"] and
+         "voice only" not in rows[0]["hint"] and rows[0]["hint"] == rows[0]["step"], f"next sound pass: {rows[0]}")
+    need(all("voice only" in text for text in rows[1:]), f"voice-only alternatives: {rows[1:]}")
+    (d / "sound/final.mp4").write_bytes(b"mix")
+    p.refresh()
+    post = p.browse([{"do": "eval", "js": "JSON.stringify({tile:document.querySelector('#wall [data-reel=\"reel-01\"] .stg').textContent,"
+        "head:document.querySelector('#move h2').textContent,button:document.querySelector('#move [data-open]')?.textContent||'',"
+        "progress:document.querySelector('#rhead .pct').textContent})"}], viewport={"width": 1024, "height": 768})[-1]
+    need(post["tile"] == "Ready to post" and post["progress"] == "Ready to post", f"post progress: {post}")
+    need("Post" in post["head"] and not post["button"], f"post next action: {post}")
 
 
 def data_checks(p):

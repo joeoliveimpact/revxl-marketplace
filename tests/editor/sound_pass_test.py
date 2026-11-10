@@ -1431,7 +1431,10 @@ def case_prefill(scratch):
                     ("sweep-long.wav", whoosh(1.2, 4)), ("air-puff.wav", whoosh(0.3, 5)),
                     ("hit-low.wav", tone(0.4, 90, 0.7, 5)), ("tick.wav", tone(0.2, 1800)),
                     ("pop-a.wav", tone(0.15, 900)), ("chime.wav", tone(0.8, 1200, 0.4, 3))):
-        M.write_wav(lib / name, x)
+        M.write_wav(lib / name, x * (0.7 / np.abs(x).max()))
+    quiet_names = {"bump-low-quiet.wav", "check-ticks.wav", "click-mouse.wav", "whoosh-quiet.wav"}
+    for name in quiet_names:
+        M.write_wav(lib / name, tone(0.3, 900, 0.01))
     starts = [0.3 + 0.25 * i for i in range(60)]
     starts[3], starts[14], starts[15], starts[23], starts[50], starts[54] = 1.05, 4.0, 4.03, 6.02, 12.8, 13.3
     starts = sorted(starts)
@@ -1448,6 +1451,8 @@ def case_prefill(scratch):
     ck("prefill: ... and writes nothing but --out", sorted(set(after) - set(before)) == ["cues.json"],
        sorted(set(after) ^ set(before)))
     cues = json.loads(out.read_text(encoding="utf-8")) if out.is_file() else []
+    ck("prefill: too-quiet hits, transitions and fallback sounds are never proposed",
+       cues and not any(quiet_names.intersection(c["candidates"]) for c in cues), cues)
     print("INFO prefill: %s" % [(c["time"], c["short"], c["candidates"]) for c in cues])
     seconds = {f.name: len(M.decode(f)) / SR for f in lib.iterdir()}
 
@@ -1475,6 +1480,12 @@ def case_prefill(scratch):
                                                                                    "candidates"} for c in cues), cues)
     sel = json.loads((r / "beat-map-selection.json").read_text(encoding="utf-8"))
     words = json.loads((r / "work" / "edit_map.cut.json").read_text(encoding="utf-8"))["words"]
+    quiet_only = ws / "quiet-only"
+    quiet_only.mkdir()
+    for name in quiet_names:
+        shutil.copyfile(lib / name, quiet_only / name)
+    ck("prefill: all-quiet library proposes no cues",
+       prefill_cues.propose(sel, words, prefill_cues.library(quiet_only)) == [])
     prefill_cues.CLOSER_SILENT = False
     try:
         flipped = prefill_cues.propose(sel, words, prefill_cues.library(lib))

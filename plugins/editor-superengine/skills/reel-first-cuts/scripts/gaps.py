@@ -588,8 +588,9 @@ def main():
     for n in notes:
         C.append(n.strip() + "   <- a gap was left long on purpose")
     if loudest > env.cal["speech_db"]:
-        C.append("  a deletion reached %.1f dB (above the %.1f dB speech floor) - a word tail"
-                 % (loudest, env.cal["speech_db"]))
+        loud_at = max((span for cut in dels.values() for span in cut), key=lambda span: env.peak(*span))[0]
+        C.append("  a deletion reached %.1f dB (above the %.1f dB speech floor) at %.3f - a word tail"
+                 % (loudest, env.cal["speech_db"], loud_at))
         C.append("  may end more abruptly than recorded")
     for p in protect:
         C.append("  protected beat %.2f-%.2f held at %.0f ms - is the timing still funny?"

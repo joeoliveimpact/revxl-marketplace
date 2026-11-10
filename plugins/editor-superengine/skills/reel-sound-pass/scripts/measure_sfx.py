@@ -21,6 +21,11 @@ from _media import SR, decode, ffmpeg, ffprobe, write_json  # noqa: E402
 SOUND_EXT = (".mp3", ".wav")
 
 
+def too_quiet(peak_dbfs):
+    """The Sound Board's quiet-master check; mixing needs a louder source copy."""
+    return peak_dbfs is not None and peak_dbfs < -6
+
+
 def run(args):
     p = subprocess.run(args, capture_output=True, text=True, encoding="utf-8", errors="replace")
     return (p.stdout or "") + (p.stderr or "")
@@ -100,7 +105,7 @@ def measure_dir(root):
     beds = scan(root / "beds", want_lufs=True)
     write_json(root / "sfx_measured.json", {"hits": hits, "beds": beds})
     print("Measured %d sound effects and %d music beds." % (len(hits), len(beds)))
-    quiet = [h for h in hits if h["peak_dbfs"] is not None and h["peak_dbfs"] < -6]
+    quiet = [h for h in hits if too_quiet(h["peak_dbfs"])]
     if quiet:
         print("Quiet masters (peak under -6 dBFS; mixing can't rescue them, they need a louder copy):")
         for h in quiet:

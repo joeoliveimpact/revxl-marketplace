@@ -10,7 +10,8 @@ It makes `<paths.videos>/<reel>/raw/` using `editor/editor.config.json` (default
 If `mode` is `record`, tell the client in plain words where to drop the take: "I made your reel folder.
 Drop your recording in its raw folder at <drop folder>. I'll check your recording setup first."
 This drop location is the one exception to keeping paths out of client lines: they need to find the folder.
-Invoke `editor-superengine:recording-preflight`, then wait for their take. Run the command again after it arrives.
+Invoke `editor-superengine:recording-preflight`, then wait for their take. If they already have the take, preflight
+runs its "Already have the take?" path: what each warning means for editing this take, never before-you-record advice. Run the command again after it arrives.
 
 - `single`: top-level `RAW.mp4` is ready for Stage 0. If it was missing and `raw/` held one video, the command
   duplicated that video to `RAW.mp4` (house rule 1). The original stays in `raw/`; an existing `RAW.mp4` is never replaced.

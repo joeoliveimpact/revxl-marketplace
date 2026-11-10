@@ -328,11 +328,12 @@ def execute(a):
         if width == 1080:
             print("note: The source is already 9:16 or narrower; the horizontal crop stays at 0.")
         print(f"✓ Face crop: x {doc['x']} of {width}")
+        print(json.dumps(doc))
     else:
         doc = anchors_result(cuts, samples, points)
         write_json(work / "anchors.json", doc)
-        print(f"✓ Face anchors: {len(doc['segments'])} segments")
-    print(json.dumps(doc))
+        frames = sum(len(segment["samples"]) for segment in doc["segments"])
+        print(f"Face anchors saved: {frames} frames -> {work / 'anchors.json'}")
     return 0
 
 

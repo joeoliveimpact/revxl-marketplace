@@ -380,6 +380,27 @@ def case_cut_send(S, a):
        not (d / "selection.json").exists() and (sha(sentinel), sentinel.stat().st_mtime_ns) == before)
 
 
+def case_cut_duplicate(S, a):
+    d, cfg = reel("cut-duplicate")
+    # Reuse the real config and word controls; plant a contained read on L02.
+    cfg["lines"][1]["attempts"] = json.loads(json.dumps(cfg["lines"][0]["attempts"]))
+    cfg["lines"][1]["default"] = cfg["lines"][0]["default"]
+    cfg["lines"][1]["warn"] = "Line L01 already says this; keep one"
+    write(d / "cut-board.config.json", cfg)
+    j = cfg["lines"][0]["default"]
+    words = cfg["lines"][0]["attempts"][j]["words"]
+    first, last = (f'.w[data-w="0:{j}:{words[k]["i"]}"]' for k in (0, -1))
+    warning = "document.querySelector('section.line[data-i=\"1\"] h2').textContent.includes('already says this')"
+    out = browse([dict(do="goto", path="/editor/cut-board/?reel=cut-duplicate", **CUT_READY),
+                  {"do": "eval", "js": warning}, {"do": "click", "sel": first},
+                  {"do": "eval", "js": f"document.querySelector('{last}').dispatchEvent(new MouseEvent('click', {{bubbles:true, shiftKey:true}}))"},
+                  {"do": "eval", "js": warning}, {"do": "click", "sel": first},
+                  {"do": "eval", "js": f"document.querySelector('{last}').dispatchEvent(new MouseEvent('click', {{bubbles:true, shiftKey:true}}))"},
+                  {"do": "eval", "js": warning}], "cut-duplicate")
+    ck("cut-duplicate: striking the OTHER line clears the warning; restoring brings it back",
+       [out["reads"][i] for i in (0, 2, 4)] == [True, False, True], out["reads"])
+
+
 def case_cut_reload(S, a):
     d, cfg = reel("cut-reload")
     strike, wi = word_click(cfg, 3, 0, 2)
@@ -510,6 +531,22 @@ def case_tweak_send(S, a):
     tc = ready_cut(d, cfg)
     if not tc:
         return
+    # Source moment 15 is in a removed gap: its closest retained edge is 5 s in playback.
+    original = (d / "tweak-board.config.json").read_bytes()
+    tc.update(map=[[0, 5, 0, 10], [5, 10, 20, 30]], ship_speed=2,
+              listen="cut1 runt 0.2s at 15.000 holds speech -> gap restored <- a gap was left long on purpose\n"
+                     "a deletion reached -30 dB at 21.000 - a word tail\nmay end more abruptly than recorded\n"
+                     "any beat change that now runs together")
+    write(d / "tweak-board.config.json", tc)
+    try:
+        notes = browse([dict(do="goto", path="/editor/tweak-board/?reel=tweak-send", **TWEAK_READY),
+                        {"do": "eval", "js": "document.querySelector('#listen').textContent"}], "tweak-listen")["reads"][0]
+        ck("tweak-listen: every line has a time, including the first restored-gap note",
+           notes.startswith("At 0:05.00: a pause was left") and
+           all(re.match(r"At \d+:\d{2}\.\d{2}:|Throughout: ", line) for line in notes.splitlines()) and
+           "At 0:05.50: a word's ending" in notes, notes)
+    finally:
+        (d / "tweak-board.config.json").write_bytes(original)
     ckt = sha(d / "cut-selection.json")
     browse([dict(do="goto", path="/editor/tweak-board/?reel=tweak-send", **TWEAK_READY),
             {"do": "seek", "t": 1.0}, {"do": "click", "sel": '[data-add="cut"]'},
@@ -922,6 +959,7 @@ CASES = {"import": case_import, "cut-send": case_cut_send, "cut-reload": case_cu
          "port": case_port, "hub-roundtrip": case_hub_roundtrip, "tabs": case_tabs, "offline": case_offline}
 CASES["tweak-fine-tune"] = case_tweak_fine_tune
 CASES["tweak-silence"] = case_tweak_silence
+CASES["cut-duplicate"] = case_cut_duplicate
 
 
 def main():

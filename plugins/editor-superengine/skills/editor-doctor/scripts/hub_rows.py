@@ -285,6 +285,18 @@ def plain_health(status, nle):
     return rows
 
 
+def sound_pack_installed(editor):
+    library = editor / "sound"
+    try:
+        index = read(library / "library-index.json", {})
+        entries = index.get("files") if isinstance(index, dict) else None
+        return isinstance(entries, dict) and bool(entries) and all(
+            isinstance(name, str) and (library / name).resolve().is_relative_to(library.resolve())
+            and (library / name).is_file() and is_real(library / name) for name in entries)
+    except (OSError, ValueError):
+        return False
+
+
 def build(root, plugin_root=rt.PLUGIN_ROOT):
     root = Path(root).resolve()
     editor, videos = workspace_paths(root)
@@ -292,6 +304,7 @@ def build(root, plugin_root=rt.PLUGIN_ROOT):
     if not is_real(editor) or not is_real(hub) or not is_real(videos):
         raise ValueError("Editor or videos folder is a link; left untouched")
     hub.mkdir(parents=True, exist_ok=True)
+    pack_installed = sound_pack_installed(editor)
     manifest = load_manifest(plugin_root)
     boards = [dict(id=k, label=v["tab"]["label"], stages=v["tab"]["stages"], order=v["tab"]["order"],
                    built=(editor / k / "index.html").is_file() and is_real(editor / k / "index.html"))
@@ -307,6 +320,8 @@ def build(root, plugin_root=rt.PLUGIN_ROOT):
         folders = {f: files(reel if f == "root" else reel / f) for f in ("root", "raw", "work", "renders", "sound")}
         done = [stage_done(s["rule"], folders, reel) for s in stages]
         cur = next(i for i, s in enumerate(stages) if not s["optional"] and not done[i])
+        sound_pass_ran = done[next(i for i, s in enumerate(stages) if s["id"] == "sound")]
+        ready_to_post = stages[cur]["id"] == "post" and done[next(i for i, s in enumerate(stages) if s["id"] == "master")]
         render_files = [p for p in folders["renders"] + folders["work"] + folders["root"] + folders["raw"] + files(reel / "work/renders")
                         if p.suffix.lower() == ".mp4" and p.stat().st_size]
         masters = [p for p in folders["renders"] if MASTER.fullmatch(p.name) and p.stat().st_size]
@@ -326,6 +341,12 @@ def build(root, plugin_root=rt.PLUGIN_ROOT):
         sound = read(reel / "sound-board.state.json", {}) or {}
         cues = sound.get("cues", [])
         voice_only_done = not cues and any(p.name == "final.mp4" for p in folders["sound"])
+        chosen = read(reel / "sound-selection.json")
+        placed = read(reel / "sound/placement.json")
+        sound_voice_only = sound_pass_ran and (
+            not chosen.get("cues") and not (chosen.get("bed") or {}).get("file") if isinstance(chosen, dict)
+            else not placed.get("cues") and not (placed.get("bed") or {}).get("source") if isinstance(placed, dict)
+            else voice_only_done)
         render_label = ("No render yet" if render is None else "Final master" if render in masters
                         else "Preview (720p)" if render in previews
                         else "First cut" if render.parent == reel / "work/renders" and render.match("master-*x.mp4")
@@ -349,6 +370,9 @@ def build(root, plugin_root=rt.PLUGIN_ROOT):
                          activity=activity, idle=now.timestamp()*1000-activity > 7*86400000,
                          frames=frames, render_url=url(render), render_label=render_label,
                          sound_board=(reel / "config.json").is_file() and is_real(reel / "config.json"),
+                         sound_pack_installed=pack_installed, sound_pass_ran=sound_pass_ran,
+                         sound_voice_only=sound_voice_only,
+                         ready_to_post=ready_to_post,
                          master_url=url(max(masters, key=lambda p: p.stat().st_mtime_ns, default=None)),
                          preview_name=preview.name if preview else "", preview_url=url(preview),
                          cover_url=url(reel / "cover.jpg") if (reel / "cover.json").is_file() and (reel / "cover.jpg").is_file() else "",

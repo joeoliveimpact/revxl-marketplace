@@ -55,7 +55,7 @@ function readBoard() {
   const job = JSON.parse(fs.readFileSync(jobPath, "utf8"));
   const {default: puppeteer} = await import(pathToFileURL(pup).href);
   const browser = await puppeteer.launch({executablePath: chrome, headless: "shell", args: ["--no-sandbox"],
-                                          userDataDir: job.userDataDir, defaultViewport: {width: 1300, height: 1000}});
+                                          userDataDir: job.userDataDir, defaultViewport: job.viewport || {width: 1300, height: 1000}});
   const out = {reads: [], errors: [], dialogs: []};
   let page, ctx, step = "start", accept = false;
   try {

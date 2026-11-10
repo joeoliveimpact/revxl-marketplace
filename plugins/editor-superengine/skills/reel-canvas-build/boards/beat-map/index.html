@@ -79,14 +79,16 @@
   button { cursor: pointer; padding: 9px 18px; }
   #send { background: var(--accent); color: #0d1320; border-color: var(--accent); font-weight: 600; }
   #send:disabled { opacity: .5; cursor: default; }
-  @media (max-width: 760px) {
+  @media (max-width: 1100px) {
     main { padding: 14px 12px 130px; }
     thead { display: none; }
     table, tbody, tr, td { display: block; width: 100%; }
     tr { border: 1px solid var(--line); border-radius: 8px; margin-bottom: 12px; padding: 4px 0; }
     td { border: 0; padding: 6px 12px; }
     td::before { content: attr(data-label); display: block; color: var(--muted); font-size: 12px; }
-    .say { max-width: none; }
+    .say, .shows { min-width: 0; max-width: none; overflow-wrap: anywhere; }
+    td textarea, td select, td input { min-width: 0; max-width: 100%; }
+    td select { width: 100%; }
     .bar { flex-wrap: wrap; }
   }
 .advanced-controls{border:1px solid var(--line);border-radius:8px;padding:10px;margin:10px 0}
@@ -532,7 +534,7 @@ function brollControls(b, i) {
     select.disabled = true;
   } else {
     select.append(el("option", {value: "", text: "None"}));
-    brollClips.forEach((c) => select.append(el("option", {value: c.ledger_id, text: c.name + (c.origin === "ai" ? " (AI)" : "")})));
+    brollClips.forEach((c) => select.append(el("option", {value: c.ledger_id, text: c.name.replace(/\.(mp4|mov|m4v|mkv|webm|avi|mpg|mpeg|mxf|mts|m2ts)$/i, "") + (c.origin === "ai" ? " (AI)" : "")})));
     if (b.broll && !brollClips.some((c) => c.ledger_id === b.broll.ledger_id))
       select.append(el("option", {value: b.broll.ledger_id, text: "Saved clip (add it again to change it)"}));
   }

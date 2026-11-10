@@ -40,7 +40,8 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);flex:none
 #accent{width:120px;padding:6px 9px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
 .quiet{color:var(--dim);font-size:13px}
 #tips p{margin:5px 0}
-#saved{color:#62d69a}
+#saved{color:var(--dim)}
+#saved.sent{color:#62d69a}
 #saved.error{color:#ff9382}
 @media(max-width:500px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.options{grid-template-columns:1fr}}
 .advanced-controls{border:1px solid var(--line);border-radius:8px;padding:12px;margin:12px 0}
@@ -91,11 +92,12 @@ const LAYOUTS=['full','split','stack','pip','overlay'];
 const LABELS={full:'Full frame',split:'Split',stack:'Stack',pip:'Picture in picture',overlay:'Overlay'};
 const S={schema:1,reel:REEL,caption_style:{style:null,mark_look:'accent',under_small_overlays:true,
  line_breaks:true,echo_suppression:false,loud_emphasis:false},make_default:false,sent_at:null};
-let C=null, bc=null, timer=null, saving=Promise.resolve();
+let C=null, bc=null, timer=null, saving=Promise.resolve(), dirty=false, sending=false, baseline=null;
 const previews=[];
 window.LP={S,ready:false,replayAll};
 const colourOK=()=>!S.caption_style.accent||/^#[0-9a-f]{6}$/i.test(S.caption_style.accent);
-function status(text,bad=false){$('#saved').textContent=text;$('#saved').className=bad?'error':'';}
+const choice=()=>JSON.stringify({caption_style:S.caption_style,make_default:S.make_default});
+function status(text,bad=false,sent=false){$('#saved').textContent=text;$('#saved').className=bad?'error':sent?'sent':'';}
 async function json(path){
  try{const r=await fetch(reelUrl(path),{cache:'no-store'});return r.ok?await r.json():null;}
  catch(e){return null;}
@@ -103,11 +105,12 @@ async function json(path){
 // Serialize autosaves so a slow earlier request cannot overwrite a newer edit or Send.
 function saveState(){
  const snapshot=JSON.parse(JSON.stringify(S));
- saving=saving.then(()=>bc.save(snapshot));
+ saving=saving.catch(()=>{}).then(()=>bc.save(snapshot));
  return saving;
 }
 function persist(){
  S.sent_at=null;
+ dirty=choice()!==baseline;syncPick();
  clearTimeout(timer);
  timer=setTimeout(()=>saveState().then(r=>{if(!r.ok)status('AUTO-SAVE FAILED. Try again in a moment.',true);}),400);
  status('Changes not sent.');
@@ -138,7 +141,7 @@ function syncPick(){
  for(const el of choices)el.setAttribute('aria-checked',String(el.dataset.look===S.caption_style.style));
  const focus=choices.find(el=>el.dataset.look===S.caption_style.style)||choices[0];
  for(const el of choices)el.tabIndex=el===focus?0:-1;
- $('#send').disabled=!S.caption_style.style||!colourOK();
+ $('#send').disabled=!window.LP.ready||!dirty||sending||!S.caption_style.style||!colourOK();
  $('#layout-note').textContent=S.caption_style.style==='none'?'Preview only. Captions are off.':
   S.caption_style.style?'Preview only. Layout choices stay in your Beat Map.':
   'Preview only. Choose a look above to see it on each layout.';
@@ -259,8 +262,9 @@ function localISO(){
  return new Date(now.getTime()+offset*60000).toISOString().slice(0,-1)+sign+pad(Math.trunc(offset/60))+':'+pad(offset%60);
 }
 async function send(){
- if(!S.caption_style.style||!colourOK())return;
- clearTimeout(timer);$('#send').disabled=true;status('Sending...');
+ if(!window.LP.ready||!dirty||sending||!S.caption_style.style||!colourOK())return;
+ clearTimeout(timer);sending=true;$('#send').disabled=true;status('Sending...');
+ const sentChoice=choice();
  S.sent_at=localISO();
  const doc=JSON.parse(JSON.stringify(S));
  try{
@@ -270,9 +274,10 @@ async function send(){
    {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(doc)});
   const answer=await r.json().catch(()=>null);
   if(!r.ok||!answer||!answer.ok)throw new Error('send');
-  status('saved. Tell Claude your caption look is ready.');
- }catch(e){status('FAILED. Try Send again in a moment.',true);}
- finally{syncPick();}
+  baseline=sentChoice;dirty=choice()!==baseline;
+  status(dirty?'Sent. You have newer changes not sent.':'Sent. Tell Claude your caption look is ready.',false,!dirty);
+ }catch(e){S.sent_at=null;await saveState().catch(()=>{});status('FAILED. Try Send again in a moment.',true);}
+ finally{sending=false;syncPick();}
 }
 async function init(){
  $('#send').onclick=send;
@@ -282,7 +287,8 @@ async function init(){
   if(!config){$('#empty').hidden=false;return;}
   C=config;
   if(C.recommended)restore({style:C.recommended.value});
-  restore(C.current);restore(last);restore(state);
+  restore(C.current);restore(last);baseline=last&&last.sent_at?choice():null;restore(state);  // only this reel's own Send counts as sent
+ dirty=choice()!==baseline;
   $('#send [data-loading]').remove();
   $('#board').hidden=false;render();$('#replay').disabled=false;
   $('#replay').onclick=replayAll;
@@ -303,6 +309,7 @@ async function init(){
   $('#make-default').onchange=e=>{S.make_default=e.target.checked;persist();};
   if(S.sent_at)status('Last sent '+new Date(S.sent_at).toLocaleString());
   window.LP.ready=true;
+  syncPick();
   document.fonts.ready.then(replayAll);
  }catch(e){$('#board').hidden=true;$('#empty').hidden=false;$('#send').disabled=true;$('#replay').disabled=true;}
  finally{$('#send [data-loading]')?.remove();}

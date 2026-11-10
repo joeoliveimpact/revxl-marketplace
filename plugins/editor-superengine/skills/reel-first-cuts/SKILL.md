@@ -178,6 +178,10 @@ It maps the marks back to source time (exit 3 on a word time drifted over 80 ms)
 segments whole, carries the Cut Board's beat, writes `work/edl.json` and prints the next gaps.py
 command. Run it, then Stages 3 to 8 again.
 
+A Tweak Board Send with **no marks is the sign-off**. Still run `tweaks_to_edl.py` and the gaps.py command it
+prints (an empty Send gives back the cut's own `work/cuts.json`, which moves the hub past "Ear pass"), then
+go on to the next step. Don't re-render or open a new Tweak Board version.
+
 A complaint in plain words instead ("that pause drags"): **diagnose before fixing** and fix the
 mechanism, as `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/correction-loop.md` says. Loop
 until the client signs off.

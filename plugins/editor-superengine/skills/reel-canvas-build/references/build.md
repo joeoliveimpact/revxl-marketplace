@@ -42,7 +42,7 @@ run the face step first with `run_in_background`:
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/scripts/face_crop.py" anchors --reel-dir "<reel folder>"`
 
-`✓ Face anchors: 0 segments` means no face was found: go on and tell the client
+`Face anchors saved: 0 frames` means no face was found: go on and tell the client
 the captions use the lowest safe spot. If the face step stops, go on with the preview.
 Tell the client plainly that captions may sit over their face in places and to check
 the preview. Offer the failure report if it stops twice.

@@ -36,6 +36,13 @@ function readPage() {
     lock: q("#lock") ? {disabled: q("#lock").disabled} : null,
     locked: !!q("#directions") && q("#directions").classList.contains("locked"),
     localStorage: localStorage.length,
+    narrow: {
+      width: innerWidth, pageFits: document.documentElement.scrollWidth <= innerWidth,
+      tableFits: !q('.tablewrap') || q('.tablewrap').scrollWidth <= q('.tablewrap').clientWidth,
+      notesVisible: all('#beats td[data-label="Your note"]').every(e => {
+        const r=e.getBoundingClientRect(); return r.width > 0 && r.left >= 0 && r.right <= innerWidth;
+      }),
+    },
   };
 }
 
@@ -44,7 +51,7 @@ function readPage() {
   const job = JSON.parse(fs.readFileSync(jobPath, "utf8"));
   const {default: puppeteer} = await import(pathToFileURL(pup).href);
   const browser = await puppeteer.launch({executablePath: chrome, headless: "shell", args: ["--no-sandbox"],
-                                          userDataDir: job.userDataDir});
+                                          userDataDir: job.userDataDir, defaultViewport: job.viewport || {width: 800, height: 600}});
   const out = {reads: [], errors: []};
   let page, step = "start";
   try {

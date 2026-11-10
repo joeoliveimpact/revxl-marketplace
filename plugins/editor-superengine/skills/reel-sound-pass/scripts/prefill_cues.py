@@ -38,12 +38,13 @@ def read_json(p):
 
 
 def library(folder):
-    """[(file name, measured seconds or None)] of the sounds in folder."""
+    """[(file name, measured seconds or None)] excluding the board's quiet masters."""
     folder = Path(folder)
     if not folder.is_dir():
         return []
     return [(f.name, measure_sfx.duration(f)) for f in sorted(folder.iterdir())
-            if f.is_file() and f.suffix.lower() in measure_sfx.SOUND_EXT]
+            if f.is_file() and f.suffix.lower() in measure_sfx.SOUND_EXT
+            and not measure_sfx.too_quiet(measure_sfx.levels(f, False)[0])]
 
 
 def _kind(name, words):
@@ -93,6 +94,8 @@ def propose(sel, words, lib):
     for i, (t, _, label, short_, why, kind) in enumerate(kept):
         cands = _pick(trans, short, seen[kind]) if kind == "transition" else _pick(hits, rest, seen[kind])
         seen[kind] += 1
+        if not cands:
+            continue
         out.append({"id": "c%d" % (i + 1), "beat": label, "short": short_, "why": why, "time": round(t, 3),
                     "candidates": cands})
     return out

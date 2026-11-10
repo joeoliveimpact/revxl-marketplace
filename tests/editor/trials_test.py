@@ -25,7 +25,7 @@ import trials
 import beat_schema
 import loop_check
 
-CASES = ("selftest", "spec", "loops", "render", "openings", "reframe", "wording", "hub", "scene", "style_context")
+CASES = ("selftest", "footage", "spec", "loops", "render", "openings", "reframe", "wording", "hub", "scene", "style_context")
 HEAVY = Path("C:/Workspaces/Content Studio/output/scripts/heavy_lock.py")
 FAILS = []
 WORDING_CASES = (("A" + "/B test", False), ("a" + "-b test", False),
@@ -100,6 +100,44 @@ def case_selftest(root):
         trials.compose.styles.pick_style({"edit_style": {"style": "punch-in"}}, remember=False)
         ck("scratch camera planning never records a taste pick", not remember.called)
     case_loops(root)
+
+
+def case_footage(root):
+    fc = trials.compose.footage_check
+    for mode in ("logged", "no_broll", "unlogged"):
+        reel, doc, _ = pure_reel(root / mode)
+        clip = reel / "footage/own.mp4"
+        clip.parent.mkdir(parents=True)
+        clip.write_bytes(b"your own B-roll")
+        ident = fc.add(reel, clip, role="broll", origin="own", licence="own") if mode == "logged" else "f01"
+        if mode != "no_broll":
+            doc["beats"][0].update(start_f=90, end_f=120,
+                broll={"src": "footage/own.mp4", "in": 0, "out": 30, "ledger_id": ident})
+        ledger = reel / "footage/ledger.json"
+        before = ledger.read_bytes() if ledger.exists() else None
+
+        def render(scratch, tier, hook, **kwargs):
+            trials.compose.broll_plan({"reel_dir": scratch, "beats": doc["beats"],
+                                      "rate": 30, "total": 300, "cut_frames": []})
+            output = scratch / "renders/preview.mp4"
+            output.parent.mkdir()
+            output.write_bytes(b"preview")
+            return {"out": "renders/preview.mp4"}
+
+        with patch.object(trials.compose, "render", side_effect=render), \
+                patch.object(trials.compose.fpsmod, "frame_count", return_value=30):
+            for ident in ("t1", "t2", "t3"):
+                destination = reel / "trials" / ident / "preview.mp4"
+                try:
+                    trials.scratch_render(reel, doc, None, destination)
+                except trials.compose.Stop as error:
+                    ck(mode + " " + ident + " ledger check", mode == "unlogged"
+                       and "log exactly one footage ledger entry" in str(error), str(error))
+                    ck("unlogged clip never renders", not destination.exists())
+                else:
+                    ck(mode + " " + ident + " ledger check", mode != "unlogged"
+                       and destination.read_bytes() == b"preview")
+        ck(mode + " source ledger unchanged", (ledger.read_bytes() if ledger.exists() else None) == before)
 
 
 def case_style_context(root):

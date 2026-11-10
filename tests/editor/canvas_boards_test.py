@@ -718,11 +718,12 @@ def main():
             p = run(py + ["-B", str(DOCTOR / name), "--root", str(ws)], env=env)
             need(p.returncode == 0, f"hub setup {name}: {p.stdout} {p.stderr}")
 
-    def browse(page_url, actions):
+    def browse(page_url, actions, viewport=None):
         """A NEW browser (fresh profile) runs the actions; returns its reads."""
         S["browsers"] += 1
         job = scratch / f"job-{S['browsers']}.json"
-        write_json(job, {"url": page_url, "userDataDir": str(scratch / f"profile-{S['browsers']}"), "actions": actions})
+        write_json(job, {"url": page_url, "userDataDir": str(scratch / f"profile-{S['browsers']}"),
+                         "actions": actions, "viewport": viewport})
         p = run([tools["node"], str(CLICK), tools["pup"], tools["chrome"], str(job)])
         try:
             out = json.loads(p.stdout.strip().splitlines()[-1])
@@ -770,6 +771,10 @@ def main():
 
     def c2():
         start(S["A"])
+        narrow = browse(url("beat-map"), [{"do": "goto"}, {"do": "wait", "sel": "#beats tr[data-beat]"},
+                        {"do": "read"}], viewport={"width": 1024, "height": 768})[0]["narrow"]
+        need(narrow == {"width": 1024, "pageFits": True, "tableFits": True, "notesVisible": True},
+             f"Beat Map must show Your note without horizontal scrolling: {narrow}")
         bid = S["bid"]
         row = f'#beats tr[data-beat="{bid}"]'
         reads = browse(url("beat-map"), [

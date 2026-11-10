@@ -46,7 +46,7 @@ TITLE_REFUSAL = ("The title doesn't fit beside your face on this frame, even one
 NO_FACE_NOTE = ("note: no face position for this frame, so the title sits low on the cover; "
                 "check it clears your face before you post.")
 TITLE_CONTENT_W = TITLE_W - 2 * TITLE_PADDING
-HEAD_BAND_FRACTION = .6
+HEAD_BAND_FRACTION = .75
 FRAME_CHUNK_SIZE = 40
 TITLE_TOP, TITLE_BOTTOM, GAP = 220, 1470, 24
 
@@ -190,7 +190,7 @@ def title_box(head, lines=1, size="normal"):
     band = head_band(head) if head is not None else None
     below = title_default_y() if band is None else max(TITLE_TOP, math.ceil(band[3] * H) + GAP)
     above = below if band is None else min(TITLE_BOTTOM - height, math.floor(band[1] * H) - GAP - height)
-    for y in (below, above):
+    for y in (above, below):
         box = (TITLE_X / W, y / H, (TITLE_X + TITLE_W) / W, (y + height) / H)
         if TITLE_TOP <= y and y + height <= TITLE_BOTTOM and (band is None or not overlaps(box, band)):
             return box
@@ -198,7 +198,7 @@ def title_box(head, lines=1, size="normal"):
 
 
 def title_placement(head, lines=1, title=None):
-    """Try below then above at normal size, then remeasure one named size smaller."""
+    """Try above then below at normal size, then remeasure one named size smaller."""
     if head is not None and not inside(head):
         raise Stop("The head box is outside this frame; choose another frame or measure the face again.")
     for size in TITLE_SIZES:
@@ -499,21 +499,21 @@ def selftest():
             raise AssertionError("unsaid or overlong title passed")
     head = [.1, .2, .9, .65]
     assert not overlaps(title_box(head), head_band(head))
-    fixture_head = [0, .176, 1, .84]
+    fixture_head = [0, .252, 1, .814]
     for lines in (1, 2):
         placement = title_placement(fixture_head, lines)
         assert placement["size"] == "normal"
         box = placement["box"]
         assert can_place(fixture_head, lines)
-        assert box[1] * H >= math.ceil(head_band(fixture_head)[3] * H) + GAP
+        assert box[3] * H + GAP <= fixture_head[1] * H
         assert not overlaps(box, head_band(fixture_head))
         assert round((box[3] - box[1]) * H) == math.ceil(TITLE_LINE_HEIGHT * lines + 2 * TITLE_PADDING)
         assert box[3] * H <= TITLE_BOTTOM
-        for start, end in ((.25, .5), (.5, .6)):  # eyes and mouth within the protected band
+        for start, end in ((.25, .5), (.5, .75)):  # eyes and mouth within the protected band
             feature = (0, fixture_head[1] + start * (fixture_head[3] - fixture_head[1]),
                        1, fixture_head[1] + end * (fixture_head[3] - fixture_head[1]))
             assert not overlaps(box, feature)
-    smaller_head = [0, .116, 1, 1]
+    smaller_head = [0, .08, 1, .85]
     placement = title_placement(smaller_head, 2)
     assert placement["size"] == "smaller" and not overlaps(placement["box"], head_band(smaller_head))
     assert round((placement["box"][3] - placement["box"][1]) * H) == math.ceil(2 * TITLE_SIZES["smaller"][1] + 2 * TITLE_PADDING)

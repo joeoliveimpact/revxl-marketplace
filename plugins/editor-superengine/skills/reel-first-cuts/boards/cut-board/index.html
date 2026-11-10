@@ -295,6 +295,44 @@ function restore(j){ S=JSON.parse(j); snap=j; openSil=openGap=null; bind(); rend
 function undo(){ if(hist.length){ fut.push(snap); restore(hist.pop()); } }
 function redo(){ if(fut.length){ hist.push(snap); restore(fut.pop()); } }
 function setFocus(i, scroll){ focus=i; document.querySelectorAll('section.line').forEach(x=>x.classList.toggle('focus',+x.dataset.i===i)); if(scroll){ const x=document.querySelector(`section.line[data-i="${i}"]`); if(x) x.scrollIntoView({block:'nearest'}); } }
+function duplicateWarning(i){
+  const warning=C.lines[i].warn, other=warning&&warning.match(/^Line (\S+) already says this/);
+  if(!other) return warning||'';
+  const oi=C.lines.findIndex(l=>l.id===other[1]);
+  if(oi<0) return warning;
+  const kept=n=>{
+    const s=S.lines[n], a=C.lines[n].attempts[s.pick];
+    return s.drop||!a?[]:a.words.filter(w=>!((s.rm||{})[String(s.pick)]||[]).includes(w.i))
+      .map(w=>({word:w.w.toLowerCase().replace(/’/g,"'").replace(/[^a-z0-9$']/g,'')})).filter(w=>w.word);
+  };
+  const a=kept(oi), b=kept(i);
+  const contains=(x,y)=>y.length>=3&&x.some((_,k)=>y.every((w,j)=>x[k+j]?.word===w.word));
+  if(contains(a,b)||contains(b,a)) return warning;
+  // Neighboring reads can also repeat a short phrase across their boundary.
+  if(Math.abs(oi-i)===1){
+    const [first,second]=oi<i?[a,b]:[b,a], joined=first.concat(second), edge=first.length;
+    for(let n=4;n>=1;n--) for(let k=0;k<edge;k++) for(let skip=0;skip<=(n>=2?2:0);skip++){
+      const j=k+n+skip;
+      if(j<edge||j+n>joined.length||j-(k+n-1)-.5>1.5) continue;
+      if(n===1&&['ha','very','really','no','yeah','bye','never'].includes(joined[k].word)) continue;
+      if(joined.slice(k,k+n).every((w,t)=>w.word===joined[j+t].word)) return warning;
+    }
+    // As in make_board's repeat finder, a retake may omit one word.
+    for(let k=0;k<edge;k++) for(let j=Math.max(edge,k+4);j<Math.min(joined.length,k+16);j++){
+      if(joined[k].word!==joined[j].word) continue;
+      let n=0, m=0, skipped=false;
+      while(k+n<joined.length&&j+m<joined.length&&k+n<j+m){
+        if(joined[k+n].word===joined[j+m].word){ n++;m++;continue; }
+        if(skipped) break;
+        if(joined[k+n+1]?.word===joined[j+m].word){ n++;skipped=true;continue; }
+        if(joined[j+m+1]?.word===joined[k+n].word){ m++;skipped=true;continue; }
+        break;
+      }
+      if(n>=5&&m>=5&&j>=k+n-1) return warning;
+    }
+  }
+  return '';
+}
 function render(first){
   if(first){ snap=JSON.stringify(S); markDirty(); } else persist();   // opening the board is not a change
   const m=$('#main'); m.innerHTML='';
@@ -303,9 +341,9 @@ function render(first){
   m.appendChild(top);
   C.lines.forEach((L,i)=>{
     const s=S.lines[i], d=document.createElement('section'); d.className='line'+(s.drop?' drop':'')+(i===focus?' focus':''); d.dataset.i=i;
-    const kept=!s.drop&&att(i);
+    const kept=!s.drop&&att(i), warning=duplicateWarning(i);
     d.innerHTML=`<h2><span class="id">${esc(L.id)}</span> ${esc(L.label)} <span style="margin-left:auto"></span>
-      ${s.flag&&s.drop?`<span class="flag warn">${esc(s.flag)}</span>`:''}${L.warn&&!s.drop?`<span class="flag warn">${esc(L.warn)}</span>`:''}<button data-drop="${i}">${s.drop?'restore':'drop line'}</button></h2><div class="script">${esc(L.text)}</div>`;
+      ${s.flag&&s.drop?`<span class="flag warn">${esc(s.flag)}</span>`:''}${warning&&!s.drop?`<span class="flag warn">${esc(warning)}</span>`:''}<button data-drop="${i}">${s.drop?'restore':'drop line'}</button></h2><div class="script">${esc(L.text)}</div>`;
     if(!L.attempts.length) d.innerHTML+=`<div class="warn">no attempt found in any take</div>`;
     L.attempts.forEach((a,j)=>{
       const on=s.pick===j, row=document.createElement('div'); row.className='att'+(on?' pick':'');

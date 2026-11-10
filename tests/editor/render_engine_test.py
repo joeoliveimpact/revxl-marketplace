@@ -1148,6 +1148,42 @@ LINT_PLANTS = {"clean": {"font": "Inter", "clip": 'class="clip" '},
                "warning": {"font": "Inter", "clip": ""}}
 
 
+def c_progress(root):
+    """The render must report progress while the child is still running."""
+    from unittest.mock import patch
+    c = compose_mod()
+    with tempfile.TemporaryDirectory(dir=root) as folder:
+        folder = Path(folder)
+        out, ack = folder / "preview.mp4", folder / "progress-seen"
+        child = ("import sys,time; from pathlib import Path\n"
+                 "for p in range(0,101,10):\n"
+                 " print(f'Rendering frames: {p}%',flush=True)\n"
+                 " if p == 40:\n"
+                 "  deadline=time.monotonic()+5\n"
+                 "  while not Path(sys.argv[2]).exists() and time.monotonic()<deadline: time.sleep(.01)\n"
+                 "  if not Path(sys.argv[2]).exists(): sys.exit(7)\n"
+                 "Path(sys.argv[1]).write_bytes(b'preview')\n")
+
+        class LiveOutput(io.StringIO):
+            def write(self, text):
+                if "Rendering the preview: 40%" in text:
+                    ack.touch()
+                return super().write(text)
+
+        said, stopped = LiveOutput(), None
+        with patch.object(c, "lint_or_stop", return_value=(True, [])), patch.object(c, "kill_warm"), \
+                patch.object(c.rt, "hyperframes_cmd", return_value=[sys.executable, "-u", "-c", child, out, ack]), \
+                contextlib.redirect_stdout(said):
+            try:
+                c.hf_render(folder, out, dict(os.environ), "preview", [], tier="preview")
+            except c.Stop as error:
+                stopped = error
+        ck("progress reaches you before the child completes", stopped is None and ack.exists() and out.exists(), said.getvalue())
+        ck("render prints every 10% step", [int(p) for p in re.findall(r"Rendering the preview: (\d+)%", said.getvalue())]
+           == list(range(0, 101, 10)), said.getvalue())
+    return root
+
+
 def c_lint(root):
     """TRI-3 through compose.lint_or_stop: clean 0 lines, one error stops the render before `hyperframes render`,
     a warning is one plain line and the render goes on."""
@@ -1178,9 +1214,9 @@ def c_lint(root):
        and "[timed_element_missing_clip_class]" in lines[0], lines)
     calls, real = [], c.run
 
-    def spy(cmd, env, timeout=None):
+    def spy(cmd, env, timeout=None, **kwargs):
         calls.append([str(x) for x in cmd])
-        return real(cmd, env, timeout)
+        return real(cmd, env, timeout, **kwargs)
     c.run = spy
     try:
         (d / "hf-cache").mkdir()
@@ -1653,7 +1689,7 @@ def c_style_fps(root):
 
 CASES = {"broll": c_broll, "broll-blocks": c_broll_blocks, "broll-ai": c_broll_ai,
          "broll-recording-paths": c_broll_recording_paths,
-         "selftest": c_selftest, "preview": c_preview, "master-refused": c_master_refused, "master": c_master,
+         "selftest": c_selftest, "progress": c_progress, "preview": c_preview, "master-refused": c_master_refused, "master": c_master,
          "gate-block": c_gate_block, "bad-input": c_bad_input, "joi-frames": c_joi_frames, "colour": c_colour,
          "frame0": c_frame0, "frame0-scene": c_frame0_scene, "cut-span-block": c_cut_span_block, "lint": c_lint,
          "scene-no-params": c_scene_no_params, "audio": c_audio,

@@ -180,11 +180,58 @@ class HubRowsTest(unittest.TestCase):
         for name in ("Motion", "Sound"):
             self.assertTrue(row["done"][next(i for i, s in enumerate(stages) if s["name"] == name)])
         self.assertIs(row["sound_board"], False)
+        self.assertIs(row["sound_pass_ran"], True)
+        self.assertIs(row["sound_voice_only"], True)
         sound = next(l for l in row["lanes"] if l["label"] == "Sound")
         self.assertEqual((sound["done"], sound["total"]), (1, 1))
         self.assertNotIn(".mp4", row["render_label"])
         (self.reel / "config.json").write_bytes(b"{}")
         self.assertIs(self.row()["sound_board"], True)
+
+    def test_sound_pack_and_pass_are_independent(self):
+        library = self.root / "boards/sound"
+        library.mkdir(parents=True)
+        index = library / "library-index.json"
+        self.assertIs(self.row()["sound_pack_installed"], False)
+        index.write_bytes(b'{"files": {"tick.wav": {"sha256": "fixture"}}}')
+        self.assertIs(self.row()["sound_pack_installed"], False)
+        (library / "tick.wav").write_bytes(b"sound")
+        row = self.row()
+        self.assertIs(row["sound_pack_installed"], True)
+        self.assertIs(row["sound_pass_ran"], False)
+        self.assertIs(row["sound_board"], False)
+        (self.reel / "sound-selection.json").write_bytes(b"{}")
+        self.assertIs(self.row()["sound_pass_ran"], True)
+        self.assertIs(self.row()["sound_voice_only"], True)
+        for choice in ({"cues": [{"file": "tick.wav"}]}, {"bed": {"file": "music.mp3"}}):
+            (self.reel / "sound-selection.json").write_bytes(json.dumps(choice).encode("utf-8"))
+            self.assertIs(self.row()["sound_voice_only"], False)
+        (self.reel / "sound-selection.json").unlink()
+        (self.reel / "sound").mkdir()
+        (self.reel / "sound/final.mp4").write_bytes(b"mix")
+        for bed, voice_only in (({"source": "music.mp3"}, False), ({"source": None}, True)):
+            (self.reel / "sound/placement.json").write_bytes(json.dumps({"bed": bed, "cues": []}).encode("utf-8"))
+            self.assertIs(self.row()["sound_voice_only"], voice_only)
+        index.write_bytes(b"bad JSON")
+        self.assertIs(self.row()["sound_pack_installed"], False)
+
+    def test_only_post_remaining_is_ready_even_with_optional_lanes_untouched(self):
+        self.assertIs(self.row()["ready_to_post"], False)
+        (self.reel / "RAW.mp4").write_bytes(b"")
+        (self.reel / "work").mkdir()
+        (self.reel / "tweak-selection.json").write_bytes(b"{}")
+        (self.reel / "work/cuts.json").write_bytes(b"{}")
+        os.utime(self.reel / "tweak-selection.json", (100, 100))
+        os.utime(self.reel / "work/cuts.json", (200, 200))
+        (self.reel / "beat-map.state.json").write_bytes(b'{"sent_at": "now"}')
+        (self.reel / "sound-selection.json").write_bytes(b"{}")
+        (self.reel / "renders").mkdir()
+        (self.reel / "renders/New reel Master - 11.09.26.mp4").write_bytes(b"video")
+        with patch.object(hub, "filmstrip", return_value=[]), patch.object(hub, "video_info", return_value={"streams": [{"codec_type": "video"}]}):
+            row = self.row()
+        self.assertEqual(row["stage_id"], "post")
+        self.assertIs(row["ready_to_post"], True)
+        self.assertEqual(next(l for l in row["lanes"] if l["label"] == "Grade")["done"], 0)
 
     def test_motion_missing_unlocked_locked_and_unreadable(self):
         stages, _ = hub.cockpit_rules()

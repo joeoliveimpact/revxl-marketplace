@@ -16,7 +16,7 @@ description: Picks a cover frame from the reel, adds an optional short title usi
 - Read the reel's current cut and cover Send before acting. A changed cut or final needs fresh candidates.
 - Needs a cut master or a final video. If neither exists, invoke `editor-superengine:reel-first-cuts` first.
 - This is the editor's own offline cover picker. Use real reel frames; no generated image, paid service or carousel picker.
-- The client chooses. Titles contain at most six words and 28 letters, all said in the reel; numbers must also pass caption-writer's number check. Never invent a claim. The title never covers your face: it sits below the top 60% of the measured head box, or above that band when there is room. Try one size smaller before refusing; offer a shorter title or another cover frame from the picker. A box filling the whole frame refuses a title.
+- The user chooses. Titles contain at most six words and 28 letters, all said in the reel; numbers must also pass caption-writer's number check. Never invent a claim. Your title sits above your head when there is room, otherwise below the top 75% of the measured head box to clear your eyes and mouth. Try one size smaller in the same order before refusing; offer a shorter title or another cover frame from the picker. A box filling the whole frame refuses a title.
 - An existing `cover.jpg` is an applied choice, not permission to pick again or publish.
 
 ## Flow

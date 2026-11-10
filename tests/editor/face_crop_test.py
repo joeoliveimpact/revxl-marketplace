@@ -285,11 +285,14 @@ def anchors_box():
         write(work / "cuts.json", CUTS)
         (work / "renders").mkdir()
         (work / "renders/master-test.mp4").touch()
-        with patch.object(m, "measure", return_value=(points, "rvm")), contextlib.redirect_stdout(io.StringIO()):
+        log = io.StringIO()
+        with patch.object(m, "measure", return_value=(points, "rvm")), contextlib.redirect_stdout(log):
             assert m.main(["anchors", "--reel-dir", str(reel)]) == 0
         raw = (work / "anchors.json").read_bytes()
         doc = json.loads(raw)
         written = [p for seg in doc["segments"] for p in seg["samples"]]
+        summary = [line for line in log.getvalue().splitlines() if not line.startswith("note:")]
+        assert summary == [f"Face anchors saved: 3 frames -> {work / 'anchors.json'}"], log.getvalue()
         assert [p["f"] for p in written] == [10, 30, 42], written
         for p in written:
             assert "box" in p, "a retained sample has no head box"
@@ -375,7 +378,7 @@ def pipeline():
         def tool(tool, args, purpose):
             if tool == "ffmpeg":
                 # A deliberately reordered/repeated request must map selected frames back correctly.
-                graph = (work / "render-tmp/face/select.txt").read_text(encoding="utf-8")
+                graph = (work / "render-tmp/face/0/select.txt").read_text(encoding="utf-8")  # one folder per batch (FX2)
                 assert "eq(n,10)+eq(n,20)+eq(n,30)" in graph
             return b""
 

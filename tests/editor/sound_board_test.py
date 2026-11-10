@@ -155,7 +155,7 @@ def main():
         write_json(d / "waveforms.json", {"bins_per_s": 20, "voice": {"peaks": [0.5] * 60, "duration": DUR}, "beds": {}})
         return d
 
-    def browse(reel_name, actions, page="editor/sound-board/"):
+    def browse(reel_name, actions, page="editor/sound-board/", viewport=None):
         """A NEW browser (fresh profile, so nothing comes from this browser's storage) runs the actions."""
         port = server()
         if page == "editor/hub/":
@@ -166,7 +166,7 @@ def main():
         S["browsers"] += 1
         job = scratch / f"job-{S['browsers']}.json"
         write_json(job, {"url": f"http://127.0.0.1:{port}/{page}?reel={reel_name}",
-                         "userDataDir": str(scratch / f"profile-{S['browsers']}"), "actions": actions})
+                         "userDataDir": str(scratch / f"profile-{S['browsers']}"), "actions": actions, "viewport": viewport})
         p = run([tools["node"], str(CLICK), tools["pup"], tools["chrome"], str(job)])
         try:
             out = json.loads(p.stdout.strip().splitlines()[-1])
@@ -196,6 +196,24 @@ def main():
 
     def c_send():
         d = reel("send-reel")
+        cfg = load(d / "config.json")
+        cfg["cues"][0]["beat"] = "Keep one clip with the full cue name visible"
+        cfg["cues"][0]["why"] = "Three words must never be clipped at the start of the cue name. " * 3
+        write_json(d / "config.json", cfg)
+        narrow = browse("send-reel", [{"do": "goto"}, {"do": "eval", "js": """(() => {
+            const panels = [...document.querySelectorAll('.leftcol,.panel')];
+            const cue = document.querySelector('#cuebody .beat'), why = cue.querySelector('small');
+            const cell = cue.closest('td').getBoundingClientRect();
+            const range = document.createRange(); range.selectNodeContents(cue);
+            const r = range.getBoundingClientRect();
+            return {width:innerWidth, pageFits:document.documentElement.scrollWidth <= innerWidth,
+              panelsFit:panels.every(e=>e.scrollWidth <= e.clientWidth),
+              name:cue.firstChild.textContent, nameFits:r.left >= cell.left && r.right <= cell.right,
+              whyFits:why.scrollHeight <= why.clientHeight};
+        })()"""}], viewport={"width": 1024, "height": 768})["reads"][-1]
+        need(narrow == {"width": 1024, "pageFits": True, "panelsFit": True,
+             "name": cfg["cues"][0]["beat"], "nameFits": True, "whyFits": True},
+             f"Sound Board panels and full cue names must fit at 1024: {narrow}")
         browse("send-reel", [{"do": "goto"}, {"do": "click", "sel": KEEP % 1}, {"do": "waitSaved"},
                              {"do": "click", "sel": "#send"}, {"do": "waitSent"}])
         sel = d / "sound-selection.json"

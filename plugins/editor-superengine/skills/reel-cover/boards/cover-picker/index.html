@@ -58,7 +58,7 @@
       <details class="advanced-controls"><summary>Advanced controls</summary>
       <label><input id="embed" type="checkbox">Use this cover as the first frame of the reel</label>
       </details>
-      <p class="help">The dashed green box protects your head and face (the top 60% of the measured head box). The title goes below it, or above when there is room, and never covers your face. Keep it to two lines. The next render uses your first-frame choice.</p>
+      <p class="help">The dashed green box protects your head and face (the top 75% of the measured head box). Your title goes above your head when there is room, otherwise below the protected box. Keep it to two lines. The next render uses your first-frame choice.</p>
       <p id="note" class="help"></p>
       <p id="face-note" class="help" role="status" aria-live="polite" hidden></p>
     </div>
@@ -137,7 +137,7 @@ function titleY(head, height) {
   const band = headBand(head);
   const below = band ? Math.max(l.top, Math.ceil(band[3] * 1920) + l.gap) : l.default_y;
   const above = band ? Math.min(l.bottom - height, Math.floor(band[1] * 1920) - l.gap - height) : below;
-  return [below, above].find(y => y >= l.top && y + height <= l.bottom) ?? null;
+  return [above, below].find(y => y >= l.top && y + height <= l.bottom) ?? null;
 }
 
 function titlePlacement(head, text) {

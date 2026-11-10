@@ -6,7 +6,7 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;", "<":"&l
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const current = () => DATA.reels.find(r => r.id === CUR);
 const stage = () => DATA.stages[current().cur];
-const pct = r => Math.round(r.lanes.reduce((n,l) => n + (l.total ? l.done/l.total : 0), 0) / r.lanes.length * 100);
+const pct = r => r.ready_to_post ? 100 : Math.round(r.lanes.reduce((n,l) => n + (l.total ? l.done/l.total : 0), 0) / r.lanes.length * 100);
 const ago = at => !at ? "never" : Math.max(0, Math.round((Date.now() - new Date(at).getTime())/60000)) + " min ago";
 const skillLabels = {captions:"Create captions", cover:"Pick a cover", qa:"Run QA", broll:"Add B-roll", trial:"Create a trial version", style:"Save this style", styles:"My styles", health:"Check my editor", goldmine:"Run Goldmine", handoff:"Hand off to your editor"};
 const adjustments = {};
@@ -61,7 +61,8 @@ async function append(reel, name, entry) {
 
 function boardFor(s) {
   // action ids are the Cockpit's; tab.stages belongs to the board's owning skill.
-  if (["master", "post"].includes(s.id)) return "review";
+  if (s.id === "post") return null;
+  if (s.id === "master") return "review";
   return DATA.boards.find(b => b.id.replace(/-board$/, "").replace(/-/g, "") === s.id)?.id ||
     DATA.boards.find(b => b.stages.includes(s.id))?.id;
 }
@@ -69,7 +70,7 @@ function drawWall() {
   const reels = DATA.reels;
   $("wall").innerHTML = reels.map(r => `<button class="rc" data-reel="${esc(r.id)}" data-wait="${r.waiting_on}" aria-current="${r.id===CUR}">
     <span class="thumb">${r.frames[0] ? `<img src="${esc(r.frames[0])}" alt="">` : ""}${r.render_url ? `<video muted loop playsinline preload="none" src="${esc(r.render_url)}"></video>` : ""}<span class="bar"><i style="width:${pct(r)}%"></i></span></span>
-    <span class="txt"><span class="code">${esc(r.id)}</span><span class="ttl">${esc(r.title)}</span><span class="stg">${esc(r.stage)} · ${pct(r)}%</span><span class="tag ${r.waiting_on}">${r.waiting_on === "claude" ? "Claude's move" : "Your move"}</span></span></button>`).join("") +
+    <span class="txt"><span class="code">${esc(r.id)}</span><span class="ttl">${esc(r.title)}</span><span class="stg">${r.ready_to_post ? "Ready to post" : `${esc(r.stage)} · ${pct(r)}%`}</span><span class="tag ${r.waiting_on}">${r.waiting_on === "claude" ? "Claude's move" : "Your move"}</span></span></button>`).join("") +
     '<div class="slot">Your next reel shows up here once its folder is in videos</div>';
   $$("#wall .rc").forEach(el => {
     const v = el.querySelector("video"), th = el.querySelector(".thumb");
@@ -83,9 +84,12 @@ function drawWall() {
 }
 function drawHead() {
   const r = current(), s = stage();
-  const hint = st => st.id === "sound" && r.sound_board === false ? "There are no sound cues to audition because this reel's sound is voice only. Ask Claude for sound effects or music to add some." : st.hint;
+  const hint = st => st.id === "sound" && !r.sound_pass_ran && r.sound_pack_installed
+    ? "No sound pass yet. The sound pass is next: Claude adds effects and music from your starter pack, then you audition them here."
+    : st.id === "sound" && r.sound_board === false && (!r.sound_pack_installed || r.sound_voice_only)
+    ? "There are no sound cues to audition because this reel's sound is voice only. Ask Claude for sound effects or music to add some." : st.hint;
   $("crumb").textContent = "All reels / " + r.id;
-  $("rhead").innerHTML = `<div><span class="code">${esc(r.id)}</span><h1>${esc(r.title)}</h1>${["resolve","mcp"].includes(DATA.config.nle) ? `<p id="nle">edits in ${esc(DATA.config.nle)}</p>` : ""}</div><div class="pct"><b>${pct(r)}%</b><span>of the edit done</span></div>`;
+  $("rhead").innerHTML = `<div><span class="code">${esc(r.id)}</span><h1>${esc(r.title)}</h1>${["resolve","mcp"].includes(DATA.config.nle) ? `<p id="nle">edits in ${esc(DATA.config.nle)}</p>` : ""}</div><div class="pct">${r.ready_to_post ? '<b>Ready to post</b>' : `<b>${pct(r)}%</b><span>of the edit done</span>`}</div>`;
   $("baton").className = "baton " + r.waiting_on;
   $("baton").textContent = (r.waiting_on === "claude" ? "Claude's move" : "Your move") + ": " + (DATA.stages.find(st => st.id === r.open_sends[0]?.board)?.name || r.stage);
   $("lede").textContent = `${r.title} needs ${r.waiting_on === "claude" ? "Claude" : "you"} for ${r.stage.toLowerCase()}.`;

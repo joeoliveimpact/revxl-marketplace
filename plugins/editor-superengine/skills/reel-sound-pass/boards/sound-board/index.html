@@ -239,7 +239,8 @@ tr.cuerow.focus{outline:0!important;transform:translateY(-1px);filter:drop-shado
 tr.cuerow.focus td{background:#1B1B1F;border-color:rgba(255,90,60,.55)!important}
 tr.cuerow.rej.focus{opacity:.7}
 .beat{font-weight:500!important;font-size:14px;letter-spacing:-.005em;color:var(--et-ink)}
-.beat small{display:-webkit-inline-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;width:100%;
+.beat{overflow-wrap:anywhere}
+.beat small{display:block;width:100%;
   margin-top:3px;font-size:12px!important;line-height:1.4!important;color:var(--et-mute)!important;font-weight:400}
 tr.cuerow.focus .beat small{-webkit-line-clamp:unset}
 #cuebody tr.cuerow:not(.keep):not(.rej) .beat::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;margin:0 7px 2px 0;
@@ -267,6 +268,10 @@ textarea{border-radius:12px!important;font-family:var(--et-mono)!important}
 #placemsg small{color:var(--et-mute)!important}
 @keyframes et-pulse{50%{opacity:.35}}
 @media (max-width:1000px){tr.cuerow{scroll-margin-top:110px}}   /* the strip wraps taller here */
+@media (max-width:1100px){
+  .wrap{grid-template-columns:minmax(0,1fr)}
+  .leftcol{position:static;max-height:none;overflow:visible}
+}
 @media (max-width:600px){body{padding:16px!important}#strip{margin:0 -16px 18px!important;padding:10px 16px!important}h1{font-size:34px!important}}
 @media (prefers-reduced-motion:reduce){*,*::before{transition:none!important;animation:none!important}tr.cuerow.focus{transform:none}}
 /* strip hooks (10.08.26): three count chips, the "changed" warning, a quiet dot while saving */

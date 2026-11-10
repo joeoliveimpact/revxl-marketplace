@@ -33,7 +33,7 @@ import cover_pick as cover
 INSTALLED_HOME = cover.rt.state_dir()
 HEAVY = Path("C:/Workspaces/Content Studio/output/scripts/heavy_lock.py")
 DEFAULT_REEL = Path("C:/Work/_scratch/editor-superengine-0.2.0/renders/S7/run1/reel")
-CASES = ("selftest", "pick", "title", "scene", "embed", "hub")
+CASES = ("selftest", "title_geometry", "pick", "title", "scene", "embed", "hub")
 FAILS = []
 
 
@@ -149,6 +149,27 @@ def case_pick(root, source):
     ck("candidate JSON retains blurred rank", cover.read(reel / "cover/candidates.json")["candidates"][-1]["frame"] == 5 * step)
 
 
+def case_title_geometry(root, source):
+    for head, above in (([0, .252, 1, .814], True), ([.1, .08, .9, .7], False)):
+        protected = (head[0], head[1], head[2], head[1] + .75 * (head[3] - head[1]))
+        for lines in (1, 2):
+            box = cover.title_placement(head, lines)["box"]
+            ck("title clears top 75% of head", not cover.overlaps(box, protected), box)
+            ck("title above head first" if above else "tight crop title below face",
+               box[3] * cover.H + cover.GAP <= head[1] * cover.H if above else
+               box[1] * cover.H >= protected[3] * cover.H + cover.GAP, box)
+    head = [0, .08, 1, .85]
+    placement = cover.title_placement(head, 2)
+    ck("tight crop uses smaller title without overlap", placement["size"] == "smaller"
+       and not cover.overlaps(placement["box"], (0, .08, 1, .6575)))
+    try:
+        cover.title_placement([0, .2, 1, 1], 2)
+    except cover.Stop as error:
+        ck("no room refuses plainly", str(error) == cover.TITLE_REFUSAL)
+    else:
+        ck("no room refuses plainly", False)
+
+
 def case_title(root, source):
     ck("scene font wraps one line", cover.title_lines("MMMMMMMM") == 1)
     ck("scene font wraps two lines", cover.title_lines("MMMMMMMM MMMMMMMM") == 2)
@@ -170,7 +191,9 @@ def case_title(root, source):
     placement = cover.title_placement(row["head_box"], title=title)
     ck("fixture uses normal title size", placement["size"] == "normal")
     band_bottom = math.ceil(cover.head_band(row["head_box"])[3] * 1920)
-    ck("fixture face title sits just below the face band", round(placement["box"][1] * 1920) == band_bottom + cover.GAP,
+    ck("fixture title above head when it fits, otherwise below face",
+       placement["box"][3] * cover.H + cover.GAP <= row["head_box"][1] * cover.H
+       or round(placement["box"][1] * 1920) == band_bottom + cover.GAP,
        (placement["box"], band_bottom))
     pick = {"frame": row["frame"], "title": title, "embed_first_frame": False}
     cover.save(reel / "cover-picker-selection.json", pick)
@@ -180,9 +203,10 @@ def case_title(root, source):
     if result.returncode:
         return
     box = placement["box"]
-    ck("fixture title below face with gap", box[1] * cover.H >= math.ceil(cover.head_band(row["head_box"])[3] * cover.H) + cover.GAP)
+    ck("fixture title clears face with gap", box[3] * cover.H + cover.GAP <= row["head_box"][1] * cover.H
+       or box[1] * cover.H >= math.ceil(cover.head_band(row["head_box"])[3] * cover.H) + cover.GAP)
     ck("title clears face", row["head_box"] is None or not cover.overlaps(box, cover.head_band(row["head_box"])))
-    for name, top, bottom in (("eyes", .25, .5), ("mouth", .5, .6)):
+    for name, top, bottom in (("eyes", .25, .5), ("mouth", .5, .75)):
         head = row["head_box"]
         feature = (head[0], head[1] + top * (head[3] - head[1]), head[2], head[1] + bottom * (head[3] - head[1]))
         ck("title clears protected " + name, not cover.overlaps(box, feature))
@@ -226,9 +250,7 @@ def case_title(root, source):
     ck("nonexistent frame refused", command(SCRIPT, "apply", "--reel-dir", reel).returncode != 0)
     ck("failed apply preserves approved cover", cover.read(reel / "cover.json") == output)
     # Keep the real fixture video and plant only the selected frame's head box.
-    small_h = math.ceil(2 * cover.TITLE_SIZES["smaller"][1] + 2 * cover.TITLE_PADDING)
-    band_bottom = (cover.TITLE_BOTTOM - cover.GAP - small_h - 1) / cover.H
-    smaller_head = [0, (band_bottom - cover.HEAD_BAND_FRACTION) / (1 - cover.HEAD_BAND_FRACTION), 1, 1]
+    smaller_head = [0, .08, 1, .85]
     no_room_head = [0, .2, 1, 1]
     anchors_path = reel / "work/anchors.json"
     original_anchors = anchors_path.read_bytes()

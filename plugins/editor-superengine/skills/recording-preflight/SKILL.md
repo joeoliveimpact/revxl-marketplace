@@ -19,6 +19,7 @@ Speak to the client the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/refe
 - If the conversation was compacted since this skill loaded, invoke it again before going on.
 - Re-running is safe. The check only reads the clip; it never changes or keeps it.
 - Check the test clip, not the real take. If the client drops a long recording, offer the check, but say it's meant for a short test.
+- **Already have the take?** (They drop a finished recording, or intake finds one.) Skip the set-up suggestions and the 10-second ask. Start with "You can still edit this take.", then for each ⚠ / ✗ say what it means for editing this take, and give any set-up fix as "next time". Never a fix that only works by recording again, unless they ask to re-record. The last line is "Good to edit", or the one thing to listen for.
 
 ## Ground rules
 
