@@ -257,7 +257,7 @@ def saved_hooks(reel, fallback=None):
             or not isinstance(record.get("box"), list) or len(record["box"]) != 4
             or any(type(v) not in (int, float) or not math.isfinite(v) for v in record["box"])):
         raise ValueError("The saved hook record is incomplete; make the preview again.")
-    later = [h for h in (fallback or []) if h["start_f"] > 0]
+    later = [h for h in (fallback or []) if h["start_f"] > 0 or h.get("label") == "highlighted sentence"]
     if record["kind"] == "none":
         return later
     count = len(hook_words(record["text"]))
@@ -769,8 +769,25 @@ def scene_params(scene):
         return {}
 
 
+def face_clear_placement(head, size, floor, candidate):
+    """Try full-size above, then below; only then shrink in the same order."""
+    import placer
+    safe_top, safe_bottom = placer.SAFE[1], placer.SAFE[3]
+    protected = placer.face_band(head)
+    regions = [(safe_top, min(safe_bottom, protected[1] - placer.UNDER_HEAD_GAP)),
+               (max(safe_top, protected[3] + placer.UNDER_HEAD_GAP), safe_bottom)]
+    while size >= floor:
+        for lo, hi in regions:
+            if hi > lo:
+                placed = candidate(lo, hi, size)
+                if placed is not None:
+                    return placed
+        size -= 1
+    return None
+
+
 def hook_title_placement(ctx, beat):
-    """Fit above the head, or request a plain still instead of covering the face."""
+    """Fit above or below the protected face, else request a plain still."""
     import placer
     explicit = beat["scene"].get("params", {})
     placed = {"top": 220, "height": 1250, "size": 120}
@@ -778,27 +795,80 @@ def hook_title_placement(ctx, beat):
     if head is None:
         placed.update({k: explicit[k] for k in placed if k in explicit})
         return placed, "The hook title wasn't checked against your face because no face anchors were found."
-    safe_top, safe_bottom = placer.SAFE[1], placer.SAFE[3]
-    protected = placer.face_band(head, top=0)
-    ceiling = min(safe_bottom, protected[1] - placer.UNDER_HEAD_GAP)
-    placed.update(top=safe_top, height=max(0, ceiling - safe_top))
-    placed.update({k: explicit[k] for k in placed if k in explicit})
     title = beat["scene"].get("slots", {}).get("title", "Nobody tells you this about editing")
 
-    def fits(size):
+    def required_height(size):
         # The line is 640px wide; include its breath and the bow's 6-degree tilt.
         lines = title_lines(title, 640, size)
         half = lines * size * 1.05 * 1.035 / 2
         angle = math.radians(6)
         projected = half * math.cos(angle) / (1 - half * math.sin(angle) / 950)
-        return 2 * projected + 48 <= placed["height"]  # room for fringe and rest blur
+        return 2 * projected + 48  # room for fringe and rest blur
 
-    if "size" not in explicit:
-        while placed["size"] > 56 and not fits(placed["size"]):
-            placed["size"] -= 1
-    if (not fits(placed["size"]) or placed["top"] < safe_top
-            or placed["top"] + placed["height"] > ceiling):
-        return None, "The hook title didn't fit above your face, so a plain hook title is used."
+    def candidate(lo, hi, size):
+        top = explicit.get("top", lo)
+        height = explicit.get("height", max(0, hi - top))
+        if "height" not in explicit and lo >= placer.face_band(head)[3] + placer.UNDER_HEAD_GAP:
+            # Only occupy the measured lower title, leaving captions room beneath it.
+            height = min(height, math.ceil(required_height(size)))
+        if lo <= top and top + height <= hi and required_height(size) <= height:
+            return dict(top=top, height=height, size=size)
+
+    size = explicit.get("size", 120)
+    placed = face_clear_placement(head, size, size if "size" in explicit else 56, candidate)
+    if placed is None:
+        return None, "The hook title didn't fit above or below your face, so a plain hook title is used."
+    return placed, None
+
+
+CALLOUT_DROP = ("The highlighted sentence didn't fit clear of your face on this beat, so it was left out. "
+                "Shorten the sentence or pick another card.")
+
+
+def callout_box(scene, params=None):
+    """Conservative wrapped text bounds, including the 24px entrance travel."""
+    params = params if params is not None else scene.get("params", {})
+    size, centre = params.get("size", 72), params.get("top", 845)
+    text = scene.get("slots", {}).get("text", "")
+    # Use wide glyph advances for every word as well as the shared wrapping estimate.
+    chars = max(1, math.floor(840 / size))
+    lines = max(title_lines(text, 840, size), len(textwrap.wrap(" ".join(text.split()), width=chars)), 1)
+    half = lines * size * 1.3 / 2
+    return (90, centre - half, 930, centre + half + 24)
+
+
+def callout_placement(ctx, beat):
+    import placer
+    scene = beat["scene"]
+    explicit = scene.get("params", {})
+    placed = dict(top=explicit.get("top", 845), size=explicit.get("size", 72))
+    head = placer.head_box_at(ctx, beat["start_f"], beat["end_f"] - 1)
+    if head is None:
+        return placed, "The highlighted sentence wasn't checked against your face because no face anchors were found."
+    protected = placer.face_band(head)
+
+    def clear(box):
+        return placer.SAFE[1] <= box[1] and box[3] <= placer.SAFE[3] and not placer.hits(box, protected)
+
+    if clear(callout_box(scene, placed)):
+        return placed, None
+
+    def candidate(lo, hi, size):
+        height = callout_box(scene, dict(top=0, size=size))[3] - callout_box(scene, dict(top=0, size=size))[1]
+        params = dict(top=lo + (height - 24) / 2, size=size)
+        if height <= hi - lo and clear(callout_box(scene, params)):
+            return params
+
+    placed = face_clear_placement(head, placed["size"], 36, candidate)
+    if placed is None:
+        return None, CALLOUT_DROP
+    declared = scene_params(scene)
+    changed = {key for key in ("top", "size") if key in explicit
+               and explicit[key] != declared[key]["default"] and placed[key] != explicit[key]}
+    if "top" in changed:
+        return placed, "Your position for the highlighted sentence would cover your face, so it was moved."
+    if "size" in changed:
+        return placed, "Your size for the highlighted sentence didn't fit clear of your face, so it was made smaller."
     return placed, None
 
 
@@ -812,7 +882,35 @@ def placement_hooks(inp):
             hooks.append(dict(text=scene["slots"]["title"], start_f=beat["start_f"], end_f=beat["end_f"],
                               box=[60, params["top"], 960, params["top"] + params["height"]],
                               spoken=False, word_count=len(hook_words(scene["slots"]["title"])), shown_words=[]))
+        elif scene and scene["id"] == "hf-callout":
+            hooks.append(dict(text=scene["slots"]["text"], start_f=beat["start_f"], end_f=beat["end_f"],
+                              box=list(callout_box(scene)), label="highlighted sentence",
+                              spoken=False, word_count=len(hook_words(scene["slots"]["text"])), shown_words=[]))
     return hooks
+
+
+def clear_callouts_from_captions(inp, ctx, bands, placement_state=None):
+    """If captions have no clear spot, leave out their overlapping sentence card."""
+    import placer
+    dropped = False
+    for beat in inp["beats"]:
+        scene = beat.get("scene")
+        if scene and scene["id"] == "hf-callout" and any(
+                b["start_f"] < beat["end_f"] and b["end_f"] >= beat["start_f"]
+                and placer.hits(b["box"], callout_box(scene), placer.CAPTION_PAD) for b in bands):
+            beat["scene"] = None
+            dropped = True
+    if dropped:
+        inp["scened"] = [b for b in inp["beats"] if b.get("scene") is not None]
+        placer.set_hook_stills(ctx, placement_hooks(inp))
+        if placement_state is not None:
+            notes, fallbacks = placement_state
+            ctx["notes"] = list(notes)
+            if fallbacks is None:
+                ctx.pop("fallbacks", None)
+            else:
+                ctx["fallbacks"] = list(fallbacks)
+    return dropped
 
 
 def place_hook_titles(inp, ctx):
@@ -820,6 +918,15 @@ def place_hook_titles(inp, ctx):
     notes = []
     for beat in inp["beats"]:
         scene = beat.get("scene")
+        if scene and scene["id"] == "hf-callout":
+            placed, note = callout_placement(ctx, beat)
+            if placed is None:
+                beat["scene"] = None
+            else:
+                scene.setdefault("params", {}).update(placed)
+            if note and note not in notes:
+                notes.append(note)
+            continue
         if not scene or scene["id"] != "hf-hook-title":
             continue
         placed, note = hook_title_placement(ctx, beat)
@@ -1254,19 +1361,23 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
     try:
         ctx = None
         band_notes = []
-        if any(b.get("scene") and b["scene"]["id"] == "hf-hook-title" for b in inp["beats"]):
+        if any(b.get("scene") and b["scene"]["id"] in ("hf-hook-title", "hf-callout") for b in inp["beats"]):
             band_notes.extend(broll_bands.measure(reel, inp["beats"]))
             ctx = placer.load_ctx(reel)
         title_notes = plan(inp, hook_text, track["spans"] + list(extra_spans or []), ctx=ctx)
         baked = baked_spans(track, inp["beats"], inp["total"]) if layers != "all" else []
         require_baked_master(reel, baked, inp["total"], inp["rate"])
         footage_licences(inp, tier)
-        if remember_choices:
-            doc = captions.plan(reel, fps=inp["fps"], style_reel=style_reel, render_beats=inp["beats"])
-        else:  # N5 scratch renders must not rewrite the shared saved caption choice.
-            cs, _ = captions.pick_style(reel, remember=False, style_reel=style_reel)
-            doc = captions.plan(reel, fps=inp["fps"], _style=cs, style_reel=style_reel, render_beats=inp["beats"])
-        hook_captions(doc, inp["hooks"])
+        def caption_plan():
+            if remember_choices:
+                result = captions.plan(reel, fps=inp["fps"], style_reel=style_reel, render_beats=inp["beats"])
+            else:  # N5 scratch renders must not rewrite the shared saved caption choice.
+                cs, _ = captions.pick_style(reel, remember=False, style_reel=style_reel)
+                result = captions.plan(reel, fps=inp["fps"], _style=cs, style_reel=style_reel, render_beats=inp["beats"])
+            hook_captions(result, inp["hooks"])
+            return result
+
+        doc = caption_plan()
         doc["hooks"] = placement_hooks(inp)
         doc["notes"].extend(title_notes)
         if doc["chunks"]:
@@ -1275,11 +1386,23 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
                 ctx = placer.load_ctx(reel, hook=(inp["hook_text"], inp["hook_f"]) if inp["hook_f"] else None)
             placer.set_hook_stills(ctx, doc["hooks"])
             spec = captions.STYLES[doc["style"]["style"]]
+            placement_state = (list(ctx["notes"]), list(ctx["fallbacks"]) if "fallbacks" in ctx else None)
             bands = []
             for c in doc["chunks"]:
                 # Captions end exclusively; placer's public spans end inclusively.
                 c["box"] = placer.place(ctx, c["start_f"], c["end_f"] - 1, captions.band_h(spec))
                 bands.append(dict(start_f=c["start_f"], end_f=c["end_f"] - 1, box=c["box"]))
+            while clear_callouts_from_captions(inp, ctx, bands, placement_state):
+                notes = doc["notes"] + ["The highlighted sentence didn't fit clear of your captions on this beat, so it was left out. "
+                                        "Shorten the sentence or pick another card."]
+                # Restore words that echo suppression attributed to the removed card.
+                doc = caption_plan()
+                doc["notes"] = list(dict.fromkeys(doc["notes"] + notes))
+                doc["hooks"] = placement_hooks(inp)
+                bands = []
+                for c in doc["chunks"]:
+                    c["box"] = placer.place(ctx, c["start_f"], c["end_f"] - 1, captions.band_h(spec))
+                    bands.append(dict(start_f=c["start_f"], end_f=c["end_f"] - 1, box=c["box"]))
             doc["notes"].extend(ctx["notes"] + placer.ghosts(ctx, bands))
         doc["notes"].extend(band_notes)
     except captions.Stop as e:
@@ -1430,6 +1553,7 @@ def cmd_ok(reel, from_review):
 
 # ---- selftest ------------------------------------------------------------------------------------------------
 def selftest():
+    import copy
     import tempfile
     from unittest.mock import Mock, patch
     fails = []
@@ -1707,11 +1831,24 @@ def selftest():
            "segments": [(0, 100)], "boxes": {0: head}, "median_box": head,
            "layouts": {"full": (0, 0, 1080, 1920)}, "stills": [], "notes": [], "fps": Fraction(25)}
     title_beat = beat("title", 0, 50, scene="hf-hook-title")
+    close_head = (0, 406, 1080, 1576)
+    close_ctx = dict(ctx, boxes={0: close_head}, median_box=close_head)
+    close_beat = beat("close-title", 0, 50, scene="hf-hook-title")
+    close_beat["scene"]["slots"] = {"title": "Claude just changed this"}
+    close_inp = {"beats": [close_beat], "hooks": [], "rate": Fraction(25), "words": [], "total": 100}
+    close_notes = place_hook_titles(close_inp, close_ctx)
+    close_box = hook_record(close_inp)["box"]
+    expect("hook title: real close-up shares hair, clears the face and stays safe without a plain fallback",
+           close_beat["scene"] is not None and close_inp["hooks"] == [] and close_notes == []
+           and not placer.hits(close_box, placer.face_band(close_head))
+           and placer.SAFE[0] <= close_box[0] < close_box[2] <= placer.SAFE[2]
+           and placer.SAFE[1] <= close_box[1] < close_box[3] <= placer.SAFE[3]
+           and placer.active_hook(close_ctx, 0)[2] == tuple(close_box))
     title_beat["scene"]["slots"] = {"title": "Nobody tells you this about editing"}
     placed, note = hook_title_placement(ctx, title_beat)
-    expect("hook title: shrinks and stays wholly above the head with a gap",
+    expect("hook title: shrinks and stays wholly above the face band with a gap",
            placed["top"] >= 220 and placed["top"] + placed["height"] <= 1470
-           and placed["top"] + placed["height"] <= 610
+           and placed["top"] + placed["height"] <= 700
            and 56 <= placed["size"] < 120 and note is None)
     title_beat["start_f"] = 50
     title_beat["end_f"] = 100
@@ -1721,30 +1858,51 @@ def selftest():
     title_beat["scene"]["slots"]["title"] = "W" * 40
     tilted, note = hook_title_placement(ctx, title_beat)
     expect("hook title: perspective expansion of a tall title also clears the face",
-           tilted["top"] + tilted["height"] <= 1320 and tilted["size"] < 120 and note is None)
+           tilted["top"] + tilted["height"] <= 1307 and tilted["size"] < 120 and note is None)
     title_beat["scene"]["slots"]["title"] = "Nobody tells you this about editing"
     ctx["boxes"][0] = ctx["median_box"] = head
     title_beat["scene"]["params"] = {"top": 250, "height": 350, "size": 56}
     explicit, _ = hook_title_placement(ctx, title_beat)
     expect("hook title: safe explicit placement wins", explicit == {"top": 250, "height": 350, "size": 56})
     title_beat["scene"]["params"] = {}
-    ctx["boxes"][0] = ctx["median_box"] = (0, 384, 1080, 1920)
+    ctx["boxes"][0] = ctx["median_box"] = (200, 180, 880, 500)
+    below, note = hook_title_placement(ctx, title_beat)
+    expect("hook title: full size below a high face before shrinking",
+           below is not None and below["size"] == 120 and below["top"] == 460
+           and below["top"] + below["height"] <= placer.SAFE[3] and note is None
+           and not placer.hits((60, below["top"], 960, below["top"] + below["height"]),
+                               placer.face_band(ctx["median_box"])))
+    expect("hook title: below-face params satisfy the scene contract",
+           not scene_check.fill_problems("hf-hook-title", dict(title_beat["scene"], params=below)))
+    below_beat = dict(title_beat, scene=dict(title_beat["scene"], params=below))
+    below_ctx = dict(ctx, stills=[], notes=[])
+    placer.set_hook_stills(below_ctx, placement_hooks(dict(beats=[below_beat], hooks=[])))
+    below_caption = placer.place(below_ctx, title_beat["start_f"], title_beat["end_f"] - 1)
+    expect("hook title: full-size lower placement leaves captions clear of the title and face",
+           not placer.hits(below_caption, below_ctx["stills"][0][2], placer.CAPTION_PAD)
+           and not placer.hits(below_caption, placer.face_band(ctx["median_box"]), placer.CAPTION_PAD))
+    ctx["boxes"][0] = ctx["median_box"] = (200, 1300, 880, 1600)
+    above, note = hook_title_placement(ctx, title_beat)
+    expect("hook title: low face keeps the full-size upper box",
+           above == {"top": 220, "height": 1085, "size": 120} and note is None)
+    ctx["boxes"][0] = ctx["median_box"] = placer.SAFE
+    title_beat["scene"]["slots"]["title"] = "W" * 40
     tight, note = hook_title_placement(ctx, title_beat)
     expect("hook title: impossible fit asks for a plain replacement",
-           tight is None and note == "The hook title didn't fit above your face, so a plain hook title is used.")
-    mouth = (200, 1400, 880, 1450)
-    expect("hook title: protected top 75% includes the mouth beyond 60%",
-           placer.hits(mouth, placer.face_band(ctx["median_box"], top=0)))
+           tight is None and note == "The hook title didn't fit above or below your face, so a plain hook title is used.")
+    mouth = (200, 1020, 880, 1070)
+    expect("hook title: protected face band includes the mouth beyond 60%",
+           placer.hits(mouth, placer.face_band(ctx["median_box"])))
     title_beat["start_f"], title_beat["end_f"] = 0, 50
     title_beat["scene"]["slots"]["title"] = "Hi"
-    ctx["boxes"][0] = ctx["median_box"] = (0, 220, 1080, 1920)
+    ctx["boxes"][0] = ctx["median_box"] = (0, 0, 1080, 1920)
     fallback = {"beats": [title_beat], "scened": [title_beat], "hooks": [], "rate": Fraction(25),
                 "words": ["Hi"], "timed_words": [{"word": "Hi", "start": 0, "end": .2}], "total": 100}
     notes = place_hook_titles(fallback, ctx)
     expect("hook title: unfit scene becomes the same plain spoken hook",
            title_beat["scene"] is None and fallback["scened"] == []
            and fallback["hook_text"] == "Hi" and fallback["hook_spoken"] and fallback["hook_f"] == 38
-           and notes == ["The hook title didn't fit above your face, so a plain hook title is used."])
+           and notes == ["The hook title didn't fit above or below your face, so a plain hook title is used."])
     # The checker's fitted-title probe must survive the same still setup as render().
     fitted_beat = beat("fitted", 0, 50, scene="hf-hook-title")
     fitted_beat["scene"]["slots"] = {"title": "Claude just killed Instagram."}
@@ -1753,7 +1911,7 @@ def selftest():
     fitted = {"beats": [fitted_beat], "hooks": [], "rate": Fraction(25), "words": [], "total": 100}
     place_hook_titles(fitted, fitted_ctx)
     expect("fitted title: checker geometry", fitted_beat["scene"]["params"] == {
-        "top": 220, "height": 440, "size": 93})
+        "top": 220, "height": 552.5, "size": 113})
     placer.set_hook_stills(fitted_ctx, placement_hooks(fitted))
     fitted_box = hook_record(fitted)["box"]
     caption_box = placer.place(fitted_ctx, 0, 49)
@@ -1761,6 +1919,118 @@ def selftest():
            placer.active_hook(fitted_ctx, 0) is not None and not placer.hits(caption_box, fitted_box)
            and not placer.hits(caption_box, placer.face_band(head), placer.CAPTION_PAD))
     expect("fitted title: exclusive scene end restores base placement", placer.active_hook(fitted_ctx, 50) is None)
+    sentence = beat("sentence", 0, 50, scene="hf-callout")
+    sentence["scene"]["slots"] = {"text": "A clear sentence"}
+    head = (200, 700, 880, 1200)
+    sentence_ctx = dict(ctx, boxes={0: head}, median_box=head, stills=[], notes=[])
+    positioned, note = callout_placement(sentence_ctx, sentence)
+    sentence["scene"]["params"] = positioned
+    expect("sentence card: moves clear of the face at full size",
+           positioned is not None and positioned["size"] == 72 and positioned["top"] != 845
+           and note is None and not placer.hits(callout_box(sentence["scene"]), placer.face_band(head)))
+    expect("sentence card: placed params satisfy the scene contract",
+           not scene_check.fill_problems("hf-callout", sentence["scene"]))
+    for params in ({"top": 800}, {"top": 800, "size": 71}):
+        chosen = dict(sentence, scene=dict(sentence["scene"], params=params))
+        moved, note = callout_placement(sentence_ctx, chosen)
+        expect("sentence card: changed explicit position is explained and clears the face",
+               moved is not None and moved["top"] != 800
+               and not placer.hits(callout_box(chosen["scene"], moved), placer.face_band(head))
+               and note == "Your position for the highlighted sentence would cover your face, so it was moved.")
+        chosen_inp = dict(beats=[copy.deepcopy(chosen)], hooks=[])
+        expect("sentence card: explicit position note follows the placement note path",
+               place_hook_titles(chosen_inp, sentence_ctx) == [note])
+    chosen = dict(sentence, scene=dict(sentence["scene"], params={"top": 350}))
+    kept, note = callout_placement(sentence_ctx, chosen)
+    expect("sentence card: clear explicit position is kept exactly without a note",
+           kept == {"top": 350, "size": 72} and note is None)
+    chosen["scene"]["params"] = {"top": 845, "size": 72}
+    moved, note = callout_placement(sentence_ctx, chosen)
+    expect("sentence card: values equal to scene defaults do not get an explicit-change note",
+           moved is not None and moved["top"] != 845 and note is None)
+    moving_ctx = dict(sentence_ctx, segments=[(0, 25), (25, 100)],
+                      boxes={0: (0, 0, 1080, 800), 1: (0, 800, 1080, 1920)})
+    expect("sentence card: the whole beat's head envelope is protected",
+           callout_placement(moving_ctx, sentence) == (None, CALLOUT_DROP))
+    long_sentence = dict(sentence, scene=dict(sentence["scene"], slots={"text": "W" * 80}, params={}))
+    smaller, note = callout_placement(sentence_ctx, long_sentence)
+    expect("sentence card: shrinks only after neither full-size space fits",
+           smaller is not None and 36 <= smaller["size"] < 72 and note is None
+           and not placer.hits(callout_box(long_sentence["scene"], smaller), placer.face_band(head)))
+    chosen = dict(long_sentence, scene=dict(long_sentence["scene"], params={"size": 71}))
+    smaller, note = callout_placement(sentence_ctx, chosen)
+    expect("sentence card: changed explicit size is explained and clears the face",
+           smaller is not None and smaller["size"] < 71
+           and not placer.hits(callout_box(chosen["scene"], smaller), placer.face_band(head))
+           and note == "Your size for the highlighted sentence didn't fit clear of your face, so it was made smaller.")
+    real_head = (0, 406, 1080, 1576)
+    real_ctx = dict(sentence_ctx, boxes={0: real_head}, median_box=real_head, stills=[], notes=[])
+    real_sentence = dict(sentence, scene=dict(sentence["scene"], params={}, slots={
+        "text": "The highlighted sentence can share the hair above the eyebrows."}))
+    real_placed, note = callout_placement(real_ctx, real_sentence)
+    real_box = callout_box(real_sentence["scene"], real_placed) if real_placed is not None else None
+    expect("sentence card: real 1080x1920 close-up fits 63 characters clear of eyes and mouth",
+           len(real_sentence["scene"]["slots"]["text"]) == 63 and real_box is not None and note is None
+           and not placer.hits(real_box, placer.face_band(real_head))
+           and placer.SAFE[0] <= real_box[0] <= real_box[2] <= placer.SAFE[2]
+           and placer.SAFE[1] <= real_box[1] <= real_box[3] <= placer.SAFE[3])
+    if real_placed is not None:
+        real_sentence["scene"]["params"] = real_placed
+        real_inp = dict(beats=[real_sentence], hooks=[])
+        placer.set_hook_stills(real_ctx, placement_hooks(real_inp))
+        real_caption = placer.place(real_ctx, 0, 49, 180)
+        expect("sentence card: real close-up captions move clear and keep the card",
+               not placer.hits(real_caption, real_box, placer.CAPTION_PAD)
+               and not clear_callouts_from_captions(real_inp, real_ctx, [
+                   dict(start_f=0, end_f=49, box=real_caption)])
+               and real_sentence["scene"] is not None)
+    sentence["scene"]["params"] = {}
+    sentence_ctx.update(boxes={0: (0, 0, 1080, 1920)}, median_box=(0, 0, 1080, 1920))
+    positioned, note = callout_placement(sentence_ctx, sentence)
+    expect("sentence card: impossible fit has the plain omission note", positioned is None and note == CALLOUT_DROP)
+    omitted = dict(beats=[copy.deepcopy(sentence)], hooks=[])
+    expect("sentence card: impossible fit is removed from this render with a note",
+           place_hook_titles(omitted, sentence_ctx) == [CALLOUT_DROP] and omitted["scened"] == []
+           and omitted["beats"][0]["scene"] is None)
+    sentence_ctx.update(boxes={}, median_box=None)
+    positioned, note = callout_placement(sentence_ctx, sentence)
+    expect("sentence card: no face keeps the shipped defaults and explains the unchecked face",
+           positioned == {"top": 845, "size": 72}
+           and note == "The highlighted sentence wasn't checked against your face because no face anchors were found.")
+    head = (200, 1200, 880, 1500)
+    sentence_ctx.update(boxes={0: head}, median_box=head)
+    positioned, note = callout_placement(sentence_ctx, sentence)
+    expect("sentence card: clear face leaves the shipped defaults unchanged",
+           positioned == {"top": 845, "size": 72} and note is None)
+    sentence["scene"]["params"] = positioned
+    sentence_inp = dict(beats=[sentence], hooks=[])
+    with tempfile.TemporaryDirectory() as home:
+        write_json(Path(home) / "work/hook.json", dict(schema=1, kind="none", text="", start_f=0, end_f=0,
+                                                     box=[0, 0, 0, 0], spoken=False, words_shown=0))
+        expect("sentence card: opening box survives the saved hook record for QA",
+               saved_hooks(home, placement_hooks(sentence_inp)) == placement_hooks(sentence_inp))
+    placer.set_hook_stills(sentence_ctx, placement_hooks(sentence_inp))
+    caption = placer.place(sentence_ctx, 0, 49)
+    expect("sentence card: captions avoid its box outside the hook window",
+           placer.active_hook(sentence_ctx, 0) is None and not placer.hits(caption, callout_box(sentence["scene"])))
+    collision = dict(start_f=0, end_f=49, box=callout_box(sentence["scene"]))
+    expect("sentence card: an impossible caption collision leaves the card out",
+           clear_callouts_from_captions(sentence_inp, sentence_ctx, [collision])
+           and sentence["scene"] is None and not sentence_ctx["stills"])
+    retry_scene = dict(id="hf-callout", slots={"text": "Hi"}, params={"top": 1400, "size": 36})
+    retry_inp = dict(beats=[dict(sentence, scene=retry_scene)], hooks=[dict(text="Hi", start_f=0, end_f=50,
+                       box=[60, 220, 960, 1320], spoken=False, word_count=1, shown_words=[])])
+    retry_ctx = dict(sentence_ctx, median_box=None, boxes={}, notes=[], stills=[])
+    placer.set_hook_stills(retry_ctx, placement_hooks(retry_inp))
+    first_caption = placer.place(retry_ctx, 0, 49)
+    had_warning = any("overlap the hook title" in n for n in retry_ctx["notes"])
+    retried = clear_callouts_from_captions(retry_inp, retry_ctx,
+                                         [dict(start_f=0, end_f=49, box=first_caption)], ([], None))
+    final_caption = placer.place(retry_ctx, 0, 49)
+    expect("sentence card: retry discards warnings and fallbacks from the omitted card",
+           had_warning and retried and not retry_ctx.get("fallbacks")
+           and not any("overlap the hook title" in n for n in retry_ctx["notes"])
+           and not placer.hits(final_caption, retry_inp["hooks"][0]["box"], placer.CAPTION_PAD))
     gated_beat = beat("gated-title", 0, 50, scene="hf-hook-title")
     gated_beat["scene"]["slots"] = {"title": "Hi"}
     gated = {"beats": [gated_beat], "rate": Fraction(25), "words": ["Hi"], "total": 100,

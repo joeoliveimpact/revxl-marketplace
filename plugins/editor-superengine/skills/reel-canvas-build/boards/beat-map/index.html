@@ -158,7 +158,8 @@
     <details class="panel" id="reminder-holds">
       <summary>Reminder and quiet stretches (optional)</summary>
       <h2>Mid-video reminder (optional).</h2>
-      <label><input id="reminder-enabled" type="checkbox"> Show a short 'comment a keyword' reminder partway through</label>
+      <label><input id="reminder-enabled" type="checkbox"> Check the timing of your keyword reminder</label>
+      <p class="muted">This checks your reminder's timing. It draws nothing on screen by itself.</p>
       <div id="reminder-fields" hidden>
         <label class="block" for="reminder-keyword">Keyword</label>
         <input id="reminder-keyword" type="text" maxlength="16">
@@ -166,7 +167,8 @@
         <input id="reminder-at" type="number" min="0" step="0.1" aria-describedby="reminder-window reminder-note">
         <p id="reminder-window" class="muted"></p>
         <p id="reminder-note" class="muted" hidden></p>
-        <label class="block" for="reminder-hold">Shows for (seconds)</label>
+        <p id="reminder-pick-note" class="muted" aria-live="polite" hidden></p>
+        <label class="block" for="reminder-hold">Reminder length (seconds)</label>
         <input id="reminder-hold" type="number" min="0.1" step="0.1" value="4">
         <label class="block" for="reminder-volume">Reminder sound volume (%)</label>
         <input id="reminder-volume" type="number" min="0" max="10" step="1" value="0" aria-describedby="reminder-silent">
@@ -221,7 +223,7 @@ const STRONG_BEAT_LABEL = "strong beat: good spot for a punch-in or transition";
 // Generated from transitions.MENU; transitions.py --selftest asserts equality.
 const TRANSITION_MENU = {"flash":{"kind":"cut","params":{"color":"color"},"dur_min":1,"dur_max":"ceil(fps/3)"},"whip":{"kind":"cut","moves_aroll":true,"params":{"dir":["l","r","u","d"]},"dur_min":1,"dur_max":"ceil(fps/3)"},"zoom":{"kind":"cut","moves_aroll":true,"params":{},"dur_min":1,"dur_max":"ceil(fps/3)"},"glitch":{"kind":"cut","moves_aroll":true,"params":{},"dur_min":1,"dur_max":"ceil(fps/3)"},"fade":{"kind":"overlay","params":{},"dur_min":1,"dur_max":"min(fps,beat_length/2)"},"push":{"kind":"overlay","params":{"dir":["l","r","u","d"]},"dur_min":1,"dur_max":"min(fps,beat_length/2)"},"wipe":{"kind":"overlay","params":{"dir":["l","r","u","d"]},"dur_min":1,"dur_max":"min(fps,beat_length/2)"},"shader":{"kind":"overlay","params":{"shader":["light-leak","sdf-iris","chromatic-split","cross-warp-morph","flash-through-white","glitch"]},"dur_min":1,"dur_max":"min(fps,beat_length/2)"}};
 let forbidden;
-let sceneCatalog = [], sceneSuggestions = {}, sketchScenes = {}, sceneFieldId = 0;
+let sceneCatalog = [], sceneSuggestions = {}, sceneReasons = {}, sketchScenes = {}, sceneFieldId = 0;
 let brollClips = [];
 const invalidBroll = new Set();
 const invalid = new Set();   // beat ids whose number box holds something that isn't a number
@@ -263,6 +265,7 @@ function sceneTitle(scene) {
 }
 function refreshScenes() {
   document.querySelectorAll(".scene-controls").forEach((e) => e.replaceWith(sceneControls(e.dataset.beat)));
+  reminderNote();
 }
 function sceneControls(beat) {
   const wrap = el("div", {class: "scene-controls", "data-beat": beat});
@@ -279,7 +282,7 @@ function sceneControls(beat) {
     choice.append(el("span", {text: sceneTitle(item)}));
     if (!available[item.id]) {
       choice.disabled = true;
-      choice.append(el("span", {text: "doesn't fit this beat's words or length"}));
+      choice.append(el("span", {text: sceneReasons[beat]?.[item.id] || "doesn't fit this beat's words or length"}));
     } else choice.addEventListener("click", () => {
       b.scene = JSON.parse(JSON.stringify(available[item.id]));
       refreshScenes(); edited();
@@ -797,6 +800,24 @@ function reminderNote() {
     (reminder.at_s < total * .6 || reminder.at_s > total * .8);
   $("#reminder-note").hidden = !outside;
   $("#reminder-note").textContent = outside ? "Your reminder starts outside that window. You can still send it." : "";
+  const hint = $("#reminder-pick-note");
+  hint.hidden = true; hint.textContent = "";
+  if (!reminder || !Number.isFinite(reminder.at_s) || !Number.isFinite(reminder.hold_s)) return;
+  const start = reminder.at_s * doc.fps, end = (reminder.at_s + reminder.hold_s) * doc.fps;
+  if (doc.beats.some(b => b.scene?.id === "cta-reminder" && b.start_f < end && b.end_f > start)) return;
+  const index = doc.beats.findIndex(b => b.start_f <= start && start < b.end_f);
+  if (index < 0) return;
+  const beat = doc.beats[index], card = sceneSpec("cta-reminder");
+  if (!card) {
+    hint.textContent = "The reminder card isn't ready. Ask Claude to prepare the scene choices, then open Add a scene on beat " + (index + 1) + ".";
+  } else if (!sceneSuggestions[beat.id]?.[card.id]) {
+    hint.textContent = "On beat " + (index + 1) + ", open Add a scene. The " + sceneTitle(card) +
+      " card is greyed out. " + (sceneReasons[beat.id]?.[card.id] || "Ask Claude to prepare a reminder card that fits this beat, then rebuild the board.");
+  } else {
+    hint.textContent = "To put your reminder on screen, open Add a scene on beat " + (index + 1) +
+      ", then choose " + sceneTitle(card) + ".";
+  }
+  hint.hidden = false;
 }
 
 function renderReminderHolds() {
@@ -1003,8 +1024,8 @@ async function init() {
       }
     } catch (e) { words = null; }
   }
-  const [catalog, suggestions, sketchesState, sketchesSend, config, cuts, placement] = await Promise.all(
-    ["scenes/catalog.json", "scenes/suggest.json", "sketches.state.json", "sketches-selection.json", "beat-map.config.json", "work/cuts.json", "sound/placement.json"].map(reelJson));
+  const [catalog, suggestions, reasons, sketchesState, sketchesSend, config, cuts, placement] = await Promise.all(
+    ["scenes/catalog.json", "scenes/suggest.json", "scenes/why.json", "sketches.state.json", "sketches-selection.json", "beat-map.config.json", "work/cuts.json", "sound/placement.json"].map(reelJson));
   const times = placement?.bed?.beat?.big_hits_s;
   strongBeatTimes = Array.isArray(times) ? times : [];
   // "No steady beat" only when beat-sync was on and the grid was refused; beat-sync off (or unknown) says nothing.
@@ -1019,6 +1040,7 @@ async function init() {
   const clips = await reelJson("broll/clips.json");
   brollClips = clips && Array.isArray(clips.clips) ? clips.clips : [];
   sceneSuggestions = suggestions && typeof suggestions === "object" ? suggestions : {};
+  sceneReasons = reasons && typeof reasons === "object" ? reasons : {};
   sketchScenes = {...((sketchesSend && sketchesSend.scenes) || {}), ...((sketchesState && sketchesState.scenes) || {})};
   $("#board").hidden = false;
   render();

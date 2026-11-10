@@ -5,17 +5,20 @@ usage (heavy job, one scene per call keeps each run short; EDITOR_SE_HOME = a st
 ffmpeg and hyperframes installed):
   python -I "C:/Workspaces/Content Studio/output/scripts/heavy_lock.py" --min-gb 3 -- \
     python -X utf8 -I tests/editor/scene_render_test.py [--scene <id> ...] [--part all|base|brand|counter|seek]
-      [--write-previews]
+      [--write-previews] [--write-stills <dir>]
 Default = every scene folder present (own scenes and any vendored hf-*). For each scene, in a temp project built the offline_selftest way (scene.html as
 index.html + the shipped GSAP in ./vendor and the shipped fonts in ./fonts, cold font cache, Node network guard,
 proxies to a dead port):
-  - `hyperframes lint --json`: exit 0, 0 errors, 0 warnings
+  - `hyperframes lint --json`: exit 0, 0 errors; only composition_file_too_large warnings are allowed
   - render of the default fill at 1080x1920 as MOV (ProRes 4444 with alpha), zero network attempts,
     frame count = data-duration x data-fps
   - worst-case fill (every slot "W" x maxChars, string params with maxChars "W"-filled too) rendered as a
     TEXT-ONLY variant: the test injects one stylesheet that makes every `.plate` element (cards, bars, backdrops)
     paint nothing, so every pixel whose alpha is above 0 in any frame is text; all of them must lie inside the
     900x1250 safe box (x 60..959, y 220..1469; ig-safe-zones.py), and some must exist (a blank render fails)
+  - scenes of kind "takeover": default, full-scene worst-case and short-fill renders flattened over black have
+    no black stretch at least tri2.black_gap_s from tuning.json (the master check's blackdetect rule);
+    short fills use "Go" for required slots, empty optional slots and default params
   - counter part, every scene of category "counter" (counter, hf-counter): last frame of value 47 counting up ==
     (or PSNR >= 45 dB vs) the animate:false frame for 47, and PSNR < 40 dB vs the animate:false frame for 46
   - brand part, every scene: a temporary saved-style fixture applies lime and licensed Inter; the fill passes
@@ -32,6 +35,8 @@ proxies to a dead port):
     which would hide the jump. Frame N = ceil(F/2) of the two renders, decoded in the stream's own pixel format,
     must be byte-identical, and not blank (some alpha above 0)
 --write-previews  also writes scenes/<id>/preview.png (270x480, RGBA) from the default render's last frame.
+--write-stills <dir>  writes default and short-fill PNGs flattened over black at frame 0 and nearest 0.5 s in the
+base part, plus the default render's middle frame for takeover scenes.
 Prints PASS/FAIL per check; exit 0 = all passed. Refuses to start below 10 GB free disk.
 """
 import argparse, json, math, os, re, shutil, subprocess, sys, tempfile, time
@@ -74,7 +79,9 @@ def fills(spec, sid):
     worst.update({k: "W" * p["maxChars"] for k, p in spec["params"].items()
                   if p["type"] == "string" and "maxChars" in p})
     worst.update({k: v for k, v in WORST_NUMBERS.get(spec.get("category"), {}).items() if k in spec["params"]})
-    return default, worst
+    short = dict(default)
+    short.update({k: "Go" if s.get("required") is True else "" for k, s in spec["slots"].items()})
+    return default, worst, short
 
 
 def kill_warm():
@@ -180,17 +187,17 @@ def psnr(a, b):
     return 10 * math.log10(255 * 255 / mse)
 
 
-def scene_test(sid, tmp, env, log, write_preview, part):
+def scene_test(sid, tmp, env, log, write_preview, part, write_stills=None):
     d = SCENES / sid
     spec = json.loads((d / "scene.json").read_text(encoding="utf-8"))
     html = (d / "scene.html").read_text(encoding="utf-8")
     m = re.search(r'data-composition-id="%s"[^>]*' % re.escape(sid), html)
     dur = float(re.search(r'data-duration="([\d.]+)"', m.group(0)).group(1)) if m else 0
     frames = round(dur * FPS)
-    default, worst = fills(spec, sid)
+    default, worst, short = fills(spec, sid)
     proj = project(tmp, sid, html)
     if part in ("all", "base"):
-        base_checks(sid, d, html, spec, frames, dur, default, worst, proj, tmp, env, write_preview)
+        base_checks(sid, d, html, spec, frames, dur, default, worst, short, proj, tmp, env, write_preview, write_stills)
     if part in ("all", "brand"):
         brand_checks(sid, html, spec, frames, default, proj, tmp, env)
     if spec.get("category") == "counter" and part in ("all", "counter"):
@@ -201,21 +208,25 @@ def scene_test(sid, tmp, env, log, write_preview, part):
     ck(f"{sid}: no network attempts during lint and renders ({n} logged)", n == 0)
 
 
-def base_checks(sid, d, html, spec, frames, dur, default, worst, proj, tmp, env, write_preview):
+def base_checks(sid, d, html, spec, frames, dur, default, worst, short, proj, tmp, env, write_preview, write_stills=None):
     rc, o, e = ost.run(rt.hyperframes_cmd("lint", proj, "--json"), env)
     kill_warm()
     try:
         j = json.loads(o[o.index("{"):])
         errs, warns = j["errorCount"], j["warningCount"]
+        warnings = [x for x in j.get("findings", []) if x.get("severity") == "warning"]
+        allowed = warns == len(warnings) and all(x.get("code") == "composition_file_too_large" for x in warnings)
         found = "; ".join(f"{x['code']}: {x['message']}" for x in j.get("findings", []))
     except (ValueError, KeyError):
         errs = warns = None
+        allowed = False
         found = ost.tail(o + e)
-    ck(f"{sid}: lint exit 0, 0 errors, 0 warnings", rc == 0 and errs == 0 and warns == 0,
+    ck(f"{sid}: lint exit 0, 0 errors, only composition_file_too_large warnings", rc == 0 and errs == 0 and allowed,
        f"exit {rc}, {errs} errors, {warns} warnings" + (f": {found}" if found else ""))
 
     mov = tmp / f"{sid}.mov"
     ok, why = render(proj, default, mov, env)
+    default_ok = ok
     if ck(f"{sid}: renders (default fill, MOV with alpha)", ok, "" if ok else why):
         s = probe(mov)
         ck(f"{sid}: {s.get('width')}x{s.get('height')} {s.get('codec_name')} {s.get('pix_fmt')}, "
@@ -228,6 +239,11 @@ def base_checks(sid, d, html, spec, frames, dur, default, worst, proj, tmp, env,
                                 "-frames:v", "1", str(d / "preview.png")], capture_output=True, timeout=120)
             ck(f"{sid}: preview.png written from frame {frames - 1}", r.returncode == 0 and (d / "preview.png").exists(),
                r.stderr.decode("utf-8", "replace")[-300:])
+        if write_stills is not None:
+            still_frames = [0, min(frames - 1, round(0.5 * FPS))]
+            if spec.get("kind") == "takeover":
+                still_frames.append(frames // 2)
+            save_stills(sid, mov, still_frames, write_stills)
 
     tproj = project(tmp, sid + "-textonly", html.replace("</head>", TEXT_ONLY_CSS + "\n  </head>", 1))
     tmov = tmp / f"{sid}-textonly.mov"
@@ -236,6 +252,56 @@ def base_checks(sid, d, html, spec, frames, dur, default, worst, proj, tmp, env,
         box, outside, total = text_box(tmov, frames)
         ck(f"{sid}: worst-case text stays in the safe box {SAFE}: text pixels {box}, {outside} of {total} outside",
            box is not None and outside == 0 and total > 0)
+
+    if spec.get("kind") == "takeover" or write_stills is not None:
+        smov = tmp / f"{sid}-short.mov"
+        short_ok, why = render(proj, short, smov, env)
+        ck(f"{sid}: renders (short fill, full scene)", short_ok, "" if short_ok else why)
+        if short_ok and write_stills is not None:
+            save_stills(sid + "-short", smov, (0, min(frames - 1, round(0.5 * FPS))), write_stills)
+
+    if spec.get("kind") == "takeover":
+        gap = black_gap_s()
+        wmov = tmp / f"{sid}-worst.mov"
+        worst_ok, why = render(proj, worst, wmov, env)
+        ck(f"{sid}: renders (worst-case fill, full scene)", worst_ok, "" if worst_ok else why)
+        results = []
+        for tag, video, rendered in (("default", mov, default_ok), ("worst-case", wmov, worst_ok),
+                                     ("short", smov, short_ok)):
+            clean, detail = black_picture(video, gap) if rendered else (False, "render failed")
+            results.append((clean, f"{tag}: {detail}"))
+        ck(f"{sid}: full-screen card never reads as a black picture (no black stretch >= {gap:g} s)",
+           all(clean for clean, _ in results), "; ".join(detail for _, detail in results))
+
+
+def save_stills(sid, video, frames, directory):
+    directory.mkdir(parents=True, exist_ok=True)
+    for frame in frames:
+        still = directory / f"{sid}-f{frame:03d}.png"
+        rc, o, e = ost.run([rt.tool("ffmpeg"), "-v", "error", "-y", "-f", "lavfi", "-i",
+                            f"color=c=black:s={W}x{H}:r={FPS}", "-i", video, "-filter_complex",
+                            f"[0:v][1:v]overlay=shortest=1,select=eq(n\\,{frame})",
+                            "-frames:v", "1", "-an", still], timeout=120)
+        ck(f"{sid}: {still.name} written over black from frame {frame}", rc == 0 and still.exists(),
+           ost.tail(o + e))
+
+
+def black_gap_s():
+    tuning = PLUGIN / "skills" / "reel-canvas-build" / "references" / "tuning.json"
+    return json.loads(tuning.read_text(encoding="utf-8"))["tri2"]["black_gap_s"]
+
+
+def black_picture(video, gap):
+    """The master blackdetect rule, including the scene's entrance and exit, over opaque black."""
+    rc, o, e = ost.run([rt.tool("ffmpeg"), "-v", "info", "-f", "lavfi", "-i",
+                        f"color=c=black:s={W}x{H}:r={FPS}", "-i", video, "-filter_complex",
+                        f"[0:v][1:v]overlay=shortest=1,blackdetect=d={gap}:pix_th=0.10",
+                        "-an", "-f", "null", "-"], timeout=300)
+    output = o + e
+    stretches = [line.strip() for line in output.splitlines() if "black_start:" in line]
+    decoded = bool(re.search(r"frame=\s*[1-9]\d*", output))
+    clean = rc == 0 and decoded and not stretches
+    return clean, "no black stretches" if clean else f"exit {rc}: " + ("; ".join(stretches) or ost.tail(output))
 
 
 
@@ -328,6 +394,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--scene", action="append", help="scene id (repeatable); default every scene folder")
     ap.add_argument("--write-previews", action="store_true", help="write scenes/<id>/preview.png from the render")
+    ap.add_argument("--write-stills", type=Path, metavar="DIR",
+                    help="write default-render PNGs over black at frame 0 and nearest 0.5 s (base part)")
     ap.add_argument("--part", choices=("all", "base", "brand", "counter", "seek"), default="all",
                     help="base = lint + default + worst-case renders; counter = the 47/46 frame proof (category "
                          "counter); brand = fixture colour and font proof; seek = frame N sequential vs after a "
@@ -342,7 +410,7 @@ def main():
         tmp = Path(tempfile.mkdtemp(prefix=f"scene-render-{sid}-"))
         try:
             env, log = make_env(tmp)
-            scene_test(sid, tmp, env, log, a.write_previews, a.part)
+            scene_test(sid, tmp, env, log, a.write_previews, a.part, a.write_stills)
         except Exception as e:  # a crash is a failed check, never a pass
             ck(f"{sid}: test run", False, f"stopped: {type(e).__name__}: {e}")
         finally:

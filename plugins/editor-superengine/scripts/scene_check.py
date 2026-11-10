@@ -275,6 +275,12 @@ def html_problems(sid, spec, html):
     if decl is None:
         out.append("<html> needs data-composition-variables='[...]' declaring every slot and param")
     else:
+        for name, declaration in sorted(decl.items()):
+            if not isinstance(declaration.get("label"), str) or not declaration["label"].strip():
+                out.append(f"variable {show(name)} needs a non-empty label in data-composition-variables")
+            if declaration.get("type") not in ("string", "number", "color", "boolean", "enum", "font", "image"):
+                out.append(f"variable {show(name)} type {show(declaration.get('type'))} must be one of "
+                           "string, number, color, boolean, enum, font, image")
         for name in sorted(set(decl) - slots - params):
             out.append(f"scene.html declares the variable {show(name)} that scene.json doesn't have")
         for name in sorted((slots | params) - set(decl)):
@@ -824,6 +830,16 @@ def selftest():
         good = Path(t) / "scenes"
         shutil.copytree(SCENES, good)
         expect("every shipped scene passes", all(not scene_problems(d) for d in good.iterdir() if d.is_dir()))
+        for sid, old, new, why in (
+                ("counter", ',"label":"Label"', "", "needs a non-empty label"),
+                ("counter", '"label":"Label"', '"label":"   "', "needs a non-empty label"),
+                ("counter", '"label":"Label"', '"label":7', "needs a non-empty label"),
+                ("counter", '"type":"string"', '"type":"text"', "must be one of")):
+            page = good / sid / "scene.html"
+            original = page.read_text(encoding="utf-8")
+            page.write_bytes(original.replace(old, new, 1).encode("utf-8"))
+            expect(f"{sid}: {why} ({new})", old in original and any(why in p for p in scene_problems(page.parent)))
+            page.write_bytes(original.encode("utf-8"))
         h = good / "counter" / "scene.html"
         h.write_text(h.read_text(encoding="utf-8").replace('src="./vendor/gsap.min.js"',
                      'src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"'), encoding="utf-8")

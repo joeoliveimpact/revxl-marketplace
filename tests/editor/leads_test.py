@@ -208,7 +208,7 @@ def data_checks():
     declarations = {v["id"]: v for v in json.loads(re.search(r"data-composition-variables='(.*?)'", html, re.S)[1])}
     for name, choices, default in (("glow", ["soft", "bloom"], "bloom"), ("dust", ["points", "quarks"], "quarks")):
         ck(f"{name} enum and defaults agree", spec["params"].get(name) == dict(type="string", enum=choices, default=default)
-           and declarations.get(name) == dict(id=name, type="string", default=default))
+           and declarations.get(name) == dict(id=name, type="string", label=name.capitalize(), default=default))
     ck("scene map uses exact local lead paths", json.loads(re.search(r'<script type="importmap">(.*?)</script>', html, re.S)[1]) == {
         "imports": {"three": "./vendor/three.module.js", "postprocessing": "./vendor/postprocessing.js",
                     "three.quarks": "./vendor/three.quarks.js", "quarks.core": "./vendor/quarks.core.js"}})

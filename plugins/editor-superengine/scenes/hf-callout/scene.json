@@ -9,7 +9,9 @@
   "params": {
     "sweep": {"type": "number", "default": 2.4, "min": 0.5, "max": 7, "hint": "seconds the highlight takes to cross the sentence; it starts at 0.8 s, so match it to how long the line is spoken"},
     "accent": {"type": "color", "default": "#f5f5f7"},
-    "font": {"type": "string", "default": "Inter"}
+    "font": {"type": "string", "default": "Inter"},
+    "top": {"type": "number", "default": 845, "min": 220, "max": 1470, "hint": "sentence centre in pixels"},
+    "size": {"type": "number", "default": 72, "min": 36, "max": 72, "hint": "sentence font size in pixels"}
   },
   "source": "HyperFrames registry/blocks/mk-callout-highlight (v0.8.184)",
   "licence": "Apache-2.0"

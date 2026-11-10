@@ -89,8 +89,9 @@ const fs = require('fs'), {pathToFileURL} = require('url');
     step = 'open picker'; await click(row + ' .add-scene');
     await frame.waitForSelector(row + ' .scene-choice[data-scene="callout"]');
     need(await frame.$eval(row + ' .scene-choice', e => !e.disabled), 'suggested scenes must be first');
-    need(await frame.$eval(row + ' .scene-choice[data-scene="counter"]', e => e.disabled &&
-      e.textContent.includes("doesn't fit this beat's words or length")), 'unfit scene must explain why');
+    const reason = JSON.parse(fs.readFileSync(require('path').join(require('path').dirname(job.selection), 'scenes/why.json'), 'utf8')).b_001.counter;
+    need(await frame.$eval(row + ' .scene-choice[data-scene="counter"]', (e, why) => e.disabled &&
+      e.textContent.includes(why), reason), 'unfit scene must explain why');
     await frame.waitForFunction(s => [...document.querySelectorAll(s + ' img')].every(i => i.complete && i.naturalWidth), {}, row);
     step = 'pick callout'; await click(row + ' .scene-choice[data-scene="callout"]');
     need(await frame.$eval(input, e => e.value) === 'Three big wins for', 'suggestion was not prefilled');
@@ -242,8 +243,9 @@ const fs = require('fs'), {pathToFileURL} = require('url');
     }
     step = 'picker'; await click(row + ' .add-scene');
     need(await frame.$eval(row + ' .scene-choice', e => !e.disabled), 'suggested scenes must be first');
-    need(await frame.$eval(row + ' .scene-choice[data-scene="counter"]', e => e.disabled &&
-      e.textContent.includes("doesn't fit this beat's words or length")), 'unfit scene reason missing');
+    const reason = JSON.parse(fs.readFileSync(require('path').join(require('path').dirname(job.selection), 'scenes/why.json'), 'utf8')).b_001.counter;
+    need(await frame.$eval(row + ' .scene-choice[data-scene="counter"]', (e, why) => e.disabled &&
+      e.textContent.includes(why), reason), 'unfit scene reason missing');
     await frame.waitForFunction(s => [...document.querySelectorAll(s + ' img')].every(i => i.complete && i.naturalWidth), {}, row);
     await click(row + ' .scene-choice[data-scene="callout"]');
     need(await frame.$eval(input, e => e.value) === 'Three big wins for', 'prefill missing');
@@ -506,9 +508,46 @@ def scene_fill_case():
     sys.path.insert(0, str(PLUGIN / "scripts"))
     import scene_fill
     import scene_check
+    from unittest.mock import patch
     words = "We helped 47 people make their next reel with clear words and useful examples today".split()
     beat = {"id": "b_001", "start_f": 0, "end_f": 120, "value": 47,
             "speech_anchor": {"w0": 0, "w1": len(words) - 1}}
+
+    def reason(scene, b, heard, *phrases):
+        need(scene_fill.suggest(scene, b, heard, FPS) is None, "refused card got a fill")
+        why = scene_fill.why_not(scene, b, heard, FPS)
+        need(why and all(p in why for p in phrases), f"wrong card reason: {why}")
+        return why
+
+    for end_f, duration in ((30, "1 second;"), (31, "1 second;"), (37, "1.2 seconds;")):
+        why = reason("counter", dict(beat, end_f=end_f), words, "too short", duration,
+                     "2 seconds to 6 seconds", "Pick another card, or ask Claude to change this beat's length.")
+        need("Move the beat's edges" not in why, "card points at missing timing controls")
+    reason("counter", dict(beat, end_f=240), words, "too long", "8 seconds", "2 seconds to 6 seconds")
+    reason("hf-list", dict(beat, end_f=60), words, "too short", "2 seconds;", "3 seconds to 10 seconds")
+    for missing in (None, float("inf"), True):
+        reason("counter", dict(beat, value=missing), words, "No number is set", "47", '"Number shown" on the Beat Map', "Send", "rebuild")
+    reason("counter", dict(beat, value=None), ["three"] * len(words), "needs a number you say", '"three"',
+           '"Number shown" on the Beat Map', "setting it alone will not enable")
+    reason("counter", dict(beat, value=48), words, "48", "must match a number you say", '"Number shown" on the Beat Map')
+    for spoken, shown in (("1,234,567", "1234567"), ("12.5", "12.5"), ("0.0000001", "0.0000001")):
+        why = reason("counter", dict(beat, value=None, speech_anchor={"w0": 0, "w1": 0}), [spoken], shown)
+        need("e+" not in why and "e-" not in why, "spoken number uses scientific notation")
+    why = reason("counter", dict(beat, value=7654321), words, "7654321")
+    need("e+" not in why, "set number uses scientific notation")
+    long_words = ["1234567890123"]
+    long_beat = dict(beat, value=1234567890123, speech_anchor={"w0": 0, "w1": 0})
+    for scene in ("counter", "stat-card"):
+        reason(scene, long_beat, long_words, "number is too long", "Pick a card")
+    reason("hook-title", dict(beat, speech_anchor={"w0": 0, "w1": 0}), ["x" * 100], '"title" text box is required')
+    with patch.object(scene_check, "fill_problems", return_value=["The words do not fit. Shorten the sentence."]):
+        reason("callout", beat, words, "The words do not fit. Shorten the sentence.")
+    with patch.object(scene_check, "fill_problems", return_value=["param value 10000 must be between 0 and 9999 (F-11)"]):
+        reason("hf-stat-card", beat, words, 'The "value" setting 10000 must be between 0 and 9999')
+        need("F-11" not in scene_fill.why_not("hf-stat-card", beat, words, FPS), "card exposed a check code")
+    reason("absent-card", beat, words, "card is unavailable", "Pick another card")
+    need(scene_fill.suggest("counter", beat, words, FPS) is not None and
+         scene_fill.why_not("counter", beat, words, FPS) is None, "fitting card got a reason")
 
     def honest(fill, b=beat, heard=words):
         spec = load(scene_check.SCENES / fill["id"] / "scene.json")
@@ -572,6 +611,10 @@ def scene_fill_case():
         scene_fill.write_catalog(reel, [beat], words, FPS)
         saved = load(reel / "scenes/catalog.json")
         fills = load(reel / "scenes/suggest.json")[beat["id"]]
+        reasons = load(reel / "scenes/why.json")[beat["id"]]
+        need(set(reasons) == {s["id"] for s in saved} - set(fills), "reason keys differ from missing fills")
+        need(all(reasons[sid] == scene_fill.why_not(sid, beat, words, FPS) for sid in reasons),
+             "written reason differs from the fill checks")
         need(fills["counter"] == counter, "written counter differs")
         for item in saved:
             need(item["preview"] == f"scenes/{item['id']}.png", "preview is not reel-relative")
@@ -1041,6 +1084,67 @@ def main():
         need(p.returncode == 0, f"remembered style browser: {p.stdout} {p.stderr}")
         need("edit_style" not in load(selection), "untouched Send wrote edit_style")
 
+    def reminder_choices():
+        sr = videos / "reminder-choices"
+        reel_fixture(sr)
+        write_json(sr / "work/plan.json", {"beats": [{"w0": 0, "w1": 7, "layout": "full"},
+                                                     {"w0": 8, "w1": 15, "layout": "full"}]})
+        p = run(py + [str(SEED), "--reel-dir", str(sr), "--plan", str(sr / "work/plan.json")], env=env)
+        need(p.returncode == 0, f"reminder fixture seed: {p.stdout} {p.stderr}")
+        saved = load(sr / "beat-map.state.json")
+        saved["cta_reminder"] = dict(at_s=.5, hold_s=.25, gain=0, keyword="NOTES")
+        write_json(sr / "beat-map-selection.json", saved)
+        (sr / "beat-map.state.json").unlink()
+        row = '.scene-controls[data-beat="b_001"]'
+        reads = browse(url("beat-map", sr.name), [{"do": "goto"}, {"do": "wait", "sel": "#send:not([disabled])"},
+            {"do": "click", "sel": "#reminder-holds summary"}, {"do": "read"},
+            {"do": "click", "sel": row + " .add-scene"},
+            {"do": "click", "sel": row + ' .scene-choice[data-scene="cta-reminder"]'}, {"do": "read"},
+            {"do": "click", "sel": row + " .remove-scene"}, {"do": "read"},
+            {"do": "type", "sel": "#reminder-at", "text": "8"}, {"do": "read"},
+            {"do": "type", "sel": "#reminder-at", "text": "0.5"},
+            {"do": "click", "sel": "#reminder-enabled"}, {"do": "read"},
+            {"do": "waitState", "state": "saved", "change": True}])
+        initial = reads[0]["reminder"]
+        title = "Cta reminder"
+        need(initial["enabled"] and (initial["keyword"], initial["at"], initial["hold"]) == ("NOTES", "0.5", "0.25"),
+             "saved reminder did not load")
+        need("Show a short" not in initial["label"] and "timing" in initial["label"], "reminder label promises drawing")
+        need(all(t in initial["hint"] for t in ("beat 1", "Add a scene", title)), "reminder hint lacks the exact pick")
+        need(initial["outside"], "outside-window note disappeared")
+        need(not reads[1]["reminder"]["hint"], "picked reminder still has a hint")
+        need(reads[2]["reminder"]["hint"], "removal did not refresh reminder hint")
+        need("beat 2" in reads[3]["reminder"]["hint"], "time edit did not refresh the beat")
+        need(not reads[4]["reminder"]["hint"], "unchecked reminder still has a hint")
+        other_row = '.scene-controls[data-beat="b_002"]'
+        reads = browse(url("beat-map", sr.name), [{"do": "goto"}, {"do": "wait", "sel": "#send:not([disabled])"},
+            {"do": "click", "sel": "#reminder-holds summary"}, {"do": "click", "sel": "#reminder-enabled"},
+            {"do": "type", "sel": "#reminder-at", "text": "0.5"},
+            {"do": "type", "sel": "#reminder-hold", "text": "5"},
+            {"do": "click", "sel": other_row + " .add-scene"},
+            {"do": "click", "sel": other_row + ' .scene-choice[data-scene="cta-reminder"]'}, {"do": "read"},
+            {"do": "type", "sel": "#reminder-hold", "text": "0.25"}, {"do": "read"},
+            {"do": "click", "sel": other_row + " .remove-scene"},
+            {"do": "waitState", "state": "saved", "change": True}])
+        need(not reads[0]["reminder"]["hint"], "a picked card on another overlapping beat was ignored")
+        need("beat 1" in reads[1]["reminder"]["hint"], "length edit did not exclude a card outside the window")
+        # A shorter beat greys the card and must explain what to do there.
+        short = load(sr / "beat-map.state.json")
+        short["cta_reminder"] = saved["cta_reminder"]
+        short["beats"][0]["end_f"] = 60
+        short["beats"][1]["start_f"] = 60
+        write_json(sr / "beat-map.state.json", short)
+        sys.path.insert(0, str(CANVAS))
+        import scene_fill
+        scene_fill.write_catalog(sr, short["beats"], WORDS, FPS)
+        reads = browse(url("beat-map", sr.name), [{"do": "goto"}, {"do": "wait", "sel": "#send:not([disabled])"}, {"do": "read"}])
+        need(all(t in reads[0]["reminder"]["hint"] for t in ("beat 1", title, "greyed out", "ask Claude to change this beat's length")),
+             "grey reminder hint lacks the next step")
+        (sr / "scenes/why.json").unlink()
+        reads = browse(url("beat-map", sr.name), [{"do": "goto"}, {"do": "wait", "sel": "#send:not([disabled])"}, {"do": "read"}])
+        counter = next(c for c in reads[0]["scenes"][0]["choices"] if c["id"] == "counter")
+        need(counter["disabled"] and "doesn't fit this beat's words or length" in counter["text"], "missing reasons broke the fallback")
+
     S["A"] = free_port()
     S["B"] = free_port(S["A"])
     try:
@@ -1054,6 +1158,7 @@ def main():
             case("beatmap_scene: iframe picker, Sketches state, Send and compositor", beatmap_scene)
             case("beatmap_scene: Sketches Send offered in one click", lambda: beatmap_scene(source="selection"))
             case("beatmap_scene reverse: skipping maxChars fails", lambda: beatmap_scene(True))
+            case("reminder choices: saved timing, exact pick, removal, grey card and missing reasons", reminder_choices)
             return 0 if all(results) else 1
         case("1 seed: make_beat_map writes a valid map whose beats tile 0..end", c1)
         case("7 schema rejects a beat with no id, layout grid, start_f > end_f", c7)
@@ -1071,6 +1176,7 @@ def main():
         case("beatmap_scene: iframe picker, Sketches state, Send and compositor", beatmap_scene)
         case("beatmap_scene: Sketches Send offered in one click", lambda: beatmap_scene(source="selection"))
         case("beatmap_scene reverse: skipping maxChars fails", lambda: beatmap_scene(True))
+        case("reminder choices: saved timing, exact pick, removal, grey card and missing reasons", reminder_choices)
     finally:
         for p in procs:
             if p.poll() is None:

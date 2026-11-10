@@ -27,6 +27,14 @@ function readPage() {
       note: val(q("textarea[name=note]", tr)), changed: tr.classList.contains("changed")})),
     marks: Object.fromEntries(all("#beats span.word[data-w]").map((s) => [s.dataset.w, s.getAttribute("data-mark")])),
     needs: val(q("#needs")),
+    reminder: q('#reminder-enabled') ? {
+      enabled: q('#reminder-enabled').checked, label: q('#reminder-enabled').parentElement.textContent.trim(),
+      keyword: val(q('#reminder-keyword')), at: val(q('#reminder-at')), hold: val(q('#reminder-hold')),
+      hint: q('#reminder-pick-note') && !q('#reminder-pick-note').hidden ? q('#reminder-pick-note').textContent : '',
+      outside: q('#reminder-note') && !q('#reminder-note').hidden ? q('#reminder-note').textContent : '',
+    } : null,
+    scenes: all('.scene-controls').map(e => ({beat:e.dataset.beat,
+      choices:[...e.querySelectorAll('.scene-choice')].map(c=>({id:c.dataset.scene, disabled:c.disabled, text:c.textContent}))})),
     directions: all("#directions section.direction[data-id]").map((s) => ({
       id: s.dataset.id, picked: s.classList.contains("picked"),
       checked: !!q("input[type=radio][name=pick]:checked", s), note: val(q("textarea[name=note]", s))})),

@@ -15,7 +15,7 @@
       * { margin: 0; padding: 0; box-sizing: border-box; }
       html, body { width: 1080px; height: 1920px; overflow: hidden; }
       #hf-cta-end-card { position: relative; width: 1080px; height: 1920px; z-index: 400; font-family: "Inter"; font-weight: 400; color: #f8fafc; --accent: #71f5a7; }
-      #hf-cta-end-card .ground { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; background: #0b0c0e; }
+      #hf-cta-end-card .ground { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; background: #1e2024; }
       #hf-cta-end-card .lockup { position: absolute; left: 510px; top: 845px; width: 900px; display: flex; flex-direction: column; align-items: center; gap: 96px; text-align: center; }
       #hf-cta-end-card .action { display: block; line-height: 1.02; letter-spacing: -0.035em; white-space: nowrap; }
       #hf-cta-end-card .w { display: inline-block; }
@@ -66,12 +66,11 @@
 
         const tl = gsap.timeline({ paused: true });
         tl.set(q(".lockup"), { xPercent: -50, yPercent: -50 }, 0);
-        // IN, phase one: the action line lands per word at display scale.
-        tl.fromTo(root.querySelectorAll(".w"), { opacity: 0, y: 100 },
-          { opacity: 1, y: 0, duration: 0.62, ease: "power3.out", stagger: 0.1 }, 0.06);
-        // IN, phase two: the capsule pops beneath with one restrained overshoot.
-        tl.fromTo(button, { scale: 0.85, y: 40 }, { scale: 1, y: 0, duration: 0.6, ease: "back.out(1.5)" }, 0.72);
-        tl.fromTo(button, { opacity: 0 }, { opacity: 1, duration: 0.22, ease: "power2.out" }, 0.72);
+        // IN: visible words slide up from the first frame.
+        tl.fromTo(root.querySelectorAll(".w"), { y: 100 },
+          { y: 0, duration: 0.62, ease: "power3.out", stagger: 0.1 }, 0);
+        // IN: the visible capsule pops from the first frame so the picture is never empty.
+        tl.fromTo(button, { scale: 0.85, y: 40 }, { scale: 1, y: 0, duration: 0.6, ease: "back.out(1.5)" }, 0);
         // HOLD: dead still to the end of the scene; the empty set pins the timeline to the full duration.
         tl.set({}, {}, parseFloat(root.dataset.duration));
         window.__timelines = window.__timelines || {};

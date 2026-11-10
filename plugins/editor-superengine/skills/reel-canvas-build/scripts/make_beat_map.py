@@ -230,8 +230,9 @@ def selftest():
             if b"\r" in out.read_bytes():
                 fails.append("output has CR line endings")
             catalog_path, fills_path = r / "scenes/catalog.json", r / "scenes/suggest.json"
-            if not catalog_path.is_file() or not fills_path.is_file():
-                fails.append("scene catalog and suggestions were not written")
+            reasons_path = r / "scenes/why.json"
+            if not catalog_path.is_file() or not fills_path.is_file() or not reasons_path.is_file():
+                fails.append("scene catalog, suggestions and reasons were not written")
             else:
                 cat = json.loads(catalog_path.read_text(encoding="utf-8"))
                 fills = json.loads(fills_path.read_text(encoding="utf-8"))

@@ -143,8 +143,9 @@ def hook_still(text, start_f, end_f, box=None):
 
 def set_hook_stills(ctx, hooks):
     """Install the exact rendered hook times/text, including a scene replacement."""
-    ctx["stills"] = [s for s in ctx["stills"] if s[3] != "hook title"] + [
-        hook_still(h["text"], h["start_f"], h["end_f"], h.get("box")) for h in hooks]
+    ctx["stills"] = [s for s in ctx["stills"] if s[3] not in ("hook title", "highlighted sentence")] + [
+        (h["start_f"], h["end_f"], tuple(h["box"]), h["label"]) if h.get("label") == "highlighted sentence"
+        else hook_still(h["text"], h["start_f"], h["end_f"], h.get("box")) for h in hooks]
 
 
 def active_hook(ctx, start_f):
@@ -354,7 +355,8 @@ def place(ctx, start_f, end_f, band_h=134):
     """Keep base placement outside hooks; inside, clear active stills first."""
     head = head_box_at(ctx, start_f, end_f)
     hook = active_hook(ctx, start_f)
-    stills = [box for a, e, box, _ in ctx["stills"] if hook is not None and start_f < e and end_f >= a]
+    stills = [box for a, e, box, label in ctx["stills"]
+              if (hook is not None or label == "highlighted sentence") and start_f < e and end_f >= a]
     if not isinstance(band_h, (int, float)) or not math.isfinite(band_h) or band_h <= 0:
         raise ValueError("Caption band height must be a positive number of pixels.")
     x0, top, x1, bottom = SAFE

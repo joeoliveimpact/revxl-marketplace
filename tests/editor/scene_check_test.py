@@ -14,7 +14,7 @@ no entry, scene.html not matching ours_sha256, a missing header comment, no regi
 a missing / unknown category must each FAIL, and a listed asset passes; then hf-counter fills by category: 47 said
 passes, 47 never said fails (VES-3 f), from 48 fails. Then `--selftest`. Prints PASS/FAIL per check; exit 0 = all passed.
 """
-import hashlib, json, shutil, subprocess, sys, tempfile
+import hashlib, json, re, shutil, subprocess, sys, tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -24,6 +24,8 @@ SCENES = PLUGIN / "scenes"
 CHECK = PLUGIN / "scripts" / "scene_check.py"
 IDS = ("callout", "counter", "cta-end-card", "hook-title", "list", "lower-third", "quote", "stat-card", "slots", "cover-title")
 fails = []
+sys.path.insert(0, str(PLUGIN / "scripts"))
+import scene_check  # noqa: E402
 
 
 def ck(name, ok, detail=""):
@@ -46,6 +48,41 @@ ALL = sorted(d.name for d in SCENES.iterdir() if d.is_dir())
 ck("every shipped scene passes check (%d OK lines, the own scenes included, exit 0)" % len(ALL),
    p.returncode == 0 and set(IDS) <= set(ALL)
    and sorted(l[3:] for l in p.stdout.splitlines() if l.startswith("OK ")) == ALL, out(p))
+
+for sid in ALL:
+    html = (SCENES / sid / "scene.html").read_text(encoding="utf-8")
+    m = re.search(r"data-composition-variables\s*=\s*'([^']*)'", html)
+    declarations = json.loads(m.group(1)) if m else []
+    ck(f"{sid}: every variable has a non-empty label and a lint-valid type", bool(declarations) and all(
+        isinstance(d.get("label"), str) and d["label"].strip()
+        and d.get("type") in ("string", "number", "color", "boolean", "enum", "font", "image")
+        for d in declarations))
+
+sentence_spec = json.loads((SCENES / "hf-callout/scene.json").read_text(encoding="utf-8"))
+ck("sentence card: placement defaults preserve the shipped look",
+   all(sentence_spec["params"][k] == expected for k, expected in (
+       ("top", {"type": "number", "default": 845, "min": 220, "max": 1470, "hint": "sentence centre in pixels"}),
+       ("size", {"type": "number", "default": 72, "min": 36, "max": 72, "hint": "sentence font size in pixels"}))))
+for params, valid in (({"top": 460, "size": 72}, True), ({"top": 1100, "size": 36}, True),
+                      ({"top": 219}, False), ({"top": 1471}, False), ({"size": 35}, False), ({"size": 73}, False)):
+    problems = scene_check.fill_problems("hf-callout", dict(id="hf-callout", slots={"text": "A clear sentence"}, params=params))
+    ck(f"sentence card: placement bounds {params}", (not problems) == valid, "; ".join(problems))
+
+with tempfile.TemporaryDirectory() as t:
+    for sid, old, new, reason in (
+            ("counter", ',"label":"Label"', "", "needs a non-empty label"),
+            ("counter", '"type":"string"', '"type":"text"', "must be one of")):
+        d = Path(t) / sid
+        shutil.copytree(SCENES / sid, d)
+        before = scene_check.scene_problems(d)
+        h = d / "scene.html"
+        html = h.read_text(encoding="utf-8")
+        h.write_bytes(html.replace(old, new, 1).encode("utf-8"))
+        after = scene_check.scene_problems(d)
+        ck(f"{sid}: un-mutated scene copy passes", not before, "; ".join(before))
+        ck(f"{sid}: scene_problems refuses '{reason}'", old in html and any(reason in p for p in after),
+           "; ".join(after))
+        shutil.rmtree(d)
 
 
 def mutant(name, sid, old, new, reason):

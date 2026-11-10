@@ -7,9 +7,11 @@ scene_fill.py --selftest
 import argparse
 import json
 import math
+import re
 import shutil
 import sys
 import tempfile
+from decimal import Decimal
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -47,15 +49,40 @@ def catalog():
 
 def suggest(scene_id, beat, words, fps):
     """Return an honest fill, or None when words, duration or scene rules don't fit."""
+    return _suggest(scene_id, beat, words, fps)[0]
+
+
+def why_not(scene_id, beat, words, fps):
+    """Return the first reason a card cannot be filled, or None when it fits."""
+    return _suggest(scene_id, beat, words, fps)[1]
+
+
+def _plain_number(value):
+    """Keep the shortest decimal value, expanding any exponent for typing."""
+    if value == int(value):
+        return str(int(value))
+    return format(Decimal(repr(value)), "f")
+
+
+def _duration(value):
+    shown = round(value, 1)
+    return f"{_plain_number(shown)} {'second' if shown == 1 else 'seconds'}"
+
+
+def _suggest(scene_id, beat, words, fps):
+    """One set of checks supplies both the fill and the explanation."""
     folder = _scene_dir(scene_id)
     if scene_check.scene_problems(folder):
-        return None
+        return None, "This card is unavailable. Pick another card or ask Claude to check it."
     spec = json.loads((folder / "scene.json").read_text(encoding="utf-8"))
     if not isinstance(fps, (int, float)) or isinstance(fps, bool) or not math.isfinite(fps) or fps <= 0:
         raise ValueError("The beat map needs a positive fps.")
     seconds = (beat["end_f"] - beat["start_f"]) / fps
     if not spec["dur"][0] <= seconds <= spec["dur"][1]:
-        return None
+        length = "short" if seconds < spec["dur"][0] else "long"
+        return None, (f"This beat is too {length} at {_duration(seconds)}; this card needs "
+                      f"{_duration(spec['dur'][0])} to {_duration(spec['dur'][1])}. "
+                      "Pick another card, or ask Claude to change this beat's length.")
     anchor = beat["speech_anchor"]
     w0, w1 = anchor["w0"], anchor["w1"]
     if not (isinstance(w0, int) and isinstance(w1, int) and 0 <= w0 <= w1 < len(words)):
@@ -63,9 +90,19 @@ def suggest(scene_id, beat, words, fps):
     heard = [w.strip() for w in words[w0:w1 + 1]]
     number_scene = spec["category"] in (*scene_check.NUMBER_SCENES, "stat")
     value = beat.get("value")
+    heard_numbers = scene_check.numbers(" ".join(heard))
+    rebuild = " Then Send and ask Claude to rebuild the scene choices."
     if number_scene and (not isinstance(value, (int, float)) or isinstance(value, bool)
-                         or not math.isfinite(value) or not scene_check.said(value, scene_check.numbers(" ".join(heard)))):
-        return None
+                         or not math.isfinite(value)):
+        if heard_numbers:
+            return None, (f'No number is set on this beat. Set "Number shown" on the Beat Map for this beat to '
+                          f'{_plain_number(heard_numbers[0][0])}, a number you say here.' + rebuild)
+        return None, ('This card needs a number you say in this beat. Numbers said as words, like "three", '
+                      'are not picked up. Set "Number shown" on the Beat Map to the number; setting it alone will not enable this card. '
+                      'Ask Claude to check the spoken number in the transcript.' + rebuild)
+    if number_scene and not scene_check.said(value, heard_numbers):
+        return None, (f'The number set, {_plain_number(value)}, must match a number you say in this beat. '
+                      'Change "Number shown" on the Beat Map or pick another card.' + rebuild)
     # Keep a stat's big-number slot as the actual number said, rather than a prefix of the sentence.
     stat_text = None
     if spec["category"] in ("stat-card", "stat"):
@@ -80,7 +117,7 @@ def suggest(scene_id, beat, words, fps):
         for name, slot in order:
             if stat_text is not None and name in ("stat", "value", "number"):
                 if len(stat_text) > slot["maxChars"]:
-                    return None
+                    return None, "The number is too long for this card. Pick a card with more room for it."
                 slots[name] = stat_text
                 continue
             start = pos
@@ -91,15 +128,20 @@ def suggest(scene_id, beat, words, fps):
             break
     params = {}
     if number_scene and "value" in spec["params"]:
-        value = beat.get("value")
-        if (not isinstance(value, (int, float)) or isinstance(value, bool) or not math.isfinite(value)
-                or not scene_check.said(value, scene_check.numbers(" ".join(heard)))):
-            return None
         params["value"] = value
     fill = {"id": scene_id, "slots": slots, "params": params}
-    if scene_check.fill_problems(scene_id, dict(beat, scene=fill), words=heard):
-        return None
-    return fill
+    problems = scene_check.fill_problems(scene_id, dict(beat, scene=fill), words=heard)
+    if problems:
+        if problems[0].startswith("the counter would show"):
+            return None, "The number is too long for this card. Pick a card with more room for it."
+        problem = problems[0]
+        for name in spec["slots"]:
+            problem = problem.replace(f"slot {name} ", f'The "{name}" text box ', 1)
+        for name in spec["params"]:
+            problem = problem.replace(f"param {name} ", f'The "{name}" setting ', 1)
+        problem = re.sub(r"\s*\((?:F-\d+|VES-\d+[^)]*)\)", "", problem).replace("this scene", "this card")
+        return None, problem
+    return fill, None
 
 
 def _reel_path(reel, rel):
@@ -118,17 +160,20 @@ def write_catalog(reel_dir, beats, words, fps):
         raise ValueError("The reel folder doesn't exist; choose an existing videos/<reel> folder.")
     items = catalog()
     fills = {b["id"]: {} for b in beats}
+    reasons = {b["id"]: {} for b in beats}
     for b in beats:
         for item in items:
-            fill = suggest(item["id"], b, words, fps)
+            fill, reason = _suggest(item["id"], b, words, fps)
             if fill is not None:
                 fills[b["id"]][item["id"]] = fill
+            else:
+                reasons[b["id"]][item["id"]] = reason
     _reel_path(reel, "scenes").mkdir(exist_ok=True)
     for item in items:
         rel = f"scenes/{item['id']}.png"
         shutil.copyfile(_scene_dir(item["id"]) / "preview.png", _reel_path(reel, rel))
         item["preview"] = rel
-    for rel, data in (("scenes/catalog.json", items), ("scenes/suggest.json", fills)):
+    for rel, data in (("scenes/catalog.json", items), ("scenes/suggest.json", fills), ("scenes/why.json", reasons)):
         _reel_path(reel, rel).write_bytes((json.dumps(data, ensure_ascii=False, indent=1) + "\n").encode("utf-8"))
 
 

@@ -38,7 +38,7 @@ def write_json(reel, name, doc):
     path.write_bytes((json.dumps(doc) + "\n").encode("utf-8"))
 
 
-def fixture(reel, small=False, scene=False):
+def fixture(reel, small=False, scene=False, head=None):
     """Anchors are normalized face_crop boxes, before placer's 24 px padding."""
     reel.mkdir(parents=True)
     beat = dict(id="b1", start_f=0, end_f=TOTAL, layout="full", scene=None,
@@ -54,8 +54,9 @@ def fixture(reel, small=False, scene=False):
     write_json(reel, "work/scale_track.json", dict(
         fps=30, total_f=TOTAL, style={"style": "punch-in"}, tweens=[],
         keys=[dict(f=0, scale=1, ox=.5, oy=.38, layout="full")]))
-    heads = [(200, 700, 880, 1450)] * 2 if small else [
-        (0, 404, 1080, 1580), (0, 395, 1080, 1692)]
+    heads = [head] * 2 if head is not None else (
+        [(200, 700, 880, 1450)] * 2 if small else [
+            (0, 404, 1080, 1580), (0, 395, 1080, 1692)])
     anchors = []
     for i, (x0, y0, x1, y1) in enumerate(heads):
         box = [max(0, x0 + 24) / 1080, (y0 + 24) / 1920,
@@ -169,20 +170,22 @@ def different_one_line(root):
 
 
 def hook_scene(root):
-    for small in (False, True):
-        inp, ctx = fixture(root / ("scene-small" if small else "scene-tight"), small=small, scene=True)
+    for name, small, head in (("scene-tight", False, None),
+                              ("scene-small", True, None),
+                              ("scene-impossible", False, (0, 0, 1080, 1920))):
+        inp, ctx = fixture(root / name, small=small, scene=True, head=head)
         # Inspect the filled scene before the placement helper may replace it.
         plan(inp, None)
         scene = inp["beats"][0]["scene"]
         assert scene["params"]["entrance"] == "none", scene
         notes = compose.place_hook_titles(inp, ctx)
         record = compose.hook_record(inp)
-        if not small:
+        if name == "scene-impossible":
             assert inp["beats"][0]["scene"] is None, inp["beats"]
-            assert any("didn't fit above your face" in n for n in notes), notes
+            assert notes == ["The hook title didn't fit above or below your face, so a plain hook title is used."], notes
             assert record["kind"] == "plain" and record["text"] == OPENING, record
             assert inp["hooks"] and inp["hook_f"] == 63
-        else:
+        elif small:
             assert inp["beats"][0]["scene"] is not None and not notes, notes
             assert record["kind"] == "scene", record
             head = placer.head_box_at(ctx, 0, TOTAL - 1)
@@ -194,6 +197,15 @@ def hook_scene(root):
                 assert not placer.hits(chunk["box"], record["box"]), chunk
             rows = qa(inp, doc)
             assert not any(r["check"] == "text-collision" for r in rows), rows
+        else:
+            assert inp["beats"][0]["scene"] is scene and not notes, notes
+            assert record["kind"] == "scene", record
+            assert scene["params"]["size"] < 120, scene
+            head = placer.head_box_at(ctx, record["start_f"], record["end_f"] - 1)
+            box = record["box"]
+            assert not placer.hits(box, placer.face_band(head)), record
+            assert placer.SAFE[0] <= box[0] < box[2] <= placer.SAFE[2], record
+            assert placer.SAFE[1] <= box[1] < box[3] <= placer.SAFE[3], record
 
 
 def different_two_lines(root):

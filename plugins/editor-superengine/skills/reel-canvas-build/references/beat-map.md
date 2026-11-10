@@ -72,7 +72,8 @@ Start the boards (`${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/board-s
 number to show, tap words to mark them, add notes, then press Send to Claude. Their work saves as they go.
 
 Use **Add a scene** on a beat, or on its Sketches card, to choose a thumbnail. Suggestions come first,
-filled from that beat's cut words in `scenes/suggest.json`; grey choices explain why they don't fit.
+filled from that beat's cut words in `scenes/suggest.json`; `scenes/why.json` explains why grey choices don't fit.
+When you ask to rebuild the scene choices after changing "Number shown", run `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/scripts/scene_fill.py" catalog --reel-dir "<reel folder>"`.
 Edit the slots within their character limits and the scene values within their bounds. A counter's value
 comes from the beat's number: change that number on the Beat Map. Remove scene clears the choice.
 When the beat has no scene, the Beat Map offers a scene picked in Sketches in one click.

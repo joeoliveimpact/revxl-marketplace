@@ -41,7 +41,7 @@
         "sha256": "8f31105590e9c0577eb8027d45fd36b0d2f7496fa028f0d3e40de0fd249a36fa"
       }
     ],
-    "ours_sha256": "37c9a4213e39653b6f500292dd69257582edd5ff6e6ac627d3832ecfa2a46f33",
+    "ours_sha256": "d54dea41bcd7375c4c1550b4591b0064ea0ccb78d9e91f273c0319597b1d8a07",
     "changed": true,
     "licence": "Apache-2.0",
     "verdict": "allowed",
@@ -215,7 +215,7 @@
         "sha256": "2e11f1cbf53c4cf8a8bf79f645ba1d3b6dd32fe1cb14ff21b37e686fd2c20c70"
       }
     ],
-    "ours_sha256": "fd43f67fe5cbd9b3274ffc7557fb122f366c8b33f978dfef6aed0fdb9b2b8b1f",
+    "ours_sha256": "da872d2513d01b8645d05bf7b2d6260d8d959f00816450bb4f82956330168c7c",
     "changed": true,
     "licence": "Apache-2.0",
     "verdict": "allowed",

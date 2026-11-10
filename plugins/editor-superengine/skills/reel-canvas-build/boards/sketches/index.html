@@ -119,7 +119,7 @@
 const $ = (s) => document.querySelector(s);
 const statusEl = $("#status"), sendBtn = $("#send"), lockBtn = $("#lock"), box = $("#lightbox");
 let bc = null, doc = null, timer = null, seq = 0, opener = null;
-let sceneCatalog = [], sceneSuggestions = {}, sceneFieldId = 0, sceneBeats = [];
+let sceneCatalog = [], sceneSuggestions = {}, sceneReasons = {}, sceneFieldId = 0, sceneBeats = [];
 
 function el(tag, attrs, ...kids) {
   const e = document.createElement(tag);
@@ -245,7 +245,7 @@ function sceneControls(beat) {
     choice.append(el("span", {text: sceneTitle(item)}));
     if (!available[item.id]) {
       choice.disabled = true;
-      choice.append(el("span", {text: "doesn't fit this beat's words or length"}));
+      choice.append(el("span", {text: sceneReasons[beat]?.[item.id] || "doesn't fit this beat's words or length"}));
     } else choice.addEventListener("click", () => {
       if (!doc.scenes) doc.scenes = {};
       doc.scenes[beat] = JSON.parse(JSON.stringify(available[item.id]));
@@ -433,11 +433,12 @@ async function init() {
     sendBtn.querySelector("[data-loading]").remove();
     return;
   }
-  [sceneCatalog, sceneSuggestions] = await Promise.all(["scenes/catalog.json", "scenes/suggest.json"].map(reelJson));
+  [sceneCatalog, sceneSuggestions, sceneReasons] = await Promise.all(["scenes/catalog.json", "scenes/suggest.json", "scenes/why.json"].map(reelJson));
   const beatMap = await reelJson("beat-map.state.json") || await reelJson("beat-map-selection.json");
   sceneBeats = (beatMap && beatMap.beats) || [];
   if (!Array.isArray(sceneCatalog)) sceneCatalog = [];
   if (!sceneSuggestions || typeof sceneSuggestions !== "object") sceneSuggestions = {};
+  if (!sceneReasons || typeof sceneReasons !== "object") sceneReasons = {};
   $("#board").hidden = false;
   render();
   if (doc.sent_at) setStatus("sent", "Last sent " + new Date(doc.sent_at).toLocaleString());
