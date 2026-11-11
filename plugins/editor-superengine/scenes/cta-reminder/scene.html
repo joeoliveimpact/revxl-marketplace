@@ -2,7 +2,8 @@
 <html lang="en" data-composition-variables='[
   {"id":"keyword","type":"string","label":"Comment word","default":"NOTES"},
   {"id":"accent","type":"color","label":"Accent","default":"#ffd84d"},
-  {"id":"font","type":"string","label":"Font family","default":"Inter"}
+  {"id":"font","type":"string","label":"Font family","default":"Inter"},
+  {"id":"dy","type":"number","label":"Move up or down","default":0}
 ]'>
 <head>
   <meta charset="UTF-8" />
@@ -29,6 +30,9 @@
     (function () {
       const root = document.getElementById("cta-reminder");
       const variables = window.__hyperframes.getVariables();
+      const dy = variables.dy;
+      const baseTop = 1150; // must match the .card top in the stylesheet
+      if (Number.isFinite(dy) && dy !== 0) root.querySelector(".card").style.top = (baseTop + dy) + "px";
       root.style.setProperty("--accent", variables.accent);
       root.style.fontFamily = JSON.stringify(variables.font);
       root.querySelector('[data-slot="keyword"]').textContent = variables.keyword;

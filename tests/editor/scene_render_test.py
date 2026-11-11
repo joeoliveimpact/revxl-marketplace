@@ -253,6 +253,18 @@ def base_checks(sid, d, html, spec, frames, dur, default, worst, short, proj, tm
         ck(f"{sid}: worst-case text stays in the safe box {SAFE}: text pixels {box}, {outside} of {total} outside",
            box is not None and outside == 0 and total > 0)
 
+    if spec.get("kind") == "overlay" and "dy" in spec["params"]:
+        baseline, moved = tmp / f"{sid}-dy-default.mov", tmp / f"{sid}-dy-up.mov"
+        baseline_ok, why = render(tproj, default, baseline, env)
+        ck(f"{sid}: dy default text render", baseline_ok, "" if baseline_ok else why)
+        moved_ok, why = render(tproj, dict(default, dy=-200), moved, env)
+        ck(f"{sid}: dy -200 text render", moved_ok, "" if moved_ok else why)
+        before = text_box(baseline, frames)[0] if baseline_ok else None
+        after = text_box(moved, frames)[0] if moved_ok else None
+        expected = (before[0], before[1] - 200, before[2], before[3] - 200) if before else None
+        ck(f"{sid}: dy shifts the measured default text box up by 200 pixels", before is not None
+           and after is not None and all(abs(a - b) <= 2 for a, b in zip(after, expected)), (before, after, expected))
+
     if spec.get("kind") == "takeover" or write_stills is not None:
         smov = tmp / f"{sid}-short.mov"
         short_ok, why = render(proj, short, smov, env)

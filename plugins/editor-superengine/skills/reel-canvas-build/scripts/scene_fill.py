@@ -22,6 +22,8 @@ sys.path.insert(0, str(P / "skills/_shared"))
 from win_encoding import ensure_utf8_output  # noqa: E402
 from beat_schema import load_words, safe_relpath, validate_beat_map  # noqa: E402
 import scene_check  # noqa: E402
+import placer  # noqa: E402
+import three_d_placement  # noqa: E402
 
 
 def _scene_dir(sid):
@@ -47,14 +49,14 @@ def catalog():
     return out
 
 
-def suggest(scene_id, beat, words, fps):
+def suggest(scene_id, beat, words, fps, head=None):
     """Return an honest fill, or None when words, duration or scene rules don't fit."""
-    return _suggest(scene_id, beat, words, fps)[0]
+    return _suggest(scene_id, beat, words, fps, head)[0]
 
 
-def why_not(scene_id, beat, words, fps):
+def why_not(scene_id, beat, words, fps, head=None):
     """Return the first reason a card cannot be filled, or None when it fits."""
-    return _suggest(scene_id, beat, words, fps)[1]
+    return _suggest(scene_id, beat, words, fps, head)[1]
 
 
 def _plain_number(value):
@@ -69,7 +71,7 @@ def _duration(value):
     return f"{_plain_number(shown)} {'second' if shown == 1 else 'seconds'}"
 
 
-def _suggest(scene_id, beat, words, fps):
+def _suggest(scene_id, beat, words, fps, head=None):
     """One set of checks supplies both the fill and the explanation."""
     folder = _scene_dir(scene_id)
     if scene_check.scene_problems(folder):
@@ -127,6 +129,12 @@ def _suggest(scene_id, beat, words, fps):
         if all(s.get("required") is not True or slots[n].strip() for n, s in spec["slots"].items()):
             break
     params = {}
+    if spec["category"] == "3d" and head is not None:
+        clear = three_d_placement.clear_places(spec, head)
+        if not clear:
+            return None, "This shot is too tight for the 3D card; pick another card."
+        default = spec["params"]["place"]["default"]
+        params["place"] = default if default in clear else clear[0]
     if number_scene and "value" in spec["params"]:
         params["value"] = value
     fill = {"id": scene_id, "slots": slots, "params": params}
@@ -161,9 +169,18 @@ def write_catalog(reel_dir, beats, words, fps):
     items = catalog()
     fills = {b["id"]: {} for b in beats}
     reasons = {b["id"]: {} for b in beats}
+    # The initial board has no Send/style/anchors yet; that is an unknown head.
+    try:
+        placement = dict(placer.load_ctx(reel), beats=beats)
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        placement = None
     for b in beats:
+        try:
+            head = placer.visible_head_box_at(placement, b["start_f"], b["end_f"] - 1) if placement is not None else None
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            head = None
         for item in items:
-            fill, reason = _suggest(item["id"], b, words, fps)
+            fill, reason = _suggest(item["id"], b, words, fps, head)
             if fill is not None:
                 fills[b["id"]][item["id"]] = fill
             else:

@@ -143,6 +143,7 @@ def hook_still(text, start_f, end_f, box=None):
 
 def set_hook_stills(ctx, hooks):
     """Install the exact rendered hook times/text, including a scene replacement."""
+    ctx["hooks"] = hooks
     ctx["stills"] = [s for s in ctx["stills"] if s[3] not in ("hook title", "highlighted sentence")] + [
         (h["start_f"], h["end_f"], tuple(h["box"]), h["label"]) if h.get("label") == "highlighted sentence"
         else hook_still(h["text"], h["start_f"], h["end_f"], h.get("box")) for h in hooks]
@@ -162,6 +163,69 @@ def face_band(head, top=.15):
 def caption_protection(ctx, start_f, head):
     """QA and placement share the hair allowance during the rendered hook."""
     return face_band(head) if active_hook(ctx, start_f) else head
+
+
+def caption_cause(ctx, start_f, end_f):
+    """An absent optional scene manifest leaves its overlay setting unknown."""
+    hook = active_hook(ctx, start_f)
+    saved = next((h for h in ctx.get("hooks", [])
+                  if hook is not None and h["start_f"] == hook[0] and h["end_f"] == hook[1]), {})
+    unknown = False
+    for beat in ctx.get("beats", []):
+        scene = beat.get("scene")
+        if scene and beat["start_f"] <= end_f and start_f < beat["end_f"]:
+            if (scene["id"] == "hf-hook-title" and saved.get("kind") == "plain"
+                    and beat["start_f"] == hook[0]):
+                continue  # The saved render replaced this scene with a plain hook.
+            path = compose.scene_check.SCENES / scene["id"] / "scene.json"
+            try:
+                spec = json.loads(path.read_text(encoding="utf-8"))
+            except FileNotFoundError:
+                unknown = True
+                continue
+            if spec.get("kind") == "overlay":
+                return "overlay"
+    if hook is not None:
+        if saved.get("kind") == "scene":
+            return "overlay"
+        if not unknown:
+            return "plain-hook"
+    return "unknown"
+
+
+def one_line_hook_clears(ctx, spans):
+    """Re-place every inclusive (start, end, height) span with a one-line plain hook.
+
+    Only canonical multi-line plain hooks can be shortened this way. The trial
+    owns its notes/fallbacks and retains every other still and placement input.
+    """
+    if not spans or ctx["median_box"] is None:
+        return False
+    _, _, width, size = compose.hook_box(WIDTH, HEIGHT)
+    one_line = hook_still("", 0, 1)[2]
+    trial = dict(ctx, stills=list(ctx["stills"]), notes=[], fallbacks=[])
+    for start, end, height in spans:
+        hook = active_hook(ctx, start)
+        if hook is None or caption_cause(ctx, start, end) != "plain-hook":
+            return False
+        saved = next((h for h in ctx.get("hooks", [])
+                      if h["start_f"] == hook[0] and h["end_f"] == hook[1]), None)
+        if saved is None or compose.title_lines(saved["text"], width, size) <= 1:
+            return False
+        canonical = hook_still(saved["text"], hook[0], hook[1])[2]
+        if (not all(math.isclose(a, b) for a, b in zip(hook[2], canonical))
+                or hook[2][3] <= one_line[3]):
+            return False
+        trial["stills"][ctx["stills"].index(hook)] = (hook[0], hook[1], one_line, hook[3])
+    for start, end, height in spans:
+        box = place(trial, start, end, height)
+        head = caption_protection(trial, start, head_box_at(trial, start, end))
+        if head is not None and hits(box, head):
+            return False
+        if any(start < e and end >= a and hits(box, still)
+               for a, e, still, _ in trial["stills"]):
+            return False
+    return True
 
 
 def load_ctx(reel_dir, hook=None):
@@ -197,7 +261,7 @@ def load_ctx(reel_dir, hook=None):
         if move["prop"] == "layout":
             names.update((move["from"], move["to"]))
     layouts = {name: compose.layout(name, 1) for name in sorted(names)}
-    stills = []
+    stills, hooks = [], []
     beats = send["beats"]
     first = next((b for b in beats if b["start_f"] == 0), None)
     if (first is not None or hook is not None) and not any(
@@ -207,13 +271,14 @@ def load_ctx(reel_dir, hook=None):
         text = " ".join(text.split())
         if text:
             stills.append(hook_still(text, 0, hook_f))
+            hooks.append(dict(text=text, start_f=0, end_f=hook_f))
     if track["style"].get("style") == "layout-switch":
         stills.extend((b["start_f"], b["end_f"], _plate(layouts[b["layout"]]["plate"]),
                        f"{b['layout']} card plate") for b in beats if b["layout"] != "full")
     return {"track": track, "segments": segments, "beats": beats, "fps": rate,
             "master_size": (WIDTH, HEIGHT), "boxes": boxes, "median_box": median,
             "layouts": {name: tuple(lay["box"]) for name, lay in layouts.items()},
-            "stills": stills, "notes": [], "broll_bands": broll_bands.read_cache(reel)}
+            "stills": stills, "hooks": hooks, "notes": [], "broll_bands": broll_bands.read_cache(reel)}
 
 
 def _lerp(a, b, progress):
@@ -297,6 +362,40 @@ def head_box_at(ctx, f0, f1):
 
 def _seconds(ctx, f0, f1):
     return f"{float(Fraction(f0) / ctx['fps']):.2f} to {float(Fraction(f1) / ctx['fps']):.2f} seconds"
+
+
+def speaker_spans(ctx, start_f, end_f):
+    """Inclusive spans with visible a-roll, using the compositor's coverage.
+
+    B-roll (cover or blur-fill), takeovers and opaque underlays hide a-roll
+    below them. Foreground PIP stays visible, including moves to/from PIP.
+    Split and other layouts retain head_box_at's mapping when not covered.
+    Unknown coverage leaves the face rule active for the whole span.
+    """
+    _check_span(ctx, start_f, end_f)
+    try:
+        covers = compose.picture_covers(ctx.get("beats") or [], ctx.get("fps") or ctx.get("rate"), opaque_only=True)
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return [(start_f, end_f)]
+    track = ctx["track"]
+    edges = {start_f, end_f + 1}
+    edges.update(f for start, end, _ in covers for f in (start, end) if start_f < f <= end_f)
+    edges.update(k["f"] for k in track["keys"] if start_f < k["f"] <= end_f)
+    edges.update(t[k] for t in track["tweens"] if t["prop"] == "layout"
+                 for k in ("start_f", "end_f") if start_f < t[k] <= end_f)
+    pip = ctx["layouts"].get("pip")
+    spans = []
+    ordered = sorted(edges)
+    for start, end in zip(ordered, ordered[1:]):
+        covered = any(a <= start < e for a, e, _ in covers)
+        if not covered or (pip is not None and pip in _options(ctx, "layout", start)):
+            spans.append((start, end - 1))
+    return spans
+
+
+def visible_head_box_at(ctx, start_f, end_f):
+    """The existing mapped head envelope, restricted to visible a-roll frames."""
+    return _union(head_box_at(ctx, a, e) for a, e in speaker_spans(ctx, start_f, end_f))
 
 
 def speaker_hidden(ctx, start_f, end_f):
@@ -402,7 +501,7 @@ def place(ctx, start_f, end_f, band_h=134):
         overlap, _, box = min(clear_stills or covered)
         if not clear_stills:
             note = (f"Captions from {_seconds(ctx, start_f, end_f)} overlap the hook title; "
-                    "shorten the hook or ask Claude to move the captions.")
+                    + compose.caption_advice(caption_cause(ctx, start_f, end_f)))
             if note not in ctx["notes"]:
                 ctx["notes"].append(note)
         if head is not None and hits(box, head, CAPTION_PAD):
@@ -412,9 +511,21 @@ def place(ctx, start_f, end_f, band_h=134):
                 ctx["notes"].append(note)
             if hook is not None and hits(box, face_band(head), CAPTION_PAD):
                 reason = "can't fit between your hook title and your face on this shot. "
-                if not any(reason in n for n in ctx["notes"]):
-                    ctx["notes"].append(f"Captions from {_seconds(ctx, start_f, end_f)} {reason}"
-                                        "Shorten the hook to one line, or use your opening words as the hook.")
+                cause = caption_cause(ctx, start_f, end_f)
+                spans = [(start_f, end_f, band_h)]
+                for previous in ctx.get("fallbacks", []):
+                    a, e = previous["start_f"], previous["end_f"]
+                    protected = caption_protection(ctx, a, head_box_at(ctx, a, e))
+                    if (caption_cause(ctx, a, e) == "plain-hook" and protected is not None
+                            and hits(previous["box"], protected)):
+                        spans.append((a, e, previous["box"][3] - previous["box"][1]))
+                clears = one_line_hook_clears(ctx, spans) if cause == "plain-hook" else False
+                advice = compose.caption_advice(cause, one_line_clears=clears)
+                prior = next((i for i, n in enumerate(ctx["notes"]) if reason in n), None)
+                if prior is None:
+                    ctx["notes"].append(f"Captions from {_seconds(ctx, start_f, end_f)} {reason}" + advice)
+                else:
+                    ctx["notes"][prior] = ctx["notes"][prior].split(reason)[0] + reason + advice
         fallback = dict(start_f=start_f, end_f=end_f, box=box, overlap_px=overlap)
         if fallback not in ctx.setdefault("fallbacks", []):
             ctx["fallbacks"].append(fallback)
@@ -455,6 +566,43 @@ def selftest():
            "segments": [(0, 100)], "boxes": {0: head}, "median_box": head,
            "layouts": {"full": (0, 0, 1080, 1920)}, "fps": Fraction(25),
            "stills": [(0, 50, (90, 280, 930, 570), "hook title")], "notes": []}
+    covered_beat = dict(id="cover", start_f=0, end_f=100, layout="full", broll={"fit": "cover"})
+    visible_ctx = dict(ctx, beats=[covered_beat], layouts=dict(ctx["layouts"],
+                       pip=(738, 28, 312, 555), split=(0, 960, 1080, 960)))
+    for fit in ("cover", "blur-fill"):
+        covered_beat["broll"]["fit"] = fit
+        assert speaker_spans(visible_ctx, 0, 99) == []
+        assert visible_head_box_at(visible_ctx, 0, 99) is None
+    visible_ctx["track"] = dict(ctx["track"], keys=[dict(f=0, layout="full"),
+                                dict(f=40, layout="pip"), dict(f=60, layout="full")])
+    assert speaker_spans(visible_ctx, 0, 99) == [(40, 59)]
+    pip_head = visible_head_box_at(visible_ctx, 0, 99)
+    assert 738 <= pip_head[0] < pip_head[2] <= 1050 and 28 <= pip_head[1] < pip_head[3] <= 583
+    visible_ctx["track"] = dict(ctx["track"], tweens=[dict(prop="layout", start_f=20, end_f=40,
+                                **{"from": "full", "to": "pip"})])
+    assert speaker_spans(visible_ctx, 0, 99) == [(20, 39), (40, 99)]
+    visible_ctx["track"] = dict(ctx["track"], keys=[dict(f=0, layout="split")])
+    assert visible_head_box_at(visible_ctx, 0, 99) is None  # B-roll is above a split box too.
+    visible_ctx["beats"] = []
+    assert visible_head_box_at(visible_ctx, 0, 99) == (200, 1330, 880, 1920)
+    visible_ctx["beats"] = [dict(id="takeover", start_f=0, end_f=100, layout="full",
+                                 scene={"id": "cta-end-card"})]
+    assert visible_head_box_at(visible_ctx, 0, 99) is None
+    for rate in (Fraction(25), Fraction(30), Fraction(30000, 1001)):
+        assert visible_head_box_at(dict(visible_ctx, fps=rate), 0, 99) is None
+    for rate_key in ("fps", "rate"):
+        trial = dict(visible_ctx)
+        trial.pop("fps")
+        trial[rate_key] = Fraction(30)
+        assert visible_head_box_at(trial, 0, 99) is None
+    for missing_rate in ({"fps": None}, {}):
+        trial = dict(visible_ctx)
+        trial.pop("fps")
+        trial.update(missing_rate)
+        assert speaker_spans(trial, 0, 99) == [(0, 99)]
+        assert visible_head_box_at(trial, 0, 99) == head_box_at(trial, 0, 99)
+    trial = dict(visible_ctx, beats=[dict(visible_ctx["beats"][0], scene={"id": "unavailable-card"})])
+    assert visible_head_box_at(trial, 0, 99) == head_box_at(trial, 0, 99)
     box = place(ctx, 0, 49)
     assert box == (60, 610, 960, 744), box
     assert not hits(box, head, CAPTION_PAD) and not hits(box, ctx["stills"][0][2])
@@ -467,7 +615,7 @@ def selftest():
     box = place(ctx, 0, 49)
     assert not hits(box, ctx["stills"][0][2]) and ctx["fallbacks"]
     no_room = ("Captions from 0.00 to 1.96 seconds can't fit between your hook title and your face on this shot. "
-               "Shorten the hook to one line, or use your opening words as the hook.")
+               + compose.caption_advice("unknown"))
     assert no_room in ctx["notes"], ctx["notes"]
     place(ctx, 10, 20)
     assert sum("can't fit between your hook title" in n for n in ctx["notes"]) == 1
@@ -478,7 +626,7 @@ def selftest():
     ctx["stills"][0] = (0, 50, (0, 0, 1080, 1920), "hook title")
     place(ctx, 0, 49)
     assert ("Captions from 0.00 to 1.96 seconds overlap the hook title; "
-            "shorten the hook or ask Claude to move the captions.") in ctx["notes"]
+            + compose.caption_advice("unknown")) in ctx["notes"]
     ctx["median_box"] = None
     ctx["stills"][0] = (0, 50, (90, 280, 930, 570), "hook title")
     assert place(ctx, 0, 49) == (60, 1336, 960, 1470)
@@ -562,14 +710,12 @@ def selftest():
                 rows = layout_check.run({"reel_dir": reel})
             row = next(r for r in rows if r["check"] == check)
             assert row["level"] == "block", rows
-            if start < 50:
-                assert row["msg"].endswith("sits on the speaker's face because the hook title leaves no room; "
-                                           "shorten the hook to one line, or use your opening words as the hook."), rows
-            elif check == "word-covered":
-                assert row["msg"] == ("The word 'Hi' at 2.00 s sits on the speaker's face; "
-                                      "move the caption or ask Claude to re-place it."), rows
+            assert row["advice"] == compose.caption_advice("unknown"), rows
+            if check == "word-covered":
+                assert row["msg"] == (f"The word 'Hi' at {start / 25:.2f} s sits on your face. "
+                                      + compose.caption_advice("unknown")), rows
             else:
-                assert row["msg"] == "The caption touches the speaker's face; move it or ask Claude to re-place it.", rows
+                assert row["msg"] == "The caption touches your face. " + compose.caption_advice("unknown"), rows
     print("selftest ok")
     return 0
 

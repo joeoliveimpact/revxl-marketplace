@@ -74,6 +74,7 @@ number to show, tap words to mark them, add notes, then press Send to Claude. Th
 Use **Add a scene** on a beat, or on its Sketches card, to choose a thumbnail. Suggestions come first,
 filled from that beat's cut words in `scenes/suggest.json`; `scenes/why.json` explains why grey choices don't fit.
 When you ask to rebuild the scene choices after changing "Number shown", run `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/scripts/scene_fill.py" catalog --reel-dir "<reel folder>"`.
+The 3D card's choices depend on your face position: refresh with the same command after the face step; shots too tight for either place grey the card, and a clear place is suggested to keep the card box off your eyes and mouth.
 Edit the slots within their character limits and the scene values within their bounds. A counter's value
 comes from the beat's number: change that number on the Beat Map. Remove scene clears the choice.
 When the beat has no scene, the Beat Map offers a scene picked in Sketches in one click.

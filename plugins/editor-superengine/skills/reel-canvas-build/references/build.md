@@ -51,7 +51,9 @@ See [Keeping captions off the face](placement.md) for why; Follow my face only m
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/scripts/compose.py" preview --reel-dir "<reel folder>"`
 
 It prints `note:` lines (pass them on in plain words), `info:` lines (for you only), `warning:` lines, then
-`✓ Preview ready` and one last JSON line. Read two of its fields:
+runs the QA pre check on the saved positions. If blocked, the preview file is available to watch, but it stops
+with one line per kind of block before `✓ Preview ready` or any OK invitation. Show those lines, help you make
+the named change, then make the preview again. Otherwise it prints `✓ Preview ready` and one last JSON line. Read two of its fields:
 
 - `audio`: `"mix"` means the finished sound from the sound pass is in it. `"cut"` means it carries the cut's own
   sound, and the `note:` line just before says why: the sound pass hasn't run, the sound was mixed on an older cut,
@@ -73,8 +75,9 @@ When the hub's Master review (the hub page where the client watches the preview 
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/scripts/compose.py" ok --reel-dir "<reel folder>" --from-review`
 
-`✓ OK recorded` means the final video can be made. With `--from-review`, a refusal means the review wasn't sent, didn't
-approve, or approved an older preview: tell the client it has to approve the latest one. `master` checks the OK against
+`✓ OK recorded` means the final video can be made. `ok` reruns the same QA pre check and refuses on any block;
+show the grouped lines, help you make the named change, then make the preview again. With `--from-review`, a review refusal means the review wasn't sent, didn't
+approve, or approved an older preview: explain that you need to approve the latest one. `master` checks the OK against
 the latest preview, so a hand-written OK would skip the client's review.
 A change request is not an OK: make the change, then a new preview.
 
@@ -94,7 +97,7 @@ When it refuses, nothing is made. In plain words, with the one next step:
 
 | The line says | What it means | Next step |
 |---|---|---|
-| The QA check blocks the final | a QA pre check found a block | fix what it names, run the QA check again, then make the final |
+| The QA check blocks the final | a QA pre check found blocks, grouped by kind | show every grouped line, help you make the named change, then make the preview again and OK it |
 | it needs your OK first | the client hasn't OK'd the latest preview | show them the latest preview and ask |
 | the preview changed after the last OK | a newer preview was made since the OK | ask for an OK of the new one |
 | a line about the music's licence | the music's licence record is missing or doesn't match the track | fix it in the sound pass (`editor-superengine:reel-sound-pass`), then make the final video again |

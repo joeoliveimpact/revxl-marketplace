@@ -37,7 +37,7 @@ def load_check():
     return mod
 
 
-def fixture(root, place="bottom", anchors=True):
+def fixture(root, place="bottom", anchors=True, head=(400, 1130, 680, 1390)):
     """Same full-layout, scale-track and normalized face boxes as placer_test."""
     (root / "work").mkdir(parents=True, exist_ok=True)
     beat = dict(id="glass", start_f=0, end_f=120, layout="full",
@@ -51,7 +51,7 @@ def fixture(root, place="bottom", anchors=True):
     }
     if anchors:
         docs["work/anchors.json"] = {"segments": [dict(seg=0, samples=[dict(
-            f=0, x=0.5, y=0.65, box=[400/1080, 1130/1920, 680/1080, 1390/1920])])]}
+            f=0, x=0.5, y=0.65, box=[head[0]/1080, head[1]/1920, head[2]/1080, head[3]/1920])])]}
     for name, doc in docs.items():
         (root / name).write_bytes((json.dumps(doc) + "\n").encode("utf-8"))
     return dict(reel_dir=root, beats=[beat], fps=Fraction(30), cuts=docs["work/cuts.json"], render=None)
@@ -65,6 +65,13 @@ def data_checks():
     mod = load_check()
     html = (SCENE / "scene.html").read_text(encoding="utf-8")
     spec = json.loads((SCENE / "scene.json").read_text(encoding="utf-8"))
+    # D1 visible unions over all frames, WebGL then CSS; include a 12 px margin.
+    for place, measured in (("top", ([108, 331, 915, 739], [132, 295, 895, 711])),
+                            ("bottom", ([110, 1155, 915, 1446], [132, 1129, 895, 1420]))):
+        band = spec["regions"][place]
+        padded = [max(band[i], min(box[i] for box in measured) - 12) if i < 2 else
+                  min(band[i], max(box[i] for box in measured) + 12) for i in range(4)]
+        ck(place + ": card box is the measured union of both modes plus 12 px", spec["card"][place] == padded)
     ck("DR-3D: renderer leaves tone mapping to the composer", bool(re.search(
         r'renderer\.toneMapping\s*=\s*THREE\.NoToneMapping\s*;', html)))
     passes = re.findall(r'composer\.addPass\((.*?)\);', html, re.S)
@@ -138,8 +145,50 @@ def data_checks():
         bottom = fixture(root / "bottom")
         rows = mod.run(bottom)
         ck("bottom band blocks measured face", any(r["check"] == "3d-head-band" and r["level"] == "block" for r in rows))
+        covered = fixture(root / "covered", head=(0, 386, 1080, 1692))
+        covered["beats"][0]["broll"] = {"fit": "cover"}
+        (covered["reel_dir"] / "beat-map-selection.json").write_bytes(
+            (json.dumps(dict(fps=30, beats=covered["beats"])) + "\n").encode("utf-8"))
+        ck("covered tight shot does not block the 3D card", mod.run(covered) == [])
+        import scene_fill
+        pick = dict(covered["beats"][0], speech_anchor=dict(text="Three steps", w0=0, w1=1))
+        scene_fill.write_catalog(covered["reel_dir"], [pick], ["Three", "steps"], 30)
+        suggestions = json.loads((covered["reel_dir"] / "scenes/suggest.json").read_text(encoding="utf-8"))
+        ck("covered tight shot does not grey the 3D pick", "glass-card-3d" in suggestions["glass"])
+        pick.pop("broll")
+        scene_fill.write_catalog(covered["reel_dir"], [pick], ["Three", "steps"], 30)
+        suggestions = json.loads((covered["reel_dir"] / "scenes/suggest.json").read_text(encoding="utf-8"))
+        ck("catalog uses current picks rather than an older covered Send", "glass-card-3d" not in suggestions["glass"])
         top = fixture(root / "top", "top")
         ck("top band clears measured face", mod.run(top) == [])
+        board = (P / "skills/reel-canvas-build/boards/beat-map/index.html").read_text(encoding="utf-8")
+        remove = re.search(r'class: "remove-scene", text: "([^"]+)"', board)[1]
+        ck("place advice uses the board's param label", 'text: param.name +' in board
+           and "place" in spec["params"])
+        for place in ("top", "bottom"):
+            tight = fixture(root / ("tight-" + place), place, head=(0, 386, 1080, 1692))
+            found = mod.run(tight)
+            message = "This shot is too tight for the 3D card on beat 1."
+            advice = f'On the Beat Map, open that beat and press "{remove}", or pick another card.'
+            ck(place + ": both places hit, one block with truthful removal advice", len(found) == 1
+               and found[0]["check"] == "3d-head-band" and found[0]["level"] == "block"
+               and found[0]["msg"] == message and found[0]["advice"] == advice, str(found))
+            ck(place + ": grouped refusal retains 3D advice", len(found) == 1
+               and advice in mod.placer.compose.qa_block_lines(found)[0])
+            early = mod.placer.compose.qa_check.run_checks(tight, "pre", only={"three_d_check"})
+            ck(place + ": early subset reaches the real 3D block only", len(early) == 1
+               and early[0]["check"] == "3d-head-band" and early[0]["module"] == "three_d_check", str(early))
+        high = fixture(root / "high", "top", head=(200, 150, 880, 700))
+        found = mod.run(high)
+        ck("high head: top directs you only to clear bottom", len(found) == 1
+           and found[0]["msg"] == "The 3D card would cover your eyes or mouth on beat 1."
+           and found[0]["advice"] == 'On the Beat Map, set the 3D card\'s "place" to "bottom" on that beat, then Send.', str(found))
+        high["beats"][0]["scene"]["params"]["place"] = "bottom"
+        ck("high head: chosen bottom is clear", mod.run(high) == [])
+        # Hair/chin alone must not block: only the shared eyes-and-mouth band counts.
+        ck("card box, not declared band or full head", mod.region_problems({},
+           {"scene": {"params": {"place": "top"}}},
+           dict(spec, card=dict(spec["card"], top=[150, 402, 870, 450])), (0, 386, 1080, 1692)) == [])
         unknown = fixture(root / "unknown", anchors=False)
         ck("missing anchors warn", any(r["check"] == "3d-head-band" and r["level"] == "warn" for r in mod.run(unknown)))
         (unknown["reel_dir"] / "work/scale_track.json").write_bytes(b'{}\n')
@@ -156,6 +205,8 @@ def data_checks():
         report = json.loads((bottom["reel_dir"] / "work/qa.json").read_text(encoding="utf-8"))
         ck("hub discovers 3D pre check", result.returncode == 1 and any(
             r["check"] == "3d-head-band" and r["module"] == "three_d_check" for r in report["checks"]))
+        ck("3D has a single face-check owner", sum(r["check"] == "3d-head-band" and r["level"] == "block"
+           for r in report["checks"]) == 1 and not any(r["check"] == "card-on-face" for r in report["checks"]))
         ck("rows name the beat and start time", all(r["where"] == "Beat glass" and r["at"] == 0 for r in rows))
     ck("region function rejects overlap", bool(mod.region_problems({}, {"scene": {"params": {"place": "bottom"}}},
                                                                      spec, (400, 1200, 680, 1400))))
@@ -190,6 +241,7 @@ def heavy_checks(args):
     default = {k: v["default"] for group in ("slots", "params") for k, v in spec[group].items()}
     tmp = Path(tempfile.mkdtemp(prefix="three-render-"))
     cache = {}
+    environments = {}
     try:
         def render(tag, mode, seed=7, place="bottom", workers=2, nogpu=False, blocked=False, fresh=False):
             key = (mode, seed, place, workers, nogpu, blocked)
@@ -241,6 +293,7 @@ def heavy_checks(args):
             alpha = harness.raw(out, "alphaextract", "gray", 60)
             ck(f"{tag}: visible picture", len(alpha) == 1080 * 1920 and sum(v > 0 for v in alpha) > 10000)
             result = (out, stream)
+            environments[out] = env
             cache[key] = result
             return result
 
@@ -289,6 +342,11 @@ def heavy_checks(args):
                     result = render(f"{mode}-{place}", mode, place=place)
                     if result:
                         region_check(harness, result[0], spec["regions"][place], f"{mode}-{place}")
+                        measured = harness.compose.measure_scene_box(result[0], environments[result[0]])
+                        x0, y0, x1, y1 = spec["card"][place]
+                        ck(f"{mode}-{place}: D1 visible union inside declared card", measured is not None
+                           and x0 <= measured[0] < measured[2] <= x1
+                           and y0 <= measured[1] < measured[3] <= y1, str(measured))
         if args.write_previews:
             result = render("preview", "webgl")
             if result:

@@ -8,6 +8,7 @@ when every check passes. Child scripts use the editor Python, else this Python,
 with -X utf8 -I, as in n1_map_test.py. All fixture writes stay under scratch.
 """
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -22,6 +23,8 @@ import cut_safety_test as cs  # noqa: E402
 P = HERE.parents[1] / "plugins" / "editor-superengine"
 CHECKS = P / "skills" / "_shared" / "checks"
 CHECK = CHECKS / "check.py"
+sys.path.insert(0, str(CHECKS))
+import check as qa_check
 fails = []
 
 
@@ -52,6 +55,10 @@ def reel(scratch, name):
                   scene=dict(id="counter", slots=dict(label="people"), params=dict(value=250)))]
     write(d / "beat-map-selection.json", dict(schema=1, reel=name, fps=30, words="work/edit_map.cut.json",
           beats=beats, word_marks=[], proposed={}, notes={}, needs="", sent_at="2026-11-06T12:00:00+00:00"))
+    # The synthetic clean fixture includes a measured card clear of the face band.
+    fill = json.dumps(beats[1]["scene"], sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    write(d / "work/scene-boxes.json", dict(schema=1, beats={"b_002": dict(scene="counter", kind="overlay",
+          fill=hashlib.sha256(fill.encode("utf-8")).hexdigest(), box=[80, 250, 600, 420])}))
     p = cs.run("word_map.py", d)
     if p.returncode:
         raise RuntimeError("Fixture word map failed: " + p.stdout + p.stderr)
@@ -117,6 +124,57 @@ def case_anchor(scratch):
     p = cs.sh([cs.PY, "-X", "utf8", "-I", CHECKS / "anchor_check.py", d])
     ck("anchor: standalone exits 1", p.returncode == 1 and "anchor-lost" in p.stdout, p.stdout + p.stderr)
     clean_without(scratch, "anchor-lost")
+
+
+def case_unplaced(scratch):
+    d = reel(scratch, "unplaced")
+    sys.path.insert(0, str(P / "skills/reel-captions/scripts"))
+    import captions
+    doc = captions.plan(d, _style={"style": "clean", **captions.DEFAULTS})
+    write(d / "work/captions.json", doc)
+    p, report = qa(d)
+    blocks = [r for r in report["checks"] if r["level"] == "block"]
+    ck("unplaced: exit 1 with exactly one placement block", p.returncode == 1
+       and len(blocks) == 1 and blocks[0]["check"] == "placement-not-judged"
+       and blocks[0]["module"] == "layout_check"
+       and blocks[0]["msg"] == qa_check.PLACEMENT_NOT_JUDGED, (p.stdout, p.stderr, report))
+    ck("unplaced: honest summary", p.stdout.splitlines()[0] ==
+       f"QA: placement not judged yet (make the preview), {report['warns']} warnings (pre)", p.stdout)
+    edit_beats(d, lambda beats: beats[0]["speech_anchor"].update(text="Changed quote"))
+    p, report = qa(d)
+    other = report["blocks"] - 1
+    ck("unplaced: other blocks remain counted", p.returncode == 1 and other > 0
+       and p.stdout.splitlines()[0] ==
+       f"QA: {other} blocks plus placement not judged, {report['warns']} warnings (pre)", p.stdout)
+    edit_beats(d, lambda beats: beats[0]["speech_anchor"].update(text="We help"))
+    for c in doc["chunks"]:
+        c["box"] = [160, 1400, 920, 1540]
+    write(d / "work/captions.json", doc)
+    p, report = qa(d)
+    ck("unplaced: placements replace not-judged with real results", p.returncode == 0
+       and not has(report, "placement-not-judged") and "QA: 0 blocks," in p.stdout, report)
+    doc["style"]["style"] = "none"
+    for c in doc["chunks"]:
+        del c["box"]
+    write(d / "work/captions.json", doc)
+    _, report = qa(d)
+    ck("unplaced: switched off needs no placement", not has(report, "placement-not-judged"), report)
+    (d / "work/scene-boxes.json").unlink()
+    p, report = qa(d)
+    pending = [r for r in report["checks"] if r["check"] == "placement-not-judged"]
+    ck("unplaced: cards alone give the same preview sentence", p.returncode == 1 and len(pending) == 1
+       and pending[0]["msg"] == qa_check.PLACEMENT_NOT_JUDGED, report)
+    doc["style"]["style"] = "clean"
+    write(d / "work/captions.json", doc)
+    p, report = qa(d)
+    pending = [r for r in report["checks"] if r["check"] == "placement-not-judged"]
+    ck("unplaced: captions and cards share one blocking row", p.returncode == 1 and len(pending) == 1
+       and pending[0]["msg"] == qa_check.PLACEMENT_NOT_JUDGED, report)
+    sys.path.insert(0, str(P / "skills/reel-canvas-build/scripts"))
+    import compose
+    lines = compose.qa_block_lines(pending)
+    ck("unplaced: shared row gives one grouped preview sentence", len(lines) == 1
+       and lines[0].count(qa_check.PLACEMENT_NOT_JUDGED) == 1, lines)
 
 
 def case_overflow(scratch):
@@ -282,7 +340,7 @@ def case_hubshape(scratch):
             ck("hubshape: warnings are counted", report.get("warns", 0) > 0, report)
 
 
-CASES = {"clean": case_clean, "anchor": case_anchor, "overflow": case_overflow, "number": case_number,
+CASES = {"clean": case_clean, "unplaced": case_unplaced, "anchor": case_anchor, "overflow": case_overflow, "number": case_number,
          "crash": case_crash, "skip-lib": case_skip_lib, "hubshape": case_hubshape,
          "plain-scene": case_plain_scene, "row-values": case_row_values, "staleaids": case_staleaids}
 

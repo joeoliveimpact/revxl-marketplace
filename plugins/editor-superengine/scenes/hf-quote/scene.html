@@ -7,7 +7,8 @@
   {"id":"company","type":"string","label":"Company","default":"NORTHWIND"},
   {"id":"emphasis","type":"string","label":"Emphasis","default":"single afternoon"},
   {"id":"accent","type":"color","label":"Accent","default":"#71f5a7"},
-  {"id":"font","type":"string","label":"Font family","default":"Inter"}
+  {"id":"font","type":"string","label":"Font family","default":"Inter"},
+  {"id":"dy","type":"number","label":"Move up or down","default":0}
 ]'>
   <head>
     <meta charset="UTF-8" />
@@ -56,6 +57,9 @@
       (function () {
         const v = window.__hyperframes.getVariables();
         const root = document.getElementById("hf-quote");
+        const dy = v.dy;
+        const baseTop = 845; // must match the .card top in the stylesheet
+        if (Number.isFinite(dy) && dy !== 0) root.querySelector(".card").style.top = (baseTop + dy) + "px";
         const q = (s) => root.querySelector(s);
         const str = (x) => String(x == null ? "" : x).trim().replace(/\s+/g, " ");
         root.style.setProperty("--accent", v.accent);

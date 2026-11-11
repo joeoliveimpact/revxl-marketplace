@@ -167,7 +167,8 @@ def underlay(spans, fps, merge_gap_s=0.6):
 
     merge_gap_s is taste, not a rule: how short a gap between takeovers still reads as one run.
     Expects spans that already passed check(). Overlays never get an underlay."""
-    gap = round(Fraction(str(merge_gap_s)) * fpsmod.as_fraction(fps))
+    rate = fps if isinstance(fps, Fraction) else fpsmod.as_fraction(fps)
+    gap = round(Fraction(str(merge_gap_s)) * rate)
     takes = sorted((s for s in spans if s.get("layer") == "takeover"), key=lambda s: s["start_f"])
     out, run = [], None  # run = [start_f, end_f, count]
     for s in takes:
@@ -287,6 +288,9 @@ def selftest():
     t = [sp("takeover", 0, 30), sp("takeover", 48, 60), sp("takeover", 79, 90)]
     if underlay(t, "30") != [{"layer": "underlay", "start_f": 0, "end_f": 60}]:
         fails.append(f"underlay: got {underlay(t, '30')}")
+    for rate in (Fraction(25), Fraction(30), Fraction(30000, 1001)):
+        if underlay(t, rate) != underlay(t, str(rate)):
+            fails.append(f"underlay: exact rate {rate} differs from its text form")
     beats = [{"id": "b1", "start_f": 0, "end_f": 60, "layout": "full"},
              {"id": "b2", "start_f": 60, "end_f": 90, "layout": "split"}]
     if spans_from_beats(beats, 6) != [{"layer": "aroll_transform", "start_f": 60, "end_f": 66, "id": "b1->b2"}]:

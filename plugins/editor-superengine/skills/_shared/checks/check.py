@@ -28,6 +28,9 @@ sys.path.insert(0, str(HERE.parents[1] / "reel-canvas-build" / "scripts"))
 from win_encoding import ensure_utf8_output  # noqa: E402
 from fps import as_fraction  # noqa: E402
 
+PLACEMENT_NOT_JUDGED = ("Caption and card placement can't be judged until a preview is rendered. "
+                        "Make the preview: it runs this check on the real positions.")
+
 
 def read_json(path):
     try:
@@ -50,11 +53,29 @@ def crashed(path):
                 where=path.name, module=path.stem)
 
 
-def run_checks(ctx, phase):
+def merge_placement_rows(rows):
+    """Captions and cards share one honest not-judged finding."""
+    result, pending = [], None
+    for row in rows:
+        if row["check"] != "placement-not-judged":
+            result.append(row)
+        elif pending is None:
+            pending = dict(row)
+            pending["msg"] = PLACEMENT_NOT_JUDGED
+            result.append(pending)
+        else:
+            pending["where"] = str(pending.get("where", "")) + ", " + str(row.get("where", ""))
+            pending["advice"] = "Make the preview again, then OK it."
+    return result
+
+
+def run_checks(ctx, phase, *, only=None):
     """Import in filename order; for all, finish pre checks before any post check."""
     modules, findings = [], []
     for path in sorted(HERE.glob("*.py")):
         if path.name == "check.py":
+            continue
+        if only is not None and path.stem not in only:
             continue
         try:
             spec = importlib.util.spec_from_file_location(path.stem, path)
@@ -84,7 +105,7 @@ def run_checks(ctx, phase):
                 findings.extend(rows)
             except (Exception, SystemExit):
                 findings.append(crashed(path))
-    return findings
+    return merge_placement_rows(findings)
 
 
 def write_report(reel, report):
@@ -146,7 +167,10 @@ def main(argv=None):
         except (OSError, ValueError):
             pass  # Optional review tooling must not prevent the QA report.
     write_report(reel, report)
-    print("QA: %d blocks, %d warnings (%s)" % (blocks, warns, args.phase))
+    unplaced = sum(row["level"] == "block" and row["check"] == "placement-not-judged" for row in findings)
+    status = ("placement not judged yet (make the preview)" if blocks == unplaced else
+              f"{blocks - unplaced} blocks plus placement not judged") if unplaced else f"{blocks} blocks"
+    print(f"QA: {status}, {warns} warnings ({args.phase})")
     for row in findings:
         if row["level"] in ("block", "warn"):
             print("%s  %s  %s" % (row["level"].upper(), row["check"], row["msg"]))

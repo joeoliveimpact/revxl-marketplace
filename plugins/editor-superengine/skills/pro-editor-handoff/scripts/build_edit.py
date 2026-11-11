@@ -206,14 +206,7 @@ def picture_covers(reel, track, cuts):
     """Reuse the compositor's gate, underlay and layout geometry; do not render."""
     compose = compose_module()
     beats = fcpx.read(reel / compose.SEND, {}).get("beats", [])
-    kinds = {b["scene"]["id"]: fcpx.read(compose.scene_check.SCENES / b["scene"]["id"] / "scene.json")["kind"]
-             for b in beats if b.get("scene")}
-    spans = compose.build_spans(beats, kinds, 0)
-    labels = {"broll": "B-roll", "takeover": "full-frame scenes", "transition": "transition pictures"}
-    covers = [(s["start_f"], s["end_f"], labels[s["layer"]]) for s in spans if s["layer"] in labels]
-    if kinds:
-        covers += [(s["start_f"], s["end_f"], "full-frame scenes")
-                   for s in compose.effect_gate.underlay(spans, cuts["fps"])]
+    covers = compose.picture_covers(beats, cuts.get("fps"))
     total = cuts["segments"][-1]["out_out_f"]
     full = compose.layout("full", 1)["box"]
 
@@ -631,6 +624,8 @@ def selftest():
         save(reel / "work/cuts.json", {"segments": [{"out_in_f": 0, "out_out_f": 60}]})
         save(reel / "work/scale_track.json", {"keys": [{"f": 0, "scale": 1}, {"f": 30, "scale": 1.18}], "tweens": []})
         save(reel / "handoff/handoff.json", {"baked_spans": []})
+        if proof_frames(reel) != {"unpunched": 15, "punched": 45}:
+            raise ValueError("Proof frames without a coverage frame rate failed")
         manifest = {"summaries": {"fcpxml": {"format": {"width": 1080, "height": 1920, "frameDuration": "1/30s"}}}, "sha256": {}}
         steps = native_steps(reel, manifest)
         if [s["id"] for s in steps] != ["ready", "project", "import", "captions", "report"]:

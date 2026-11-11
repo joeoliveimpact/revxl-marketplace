@@ -23,7 +23,7 @@ import layout_check
 
 RATE, TOTAL, BAND = Fraction(30), 180, 149
 OPENING = "Claude just killed Instagram."
-ADVICE = "shorten the hook to one line, or use your opening words as the hook"
+ADVICE = "Shorten the hook to one line, or use your opening words as the hook."
 WORDS = [dict(word=text, start=start, end=end) for text, start, end in (
     ("Claude", .10, .40), ("just", .40, .55), ("killed", .55, .83),
     ("Instagram.", .87, 2.10), ("You", 2.14, 2.28), ("can", 2.28, 2.43),
@@ -214,9 +214,57 @@ def different_two_lines(root):
     doc = chunks()
     assert skip(doc, inp["hooks"]) == 0
     place(ctx, doc)
-    assert any(ADVICE in n.lower() for n in ctx["notes"]), ctx["notes"]
+    assert any(ADVICE in n for n in ctx["notes"]), ctx["notes"]
     rows = qa(inp, doc)
-    assert any(r["level"] == "block" and ADVICE in r["msg"].lower() for r in rows), rows
+    blocks = [r for r in rows if r["level"] == "block"
+              and r["check"] in ("caption-on-face", "word-covered")]
+    assert blocks and all(r["advice"] == ADVICE for r in blocks), rows
+    # Independent arithmetic: one line ends at 362.8; ceil(+40) is 403.
+    assert compose.title_lines(inp["hooks"][0]["text"], 840, 72) == 2
+    trial = copy.deepcopy(ctx)
+    trial["stills"][0] = placer.hook_still("Hi", 0, inp["hooks"][0]["end_f"])
+    for chunk in doc["chunks"]:
+        box = placer.place(trial, chunk["start_f"], chunk["end_f"] - 1, BAND)
+        head = placer.head_box_at(trial, chunk["start_f"], chunk["end_f"] - 1)
+        assert box == (60, 403, 960, 552), box
+        assert not placer.hits(box, placer.caption_protection(trial, chunk["start_f"], head)), box
+    # A render-time plain fallback is authoritative over the original scene pick.
+    bm = json.loads((inp["reel_dir"] / "beat-map-selection.json").read_text(encoding="utf-8"))
+    bm["beats"][0]["scene"] = dict(id="hf-hook-title", slots=dict(title=OPENING), params={})
+    write_json(inp["reel_dir"], "beat-map-selection.json", bm)
+    blocks = [r for r in qa(inp, doc) if r["check"] in ("caption-on-face", "word-covered")]
+    assert blocks and all(r["advice"] == ADVICE for r in blocks), blocks
+
+
+def different_two_lines_too_tight(root):
+    inp, ctx = fixture(root / "different-two-lines-too-tight", head=(0, 200, 1080, 1920))
+    plan(inp, ctx, "Watch this before you post")
+    doc = chunks()
+    place(ctx, doc)
+    rows = qa(inp, doc)
+    blocks = [r for r in rows if r["level"] == "block"
+              and r["check"] in ("caption-on-face", "word-covered")]
+    assert blocks and all(r["advice"] == compose.QA_NO_CAPTIONS_ADVICE for r in blocks), rows
+    assert any(compose.QA_NO_CAPTIONS_ADVICE in n for n in ctx["notes"]), ctx["notes"]
+    assert not any(ADVICE in n for n in ctx["notes"]), ctx["notes"]
+
+
+def different_two_lines_partly_clear(root):
+    inp, ctx = fixture(root / "different-two-lines-partly-clear")
+    path = inp["reel_dir"] / "work/anchors.json"
+    anchors = json.loads(path.read_text(encoding="utf-8"))
+    anchors["segments"][0]["samples"][0]["box"][3] = 1668 / 1920
+    anchors["segments"][1]["samples"][0]["box"] = [0, 224 / 1920, 1, 1896 / 1920]
+    write_json(inp["reel_dir"], "work/anchors.json", anchors)
+    ctx = placer.load_ctx(inp["reel_dir"])
+    plan(inp, ctx, "Watch this before you post")
+    doc = chunks()
+    place(ctx, doc)
+    rows = qa(inp, doc)
+    blocks = [r for r in rows if r["check"] in ("caption-on-face", "word-covered")]
+    assert {r["where"] for r in blocks} >= {"caption 0", "caption 1"}, rows
+    assert all(r["advice"] == compose.QA_NO_CAPTIONS_ADVICE for r in blocks), rows
+    assert not any(ADVICE in n for n in ctx["notes"]), ctx["notes"]
 
 
 def main():
@@ -226,7 +274,8 @@ def main():
         # Saved user choices must not affect this fixture or receive any writes.
         with patch.object(compose.rt, "state_dir", return_value=root / "state"):
             for case in (spoken_placement, spoken_skipping, different_one_line,
-                         hook_scene, different_two_lines):
+                         hook_scene, different_two_lines, different_two_lines_too_tight,
+                         different_two_lines_partly_clear):
                 try:
                     case(root)
                 except Exception as exc:

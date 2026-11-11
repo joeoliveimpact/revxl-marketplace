@@ -9,7 +9,8 @@
   "dur": [2, 8],
   "params": {
     "accent": {"type": "color", "default": "#ff5a36"},
-    "font": {"type": "string", "default": "Inter"}
+    "font": {"type": "string", "default": "Inter"},
+    "dy": {"type": "number", "default": 0, "min": -1400, "max": 1400, "hint": "moves the card up (negative) or down, in pixels; set automatically to keep it off your face"}
   },
   "source": "HyperFrames registry/blocks/lt-clean-bar (v0.8.184)",
   "licence": "Apache-2.0"

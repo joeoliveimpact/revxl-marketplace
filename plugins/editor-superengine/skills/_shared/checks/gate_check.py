@@ -53,7 +53,7 @@ GATE_TESTS = {
     "not_empty": {"status": "skipped", "reason": "Source creator's graphic-fill taste rule does not fit the user's reels."},
     "text_margin": {"status": "covered", "modules": ("caption_check.py", "layout_check.py")},
     "text_centred": {"status": "skipped", "reason": "Source creator's centred-headline taste rule does not fit the user's reels."},
-    "face_clear": {"status": "covered", "modules": ("face_text_check.py", "layout_check.py")},
+    "face_clear": {"status": "covered", "modules": ("face_text_check.py", "layout_check.py", "overlay_face_check.py")},
     "no_camera_zoom": {"status": "skipped", "reason": "Source creator's no-punch-in taste rule does not fit the user's reels."},
     "no_camera_drift": {"status": "skipped", "reason": "Source creator's no-camera-move taste rule does not fit the user's reels."},
     "no_fast_zoom": {"status": "skipped", "reason": "Needs Apple Vision face reading."},

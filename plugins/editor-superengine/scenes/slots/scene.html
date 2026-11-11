@@ -9,7 +9,8 @@
   {"id":"count","type":"number","label":"Chosen slot count","default":2},
   {"id":"section_starts","type":"string","label":"Section starts in local seconds","default":"2,4"},
   {"id":"accent","type":"color","label":"Accent","default":"#4f8cff"},
-  {"id":"font","type":"string","label":"Font family","default":"Inter"}
+  {"id":"font","type":"string","label":"Font family","default":"Inter"},
+  {"id":"dy","type":"number","label":"Move up or down","default":0}
 ]'>
 <head>
 <meta charset="utf-8">
@@ -40,6 +41,9 @@
 <script>
 (function(){
   const v = window.__hyperframes.getVariables(), root = document.getElementById("slots");
+  const dy = v.dy;
+  const baseTop = 360; // must match the .list top in the stylesheet
+  if (Number.isFinite(dy) && dy !== 0) root.querySelector(".list").style.top = (baseTop + dy) + "px";
   root.style.setProperty("--accent",v.accent); root.style.fontFamily = JSON.stringify(v.font);
   const rows = Array.from(root.querySelectorAll(".row")), list = root.querySelector(".list");
   rows.forEach((row,i) => {

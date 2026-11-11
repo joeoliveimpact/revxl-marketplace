@@ -9,7 +9,8 @@
   {"id":"max","type":"number","label":"Track full mark","default":30},
   {"id":"dark","type":"boolean","label":"Dark scheme","default":true},
   {"id":"accent","type":"color","label":"Accent","default":"#7d5cff"},
-  {"id":"font","type":"string","label":"Font family","default":"Inter"}
+  {"id":"font","type":"string","label":"Font family","default":"Inter"},
+  {"id":"dy","type":"number","label":"Move up or down","default":0}
 ]'>
   <head>
     <meta charset="UTF-8" />
@@ -44,6 +45,9 @@
       (function () {
         const v = window.__hyperframes.getVariables();
         const root = document.getElementById("hf-stat-card");
+        const dy = v.dy;
+        const baseTop = 340; // must match the .group top in the stylesheet
+        if (Number.isFinite(dy) && dy !== 0) root.querySelector(".group").style.top = (baseTop + dy) + "px";
         const q = (s) => root.querySelector(s);
         const num = q(".num");
         root.style.setProperty("--accent", v.accent);

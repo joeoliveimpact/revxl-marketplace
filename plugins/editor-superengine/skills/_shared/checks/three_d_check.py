@@ -9,6 +9,7 @@ P = Path(__file__).resolve().parents[3]
 SCENES = P / "scenes"
 sys.path.insert(0, str(P / "skills/reel-canvas-build/scripts"))
 import placer  # noqa: E402
+import three_d_placement  # noqa: E402
 
 PHASE = "pre"
 VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}
@@ -175,20 +176,29 @@ def capture_problems(html_text):
     return list(dict.fromkeys(problems))
 
 
-def region_problems(reel_ctx, beat, spec, head_box):
-    """Use the whole declared band, in master pixels, against the head envelope."""
+def region_problems(reel_ctx, beat, spec, head_box, number=1):
+    """Resolve the real envelope against eyes and mouth, never suggest a blocked place."""
     params = beat.get("scene", {}).get("params") or {}
     place = params.get("place", spec["params"]["place"]["default"])
-    region = spec.get("regions", {}).get(place)
-    if region is not None and head_box is not None and placer.hits(region, head_box):
-        return ["The 3D card would cover your face here; move it to the top/bottom band."]
+    clear = three_d_placement.clear_places(spec, head_box)
+    if place not in clear:
+        if not clear:
+            return [f"This shot is too tight for the 3D card on beat {number}."]
+        return [f"The 3D card would cover your eyes or mouth on beat {number}."]
     return []
+
+
+def region_advice(spec, head_box):
+    clear = three_d_placement.clear_places(spec, head_box)
+    if clear:
+        return (f'On the Beat Map, set the 3D card\'s "place" to "{clear[0]}" on that beat, then Send.')
+    return 'On the Beat Map, open that beat and press "Remove scene", or pick another card.'
 
 
 def run(ctx):
     rows = []
     placement, placement_error, loaded = None, False, False
-    for beat in ctx.get("beats") or []:
+    for number, beat in enumerate(ctx.get("beats") or [], 1):
         scene = beat.get("scene") or {}
         sid = scene.get("id")
         if not isinstance(sid, str) or Path(sid).name != sid:
@@ -200,10 +210,12 @@ def run(ctx):
         if spec.get("category") != "3d":
             continue
 
-        def add(check, level, msg):
+        def add(check, level, msg, advice=None):
             row = dict(check=check, level=level, msg=msg, where=f"Beat {beat.get('id', '?')}")
             if ctx.get("fps") is not None and ctx["fps"] > 0:
                 row["at"] = float(beat.get("start_f", 0) / ctx["fps"])
+            if advice is not None:
+                row["advice"] = advice
             rows.append(row)
 
         params = scene.get("params") or {}
@@ -230,21 +242,23 @@ def run(ctx):
         if not loaded:
             loaded = True
             try:
-                placement = placer.load_ctx(ctx["reel_dir"])
+                placement = dict(placer.load_ctx(ctx["reel_dir"]), beats=ctx.get("beats") or [])
             except Exception:
                 placement_error = True
         try:
             if placement_error:
                 raise ValueError("placement unavailable")
-            head = placer.head_box_at(placement, beat["start_f"], beat["end_f"] - 1)
+            head = placer.visible_head_box_at(placement, beat["start_f"], beat["end_f"] - 1)
         except Exception:
             add("3d-head-band", "warn", "The face position could not be checked yet, so the card's spot cannot be confirmed. "
                 "Refresh the face and framing information and check again.")
             continue
         if head is None:
+            if not placer.speaker_spans(placement, beat["start_f"], beat["end_f"] - 1):
+                continue
             add("3d-head-band", "warn", "The face position isn't known yet, so the card's spot can't be confirmed. "
                 "Check its position against the speaker before rendering.")
         elif valid_place:
-            for problem in region_problems(ctx, beat, spec, head):
-                add("3d-head-band", "block", problem)
+            for problem in region_problems(ctx, beat, spec, head, number):
+                add("3d-head-band", "block", problem, region_advice(spec, head))
     return rows

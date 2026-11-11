@@ -14,7 +14,8 @@
     "suffix": {"type": "string", "default": "", "maxChars": 2, "hint": "e.g. % or k"},
     "animate": {"type": "boolean", "default": true, "hint": "false shows the final value from the first frame"},
     "accent": {"type": "color", "default": "#4f8cff"},
-    "font": {"type": "string", "default": "Inter"}
+    "font": {"type": "string", "default": "Inter"},
+    "dy": {"type": "number", "default": 0, "min": -1400, "max": 1400, "hint": "moves the card up (negative) or down, in pixels; set automatically to keep it off your face"}
   },
   "source": "editor-superengine original (PB-34)",
   "licence": "own"

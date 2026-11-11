@@ -17,6 +17,7 @@
     "dust": {"type": "string", "enum": ["points", "quarks"], "default": "quarks"}
   },
   "regions": {"top": [60, 260, 960, 760], "bottom": [60, 1100, 960, 1460]},
+  "card": {"top": [96, 283, 927, 751], "bottom": [98, 1117, 927, 1458]},
   "source": "editor-superengine original (N3, PB-38 pitch A)",
   "licence": "own"
 }

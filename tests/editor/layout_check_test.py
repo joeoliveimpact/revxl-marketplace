@@ -111,6 +111,26 @@ def case_clean(scratch):
     ck("clean: missing captions skip", LC.run({"reel_dir": d}) == [])
 
 
+def case_unplaced(scratch):
+    d, doc = fixture(scratch, "unplaced")
+    for c in doc["chunks"]:
+        del c["box"]
+    for label, mixed in (("all unplaced", False), ("mixed placements", True)):
+        if mixed:
+            doc["chunks"][1]["box"] = [160, 1400, 920, 1540]
+        rows = examine(d, doc, label, ["placement-not-judged"], 1)
+        ck(label + ": one honest placement block", len(rows) == 1 and rows[0]["msg"] ==
+           compose.qa_check.PLACEMENT_NOT_JUDGED, rows)
+    doc["style"]["style"] = "none"
+    examine(d, doc, "captions off need no placements", [], 0)
+    doc["style"]["style"] = "clean"
+    for c in doc["chunks"]:
+        c["box"] = [160, 1400, 920, 1540]
+    examine(d, doc, "placed captions are judged", [], 0)
+    doc["chunks"][1]["box"] = [160, 1098, 920, 1238]
+    examine(d, doc, "placed captions give real findings", ["caption-on-face"], 1)
+
+
 def offscreen_hook(outside):
     x, y, width, size = compose.hook_box(1080, 1920)
     return (1080 + outside - width / 2, y, width, size)
@@ -182,7 +202,7 @@ def case_covered(scratch):
                        ["word-covered"] if fraction >= 0.65 else ["caption-on-face"], 1)
         if fraction == 0.7:
             ck("covered: plain message", len(rows) == 1 and rows[0]["msg"] ==
-               "The word 'Coaching.' at 3.00 s sits on the speaker's face; move the caption or ask Claude to re-place it.", rows)
+               'The word \'Coaching.\' at 3.00 s sits on your face. On the Look Picker, choose "No captions", then Send.', rows)
             p = cs.sh([cs.PY, "-X", "utf8", "-I", CHECKS / "check.py", d, "--phase", "pre"])
             qa = cs.load(d / "work/qa.json")
             ck("covered: entry point blocks and saves word-covered", p.returncode == 1 and any(
@@ -202,8 +222,29 @@ def case_hook_face(scratch):
     for fraction in (0.7, 0.65, 0.6):
         top = face_bottom - fraction * (64 * 1.2) - 16
         doc["chunks"][0]["box"] = [160, top, 920, top + 140]
-        examine(d, doc, f"hook face covered {fraction:.0%}",
-                ["word-covered"] if fraction >= 0.65 else ["caption-on-face"], 1)
+        rows = examine(d, doc, f"hook face covered {fraction:.0%}",
+                       ["word-covered"] if fraction >= 0.65 else ["caption-on-face"], 1)
+        ck("one-line plain hook: advice names No captions",
+           all(r["msg"].endswith(compose.QA_NO_CAPTIONS_ADVICE) and compose.QA_OVERLAY_ADVICE not in r["msg"]
+               for r in rows), rows)
+
+
+def case_overlay_advice(scratch):
+    d, doc = fixture(scratch, "overlay-advice")
+    doc["chunks"][1]["box"] = [160, 1098, 920, 1238]
+    bm = json.loads((d / "beat-map-selection.json").read_text(encoding="utf-8"))
+    bm["beats"][1]["scene"] = {"id": "counter", "slots": {}, "params": {}}
+    save(d / "beat-map-selection.json", bm)
+    rows = examine(d, doc, "caption under a small overlay", ["caption-on-face"], 1)
+    ck("small overlay: advice names the checkbox", rows[0]["msg"].endswith(compose.QA_OVERLAY_ADVICE), rows)
+    bm["beats"][1]["scene"] = None
+    save(d / "beat-map-selection.json", bm)
+    rows = examine(d, doc, "caption without an overlay", ["caption-on-face"], 1)
+    ck("no overlay: advice names No captions", rows[0]["msg"].endswith(compose.QA_NO_CAPTIONS_ADVICE), rows)
+    bm["beats"][1]["scene"] = {"id": "unused-fixture-scene"}
+    save(d / "beat-map-selection.json", bm)
+    rows = examine(d, doc, "missing optional scene setting is unknown", ["caption-on-face"], 1)
+    ck("unknown overlay: advice names No captions", rows[0]["msg"].endswith(compose.QA_NO_CAPTIONS_ADVICE), rows)
 
 
 def case_broll(scratch):
@@ -242,8 +283,8 @@ def case_noface(scratch):
             hook_box=hook)
 
 
-CASES = {"clean": case_clean, "offscreen": case_offscreen, "collision": case_collision,
-         "covered": case_covered, "hook-face": case_hook_face, "broll": case_broll,
+CASES = {"clean": case_clean, "unplaced": case_unplaced, "offscreen": case_offscreen, "collision": case_collision,
+         "covered": case_covered, "hook-face": case_hook_face, "overlay-advice": case_overlay_advice, "broll": case_broll,
          "touch": case_touch, "noface": case_noface}
 
 

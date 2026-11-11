@@ -357,6 +357,10 @@ def html_problems(sid, spec, html):
     # transparent root
     rootish = {"html", "body", ":root", "*", f"#{sid}"}
     css = re.sub(r"@font-face\s*\{[^}]*\}", "", " ".join(re.findall(r"<style\b[^>]*>(.*?)</style>", html, re.S | re.I)))
+    if re.search(r"(?:^|[;{])\s*(?:top|bottom|left|right)\s*:[^;}]*\b(?:calc|var)\s*\(",
+                 re.sub(r"/\*.*?\*/", "", css, flags=re.S), re.I):
+        out.append("scene.html positions with calc() or a CSS variable, which the renderer does not resolve; "
+                   "use a plain pixel value")
     for sel, decls in re.findall(r"([^{}]+)\{([^{}]*)\}", css):
         subjects = {s.split()[-1] for s in sel.split(",") if s.split()}
         if subjects & rootish or any(s.startswith("[data-composition-id") for s in subjects):
@@ -439,11 +443,11 @@ def spec_problems(sid, spec):
     if not isinstance(spec, dict) or spec.get("category") != "3d":
         return out
     allowed = {f"scene.json has an unknown key {show(k)}; the keys are {', '.join(KEYS)}"
-               for k in ("layer", "regions")}
+               for k in ("layer", "regions", "card")}
     if any(p in allowed for p in out):
         out = [p for p in out if p not in allowed]
         # Unknown keys make the original return early; validate the remaining spec too.
-        clean = {k: v for k, v in spec.items() if k not in ("layer", "regions")}
+        clean = {k: v for k, v in spec.items() if k not in ("layer", "regions", "card")}
         out += [p for p in _n3_spec_problems(sid, clean) if p not in out]
     if "layer" in spec and spec["layer"] != "3d":
         out.append('a 3D scene layer must be "3d"')
@@ -460,6 +464,22 @@ def spec_problems(sid, spec):
                        "x 60..960, y 220..1470 (exclusive ends)")
         if not (0 <= x0 < x1 <= W and 0 <= y0 < y1 <= H):
             out.append(f"3D region {name} must lie inside the {W}x{H} canvas (exclusive ends)")
+    cards = spec.get("card")
+    if not isinstance(cards, dict) or set(cards) != {"top", "bottom"}:
+        return out + ["3D card must be an object with exactly top and bottom"]
+    for name, box in cards.items():
+        if not (isinstance(box, list) and len(box) == 4 and all(type(v) is int for v in box)):
+            out.append(f"3D card {name} must be a list of four integers [x0, y0, x1, y1]")
+            continue
+        x0, y0, x1, y1 = box
+        if not (x0 < x1 and y0 < y1):
+            out.append(f"3D card {name} must have positive width and height")
+        if not (0 <= x0 < x1 <= W and 0 <= y0 < y1 <= H):
+            out.append(f"3D card {name} must lie inside the {W}x{H} canvas (exclusive ends)")
+        region = regions[name]
+        if (isinstance(region, list) and len(region) == 4 and all(type(v) is int for v in region)
+                and not (region[0] <= x0 < x1 <= region[2] and region[1] <= y0 < y1 <= region[3])):
+            out.append(f"3D card {name} must lie inside its region")
     return out
 
 
@@ -830,6 +850,22 @@ def selftest():
         good = Path(t) / "scenes"
         shutil.copytree(SCENES, good)
         expect("every shipped scene passes", all(not scene_problems(d) for d in good.iterdir() if d.is_dir()))
+        spec = json.loads((good / "callout/scene.json").read_text(encoding="utf-8"))
+        page = (good / "callout/scene.html").read_text(encoding="utf-8")
+        position_reason = ("scene.html positions with calc() or a CSS variable, which the renderer does not resolve; "
+                           "use a plain pixel value")
+        for decl, refused in (
+                ("top: calc(560px + 20px)", True),
+                ("bottom: var(--offset, 470px)", True),
+                ("left: calc(80px + var(--offset, 0px))", True),
+                ("RIGHT:\n VAR(--offset, 80px)", True),
+                ("top: 560px; bottom: 470px; left: 80px; right: 80px", False),
+                ("width: calc(100% - 20px); color: var(--accent)", False),
+                ("--top: var(--offset); border-top: var(--border)", False),
+                ("/* top: calc(560px + 20px); */ top: 560px", False)):
+            changed = page.replace("</style>", f"#callout .pill {{ {decl}; }}\n</style>")
+            expect(f"CSS position: {decl}",
+                   (position_reason in html_problems("callout", spec, changed)) == refused)
         for sid, old, new, why in (
                 ("counter", ',"label":"Label"', "", "needs a non-empty label"),
                 ("counter", '"label":"Label"', '"label":"   "', "needs a non-empty label"),
@@ -884,6 +920,7 @@ def selftest():
         spec = json.loads((scene / "scene.json").read_text(encoding="utf-8"))
         spec["category"] = "3d"
         spec["regions"] = {"top": [60, 260, 960, 760], "bottom": [60, 1100, 960, 1460]}
+        spec["card"] = {"top": [150, 402, 870, 618], "bottom": [150, 1172, 870, 1388]}
         (scene / "scene.json").write_text(json.dumps(spec), encoding="utf-8")
         page = (scene / "scene.html").read_text(encoding="utf-8").replace("z-index: 400", "z-index: 300")
         imports = '<script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>'
@@ -917,6 +954,7 @@ def selftest():
         expect("3d: import-like text in a string is harmless", scene_problems(scene) == [])
         spec["category"] = "callout"
         spec.pop("regions")
+        spec.pop("card")
         (scene / "scene.json").write_text(json.dumps(spec), encoding="utf-8")
         (scene / "scene.html").write_text(page, encoding="utf-8")
         expect("3d: 2d scenes still reject z-index 300",
@@ -932,6 +970,14 @@ def selftest():
     expect("3d: regions outside the safe box fails", bool(spec_problems(glass.name, dict(
         spec, regions={"top": [59, 260, 960, 760], "bottom": [60, 1100, 960, 1460]}))))
     expect("3d: layer 2d fails", bool(spec_problems(glass.name, dict(spec, layer="2d"))))
+    expect("3d: missing card fails", any("3D card must be" in p for p in spec_problems(
+        glass.name, {k: v for k, v in spec.items() if k != "card"})))
+    for label, top, why in (("outside band", [60, 250, 960, 760], "inside its region"),
+                            ("outside frame", [-1, 260, 960, 760], "inside the 1080x1920 canvas"),
+                            ("unordered", [960, 260, 60, 760], "positive width and height"),
+                            ("non-integer", [60.5, 260, 960, 760], "four integers")):
+        expect("3d: card " + label + " fails", any(why in p for p in spec_problems(
+            glass.name, dict(spec, card=dict(spec["card"], top=top)))))
     callout = json.loads((SCENES / "callout" / "scene.json").read_text(encoding="utf-8"))
     expect("3d: 2d scenes still reject regions", any(
         "unknown key 'regions'" in p for p in spec_problems("callout", dict(callout, regions=spec["regions"]))))

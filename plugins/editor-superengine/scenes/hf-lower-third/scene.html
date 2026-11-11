@@ -4,7 +4,8 @@
   {"id":"name","type":"string","label":"Name","default":"Dr. Maya Chen"},
   {"id":"title","type":"string","label":"Title","default":"Host · Neuroscientist"},
   {"id":"accent","type":"color","label":"Accent","default":"#ff5a36"},
-  {"id":"font","type":"string","label":"Font family","default":"Inter"}
+  {"id":"font","type":"string","label":"Font family","default":"Inter"},
+  {"id":"dy","type":"number","label":"Move up or down","default":0}
 ]'>
   <head>
     <meta charset="UTF-8" />
@@ -36,6 +37,9 @@
       (function () {
         const v = window.__hyperframes.getVariables();
         const root = document.getElementById("hf-lower-third");
+        const dy = v.dy;
+        const baseBottom = 470; // must match the .lt bottom in the stylesheet
+        if (Number.isFinite(dy) && dy !== 0) root.querySelector(".lt").style.bottom = (baseBottom - dy) + "px";
         root.style.setProperty("--accent", v.accent);
         root.style.fontFamily = JSON.stringify(v.font);
         root.querySelectorAll("[data-slot]").forEach((el) => { el.textContent = v[el.dataset.slot]; });

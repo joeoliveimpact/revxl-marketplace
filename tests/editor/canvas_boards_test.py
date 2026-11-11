@@ -548,6 +548,16 @@ def scene_fill_case():
     reason("absent-card", beat, words, "card is unavailable", "Pick another card")
     need(scene_fill.suggest("counter", beat, words, FPS) is not None and
          scene_fill.why_not("counter", beat, words, FPS) is None, "fitting card got a reason")
+    tight_head, high_head = (0, 386, 1080, 1692), (200, 150, 880, 700)
+    tight_reason = "This shot is too tight for the 3D card; pick another card."
+    need(scene_fill.suggest("glass-card-3d", beat, words, FPS, tight_head) is None,
+         "3D close-up got a fill")
+    need(scene_fill.why_not("glass-card-3d", beat, words, FPS, tight_head) == tight_reason,
+         "3D close-up got the wrong reason")
+    need(scene_fill.suggest("glass-card-3d", beat, words, FPS, high_head)["params"] == {"place": "bottom"},
+         "3D fill did not select clear bottom")
+    need(scene_fill.suggest("glass-card-3d", beat, words, FPS)["params"] == {},
+         "3D unknown head changed the default fill")
 
     def honest(fill, b=beat, heard=words):
         spec = load(scene_check.SCENES / fill["id"] / "scene.json")
@@ -622,6 +632,24 @@ def scene_fill_case():
                  (scene_check.SCENES / item["id"] / "preview.png").read_bytes(), "preview copy differs")
         for fill in fills.values():
             honest(fill)
+        for head in (tight_head, high_head, None):
+            with patch.object(scene_fill.placer, "load_ctx", return_value={}), \
+                    patch.object(scene_fill.placer, "visible_head_box_at", return_value=head) as at:
+                scene_fill.write_catalog(reel, [beat], words, FPS)
+            at.assert_called_once_with({"beats": [beat]}, beat["start_f"], beat["end_f"] - 1)
+            filled = load(reel / "scenes/suggest.json")[beat["id"]]
+            refused = load(reel / "scenes/why.json")[beat["id"]]
+            if head == tight_head:
+                need("glass-card-3d" not in filled and refused["glass-card-3d"] == tight_reason,
+                     "catalog did not grey the too-tight 3D choice")
+            else:
+                need(filled["glass-card-3d"]["params"] == ({"place": "bottom"} if head else {}),
+                     "catalog did not preserve the clear or unknown place")
+        for error in (ValueError("not ready"), FileNotFoundError("not ready"), KeyError("fps")):
+            with patch.object(scene_fill.placer, "load_ctx", side_effect=error):
+                scene_fill.write_catalog(reel, [beat], words, FPS)
+            need(load(reel / "scenes/suggest.json")[beat["id"]]["glass-card-3d"]["params"] == {},
+                 "initial catalog requires placement inputs before Send")
         # The CLI must use the newer board file, and always the cut transcript.
         import make_beat_map
         items = load(reel / "work/edit_map.cut.json")["words"]

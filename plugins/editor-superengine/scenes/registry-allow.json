@@ -17,7 +17,7 @@
         "sha256": "8ee55069c2f348c65c963fa8911daad5200a3c39c4df8986fbb2ba29d94d233c"
       }
     ],
-    "ours_sha256": "285a79a06d673cd13cab9936f22d59b6c194cd849d48931c945c9dd696a4ea60",
+    "ours_sha256": "9cfa50eaf2148eeddf90d285d9df2f2a4ed6a54fecf317fda40204baaa9f7c58",
     "changed": true,
     "licence": "Apache-2.0",
     "verdict": "allowed",
@@ -99,7 +99,7 @@
         "sha256": "0fd4aa6b24455695dfad40ea385c69fa7cf5d541ac8af58db2153b4aacca5df9"
       }
     ],
-    "ours_sha256": "90163f5645ea966b56bb4fd7765e9571dc4e007d4e957aaa0b76b4ecb6689a63",
+    "ours_sha256": "4a64d5e122ab136368af8d52d9e05ffcb014c4c80cc0d606f953aa57a0614fac",
     "changed": true,
     "licence": "Apache-2.0",
     "verdict": "allowed",
@@ -133,7 +133,7 @@
         "sha256": "b22d6ef8a02fefcccc8a48d67f6fe1bc5cc9349789733ca383d08bbf7c172ea5"
       }
     ],
-    "ours_sha256": "76c2bff6e1fc33bd0893bcfa54727882a4360cdb5d1997e30bbbcca51febd976",
+    "ours_sha256": "25b8fbee31b7a91c6af0316eaaab1b712721bd8d77923766f225481695084746",
     "changed": true,
     "licence": "Apache-2.0",
     "verdict": "allowed",
@@ -157,7 +157,7 @@
         "sha256": "88840aea1ab4b900efa1d47dd686e399fdab41354a90b7559334948261c522bd"
       }
     ],
-    "ours_sha256": "b2daa042e8410a5b1923eba3587ffdf77d7b51adab3ef76e48c6b810b8064238",
+    "ours_sha256": "2f0e0fed8d7d1a4bea8083a8a40060021949c52fe7f17468c8aadd2f89dfe6a6",
     "changed": true,
     "licence": "Apache-2.0",
     "verdict": "allowed",

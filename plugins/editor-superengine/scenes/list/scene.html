@@ -5,7 +5,8 @@
   {"id":"item2","type":"string","label":"Item 2","default":"Show one clear example"},
   {"id":"item3","type":"string","label":"Item 3 (empty hides it)","default":"End with the next step"},
   {"id":"accent","type":"color","label":"Accent","default":"#4f8cff"},
-  {"id":"font","type":"string","label":"Font family","default":"Inter"}
+  {"id":"font","type":"string","label":"Font family","default":"Inter"},
+  {"id":"dy","type":"number","label":"Move up or down","default":0}
 ]'>
   <head>
     <meta charset="UTF-8" />
@@ -36,6 +37,9 @@
       (function () {
         const v = window.__hyperframes.getVariables();
         const root = document.getElementById("list");
+        const dy = v.dy;
+        const baseTop = 500; // must match the .panel top in the stylesheet
+        if (Number.isFinite(dy) && dy !== 0) root.querySelector(".panel").style.top = (baseTop + dy) + "px";
         root.style.setProperty("--accent", v.accent);
         root.style.fontFamily = JSON.stringify(v.font);
         root.querySelectorAll("[data-slot]").forEach((el) => { el.textContent = v[el.dataset.slot]; });

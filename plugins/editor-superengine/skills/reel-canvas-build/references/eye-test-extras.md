@@ -35,7 +35,7 @@ are output seconds; gain is linear, with 0 silent and 0.10 the maximum. Place
 the reminder around 60-80% of the runtime and keep its complete interval away
 from any end-card beat or `cta` word mark. Overlap and excessive gain block;
 timing outside the recommended window warns. The `cta-reminder` scene is a
-silent corner overlay with a `keyword` slot. Placement still needs a deliberate
+silent overlay with a `keyword` slot; its measured card moves vertically to clear your face when it fits, and QA blocks any remaining overlap. Placement still needs a deliberate
 Beat Map choice; the controls check the proposal and do not insert a beat.
 For older reels, `cta-reminder.json` in the reel folder is checked only when
 the document has no `cta_reminder` key.

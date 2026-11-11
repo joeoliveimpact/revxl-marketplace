@@ -44,6 +44,7 @@ from win_encoding import ensure_utf8_output  # noqa: E402
 import captions  # noqa: E402
 import placer  # noqa: E402
 import compose  # noqa: E402
+from check import PLACEMENT_NOT_JUDGED  # noqa: E402
 
 PHASE = "pre"
 WIDTH, HEIGHT = 1080, 1920
@@ -120,9 +121,14 @@ def run(ctx):
     elements, rows = [], []
     if doc["style"]["style"] != "none":
         spec = captions.STYLES[doc["style"]["style"]]
+        missing = next((i for i, c in enumerate(doc["chunks"]) if "box" not in c), None)
+        if missing is not None:
+            rows.append(_row("placement-not-judged",
+                             PLACEMENT_NOT_JUDGED,
+                             f"caption {missing}", doc["chunks"][missing]["start_f"], rate))
         for i, chunk in enumerate(doc["chunks"]):
             if "box" not in chunk:
-                continue  # A plan has no geometry until compose places it.
+                continue  # The single not-judged block covers every missing position.
             box = tuple(v * scale for v in chunk["box"])
             elements.append(dict(where=f"caption {i}", start=chunk["start_f"], end=chunk["end_f"],
                                  box=box, words=_word_boxes(chunk, box, spec)))
@@ -171,23 +177,37 @@ def run(ctx):
             continue  # The measured head is outside the picture during this span.
         if placer.speaker_hidden(face_ctx, start, element["end"] - 1):
             continue  # Full-frame B-roll hides the speaker, so there is no face to cover.
-        hook_face = ("sits on the speaker's face because the hook title leaves no room; "
-                     "shorten the hook to one line, or use your opening words as the hook."
-                     if placer.active_hook(face_ctx, start) else None)
         covered = False
         for text, box in element["words"]:
             if _area(box) > 0 and _area(_intersection(box, head)) >= 0.65 * _area(box) - 1e-9:
                 covered = True
                 when = f"{float(Fraction(start) / rate):.2f} s"
                 rows.append(_row("word-covered",
-                                 f"The word '{text}' at {when} " + (hook_face or
-                                 "sits on the speaker's face; move the caption or ask Claude to re-place it."),
+                                 f"The word '{text}' at {when} sits on your face.",
                                  where, start, rate))
         if not covered and _area(_intersection(element["box"], head)) > 0:
             rows.append(_row("caption-on-face",
-                             "The caption " + hook_face if hook_face else
-                             "The caption touches the speaker's face; move it or ask Claude to re-place it.",
+                             "The caption touches your face.",
                              where, start, rate))
+
+    face_rows = [r for r in rows if r["check"] in ("word-covered", "caption-on-face")]
+    blocked = {r["where"] for r in face_rows}
+    causes, spans = {}, []
+    if face_ctx is not None:
+        for element in elements:
+            if element["where"] not in blocked:
+                continue
+            cause = placer.caption_cause(face_ctx, element["start"], element["end"] - 1)
+            causes[element["where"]] = cause
+            if cause == "plain-hook":
+                spans.append((element["start"], element["end"] - 1, captions.band_h(spec)))
+    try:
+        clears = placer.one_line_hook_clears(face_ctx, spans) if spans else False
+    except INPUT_ERRORS + (placer.NoRoom,):
+        clears = False  # Unknown trial geometry cannot justify shortening advice.
+    for row in face_rows:
+        row["advice"] = compose.caption_advice(causes.get(row["where"], "unknown"), one_line_clears=clears)
+        row["msg"] += " " + row["advice"]
 
     screen = (0, 0, WIDTH, HEIGHT)
     for a, b in combinations(elements, 2):

@@ -22,8 +22,10 @@ compose.py ok is the only writer of work/render-ok.json; master refuses without 
 The picked caption look sits above the picture and scenes, clear of the speaker's head where space allows.
 """
 import argparse
+import copy
 import contextlib
 import html
+import hashlib
 import importlib.util
 import io
 import json
@@ -83,6 +85,9 @@ NEED_OK = "The 720p preview needs your OK first: watch it, then tell me it's OK 
 NO_MIX = "the sound pass hasn't run; the final will pick up its sound once it has"
 STALE_MIX = "the sound was mixed on an older cut; run the sound pass again"
 FAILED_MIX = "the last sound mix didn't pass its check; run the sound pass again"
+QA_OVERLAY_ADVICE = 'On the Look Picker, open Advanced controls and untick "Captions under small overlays", then Send.'
+QA_NO_CAPTIONS_ADVICE = 'On the Look Picker, choose "No captions", then Send.'
+QA_SHORT_HOOK_ADVICE = "Shorten the hook to one line, or use your opening words as the hook."
 TEMPLATE = SKILL / "templates" / "render" / "index.html"
 LAYOUTS = SKILL / "layouts"  # split, stack, pip, overlay; "full" is the whole frame with no card
 PLATE_Z = Z_SCENE - 1        # a layout's card plate sits on the scene band's floor, under the beat's own scene
@@ -237,6 +242,9 @@ def hook_record(inp):
         params = {k: p["default"] for k, p in scene_params(scene).items()}
         params.update(scene.get("params", {}))
         box = [60, params["top"], 960, params["top"] + params["height"]]
+        measured = inp.get("scene_boxes", {}).get(str(first["id"]))
+        if measured is not None and measured["box"] is not None:
+            box = measured["box"]
         return dict(schema=1, kind="scene", text=scene.get("slots", {}).get("title", ""),
                     start_f=0, end_f=first["end_f"], box=box, spoken=False, words_shown=0)
     return dict(schema=1, kind="none", text="", start_f=0, end_f=0,
@@ -265,7 +273,7 @@ def saved_hooks(reel, fallback=None):
             or record["box"][1] >= record["box"][3]
             or record["words_shown"] != (count if record["spoken"] else 0)):
         raise ValueError("The saved hook record does not match its words; make the preview again.")
-    return [dict(text=record["text"], start_f=0, end_f=record["end_f"], box=record["box"],
+    return [dict(text=record["text"], kind=record["kind"], start_f=0, end_f=record["end_f"], box=record["box"],
                  spoken=record["spoken"], word_count=count, shown_words=list(range(record["words_shown"])))] + later
 
 
@@ -333,6 +341,32 @@ def build_spans(beats, kinds, hook_f, extra_spans=None):
     if hook_f:
         spans.append({"layer": "overlay", "start_f": 0, "end_f": hook_f, "id": "hook title"})
     return spans + list(extra_spans or [])
+
+
+def picture_covers(beats, fps=None, *, opaque_only=False):
+    """Covering pictures shared with handoff proofs; ends are exclusive.
+
+    Face checks need opaque coverage: transitions and underlay fades can still
+    show the speaker. Proofs exclude those uncertain pictures as before.
+    The rate is only needed for takeover underlays.
+    """
+    kinds = {b["scene"]["id"]: json.loads((scene_check.SCENES / b["scene"]["id"] / "scene.json")
+             .read_text(encoding="utf-8"))["kind"] for b in beats if b.get("scene")}
+    spans = build_spans(beats, kinds, 0)
+    labels = {"broll": "B-roll", "takeover": "full-frame scenes"}
+    if not opaque_only:
+        labels["transition"] = "transition pictures"
+    covers = [(s["start_f"], s["end_f"], labels[s["layer"]]) for s in spans if s["layer"] in labels]
+    if kinds:
+        for span in effect_gate.underlay(spans, fps):
+            start, end = span["start_f"], span["end_f"]
+            if opaque_only:
+                fade = min(FADE_F, (end - start) // 2)
+                start += fade if start else 0
+                end -= fade
+            if start < end:
+                covers.append((start, end, "full-frame scenes"))
+    return covers
 
 
 # ---- tools ---------------------------------------------------------------------------------------------------
@@ -769,6 +803,150 @@ def scene_params(scene):
         return {}
 
 
+def scene_fill(scene):
+    """Only the id, slots and params passed to the scene renderer."""
+    return dict(id=scene["id"], slots=scene.get("slots") or {}, params=scene.get("params") or {})
+
+
+def scene_fill_hash(scene):
+    data = json.dumps(scene_fill(scene), sort_keys=True, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+    return hashlib.sha256(data.encode("utf-8")).hexdigest()
+
+
+def scene_title(sid):
+    """The Beat Map's sceneTitle fallback, with catalog titles preferred."""
+    spec = json.loads((scene_check.SCENES / sid / "scene.json").read_text(encoding="utf-8"))
+    words = re.sub(r"^hf-", "", sid).replace("-", " ")
+    return spec.get("title") or spec.get("label") or words[:1].upper() + words[1:]
+
+
+def scene_box_entry(source, rendered, box, kind):
+    entry = dict(scene=rendered["id"], fill=scene_fill_hash(rendered), box=box, kind=kind)
+    if scene_fill_hash(source) != entry["fill"]:
+        # Automatic brand, entrance and placement params must not stale the board's unchanged fill.
+        entry.update(source_fill=scene_fill_hash(source), render_fill=copy.deepcopy(scene_fill(rendered)))
+    return entry
+
+
+def read_scene_boxes(path):
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        return doc["beats"] if doc.get("schema") == 1 and isinstance(doc.get("beats"), dict) else {}
+    except (OSError, ValueError, AttributeError, KeyError, TypeError):
+        return {}
+
+
+def write_scene_boxes(path, beats):
+    write_json(path, dict(schema=1, beats=beats))
+
+
+def write_omitted_scene_boxes(path, sources, beats, *, layers="all"):
+    """Record scenes removed with a placement note, including plain-hook replacements."""
+    if layers not in ("all", "overlay"):
+        return {}  # These layers do not render or measure scenes; preserve the box file.
+    entries = {}
+    for beat in beats:
+        bid = str(beat["id"])
+        if bid in sources and not beat.get("scene"):
+            source = sources[bid]
+            kind = json.loads((scene_check.SCENES / source["id"] / "scene.json").read_text(encoding="utf-8"))["kind"]
+            entries[bid] = dict(scene_box_entry(source, source, None, kind), omitted=True)
+    write_scene_boxes(path, entries)
+    return entries
+
+
+def matching_scene_box(entries, beat_id, scene):
+    entry = entries.get(str(beat_id))
+    if not isinstance(entry, dict) or entry.get("scene") != scene["id"] or "box" not in entry:
+        return None
+    current = scene_fill_hash(scene)
+    if "source_fill" in entry:
+        rendered = entry.get("render_fill")
+        if (entry["source_fill"] != current or not isinstance(rendered, dict)
+                or rendered.get("id") != scene["id"] or scene_fill_hash(rendered) != entry.get("fill")):
+            return None
+    elif entry.get("fill") != current:
+        return None
+    box = entry["box"]
+    if box is not None and not (isinstance(box, list) and len(box) == 4
+            and all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) for v in box)
+            and 0 <= box[0] < box[2] <= 1080 and 0 <= box[1] < box[3] <= 1920):
+        return None
+    return entry
+
+
+def parse_scene_bbox(log):
+    """Union ffmpeg bbox's inclusive pixel bounds; a transparent frame has w=h=0."""
+    boxes, seen = [], False
+    for line in log.splitlines():
+        match = re.search(r"x1:(\d+)\s+x2:(\d+)\s+y1:(\d+)\s+y2:(\d+)\s+w:(\d+)\s+h:(\d+)", line)
+        if match is None:
+            continue
+        seen = True
+        x0, x1, y0, y1, w, h = map(int, match.groups())
+        if w and h:
+            boxes.append((x0, y0, x1 + 1, y1 + 1))
+    if not seen:
+        raise ValueError("No frame boxes were measured.")
+    return ([min(b[0] for b in boxes), min(b[1] for b in boxes),
+             max(b[2] for b in boxes), max(b[3] for b in boxes)] if boxes else None)
+
+
+def measure_scene_box(mov, env):
+    # Normalize before bbox, so preview and master boxes always use master pixels.
+    rc, out, err = run([rt.tool("ffmpeg"), "-nostdin", "-hide_banner", "-v", "info", "-i", mov,
+                       "-an", "-vf", "alphaextract,format=gray,scale=1080:1920,"
+                       "lut=y='if(gte(val,64),255,0)',bbox=min_val=1", "-f", "null", "-"], env, 120)
+    if rc:
+        raise Stop(1, "The card's visible position couldn't be measured. Make the preview again.", tail(err))
+    try:
+        return parse_scene_bbox(err + out)
+    except ValueError:
+        raise Stop(1, "The card's visible position couldn't be measured. Make the preview again.") from None
+
+
+def overlay_dy(box, band, safe, *, explicit=False, obstacles=()):
+    """Try above the face, then below, keeping the same gap from other cards."""
+    import placer
+    if explicit or box is None or band is None or not placer.hits(box, band, placer.CAPTION_PAD):
+        return None
+    up = math.floor(band[1] - placer.UNDER_HEAD_GAP - box[3])
+    down = math.ceil(band[3] + placer.UNDER_HEAD_GAP - box[1])
+    for dy in (up, down):
+        moved = (box[0], box[1] + dy, box[2], box[3] + dy)
+        if (-1400 <= dy <= 1400
+                and safe[1] <= moved[1] and moved[3] <= safe[3]
+                and not placer.hits(moved, band, placer.CAPTION_PAD)
+                and not any(placer.hits(moved, other, placer.UNDER_HEAD_GAP) for other in obstacles)):
+            return dy
+    return None
+
+
+def overlay_card_dy(beat, beats, entries, band, safe, *, explicit=False):
+    """Choose against this pass's latest measured boxes, independent of beat layout."""
+    entry = entries[str(beat["id"])]
+    if entry["kind"] != "overlay" or beat["scene"]["id"] in ("hf-callout", "hf-hook-title"):
+        return None
+    obstacles = []
+    for other in beats:
+        if (other["id"] == beat["id"] or other["start_f"] >= beat["end_f"]
+                or beat["start_f"] >= other["end_f"]):
+            continue
+        measured = entries.get(str(other["id"]))
+        if measured and measured["kind"] == "overlay" and measured["box"] is not None:
+            obstacles.append(measured["box"])
+    return overlay_dy(entry["box"], band, safe, explicit=explicit, obstacles=obstacles)
+
+
+def overlay_card_placement(ctx, beat, beats, entries, *, explicit=False):
+    """Protect only the visible face, retaining every measured card obstacle."""
+    import placer
+    head = placer.visible_head_box_at(ctx, beat["start_f"], beat["end_f"] - 1)
+    if head is None and ctx["median_box"] is None and placer.speaker_spans(ctx, beat["start_f"], beat["end_f"] - 1):
+        return None, "The overlay cards weren't checked against your face because no face anchors were found."
+    return overlay_card_dy(beat, beats, entries, placer.face_band(head), placer.SAFE, explicit=explicit), None
+
+
 def face_clear_placement(head, size, floor, candidate):
     """Try full-size above, then below; only then shrink in the same order."""
     import placer
@@ -791,10 +969,12 @@ def hook_title_placement(ctx, beat):
     import placer
     explicit = beat["scene"].get("params", {})
     placed = {"top": 220, "height": 1250, "size": 120}
-    head = placer.head_box_at(ctx, beat["start_f"], beat["end_f"] - 1)
+    head = placer.visible_head_box_at(ctx, beat["start_f"], beat["end_f"] - 1)
     if head is None:
         placed.update({k: explicit[k] for k in placed if k in explicit})
-        return placed, "The hook title wasn't checked against your face because no face anchors were found."
+        note = ("The hook title wasn't checked against your face because no face anchors were found."
+                if ctx["median_box"] is None and placer.speaker_spans(ctx, beat["start_f"], beat["end_f"] - 1) else None)
+        return placed, note
     title = beat["scene"].get("slots", {}).get("title", "Nobody tells you this about editing")
 
     def required_height(size):
@@ -842,9 +1022,11 @@ def callout_placement(ctx, beat):
     scene = beat["scene"]
     explicit = scene.get("params", {})
     placed = dict(top=explicit.get("top", 845), size=explicit.get("size", 72))
-    head = placer.head_box_at(ctx, beat["start_f"], beat["end_f"] - 1)
+    head = placer.visible_head_box_at(ctx, beat["start_f"], beat["end_f"] - 1)
     if head is None:
-        return placed, "The highlighted sentence wasn't checked against your face because no face anchors were found."
+        note = ("The highlighted sentence wasn't checked against your face because no face anchors were found."
+                if ctx["median_box"] is None and placer.speaker_spans(ctx, beat["start_f"], beat["end_f"] - 1) else None)
+        return placed, note
     protected = placer.face_band(head)
 
     def clear(box):
@@ -880,12 +1062,20 @@ def placement_hooks(inp):
         if scene and scene["id"] == "hf-hook-title":
             params = scene["params"]
             hooks.append(dict(text=scene["slots"]["title"], start_f=beat["start_f"], end_f=beat["end_f"],
+                              kind="scene",
                               box=[60, params["top"], 960, params["top"] + params["height"]],
                               spoken=False, word_count=len(hook_words(scene["slots"]["title"])), shown_words=[]))
         elif scene and scene["id"] == "hf-callout":
             hooks.append(dict(text=scene["slots"]["text"], start_f=beat["start_f"], end_f=beat["end_f"],
                               box=list(callout_box(scene)), label="highlighted sentence",
                               spoken=False, word_count=len(hook_words(scene["slots"]["text"])), shown_words=[]))
+        if scene and scene["id"] in ("hf-hook-title", "hf-callout"):
+            measured = inp.get("scene_boxes", {}).get(str(beat["id"]))
+            if measured is not None:
+                if measured["box"] is None:
+                    hooks.pop()
+                else:
+                    hooks[-1]["box"] = measured["box"]
     return hooks
 
 
@@ -1333,6 +1523,8 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
     if tmp.exists() and not remove_tree(tmp):  # an earlier run that crashed can leave it behind
         raise Stop(1, f"✗ The old work/render-tmp folder can't be deleted; close what uses it, then run this again.")
     inp = load_inputs(reel)
+    source_scenes = {str(b["id"]): copy.deepcopy(b["scene"]) for b in inp["beats"] if b.get("scene")}
+    boxes_path = reel / "work/scene-boxes.json"
     style_reel = reel if style_reel is None else style_reel
     inp["style_reel"] = style_reel
     if tier == "master":
@@ -1354,6 +1546,9 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
         print(f"note: {line}")
     inp["track"] = track
     styles.write_json(reel / styles.TRACK, track)  # S7 reads it
+    if tier == "preview" and layers == "all":
+        # The 3D envelope needs JSON only; refuse before rendering any scene/video.
+        qa_pre_or_stop(reel, only={"three_d_check"})
     sys.path.insert(0, str(HERE.parents[1] / "reel-captions" / "scripts"))
     import captions
     import placer  # placer imports compose; keep this import inside render()
@@ -1380,6 +1575,7 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
         doc = caption_plan()
         doc["hooks"] = placement_hooks(inp)
         doc["notes"].extend(title_notes)
+        placement_notes = []
         if doc["chunks"]:
             if ctx is None:
                 band_notes.extend(broll_bands.measure(reel, inp["beats"]))
@@ -1403,7 +1599,8 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
                 for c in doc["chunks"]:
                     c["box"] = placer.place(ctx, c["start_f"], c["end_f"] - 1, captions.band_h(spec))
                     bands.append(dict(start_f=c["start_f"], end_f=c["end_f"] - 1, box=c["box"]))
-            doc["notes"].extend(ctx["notes"] + placer.ghosts(ctx, bands))
+            placement_notes = ctx["notes"] + placer.ghosts(ctx, bands)
+            doc["notes"].extend(placement_notes)
         doc["notes"].extend(band_notes)
     except captions.Stop as e:
         raise Stop(e.code, *e.lines) from None
@@ -1413,9 +1610,7 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
     captions.write(reel, doc)  # S9 reads the placed chunks, including advisory notes
     if layers == "all":  # layer-only handoffs must not replace the preview/master QA record
         write_json(reel / "work/hook.json", hook_record(inp))
-    for line in doc["notes"]:
-        print(f"note: {line}")
-    printed_notes = len(doc["notes"])
+    printed_notes = 0
     audio, audio_src = choose_audio(reel, inp, tier) if layers == "all" else ("cut", inp["master"])
     w, h = TIERS[tier]
     name = out_names(reel.name, datetime.now().strftime("%m.%d.%y"))[0 if tier == "preview" else 1]
@@ -1431,6 +1626,8 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
     print("info: encode generations: camera -> cut master (1) -> this render (2)")
     env, cache = rt.hyperframes_env(), tmp / "hf-cache"
     proj = tmp / "proj"
+    # Replace old placements, retaining explicit records for compose's noted omissions.
+    measured_boxes = write_omitted_scene_boxes(boxes_path, source_scenes, inp["beats"], layers=layers)
     try:
         (proj / "media").mkdir(parents=True)
         cache.mkdir()
@@ -1445,10 +1642,68 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
             hf_render(sproj, mov, env, f"scene {sid} (beat {b['id']})",
                       ["--format", "mov", "--fps", inp["fps"], "--strict-variables", "--variables-file", vf,
                        "--frames-cache-dir", cache])
+            kind = json.loads((scene_check.SCENES / sid / "scene.json").read_text(encoding="utf-8"))["kind"]
+            box = measure_scene_box(mov, env)
+            measured_boxes[str(b["id"])] = scene_box_entry(source_scenes[str(b["id"])], b["scene"], box, kind)
+            write_scene_boxes(boxes_path, measured_boxes)
             got, want = fpsmod.frame_count(mov), b["end_f"] - b["start_f"]
             if got != want:
                 raise Stop(1, f"✗ The {sid} scene came out {got} frames long, not {want}; run it again.")
             scene_files.append((b, name_i))
+        # Measure every scene first, then settle cards in beat order. Each move
+        # sees fixed titles, untouched later cards and remeasured earlier cards.
+        for b, name_i in scene_files:
+            sid = b["scene"]["id"]
+            entry = measured_boxes[str(b["id"])]
+            if entry["kind"] == "overlay":
+                if ctx is None:
+                    ctx = placer.load_ctx(reel)
+                dy, note = overlay_card_placement(ctx, b, inp["beats"], measured_boxes,
+                    explicit=(source_scenes[str(b["id"])].get("params") or {}).get("dy", 0) != 0)
+                if note is not None and note not in doc["notes"]:
+                    doc["notes"].append(note)
+                if "dy" in scene_params(b["scene"]):
+                    if dy is not None:
+                        sproj = tmp / "scenes" / name_i
+                        vf = tmp / "scenes" / f"{name_i}.vars.json"
+                        mov = proj / "media" / f"{name_i}.mov"
+                        b["scene"].setdefault("params", {})["dy"] = dy
+                        vf.write_bytes(json.dumps({**b["scene"]["slots"], **b["scene"]["params"]}).encode("utf-8"))
+                        moved_cache = cache / (name_i + "-dy")
+                        moved_cache.mkdir()
+                        mov.unlink()
+                        hf_render(sproj, mov, env, f"scene {sid} (beat {b['id']})",
+                                  ["--format", "mov", "--fps", inp["fps"], "--strict-variables", "--variables-file", vf,
+                                   "--frames-cache-dir", moved_cache])
+                        box = measure_scene_box(mov, env)
+                        measured_boxes[str(b["id"])] = scene_box_entry(source_scenes[str(b["id"])], b["scene"], box, entry["kind"])
+                        write_scene_boxes(boxes_path, measured_boxes)
+                        got, want = fpsmod.frame_count(mov), b["end_f"] - b["start_f"]
+                        if got != want:
+                            raise Stop(1, f"✗ The {sid} scene came out {got} frames long, not {want}; run it again.")
+                        number = inp["beats"].index(b) + 1
+                        print(f"note: The {scene_title(sid)} card would have covered your face on beat {number}, "
+                              f"so it was moved {'up' if dy < 0 else 'down'}.")
+        inp["scene_boxes"] = measured_boxes
+        if any(b["scene"]["id"] in ("hf-hook-title", "hf-callout") for b, _ in scene_files):
+            # These two cards already act as caption obstacles; use their real bounds now.
+            doc["hooks"] = placement_hooks(inp)
+            placer.set_hook_stills(ctx, doc["hooks"])
+            if doc["chunks"]:
+                ctx["notes"] = list(placement_state[0])
+                if placement_state[1] is None:
+                    ctx.pop("fallbacks", None)
+                else:
+                    ctx["fallbacks"] = list(placement_state[1])
+                bands = []
+                for c in doc["chunks"]:
+                    c["box"] = placer.place(ctx, c["start_f"], c["end_f"] - 1, captions.band_h(spec))
+                    bands.append(dict(start_f=c["start_f"], end_f=c["end_f"] - 1, box=c["box"]))
+                doc["notes"] = list(dict.fromkeys([n for n in doc["notes"] if n not in placement_notes]
+                                                  + ctx["notes"] + placer.ghosts(ctx, bands)))
+            captions.write(reel, doc)
+        if layers == "all":
+            write_json(reel / "work/hook.json", hook_record(inp))
         if layers in ("all", "aroll"):
             link_or_copy(inp["master"], proj / "media" / "aroll.mp4")
         for i, b in enumerate(b for b in inp["beats"] if b.get("broll") and layers in ("all", "overlay")):
@@ -1518,7 +1773,10 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
     label = tier.capitalize() if layers == "all" else {"aroll": "A-roll", "overlay": "Overlay", "captions": "Captions"}[layers]
     if tier == "master" and layers == "all":
         write_json(reel / OK_FILE, dict(ok, hook_text=inp["hook_text"] if hook_text is not None else None))
-    print(f"✓ {label} ready: {renders.name}/{final.name}")
+    if tier == "preview" and layers == "all":
+        preview_ready(reel, final)
+    else:
+        print(f"✓ {label} ready: {renders.name}/{final.name}")
     return {"tier": tier, "out": f"{renders.name}/{final.name}", "frames": inp["total"], "fps": inp["fps"], "audio": None if layers in ("overlay", "captions") else audio,
             "scenes": len(inp["scened"]), "seconds": round(time.perf_counter() - t_start, 1)}
 
@@ -1527,12 +1785,82 @@ def alpha_pix_fmt(pix):
     return pix.startswith(("yuva", "gbrap", "rgba", "bgra", "argb", "abgr", "ya")) or pix in ("ayuv64le", "ayuv64be")
 
 
-def cmd_ok(reel, from_review):
+def caption_advice(cause, *, one_line_clears=False):
+    if cause == "overlay":
+        return QA_OVERLAY_ADVICE
+    if cause == "plain-hook" and one_line_clears:
+        return QA_SHORT_HOOK_ADVICE
+    return QA_NO_CAPTIONS_ADVICE
+
+
+def qa_block_lines(blocks):
+    """One example per kind and advice; the saved report retains every finding."""
+    groups = {}
+    labels = {"caption-on-face": "a caption sits on your face",
+              "word-covered": "a caption word sits on your face",
+              "3d-head-band": "the 3D card covers your eyes or mouth", "placement-not-judged": "placement not judged",
+              "card-on-face": "a card covers your eyes or mouth"}
+    lines = []
+    for row in blocks:
+        kind = row["check"]
+        advice = row.get("advice", "")
+        if kind in ("caption-on-face", "word-covered") and not advice:
+            advice = next((a for a in (caption_advice("overlay"),
+                                      caption_advice("plain-hook", one_line_clears=True))
+                           if a in row["msg"]), caption_advice("unknown"))
+        if kind == "placement-not-judged" and not advice:
+            advice = "Captions were planned again after this preview. Make the preview again, then OK it."
+        groups.setdefault(kind, {}).setdefault(advice, []).append(row)
+    for kind, advice_groups in groups.items():
+        for advice, rows in advice_groups.items():
+            row = rows[0]
+            when = f" (first at {row['at']:.1f} s)" if "at" in row else ""
+            message = " ".join(row["msg"].split())
+            if advice and advice not in message:
+                message += " " + advice
+            lines.append(f"✗ {len(rows)} x {labels.get(kind, kind.replace('-', ' '))}{when}: {message}")
+    return lines
+
+
+def qa_pre_or_stop(reel, *, preview=None, checker=None, only=None):
+    checker = qa_check if checker is None else checker
+    try:
+        ctx = checker.build_context(reel)
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        findings = [dict(check="inputs-unreadable", level="block",
+                         msg="The cut list or Beat Map could not be read. Restore these files and run QA again.",
+                         where="work/cuts.json, beat-map-selection.json", module="check")]
+    else:
+        findings = (checker.run_checks(ctx, "pre") if only is None else
+                    checker.run_checks(ctx, "pre", only=only))
+    if not findings:
+        findings = [dict(check="all-clear", level="pass", msg="Every check passed.", module="check")]
+    blocks = [row for row in findings if row["level"] == "block"]
+    # A clear subset cannot certify the full preview; its full gate still runs below.
+    if only is not None and not blocks:
+        return
+    checker.write_report(reel, dict(
+        phase="pre" if only is None else "pre-render", ran_at=datetime.now().astimezone().isoformat(), render=None,
+        blocks=len(blocks), warns=sum(row["level"] == "warn" for row in findings), checks=findings))
+    if blocks:
+        first = (f"The preview was made at {preview.parent.name}/{preview.name} so you can look at it, "
+                 "but the final can't be made from it yet." if preview is not None else
+                 "✗ The QA check blocks the final and your OK.")
+        raise Stop(1, first, *qa_block_lines(blocks), "Fix these, then make the preview again.")
+
+
+def preview_ready(reel, final, *, checker=None):
+    qa_pre_or_stop(reel, preview=final, checker=checker)
+    print(f"✓ Preview ready: {final.parent.name}/{final.name}")
+
+
+def cmd_ok(reel, from_review, *, checker=None):
     if not reel.is_dir():
         raise Stop(2, f"✗ There's no reel folder at {reel}; point --reel-dir at videos/<reel>.")
     latest = latest_preview(reel / "renders")
     if latest is None:
         raise Stop(1, "✗ There's no 720p preview to OK yet; make the preview first.")
+    qa_pre_or_stop(reel, checker=checker)
     if from_review:
         review = read_json(reel / "review.json", "✗ There's no Master review Send (review.json) yet; "
                                                  "send it from the Master review first.")
@@ -1561,6 +1889,152 @@ def selftest():
     def expect(name, ok):
         if not ok:
             fails.append(name)
+
+    import placer
+    band, safe = (0, 600, 1080, 1200), (60, 220, 960, 1470)
+    expect("overlay move: up", overlay_dy((80, 550, 600, 750), band, safe) == -190)
+    expect("overlay move: down", overlay_dy((80, 1000, 600, 1200), (0, 400, 1080, 1200), safe) == 240)
+    expect("overlay move: none fits", overlay_dy((80, 400, 600, 1400), band, safe) is None)
+    expect("overlay move: explicit stays", overlay_dy((80, 550, 600, 750), band, safe, explicit=True) is None)
+    expect("overlay move: reset to zero enables placement", overlay_dy((80, 550, 600, 750), band, safe, explicit=0) == -190)
+    expect("overlay move: clear stays", overlay_dy((80, 300, 600, 500), band, safe) is None)
+    expect("overlay move: above wins even when below is nearer",
+           overlay_dy((80, 1000, 600, 1200), (0, 600, 1080, 1250), safe) == -640)
+    blocked_above = [(90, 300, 860, 450)]
+    expect("overlay move: blocked above tries below",
+           overlay_dy((80, 550, 600, 750), band, safe, obstacles=blocked_above) == 690)
+    expect("overlay move: blocked above and no room below stays",
+           overlay_dy((80, 1150, 600, 1300), (0, 582, 1080, 1366), safe,
+                      obstacles=[(91, 275, 861, 415)]) is None)
+    expect("overlay move: authored horizontal extent does not block moving up",
+           overlay_dy((55, 1150, 600, 1300), (0, 582, 1080, 1366), safe) == -758)
+    expect("overlay move: same card at SAFE left edge moves when free",
+           overlay_dy((60, 1150, 600, 1300), (0, 582, 1080, 1366), safe) == -758)
+    expect("overlay move: other cards keep the face gap",
+           overlay_dy((80, 550, 600, 750), band, safe, obstacles=[(90, 250, 860, 330)]) == 690)
+    expect("overlay move: exact gap is clear",
+           overlay_dy((80, 550, 600, 750), band, safe, obstacles=[(90, 250, 860, 320)]) == -190)
+    reminder = dict(id="reminder", start_f=60, end_f=120, layout="full",
+                    scene=dict(id="cta-reminder", params={}))
+    sentence = dict(id="sentence", start_f=30, end_f=150, layout="full",
+                    scene=dict(id="hf-callout", params={}))
+    entries = {"reminder": dict(kind="overlay", box=[80, 550, 600, 750]),
+               "sentence": dict(kind="overlay", box=[91, 275, 861, 415])}
+    measured_entries = dict(entries, reminder=dict(kind="overlay", box=[55, 1150, 600, 1300]))
+    expect("overlay move: measured card moves up when free despite its horizontal extent",
+           overlay_card_dy(reminder, [reminder], measured_entries, (0, 582, 1080, 1366), safe) == -758)
+    expect("overlay move: measured card stays when overlapping card blocks above and below is outside SAFE",
+           overlay_card_dy(reminder, [sentence, reminder], measured_entries, (0, 582, 1080, 1366), safe) is None)
+    for layout_name in ("full", "overlay"):
+        card = dict(reminder, layout=layout_name)
+        expect("overlay move: " + layout_name + " beat avoids overlapping fixed card",
+               overlay_card_dy(card, [sentence, card], entries, band, safe) == 690)
+        expect("overlay move: " + layout_name + " beat moves up when free",
+               overlay_card_dy(card, [card], entries, band, safe) == -190)
+    for start, end in ((0, 60), (120, 150)):
+        other = dict(sentence, start_f=start, end_f=end)
+        expect("overlay move: exclusive non-overlapping spans ignored " + str(start),
+               overlay_card_dy(reminder, [other, reminder], entries, band, safe) == -190)
+    for sid in ("hf-callout", "hf-hook-title"):
+        fixed = dict(sentence, scene=dict(id=sid, params={}))
+        expect("overlay move: " + sid + " stays fixed",
+               overlay_card_dy(fixed, [fixed, reminder], entries, band, safe) is None)
+    settled = dict(sentence, scene=dict(id="counter", params={}))
+    expect("overlay move: clear earlier card stays",
+           overlay_card_dy(settled, [settled, reminder], entries, band, safe) is None)
+    expect("overlay move: later move avoids clear earlier card",
+           overlay_card_dy(reminder, [settled, reminder], entries, band, safe) == 690)
+    later_fixed = dict(sentence, start_f=80, end_f=150)
+    expect("overlay move: earlier move avoids later fixed card",
+           overlay_card_dy(reminder, [reminder, later_fixed], entries, band, safe) == 690)
+    later = dict(reminder, id="later", start_f=80, end_f=140)
+    entries["later"] = dict(kind="overlay", box=[80, 550, 600, 750])
+    expect("overlay move: later card sees settled earlier box",
+           overlay_card_dy(later, [sentence, later], entries, band, safe) == 690)
+    entries["sentence"]["box"] = [91, 1240, 861, 1440]
+    expect("overlay move: re-check uses updated measured box",
+           overlay_card_dy(later, [sentence, later], entries, band, safe) == -190)
+    head = (0, 400, 1080, 1400)
+    face_ctx = dict(track=dict(total_f=150, keys=[dict(f=0, layout="full")], tweens=[]),
+                    segments=[(0, 75), (75, 150)], boxes={0: head, 1: (0, 1500, 1080, 1900)},
+                    median_box=head, layouts={"full": (0, 0, 1080, 1920)}, fps=Fraction(30), beats=[])
+    card = dict(reminder, start_f=0, end_f=150)
+    cover = dict(id="cover", start_f=0, end_f=150, layout="full", broll={"fit": "cover"})
+    face_entries = {"reminder": dict(kind="overlay", box=[80, 550, 600, 750])}
+    face_ctx["beats"] = [card]
+    expect("overlay face: uncovered card moves", overlay_card_placement(
+        face_ctx, card, [card], face_entries) == (-165, None))
+    card["broll"] = {"fit": "cover"}
+    expect("overlay face: covered card stays without a note", overlay_card_placement(
+        face_ctx, card, [card], face_entries) == (None, None))
+    card.pop("broll")
+    face_ctx["beats"] = [card, cover]
+    cover["end_f"] = 75
+    expect("overlay face: only clear uncovered frames count", overlay_card_placement(
+        face_ctx, card, [card, cover], face_entries) == (None, None))
+    cover.update(start_f=75, end_f=150)
+    expect("overlay face: crossing uncovered frames still move", overlay_card_placement(
+        face_ctx, card, [card, cover], face_entries) == (-240, None))
+    other = dict(sentence, start_f=75, end_f=150)
+    obstructed = dict(face_entries, sentence=dict(kind="overlay", box=[91, 275, 861, 415]))
+    expect("overlay face: cards during covered frames remain obstacles", overlay_card_placement(
+        face_ctx, card, [card, cover, other], obstructed) == (640, None))
+    cover.update(start_f=0, end_f=150)
+    hidden_ctx = dict(face_ctx, boxes={0: (0, 0, 1080, 1920), 1: (0, 0, 1080, 1920)})
+    for sid, slot, wanted in (("hf-callout", "text", {"top": 845, "size": 72}),
+                              ("hf-hook-title", "title", {"top": 220, "height": 1250, "size": 120})):
+        title = dict(card, scene=dict(id=sid, slots={slot: "A useful sentence"}, params={}))
+        place_title = callout_placement if sid == "hf-callout" else hook_title_placement
+        expect(sid + ": covered face does not move or drop the title", place_title(hidden_ctx, title) == (wanted, None))
+    bbox_log = ("[Parsed_bbox_3 @ 000001] n:0 pts:0 pts_time:0 x1:80 x2:599 y1:1150 y2:1319 w:520 h:170 crop=520:170:80:1150\n"
+                "[Parsed_bbox_3 @ 000001] n:1 pts:512 pts_time:0.0333333 x1:70 x2:609 y1:1140 y2:1329 w:540 h:190 crop=540:190:70:1140\n"
+                "[Parsed_bbox_3 @ 000001] n:2 pts:1024 pts_time:0.0666667 x1:1080 x2:0 y1:1920 y2:0 w:0 h:0\n")
+    expect("overlay bbox: visible union and exclusive edges", parse_scene_bbox(bbox_log) == [70, 1140, 610, 1330])
+    expect("overlay bbox: transparent", parse_scene_bbox(bbox_log.splitlines()[-1]) is None)
+    for sid, slot, params in (("hf-callout", "text", dict(top=845, size=72)),
+                              ("hf-hook-title", "title", dict(top=220, height=400, size=72))):
+        measured = [90, 250, 930, 450]
+        inp = dict(hooks=[], beats=[dict(id="b_001", start_f=0, end_f=60,
+                   scene=dict(id=sid, slots={slot: "A useful sentence"}, params=params))],
+                   scene_boxes={"b_001": dict(box=measured)})
+        expect("overlay captions: measured " + sid + " obstacle", placement_hooks(inp)[0]["box"] == measured)
+        if sid == "hf-hook-title":
+            expect("overlay hook record: measured opening box", hook_record(inp)["box"] == measured)
+        inp["scene_boxes"]["b_001"]["box"] = None
+        expect("overlay captions: transparent " + sid + " has no obstacle", placement_hooks(inp) == [])
+    with tempfile.TemporaryDirectory() as home:
+        path = Path(home) / "scene-boxes.json"
+        scene = dict(id="cta-reminder", slots={"keyword": "NOTES"}, params={})
+        entry = scene_box_entry(scene, scene, [80, 1150, 600, 1320], "overlay")
+        write_scene_boxes(path, {"b_001": entry})
+        stored = read_scene_boxes(path)
+        expect("overlay box file: round trip", stored == {"b_001": entry} and b"\r" not in path.read_bytes())
+        expect("overlay box file: current fill", matching_scene_box(stored, "b_001", scene) == entry)
+        changed = dict(scene, slots={"keyword": "GUIDE"})
+        expect("overlay box file: stale fill missing", matching_scene_box(stored, "b_001", changed) is None)
+        stored["b_001"]["fill"] = "stale"
+        expect("overlay box file: invalid render fill missing", matching_scene_box(stored, "b_001", scene) is None)
+        original = path.read_bytes()
+        for layers in ("captions", "aroll"):
+            write_omitted_scene_boxes(path, {"b_001": scene}, [dict(id="b_001", scene=scene)], layers=layers)
+            expect("overlay box file: " + layers + " render preserves bytes", path.read_bytes() == original)
+        for layers in ("all", "overlay"):
+            write_scene_boxes(path, {"stale": entry})
+            measured = write_omitted_scene_boxes(path, {"b_001": scene}, [dict(id="b_001", scene=None)], layers=layers)
+            replacement = {"b_001": dict(scene_box_entry(scene, scene, None, "overlay"), omitted=True)}
+            expect("overlay box file: " + layers + " render replaces stale entries",
+                   measured == replacement and read_scene_boxes(path) == replacement)
+
+    def expect_omission_record(inp, sources, label):
+        with tempfile.TemporaryDirectory() as home:
+            path = Path(home) / "scene-boxes.json"
+            write_omitted_scene_boxes(path, sources, inp["beats"])
+            stored = read_scene_boxes(path)
+            expect(label + ": omission path writes judged entries", set(stored) == set(sources) and
+                   all(entry.get("omitted") is True and entry["box"] is None
+                       and entry["kind"] == "overlay" and entry["fill"] == scene_fill_hash(sources[bid])
+                       and matching_scene_box(stored, bid, sources[bid]) == entry
+                       for bid, entry in stored.items()) and b"\r" not in path.read_bytes())
 
     with contextlib.redirect_stdout(io.StringIO()) as said:
         with patch.object(time, "monotonic", return_value=0):
@@ -1657,6 +2131,89 @@ def selftest():
 
     with tempfile.TemporaryDirectory() as t:
         reel = Path(t)
+        overlay_advice = 'On the Look Picker, open Advanced controls and untick "Captions under small overlays", then Send.'
+        no_captions = 'On the Look Picker, choose "No captions", then Send.'
+        face = dict(check="caption-on-face", level="block", msg="The caption touches your face. " + overlay_advice,
+                    advice=overlay_advice, at=1.25)
+        word = dict(check="word-covered", level="block", msg="A caption word sits on your face. " + no_captions,
+                    advice=no_captions, at=39.27)
+        band = dict(check="3d-head-band", level="block", msg="The 3D card would cover your face here; move it to the top/bottom band.")
+        rows = [face] * 5 + [word] * 20 + [band]
+        lines = qa_block_lines(rows)
+        expect("QA: every kind grouped in first-seen order with count, example, time and advice", lines == [
+            "✗ 5 x a caption sits on your face (first at 1.2 s): " + face["msg"],
+            "✗ 20 x a caption word sits on your face (first at 39.3 s): " + word["msg"],
+            "✗ 1 x the 3D card covers your eyes or mouth: " + band["msg"]])
+        expect("QA: a single kind without a time stays one line",
+               qa_block_lines([band, band]) == ["✗ 2 x the 3D card covers your eyes or mouth: " + band["msg"]])
+        expect("QA: face rows without metadata still name a real control",
+               qa_block_lines([dict(check="word-covered", msg="A word covers your face.")])[0].endswith(no_captions))
+        plain = dict(face, advice=no_captions, msg="The caption touches your face. " + no_captions)
+        expect("QA: the same kind with different advice gets separate examples",
+               qa_block_lines([face, plain, face]) == [
+                   "✗ 2 x a caption sits on your face (first at 1.2 s): " + face["msg"],
+                   "✗ 1 x a caption sits on your face (first at 1.2 s): " + plain["msg"]])
+        shorten = caption_advice("plain-hook", one_line_clears=True)
+        expect("QA: legacy messages retain proven shortening advice without adding another control",
+               qa_block_lines([dict(check="caption-on-face", msg="The caption touches your face. " + shorten)])[0]
+               .endswith(shorten))
+        board = (HERE.parents[1] / "reel-captions/boards/look-picker/index.html").read_text(encoding="utf-8")
+        label = re.search(r'<label><input\b[^>]*\bid="under-small-overlays"[^>]*>([^<]+)</label>', board)
+        expect("QA: advice quotes the exact Look Picker label", label is not None
+               and f'"{label[1]}"' in QA_OVERLAY_ADVICE and QA_OVERLAY_ADVICE == overlay_advice)
+        none_label = re.search(r'<button\b[^>]*\bdata-look="none"[^>]*>([^<]+)</button>', board)
+        expect("QA: advice quotes the exact No captions look", none_label is not None
+               and f'"{none_label[1]}"' in QA_NO_CAPTIONS_ADVICE and QA_NO_CAPTIONS_ADVICE == no_captions)
+        latest = reel / "renders/fixture Preview 720p - fixture.mp4"
+        latest.parent.mkdir()
+        latest.write_bytes(b"preview fixture")
+        for command in ("preview", "ok", "master"):
+            fake = Mock(wraps=qa_check)
+            fake.run_checks.return_value = rows
+            try:
+                with contextlib.redirect_stdout(io.StringIO()) as said:
+                    if command == "preview":
+                        preview_ready(reel, latest, checker=fake)
+                    elif command == "ok":
+                        cmd_ok(reel, False, checker=fake)
+                    else:
+                        qa_pre_or_stop(reel, checker=fake)
+            except Stop as stopped:
+                expect("QA: " + command + " refuses with all grouped lines", stopped.code == 1
+                       and list(stopped.lines[1:-1]) == lines
+                       and stopped.lines[-1] == "Fix these, then make the preview again.")
+                if command == "preview":
+                    expect("QA: blocked preview gives the file path without ready or OK invitation",
+                           stopped.lines[0] == "The preview was made at renders/" + latest.name
+                           + " so you can look at it, but the final can't be made from it yet."
+                           and "you can look at it" in stopped.lines[0]
+                           and "final can't be made from it yet" in stopped.lines[0]
+                           and "Preview ready" not in said.getvalue())
+            else:
+                expect("QA: " + command + " must stop", False)
+            expect("QA: " + command + " runs and saves every row", fake.run_checks.call_count == 1
+                   and fake.run_checks.call_args.args[1] == "pre"
+                   and fake.write_report.call_args.args[1]["checks"] == rows)
+        expect("QA: refused OK writes no approval", not (reel / OK_FILE).exists())
+        fake = Mock(wraps=qa_check)
+        fake.run_checks.return_value = [band]
+        try:
+            qa_pre_or_stop(reel, only={"three_d_check"}, checker=fake)
+        except Stop as stopped:
+            expect("QA: early 3D refusal uses the shared grouped gate", stopped.code == 1
+                   and stopped.lines[1] == qa_block_lines([band])[0]
+                   and "preview was made" not in stopped.lines[0])
+        else:
+            expect("QA: early 3D block stops before rendering", False)
+        expect("QA: early 3D gate requests only the 3D module",
+               fake.run_checks.call_args.kwargs == {"only": {"three_d_check"}})
+        with patch.object(qa_check, "run_checks", return_value=[]), contextlib.redirect_stdout(io.StringIO()) as said:
+            preview_ready(reel, latest)
+        expect("QA: clear preview keeps its ready line", said.getvalue().strip() == "✓ Preview ready: renders/" + latest.name)
+        replanned = dict(check="placement-not-judged", level="block", msg="Placement is missing.")
+        expect("QA: replanned captions name the preview and OK steps",
+               "Captions were planned again after this preview. Make the preview again, then OK it."
+               in qa_block_lines([replanned])[0])
         block = dict(check="fixture", level="block", msg="Fix the fixture.", module="fixture")
         warn = dict(check="fixture", level="warn", msg="Check the fixture.", module="fixture")
         for rows in ([warn, block], [warn], []):
@@ -1668,8 +2225,8 @@ def selftest():
             output = said.getvalue()
             if block in rows:
                 expect("QA: a block stops master before rendering with the next step",
-                       code == 1 and "✗ The QA check blocks the final: Fix the fixture." in output
-                       and "Fix what it names, run the QA check again, then make the final." in output
+                       code == 1 and "✗ 1 x fixture: Fix the fixture." in output
+                       and "Fix these, then make the preview again." in output
                        and not rendered.called)
             else:
                 expect("QA: warnings and all-clear allow master to render", code == 0 and rendered.call_count == 1)
@@ -1898,11 +2455,13 @@ def selftest():
     ctx["boxes"][0] = ctx["median_box"] = (0, 0, 1080, 1920)
     fallback = {"beats": [title_beat], "scened": [title_beat], "hooks": [], "rate": Fraction(25),
                 "words": ["Hi"], "timed_words": [{"word": "Hi", "start": 0, "end": .2}], "total": 100}
+    fallback_source = {title_beat["id"]: copy.deepcopy(title_beat["scene"])}
     notes = place_hook_titles(fallback, ctx)
     expect("hook title: unfit scene becomes the same plain spoken hook",
            title_beat["scene"] is None and fallback["scened"] == []
            and fallback["hook_text"] == "Hi" and fallback["hook_spoken"] and fallback["hook_f"] == 38
            and notes == ["The hook title didn't fit above or below your face, so a plain hook title is used."])
+    expect_omission_record(fallback, fallback_source, "hook title fallback")
     # The checker's fitted-title probe must survive the same still setup as render().
     fitted_beat = beat("fitted", 0, 50, scene="hf-hook-title")
     fitted_beat["scene"]["slots"] = {"title": "Claude just killed Instagram."}
@@ -1992,6 +2551,7 @@ def selftest():
     expect("sentence card: impossible fit is removed from this render with a note",
            place_hook_titles(omitted, sentence_ctx) == [CALLOUT_DROP] and omitted["scened"] == []
            and omitted["beats"][0]["scene"] is None)
+    expect_omission_record(omitted, {sentence["id"]: copy.deepcopy(sentence["scene"])}, "sentence face omission")
     sentence_ctx.update(boxes={}, median_box=None)
     positioned, note = callout_placement(sentence_ctx, sentence)
     expect("sentence card: no face keeps the shipped defaults and explains the unchecked face",
@@ -2014,9 +2574,11 @@ def selftest():
     expect("sentence card: captions avoid its box outside the hook window",
            placer.active_hook(sentence_ctx, 0) is None and not placer.hits(caption, callout_box(sentence["scene"])))
     collision = dict(start_f=0, end_f=49, box=callout_box(sentence["scene"]))
+    collision_source = {sentence["id"]: copy.deepcopy(sentence["scene"])}
     expect("sentence card: an impossible caption collision leaves the card out",
            clear_callouts_from_captions(sentence_inp, sentence_ctx, [collision])
            and sentence["scene"] is None and not sentence_ctx["stills"])
+    expect_omission_record(sentence_inp, collision_source, "sentence caption omission")
     retry_scene = dict(id="hf-callout", slots={"text": "Hi"}, params={"top": 1400, "size": 36})
     retry_inp = dict(beats=[dict(sentence, scene=retry_scene)], hooks=[dict(text="Hi", start_f=0, end_f=50,
                        box=[60, 220, 960, 1320], spoken=False, word_count=1, shown_words=[])])
@@ -2303,24 +2865,7 @@ def main(argv=None):
     reel = Path(a.reel_dir).resolve()
     try:
         if a.cmd == "master":
-            try:
-                ctx = qa_check.build_context(reel)
-            except (OSError, ValueError, KeyError, TypeError, AttributeError):
-                findings = [dict(check="inputs-unreadable", level="block",
-                                 msg="The cut list or Beat Map could not be read. Restore these files and run QA again.",
-                                 where="work/cuts.json, beat-map-selection.json", module="check")]
-            else:
-                findings = qa_check.run_checks(ctx, "pre")
-            if not findings:
-                findings = [dict(check="all-clear", level="pass", msg="Every check passed.", module="check")]
-            blocks = [row for row in findings if row["level"] == "block"]
-            qa_check.write_report(reel, dict(
-                phase="pre", ran_at=datetime.now().astimezone().isoformat(), render=None,
-                blocks=len(blocks), warns=sum(row["level"] == "warn" for row in findings), checks=findings))
-            if blocks:
-                print(f"✗ The QA check blocks the final: {blocks[0]['msg']}")
-                print("Fix what it names, run the QA check again, then make the final.")
-                return 1
+            qa_pre_or_stop(reel)
         if a.cmd == "layers":
             summary = [render(reel, "master", None, layers=which)
                        for which in (("aroll", "overlay", "captions") if a.which == "all" else (a.which,))]

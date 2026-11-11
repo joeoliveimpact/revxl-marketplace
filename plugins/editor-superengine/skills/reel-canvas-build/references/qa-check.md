@@ -20,13 +20,22 @@ Afterward it also checks the finished picture and sound, including frame count,
 gaps, likely freezes, text placement and pacing. The discovered check modules
 write their findings to `work/qa.json`; the hub's Quality check shows them.
 
+- `card-on-face`: measured overlay cards cover your eyes or mouth; missing or stale card boxes share `placement-not-judged` with captions until you make a preview.
+
+Without positions for every enabled caption, pre QA blocks with "placement not judged yet (make the preview)";
+it cannot report clear until a preview has placed them, including when captions were planned again.
+
 Blocks stop the final: do not make it when the pre check blocks, and do not
-deliver it when the full check blocks. Tell the client, in plain words, what
-is wrong, where it happens and what to fix. Fix it and run the check again.
+deliver it when the full check blocks. Preview runs this same pre check after saving its file and positions;
+blocks stop it before "Preview ready" or an OK invitation. OK and master rerun the same gate.
+Show every grouped block line, help you make the named change, then make the preview again and OK it.
 Warnings are suggestions: explain the suggested improvement and let the client
 choose. Pacing and dead zones never block.
 
-If a caption sits on the speaker's face because the hook title leaves no room, shorten the hook to one line with `--hook-text` or drop `--hook-text` so the opening words become the hook; make a new preview.
+If a caption covers your face under an overlay card or hook-title scene, on the Look Picker open Advanced controls
+and untick "Captions under small overlays", then Send and make a new preview. For a plain hook, follow the check's
+advice: it only says to shorten the hook to one line when re-placing every blocked caption with that height clears it.
+Otherwise, or without an overlay, choose "No captions" on the Look Picker, then Send and make a new preview.
 
 If the client says a flagged freeze is intentional, Claude records that specific
 moment in `work/qa-ok.json` as `{"allow":[{"check":"frozen","at":<s>}]}`,

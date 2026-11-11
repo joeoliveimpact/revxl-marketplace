@@ -49,6 +49,21 @@ ck("every shipped scene passes check (%d OK lines, the own scenes included, exit
    p.returncode == 0 and set(IDS) <= set(ALL)
    and sorted(l[3:] for l in p.stdout.splitlines() if l.startswith("OK ")) == ALL, out(p))
 
+glass = json.loads((SCENES / "glass-card-3d/scene.json").read_text(encoding="utf-8"))
+for label, card, reason in (
+        ("missing", None, "3D card must be an object with exactly top and bottom"),
+        ("outside band", {"top": [60, 250, 960, 760], "bottom": [60, 1100, 960, 1460]}, "inside its region"),
+        ("outside frame", {"top": [-1, 260, 960, 760], "bottom": [60, 1100, 960, 1460]}, "inside the 1080x1920 canvas"),
+        ("unordered", {"top": [960, 260, 60, 760], "bottom": [60, 1100, 960, 1460]}, "positive width and height"),
+        ("non-integer", {"top": [60.5, 260, 960, 760], "bottom": [60, 1100, 960, 1460]}, "four integers")):
+    mutant = dict(glass)
+    if card is None:
+        mutant.pop("card", None)
+    else:
+        mutant["card"] = card
+    problems = scene_check.spec_problems("glass-card-3d", mutant)
+    ck("3D card " + label + " refused", any(reason in p for p in problems), problems)
+
 for sid in ALL:
     html = (SCENES / sid / "scene.html").read_text(encoding="utf-8")
     m = re.search(r"data-composition-variables\s*=\s*'([^']*)'", html)
@@ -57,6 +72,19 @@ for sid in ALL:
         isinstance(d.get("label"), str) and d["label"].strip()
         and d.get("type") in ("string", "number", "color", "boolean", "enum", "font", "image")
         for d in declarations))
+    spec = json.loads((SCENES / sid / "scene.json").read_text(encoding="utf-8"))
+    if spec["kind"] == "overlay" and sid not in ("hf-callout", "hf-hook-title", "glass-card-3d", "cover-title"):
+        ck(f"{sid}: dy is the last param and labelled variable", list(spec["params"])[-1] == "dy"
+           and declarations[-1] == dict(id="dy", type="number", label="Move up or down", default=0))
+        ck(f"{sid}: dy has the shared range and hint", spec["params"]["dy"] == dict(type="number", default=0,
+           min=-1400, max=1400, hint="moves the card up (negative) or down, in pixels; set automatically to keep it off your face"))
+        for value, valid in ((-1400, True), (0, True), (1400, True), (-1401, False), (1401, False)):
+            params = {k: p["default"] for k, p in spec["params"].items()}
+            params["dy"] = value
+            fill = dict(id=sid, slots={k: s["default"] for k, s in spec["slots"].items()}, params=params)
+            words = list(fill["slots"].values()) + [str(params.get("value", ""))]
+            problems = scene_check.fill_problems(sid, fill, words=words)
+            ck(f"{sid}: dy {value} range validation", (not problems) == valid, problems)
 
 sentence_spec = json.loads((SCENES / "hf-callout/scene.json").read_text(encoding="utf-8"))
 ck("sentence card: placement defaults preserve the shipped look",
@@ -114,6 +142,11 @@ mutant("CSS translate: -50% 0", "hook-title", "#hook-title .block { position: ab
        "#hook-title .block { position: absolute; translate: -50% 0;", "centres with the CSS translate property")
 mutant("CSS translate: 0 -50%", "callout", "</style>",
        "#callout .text { translate: 0 -50%; }\n    </style>", "centres with the CSS translate property")
+for prop in ("top", "bottom", "left", "right"):
+    for value in ("calc(560px + 20px)", "var(--offset, 560px)", "calc(560px + var(--offset, 0px))"):
+        mutant(f"CSS {prop}: {value}", "callout", "</style>",
+               f"#callout .pill {{ {prop}: {value}; }}\n    </style>",
+               "scene.html positions with calc() or a CSS variable, which the renderer does not resolve; use a plain pixel value")
 mutant("Math.random()", "list", "const tl = gsap.timeline", "const r = Math.random();\n        const tl = gsap.timeline",
        "uses Math.random")
 mutant("z-index 700", "stat-card", "z-index: 400", "z-index: 700", "z-index 700 is outside the scene layer band")

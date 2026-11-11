@@ -99,6 +99,8 @@ def case_list(scratch, mod):
        and [ln.split()[0] for ln in lines] == list(IDS), (p.returncode, p.stdout, p.stderr))
     ck("list: PHASE is post and the table has every ID", mod.PHASE == "post"
        and list(mod.GATE_TESTS) == list(IDS), mod.GATE_TESTS)
+    ck("list: face clearance includes measured overlay cards",
+       "overlay_face_check.py" in mod.GATE_TESTS["face_clear"]["modules"])
     for name, entry in mod.GATE_TESTS.items():
         status = entry.get("status")
         ok = status in ("ported", "covered", "skipped")

@@ -8,7 +8,8 @@
   "dur": [4, 6],
   "params": {
     "accent": {"type": "color", "default": "#ffd84d"},
-    "font": {"type": "string", "default": "Inter"}
+    "font": {"type": "string", "default": "Inter"},
+    "dy": {"type": "number", "default": 0, "min": -1400, "max": 1400, "hint": "moves the card up (negative) or down, in pixels; set automatically to keep it off your face"}
   },
   "source": "editor-superengine original",
   "licence": "own"

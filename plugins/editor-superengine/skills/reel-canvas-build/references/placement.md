@@ -18,10 +18,10 @@ It does not reduce the requested zoom to force a fit.
 
 If every spot covers the protected head, it uses the spot inside the safe text
 area with the smallest overlap with the zoomed head box over the whole chunk.
-If two spots cover the same area, the lower spot wins. This does not stop the
-caption step. Claude tells the client in plain words: "Captions from X to Y
-seconds overlap part of the speaker's head because the shot is tight; the
-caption step may shorten or drop them." A caption band taller than the safe
+If two spots cover the same area, the lower spot wins. The preview is saved, then QA checks the actual
+positions; face blocks stop it before "Preview ready" or an OK invitation. Show every grouped block line,
+help you make the named change, then make the preview again. A caption plan without positions blocks as
+"placement not judged yet (make the preview)" until the preview places it. A caption band taller than the safe
 text area still cannot be placed.
 
 Active still hook titles and layout card plates are kept clear of captions whenever a safe spot exists, including a spot just below the still.

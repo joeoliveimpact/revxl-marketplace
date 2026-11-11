@@ -8,7 +8,8 @@
   {"id":"suffix","type":"string","label":"Suffix","default":""},
   {"id":"animate","type":"boolean","label":"Count up","default":true},
   {"id":"accent","type":"color","label":"Accent","default":"#4f8cff"},
-  {"id":"font","type":"string","label":"Font family","default":"Inter"}
+  {"id":"font","type":"string","label":"Font family","default":"Inter"},
+  {"id":"dy","type":"number","label":"Move up or down","default":0}
 ]'>
   <head>
     <meta charset="UTF-8" />
@@ -37,6 +38,9 @@
       (function () {
         const v = window.__hyperframes.getVariables();
         const root = document.getElementById("counter");
+        const dy = v.dy;
+        const baseTop = 640; // must match the .card top in the stylesheet
+        if (Number.isFinite(dy) && dy !== 0) root.querySelector(".card").style.top = (baseTop + dy) + "px";
         const card = root.querySelector(".card");
         const num = root.querySelector(".num");
         root.style.setProperty("--accent", v.accent);
