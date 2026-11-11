@@ -52,7 +52,55 @@ class Setup:
                            errors="replace", **kw)
         self.log.write(f"{r.stdout}{r.stderr}[exit {r.returncode}]\n")
         self.log.flush()
+        self.last_result = r
         return r
+
+    def command_failure(self, label, result=None):
+        r = result if result is not None else getattr(self, "last_result", None)
+        output = f"{r.stdout}\n{r.stderr}" if r is not None and r.returncode != 0 else ""
+        lines = [line.strip() for line in output.splitlines() if line.strip()
+                 and not re.search(r'^\s*File ".*", line \d+', line)
+                 and not re.search(r"^\s*(?:hint:|note:)|A complete log of this run", line, re.I)]
+        if re.search(r"\b(?:failed to download|error sending request|dns error|"
+                     r"connection (?:refused|reset|timed out|closed)|timed out|tls handshake|certificate|"
+                     r"EAI_AGAIN|ENOTFOUND|ECONNRESET|ECONNREFUSED|ETIMEDOUT|CERT_HAS_EXPIRED|"
+                     r"UNABLE_TO_VERIFY_LEAF_SIGNATURE)\b|"
+                     r"\bHTTP(?:\s+status\b[^\n]*|/[0-9.]+\s+)[45]\d\d\b", "\n".join(lines), re.I):
+            return f"{label} failed. Check the internet connection, then run the setup again."
+        errors = [i for i, line in enumerate(lines) if re.search(r"error:|npm (?:error|ERR!)|\w*Error:", line, re.I)]
+        detail = lines[errors[-1]] if errors else (lines or ["the command reported no error details"])[-1]
+        uv_errors = [i for i, line in enumerate(lines) if re.match(r"error:", line, re.I)]
+        if uv_errors:
+            causes = [line.split(":", 1)[1].strip() for line in lines[uv_errors[-1] + 1:]
+                      if re.match(r"Caused by:", line, re.I)]
+            if causes:
+                detail = f"{lines[uv_errors[-1]]} ({causes[-1]})"
+        npm = [re.sub(r"^npm (?:error|ERR!)(?:\s+|$)", "", line, flags=re.I).strip()
+               for line in lines if re.match(r"npm (?:error|ERR!)(?:\s|$)", line, re.I)]
+        if npm:
+            code, descriptions = "", []
+            for line in npm:
+                if line.lower() == "usage:":
+                    if descriptions and "." not in descriptions[-1]:
+                        descriptions.pop()
+                    break
+                if (not line or re.match(r"(?:syscall|errno|path)\b", line, re.I)
+                        or (re.match(r"command\b", line, re.I) and line.lower() != "command failed")
+                        or line.startswith(("[", "{", "}")) or re.match(r"\S+:\s*.*,$", line)):
+                    continue
+                if re.match(r"code\s+\S+", line, re.I):
+                    code = line.split(None, 1)[1]
+                    if code.isdigit():
+                        code = f"exit code {code}"
+                else:
+                    descriptions.append(line)
+            detail = " ".join(descriptions)
+            if code:
+                detail = f"{code}: {detail}" if detail else code
+            detail = re.sub(r"\s+", " ", detail)[:300].rstrip(". ")
+        else:
+            detail = detail[:200].rstrip(". ")
+        return f"{label} failed: {detail}. Send the setup report."
 
     @staticmethod
     def sha256(p):
@@ -180,7 +228,7 @@ class Setup:
         env["PATH"] = os.pathsep.join([str(Path(node).parent), env["PATH"]])
         r = self.run([node, rt.tool("npm-cli", self.st), "ci", "--no-audit", "--no-fund"], cwd=hfdir, env=env)
         if r.returncode != 0:
-            raise Fail("installing HyperFrames failed. Check the internet connection, then run the setup again.")
+            raise Fail(self.command_failure("installing HyperFrames", r))
         v = self.run(rt.hyperframes_cmd("--version", state=self.st), cwd=hfdir, env=rt.hyperframes_env(self.st))
         if v.stdout.strip().splitlines()[-1:] != [want]:
             raise Fail(f"HyperFrames reports {v.stdout.strip() or 'nothing'} instead of {want}. Send the setup report.")
@@ -279,9 +327,9 @@ class Setup:
                 print("Parakeet would not install on this computer, so the editor switches to its backup transcriber.")
                 engine, reason = "faster-whisper", f"backup: {engine} failed to install"
                 if not self.python_packages(engine):
-                    raise Fail("installing the transcriber's Python packages failed. Check the internet connection, then run the setup again.")
+                    raise Fail(self.command_failure("installing the transcriber's Python packages"))
             else:
-                raise Fail("installing the transcriber's Python packages failed. Check the internet connection, then run the setup again.")
+                raise Fail(self.command_failure("installing the transcriber's Python packages"))
         rt.record_pick(self.state, language, engine, reason, facts)
         self.save()
         if "transcribe" in needs:

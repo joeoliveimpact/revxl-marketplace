@@ -1227,7 +1227,8 @@ def case_walk_polish(p):
     d = p.videos / "reel-01"
     write(d / "tweak-selection.json", {})
     os.utime(d / "tweak-selection.json", (100, 100))
-    write(d / "beat-map.state.json", {"sent_at": "now"})
+    # A sent Beat Map with no scene on any beat: there is no motion step, so the sound pass is next.
+    write(d / "beat-map.state.json", {"sent_at": "now", "beats": [{"id": "b_001", "scene": None}]})
     library = p.editor / "sound"
     write(library / "library-index.json", {"files": {"tick.wav": {"sha256": "fixture"}}})
     (library / "tick.wav").write_bytes(b"sound")

@@ -4,6 +4,28 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-11-11
+
+### Fixed
+- **First cut, frame count**: the first-cut render now carries exactly the frames the cut list
+  states. Footage recorded under 30 frames a second (23.976, 24 or 25) lost a frame at any speed,
+  and a cut at 1.2x could lose one at any frame rate, so the render stopped on its own
+  frame-count check. The scrubbing copy and a screen recording that follows the cut are fixed the
+  same way.
+- **First-time setup on Windows**: setup no longer stops at "Installing Python" when the install
+  worked. It checks that the installed Python runs and carries on. Setup's failure messages now
+  say what failed, in the tool's own words; "check the internet connection" appears only when a
+  download failed.
+- **Editor Cockpit and hub, Motion step**: a reel with no sketches file no longer shows Motion
+  (and the Sketches board) as done. Motion is done when the sketches are locked, or when the sent
+  Beat Map asks for no scene on any beat.
+
+### Known limits
+- A recording whose picture starts after its sound holds the first picture for that gap in the
+  first cut; the sound stays in step.
+- When an install script inside the HyperFrames install fails, setup's message gives the exit
+  code and may leave out the script's own error line.
+
 ## [0.2.0] — 2026-11-08
 
 ### Added

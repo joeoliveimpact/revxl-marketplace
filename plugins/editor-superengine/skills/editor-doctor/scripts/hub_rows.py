@@ -73,11 +73,14 @@ def cockpit_rules(plugin_root=rt.PLUGIN_ROOT):
         if "never: true" in rule:
             stage["rule"] = {"never": True}
         elif "json:" in rule:
-            when = re.fullmatch(r"json: (" + STRING + r"), (?:(missing: true), )?when: s => (?:!!s\.(\w+)|s\.(\w+) != null)", rule.strip())
+            when = re.fullmatch(r"json: (" + STRING + r"), when: s => (?:!!s\.(\w+)|s\.(\w+) != null)"
+                                r"(?:, or: { json: (" + STRING + r"), when: sentWithoutScenes })?", rule.strip())
             if not when:
                 raise ValueError(f"Unrecognised Cockpit JSON rule for {name}")
-            stage["rule"] = {"json": ast.literal_eval(when[1]), "missing": bool(when[2]),
-                             "property": when[3] or when[4], "test": "truthy" if when[3] else "not-null"}
+            stage["rule"] = {"json": ast.literal_eval(when[1]), "property": when[2] or when[3],
+                             "test": "truthy" if when[2] else "not-null"}
+            if when[4]:
+                stage["rule"]["or"] = {"json": ast.literal_eval(when[4]), "test": "no-scenes"}
         else:
             primary, *alternative = rule.split(", or: {", 1)
             match = re.fullmatch(r"in: (" + STRING + r"), match: (?:/(.+)/([i]*)|(MASTER))"
@@ -143,8 +146,6 @@ def filmstrip(src, out):
 
 
 def stage_done(rule, folders, reel):
-    if "or" in rule and stage_done(rule["or"], folders, reel):
-        return True
     if rule.get("never"):
         return False
     if "json" in rule:
@@ -157,12 +158,18 @@ def stage_done(rule, folders, reel):
             try:
                 (reel / rule["json"]).lstat()
             except FileNotFoundError:
-                return rule.get("missing", False)
+                return "or" in rule and stage_done(rule["or"], folders, reel)
             except OSError:
                 return False
             return False
+        if rule["test"] == "no-scenes":
+            return (isinstance(obj, dict) and obj.get("sent_at") is not None and isinstance(obj.get("beats"), list)
+                    and all(isinstance(b, dict) and b.get("scene") is None for b in obj["beats"]))
         value = obj.get(rule["property"]) if isinstance(obj, dict) else None
-        return value is not None if rule["test"] == "not-null" else bool(value)
+        done = value is not None if rule["test"] == "not-null" else bool(value)
+        return done or "or" in rule and stage_done(rule["or"], folders, reel)
+    if "or" in rule and stage_done(rule["or"], folders, reel):
+        return True
     pattern = re.compile(rule["pattern"], re.I if rule["ignore_case"] else 0)
     for path in folders[rule["in"]]:
         if pattern.search(path.name):

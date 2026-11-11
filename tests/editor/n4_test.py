@@ -10,6 +10,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import cut_safety_test as cs
+from frame_exact_graph import frame_exact_graph
 
 SCRIPTS, PY = cs.SCRIPTS, cs.PY
 CHECK = SCRIPTS.parents[1] / "_shared/checks/footage_check.py"
@@ -521,7 +522,7 @@ def case_single(S, a):
     old = type(sys)("base_render"); old.__file__ = str(SCRIPTS / "render.py"); exec(base.stdout, old.__dict__)
     for speed in (1., 1.15):
         cuts = cs.module("gaps.py").snap_cuts([(1,2), (4,6)], 30, speed)
-        base_graph = old.build_graph(cuts, 48000, "scale=360:640", 0)
+        base_graph = frame_exact_graph(old.build_graph(cuts, 48000, "scale=360:640", 0), cuts)
         ck("single: speed %s no-takes build_graph byte-identical to base" % speed,
            r.build_graph(dict(cuts, takes={}), 48000, "scale=360:640", 0) == base_graph)
         one_take = dict(cuts, takes={"1": {"raw": "A.mp4"}})
@@ -540,7 +541,7 @@ def case_single(S, a):
                           segments=[dict(s, take=n) for n, s in enumerate(cuts["segments"], 1)])
         mixed_graph = r.build_graph(mixed_cuts, 48000, {"1": "null", "2": "null"}, {"1": 0, "2": 1})
         ck("single: speed %s mixed cut shares source trims and joined speed tail" % speed,
-           "[sv0]trim=start=1.0:end=2.0,setpts=PTS-STARTPTS,fps=30,trim=end_frame=30[v0];" in mixed_graph
+           "[sv0]fps=30:start_time=0,trim=start_frame=30:end_frame=60,setpts=PTS-STARTPTS[v0];" in mixed_graph
            and "[1:a:1]aresample=48000" in mixed_graph
            and mixed_graph.splitlines()[-3:] == base_graph.replace("scale=360:640", "null").splitlines()[-3:]
            and mixed_graph.count("atempo=") == (1 if speed != 1. else 0))
@@ -667,7 +668,7 @@ def case_deadch(S, a):
                 ("one take", r.build_graph, old.build_graph, one, {"2": "null"}, {"2": 1}),
                 ("mixed", r.build_graph, old.build_graph, mixed, {"1": "null", "2": "null"}, {"1": 0, "2": 1}),
                 ("mixed helper", r.build_mixed_graph, old.build_mixed_graph, mixed, "null", 0)):
-            want = prior(doc, 48000, vf, stream)
+            want = frame_exact_graph(prior(doc, 48000, vf, stream), doc)
             ck("deadch: %s speed %s graph byte-identical to 81858f4, omitted and None" % (label, speed),
                build(doc, 48000, vf, stream) == want and build(doc, 48000, vf, stream, dead=None) == want)
         graph = r.build_graph(mixed, 48000, "null", {"1": 0, "2": 1}, dead={"2": "L"})

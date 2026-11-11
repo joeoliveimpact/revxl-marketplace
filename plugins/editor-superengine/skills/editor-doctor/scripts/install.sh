@@ -113,11 +113,71 @@ have=$([ -x "$VPY" ] && "$VPY" -I -c 'import platform; print(platform.python_ver
 if [ "$have" = "$PY_VERSION" ]; then
   say "✓ Python $PY_VERSION already in place"
 else
+  # Keep the last uv error and its last nested cause, without advisory footer lines.
+  python_step_detail() {
+    printf '%s\n' "$step_output" | tr -d '\r' | awk '
+      { line = $0; sub(/^[[:space:]]*/, "", line); sub(/[[:space:]]*$/, "", line); lower = tolower(line) }
+      lower ~ /^(hint:|note:)/ || lower ~ /a complete log of this run/ { next }
+      lower ~ /^error:/ { error = line; cause = ""; next }
+      error != "" && lower ~ /^caused by:/ { cause = line; sub(/^[^:]*:[[:space:]]*/, "", cause) }
+      END { if (error != "") printf "%s%s", error, (cause != "" ? " (" cause ")" : "") }
+    ' | cut -c 1-200 | sed 's/[. ]*$//'
+  }
   say "Installing Python $PY_VERSION (a private copy, separate from any other Python) ..."
-  "$UV" python install --no-bin "$PY_VERSION" >>"$LOG" 2>&1 \
-    || fail "installing Python failed. Check the internet connection, then run the setup again."
-  "$UV" venv --clear --python "$PY_VERSION" "$VENV" >>"$LOG" 2>&1 \
-    || fail "creating the editor's Python environment failed. Check the disk has free space, then run the setup again."
+  step_start=$(sed -n '$=' "$LOG")
+  "$UV" python install --no-bin "$PY_VERSION" >>"$LOG" 2>&1
+  install_rc=$?
+  step_output=$(tail -n "+$((step_start + 1))" "$LOG")
+  installed_python=
+  interpreter_failure=
+  for p in "$STATE"/python/cpython-"$PY_VERSION"-*; do
+    if [ "$OS" = win ]; then candidate1="$p/python.exe"; candidate2=$candidate1
+    else candidate1="$p/bin/python3"; candidate2="$p/bin/python3.12"; fi
+    # Check each path separately: the state folder may contain spaces.
+    for candidate in "$candidate1" "$candidate2"; do
+      [ -x "$candidate" ] || continue
+      if have=$("$candidate" -I -c 'import platform; print(platform.python_version())' 2>/dev/null); then
+        have=$(printf '%s' "$have" | tr -d '\r')
+        if [ "$have" = "$PY_VERSION" ]; then installed_python=$candidate; break; fi
+        interpreter_failure="the installed Python reports ${have:-nothing} instead of $PY_VERSION"
+      else
+        interpreter_failure="the installed Python did not start"
+      fi
+    done
+    [ -z "$installed_python" ] || break
+  done
+  if [ -z "$installed_python" ]; then
+    [ -z "$interpreter_failure" ] || fail "installing Python failed: $interpreter_failure. Send the setup report."
+    if printf '%s\n' "$step_output" | awk '
+      tolower($0) ~ /^[[:space:]]*file ".*", line [0-9]+/ { next }
+      { line = tolower($0) }
+      line ~ /(^|[^[:alnum:]_])(failed to download|error sending request|dns error|connection (refused|reset|timed out|closed)|timed out|tls handshake|certificate|eai_again|enotfound|econnreset|econnrefused|etimedout|cert_has_expired|unable_to_verify_leaf_signature)([^[:alnum:]_]|$)/ ||
+      line ~ /(^|[^[:alnum:]_])http([[:space:]]+status([^[:alnum:]_].*)?|\/[0-9.]+[[:space:]]+)[45][0-9][0-9]([^[:alnum:]_]|$)/ { network = 1 }
+      END { exit !network }
+    '; then
+      fail "downloading Python failed. Check the internet connection, then run the setup again."
+    fi
+    detail=$(python_step_detail)
+    [ -n "$detail" ] || detail="no working Python $PY_VERSION interpreter was found"
+    fail "installing Python failed: $detail. Send the setup report."
+  fi
+  if [ "$install_rc" -ne 0 ]; then
+    printf '%s\n' 'The Python install step reported an error but the Python it installed works, so setup continues.' >>"$LOG"
+    venv_python=$installed_python
+  else
+    venv_python=$PY_VERSION
+  fi
+  step_start=$(sed -n '$=' "$LOG")
+  "$UV" venv --clear --python "$venv_python" "$VENV" >>"$LOG" 2>&1
+  venv_rc=$?
+  step_output=$(tail -n "+$((step_start + 1))" "$LOG")
+  have=$([ -x "$VPY" ] && "$VPY" -I -c 'import platform; print(platform.python_version())' 2>/dev/null)
+  verify_rc=$?
+  if [ "$venv_rc" -ne 0 ] || [ "$verify_rc" -ne 0 ] || [ "$(printf '%s' "$have" | tr -d '\r')" != "$PY_VERSION" ]; then
+    detail=$(python_step_detail)
+    [ -n "$detail" ] || detail="the environment did not report Python $PY_VERSION"
+    fail "creating the editor's Python environment failed: $detail. Send the setup report."
+  fi
   say "✓ Python $PY_VERSION"
 fi
 

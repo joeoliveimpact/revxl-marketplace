@@ -756,6 +756,8 @@ test('REEL-018 shape: its ruled-name master is probed; mastered and .mov files a
 test('voice-only reel: no sketches advances to Sound, and the final mix advances to Master', async ($, on) => {
   const tree = walk(4)
   delete tree['videos/r4/sketches.state.json']
+  // Voice only: the sent Beat Map asks for no scene on any beat, so there is no motion step to wait for.
+  Object.assign(tree, reel('r4', { 'beat-map.state.json': json(2, { sent_at: '2026-11-02T10:00:00Z', beats: [{ id: 'b_001', scene: null }] }) }))
   const seen = world(on, tree)
   await $.session.start(START)
   const ui = await mount($, 'terminal')

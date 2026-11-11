@@ -92,11 +92,12 @@ export const BOARD_NAME: Readonly<Record<BoardId, string>> = {
 
 /** A stage's done rule. `in` or its optional `or`: a file in that reel folder whose name matches (`video`: also size > 0 and ffprobe did
  *  not say "no video"). `applied`: at least one reel-relative output is as new as the matched file.
- *  `json`: that reel-root JSON parses to an object that passes `when`; `missing: true` also accepts an absent file,
- *  never an unreadable file or listing. `never`: no artifact. */
+ *  `json`: that reel-root JSON parses to an object that passes `when`, or its JSON `or` does.
+ *  An unreadable primary JSON or an unknown absence blocks the alternative. `never`: no artifact. */
 export type Rule =
   | { in: Folder; match: RegExp; video?: true; applied?: readonly string[]; or?: { in: Folder; match: RegExp } }
-  | { json: string; missing?: true; when: (v: Record<string, unknown>) => boolean }
+  | { json: string; when: (v: Record<string, unknown>) => boolean;
+      or?: { json: string; when: (v: Record<string, unknown>) => boolean } }
   | { never: true }
 
 export type ActionId = 'start' | 'next' | 'hub' | 'switch' | 'record' | BoardId | 'master' | 'post' | 'send' | 'cockpit'
@@ -111,6 +112,9 @@ export type Stage = {
 /** The ruled final master: `renders/<Reel> Master - MM.DD.YY.mp4` (H-S15a-4). Only files directly in renders/ count. */
 export const MASTER = /^.+ master - \d{2}\.\d{2}\.\d{2}\.mp4$/i
 
+const sentWithoutScenes = (s: Record<string, unknown>): boolean => s.sent_at != null && Array.isArray(s.beats)
+  && s.beats.every(b => isRecord(b) && b.scene == null)
+
 // The hub may change entries: each rule is one small data entry.
 export const STAGES: readonly Stage[] = [
   { name: 'Record', short: 'Record', rule: { in: 'raw', match: /\.(mp4|mov|m4v|mkv)$/i, or: { in: 'root', match: /^RAW\.mp4$/ } }, action: 'record',
@@ -121,7 +125,7 @@ export const STAGES: readonly Stage[] = [
     head: 'Do the ear pass', sub: 'Play the cut at ship speed, then press Send.' },
   { name: 'Beat map', short: 'Beats', rule: { json: 'beat-map.state.json', when: s => s.sent_at != null }, action: 'beatmap', board: 'beatmap',
     head: 'Rule the beat map', sub: 'Set the beat plan on the Beat Map, then press Send.' },
-  { name: 'Motion', short: 'Motion', rule: { json: 'sketches.state.json', missing: true, when: s => !!s.locked_at }, action: 'sketches', board: 'sketches',
+  { name: 'Motion', short: 'Motion', rule: { json: 'sketches.state.json', when: s => !!s.locked_at, or: { json: 'beat-map.state.json', when: sentWithoutScenes } }, action: 'sketches', board: 'sketches',
     head: 'Lock the motion', sub: "Lock each beat's motion on the Sketches board." },
   { name: 'Sound', short: 'Sound', rule: { in: 'root', match: /^sound-selection\.json$/, or: { in: 'sound', match: /^final\.mp4$/ } }, action: 'sound', board: 'sound',
     head: 'Review the sound', sub: 'Audition the cues on the Sound Board, then press Send.' },
@@ -134,7 +138,8 @@ export const STAGES: readonly Stage[] = [
 ]
 
 /** The reel-root JSON files the rules read: register.ts reads these, and only when the reel folder lists them. */
-export const JSON_FILES: readonly string[] = STAGES.flatMap(s => ('json' in s.rule ? [s.rule.json] : []))
+export const JSON_FILES: readonly string[] = [...new Set(STAGES.flatMap(s =>
+  'json' in s.rule ? [s.rule.json, ...(s.rule.or ? [s.rule.or.json] : [])] : []))]
 
 /** The files in renders/ ffprobe is asked about: a master by name, more than 0 bytes. */
 export const masterCandidates = (r: ReelIn): Entry[] => filesIn(r, 'renders').filter(x => MASTER.test(x.name) && x.size > 0)
@@ -147,9 +152,10 @@ export function isDone(rule: Rule, r: ReelIn): boolean {
   if ('never' in rule) return false
   if ('json' in rule) {
     const j = r.json[rule.json]
-    if (j?.status === 'missing') return !!rule.missing && r.lists.root.status === 'ok'
-      && !r.lists.root.value.some(x => x.name === rule.json)
-    return !!j && j.status === 'ok' && isRecord(j.value) && rule.when(j.value)
+    if (!j || j.status === 'unreadable') return false
+    if (j.status === 'missing' && (r.lists.root.status !== 'ok'
+      || r.lists.root.value.some(x => x.name === rule.json))) return false
+    return (j.status === 'ok' && isRecord(j.value) && rule.when(j.value)) || !!rule.or && isDone(rule.or, r)
   }
   return filesIn(r, rule.in).some(x => rule.match.test(x.name)
     && (!rule.applied || rule.applied.some(p => (mtimeAt(r, p) ?? -Infinity) >= x.mtimeMs))

@@ -128,10 +128,9 @@ def grade_filter(grade_json):
 
 
 def video_cut(segment, fps):
-    """Keep whole source frames before joining; speed belongs only after concat."""
-    return ("trim=start=%r:end=%r,setpts=PTS-STARTPTS,fps=%r,trim=end_frame=%d"
-            % (segment["src_in_f"] / fps, segment["src_out_f"] / fps, fps,
-               segment["src_out_f"] - segment["src_in_f"]))
+    """Conform absolute timestamps to master frames, then cut; speed follows concat."""
+    return ("fps=%r:start_time=0,trim=start_frame=%d:end_frame=%d,setpts=PTS-STARTPTS"
+            % (fps, segment["src_in_f"], segment["src_out_f"]))
 
 
 def audio_cut(segment, fps, sr):
@@ -143,12 +142,18 @@ def audio_cut(segment, fps, sr):
             % (round(a * sr), round(b * sr), FADE_IN, max(0.0, d - FADE_OUT), FADE_OUT))
 
 
-def joined_tail(count, fps, speed, vfilter="null", audio=True):
-    """Join the source-length pieces, then apply the proven single-take speed tail."""
+def joined_tail(count, fps, speed, frames, vfilter="null", audio=True):
+    """Join master-rate pieces, then speed and cap at the cut list's total frames.
+
+    One cloned lookahead frame lets fps fill a rounding tie with the last real
+    picture; trimming to frames discards the extra tail in non-tie cases.
+    """
     join = "".join(("[v%d][a%d]" % (i, i)) if audio else "[v%d]" % i for i in range(count))
     lines = [join + ("concat=n=%d:v=1:a=1[vc][ac];" % count if audio else
                      "concat=n=%d:v=1:a=0[vc];" % count)]
-    vf = ["setpts=PTS/%r" % speed, "fps=%r" % fps] if abs(speed - 1.0) >= 1e-9 else []
+    vf = (["tpad=stop_mode=clone:stop=1", "setpts=PTS/%r" % speed, "fps=%r" % fps]
+          if abs(speed - 1.0) >= 1e-9 else [])
+    vf.append("trim=end_frame=%d" % frames)
     lines.append("[vc]%s[v]" % ",".join(vf + [vfilter]) + (";" if audio else ""))
     if audio:
         # atempo preserves pitch; it accepts 0.5-2.0 per stage
@@ -160,11 +165,12 @@ def build_graph(cuts, sr, vfilter, astream=0, dead=None):
     """One filter graph for the whole cut, from cuts.json. Written to a file, not the
     command line - 40+ segments blow past argument limits on every platform.
 
-    F-3: each segment is trimmed at frames/fps exactly and re-timed by fps= to whole
-    frames, so it carries exactly src_out_f - src_in_f frames on a CFR or a VFR source.
-    The speed change re-times the joined cut once (fps= again), which lands it on the
-    cumulative out frames. F-15: the audio is trimmed in samples at the same frame
-    times, so each segment's audio is as long as its picture and concat never pads."""
+    F-3: each source is conformed to the master rate on absolute timestamps before
+    trimming by frame index, so each piece carries src_out_f - src_in_f frames on
+    a CFR or a VFR source. The joined cut is sped once, with one lookahead frame
+    and a trim to the cut list's total to resolve rounding ties. F-15: the audio is
+    trimmed in samples at the same frame times, so each segment's audio is as long
+    as its picture and concat never pads."""
     if bool(cuts.get("takes")):
         return build_mixed_graph(cuts, sr, vfilter, astream, dead)
     fps, speed, segs, L = cuts["fps"], cuts["speed"], cuts["segments"], []
@@ -172,7 +178,7 @@ def build_graph(cuts, sr, vfilter, astream=0, dead=None):
         L.append("[0:v]%s[v%d];" % (video_cut(s, fps), i))
         pan = "pan=stereo|c0=c%d|c1=c%d," % ((1, 1) if dead == "L" else (0, 0)) if dead else ""
         L.append("[0:a:%d]%s%s[a%d];" % (astream, pan, audio_cut(s, fps, sr), i))
-    L.extend(joined_tail(len(segs), fps, speed, vfilter))
+    L.extend(joined_tail(len(segs), fps, speed, segs[-1]["out_out_f"], vfilter))
     return "\n".join(L)
 
 
@@ -195,7 +201,7 @@ def build_mixed_graph(cuts, sr, filters, astreams, dead=None):
             s = segs[i]
             lines.append("[sv%d]%s[v%d];" % (i, video_cut(s, fps), i))
             lines.append("[sa%d]%s[a%d];" % (i, audio_cut(s, fps, sr), i))
-    lines.extend(joined_tail(len(segs), fps, speed))
+    lines.extend(joined_tail(len(segs), fps, speed, segs[-1]["out_out_f"]))
     return "\n".join(lines)
 
 

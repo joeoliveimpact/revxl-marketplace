@@ -32,7 +32,7 @@ def main():
     parts = ["[0:v]split=%d%s;" % (len(segs), "".join("[s%d]" % i for i in range(len(segs))))]
     for i, s in enumerate(segs):
         parts.append("[s%d]%s[v%d];" % (i, video_cut(s, fps), i))
-    parts.extend(joined_tail(len(segs), fps, speed, audio=False))
+    parts.extend(joined_tail(len(segs), fps, speed, segs[-1]["out_out_f"], audio=False))
     graph = Path(a.out).with_suffix(".graph.txt")
     graph.parent.mkdir(parents=True, exist_ok=True)
     graph.write_bytes("\n".join(parts).encode("utf-8"))

@@ -11,7 +11,8 @@ for a 360x640 scale (as cut_safety_test.py does), so no heavy lock; below 1 GB f
   b  a tint grade (look warm, baked by reel-grade's write_grade) -> the graded master's bands within TOL/255 of
      apply_grade.py's output on the ungraded master's frame (the same plate). Mutant: --grade ignored -> fails.
   c  grade.json's cube_sha wrong -> refused with one plain line, nothing rendered. Mutant: sha check off -> renders.
-  d  no --grade -> the ffmpeg commands and filter graphs are byte-identical to render.py's at BEFORE for the same
+  d  no --grade -> the ffmpeg commands and filter graphs are byte-identical to render.py's at BEFORE, after the
+     frame-exact render substitution, for the same
      inputs (real conform, SDR and HLG; captured, never encoded); with --grade the commands are the same and the
      graph gains exactly one lut3d, at the end of the conform.
   e  saved Warm and Mono looks in isolated scratch homes -> clearly different master colour bands.
@@ -30,6 +31,7 @@ sys.dont_write_bytecode = True   # the in-process imports below must not leave _
 sys.path[:0] = [str(RENDER.parent), str(PLUGIN / "skills/reel-grade/scripts"), str(PLUGIN / "skills/_shared")]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from editor_test_state import isolated_home  # noqa: E402
+from frame_exact_graph import frame_exact_graph  # noqa: E402
 from win_encoding import ensure_utf8_output  # noqa: E402
 import runtime as rt  # noqa: E402
 
@@ -287,6 +289,7 @@ def main():
                      % (" ".join(map(str, extra)), rc, out.strip()[-300:]))
                 caps.append(cap.encodes)
             old, new, graded = caps
+            old = [(cmd, frame_exact_graph(graph.decode("utf-8"), CUTS).encode("utf-8")) for cmd, graph in old]
             print("    %s: before %s, after %s (sha256 of the 2 commands + graphs)" % (
                 transfer, hashlib.sha256(repr(old).encode("utf-8")).hexdigest()[:16],
                 hashlib.sha256(repr(new).encode("utf-8")).hexdigest()[:16]))

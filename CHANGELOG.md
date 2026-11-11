@@ -4,6 +4,15 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.90] ... 2026-11-11
+
+### Fixed
+- **editor-superengine v0.2.1** ... three fixes from the first full run of 0.2.0. The first cut no
+longer drops a frame for footage recorded under 30 frames a second (24 and 25 fps cameras and
+phones), which had stopped the cut with a frame-count error. First-time setup on Windows no
+longer stops after a Python install that worked, and setup's failure messages now say what
+really failed. The Editor Cockpit and the editor hub no longer tick Motion before it is done.
+
 ## [0.1.89] ... 2026-11-08
 
 ### Changed
