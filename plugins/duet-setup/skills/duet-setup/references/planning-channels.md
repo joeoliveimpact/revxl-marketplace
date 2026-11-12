@@ -57,7 +57,7 @@ The main chat:
 
 One map says which channel owns which kind of work. It is the only place routes are written down.
 
-- **One map.** The main chat keeps it in its memory. If the person has a connected tracker, it also lives as one document in the coordination team or project, so channels can read it themselves, since a channel may not be able to read the main chat's memory [UNCONFIRMED]. The tracker copy and the memory copy are the same map; update both together.
+- **One map, in one place.** The main chat keeps it in its memory, and only there. Channels read it from the main chat's memory. Don't put a second copy in the tracker or anywhere else, because a second copy drifts.
 - **One pointer line in every instructions field**, instead of each channel listing routes itself: "Where other work goes: see the routing map, kept by <coordinator name>. If unsure, send it to <coordinator name>." This keeps each instructions field short and means a new channel never needs every other channel's instructions changed.
 - **One owner.** The main chat owns the map unless the person names someone else. When a channel is added, renamed, removed or changes its job, the owner updates the map the same day and tells the affected channels in one line.
 - A cross-channel handoff format (what to send and in what shape) goes in the sending channel's Rules, not in the map.

@@ -7,7 +7,7 @@
     "email": "joe@engineforimpact.com"
   },
   "metadata": {
-    "version": "0.1.93"
+    "version": "0.1.94"
   },
   "plugins": [
     {
@@ -491,10 +491,10 @@
     },
     {
       "name": "duet-setup",
-      "description": "v0.3.0 · Sets up Claude Duet from its main chat: a coordinator you name, channels that each do one kind of work with their own instructions and Rules, one routing map, a task tracker, and an optional link to Claude Code. Plain words, one question at a time, and nothing to type: Claude runs every check itself or gives a click path.",
+      "description": "v0.3.1 · Sets up Claude Duet from its main chat: a coordinator you name, channels that each do one kind of work with their own instructions and Rules, one routing map, a task tracker, and an optional link to Claude Code. Plain words, one question at a time, and nothing to type: Claude runs every check itself or gives a click path.",
       "source": "./plugins/duet-setup",
       "category": "productivity",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"

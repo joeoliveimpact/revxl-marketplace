@@ -4,6 +4,15 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.94] ... 2026-11-11
+
+### Fixed
+- **duet-setup v0.3.1** ... fixes from a live test in Duet. Channels are made with a create_project
+tool, and a channel can message the main chat directly. Each chat writes only its own memory,
+and channels read the main chat's, so the routing map now lives only there, with no tracker copy.
+Quiet hours are described as Duet's own setting, a lapsed sign-in as a Reconnect card, and a new
+connector as reaching each chat at its next fresh session.
+
 ## [0.1.93] ... 2026-11-11
 
 ### Changed

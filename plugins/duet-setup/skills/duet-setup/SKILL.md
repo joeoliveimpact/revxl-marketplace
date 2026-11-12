@@ -2,7 +2,7 @@
 name: duet-setup
 description: "Sets up a Claude Duet from its main chat: named channels, each with instructions and Rules, a routing map, task tracking and an optional Claude Code bridge. Use for set up my Duet, add or redo a channel, organize my channels, or connect Duet to Claude Code."
 metadata:
-  version: "0.3.0"
+  version: "0.3.1"
 ---
 
 # Setting up Duet
@@ -11,8 +11,8 @@ The person runs this alone, from their Duet main chat. The main chat becomes the
 
 ## Rules that always hold
 
-1. **Say the version first.** Start your first reply with "duet-setup v0.3.0", so a failure report or a screenshot shows which build ran.
-2. **Run from the main chat.** Check your tool list for the tool that creates channels (in Duet's main chat, Duet:create_project with the channel template [UNCONFIRMED]). Without it, create nothing and say where to go instead:
+1. **Say the version first.** Start your first reply with "duet-setup v0.3.1", so a failure report or a screenshot shows which build ran.
+2. **Run from the main chat.** Check your tool list for the tool that creates channels (in Duet's main chat, a create_project tool that takes the channel template). Without it, create nothing and say where to go instead:
    - **In a Duet channel or thread:** say in one line that setup runs from the main chat, ask the person to open it and say "set up my Duet", and offer to write up this channel's current job, instructions, Rules and running routines so the main chat can build on them.
    - **In Claude Code (you have files and a shell but no channel tool):** explain that setup runs from the Duet main chat, not from Claude Code. Give the click path: open Claude Duet in the Claude app or at claude.ai, then open the main chat at the top of the Duet sidebar, not a channel [UNCONFIRMED]. Then ask them to say "set up my Duet" there. If they also want Claude Code linked, that starts from the main chat too, at the last step.
 3. **Plain words, one question at a time.** The person may not be technical. Open with two or three sentences on how it works (the main chat coordinates; each channel is its own chat with its own job) and the first question; show the checklist only from step 2 on. Explain each new term the first time in one sentence. Ask one thing per message, though apps and limits for one area can share a message. Look up what their connected tools can tell you before asking. The person never types a command: you run every check yourself, or give a click path.
@@ -46,8 +46,8 @@ Duet setup:
 4. **Create the channels.** Create each approved channel with its name and its one-line job as the topic. Done when each one shows in their channel list. If the tool fails, walk them through making it in the app and wait for each.
 5. **Draft instructions and Rules.** Use the templates and the checker run in [references/instructions-and-rules.md](references/instructions-and-rules.md), and put each channel's money, secrets and "needs your yes" limits from [references/operating.md](references/operating.md) into its hard rules or Rules. Done when every instructions block passes the checker. If one fails, fix it and return to the start of this step.
 6. **Review round.** Ask their yes to send the drafts. Send each channel its draft with the review note (for a brand-new channel, the short review note). Read each answer in that channel's timeline; if one hasn't answered, check again later or ask the person to open that channel. Fold in what fits, re-run the checker, and show each final draft with a one-line list of what changed and why. Done when they approve every channel. If they want a channel redone, return to step 5 for it.
-7. **Install.** One channel at a time. To paste the instructions, the person hovers over the channel's name, clicks the 3-dot menu, then Instructions, pastes the block and saves. On a phone: open the channel, tap its name or menu, then Instructions [UNCONFIRMED]. Then they send the Rules block in that channel with "Save these as your Rules in memory." Then send that channel the check note. Done when its answer matches its job, repeats its Rules correctly and quotes its last instructions line exactly. If not, find the missing part and repeat that part.
-8. **First day.** Send each new channel this (use exactly, filling in the <...> parts), then read its answer in its timeline. If a channel can't message you directly [UNCONFIRMED], its hello in its own timeline counts. Done when every new channel has answered and the person has picked or skipped its first tasks.
+7. **Install.** One channel at a time. To paste the instructions, the person hovers over the channel's name, clicks the 3-dot menu, then Instructions, pastes the block and saves. On a phone: press and hold the channel's name in the sidebar, then tap Instructions. Then they send the Rules block in that channel with "Save these as your Rules in memory." Then send that channel the check note. Done when its answer matches its job, repeats its Rules correctly and quotes its last instructions line exactly. If not, find the missing part and repeat that part.
+8. **First day.** Send each new channel this (use exactly, filling in the <...> parts), then read its answer in its timeline. A channel can message you directly with its message_project tool, at most 10 messages an hour to the main chat. Done when every new channel has answered and the person has picked or skipped its first tasks.
 
 ```text
 Hi <channel name>, this is <coordinator name>. Your setup is in. Please run your first-day checklist and reply with a short summary:
@@ -75,7 +75,7 @@ Retry once. If it still fails, tell the person in plain words what didn't work a
 
 ```text
 duet-setup failure report
-Version: duet-setup v0.3.0
+Version: duet-setup v0.3.1
 Step: <checklist step number and name>
 Error: <the error line, word for word>
 ```

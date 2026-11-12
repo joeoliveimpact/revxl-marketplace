@@ -2,6 +2,19 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.3.1] - 2026-11-11
+
+### Fixed
+From the live test in Duet:
+- Phone path to a channel's Instructions: press and hold the channel's name, then tap Instructions (confirmed by Joe's screenshot).
+- Channels are created with a create_project tool that takes the channel template.
+- A channel can message the main chat directly (message_project, at most 10 messages an hour), so the first-day hello has no fallback.
+- Memory: each chat writes only its own memory. Channels can read the main chat's memory, and the main chat can read every channel's. Nothing is merged.
+- The routing map lives only in the main chat's memory, and channels read it there. The tracker copy is gone, because a second copy drifts.
+- Quiet hours are a Duet setting with a start and an end hour, changed by telling the main chat or in Settings on the web. Check-ins stop during quiet hours and the brief arrives when they end. Only weekends off are a preference.
+- A lapsed sign-in shows as a Reconnect card in the chat, and only the person can sign in again.
+- A new connector is account-wide, but each chat gets it at its next fresh session, and a task already running won't have it.
+
 ## [0.3.0] - 2026-11-11
 
 ### Added
@@ -27,15 +40,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Known open items
 Each is marked [UNCONFIRMED] in the skill and must be confirmed or cut before release:
-- SKILL.md: the full name of the Duet tool that creates channels (Duet:create_project).
 - SKILL.md: the click path from Claude Code to the Duet main chat ("at the top of the Duet sidebar").
-- SKILL.md: the phone path to a channel's instructions (open the channel, tap its name or menu, then Instructions).
-- SKILL.md: whether a channel can message the main chat directly (first-day "test the line").
-- planning-channels.md: whether a channel can read the main chat's memory (why the routing map also lives in the tracker).
-- operating.md: that channels don't share memory with each other or with the main chat.
-- operating.md: whether Duet has its own notification settings for nights.
-- operating.md: reconnecting a lapsed connector in Duet's settings.
-- operating.md: that a connector added later reaches only the chats that can see it.
 - task-tracking.md: the full name of the Linear tool that creates projects (Linear:save_project).
 - task-tracking.md: the full name of the Linear tool that lists teams (Linear:list_teams).
 - code-bridge.md: the Add folder button and folder picker in the desktop app's Code settings.

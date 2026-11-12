@@ -12,7 +12,7 @@ Steps 5 and 9 of the setup, and any time the person asks how things should run. 
 
 ## Memory: what each chat keeps
 
-Each channel has its own memory; channels don't share memory with each other or with the main chat [UNCONFIRMED]. Memory is not the record of work: that lives in the tracker, or on the channel's Tasks page.
+Each chat writes only its own memory. A channel can read the main chat's memory, and the main chat can read every channel's. Nothing is merged. Memory is not the record of work: that lives in the tracker, or on the channel's Tasks page.
 
 | The main chat keeps | Each channel keeps |
 |---|---|
@@ -29,7 +29,7 @@ Keep memory short and current: when something changes, replace the old note rath
 A routine is a job a channel runs on a schedule, like a Monday list of open orders.
 - A routine may not read memory, so any rule it needs goes in the routine's own prompt. Write the prompt so it works with nothing else loaded.
 - Each routine says what it does when there is nothing to do: stop and say nothing. That keeps the person's feed quiet and saves usage.
-- Quiet hours are the times the person doesn't want routines to run or to hear from Claude, for example evenings and weekends. Ask once, save the answer in main chat memory and in each routine's prompt, and schedule around it. Duet may also have its own notification settings for nights [UNCONFIRMED].
+- Quiet hours are a Duet setting with a start and an end hour, for example evenings. Check-ins stop during quiet hours, and the brief arrives when they end. The person changes them by telling the main chat, or in Settings on the web. Weekends off are only a preference, not part of the setting: ask once, save the answer in main chat memory and in each routine's prompt, and schedule around it.
 - List every routine in the channel's Rules (what it does, when it runs), so the review round can see what a new draft might break.
 
 ## What needs the person's yes
@@ -54,9 +54,9 @@ The person can widen this for one channel ("you can log issues without asking");
 
 ## Connector care
 
-- **Lapsed sign-ins.** Sign-ins expire or get revoked, and the app then fails or vanishes from the tool list. When an app that worked stops working, check your tool list first, then ask the person to reconnect it in Duet's settings [UNCONFIRMED]. Never ask them for a password in chat.
+- **Lapsed sign-ins.** Sign-ins expire or get revoked, and the app then fails or vanishes from the tool list. A lapsed sign-in shows as a Reconnect card in the chat, and only the person can sign in again. When an app that worked stops working, check your tool list first, then point the person to that Reconnect card. Never ask them for a password in chat.
 - **Several accounts.** When the person has two accounts in one app (two inboxes, two calendars), name in each channel's Rules which account it uses for what, by the account's address. When Claude can't tell which account a tool is using, ask before acting.
-- A connector added later reaches only the chats that can see it [UNCONFIRMED]; after connecting one, ask each channel that needs it to check its tool list.
+- A new connector is account-wide, but each chat gets it at its next fresh session, and a task that is already running won't have it. After connecting one, ask each channel that needs it to check its tool list in a fresh session.
 
 ## Cost traps
 

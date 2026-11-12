@@ -21,7 +21,7 @@ Each superengine is opinionated about audience, tone, and workflow, so it works 
 
 ## The catalog
 
-21 plugins. Versions are current as of catalog `0.1.93`.
+21 plugins. Versions are current as of catalog `0.1.94`.
 
 ### 📣 Marketing & Content
 
@@ -57,7 +57,7 @@ Each superengine is opinionated about audience, tone, and workflow, so it works 
 | [workspace-superengine](plugins/workspace-superengine/) | 0.15.3 | Workspace lifecycle: scaffold, session-start, session-closeout, checkpointing, cleanup. Plus `/update-everything`, the one command that updates every plugin, marketplace, and skill layer at once, and `revxl-vault-search`, the one way RevXL plugins reach the RevXL Vault. Stops Claude from forgetting where you left off. 15 skills + 1 agent. |
 | [notebooklm-superengine](plugins/notebooklm-superengine/) | 0.5.0 | Drive NotebookLM from Claude: build notebooks, curate sources, ask, studio outputs. 8 skills. |
 | [course-crawler](plugins/course-crawler/) | 0.7.1 | Capture online course content into structured, searchable local knowledge. 5 skills. |
-| [duet-setup](plugins/duet-setup/) | 0.3.0 | Sets up Claude Duet from its main chat: a coordinator you name, channels that each do one kind of work with their own instructions and Rules, one routing map, a task tracker, and an optional link to Claude Code. 1 skill. |
+| [duet-setup](plugins/duet-setup/) | 0.3.1 | Sets up Claude Duet from its main chat: a coordinator you name, channels that each do one kind of work with their own instructions and Rules, one routing map, a task tracker, and an optional link to Claude Code. 1 skill. |
 
 ---
 

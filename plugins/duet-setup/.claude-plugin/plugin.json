@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "duet-setup",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Sets up Claude Duet from its main chat: a coordinator you name, channels that each do one kind of work with their own instructions and Rules, one routing map, a task tracker, and an optional link to Claude Code. Plain words, one question at a time, and nothing to type: Claude runs every check itself or gives a click path.",
   "author": { "name": "Joe Olive", "email": "joe@engineforimpact.com" },
   "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/duet-setup",
