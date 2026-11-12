@@ -7,7 +7,7 @@
     "email": "joe@engineforimpact.com"
   },
   "metadata": {
-    "version": "0.1.91"
+    "version": "0.1.92"
   },
   "plugins": [
     {
@@ -487,6 +487,30 @@
         "thumbnails",
         "coaching",
         "superengine"
+      ]
+    },
+    {
+      "name": "duet-setup",
+      "description": "v0.3.0 · Sets up Claude Duet from its main chat: a coordinator you name, channels that each do one kind of work with their own instructions and Rules, one routing map, a task tracker, and an optional link to Claude Code. Plain words, one question at a time, and nothing to type: Claude runs every check itself or gives a click path.",
+      "source": "./plugins/duet-setup",
+      "category": "productivity",
+      "version": "0.3.0",
+      "author": {
+        "name": "Joe Olive",
+        "email": "joe@engineforimpact.com"
+      },
+      "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/duet-setup",
+      "license": "MIT",
+      "keywords": [
+        "duet",
+        "claude-duet",
+        "channels",
+        "coordinator",
+        "instructions",
+        "routing",
+        "linear",
+        "claude-code",
+        "setup"
       ]
     }
   ]

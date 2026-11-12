@@ -4,6 +4,13 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.92] ... 2026-11-11
+
+### Added
+- **duet-setup v0.3.0** ... new plugin: sets up Claude Duet from its main chat, with a coordinator
+you name, channels that each do one kind of work with their own instructions and Rules, one
+routing map, a task tracker, and an optional link to Claude Code.
+
 ## [0.1.91] ... 2026-11-11
 
 ### Changed
