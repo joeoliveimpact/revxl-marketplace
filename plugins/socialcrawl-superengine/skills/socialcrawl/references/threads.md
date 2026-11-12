@@ -155,8 +155,8 @@ curl "https://www.socialcrawl.dev/v1/threads/search/users?query=<query>" \
 
 | Your goal | Use this | Credits |
 |-----------|----------|---------|
-| Search posts by keyword | `/search` | 1 |
-| Find users | `/search/users` | 1 |
+| Search posts by keyword | `/search` | 1–34 (metered) |
+| Find users | `/search/users` | 1–13 (metered) |
 | A profile | `/profile` | 1 |
 | Their posts | `/user/posts` | 1 |
 | One post | `/post` | 1 |

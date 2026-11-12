@@ -210,5 +210,5 @@ call is an expensive way to learn it.
 
 For brand-mention questions, compare `prism/brand-mentions` (50cr, richer: time-series +
 sentiment + top sources + recent mentions in one call) against stacking several 20cr calls
-here. For pure voice-of-customer on discussion sites, `reddit/omni-search` (1cr) and
+here. For pure voice-of-customer on discussion sites, `reddit/omni-search` (5–9cr) and
 `search/forums` (10cr) are dramatically cheaper and often sufficient.

@@ -6,3 +6,5 @@ plugins/shortform-superengine/skills/*/references/legit-*.md text eol=lf
 # editor-superengine ships sha256-pinned files (vendored scenes, locks); keep its text LF on every
 # checkout so a Windows clone (core.autocrlf=true) gets the bytes that were vetted.
 plugins/editor-superengine/** text=auto eol=lf
+# socialcrawl-superengine's mod tests and guard fixtures expect LF; keep it LF on every checkout.
+plugins/socialcrawl-superengine/** text=auto eol=lf

@@ -22,11 +22,12 @@ import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   session, V1, GUARD, COSTS, M_NOTPLAIN, M_NOTBASH, M_LOST, mError, mLimit, mStateRead, mBudgetRead,
-  ROUTINE, ROUTINES_ON, SRC_SESSION, srcAuto, today, assert,
+  ROUTINE, ROUTINES_ON, SRC_SESSION, srcAuto, today, assert, T,
 } from "../lib.mjs";
 import { stateFault, atOnce } from "./balance.mjs";
 
 const UN = { CLAUDE_CODE_SESSION_ATTENDED: "0" };
+const M_SETTINGS = "SocialCrawl call not run: your SocialCrawl settings file can't be read, so this session's credit limit can't be checked. Re-save your limit in SocialCrawl → Settings to fix it." + T;
 const RON = { budget: ROUTINES_ON, env: ROUTINE };
 const NL = String.fromCharCode(10);
 const B = String.fromCharCode(92);                          // one backslash
@@ -41,7 +42,7 @@ const DAY300 = () => ({ date: today(), spent: 300, sessions: { other: 300 } });
 const CALLS = "socialcrawl-calls.jsonl";
 const MiB = 1048576;
 /** The call record line's keys, in order (3d a). */
-const KEYS = ["ts", "sid", "paths", "worst", "committed", "decision", "kind", "limit", "balance", "balanceAt", "routine"];
+const KEYS = ["ts", "sid", "paths", "worst", "committed", "decision", "kind", "limit", "balance", "balanceAt", "routine", "tool_use_id"];
 /** The unattended log line's fields, in order (unchanged since 3a). */
 const FIELDS = ["ts", "session_id", "decision", "kind", "paths", "cmdWorst", "committed", "cap"];
 const REAL = bs("C:", "Users", "x", ".claude", "revxl");      // a real-shaped default <revxl>, never opened
@@ -59,7 +60,7 @@ const NAMES = ["the budget file socialcrawl-budget.json", "the old routine day f
 const FOLDER = "the revxl folder";
 const mTamper = (what, name) =>
   `SocialCrawl guard file left alone: this ${what} names ${name}, which holds the person's SocialCrawl budget or spend ` +
-  `record. Claude never changes it; the person sets the budget in the SocialCrawl Budget tab. To look at it, use the Read tool.`;
+  `record. Claude is not to change it (the guard refuses the plain ways; a glob, a link to the folder, an MCP tool or a script can still get past it); the person sets the limit in SocialCrawl → Settings. To look at it, use the Read tool.`;
 /** A tamper deny's whole stdout, as done() writes it. */
 const denyOut = (m) =>
   JSON.stringify({ hookSpecificOutput: { permissionDecision: "deny", hookEventName: "PreToolUse", permissionDecisionReason: m }, systemMessage: m });
@@ -219,7 +220,7 @@ const R2 = {
   verbLeftR1: `(^|[${B}s;&|(${BT}{])(rm|rmdir|`,
   exe: `(${B}.exe)?`,
   alt1: `/revxl(?:[${B}${B}/]+sessions)?(?![${B}${B}/]+${B}.?[a-z0-9_])(?![a-z0-9_-])/`,
-  alt2: `/revxl[${B}${B}/][^${B}s"'${BT};|&<>,]*?[${B}${B}/]${B}.${B}.(?=[${B}${B}/${B}s"'${BT};|&<>,]|$)/`,
+  alt2: `      if (at >= 0 && /[${B}${B}/]${B}.${B}.(?=[${B}${B}/]|$)/.test(token.slice(at + 6))) return true;`,
   alt3: `/${B}.claude(?![${B}${B}/]+${B}.?[a-z0-9_])(?![a-z0-9_-])/`,
   tail4: `/^(?:[${B}${B}/]+sessions)?(?![${B}${B}/]+${B}.?[a-z0-9_])(?![a-z0-9_-])/`,
   child: `(?![${B}${B}/]+${B}.?[a-z0-9_])`,
@@ -250,16 +251,16 @@ const homeOf = (s) => join(s.dir, "home");
 const atHome = (s) => ({ env: { SC_REVXL_HOME: homeOf(s) } });
 const H4 = [
   ["rm -rf ~/.claude", "rm -rf ~/.claude"], ["rm -rf ~/.claude/", "rm -rf ~/.claude/"], ["mv ~/.claude/revxl/sessions{,.bak}", "mv ~/.claude/revxl/sessions{,.bak}"],
-  ["rm -rf ~/.claude/revxl/joe/../sessions", "rm -rf ~/.claude/revxl/joe/../sessions"],
+  ["rm -rf ~/.claude/revxl/abc/../sessions", "rm -rf ~/.claude/revxl/abc/../sessions"],
   ["rm -rf <SC_REVXL_HOME not named revxl>, backslashes", (s) => `rm -rf ${homeOf(s)}`, atHome],
   ["rm -rf <SC_REVXL_HOME not named revxl>, forward slashes", (s) => `rm -rf ${homeOf(s).split(B).join("/")}`, atHome],
 ];
 const R2PASS = [
-  "mv ~/.claude/revxl/joeoliveimpact/voc/a.md ~/.claude/revxl/joeoliveimpact/voc/b.md", "rm ~/.claude/revxl/joeoliveimpact/voc/old.md",
+  "mv ~/.claude/revxl/examplebrand/voc/a.md ~/.claude/revxl/examplebrand/voc/b.md", "rm ~/.claude/revxl/examplebrand/voc/old.md",
   "ls ~/.claude/revxl", "cat ~/.claude/revxl/jev-ask.json", "grep -n socialcrawl-day ~/.claude/plugins/cache/revxl-marketplace/x/credit-guard.mjs",
   "diff a b | grep revxl-marketplace", "git log --oneline", "echo removed revxl",
   "rm ~/.claude/settings.json", "rm -rf node_modules", "mv a b", "rm -rf ~/.claude/plugins/cache/revxl-marketplace/x",
-  "rm ~/.claude/.credentials.bak", "rm -rf ~/.claude-backup", "git rm -r --cached src/form.md", "rm ~/.claude/revxl/joeoliveimpact/voc/old.md",
+  "rm ~/.claude/.credentials.bak", "rm -rf ~/.claude-backup", "git rm -r --cached src/form.md", "rm ~/.claude/revxl/examplebrand/voc/old.md",
 ];
 /**
  * `cmd` (or a function of the session) through Bash, PowerShell and no tool_name, attended and unattended: exactly
@@ -279,9 +280,84 @@ function everywhere(rows, label, cmd, name, prep) {
 }
 
 export default [
+  ...[
+    ["single-quotes", "budget" + "-wr''ite", 6],
+    ["double-quotes", "budget" + '-wr""ite', 6],
+    ["backslash", "budget" + `-w${B}rite`, 6],
+    ["continuation", "budget" + `-wr${B}${NL}ite`, 6],
+    ["mixed-quotes", '"budget' + '-"write', 6],
+    ["guard-file", "rm revxl/social" + "crawl-bud''get.json", 0],
+  ].map(([label, split, k]) => ({
+    id: `P3d-G4c-split-${label}`,
+    desc: "split save-step or guard-file names deny in both shells and modes without file I/O",
+    fn() {
+      const spy = ioSpy();
+      const failures = [];
+      try {
+        for (const tool of ["Bash", "PowerShell"]) for (const [mode, env] of MODES) {
+          const log = join(spy.dir, `${tool}-${mode}.log`);
+          const cmd = k === 6 ? `node helper.mjs ${split}` : split;
+          const r = once(cmd, { env, extra: { tool_name: tool } }, () => ({
+            node: ["--import", spy.url], env: { SPY_LOG: log },
+          }));
+          const calls = (raw(log) || "").split(NL).filter(Boolean).map((l) => JSON.parse(l))
+            .filter(([, p]) => p.startsWith(r.s.dir));
+          const name = k === 6 ? `the pane's budget save step (${"budget" + "-write"})` : NAMES[k];
+          const ok = r.exit === 0 && r.stderr === "" && r.raw === denyOut(mTamper("command", name)) && r.same && calls.length === 0;
+          console.log(`    ${tool}/${mode}: ${verdict(r)}, unchanged ${r.same}, file I/O ${calls.length}`);
+          if (!ok) failures.push(`${tool}/${mode}: ${verdict(r)}`);
+        }
+        assert(failures.length === 0, `exact own-files deny with no I/O: ${failures.join(", ")}`);
+      } finally { drop(spy); }
+    },
+  })),
+  {
+    id: "P3d-G4c-known-limit-disguised",
+    desc: "KNOWN LIMIT (hub H-70): no text matcher stops a deliberately disguised shell spelling; this row flips when a caller check lands",
+    fn() {
+      const split = "budget" + "-wr" + "$''" + "ite";
+      const r = once(`node helper.mjs ${split}`, { extra: { tool_name: "Bash" } });
+      assert(r.decision === null, "documented disguised spelling is not denied", r);
+    },
+  },
+  {
+    id: "P3d-G4c-rm-spellings", desc: "quoted and escaped rm stay denied alongside boundary-sensitive rm forms",
+    fn() {
+      const rows = [];
+      for (const cmd of ['"rm" -rf ~/.claude/revxl', `${B}rm -rf ~/.claude/revxl`, "/bin/rm -rf ~/.claude/revxl", "=rm -rf ~/.claude/revxl"]) {
+        everywhere(rows, cmd, cmd, FOLDER);
+      }
+      console.log(rows.join(NL));
+    },
+  },
+  {
+    id: "P3d-G4c-budget-controls", desc: "ordinary budget mentions and a run-on save name pass untouched",
+    fn() {
+      for (const tool of ["Bash", "PowerShell"]) for (const [, env] of MODES) {
+        for (const cmd of ["git log --grep budget", "echo budget write", "ls " + "budget" + "-writer", 'git commit -m "update budget"']) {
+          const r = once(cmd, { env, extra: { tool_name: tool } });
+          assert(r.exit === 0 && r.stderr === "" && r.raw === "" && r.same, "ordinary mention passes untouched", r);
+        }
+      }
+    },
+  },
+  {
+    id: "P3d-G4c-strip-mutant", desc: "removing the stripped-copy test reopens the split-name bypass",
+    fn() {
+      const anchor = readFileSync(GUARD, "utf8").split(NL).find((line) => line.includes("for (const c of [raw,"));
+      assert(anchor, "stripped-copy loop exists");
+      const m = mutant("g4c-strip", [[anchor, "      for (const c of [raw]) {"]]);
+      try {
+        const r = once("node helper.mjs " + "budget" + "-wr''ite", { guard: m.file });
+        assert(r.exit === 0 && r.stderr === "" && r.raw === "" && r.same,
+          "mutant wrongly passes the split-name row instead of the exact own-files deny", r);
+        console.log("    stripped-copy mutant: split-name row wrongly passes (killed)");
+      } finally { rmSync(m.dir, { recursive: true, force: true }); }
+    },
+  },
   {
     id: "P3d-A1-call-record-lines",
-    desc: "D-A1 (with D-A9's unattended log): attended and unattended, each decision a run makes holding the session lock — a pass and a routine's pass at the commit, M_STATEREAD, M_LOST, M_BUDGETREAD, M_LIMIT and recorded()'s refusal — keeps its exact output and appends exactly one line to <revxl>/socialcrawl-calls.jsonl, its keys exactly ts, sid, paths, worst, committed, decision, kind, limit, balance, balanceAt, routine in that order and each value right (routine true only in a Desktop routine, D58), the unattended log as it was beside it (one line of its 8 fields unattended, of the same decision, kind, committed and cap; none attended); the fast path, a tamper deny, a write-type call, the not-plain and not-Bash denies, the free plain pass (in a routine too), a Post input, a lock refusal (the session lock never held: it can't be made, or another run holds it the whole wait) and the guard's own error (before the lock, and while holding it) append nothing; a key in the env, in an x-api-key and an Authorization header, as a query value and in the path, the command and a query value never reach a line",
+    desc: "D-A1 (with D-A9's unattended log): attended and unattended, each decision a run makes holding the session lock — a pass and a routine's pass at the commit, M_STATEREAD, M_LOST, M_BUDGETREAD, M_LIMIT and recorded()'s refusal — keeps its exact output and appends exactly one line to <revxl>/socialcrawl-calls.jsonl, its keys exactly ts, sid, paths, worst, committed, decision, kind, limit, balance, balanceAt, routine in that order and each value right (routine true only in a Desktop routine, D58), the unattended log as it was beside it (one line of its 8 fields unattended, of the same decision, kind, committed and cap; an attended routine paid pass also logs once, other attended runs log nothing); the fast path, a tamper deny, a write-type call, the not-plain and not-Bash denies, the free plain pass (in a routine too), a Post input, a lock refusal (the session lock never held: it can't be made, or another run holds it the whole wait) and the guard's own error (before the lock, and while holding it) append nothing; a key in the env, in an x-api-key and an Authorization header, as a query value and in the path, the command and a query value never reach a line",
     fn() {
       const rows = [];
       const f = faults();
@@ -316,7 +392,7 @@ export default [
           }
           assert(typeof l.ts === "string" && new Date(l.ts).toISOString() === l.ts && l.ts >= r.t0 && l.ts <= r.t1,
             `${label}, ${who}: ts is the UTC time of the run, read ${l.ts} (run ${r.t0} to ${r.t1})`);
-          if (who === "unattended") {
+          if (who === "unattended" || want.routine === true) {
             const u = r.log[0];
             assert(r.log.length === 1 && JSON.stringify(Object.keys(u)) === JSON.stringify(FIELDS) && u.decision === (l.decision === "deny" ? "deny" : "pass") &&
               u.kind === l.kind && u.committed === l.committed && u.cap === l.limit && u.cmdWorst === 50,
@@ -538,8 +614,8 @@ export default [
     fn() {
       const rows = [];
       const pass = [
-        "mv ~/.claude/revxl/joeoliveimpact/voc/a.md ~/.claude/revxl/joeoliveimpact/voc/b.md",
-        "rm ~/.claude/revxl/joeoliveimpact/voc/old.md",
+        "mv ~/.claude/revxl/examplebrand/voc/a.md ~/.claude/revxl/examplebrand/voc/b.md",
+        "rm ~/.claude/revxl/examplebrand/voc/old.md",
         "ls ~/.claude/revxl",
         "cat ~/.claude/revxl/jev-ask.json",
         "grep -n socialcrawl-day ~/.claude/plugins/cache/revxl-marketplace/x/credit-guard.mjs",
@@ -615,7 +691,7 @@ export default [
   },
   {
     id: "P3d-A8-utf16le",
-    desc: "D-A8 (3c HUNT 6): a UTF-16LE budget file (FF FE, as PowerShell 5.1's > and Out-File write it) of {sessionBudget: 50} is the limit (40 + 50 is exactly M_LIMIT naming 50 and your session budget; 0 + 50 passes and counts 50); a UTF-16LE session file at 100 reads as 100 (50 more passes and it is saved at 150 as UTF-8 with no mark), never lost; a UTF-8 budget with its mark is still the limit; UTF-16BE, two UTF-16LE marks, a lone FF FE and FF FE before garbage read as they did at 4677e75: no budget (the automatic cap), a lost total",
+    desc: "D-A8 (3c HUNT 6): a UTF-16LE budget file (FF FE, as PowerShell 5.1's > and Out-File write it) of {sessionBudget: 50} is the limit (40 + 50 is exactly M_LIMIT naming 50 and your session budget; 0 + 50 passes and counts 50); a UTF-16LE session file at 100 reads as 100 (50 more passes and it is saved at 150 as UTF-8 with no mark), never lost; a UTF-8 budget with its mark is still the limit; UTF-16BE, two UTF-16LE marks, a lone FF FE and FF FE before garbage give a settings-file error for the budget and a lost total for the session",
     fn() {
       const rows = [];
       const put = (file, buf) => (s) => { writeFileSync(file(s), buf); return {}; };
@@ -630,14 +706,14 @@ export default [
       assert(lim50(b8), `a UTF-8 budget with its mark, 40 + 50: still exactly M_LIMIT at 50, read ${b8.message.slice(0, 220)}`, b8);
       const st = once(P50, {}, (s) => { writeFileSync(s.stateFile, u16le(JSON.stringify({ balance: 800, spent: 100 }))); return {}; });
       rows.push(cell("a UTF-16LE session file at 100, 50 more", [verdict(st), `saved ${JSON.stringify(st.stateRaw)}`]));
-      assert(st.raw === "" && st.stateRaw === JSON.stringify({ balance: 800, spent: 150 }), `a UTF-16LE session file at 100: passes, saved at 150 as UTF-8 with no mark, never lost, read ${verdict(st)} / ${JSON.stringify(st.stateRaw)}`, st);
-      // As at 4677e75: UTF-16BE, two UTF-16LE marks, a lone mark and a mark before garbage are no budget and a lost total.
+      assert(st.raw === "" && st.stateRaw === JSON.stringify({ balance: 800, spent: 150, holds: {}, fixed: 150, usage: 0, full: 0 }), `a UTF-16LE session file at 100: passes, saved at 150 as UTF-8 with no mark, never lost, read ${verdict(st)} / ${JSON.stringify(st.stateRaw)}`, st);
+      // UTF-16BE, two UTF-16LE marks, a lone mark and a mark before garbage deny paid calls and still lose a session total.
       for (const [label, enc] of [["UTF-16BE", (t) => u16be(t)], ["two UTF-16LE marks", (t) => Buffer.concat([Buffer.from([0xff, 0xfe]), u16le(t)])],
         ["a lone FF FE", () => Buffer.from([0xff, 0xfe])], ["FF FE before garbage", () => Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from("{bad")])]]) {
         const bb = once(P50, { seed: { spent: 40 } }, put(bfOf, enc(B50)));
         const ss = once(P50, {}, (s) => { writeFileSync(s.stateFile, enc(JSON.stringify({ balance: 800, spent: 100 }))); return {}; });
         rows.push(cell(label, [`budget: ${verdict(bb)} counted ${bb.state.spent}`, `session: ${verdict(ss)}`]));
-        assert(bb.raw === "" && bb.state.spent === 90, `${label}, the budget file: no budget, so 40 + 50 passes on the automatic cap, read ${verdict(bb)} / ${bb.message.slice(0, 160)}`, bb);
+        assert(bb.decision === "deny" && bb.message === M_SETTINGS && bb.state.spent === 40, `${label}, the budget file: unreadable settings deny, nothing counted, read ${verdict(bb)} / ${bb.message.slice(0, 160)}`, bb);
         assert(ss.decision === "deny" && ss.message === M_LOST && ss.state && ss.state.lost === true, `${label}, the session file: M_LOST, saved lost, read ${ss.message.slice(0, 120)} / ${ss.stateRaw}`, ss);
       }
       console.log(rows.join(NL));
@@ -656,8 +732,8 @@ export default [
       const cases = [
         ["a line on the not-plain deny", [['    return deny(NOT_BASH ? M_NOTBASH : M_NOTPLAIN, "not-plain");\n', '    logCall("deny", "not-plain", null);\n    return deny(NOT_BASH ? M_NOTBASH : M_NOTPLAIN, "not-plain");\n']], [notPlain]],
         ["the session-lock gate dropped", [['    if (locked) logCall("deny", kind, st ? st.spent : null);\n', '    logCall("deny", kind, st ? st.spent : null);\n']], [notPlain]],
-        ["the command in the line", [["ts: new Date().toISOString(), sid,", "ts: new Date().toISOString(), command: cmd, sid,"]], [sentinel]],
-        ["the key in the line", [["ts: new Date().toISOString(), sid,", "ts: new Date().toISOString(), key: process.env.SOCIALCRAWL_API_KEY, sid,"]], [sentinel]],
+        ["the command in the line", [["ts: new Date().toISOString(), sid, paths: logPaths(),", "ts: new Date().toISOString(), command: cmd, sid, paths: logPaths(),"]], [sentinel]],
+        ["the key in the line", [["ts: new Date().toISOString(), sid, paths: logPaths(),", "ts: new Date().toISOString(), key: process.env.SOCIALCRAWL_API_KEY, sid, paths: logPaths(),"]], [sentinel]],
         ["the rotation removed", [['      if (s && s.size >= 1048576) renameSync(CR, CR + ".1");\n', ""]], [
           ["a pass at 1 MiB", P50, {}, (s) => { writeFileSync(join(s.revxl, CALLS), fill(MiB)); return {}; }, (r) => r.raw === "" && !!r.rec.dot1 && r.rec.dot1.equals(fill(MiB)) && r.rec.lines && r.rec.lines.length === 1],
         ]],
@@ -672,12 +748,12 @@ export default [
           ["rm -rf ~/.claude/revxl/sessions", "rm -rf ~/.claude/revxl/sessions", {}, null, (r) => r.raw === denyOut(mTamper("command", FOLDER))],
         ]],
         ["the folder token widened to revxl/<anything>", [[`  ${R2.alt1},`, `  /revxl([${B}${B}/][^${B}s"';|&)]*)?(?=["'${B}s;|&)]|$)/,`]], [   // round 2: alternative 1
-          ["rm of a brand folder's file", "rm ~/.claude/revxl/joeoliveimpact/voc/old.md", {}, null, (r) => r.raw === "" && r.same],
+          ["rm of a brand folder's file", "rm ~/.claude/revxl/examplebrand/voc/old.md", {}, null, (r) => r.raw === "" && r.same],
         ]],
         ["the location test reverted to a substring", [["!REVXL_AT.test(c)", '!c.includes("revxl")']], [
           ["grep in the revxl-marketplace cache", "grep -n socialcrawl-day ~/.claude/plugins/cache/revxl-marketplace/x/credit-guard.mjs", {}, null, (r) => r.raw === "" && r.same],
         ]],
-        ["the stream strip removed", [[`.replace(/:[^${B}${B}/]*$/, "")`, ""]], [
+        ["the stream strip removed", [["stream < 0 ? path : path.slice(0, stream)", "path"]], [
           ["a Write of the budget file's ::$DATA", "", { extra: edit("Write", bs(REAL, "socialcrawl-budget.json::$DATA")) }, null, (r) => r.raw === denyOut(mTamper("edit", NAMES[0]))],
         ]],
         ["the short-name read removed", [[`        try { base = realpathSync.native(abs).toLowerCase().split(/[${B}${B}/]+/).pop(); } catch {}\n`, ""]],
@@ -735,22 +811,22 @@ export default [
   },
   {
     id: "P3d-R2-H4-scope",
-    desc: "Round 2, H4 (R2-3): through Bash, PowerShell and no tool_name, attended and unattended, rm -rf ~/.claude, rm -rf ~/.claude/, mv ~/.claude/revxl/sessions{,.bak}, rm -rf ~/.claude/revxl/joe/../sessions, and rm -rf of the session's own SC_REVXL_HOME not named revxl (with backslashes and with forward slashes) are denied with exactly M_TAMPER naming the revxl folder, nothing changed; beside twins that pass untouched: an rm of a file inside that SC_REVXL_HOME, either slash",
+    desc: "Round 2, H4 (R2-3): through Bash, PowerShell and no tool_name, attended and unattended, rm -rf ~/.claude, rm -rf ~/.claude/, mv ~/.claude/revxl/sessions{,.bak}, rm -rf ~/.claude/revxl/abc/../sessions, and rm -rf of the session's own SC_REVXL_HOME not named revxl (with backslashes and with forward slashes) are denied with exactly M_TAMPER naming the revxl folder, nothing changed; beside twins that pass untouched: an rm of a file inside that SC_REVXL_HOME, either slash",
     fn() {
       const rows = [];
       for (const [label, cmd, prep] of H4) everywhere(rows, label, cmd, FOLDER, prep);
-      everywhere(rows, "twin: rm <SC_REVXL_HOME>/joeoliveimpact/x.md, backslashes", (s) => `rm ${bs(homeOf(s), "joeoliveimpact", "x.md")}`, null, atHome);
+      everywhere(rows, "twin: rm <SC_REVXL_HOME>/examplebrand/x.md, backslashes", (s) => `rm ${bs(homeOf(s), "examplebrand", "x.md")}`, null, atHome);
       everywhere(rows, "twin: rm <SC_REVXL_HOME>/jev-ask.json, forward slashes", (s) => `rm ${bs(homeOf(s), "jev-ask.json").split(B).join("/")}`, null, atHome);
       console.log(rows.join(NL));
     },
   },
   {
     id: "P3d-R2-passes",
-    desc: "Round 2 (R2-1 to R2-3): through Bash, PowerShell and no tool_name, attended and unattended, ordinary work passes untouched — the 8 D-A6 commands, rm ~/.claude/settings.json, rm -rf node_modules, mv a b, rm -rf ~/.claude/plugins/cache/revxl-marketplace/x, rm ~/.claude/.credentials.bak, rm -rf ~/.claude-backup, git rm -r --cached src/form.md and rm ~/.claude/revxl/joeoliveimpact/voc/old.md; beside near twins that round 2 denies: rm -rf ~/.claude, rm -rf ~/.claude/, rm -rf ~/.claude/., rm -rf ~/.claude/revxl. and rm -rf ~/.claude/revxl/joeoliveimpact/../sessions",
+    desc: "Round 2 (R2-1 to R2-3): through Bash, PowerShell and no tool_name, attended and unattended, ordinary work passes untouched — the 8 D-A6 commands, rm ~/.claude/settings.json, rm -rf node_modules, mv a b, rm -rf ~/.claude/plugins/cache/revxl-marketplace/x, rm ~/.claude/.credentials.bak, rm -rf ~/.claude-backup, git rm -r --cached src/form.md and rm ~/.claude/revxl/examplebrand/voc/old.md; beside near twins that round 2 denies: rm -rf ~/.claude, rm -rf ~/.claude/, rm -rf ~/.claude/., rm -rf ~/.claude/revxl. and rm -rf ~/.claude/revxl/examplebrand/../sessions",
     fn() {
       const rows = [];
       for (const cmd of R2PASS) everywhere(rows, cmd, cmd, null);
-      for (const cmd of ["rm -rf ~/.claude", "rm -rf ~/.claude/", "rm -rf ~/.claude/.", "rm -rf ~/.claude/revxl.", "rm -rf ~/.claude/revxl/joeoliveimpact/../sessions"]) {
+      for (const cmd of ["rm -rf ~/.claude", "rm -rf ~/.claude/", "rm -rf ~/.claude/.", "rm -rf ~/.claude/revxl.", "rm -rf ~/.claude/revxl/examplebrand/../sessions"]) {
         everywhere(rows, `twin: ${cmd}`, cmd, FOLDER);
       }
       console.log(rows.join(NL));
@@ -765,15 +841,15 @@ export default [
       const pass = (r) => r.raw === "" && r.same;
       const cases = [
         ["R2-1 reverted to r1's location regex", [[R2.at, R2.atR1]], [[H1[0][0], null, deny(NAMES[0])], [H1[3][0], null, deny(NAMES[0])]]],
-        ["the verb's left boundary reverted to r1's", [[R2.verbLeft, R2.verbLeftR1]], [['"rm" -rf ~/.claude/revxl', null, deny(FOLDER)], [`${B}rm -rf ~/.claude/revxl`, null, deny(FOLDER)]]],
+        ["the verb's left boundary reverted to r1's", [[R2.verbLeft, R2.verbLeftR1]], [["/bin/rm -rf ~/.claude/revxl", null, deny(FOLDER)], ["=rm -rf ~/.claude/revxl", null, deny(FOLDER)]]],
         ["(.exe)? removed", [[R2.exe, ""]], [["rm.exe -rf ~/.claude/revxl", null, deny(FOLDER)]]],
         ["alternative 1 removed (revxl, revxl/sessions)", [[`  ${R2.alt1},${NL}`, ""]], [["rm -rf ~/.claude/revxl/sessions", null, deny(FOLDER)]]],
-        ["alternative 2 removed (a .. under revxl)", [[`  ${R2.alt2},${NL}`, ""]], [["rm -rf ~/.claude/revxl/joe/../sessions", null, deny(FOLDER)]]],
+        ["alternative 2 removed (a .. under revxl)", [[`${R2.alt2}${NL}`, ""]], [["rm -rf ~/.claude/revxl/abc/../sessions", null, deny(FOLDER)]]],
         ["alternative 3 removed (the .claude folder)", [[`  ${R2.alt3},${NL}`, ""]], [["rm -rf ~/.claude", null, deny(FOLDER)]]],
         ["alternative 4 removed (<revxl> itself)", [[" || atRevxl(c, rx())", ""]], [[(s) => `rm -rf ${homeOf(s)}`, atHome, deny(FOLDER)]]],
-        ["the not-a-child lookahead dropped (1)", [[R2.alt1, R2.alt1.replace(R2.child, "")]], [["rm ~/.claude/revxl/joeoliveimpact/voc/old.md", null, pass]]],
+        ["the not-a-child lookahead dropped (1)", [[R2.alt1, R2.alt1.replace(R2.child, "")]], [["rm ~/.claude/revxl/examplebrand/voc/old.md", null, pass]]],
         ["the not-a-child lookahead dropped (3)", [[R2.alt3, R2.alt3.replace(R2.child, "")]], [["rm ~/.claude/settings.json", null, pass]]],
-        ["the not-a-child lookahead dropped (4)", [[R2.tail4, R2.tail4.replace(R2.child, "")]], [[(s) => `rm ${bs(homeOf(s), "joeoliveimpact", "x.md")}`, atHome, pass]]],
+        ["the not-a-child lookahead dropped (4)", [[R2.tail4, R2.tail4.replace(R2.child, "")]], [[(s) => `rm ${bs(homeOf(s), "examplebrand", "x.md")}`, atHome, pass]]],
       ];
       for (const [name, pairs, probes] of cases) {
         const m = mutant(name.replace(/[^a-z0-9]+/gi, "-").slice(0, 40), pairs);

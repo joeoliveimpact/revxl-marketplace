@@ -47,12 +47,12 @@ the real questions the audience asks, not guesses.
 questions become hooks. Feeds a brand-brain topics shelf directly.
 **Cadence:** once per niche per quarter. Between runs, `reddit/omni-search` covers
 incremental mining — cheaper, but **not 1cr**: it is metered at 1cr per search page + 1cr
-per expanded thread with a floor of 5, so budget **5–8cr+ per keyword**.
+per expanded thread with a floor of 5, so budget **5–9cr per keyword**.
 
 ## Creator vetting — `prism/creator-vet` · 50–75cr, quote 75 · [J]
 
 **Worth it when:** real money or brand risk rides on a creator — a partnership, a paid
-collab, a high-ticket enrollment. The most expensive call in the API; treat it like a
+collab, a high-ticket enrollment. One of the pricier one-shots; treat it like a
 background check, not a curiosity.
 **Call:** `GET /v1/prism/creator-vet?handle=<handle>`
 **You get:** engagement quality, commenter authenticity (bot share), posting cadence, and
@@ -79,8 +79,8 @@ go stale in days, not weeks.
 the conversation in this niche?
 **Call:** `GET /v1/prism/share-of-voice?brands=<2-5 brands CSV>`
 ⚠️ **Cost is 40cr PER BRAND, not 40cr per call** (20cr/brand if you restrict it to web-only).
-`brands=` accepts 2–5, so the real range is **80–200cr** — the single most expensive call
-this plugin can make. **Count the brands, multiply, and name that number in the gate.**
+`brands=` accepts 2–5, so the real range is **80–200cr** — the priciest big gun after a full
+`ai-visibility` audit (up to 1,605). **Count the brands, multiply, and name that number in the gate.**
 Measured live: 40cr at one brand.
 **You get:** engagement-weighted SoV with web + social split, emotion overlay, and excess
 share of voice (ESOV).

@@ -14,7 +14,7 @@
  * unattended notice), and the prompt proceeds untouched. Same I/O shape as
  * hooks/credit-guard.mjs (JSON on stdin, JSON-or-nothing on stdout, exit 0 always).
  *
- * THREE TRIGGER CLASSES, ALL CLOSED SETS (Joe's design, settled 08.26.26):
+ * THREE TRIGGER CLASSES, ALL CLOSED SETS (the owner's design, settled 08.26.26):
  *   1. Wake-word. The word "socialcrawl" used as a verb ("socialcrawl this handle on ig").
  *      Always fires. Zero false positives by construction — nobody says it by accident.
  *   2. Intent phrase x co-occurrence. "research" / "look into" / "find out about" fires ONLY
@@ -62,18 +62,19 @@ const FRONT_DOOR = "research-plays";
 
 // Class 1. Wake-word. "social crawl" / "social-crawl" spelled apart is just as deliberate.
 const WAKE_RE = /\bsocial[\s-]?crawl\b/i;
+const SETUP_ASK = /\b(?:set[\s-]?up|onboard\w*|install\w*|connect my)\b/i;
 
 // Class 2. Intent phrases — the closed set from the plan, plus their ordinary inflections.
 const INTENT_RE =
   /\bresearch(?:ing|ed|es)?\b|\blook(?:ing|ed|s)?\s+into\b|\bfind(?:ing|s)?\s+out\s+about\b/i;
 
 // Class 3a. URL shape: a scheme URL, a www. host, or a host-with-path. A bare "example.com"
-// with no path and no www is deliberately NOT a URL here — "joe@example.com" must not fire.
+// with no path and no www is deliberately NOT a URL here — "name@example.com" must not fire.
 const URL_RE =
   /(?:\bhttps?:\/\/[^\s<>"')]+)|(?:\bwww\.[a-z0-9][a-z0-9-]*\.[a-z]{2,})|(?:\b[a-z0-9][a-z0-9-]*\.[a-z]{2,}\/[^\s<>"')]*)/i;
 
 // Class 3b. @handle shape. The leading boundary is load-bearing: without it every email
-// address in every prompt reads as a handle ("joe@example.com" -> "@example").
+// address in every prompt reads as a handle ("name@example.com" -> "@example").
 const HANDLE_RE = /(?:^|[\s(\[{"'“‘,;:>])@([a-z0-9][a-z0-9._-]{1,29})/i;
 
 /** Fields a roster line may carry a matchable name in. `platform` is deliberately excluded:
@@ -136,9 +137,10 @@ function loadRoster() {
 /**
  * The credit guard appends one line to `<revxl>/credit-guard-unattended.jsonl` for each unattended
  * decision it makes: every deny, and every paid pass. Once per new batch of lines, the next prompt
- * carries one line, to the user (`systemMessage`) and to the model (`additionalContext`): "N
- * unattended denials (~Q credits blocked), M credits spent unattended since <date> → <log>", where
- * Q and M add up the lines' `cmdWorst` and <date> is the batch's first line. The marker
+ * carries one line, to the user (`systemMessage`) and to the model (`additionalContext`): "SocialCrawl
+ * with nobody at the prompt, since <date>: N calls refused (~Q credits not spent); M credits counted
+ * for the calls that ran, …" (no file path, M8), where Q and M add up the lines' `cmdWorst` (the hold
+ * at the pass, never the give-back) and <date> is the batch's first line. The marker
  * `<revxl>/credit-guard-unattended.seen` holds how many bytes of the log were already reported.
  * Files only; any error = no notice. Returns null, or {note (null when the batch has no readable
  * line), mark()}; mark() is called after the output, so a failed write shows the batch again.
@@ -169,7 +171,9 @@ function unattendedNote() {
     }
     return {
       note: lines
-        ? `${n} unattended denials (~${q} credits blocked), ${m} credits spent unattended since ${since || "the last notice"} → ${log}`
+        ? `SocialCrawl with nobody at the prompt, since ${since || "the last notice"}: ${n} ${n === 1 ? "call" : "calls"} refused ` +
+          `(~${q} ${q === 1 ? "credit" : "credits"} not spent); ${m} ${m === 1 ? "credit" : "credits"} counted for the calls that ran, ` +
+          `as counted before they ran (credits that came back later are not taken off). Claude can show you the unattended log.`
         : null,
       mark() {
         try { writeFileSync(seen, String(end)); } catch {}
@@ -290,6 +294,10 @@ if (prompt.startsWith("[SocialCrawl launcher]")) silent();
 try {
   const lower = prompt.toLowerCase();
 
+  // 0. A setup ask ("set up socialcrawl", "connect my socialcrawl key") belongs to onboarding,
+  //    which its own description wakes; no research nudge competes with it (M6).
+  if (SETUP_ASK.test(lower) && (WAKE_RE.test(lower) || /social research engine/.test(lower))) silent();
+
   // 1. Wake-word. Always fires, and costs no file I/O.
   if (WAKE_RE.test(lower)) suggest("wake-word", 'the word "socialcrawl"');
 
@@ -303,7 +311,7 @@ try {
   //    reads live behind this gate, so a prompt with no research phrase does no file I/O.
   const hasIntent = INTENT_RE.test(lower);
 
-  // 2a. Roster entry. GATED behind the intent phrase (R3 round 2, Joe's call) — the plan
+  // 2a. Roster entry. GATED behind the intent phrase (R3 round 2, the owner's call) — the plan
   //     lists a roster entry as a class-2 CO-OCCURRENCE signal, not a class-3 standalone
   //     shape. Class 3 is URL-shape and @handle-shape only. Standalone, a rostered common
   //     first name would turn "I met Sarah at Starbucks" into a trigger the moment R4 writes

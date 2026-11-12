@@ -21,11 +21,11 @@ import {
   assertDecision,
   assertCounted,
   assertNotPlain,
+  NOLOCAL,
 } from "../lib.mjs";
 
 // No API key is needed: the guard never calls the API. Transcript fixtures strip PATH and
 // unset GROQ_API_KEY so the optional local-route sentence cannot vary with the machine.
-const NOLOCAL = { unsetEnv: ["GROQ_API_KEY"], env: { PATH: "" } };
 
 /** A copy of the guard in a directory with no costs.json beside it. */
 function guardWithoutCosts() {

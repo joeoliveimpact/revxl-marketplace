@@ -2,7 +2,7 @@
 /*
  * jev.mjs — the Jev decision layer (Stage B rev4 R12). OPTIONAL: the research front door runs it
  * on an unnamed ask unless the suggest hook's note says `jev: off` (no OpenRouter key); with no key it exits 3 and
- * the front door takes the no-key path (R13a, Joe 09.25.26). Jev is TypeSafe's
+ * the front door takes the no-key path (R13a, the owner 09.25.26). Jev is TypeSafe's
  * decision model on OpenRouter's Decisions API ("alpha"): typed questions in, probabilities out.
  *
  *   node "${CLAUDE_PLUGIN_ROOT}/hooks/jev.mjs" <intake|cuts|worth> <request.json>   # JSON on stdout
@@ -111,7 +111,7 @@ const worthQuestion = (id) => ({
 export const AGGREGATORS = ["prism", "search", "web", "tavily", "perplexity", "content_analysis"];
 export const CUT_LINE = 0.5;
 export const TOP_PLATFORMS = 3;
-/* Joe 09.25.26 (R12 lane L): a level-3 option beats the level-2 pick within this many credits. */
+/* the owner 09.25.26 (R12 lane L): a level-3 option beats the level-2 pick within this many credits. */
 export const MARGIN = 5;
 const PLATFORMS_DESCRIPTION =
   "A request typed by a user of a social-media research tool, and the platforms that could answer it.";
@@ -327,7 +327,7 @@ async function cuts(ask, costs, call, io) {
     .sort((a, b) => b.v - a.v || a.i - b.i)
     .slice(0, TOP_PLATFORMS)
     .map((s) => s.p);
-  // Named platforms always survive the cut (Joe 09.25.26, R12 lane L): one request each beyond the
+  // Named platforms always survive the cut (the owner 09.25.26, R12 lane L): one request each beyond the
   // top 3, uncapped, so the none_fit budget is 7 + the named platforms outside the top 3.
   const kept = [...top, ...namedPlatforms(ask, singles).filter((p) => !top.includes(p))];
   // Round 4: the kept single platforms one request each, plus ONE merged request for the
@@ -434,8 +434,8 @@ export function levelOf(answer) {
 }
 
 /*
- * The ranking (Joe, P25): recommend the cheapest quote.high whose level is >= max - 1 AND >= 2;
- * ties go to fewer calls. No ceiling (null high) is never the cheap one. Then the margin (Joe
+ * The ranking (the owner, P25): recommend the cheapest quote.high whose level is >= max - 1 AND >= 2;
+ * ties go to fewer calls. No ceiling (null high) is never the cheap one. Then the margin (the owner
  * 09.25.26, R12 lane L): a level-2 pick gives way to the cheapest level-3 option whose quote.high
  * is at most MARGIN credits above it; a level-3 option with no ceiling is never within a margin.
  * The strongest is the highest level (then the higher score) and is always shown. Order:

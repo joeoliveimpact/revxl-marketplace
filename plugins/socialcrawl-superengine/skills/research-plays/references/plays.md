@@ -18,13 +18,13 @@ name in ordinary chatter stays quiet. Free: one local file, no call out.
 **When:** building or refreshing a brand brain; hunting pain language, objections, and
 audience vocabulary for a niche.
 
-1. `GET /v1/reddit/omni-search?query=<niche keyword>` (**5–8cr+ each**, metered: 1cr per
+1. `GET /v1/reddit/omni-search?query=<niche keyword>` (**5–9cr each**, metered: 1cr per
    search page + 1cr per successfully-expanded thread, min 5; failed threads refunded) —
    threads across all of Reddit, subreddit attribution, top comments inline. Run 2–4
    keyword variants (pains, product category, "alternatives to X"), each its own plain `curl`
    call ([execution.md](execution.md) §1), never a loop. **Estimate: ~20–32cr
    total** — say it before the first call.
-2. Comments under proven content: `GET /v1/prism/comments?url=<top post>` (**2–5cr+ each**,
+2. Comments under proven content: `GET /v1/prism/comments?url=<top post>` (**2–200cr each**,
    metered: 1cr per internal page with a floor of 2, driven by `max=`; an Instagram URL is
    a flat 5cr) on the client's and competitors' top 3–5 posts. Say the running total.
    Try prism first; fall back to platform-native (`instagram/post/comments` 5cr,

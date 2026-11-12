@@ -19,7 +19,7 @@
 | /search/comments | `query` | 1 | Search Reddit comments |
 | /subreddits/search | `query` | **1-26** | Find subreddits by topic |
 | /search/media | `query` | 1 | Search Reddit image and video posts |
-| /post/transcript | `url` | 10 | Get a Reddit video post transcript — ⚠️ **Gated in this plugin: 10 credits per post — 100 of them = 1000 credits. Run it only on an explicit yes; the credit guard counts it and never asks. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.** |
+| /post/transcript | `url` | 10 | Get a Reddit video post transcript — ⚠️ **Gated in this plugin: 10 credits per post — 100 of them = 1000 credits. Run it only on an explicit yes. The credit guard never asks: it refuses it when the user's transcript setting (SocialCrawl → Settings) is Blocked, and counts it otherwise. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.** |
 | /omni-search | `query` | **5-9** | Reddit VoC sweep: one keyword → threads across all of Reddit with subreddit attribution and top comments inline. |
 
 ### Parameter legend
@@ -280,7 +280,7 @@ curl "https://www.socialcrawl.dev/v1/reddit/search/media?query=<query>" \
 
 Returns the transcript for a Reddit video post or direct `v.redd.it` URL when Reddit exposes a VTT caption file. Includes raw WebVTT in `raw_vtt` plus a parsed plain-text transcript. When Reddit doesn't expose captions, `transcript` is `null` and `transcriptNotAvailable` is `true`: credits are only deducted when a transcript is returned.
 
-> ⚠️ **Gated in this plugin: 10 credits per post — 100 of them = 1000 credits. Run it only on an explicit yes; the credit guard counts it and never asks. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.**
+> ⚠️ **Gated in this plugin: 10 credits per post — 100 of them = 1000 credits. Run it only on an explicit yes. The credit guard never asks: it refuses it when the user's transcript setting (SocialCrawl → Settings) is Blocked, and counts it otherwise. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.**
 
 **Parameters**
 
@@ -318,9 +318,9 @@ curl "https://www.socialcrawl.dev/v1/reddit/omni-search?query=<query>" \
 
 | Your goal | Use this | Credits |
 |-----------|----------|---------|
-| **One keyword across all of Reddit, top comments inline** | `/omni-search` | **5–8+** ⚠️ metered |
-| Search posts | `/search` | 1 |
-| Search inside one subreddit | `/subreddit/search` | 1 |
+| **One keyword across all of Reddit, top comments inline** | `/omni-search` | **5–9** ⚠️ metered |
+| Search posts | `/search` | 1–34 (metered) |
+| Search inside one subreddit | `/subreddit/search` | 1–26 (metered) |
 | A subreddit's posts / its details | `/subreddit` · `/subreddit/details` | 1 |
 | One post | `/post` | 1 |
 | That post's comments | `/post/comments` | 5 |
@@ -335,7 +335,7 @@ actually complain about / ask about / recommend", start here and stop here.
 ⚠️ **It is not a 1-credit call.** Billing is **1cr per search page + 1cr per successfully
 expanded thread, with a floor of 5**; failed threads are refunded. Measured live: **8cr** on a
 single keyword. Still roughly a third of `search/everywhere` (20cr) and, for a Reddit-shaped
-question, better — but quote **5–8cr+ per keyword**, and multiply before running variants.
+question, better — but quote **5–9cr per keyword**, and multiply before running variants.
 
 ### Watch the comment endpoint
 

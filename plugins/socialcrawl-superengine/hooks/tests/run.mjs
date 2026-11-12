@@ -32,7 +32,12 @@ import d28 from "./fixtures/d28.mjs";
 import d28b from "./fixtures/d28b.mjs";
 import d28c from "./fixtures/d28c.mjs";
 import d28d from "./fixtures/d28d.mjs";
+import tlock from "./fixtures/tlock.mjs";
+import g4a from "./fixtures/g4a.mjs";
+import giveback from "./fixtures/giveback.mjs";
+import g4fix from "./fixtures/g4fix.mjs";
 import mod from "./fixtures/mod.mjs";
+import helper from "./fixtures/helper.mjs";
 import report from "./fixtures/report.mjs";
 
 const SUITES = [
@@ -53,7 +58,12 @@ const SUITES = [
   ["d28b", d28b],
   ["d28c", d28c],
   ["d28d", d28d],
+  ["tlock", tlock],
+  ["g4a", g4a],
+  ["giveback", giveback],
+  ["g4fix", g4fix],
   ["mod", mod],
+  ["helper", helper],
   ["report", report],
 ];
 
@@ -67,7 +77,7 @@ for (const [suite, fixtures] of SUITES) {
   console.log(`\n== ${suite} (${selected.length})`);
   for (const f of selected) {
     try {
-      f.fn();
+      await f.fn();
       pass++;
       console.log(`  PASS  ${f.id} — ${f.desc}`);
     } catch (e) {

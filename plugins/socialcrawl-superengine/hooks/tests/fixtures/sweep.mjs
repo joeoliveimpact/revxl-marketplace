@@ -57,9 +57,8 @@
  * M_NOTPLAIN and nothing is counted; its visible figure is still read, and the unattended log
  * carries it (lib.mjs visible()), so the normalisation fixtures keep pinning what it prices.
  */
-import { run, visible, V1, TSCRIPT, quoted, assert, assertDecision, assertCounted, assertNotPlain, assertNoMatch } from "../lib.mjs";
+import { run, visible, V1, TSCRIPT, quoted, assert, assertDecision, assertCounted, assertNotPlain, assertNoMatch, NOLOCAL } from "../lib.mjs";
 
-const NOLOCAL = { unsetEnv: ["GROQ_API_KEY"], env: { PATH: "" } };
 // A literal backslash, never spelled inline in a URL so the shapes below stay readable.
 const BS = String.fromCharCode(92);
 

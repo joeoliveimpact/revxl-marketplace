@@ -106,14 +106,14 @@ curl "https://www.socialcrawl.dev/v1/hackernews/profile?handle=<handle>" \
 
 | Your goal | Use this | Credits |
 |-----------|----------|---------|
-| Find threads on a topic | `/search` | 1 |
+| Find threads on a topic | `/search` | 1–9 (metered) |
 | One story | `/story` | 1 |
 | Its comments — where the substance is | `/story/comments` | 1 |
 | A user's profile | `/profile` | 1 |
 
-All 1 credit. HN's value is concentrated in `/story/comments`: for developer tools, technical
+1 credit each, except `/search`, which is metered (1–9). HN's value is concentrated in `/story/comments`: for developer tools, technical
 products and startup positioning, the comment thread is a blunter and better-informed critique
-than anything on social. Budget 2cr for the usual pair — `/search`, then comments on the
+than anything on social. Budget 2cr for the usual pair (up to 10 if `/search` adds paid labels) — `/search`, then comments on the
 thread that matters.
 
 `/v1/search/forums` (10cr) fuses HN with Reddit and Naver in one ranked call; use it when the

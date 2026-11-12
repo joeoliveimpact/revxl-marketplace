@@ -179,18 +179,19 @@ curl "https://www.socialcrawl.dev/v1/search/news?query=<query>" \
 
 This platform holds the three cross-source search endpoints. **They are the top of a ladder,
 not the starting point.** Most search requests are answered a rung or two below, on a
-platform-native endpoint, for 1 credit.
+platform-native endpoint, usually for 1 credit a page.
 
 | Scope of the question | Endpoint | Credits |
 |----------------------|----------|---------|
-| One platform, named or implied | `/v1/{platform}/search` | 1 |
-| All of Reddit, top comments inline | `/v1/reddit/omni-search` | 1 |
-| News, localized across Google News editions | `/news` | 1 |
+| One platform, named or implied | `/v1/{platform}/search` | 1 a page on 12 platforms; a flat 5 on 11; more on the rest (most metered), up to 125 a call (Douyin 5–125, web 2–120, Xiaohongshu 5–100, TikTok 1–42, Reddit 1–34, Threads 1–34) |
+| All of Reddit, top comments inline | `/v1/reddit/omni-search` | 5–9 (metered) |
+| News, localized across Google News editions | `/news` | 2–62 (metered) |
 | Discussion sites together (Reddit + Hacker News + Naver 지식iN/카페) | `/forums` | 10 |
 | A true cross-platform social sweep (14 platforms, up to 17 sources) | `/everywhere` | 20 |
 
-`/news` (1cr) plans one query across several Google News editions in a single call — same
-price as `google_news/search` but multi-market, so prefer it for anything not explicitly
+`/news` (2–62cr, metered: 2 + 1 per leg that returns articles, up to 14 on the default engine)
+plans one query across several Google News editions in a single call — dearer than
+`google_news/search` (1cr) but multi-market, so prefer it for anything not explicitly
 single-country.
 
 `/forums` (10cr) is the middle rung and the one most often skipped. Reach for it when the
@@ -198,8 +199,8 @@ question spans discussion sites but does not need Instagram, TikTok or YouTube i
 it returns a fused ranked list with top comments inline on hero threads by default.
 
 `/everywhere` (20cr) earns its price only when you genuinely want the planned, fused, reranked
-cross-platform result. "What are people saying about X on Reddit" is a **1-credit** call. Do
-not escalate because a request merely *sounds* broad.
+cross-platform result. "What are people saying about X on Reddit" is one `reddit/search` page:
+**1 credit**, up to 34 with extras such as `include_body`. Do not escalate because a request merely *sounds* broad.
 
 ## Endpoint
 

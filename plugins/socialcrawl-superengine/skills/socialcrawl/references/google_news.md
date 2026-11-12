@@ -54,12 +54,12 @@ One endpoint, `/search` (1cr): news results for a query.
 
 At 1 credit this is one of the cheapest rungs on the search ladder. Use it when the question
 is "what is being reported about X" rather than "what are people saying about X" — for the
-latter, `reddit/omni-search` (1cr) is the better 1cr call.
+latter, `reddit/omni-search` (5–9cr) is the better call.
 
 ### Prefer `/v1/search/news` for anything multi-market
 
-`/v1/search/news` (also 1cr) plans and fans one query across several Google News editions in a
-single call, localized per market. Same price, broader coverage — so for anything that is not
+`/v1/search/news` (2–62cr, metered) plans and fans one query across several Google News editions in a
+single call, localized per market. Broader coverage at a higher, metered price — so for anything that is not
 explicitly single-market, reach for that instead.
 
 For a brand's earned-media footprint with outlet rollup and dedupe, `prism/earned-media`

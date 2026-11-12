@@ -4,6 +4,17 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.91] ... 2026-11-11
+
+### Changed
+- **socialcrawl-superengine v0.4.1** ... one band button, **Open SocialCrawl**, opens one pane with
+five tabs (Endpoints, Combos, Suggested, Round-up, Settings), and the band shows from the start of
+a session once SocialCrawl is set up. The session limit and a new transcript setting live in
+Settings: with Blocked saved, the guard refuses every call that pulls a transcript. Credits come
+back: after a call returns, the guard reads SocialCrawl's free ledger and swaps the call's hold
+for what was charged, shown on the band as Usage. Nothing the plugin tells a user asks them to
+type a command, and the unused `setup/setup-key.*` helpers are gone.
+
 ## [0.1.90] ... 2026-11-11
 
 ### Fixed

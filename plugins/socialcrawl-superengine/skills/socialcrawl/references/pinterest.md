@@ -131,12 +131,12 @@ curl "https://www.socialcrawl.dev/v1/pinterest/trends" \
 
 | Your goal | Use this | Credits |
 |-----------|----------|---------|
-| Search pins | `/search` | 1 |
+| Search pins | `/search` | 1–26 (metered) |
 | One pin | `/pin` | 1 |
-| A board / a user's boards | `/board` · `/user/boards` | 1 |
+| A board / a user's boards | `/board` · `/user/boards` | `/board` 1–16 (metered); `/user/boards` 1 |
 | **How often has this URL been saved?** | `/url-stats` | 1 |
 
-All 1 credit. `/url-stats` is the one worth knowing: it returns Pinterest save counts for
+1 credit each, except the metered `/search` and `/board`. `/url-stats` is the one worth knowing: it returns Pinterest save counts for
 *external* URLs, so you can measure how much organic traction a page — yours or a
 competitor's — has picked up on Pinterest without needing an account or an owned property.
 That is a rare thing in this API: a public engagement metric attached to an arbitrary URL.

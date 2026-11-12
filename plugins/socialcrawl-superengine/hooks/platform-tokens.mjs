@@ -40,7 +40,7 @@ export const HUMAN_ALIASES = {
 };
 
 /*
- * HAND-MAINTAINED — the second and last hand-maintained list in this file (Joe's call, R3
+ * HAND-MAINTAINED — the second and last hand-maintained list in this file (the owner's call, R3
  * round 2: silence beats noise). These names are still DERIVED and still appear in
  * `canonical`; they are only withheld from the TRIGGER set. A filter applied after
  * derivation, never an edit to what gets derived.

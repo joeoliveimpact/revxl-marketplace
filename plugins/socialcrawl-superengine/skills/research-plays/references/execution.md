@@ -2,7 +2,7 @@
 
 A pitch ends with a pick, and the pick changes what the plan is. Before it, the plan is a
 proposal. After it, the plan is an **allowlist**: the exact calls this run may make and the
-ceiling it may not pass.
+ceiling it is checked against after each step.
 
 Plain version — **they agreed to a list and a limit. Run the list, watch the limit, show them
 the receipt.**
@@ -41,7 +41,8 @@ Failing a run over a charge it did not make teaches everyone to ignore the exit 
 
 ## 3. Abort at the ceiling
 
-The ceiling is an abort control, not a prediction. When the diff **exits 2**, the netted lane
+The ceiling is an abort control, not a prediction, and it is checked after each step, not before
+each call, so a step can carry the total past it. When the diff **exits 2**, the netted lane
 total has passed the picked option's ceiling: **stop the run. Nothing further is called** — no
 one more page, no finishing the step already in flight. Report where it stands and re-pitch
 what is left.
@@ -67,9 +68,11 @@ it prices nothing itself. The numbers behind a quote live in the option's quote 
 `credit-guard.mjs` adjudicates a command before it runs, from the command string, and never asks:
 it denies a call that would take the session past its limit, or a command that is not a plain `curl`.
 That is a **spending gate, not a
-reconciliation**: it counts quoted worst cases, it cannot see what was actually billed or a
-refund, and a call it lets through reconciles nothing at all. **The plan and this ledger are
-the mechanism.** Mistaking the session cap for the check is the failure this contract exists to
+reconciliation of the run**: it holds each call's highest price as it counts it (0 for a few it
+can't price up front), and after a clean return it can
+swap that hold for what the vendor's ledger shows was charged on that endpoint, but it never
+attributes a charge to a lane, nets a run against its quote or stops a run at its ceiling.
+**The plan and this ledger are the mechanism.** Mistaking the session cap for the check is the failure this contract exists to
 prevent.
 
 The ledger is itself a network caller the guard cannot see, because an import never becomes a

@@ -33,13 +33,13 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   session, V1, TSCRIPT, GUARD, COSTS, FAKE_FETCH, FAKE_KEY, T, M_NOTPLAIN, M_NOTBASH, M_LOST, mError, mLimit, mStateRead, srcAuto,
   SRC_FALLBACK, ROUTINE, ROUTINES_ON, assert, assertDecision, assertMatch,
+  NOLOCAL,
 } from "../lib.mjs";
 import { ask } from "../lib-suggest.mjs";
 
 const HOOKS = dirname(GUARD);
 const LEDGER = join(HOOKS, "ledger.mjs");
 const UN = { CLAUDE_CODE_SESSION_ATTENDED: "0" };
-const NOLOCAL = { GROQ_API_KEY: "", PATH: "" };
 const DOCS = "https://docs." + "social" + "crawl" + ".dev";
 const P50 = `curl -s "${V1}prism/leads?query=x"`;           // flat 50, plain
 const P1 = `curl -s "${V1}amazon/shop?q=a"`;                 // flat 1, plain
@@ -107,9 +107,10 @@ function readOnlyOnFetch() {
  * A preload that faults the state file STATE_FAULT names, as JSON [mode, path, code, n, skip]: "read"
  * makes a read of it throw `code` (EACCES by default) while saves work; "empty" makes every read
  * of it come back empty and "torn" cut off at half its length (a read while it is being written);
- * "write" makes every save of it empty the file, then throw ENOSPC (a full disk: writeFileSync
- * truncates before it writes). J6: "busy" makes a save of it throw `code` (EBUSY by default) and
- * leave the file whole; "drop" makes a save of it do nothing and not throw (a save lost without an
+ * "write" empties the same-folder state temporary file, then throws ENOSPC; the previous session
+ * file must stay byte-identical. Direct writes still fault too, so an atomic-write mutant is caught.
+ * J6: "busy" makes a temporary or direct save throw `code` (EBUSY by default) and
+ * leave the file whole; "drop" drops the final rename without throwing (a save lost without an
  * error, which R18-3 no longer detects); "lock" makes the
  * exclusive create of its lock file throw `code` (EPERM by default); "unlink" makes the delete of its
  * lock file throw `code` (EBUSY by default). Those five fault the first `n` tries after `skip`
@@ -125,18 +126,20 @@ export function stateFault() {
     `const fs = createRequire(import.meta.url)("node:fs");\n` +
     `const [mode, file, code, n, skip] = JSON.parse(process.env.STATE_FAULT);\n` +
     `const hit = (p, f = file) => typeof p === "string" && resolve(p).toLowerCase() === resolve(f).toLowerCase();\n` +
+    `const save = (p) => hit(p) || (typeof p === "string" && resolve(p).toLowerCase().startsWith(resolve(file).toLowerCase() + ".") && p.endsWith(".tmp"));\n` +
     `const fail = (code) => Object.assign(new Error(code + ", forced by the R14b fixture"), { code });\n` +
-    `const read = fs.readFileSync, write = fs.writeFileSync, unlink = fs.unlinkSync;\n` +
+    `const read = fs.readFileSync, write = fs.writeFileSync, unlink = fs.unlinkSync, rename = fs.renameSync;\n` +
     `let tries = 0;\n` +
     `const due = () => { const i = tries++ - (skip || 0); return i >= 0 && (n == null || i < n); };\n` +
-    `if (mode === "busy") fs.writeFileSync = (p, ...a) => { if (hit(p) && due()) throw fail(code || "EBUSY"); return write(p, ...a); };\n` +
+    `if (mode === "busy") fs.writeFileSync = (p, ...a) => { if (save(p) && due()) throw fail(code || "EBUSY"); return write(p, ...a); };\n` +
     `if (mode === "drop") fs.writeFileSync = (p, ...a) => (hit(p) && due() ? undefined : write(p, ...a));\n` +
+    `if (mode === "drop") fs.renameSync = (p, target, ...a) => (hit(target) && due() ? undefined : rename(p, target, ...a));\n` +
     `if (mode === "lock") fs.writeFileSync = (p, ...a) => { if (hit(p, file + ".lock") && due()) throw fail(code || "EPERM"); return write(p, ...a); };\n` +
     `if (mode === "unlink") fs.unlinkSync = (p, ...a) => { if (hit(p, file + ".lock") && due()) throw fail(code || "EBUSY"); return unlink(p, ...a); };\n` +
     `if (mode === "read") fs.readFileSync = (p, ...a) => { if (hit(p) && due()) throw fail(code || "EACCES"); return read(p, ...a); };\n` +
     `if (mode === "empty") fs.readFileSync = (p, ...a) => (hit(p) ? "" : read(p, ...a));\n` +
     `if (mode === "torn") fs.readFileSync = (p, ...a) => { const s = read(p, ...a); return hit(p) ? String(s).slice(0, String(s).length >> 1) : s; };\n` +
-    `if (mode === "write") fs.writeFileSync = (p, ...a) => { if (hit(p)) { write(p, ""); throw fail("ENOSPC"); } return write(p, ...a); };\n` +
+    `if (mode === "write") fs.writeFileSync = (p, ...a) => { if (save(p)) { write(p, ""); throw fail("ENOSPC"); } return write(p, ...a); };\n` +
     `syncBuiltinESMExports();\n`);
   return pathToFileURL(f).href;
 }
@@ -168,7 +171,11 @@ function guardEnv(s, o = {}) {
   const dead = "http://127.0.0.1:9";
   Object.assign(env, { HOME: s.dir, USERPROFILE: s.dir, SC_REVXL_HOME: s.revxl, HTTPS_PROXY: dead, HTTP_PROXY: dead, ALL_PROXY: dead, NODE_USE_ENV_PROXY: "1" });
   if (o.fetch) Object.assign(env, { FAKE_FETCH: JSON.stringify(o.fetch), FAKE_FETCH_LOG: join(s.dir, "fetches.jsonl"), SOCIALCRAWL_API_KEY: FAKE_KEY });
-  return Object.assign(env, o.env || {});
+  Object.assign(env, o.env || {});
+  for (const k of o.unsetEnv || []) {
+    for (const name of Object.keys(env)) if (name.toLowerCase() === k.toLowerCase()) delete env[name];
+  }
+  return env;
 }
 
 /**
@@ -238,11 +245,11 @@ const logSummary = (s) => {
 export default [
   {
     id: "R14b-01-balance-values",
-    desc: "READ (O3; D28): a finite data.balance is cached whatever its value and never read again. An integer balance of 0 or more gives the automatic cap min(500, 25%): 800, 400 and 1000 give 200, 100 and 250, 2000 and 4000 the 500 ceiling (not 1000), so a 50cr call passes; 4 gives 1 (a 50cr call is denied, then a 1cr call reaches it exactly); 0 and 3 give 0 (both denied); -5 and 999.5 are no readable balance, so the fallback 500 (both pass). Every deny is exactly M_LIMIT, the same unattended, and logged there",
+    desc: "READ (O3; D28): a finite data.balance is cached whatever its value and never read again. An integer balance of 0 or more gives the automatic cap min(500, 25%): 800, 400 and 1000 give 200, 100 and 250, 2000 and 4000 the 500 ceiling (not 1000), so a 50cr call passes; 4 gives 1 (a 50cr call is denied, then a 1cr call reaches it exactly); 0 and 3 give 0 (both denied); -5 is no readable balance (fallback 500); 999.5 is floored to 999 (cap 249), both pass. Every deny is exactly M_LIMIT, the same unattended, and logged there",
     fn() {
       const rows = [];
-      for (const [v, limit] of [[800, 200], [400, 100], [1000, 250], [2000, 500], [4000, 500], [4, 1], [0, 0], [3, 0], [-5, 500], [999.5, 500]]) {
-        const src = Number.isInteger(v) && v >= 0 ? srcAuto(v) : SRC_FALLBACK;
+      for (const [v, limit] of [[800, 200], [400, 100], [1000, 250], [2000, 500], [4000, 500], [4, 1], [0, 0], [3, 0], [-5, 500], [999.5, 249]]) {
+        const src = Number.isFinite(v) && v >= 0 ? srcAuto(Math.floor(v)) : SRC_FALLBACK;
         const msg = (s, spent, worst) => mLimit({ spent, worst, limit, src, bf: s.bf });
         const a = fresh();
         const r1 = a.run(P50, { fetch: [bal(v)] });
@@ -372,7 +379,7 @@ export default [
       for (const [label, cmd, env, want, o] of [
         ["plain paid, attended", P50, {}, 1],
         ["plain paid, unattended", P50, UN, 1],
-        ["plain transcript (3cr), attended", `curl -s "${V1}youtube/video/${TSCRIPT}?id=a"`, NOLOCAL, 1],
+        ["plain transcript (3cr), attended", `curl -s "${V1}youtube/video/${TSCRIPT}?id=a"`, NOLOCAL.env, 1],
         ["not plain, echo '<URL>', attended", `echo '${P}'`, {}, 0],
         ["not plain, a loop, attended", `for i in 1 2; do curl -s "${P}"; done`, {}, 0],
         ["plain free credits/balance, attended", `curl -s "${V1}credits/balance"`, {}, 0],
@@ -388,7 +395,7 @@ export default [
         ["PostToolUseFailure of a paid call", P50, {}, 0, { event: "PostToolUseFailure", extra: { error: "x" } }],
       ]) {
         const s = fresh();
-        const r = s.run(cmd, { fetch: [bal(800)], env, ...(o || {}) });
+        const r = s.run(cmd, { ...NOLOCAL, fetch: [bal(800)], env, ...(o || {}) });
         rows.push(cell(label, [`decision ${r.decision}`, `fetches ${s.fetches().length}`, `committed ${(s.state() || {}).spent}`, `log ${short(s.logLines()[0])}`]));
         assert(s.fetches().length === want, `${label}: ${want} read(s), read ${s.fetches().length}`, r);
         assert(r.exit === 0, `${label}: exit 0`, r);
@@ -550,7 +557,7 @@ export default [
   },
   {
     id: "R14b-08-notice",
-    desc: "NOTICE (J3): the next prompt after new log lines carries 'N unattended denials (~Q credits blocked), M credits spent unattended since <date> → <log>' in systemMessage and additionalContext, once per batch; a triggering prompt keeps its suggestion (the jev line last); nothing new = silent; no S15-banned field",
+    desc: "NOTICE (J3): the next prompt after new log lines carries 'SocialCrawl with nobody at the prompt, since <date>: N calls refused (~Q credits not spent); M credits counted …' (no log path, M8) in systemMessage and additionalContext, once per batch; a triggering prompt keeps its suggestion (the jev line last); nothing new = silent; no S15-banned field",
     fn() {
       const P = `${V1}prism/leads?query=x`;
       const s = session().seed({ spent: 0 });
@@ -559,7 +566,11 @@ export default [
       const lines = s.logLines();
       assert(lines.length === 3, `three unattended decisions logged, read ${lines.length}`);
       const day = lines[0].ts.slice(0, 16).replace("T", " ");
-      const want = (n, q, m, since) => `${n} unattended denials (~${q} credits blocked), ${m} credits spent unattended since ${since} UTC → ${log}`;
+      const pl = (k, one) => `${k} ${k === 1 ? one : one + "s"}`;
+      const want = (n, q, m, since) => `SocialCrawl with nobody at the prompt, since ${since} UTC: ${pl(n, "call")} refused ` +
+        `(~${pl(q, "credit")} not spent); ${pl(m, "credit")} counted for the calls that ran, as counted before they ran ` +
+        `(credits that came back later are not taken off). Claude can show you the unattended log.`;
+      assert(!want(1, 1, 1, "x").includes(log) && !want(1, 1, 1, "x").includes("spent unattended"), "M8: no raw log path, no 'spent'");
       const env = { SC_REVXL_HOME: s.revxl };
       const banned = (r, label) => {
         const flat = JSON.stringify(r.json);
@@ -585,7 +596,7 @@ export default [
         `the suggestion stays, with the notice before the jev line, read ${third.context}`);
       banned(third, "prompt 3");
       const fourth = ask("socialcrawl this handle on ig", { env, roster: [] });
-      assert(fourth.json && fourth.json.systemMessage === undefined && !/unattended denials/.test(fourth.context), `a triggering prompt with nothing new has no notice, read ${fourth.raw}`);
+      assert(fourth.json && fourth.json.systemMessage === undefined && !/nobody at the prompt/.test(fourth.context), `a triggering prompt with nothing new has no notice, read ${fourth.raw}`);
       // A half-written line waits for its newline; the marker holds the bytes reported.
       appendFileSync(log, '{"ts":"2026-09-29T00:00:00.000Z","decision":"deny","cmdWorst":7');
       const partial = ask("what's for lunch", { env });
@@ -600,9 +611,9 @@ export default [
   },
   {
     id: "R14b-09-exit-codes",
-    desc: "EXIT (O6): no process.exit( in credit-guard.mjs, ledger.mjs, jev.mjs or price.mjs; ledger.mjs exits 0 after a fetch (a loopback server) and 2 over a ceiling; the guard's decision reaches stdout with exit 0 after a balance read over a real loopback socket",
+    desc: "EXIT (O6): no process.exit( in credit-guard.mjs, ledger.mjs, jev.mjs, price.mjs or give-back.mjs; ledger.mjs exits 0 after a fetch (a loopback server) and 2 over a ceiling; the guard's decision reaches stdout with exit 0 after a balance read over a real loopback socket",
     fn() {
-      const hits = ["credit-guard.mjs", "ledger.mjs", "jev.mjs", "price.mjs"].filter((f) => readFileSync(join(HOOKS, f), "utf8").includes("process.exit("));
+      const hits = ["credit-guard.mjs", "ledger.mjs", "jev.mjs", "price.mjs", "give-back.mjs"].filter((f) => readFileSync(join(HOOKS, f), "utf8").includes("process.exit("));
       assert(!hits.length, `process.exit( found in ${hits.join(", ")}`);
       const d = mkdtempSync(join(tmpdir(), "sc-r14b-exit-"));
       const redirect = join(d, "redirect.mjs");
@@ -817,20 +828,22 @@ export default [
   },
   {
     id: "R14b-12-J4-damaged-state",
-    desc: "LOST TOTAL (J4, checker X3; D28): a state file damaged after {spent 190, balance 800} (a save that empties it and then fails ENOSPC; torn JSON; empty; null; []; a string or null spent) is a lost total: no balance read, and 4 x 50cr are each denied with exactly M_LOST, attended and unattended (logged lost, cap null), and the state is saved again with lost: true",
+    desc: "ATOMIC SAVE AND LOST TOTAL (J4, checker X3): ENOSPC in a temporary save refuses the call and preserves {spent 190, balance 800} byte-identically; directly seeded damage (torn JSON; empty; null; []; string or null spent) is still lost: no balance read, 4 x 50cr denied with exactly M_LOST, attended and unattended, and saved lost: true",
     fn() {
       const rows = [];
       const fault = stateFault();
       for (const [who, env] of [["attended", {}], ["unattended", UN]]) {
-        // A 1cr call within the limit whose commit save empties the file, then fails; then 4 x 50cr.
+        // A failed temporary save preserves the old file. Seed damage separately before the lost-read probes.
         const s = session().seed({ spent: 190 });
+        const before = s.stateRaw();
         const first = s.run(P1, { fetch: [bal(800)], node: ["--import", fault], env: { ...env, STATE_FAULT: JSON.stringify(["write", s.stateFile]) } });
         const left = s.stateRaw();
+        assert(left === before && s.state().spent === 190, `${who}: failed temporary save preserves the old file byte-identically`, first);
+        writeFileSync(s.stateFile, "");
         const rs = [1, 2, 3, 4].map(() => s.run(P50, { fetch: [bal(800)], env }));
         const st = s.state();
-        rows.push(cell(`save empties the file, ENOSPC, ${who}`, [`1cr ${first.decision} (file left ${JSON.stringify(left)})`, `then 4 x 50cr ${decs(rs)}`,
+        rows.push(cell(`temporary save ENOSPC, then seeded damage, ${who}`, [`1cr ${first.decision} (file left ${JSON.stringify(left)})`, `then 4 x 50cr ${decs(rs)}`,
           `fetches ${s.fetches().length}`, `committed ${st && st.spent}, lost ${st && st.lost}`, `log ${logSummary(s)}`]));
-        assert(left === "", `${who}: the failed save leaves the file empty, read ${JSON.stringify(left)}`, first);
         assertRefused(first, s.stateFile, /session file could not be saved \(ENOSPC\)/, `${who}: the commit that can't be saved`);
         assertMatch(first, /this command's worst case is ~1 credits/, `${who}: the refusal names its figure`);
         assert(rs.every((r) => r.decision === "deny" && r.message === M_LOST && r.exit === 0) && s.fetches().length === 0, `${who}: after the emptied file, M_LOST x4 and no balance read, read ${decs(rs)} / ${s.fetches().length} read(s)`, rs[0]);
@@ -1227,13 +1240,13 @@ export default [
     fn() {
       const rows = [];
       const fault = stateFault();
-      const faulted = (s, spec, env = {}) => ({ node: ["--import", fault], env: { ...env, STATE_FAULT: JSON.stringify([spec[0], s.stateFile, ...spec.slice(1)]) } });
+      const faulted = (s, spec, env = {}) => ({ ...NOLOCAL, node: ["--import", fault], env: { ...env, STATE_FAULT: JSON.stringify([spec[0], s.stateFile, ...spec.slice(1)]) } });
       const FAULTS = [["a save that throws", ["busy", "EBUSY"]]];
       const HELD = /session lock .* could not be taken in 4 seconds \(EEXIST\)/;
       const held = [];                                    // one lock-held run per command, all started at once below
       for (const [label, cmd, env, worst] of [
         ["a plain paid chain (150)", P150, {}, 150],
-        ["a transcript (3)", `curl -s "${V1}youtube/video/${TSCRIPT}?id=a"`, NOLOCAL, 3],
+        ["a transcript (3)", `curl -s "${V1}youtube/video/${TSCRIPT}?id=a"`, NOLOCAL.env, 3],
         ["an unreadable endpoint (50)", `curl -s "${V1}prism/no-such-endpoint?h=a"`, {}, 50],
         ["a stated maximum, investigate budget=40", `curl -s "${V1}prism/investigate?goal=x&budget=40"`, {}, 40],
         ["a stated maximum, web/sessions (20)", `curl -X POST "${V1}web/sessions" -d '{}'`, {}, 20],
@@ -1241,7 +1254,7 @@ export default [
         ["prism/jobs, no stated maximum (0)", `curl -X POST "${V1}prism/jobs" -d '{}'`, {}, 0],
       ]) {
         const ok = session().seed({ spent: 0 });
-        const r = ok.run(cmd, { env });
+        const r = ok.run(cmd, { ...NOLOCAL, env });
         const st = ok.state();
         const parts = [`saved: ${r.decision || "pass"}, committed ${st.spent}`];
         assert(r.raw === "" && st.spent === worst && !existsSync(lockOf(ok)), `${label}: passes with ${worst} committed, read ${r.decision} / ${JSON.stringify(st)}`, r);
@@ -1263,7 +1276,7 @@ export default [
         d.cleanup();
         const h = session().seed({ spent: 0 });
         writeFileSync(lockOf(h), "");
-        held.push({ s: h, command: cmd, o: { env }, label, before: h.stateRaw(), parts });
+        held.push({ s: h, command: cmd, o: { ...NOLOCAL, env }, label, before: h.stateRaw(), parts });
       }
       // A command that is not plain is denied before the lock and the state file: whatever they do.
       for (const [label, cmd] of [
@@ -1527,7 +1540,7 @@ export default [
         ["an unattended-only prefix restored", "    return done({ hookSpecificOutput: { permissionDecision: \"deny\" }, systemMessage: message });\n",
           "    return done({ hookSpecificOutput: { permissionDecision: \"deny\" }, systemMessage: (UNATTENDED ? \"Unattended session: nobody can confirm this SocialCrawl call, so it was not run. \" : \"\") + message });\n"],
         ["the lost wording gone", "return deny(M_LOST, \"lost\");", "return deny(\"SocialCrawl call not run: ~0 credits are committed this session.\" + T, \"lost\");"],
-        ["the tail dropped from the limit deny", "`(${src}). To go further, the person raises it in the SocialCrawl Budget pane.` + T,", "`(${src}). To go further, the person raises it in the SocialCrawl Budget pane.`,"],
+        ["the tail dropped from the limit deny", "`(${src}). To go further, raise your limit in SocialCrawl → Settings (up to 20,000).` + T,", "`(${src}). To go further, raise your limit in SocialCrawl → Settings (up to 20,000).`,"],
       ]) {
         const d = hooksCopy(null);
         const f = join(d, "credit-guard.mjs");

@@ -16,11 +16,12 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   session, V1, TSCRIPT, GUARD, COSTS, BALANCE, LIMIT, T, USE_BASH, M_NOTPLAIN, M_NOTBASH, M_LOST, mError, mLimit,
   ROUTINE, ROUTINES_ON, SRC_SESSION, SRC_FALLBACK, srcAuto, today, assert, assertDecision,
+  NOLOCAL,
 } from "../lib.mjs";
 import { stateFault } from "./balance.mjs";
 
 const UN = { CLAUDE_CODE_SESSION_ATTENDED: "0" };
-const NOLOCAL = { GROQ_API_KEY: "", PATH: "" };
+const M_SETTINGS = "SocialCrawl call not run: your SocialCrawl settings file can't be read, so this session's credit limit can't be checked. Re-save your limit in SocialCrawl → Settings to fix it." + T;
 const HOOKS_JSON = resolve(dirname(GUARD), "hooks.json");
 const DOCS = "https://docs." + "social" + "crawl" + ".dev";
 const P = `${V1}prism/leads?query=x`;
@@ -30,7 +31,7 @@ const P200 = `curl -s "${V1}prism/share-of-voice?brands=a,b"`;    // plain, 200
 const P500 = `curl -X POST "${V1}prism/post-stats" -d '{}'`;     // plain, 500 (the label worst case)
 const FREE = `curl -s "${V1}credits/balance"`;                    // plain, free
 const bal = (v) => ({ body: { data: { balance: v } } });
-const KINDS = ["not-plain", "lost", "over-limit", "under-cap", "error"];
+const KINDS = ["not-plain", "lost", "over-limit", "under-cap", "error", "transcript-locked"];
 const FIELDS = ["ts", "session_id", "decision", "kind", "paths", "cmdWorst", "committed", "cap"];
 const RON = { budget: ROUTINES_ON, env: ROUTINE };
 
@@ -45,7 +46,7 @@ function open(o = {}) {
 /** One run in a fresh session built by open(o); returns the result with the state, log and budget path. */
 function once(cmd, o = {}) {
   const s = open(o);
-  const r = s.run(cmd, { env: o.env, extra: o.extra, fetch: o.fetch, node: o.node, guard: o.guard, event: o.event });
+  const r = s.run(cmd, { env: o.env, unsetEnv: o.unsetEnv, extra: o.extra, fetch: o.fetch, node: o.node, guard: o.guard, event: o.event });
   r.state = s.state();
   r.log = s.logLines();
   r.fetchCount = s.fetches().length;
@@ -70,7 +71,7 @@ function readSpy() {
     `syncBuiltinESMExports();\n`);
   return { url: pathToFileURL(f).href, dir: d };
 }
-/** A preload that makes a save of SAVE_FAIL throw EBUSY (the file left whole), as balance.mjs stateFault "busy". */
+/** A preload that makes rename over SAVE_FAIL throw EBUSY, leaving the previous session file whole. */
 function saveThrows() {
   const d = mkdtempSync(join(tmpdir(), "sc-p3a-save-"));
   const f = join(d, "save-throws.mjs");
@@ -78,8 +79,8 @@ function saveThrows() {
     `import { createRequire, syncBuiltinESMExports } from "node:module";\n` +
     `import { resolve } from "node:path";\n` +
     `const fs = createRequire(import.meta.url)("node:fs");\n` +
-    `const write = fs.writeFileSync;\n` +
-    `fs.writeFileSync = (p, ...a) => { if (typeof p === "string" && resolve(p).toLowerCase() === resolve(process.env.SAVE_FAIL).toLowerCase()) throw Object.assign(new Error("EBUSY, forced"), { code: "EBUSY" }); return write(p, ...a); };\n` +
+    `const rename = fs.renameSync;\n` +
+    `fs.renameSync = (p, target, ...a) => { if (typeof target === "string" && resolve(target).toLowerCase() === resolve(process.env.SAVE_FAIL).toLowerCase()) throw Object.assign(new Error("EBUSY, forced"), { code: "EBUSY" }); return rename(p, target, ...a); };\n` +
     `syncBuiltinESMExports();\n`);
   return { url: pathToFileURL(f).href, dir: d };
 }
@@ -128,7 +129,7 @@ export default [
         ["a pipe into a program", `curl -s "${P}" | sh`, {}],
         ["PowerShell, paid", P50, { extra: { tool_name: "PowerShell" } }],
         ["PowerShell, free", FREE, { extra: { tool_name: "PowerShell" } }],
-        ["a transcript", `curl -s "${V1}youtube/video/${TSCRIPT}?id=a"`, { env: NOLOCAL }],
+        ["a transcript", `curl -s "${V1}youtube/video/${TSCRIPT}?id=a"`, NOLOCAL],
         ["cohorts", `curl -s "${V1}cohorts?segment=a"`, {}],
         ["an unresolved literal path", `curl -s "${V1}prism/no-such-endpoint?h=a"`, {}],
         ["GET web/monitors", `curl -s "${V1}web/monitors"`, {}],
@@ -218,8 +219,8 @@ export default [
       for (const [label, cmd, worst] of cases) {
         for (const start of [0, 100]) {
           if (start + worst > LIMIT) continue;
-          for (const [who, env] of [["attended", NOLOCAL], ["unattended", { ...NOLOCAL, ...UN }]]) {
-            const r = once(cmd, { seed: { spent: start }, env });
+          for (const [who, env] of [["attended", NOLOCAL.env], ["unattended", { ...NOLOCAL.env, ...UN }]]) {
+            const r = once(cmd, { ...NOLOCAL, seed: { spent: start }, env });
             assert(r.raw === "" && r.exit === 0 && spentOf(r) === start + worst, `${label}, from ${start}, ${who}: passes and counts ${worst}, read ${r.decision} / ${JSON.stringify(r.state)}`, r);
           }
         }
@@ -242,7 +243,7 @@ export default [
   },
   {
     id: "P3a-A5-boundary",
-    desc: "A5: at a limit of 200 (the automatic cap of an 800 balance, and a session budget of 200), spent 0 + worst 200 passes and is committed, and spent 1 + worst 200 is denied with exactly M_LIMIT naming 1, 200, 200, the limit's source and the Budget pane",
+    desc: "A5: at a limit of 200 (the automatic cap of an 800 balance, and a session budget of 200), spent 0 + worst 200 passes and is committed, and spent 1 + worst 200 is denied with exactly M_LIMIT naming 1, 200, 200, the limit's source and SocialCrawl → Settings",
     fn() {
       for (const [label, budget, src] of [["the automatic cap", undefined, srcAuto(BALANCE)], ["a session budget of 200", { sessionBudget: 200 }, SRC_SESSION]]) {
         const ok = once(P200, { seed: { spent: 0 }, budget });
@@ -280,7 +281,7 @@ export default [
   },
   {
     id: "P3a-A7-garbled-budget-file",
-    desc: "A7: a budget file that is bad JSON, [], \"x\", empty or a folder is read exactly as no file: no throw, exit 0, never M_ERROR, a 50cr call passes and a 500cr call is denied with M_LIMIT from the automatic cap, attended and unattended",
+    desc: "A7: a budget file that is bad JSON, [], \"x\", empty or a folder denies paid calls with the exact settings-file error and nothing counted; no file retains the automatic cap, attended and unattended",
     fn() {
       for (const [label, make] of [["no file", null], ["bad JSON", "{bad"], ["[]", "[]"], ['"x"', '"x"'], ["empty", ""], ["a folder", "DIR"]]) {
         for (const [who, env] of [["attended", {}], ["unattended", UN]]) {
@@ -292,7 +293,9 @@ export default [
             const st = s.state();
             s.cleanup();
             assert(r.exit === 0 && !r.stderr && r.message !== mError(), `${label}, ${who}: never an error, read ${r.message}`, r);
-            if (worst <= LIMIT) assert(r.raw === "" && st.spent === worst, `${label}, ${who}: 50 passes, read ${r.decision} / ${JSON.stringify(st)}`, r);
+            if (make !== null) assert(r.decision === "deny" && r.message === M_SETTINGS && st.spent === 0,
+              `${label}, ${who}: unreadable settings deny, nothing counted`, r);
+            else if (worst <= LIMIT) assert(r.raw === "" && st.spent === worst, `${label}, ${who}: 50 passes, read ${r.decision} / ${JSON.stringify(st)}`, r);
             else assert(r.message === mLimit({ spent: 0, worst, limit: LIMIT, src: srcAuto(BALANCE), bf: r.bf }), `${label}, ${who}: the automatic cap, read ${r.message}`, r);
           }
         }
@@ -397,18 +400,23 @@ export default [
   },
   {
     id: "P3a-A15-hooks-json",
-    desc: "A15: hooks.json registers credit-guard.mjs exactly once — PreToolUse, matcher Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit (3c: the write-type tools for the guard's own files), timeout 10 — with no PostToolUse or PostToolUseFailure entry, and research-suggest.mjs on UserPromptSubmit exactly as before",
+    desc: "A15: Pre guard timeout 10, silent PostToolUse and PostToolBatch timeout 5, and research-suggest on UserPromptSubmit unchanged",
     fn() {
       const cfg = JSON.parse(readFileSync(HOOKS_JSON, "utf8"));
-      assert(JSON.stringify(Object.keys(cfg.hooks).sort()) === JSON.stringify(["PreToolUse", "UserPromptSubmit"]), `exactly PreToolUse and UserPromptSubmit, read ${Object.keys(cfg.hooks)}`);
+      assert(JSON.stringify(Object.keys(cfg.hooks).sort()) === JSON.stringify(["PostToolBatch", "PostToolUse", "PreToolUse", "UserPromptSubmit"]), `exactly the four registered events, read ${Object.keys(cfg.hooks)}`);
       const guardEntries = [];
       for (const [event, list] of Object.entries(cfg.hooks)) for (const m of list) for (const h of m.hooks || []) {
         if (String(h.command || "").includes("credit-guard.mjs")) guardEntries.push({ event, matcher: m.matcher, ...h });
       }
-      assert(guardEntries.length === 1, `exactly one credit-guard entry, read ${JSON.stringify(guardEntries)}`);
+      assert(guardEntries.length === 3, `exactly three credit-guard entries, read ${JSON.stringify(guardEntries)}`);
       const [g] = guardEntries;
       assert(g.event === "PreToolUse" && g.matcher === "Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit" && g.timeout === 10 && g.type === "command" && g.command === 'node "${CLAUDE_PLUGIN_ROOT}/hooks/credit-guard.mjs"',
         `PreToolUse, Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit, timeout 10, read ${JSON.stringify(g)}`);
+      for (const [event, matcher] of [["PostToolUse", "Bash"], ["PostToolBatch", undefined]]) {
+        const entry = guardEntries.find(e => e.event === event);
+        assert(entry && entry.matcher === matcher && entry.timeout === 5 && entry.type === "command" && entry.command === g.command,
+          `${event}: same command, required matcher and timeout 5`);
+      }
       const want = [{ hooks: [{ type: "command", command: 'node "${CLAUDE_PLUGIN_ROOT}/hooks/research-suggest.mjs"', timeout: 10 }] }];
       assert(JSON.stringify(cfg.hooks.UserPromptSubmit) === JSON.stringify(want), `research-suggest unchanged, read ${JSON.stringify(cfg.hooks.UserPromptSubmit)}`);
     },
@@ -516,7 +524,7 @@ export default [
   },
   {
     id: "P3a-A18-unattended-log",
-    desc: "A18: unattended, every deny is logged and every logged kind is one of not-plain, lost, over-limit, under-cap and error, each line holding exactly ts, session_id, decision, kind, paths, cmdWorst, committed, cap in that order; the former transcript, unreadable, uncomputable, unpriced and cap-step shapes log as passes or over-limit; attended, the same runs log nothing",
+    desc: "A18: unattended, every deny is logged and every logged kind is one of not-plain, lost, over-limit, under-cap and error, each line holding exactly ts, session_id, decision, kind, paths, cmdWorst, committed, cap in that order; the former transcript, unreadable, uncomputable, unpriced and cap-step shapes log as passes or over-limit; ordinary attended runs log nothing; an attended routine paid pass logs once",
     fn() {
       const shapes = [
         ["not plain", `echo '${P}'`, {}],
@@ -525,7 +533,7 @@ export default [
         ["past the limit", P50, { seed: { spent: 190 } }],
         ["a pass", P1, {}],
         ["a routine pass", P1, RON],
-        ["a transcript", `curl -s "${V1}youtube/video/${TSCRIPT}?id=a"`, { env: NOLOCAL }],
+        ["a transcript", `curl -s "${V1}youtube/video/${TSCRIPT}?id=a"`, NOLOCAL],
         ["unreadable", `curl -s "${V1}prism/no-such-endpoint?h=a"`, {}],
         ["uncomputable", `curl -X POST "${V1}web/batch-scrape" -d '{}'`, {}],
         ["unpriced", `curl -s "${V1}cohorts?segment=a"`, {}],
@@ -539,10 +547,12 @@ export default [
         if (u.decision === "deny") denies++;
         assert(u.log.length === 1, `${label}: one line, read ${JSON.stringify(u.log)}`, u);
         assert(JSON.stringify(Object.keys(u.log[0])) === JSON.stringify(FIELDS), `${label}: the field order, read ${Object.keys(u.log[0])}`);
-        assert(KINDS.includes(u.log[0].kind) && u.log[0].decision === (u.decision === "deny" ? "deny" : "pass"), `${label}: a kind of §d, read ${JSON.stringify(u.log[0])}`);
+        assert(KINDS.filter((k) => k !== "transcript-locked").includes(u.log[0].kind) && u.log[0].decision === (u.decision === "deny" ? "deny" : "pass"), `${label}: a kind of §d, read ${JSON.stringify(u.log[0])}`);
         lines.push(u.log[0]);
         const a = once(cmd, { ...o });
-        assert(a.log.length === 0, `${label}, attended: nothing logged, read ${JSON.stringify(a.log)}`, a);
+        if (o.env?.CLAUDE_CODE_HOST_SCHEDULED_RUN === "1") assert(a.log.length === 1 && a.log[0].decision === "pass" &&
+          a.log[0].kind === "under-cap" && a.log[0].cmdWorst === 1, `${label}, attended routine: one paid pass logged`, a);
+        else assert(a.log.length === 0, `${label}, attended: nothing logged, read ${JSON.stringify(a.log)}`, a);
       }
       assert(lines.filter((l) => l.decision === "deny").length === denies, `every deny is logged, read ${denies} denies / ${JSON.stringify(lines.map((l) => l.kind))}`);
       const pass = (i) => lines[i].decision === "pass" && lines[i].kind === "under-cap";
@@ -551,13 +561,20 @@ export default [
   },
   {
     id: "P3a-A19-inline-budget-reader",
-    desc: "A19: the budget reader is inline: credit-guard.mjs imports only node:fs, node:os, node:path and node:url (no new module; node:crypto is gone with the hash) and loads ledger.mjs only for the balance read; a copy of credit-guard.mjs alone, with no costs.json and no ledger.mjs beside it, reads a session budget",
+    desc: "A19: the budget reader is inline: static imports are only node:crypto/fs/os/path/url; give-back and ledger are dynamic imports inside try/catch; the guard copied alone still reads a session budget",
     fn() {
       const src = readFileSync(GUARD, "utf8");
       const statics = [...src.matchAll(/^import\s.*?from\s+"([^"]+)";$/gm)].map((m) => m[1]).sort();
       const dynamics = [...src.matchAll(/\bimport\(\s*"([^"]+)"\s*\)/g)].map((m) => m[1]);
-      assert(JSON.stringify(statics) === JSON.stringify(["node:fs", "node:os", "node:path", "node:url"]), `static imports, read ${JSON.stringify(statics)}`);
-      assert(JSON.stringify(dynamics) === JSON.stringify(["./ledger.mjs"]), `dynamic imports, read ${JSON.stringify(dynamics)}`);
+      assert(JSON.stringify(statics) === JSON.stringify(["node:crypto", "node:fs", "node:os", "node:path", "node:url"]), `static imports, read ${JSON.stringify(statics)}`);
+      assert(JSON.stringify(dynamics) === JSON.stringify(["./ledger.mjs", "./give-back.mjs", "./ledger.mjs"]), `dynamic imports, read ${JSON.stringify(dynamics)}`);
+      for (const name of ["readBalance", "giveBack"]) {
+        const start = src.indexOf(`async function ${name}()`);
+        const end = src.indexOf("\n}", start);
+        const body = src.slice(start, end);
+        assert(start >= 0 && /\btry\s*\{/.test(body) && /\bcatch\s*\{/.test(body) && body.indexOf("try") < body.indexOf("import("),
+          `${name}: dynamic imports remain inside try/catch`);
+      }
       const d = mkdtempSync(join(tmpdir(), "sc-p3a-alone-"));
       copyFileSync(GUARD, join(d, "credit-guard.mjs"));
       const r = once(P50, { budget: { sessionBudget: 30 }, guard: join(d, "credit-guard.mjs") });
@@ -610,7 +627,7 @@ export default [
   },
   {
     id: "P3g-A1-one-limit-every-run",
-    desc: "3g A1 (D55): one limit for every kind of run. For no env, ATTENDED=1, ATTENDED=0, HOST_SCHEDULED_RUN=1, HOST=1 + ATTENDED=1 and HOST=1 + ATTENDED=0: with {sessionBudget: 300}, 250 + 50 is a silent pass, spent 300, and 260 + 50 is exactly M_LIMIT(260, 50, 300, your session budget), spent 260; with no budget file, 150 + 50 passes and 160 + 50 is exactly M_LIMIT at the automatic cap of an 800 balance; with no balance, the 500 fallback (450 + 50 passes, 460 + 50 is exactly M_LIMIT naming it); each call record line is a pass or a deny with the same limit in every env, and ends with routine, true exactly when HOST_SCHEDULED_RUN is \"1\" (D58)",
+    desc: "3g A1 (D55): one limit for every kind of run. For no env, ATTENDED=1, ATTENDED=0, HOST_SCHEDULED_RUN=1, HOST=1 + ATTENDED=1 and HOST=1 + ATTENDED=0: with {sessionBudget: 300}, 250 + 50 is a silent pass, spent 300, and 260 + 50 is exactly M_LIMIT(260, 50, 300, your session budget), spent 260; with no budget file, 150 + 50 passes and 160 + 50 is exactly M_LIMIT at the automatic cap of an 800 balance; with no balance, the 500 fallback (450 + 50 passes, 460 + 50 is exactly M_LIMIT naming it); each call record line is a pass or a deny with the same limit in every env, and ends with tool_use_id after routine; routine is true exactly when HOST_SCHEDULED_RUN is \"1\" (D58)",
     fn() {
       const ENVS = [["no env", {}], ["ATTENDED=1", { CLAUDE_CODE_SESSION_ATTENDED: "1" }], ["ATTENDED=0", UN], ["HOST=1", ROUTINE],
         ["HOST=1, ATTENDED=1", { ...ROUTINE, CLAUDE_CODE_SESSION_ATTENDED: "1" }], ["HOST=1, ATTENDED=0", { ...ROUTINE, ...UN }]];
@@ -640,8 +657,8 @@ export default [
           assert(rec.length === 1 && l.decision === (deny === null ? "pass" : "deny") && l.limit === limit,
             `${label}, ${who}: one call record line, ${deny === null ? "pass" : "deny"} at limit ${limit}, read ${JSON.stringify(rec)}`, r);
           const keys = Object.keys(l);
-          assert(keys[keys.length - 1] === "routine" && l.routine === (env.CLAUDE_CODE_HOST_SCHEDULED_RUN === "1"),
-            `${label}, ${who}: the line ends with routine ${env.CLAUDE_CODE_HOST_SCHEDULED_RUN === "1"}, read ${JSON.stringify(l)}`, r);
+          assert(keys[keys.length - 2] === "routine" && keys[keys.length - 1] === "tool_use_id" && l.tool_use_id === null && l.routine === (env.CLAUDE_CODE_HOST_SCHEDULED_RUN === "1"),
+            `${label}, ${who}: the line ends with tool_use_id after routine ${env.CLAUDE_CODE_HOST_SCHEDULED_RUN === "1"}, read ${JSON.stringify(l)}`, r);
         }
         rows.push(`    ${label.padEnd(34)} ${seen.join(" ")}`);
       }
@@ -660,7 +677,7 @@ export default [
         ["a pipe into a program", `curl -s "${P}" | sh`, {}],
         ["PowerShell, paid", P50, { extra: { tool_name: "PowerShell" } }],
         ["PowerShell, free", FREE, { extra: { tool_name: "PowerShell" } }],
-        ["a transcript", `curl -s "${V1}youtube/video/${TSCRIPT}?id=a"`, { env: NOLOCAL }],
+        ["a transcript", `curl -s "${V1}youtube/video/${TSCRIPT}?id=a"`, NOLOCAL],
         ["cohorts", `curl -s "${V1}cohorts?segment=a"`, {}],
         ["an unresolved literal path", `curl -s "${V1}prism/no-such-endpoint?h=a"`, {}],
         ["GET web/monitors", `curl -s "${V1}web/monitors"`, {}],
@@ -786,7 +803,7 @@ export default [
   },
   {
     id: "P3g-A8-kinds",
-    desc: "3g A8 (D55): driven unattended, outside and in a routine, through every deny (not plain, not Bash, lost, over the limit, the session or budget file unreadable, recorded()'s refusal, the guard's own error) and a pass: the unattended log's kinds are exactly not-plain, lost, over-limit, under-cap and error; the call record's are exactly lost, over-limit, under-cap and error (not-plain is decided before the lock); the decisions in both are exactly pass and deny",
+    desc: "3g A8 (D55): driven unattended, outside and in a routine, through every deny (not plain, not Bash, lost, over the limit, the session or budget file unreadable, recorded()'s refusal, the guard's own error) and a pass: the unattended log's kinds are exactly not-plain, lost, over-limit, under-cap, error and transcript-locked; the call record's are exactly lost, over-limit, under-cap, error and transcript-locked (not-plain is decided before the lock); the decisions in both are exactly pass and deny",
     fn() {
       const outer = outerThrows();
       const save = saveThrows();
@@ -802,6 +819,7 @@ export default [
         ["the guard's own error", P50, {}, () => ({ node: ["--import", outer.url] })],
         ["a pass", P1, {}, null],
         ["a pass beside an old routines block", P1, { budget: ROUTINES_ON }, null],
+        ["transcript locked", `curl -s "${V1}youtube/video/${TSCRIPT}?id=a"`, { budget: { transcripts: "block" } }, null],
       ];
       const logKinds = new Set(), recKinds = new Set(), decisions = new Set();
       for (const [label, cmd, o, prep] of drive) {
@@ -818,8 +836,8 @@ export default [
       rmSync(save.dir, { recursive: true, force: true });
       rmSync(dirname(fileURLToPath(fault)), { recursive: true, force: true });
       console.log(`    log ${JSON.stringify([...logKinds].sort())} record ${JSON.stringify([...recKinds].sort())} decisions ${JSON.stringify([...decisions].sort())}`);
-      assert(JSON.stringify([...logKinds].sort()) === JSON.stringify([...KINDS].sort()), `the unattended log's kinds are exactly the 5, read ${JSON.stringify([...logKinds].sort())}`);
-      assert(JSON.stringify([...recKinds].sort()) === JSON.stringify(["error", "lost", "over-limit", "under-cap"]), `the call record's kinds, read ${JSON.stringify([...recKinds].sort())}`);
+      assert(JSON.stringify([...logKinds].sort()) === JSON.stringify([...KINDS].sort()), `the unattended log's kinds are exactly the 6, read ${JSON.stringify([...logKinds].sort())}`);
+      assert(JSON.stringify([...recKinds].sort()) === JSON.stringify(["error", "lost", "over-limit", "transcript-locked", "under-cap"]), `the call record's kinds, read ${JSON.stringify([...recKinds].sort())}`);
       assert(JSON.stringify([...decisions].sort()) === JSON.stringify(["deny", "pass"]), `the decisions are exactly pass and deny, read ${JSON.stringify([...decisions].sort())}`);
     },
   },

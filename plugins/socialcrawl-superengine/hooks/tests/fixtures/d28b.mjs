@@ -15,12 +15,13 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
-  session, V1, GUARD, COSTS, T, M_LOST, mLimit, mStateRead, mBudgetRead,
+  session, V1, TSCRIPT, GUARD, COSTS, T, M_LOST, mLimit, mStateRead, mBudgetRead,
   ROUTINE, ROUTINES_ON, SRC_SESSION, srcAuto, today, assert,
 } from "../lib.mjs";
 import { stateFault } from "./balance.mjs";
 
 const UN = { CLAUDE_CODE_SESSION_ATTENDED: "0" };
+const M_SETTINGS = "SocialCrawl call not run: your SocialCrawl settings file can't be read, so this session's credit limit can't be checked. Re-save your limit in SocialCrawl → Settings to fix it." + T;
 const RUN = { ...ROUTINE, ...UN };                               // a routine's env, unattended
 const RON = { budget: ROUTINES_ON, env: ROUTINE };
 const P50 = `curl -s "${V1}prism/leads?query=x"`;              // plain, flat 50
@@ -30,7 +31,7 @@ const FREE = `curl -s "${V1}credits/balance"`;                  // plain, free: 
 const MON = `curl -s "${V1}web/monitors"`;                      // plain, a GET twin: worst 0, committed
 const COH = `curl -s "${V1}cohorts?segment=a"`;                 // plain, unpriced: worst 0, committed
 const NP = `echo '${V1}prism/leads?query=x'`;                   // not plain
-const KINDS = ["not-plain", "lost", "over-limit", "under-cap", "error"];
+const KINDS = ["not-plain", "lost", "over-limit", "under-cap", "error", "transcript-locked"];
 const FIELDS = ["ts", "session_id", "decision", "kind", "paths", "cmdWorst", "committed", "cap"];
 const D = Number((readFileSync(GUARD, "utf8").match(/^const D = (\d+);$/m) || [])[1]);
 const B50 = '{"sessionBudget":50}';
@@ -196,7 +197,7 @@ export default [
   },
   {
     id: "P3b-A6-unreadable-budget",
-    desc: "B-A6 (R6, H5/H7): a budget file {\"sessionBudget\":50} whose read fails once (EBUSY) and then works is the limit — 40 + 50 is denied with exactly M_LIMIT naming 50 and your session budget; 4 failures then a good read still give 50, 5 failures deny; one that fails every read (EBUSY, EPERM, EACCES) denies a paid call with exactly M_BUDGETREAD, attended and unattended (logged error), nothing counted, and lets a worst-0 call (GET web/monitors) pass silently, in a routine too (no allow); with no time left (D 0) the budget is still read: limit 50, never the automatic cap or 500; a folder at the budget path, bad JSON and no file still read as no file (the automatic cap)",
+    desc: "B-A6 (R6, H5/H7): a budget file {\"sessionBudget\":50} whose read fails once (EBUSY) and then works is the limit — 40 + 50 is denied with exactly M_LIMIT naming 50 and your session budget; 4 failures then a good read still give 50, 5 failures deny; one that fails every read (EBUSY, EPERM, EACCES) denies a paid call with exactly M_BUDGETREAD, attended and unattended (logged error), nothing counted, and lets a worst-0 call (GET web/monitors) pass silently, in a routine too (no allow); with no time left (D 0) the budget is still read: limit 50, never the automatic cap or 500; a folder at the budget path and bad JSON deny paid calls with the exact settings-file error and nothing counted; no file retains the automatic cap",
     fn() {
       const rows = [];
       const f = faults();
@@ -230,7 +231,10 @@ export default [
         const prep = (s) => { if (make === "DIR") mkdirSync(s.bf); else if (make !== null) s.budget(make); return {}; };
         const r = once(P1, { seed: { spent: 199 } }, prep);
         const over = once(P50, { seed: { spent: 190 } }, prep);
-        assert(r.raw === "" && r.state.spent === 200 && over.message === mLimit({ spent: 190, worst: 50, limit: 200, src: srcAuto(800), bf: over.bf }),
+        if (make !== null) assert(r.decision === "deny" && r.message === M_SETTINGS && r.state.spent === 199 &&
+          over.decision === "deny" && over.message === M_SETTINGS && over.state.spent === 190,
+          `a budget file that is ${label}: unreadable settings deny, nothing counted`, over);
+        else assert(r.raw === "" && r.state.spent === 200 && over.message === mLimit({ spent: 190, worst: 50, limit: 200, src: srcAuto(800), bf: over.bf }),
           `a budget file that is ${label}: no file, so the automatic cap of 200, read ${what(r)} / ${over.message.slice(0, 160)}`, over);
       }
       drop(f, nt);
@@ -323,7 +327,7 @@ export default [
   },
   {
     id: "P3b-A11-new-messages",
-    desc: "B-A11: each 3b read deny — M_STATEREAD, M_BUDGETREAD — equals its exact string, the same text attended and unattended, ends with the D28 tail, and logs exactly one error line unattended in the 8-field order; the kinds the guard logs, driven through every deny and a pass, are exactly the 5 (D55: no day-limit or day-file)",
+    desc: "B-A11: each 3b read deny — M_STATEREAD, M_BUDGETREAD — equals its exact string, the same text attended and unattended, ends with the D28 tail, and logs exactly one error line unattended in the 8-field order; the kinds the guard logs, driven through every deny and a pass, are exactly the 6 (D55: no day-limit or day-file)",
     fn() {
       const rows = [];
       const f = faults();
@@ -347,12 +351,13 @@ export default [
       }
       for (const [cmd, o] of [
         [NP, {}], [P50, { seed: { spent: 0, lost: true } }], [P50, { seed: { spent: 190 } }], [P1, {}],
+        [`curl -s "${V1}youtube/video/${TSCRIPT}?id=a"`, { budget: { transcripts: "block" } }],
       ]) {
         const r = once(cmd, { ...o, env: { ...(o.env || {}), ...UN } });
         for (const x of r.log) seen.add(x.kind);
       }
       rows.push(cell("kinds logged, every deny and a pass", [JSON.stringify([...seen].sort())]));
-      assert(JSON.stringify([...seen].sort()) === JSON.stringify([...KINDS].sort()), `exactly the 5 kinds, read ${JSON.stringify([...seen].sort())}`);
+      assert(JSON.stringify([...seen].sort()) === JSON.stringify([...KINDS].sort()), `exactly the 6 kinds, read ${JSON.stringify([...seen].sort())}`);
       drop(f);
       console.log(rows.join("\n"));
     },

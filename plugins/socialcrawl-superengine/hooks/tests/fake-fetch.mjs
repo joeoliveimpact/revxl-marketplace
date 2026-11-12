@@ -9,7 +9,9 @@
  *                   Its line count is also how the reply index carries across the separate guard
  *                   processes of one session.
  *
- * A reply is {status, body} (a body that is a string is sent as-is, anything else as JSON),
+ * FAKE_FETCH also accepts {balance: [...], transactions: [...]}: independent reply lists,
+ * indexed by requests to each URL, keep balance and ledger responses separate.
+ * A reply is {status, body, headers?} (a string body is sent as-is, anything else as JSON),
  * {throw: true} (a network error), or {hang: true}: no answer until the caller's signal aborts,
  * holding a timer the whole time, as a real open socket keeps the process alive.
  */
@@ -19,13 +21,16 @@ const replies = JSON.parse(process.env.FAKE_FETCH || "[]");
 const LOG = process.env.FAKE_FETCH_LOG;
 
 globalThis.fetch = async (url, init = {}) => {
+  const transactions = new URL(url).pathname.endsWith("/transactions");
+  const list = Array.isArray(replies) ? replies : replies[transactions ? "transactions" : "balance"] || [];
   let n = 0;
   try {
-    n = readFileSync(LOG, "utf8").split("\n").filter(Boolean).length;
+    const prior = readFileSync(LOG, "utf8").split("\n").filter(Boolean);
+    n = Array.isArray(replies) ? prior.length : prior.map(JSON.parse).filter(r => new URL(r.url).pathname.endsWith("/transactions") === transactions).length;
   } catch {}
   const sent = new Headers(init.headers || {}).get("x-api-key");
   appendFileSync(LOG, JSON.stringify({ url: String(url), key: !!sent && sent === process.env.SOCIALCRAWL_API_KEY, signal: !!init.signal }) + "\n");
-  const r = replies[Math.min(n, replies.length - 1)] || { throw: true };
+  const r = list[Math.min(n, list.length - 1)] || { throw: true };
   if (r.throw) throw new TypeError("fetch failed");
   if (r.hang) {
     return new Promise((_, reject) => {
@@ -35,6 +40,6 @@ globalThis.fetch = async (url, init = {}) => {
   }
   return new Response(typeof r.body === "string" ? r.body : JSON.stringify(r.body), {
     status: r.status || 200,
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...r.headers },
   });
 };

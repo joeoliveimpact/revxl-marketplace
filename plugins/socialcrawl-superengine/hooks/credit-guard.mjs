@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 /*
- * SocialCrawl credit guard — PreToolUse(Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit) hook (0.4.0).
+ * SocialCrawl credit guard — PreToolUse(Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit) hook (0.4.1).
  *
- * Purpose: a silent hard limit (D28, Joe 10.09.26). Every paid call's quoted worst case is
+ * Purpose: a silent limit, as the guard counts it (D28, the owner 10.09.26): unpriced calls and calls
+ * with no stated ceiling count 0 and are never refused by it. Every other paid call's quoted worst case is
  * counted against this session's limit, one limit for every run alike (an attended session, a
  * Desktop routine or `claude -p`; D55): the person's session budget when the budget file sets
- * one, else min(500, 25% of the balance) (R18-1), else 500 when the balance can't be read. Within
+ * one, else min(500, a quarter of the floored balance) (R18-1), else 500 when the balance is not a number. Within
  * the limit nothing is said; a command that would go past it is denied, and reaching it exactly
  * passes. The guard never raises a permission prompt: every decision is a silent pass or a deny
  * whose message names the fix. Silence is only
- * for a PLAIN command (R14a.2, Joe 09.28.26): plain literal curl calls in the plugin's template
+ * for a PLAIN command (R14a.2, the owner 09.28.26): plain literal curl calls in the plugin's template
  * grammar, through the Bash tool, which this guard fully reads. Any other command carrying
  * `socialcrawl.dev` (a loop, a pipe into a program, a wrapper, a variable, a heredoc, a note,
  * grep, echo, a commit message, a docs URL, or anything through PowerShell) is denied before any
@@ -37,18 +38,19 @@
  *                 price and the cheaper catalog route.
  *   _unpriced     endpoints the vendor has never published a price for.
  *
- * TRANSCRIPTS (08.27.26, Joe; D28a, 10.09.26). The 9 transcript endpoints (path ends /transcript)
- * used to be DENIED outright. They are counted, not blocked: a transcript call counts its worst
+ * TRANSCRIPTS (08.27.26, the owner; D28a, 10.09.26). The 9 transcript endpoints (path ends /transcript)
+ * used to be DENIED outright. By default they are counted; the person can block them (the
+ * transcript lock, 0.4.1, below the limit pick). A transcript call counts its worst
  * case — its per-unit price for one unit, or a batch row's published ceiling — and passes within
  * the limit like any paid call. A per-unit price is a floor, not a ceiling: a stated LIMIT.
  *
  * Fires on EVERY Bash and PowerShell call; only a Bash command can be plain, so a SocialCrawl
  * command through PowerShell (any tool but Bash) is always denied, with "use the Bash tool"
  * (0.3.1). Commands that don't touch socialcrawl.dev, and missing or unreadable input, pass
- * through untouched (fast path), and so does a PostToolUse or PostToolUseFailure input (the guard
- * no longer runs after a command, D28a). An error past the fast path passes attended (the CLI's
- * own permission prompt still applies) and denies unattended or in a routine (3f), where a silent
- * pass could spend with nobody there (R14b). The exit code is 0 on every path.
+ * through untouched (fast path). Clean PostToolUse marks returns; PostToolBatch silently reads
+ * ledger sums to settle holds. An error past the fast path denies decoded transcript
+ * text in every run; other commands pass attended (the CLI's own permission prompt still applies)
+ * and deny unattended or in a routine (3f, R14b). The exit code is 0 on every path.
  *
  * THE GUARD'S OWN FILES (3c). It also fires on every Write, Edit, MultiEdit and NotebookEdit call,
  * for one thing only: Claude never changes the budget file, the old routine day file, the unattended
@@ -57,7 +59,7 @@
  * nothing read, written or logged; every other write-type call passes untouched. The Read tool is
  * not matched, so Claude can still read them (guardFile() below). A Bash or PowerShell command that
  * deletes, moves or renames the revxl folder itself (its sessions folder, the .claude folder above it, or
- * <revxl> itself) is denied the same way (3d), and so is one naming the Budget pane's save step, budget-write (5a-ii R2-1).
+ * <revxl> itself) is denied the same way (3d), and so is one naming the Settings tab's save step, budget-write (5a-ii R2-1).
  *
  * THE CALL RECORD (3d). Each decision a run makes while it holds the session lock (a pass at
  * the commit, and every deny from the lock on) adds one JSON line to <revxl>/socialcrawl-calls.jsonl,
@@ -68,16 +70,20 @@
  * it costs every call and counts the SUM of their worst cases as one figure, cmdWorst. A call
  * whose cost cannot be computed is counted at a floor (an unreadable endpoint), at its stated
  * maximum, or at 0 (an unpriced call, or a sentence-priced one with no stated maximum: a stated
- * LIMIT), never at a cheap default. The order: not plain or not Bash, deny; a free plain call,
- * a silent pass; a lost total, deny; past the limit, deny;
+ * LIMIT), never at a cheap default. The order: not plain (including the 65,536-character cap)
+ * or not Bash, deny; a free plain call, a silent pass; a lost total, deny; the limit is picked;
+ * a transcript call (or prism/brief-check) under a blocking transcript setting, deny; past the limit, deny;
  * otherwise the worst case is committed at once, before the call runs, and the call passes. A
  * deny is never counted. A run that can't record its commit refuses the call, attended and
  * unattended (J6).
  */
-import { appendFileSync, mkdirSync, readFileSync, realpathSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
+import { appendFileSync, linkSync, mkdirSync, readFileSync, realpathSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { homedir, uptime } from "node:os";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHash, randomUUID } from "node:crypto";
+const lockToken = `${process.pid}.${randomUUID()}`;
+const ASYNC_START = new Set(["web/agent", "web/batch-scrape", "web/crawl", "prism/jobs"]);
 
 // The ONE exit (P2): it writes the decision, if any, sets process.exitCode and returns. The
 // process is never exited explicitly — after a fetch on Node 24/Windows that aborts with rc 127,
@@ -116,8 +122,12 @@ const ROUTINE = process.env.CLAUDE_CODE_HOST_SCHEDULED_RUN === "1";
 // 500; a file still unreadable: its deny). The budget file is read whatever time is left (3b R6).
 // Claude Code kills a hook still running at its 10 s timeout and lets the call run (a stated LIMIT);
 // D keeps a run under it with 3 s to spare for the process to start and exit.
+// Commands over 65,536 characters containing the SocialCrawl domain are not plain and are denied
+// before command parsing or whole-command regexes, keeping oversized input within the hook timeout.
 const D = 7000;
-const left = () => D - performance.now();
+let deadline = D;
+const MAX_CMD = 65536;
+const left = () => deadline - performance.now();
 
 // The unattended log (R14b, J2/O5): one JSON line per unattended decision past the fast path,
 // except a plain free pass, in <revxl>/credit-guard-unattended.jsonl (SC_REVXL_HOME, else
@@ -140,7 +150,7 @@ function logUnattended(sid, decision, kind, paths, cmdWorst, committed, cap) {
 // command is never read as plain. Every decision on it says to use the Bash tool.
 let NOT_BASH = false;
 const USE_BASH = " For SocialCrawl calls, use the Bash tool.";
-// The tail of every deny but recorded()'s (D28). A message is the same attended and unattended.
+// The tail of every deny but recorded()'s and the transcript lock's (D28). A message is the same attended and unattended.
 const T = " Nothing was sent and nothing was counted.";
 const M_NOTPLAIN =
   "SocialCrawl call not run: this command carries a SocialCrawl URL but is not a plain `curl` the credit guard can count " +
@@ -154,9 +164,32 @@ const M_LOST =
   "SocialCrawl call not run: this session's committed total was lost (its session file was damaged or unreadable), so its " +
   "credit limit can't be enforced. Start a new session to continue." + T;
 
-// An error inside the guard, in either catch (R14b, O2): attended it passes and the CLI's own
-// permission prompt applies; unattended or in a routine (3f) nobody is there and a pass could spend, so it denies.
+let errorCommand = "";
+function containsTranscript(text) {
+  try {
+    let s = text;
+    try { s = decodeURIComponent(s); } catch {
+      s = s.replace(/(?:%[0-9a-f]{2})+/gi, (run) => {
+        try { return decodeURIComponent(run); } catch {
+          return run.replace(/%([0-9a-f]{2})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+        }
+      });
+    }
+    s = s.replace(/\\u([0-9a-f]{4})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16))).toLowerCase();
+    return s.includes("transcript") || s.includes("brief-check");
+  } catch { return true; }
+}
+
+// An error inside the guard, in either catch (R14b, O2): decoded transcript text denies in every
+// run; other commands pass attended and deny unattended or in a routine (3f).
 function failed(sid) {
+  if (containsTranscript(errorCommand)) {
+    if (UNATTENDED || ROUTINE) logUnattended(sid, "deny", "transcript-locked", [], null, null, null);
+    return done({
+      hookSpecificOutput: { permissionDecision: "deny" },
+      systemMessage: "SocialCrawl call not run: the credit guard hit an error while checking this transcript call. Run the command again." + T,
+    });
+  }
   if (!UNATTENDED && !ROUTINE) return done();
   logUnattended(sid, "deny", "error", [], null, null, null);
   return done({
@@ -178,7 +211,7 @@ async function readBalance() {
     const { ledgerUrl, resolveKey } = await import("./ledger.mjs");
     const key = resolveKey(process.env, homedir());
     if (!key) return null;
-    const ms = Math.floor(Math.min(3000, left()));
+    const ms = Math.floor(Math.min(3000, left() - 700));
     if (ms <= 0) return null;
     const res = await fetch(ledgerUrl("/v1/credits/balance"), {
       headers: { "x-api-key": key },
@@ -193,7 +226,7 @@ async function readBalance() {
   }
 }
 
-// The guard's own files (3c): the person sets the budget (the SocialCrawl Budget tab, or by hand) and
+// The guard's own files (3c): the person sets the budget (SocialCrawl → Settings, or by hand) and
 // the guard keeps the spend record, so Claude never changes either. A file is one by its basename,
 // in any case: the name itself, or the name and a `.` then more (a lock, a temporary file, a
 // rotation); a session file only inside a folder named `sessions`. A write-type call's basename is
@@ -211,6 +244,7 @@ async function readBalance() {
 // (`python -c "shutil.rmtree(...)"`, `find ... -delete`), a short name for a file not made yet and
 // another program's own writes are not seen. A command naming the pane's save step `budget-write` (5a-ii R2-1) is
 // refused; a script Claude writes itself, a name built at runtime or another program's writes are still not seen.
+// Names built from variables or command substitution remain outside this text check.
 const GUARD_FILES = [   // [basename, NAME, its name in a command]
   ["socialcrawl-budget.json", "the budget file socialcrawl-budget.json", "socialcrawl-budget"],
   ["socialcrawl-day.json", "the old routine day file socialcrawl-day.json", "socialcrawl-day"],
@@ -219,14 +253,21 @@ const GUARD_FILES = [   // [basename, NAME, its name in a command]
 ];
 const WRITE_TOOLS = ["Write", "Edit", "MultiEdit", "NotebookEdit"];
 const REVXL_AT = /revxl(?![a-z0-9_-])/;   // a revxl location (3d R2-1): never revxl run on into a longer name (revxl-marketplace)
-const BUDGET_WRITE = /(^|[^a-z0-9_-])budget-write(?![a-z0-9_-])/;   // the Budget pane's save step (hooks/mod/helper.mjs)
+const BUDGET_WRITE = /(^|[^a-z0-9_-])budget-write(?![a-z0-9_-])/;   // the Settings tab's save step (hooks/mod/helper.mjs)
 const MOVE_VERB = /(^|[^a-z0-9_-])(rm|rmdir|rd|del|erase|mv|move|ren|rename|remove-item|move-item|rename-item|ri|mi|rni)(\.exe)?(?=[\s"'`;|&)(<>]|$)/;
 // The revxl folder itself (3d R2-3), any one of: (1) revxl or revxl/sessions with no real child after it (a `.` or `..`
 // segment, a glob, a trailing slash or punctuation is no child); (2) a `..` segment anywhere under revxl; (3) the .claude
 // folder itself; (4) <revxl> itself, resolved, either slash, with the same optional sessions and no child (atRevxl()).
 const REVXL_FOLDER = [
   /revxl(?:[\\/]+sessions)?(?![\\/]+\.?[a-z0-9_])(?![a-z0-9_-])/,
-  /revxl[\\/][^\s"'`;|&<>,]*?[\\/]\.\.(?=[\\/\s"'`;|&<>,]|$)/,
+  { test(c) {
+    // The earliest revxl separator in a token covers every later parent segment in it.
+    for (const token of c.split(/[\s"'`;|&<>,]+/)) {
+      const at = token.search(/revxl[\\/]/);
+      if (at >= 0 && /[\\/]\.\.(?=[\\/]|$)/.test(token.slice(at + 6))) return true;
+    }
+    return false;
+  } },
   /\.claude(?![\\/]+\.?[a-z0-9_])(?![a-z0-9_-])/,
 ];
 const atRevxl = (c, r) => [r.replace(/\\/g, "/"), r.replace(/\//g, "\\")]
@@ -243,7 +284,9 @@ function guardFile(input, cmd) {
       what = "edit";
       const fp = [ti.file_path, ti.notebook_path].find((p) => typeof p === "string" && p);
       if (!fp) return null;
-      const abs = resolve(fp).replace(/:[^\\/]*$/, "");   // 3d: a stream on the name (`::$DATA`, `:x`) is the file
+      const path = resolve(fp);
+      const stream = path.indexOf(":", Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\")) + 1);
+      const abs = stream < 0 ? path : path.slice(0, stream);   // 3d: a stream on the name (`::$DATA`, `:x`) is the file
       const full = abs.toLowerCase();
       const dirs = full.split(/[\\/]+/);
       let base = dirs.pop();
@@ -256,20 +299,23 @@ function guardFile(input, cmd) {
       const inRevxl = k === 4 ? dirs[dirs.length - 2] === "revxl" : dirs.includes("revxl");
       if (!inRevxl && dirname(full) !== (k === 4 ? join(rx(), "sessions") : rx())) return null;
     } else if (tool === undefined || tool === "Bash" || tool === "PowerShell") {
-      const c = cmd.toLowerCase();
-      k = GUARD_FILES.findIndex((g) => c.includes(g[2]));
-      if (k < 0 && /sessions[\\/]+socialcrawl-/.test(c)) k = 4;
-      if (k >= 0 && !REVXL_AT.test(c)) {
-        const r = rx();
-        if (!c.includes(r.replace(/\\/g, "/")) && !c.includes(r.replace(/\//g, "\\"))) k = -1;
+      const raw = cmd.toLowerCase();
+      for (const c of [raw, raw.replace(/\\\r?\n|['"`\\]/g, "")]) {
+        k = GUARD_FILES.findIndex((g) => c.includes(g[2]));
+        if (k < 0 && /sessions[\\/]+socialcrawl-/.test(c)) k = 4;
+        if (k >= 0 && !REVXL_AT.test(c)) {
+          const r = rx();
+          if (!c.includes(r.replace(/\\/g, "/")) && !c.includes(r.replace(/\//g, "\\"))) k = -1;
+        }
+        if (k < 0 && MOVE_VERB.test(c) && (REVXL_FOLDER.some((re) => re.test(c)) || atRevxl(c, rx()))) k = 5;   // after K1-K5
+        if (k < 0 && BUDGET_WRITE.test(c)) k = 6;
+        if (k >= 0) break;
       }
-      if (k < 0 && MOVE_VERB.test(c) && (REVXL_FOLDER.some((re) => re.test(c)) || atRevxl(c, rx()))) k = 5;   // after K1-K5
-      if (k < 0 && BUDGET_WRITE.test(c)) k = 6;
       if (k < 0) return null;
     } else return null;
     return `SocialCrawl guard file left alone: this ${what} names ${k === 6 ? "the pane's budget save step (budget-write)" : k === 5 ? "the revxl folder" : k === 4 ? "a session file in sessions/" : GUARD_FILES[k][1]}, ` +
-      `which holds the person's SocialCrawl budget or spend record. Claude never changes it; the person sets the budget in ` +
-      `the SocialCrawl Budget tab. To look at it, use the Read tool.`;
+      `which holds the person's SocialCrawl budget or spend record. Claude is not to change it (the guard refuses the plain ways; a glob, a link to the folder, an MCP tool or a script can still get past it); the person sets the limit in ` +
+      `SocialCrawl → Settings. To look at it, use the Read tool.`;
   } catch {
     return null;
   }
@@ -282,15 +328,22 @@ try {
 } catch {
   return done();
 }
-// The guard runs before a command only (D28a): its PostToolUse and PostToolUseFailure entries are
-// gone from hooks.json, and a Post input from a stale registration passes untouched, no output and
-// no write.
-if (input && (input.hook_event_name === "PostToolUse" || input.hook_event_name === "PostToolUseFailure")) return done();
+if (input?.hook_event_name === "PostToolUseFailure") return done();
+if (input?.hook_event_name === "PostToolUse" || input?.hook_event_name === "PostToolBatch") {
+  deadline = 4300;
+  try { await sessionMain(input, true); } catch {}
+  return done();
+}
 
 const rawCmd =
   input && input.tool_input && typeof input.tool_input.command === "string"
     ? input.tool_input.command
     : "";
+if (rawCmd.toLowerCase().includes("socialcrawl.dev")) errorCommand = rawCmd;   // F5: only a SocialCrawl command is judged on a guard error
+if (rawCmd.length > MAX_CMD && rawCmd.toLowerCase().includes("socialcrawl.dev")) {
+  if (UNATTENDED || ROUTINE) logUnattended(String(input.session_id || "nosession").replace(/[^a-z0-9_-]/gi, ""), "deny", "not-plain", [], 0, null, null);
+  return done({ hookSpecificOutput: { permissionDecision: "deny" }, systemMessage: input.tool_name !== undefined && input.tool_name !== "Bash" ? M_NOTBASH : M_NOTPLAIN });
+}
 
 // The guard's own files (3c), before anything else, a SocialCrawl URL in the same command included:
 // a change to one is denied, never logged, with nothing read or written. Every other write-type call
@@ -306,6 +359,11 @@ if (!rawCmd.toLowerCase().includes("socialcrawl.dev")) return done();
 // (PowerShell, or any other value, null included) is never plain, so its SocialCrawl calls are always
 // denied, with "use the Bash tool". A missing tool_name is Bash, as before.
 NOT_BASH = input.tool_name !== undefined && input.tool_name !== "Bash";
+return sessionMain(input, false);
+}
+
+async function sessionMain(input, after) {
+const rawCmd = typeof input?.tool_input?.command === "string" ? input.tool_input.command : "";
 
 // The session state: {spent, balance, balanceAt, balanceFails, lost}.
 // `balance` is cached by the balance read below (R14b), with the time it was read in `balanceAt` (3d;
@@ -366,19 +424,44 @@ async function readState() {
 function writeState(st) {
   // NEVER a non-number: `JSON.stringify({spent: NaN})` is `{"spent":null}`, which would erase every
   // credit already recorded (defect D1). Returns whether the state was saved: a save that does not
-  // throw counts as recorded (J6; R18-3, Joe 10.06.26: there is no read-back). A balance read and a
-  // commit each need that. writeFileSync empties the file before it
-  // writes, so a save that fails part-way (a full disk) can leave it empty or cut off: the next read
-  // is a lost total. A save that is lost without an error is not detected (a stated LIMIT). A run
+  // throw counts as recorded (J6; R18-3, the owner 10.06.26: there is no read-back). A balance read and a
+  // commit each need that. A same-folder temporary file is renamed over the old state, so a
+  // failed write or rename leaves the previous state intact. A run
   // saves only while it holds the lock below (checker X7). Every `false` has its
   // reason in `why`; a missing folder also ends this run's wait at once (R18-2).
   if (num(st.spent) === null || !locked) return false;
+  const temp = `${stateFile}.${process.pid}.${randomUUID()}.tmp`;
   try {
-    writeFileSync(stateFile, JSON.stringify(st));
-    return true;
+    if (statSync(stateFile, { throwIfNoEntry: false })?.isDirectory()) {
+      why = "the session file could not be saved (EISDIR)";
+      return false;
+    }
+    writeFileSync(temp, JSON.stringify(st), { flag: "wx" });
+    const pause = new Int32Array(new SharedArrayBuffer(4));
+    let renameError;
+    for (;;) {
+      if (left() <= 0) {
+        if (renameError) why = renameError;
+        else if (why === "the session total is not a number") why = "the session save deadline ran out";
+        return false;
+      }
+      let owner;
+      try { owner = readFileSync(`${stateFile}.lock`, "utf8"); } catch {}
+      if (owner !== lockToken) {
+        why = "the session lock is no longer this run's";
+        return false;
+      }
+      try { renameSync(temp, stateFile); return true; } catch (e) {
+        renameError = `the session file could not be saved (${e?.code || "error"})`;
+        if (!["EPERM", "EACCES", "EBUSY"].includes(e?.code) || left() < 20) throw e;
+        Atomics.wait(pause, 0, 0, 20);
+      }
+    }
   } catch (e) {
     why = `the session file could not be saved (${(e && e.code) || "error"})`;
     if (e && e.code === "ENOENT") noFolder("ENOENT");
+  } finally {
+    try { unlinkSync(temp); } catch {}
   }
   return false;
 }
@@ -391,12 +474,11 @@ function writeState(st) {
 // deletes it), it is tried again every 20 ms, and only the wait running out gives up (checker X8).
 // A run first makes the sessions folder (0.3.1). When it can't, or the create fails ENOENT (the folder
 // gone), no wait can help, so the run gives up at once and
-// its wait ends there (R18-2, Joe 10.06.26). A lock older than the hook's 10 s timeout was left by a killed run and
+// its wait ends there (R18-2, the owner 10.06.26). A lock older than the hook's 10 s timeout was left by a killed run and
 // is cleared. Without the lock a run saves nothing, so a call it has to record is
 // refused (J6). unlock()
 // tries a failed delete again, 10 times at most and never past D, so a run that ends normally leaves no lock behind.
-// ponytail: two runs clearing one stale lock at the same instant can both hold it; a lock
-// with an owner check would close that if it is ever seen.
+// An owner token prevents a run whose lock was replaced from saving or unlocking another run.
 const nap = () => new Promise((r) => setTimeout(r, Math.max(0, Math.min(20, left()))));   // never past D
 let locked = false;
 let until = 0;                                   // when this run's one wait ends (never past D)
@@ -408,9 +490,9 @@ function noFolder(code) {
   until = 0;
 }
 // Takes `<file>.lock`; `what` names it in `why` ("session lock"). Returns whether it was taken.
-async function lock(file, what) {
+async function lock(file, what, cap = 4000) {
   const start = performance.now();
-  until = Math.min(start + 4000, D);
+  until = Math.min(start + cap, deadline);
   try {
     mkdirSync(dirname(file), { recursive: true });   // paid path only: the fast path and a free plain pass never lock
   } catch (e) {
@@ -420,20 +502,31 @@ async function lock(file, what) {
   for (;;) {
     let code;
     try {
-      writeFileSync(`${file}.lock`, "", { flag: "wx" });
+      writeFileSync(`${file}.lock`, lockToken, { flag: "wx" });
       return true;
     } catch (e) {
       code = (e && e.code) || "error";
     }
     if (code === "ENOENT") { noFolder(code); return false; }
     try {
-      if (Date.now() - statSync(`${file}.lock`).mtimeMs > 10000) unlinkSync(`${file}.lock`);
+      if (Date.now() - statSync(`${file}.lock`).mtimeMs > 10000) {
+        const content = readFileSync(`${file}.lock`, "utf8");
+        const stale = `${file}.lock.${lockToken}.stale`;
+        renameSync(`${file}.lock`, stale);
+        let verifiedStale = false;
+        try { verifiedStale = readFileSync(stale, "utf8") === content && Date.now() - statSync(stale).mtimeMs > 10000; } catch {}
+        try {
+          if (!verifiedStale) {
+            try { linkSync(stale, `${file}.lock`); } catch {}
+          }
+        } finally { unlinkSync(stale); }
+      }
     } catch {}
     if (performance.now() >= until) {
       // The wait this run really had: 4 s, or less when D cut it short (stated, never a fixed figure).
       why =
         `the ${what} ${file}.lock could not be taken in ${+(Math.max(0, until - start) / 1000).toFixed(1)} seconds (${code})` +
-        (until < start + 4000 ? `, all the time left before the guard's ${D / 1000}-second limit` : "") +
+        (until < start + cap ? `, all the time left before the guard's ${D / 1000}-second limit` : "") +
         `; a lock left by a killed run is cleared once it is 10 seconds old`;
       return false;
     }
@@ -442,24 +535,111 @@ async function lock(file, what) {
 }
 async function unlock(file) {
   for (let i = 0; i < 10; i++) {
-    try { unlinkSync(`${file}.lock`); break; } catch (e) { if ((e && e.code === "ENOENT") || left() <= 0) break; await nap(); }
+    try {
+      if (readFileSync(`${file}.lock`, "utf8") !== lockToken) return true;
+      unlinkSync(`${file}.lock`); return true;
+    } catch (e) { if (e && e.code === "ENOENT") return true; if (left() <= 0) return false; await nap(); }
   }
+  return false;
+}
+
+const validId = id => typeof id === "string" && id.length > 0 && id.length <= 128 && /^[A-Za-z0-9_-]+$/.test(id);
+const sha = command => createHash("sha256").update(command).digest("hex");
+const normalPath = p => String(p || "").trim().replace(/^[a-z]+\s+/i, "").replace(/^https?:\/\/[^/]+/i, "")
+  .replace(/^\//, "").replace(/^v1\//i, "").replace(/\?.*$/, "").replace(/\/+/g, "/").replace(/^\/|\/$/g, "").toLowerCase();
+async function giveBack() {
+  try {
+    const [gb, ledger] = await Promise.all([import("./give-back.mjs"), import("./ledger.mjs")]);
+    return { ...gb, normPath: ledger.normPath, hasKey: () => { try { return !!ledger.resolveKey(); } catch { return false; } } };
+  } catch { return null; }
+}
+function initHolds(st) {
+  st.holds ||= {};
+  if (st.fixed === undefined) st.fixed = st.spent - Object.values(st.holds).reduce((sum, h) => sum + h.calls.reduce((n, c) => n + c[1], 0), 0);
+}
+function initLedger(st) { st.led ||= { fails: 0, at: 0, seen: 0, eps: {} }; }
+function settleLine(was, result) {
+  if (result.state.spent === was) return;
+  try {
+    const file = join(revxl, "socialcrawl-calls.jsonl");
+    const stat = statSync(file, { throwIfNoEntry: false });
+    if (stat && stat.size >= 1048576) renameSync(file, file + ".1");
+    appendFileSync(file, JSON.stringify({ ts: new Date().toISOString(), sid, decision: "settle", kind: "give-back",
+      committed: result.state.spent, was, usage: result.state.usage, full: result.state.full,
+      over: result.over.map(ep => ep.replace(/sc_[^/?#]*/gi, "sc_…")) }) + "\n");
+  } catch {}
+}
+function saveRecompute(st, gb, read, log = false) {
+  if (left() <= 0) return null;
+  const result = gb.recompute(st, read.rows, read.vNow, read.off, read.uncovered, Date.now(), uptime() * 1000);
+  if (!result || !writeState(result.state)) return null;
+  if (log) settleLine(st.spent, result);
+  return result.state;
+}
+function readFailure(st, read) {
+  initLedger(st);
+  st.led.fails += 1;
+  if (num(read?.off) !== null) st.led.off = read.off;
+  if (left() > 0) writeState(st);
+}
+if (after) {
+  try {
+    const event = input.hook_event_name;
+    if (event === "PostToolUse" && (input.tool_name !== "Bash" || !rawCmd.toLowerCase().includes("socialcrawl.dev"))) return;
+    if (event === "PostToolUse" && !validId(input.tool_use_id)) return;
+    const gb = await giveBack();
+    if (!gb || !gb.hasKey() || !statSync(stateFile, { throwIfNoEntry: false }) || left() <= 0) return;
+    locked = await lock(stateFile, "session lock", 2000);
+    if (!locked || left() <= 0) return;
+    let st = await readState();
+    if (!st || st.lost || !Object.keys(st.holds || {}).length) return;
+    if (event === "PostToolUse") {
+      if (!st || st.lost || !validId(input.tool_use_id)) return;
+      const h = Object.hasOwn(st.holds || {}, input.tool_use_id) ? st.holds[input.tool_use_id] : null;
+      const response = input.tool_response;
+      if (!h || h.nc || Object.hasOwn(h, "post") || h.sha !== sha(rawCmd) || !response || typeof response !== "object" ||
+        Array.isArray(response) || response.interrupted !== false || Object.hasOwn(response, "backgroundTaskId") ||
+        input.tool_input?.run_in_background === true) return;
+      h.post = Date.now();
+      h.pu = uptime() * 1000;
+      if (left() > 0) writeState(st);
+      return;
+    }
+    const worth = state => state && !state.lost && Object.keys(state.holds || {}).length &&
+      (state.led?.fails || 0) < 3 && Date.now() - (state.led?.at || 0) >= 30000 &&
+      Object.values(state.holds).some(h => Date.now() < (h.post ?? h.t) + gb.YOUNG_MS);
+    if (!worth(st)) return;
+    if (left() <= 700) return;
+    initLedger(st);
+    st.led.at = Date.now();
+    if (!writeState(st)) return;
+    if (!await unlock(stateFile)) return; locked = false;
+    const read = await gb.readLedger(st, { left });
+    if (left() <= 0) return;
+    locked = await lock(stateFile, "session lock", 2000);
+    if (!locked || left() <= 0) return;
+    st = await readState();
+    if (!st || st.lost || !Object.keys(st.holds || {}).length) return;
+    if (!read || read.failed) { readFailure(st, read); return; }
+    saveRecompute(st, gb, read, true);
+  } catch {} finally { if (locked) await unlock(stateFile); }
+  return;
 }
 
 try {
-  // Heredoc bodies are never masked (Joe 09.28.26, supersedes P4): every SocialCrawl URL anywhere
+  // Heredoc bodies are never masked (the owner 09.28.26, supersedes P4): every SocialCrawl URL anywhere
   // in the command counts, a heredoc body's included. Each mask tried let a body that runs pass
   // at 0 (checker X1, X4). A note written with a URL in it over-counts: a stated LIMIT.
   const cmd = rawCmd;
 
   // Every deny goes through deny() (D28: the only other decision is a silent pass). The message
   // is the same attended and unattended, and it names the fix. A deny is
-  // never counted (Joe, P1). Unattended (CLAUDE_CODE_SESSION_ATTENDED=0; absent = attended) it is
+  // never counted (the owner, P1). Unattended (CLAUDE_CODE_SESSION_ATTENDED=0; absent = attended) it is
   // also logged under `kind` (R14b), with `cap` the limit once one is known, else null.
   let st = null;                                 // the session state, read once a call is paid
   let limit = null;                              // this call's limit, once it is known
   function deny(message, kind) {
-    if (UNATTENDED) logUnattended(sid, "deny", kind, logPaths(), cmdWorst, st ? st.spent : null, limit);
+    if (UNATTENDED || ROUTINE) logUnattended(sid, "deny", kind, logPaths(), cmdWorst, st ? st.spent : null, limit);
     if (locked) logCall("deny", kind, st ? st.spent : null);
     return done({ hookSpecificOutput: { permissionDecision: "deny" }, systemMessage: message });
   }
@@ -467,8 +647,9 @@ try {
   // The call record (3d): one JSON line per decision a run makes while it holds the session lock (a pass
   // at the commit, every deny from the lock on), attended and unattended, in
   // <revxl>/socialcrawl-calls.jsonl; the unattended log is kept as it was. `committed` is the total as the
-  // unattended log gives it, `balance` the cached one and `balanceAt` when it was read; the last key,
-  // `routine`, is whether the run is a Desktop routine (ROUTINE, D58). Never a key or a
+  // unattended log gives it, `balance` the cached one and `balanceAt` when it was read;
+  // `routine` is whether the run is a Desktop routine (ROUTINE, D58), and the last key,
+  // `tool_use_id`, is the validated tool call identifier or null. Never a key or a
   // command: `paths` are the unattended log's own. At 1 MiB the record is moved to `.1` (an older `.1`
   // replaced) and started again. Best effort: a stat, move or append that fails is dropped, with no wait
   // and no second try, and never reaches a decision.
@@ -483,6 +664,8 @@ try {
         ts: new Date().toISOString(), sid, paths: logPaths(), worst: cmdWorst, committed, decision, kind, limit,
         balance: st ? num(st.balance) : null, balanceAt: st && typeof st.balanceAt === "string" ? st.balanceAt : null,
         routine: ROUTINE,
+        tool_use_id: typeof input.tool_use_id === "string" && input.tool_use_id.length > 0 &&
+          input.tool_use_id.length <= 128 && /^[A-Za-z0-9_-]+$/.test(input.tool_use_id) ? input.tool_use_id : null,
       }) + "\n");
     } catch {}
   }
@@ -495,7 +678,7 @@ try {
   // logged as kind `error` with the total as it stood.
   function recorded() {
     if (writeState(st)) return true;
-    if (UNATTENDED) logUnattended(sid, "deny", "error", logPaths(), cmdWorst, spent, limit);
+    if (UNATTENDED || ROUTINE) logUnattended(sid, "deny", "error", logPaths(), cmdWorst, spent, limit);
     if (locked) logCall("deny", "error", spent);   // a run that never held the session lock records nothing (3d)
     done({
       hookSpecificOutput: { permissionDecision: "deny" },
@@ -538,8 +721,8 @@ try {
   // (encoded slashes), so `youtube/video/transcr%69pt` slipped past the transcript gate and
   // came out as a plain PAID call — money-safe (5cr quoted vs 3cr billed) but policy-broken:
   // no per-unit price, no cheaper-route redirect, and the per-unit price is the whole control
-  // that replaced the hard block on 08.27.26 (checker R1 defect D6). One decoder, used by
-  // every matcher, so the gate and the cost lookup can never disagree about the path.
+  // that replaced the hard block on 08.27.26 (checker R1 defect D6). This decoder is used by
+  // the cost matchers; the transcript gate has its own tolerant decoder, for detection only.
   //
   // decodeURIComponent throws on a malformed escape (`%zz`, a bare `%`), so the %2F-only
   // decode stays as the fallback. Re-lowercased because a decoded %4A is an uppercase byte
@@ -555,10 +738,123 @@ try {
   // costs.json lookup in this file reads a path that came through here, so normalising at
   // this one point closes the bypass for all of them at once. Percent-decoding runs FIRST so
   // an encoded `%2e%2e%2f` cannot hide a dot segment from the resolver.
+  function decodeStable(u) {
+    let s = String(u);
+    for (let pass = 0; pass < 5; pass++) {
+      const decoded = decodeURIComponent(s);
+      if (decoded === s) return s;
+      s = decoded;
+    }
+    if (/%[0-9a-f]{2}/i.test(s)) throw new URIError();
+    return s;
+  }
+
   function decodeUrl(u) {
     let s = String(u);
-    if (/%[0-9a-f]{2}/i.test(s)) { try { s = decodeURIComponent(s); } catch {} }
+    try { s = decodeStable(s); } catch {}   // non-plain URLs retain best-effort visible costing
     return resolveDots(backslashPath(s.replace(/%2f/gi, "/").toLowerCase()));
+  }
+
+  // Tolerant readings supplement pricing and transcript detection without losing value case.
+  function decodeTranscriptUrl(u, path = true, preserveCase = false) {
+    let s = String(u);
+    try { s = decodeStable(s); } catch {
+      s = s.replace(/(?:%[0-9a-f]{2})+/gi, (run) => {
+        try { return decodeURIComponent(run); } catch {
+          return run.replace(/%([0-9a-f]{2})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+        }
+      });
+    }
+    return path ? resolveDots(backslashPath(s.replace(/%2f/gi, "/").toLowerCase())) : preserveCase ? s : s.toLowerCase();
+  }
+
+  function parameterName(name) {
+    return decodeTranscriptUrl(name, false).replace(/[\s+]/g, "")
+      .replace(/(?:\.[a-z0-9]+|\[[^\]]*\])+$/g, "");
+  }
+  const includeName = name => /^include(?:$|[^a-z])/.test(parameterName(name));
+
+  function transcriptParam(pairs) {
+    return pairs.find(([name, value]) => (name.includes("transcript") || parameterName(name).includes("transcript")) &&
+      value !== false && value !== 0 && value !== "false" && value !== "0")?.[0];
+  }
+
+  // Three readings cover servers that differ on `;`; every reading must agree a parameter is exempt.
+  function transcriptQueryPairs(url, gatedUrl = decodeTranscriptUrl(url, false, true)) {
+    const queryStart = gatedUrl.indexOf("?");
+    const query = queryStart < 0 ? "" : gatedUrl.slice(queryStart + 1).split("#", 1)[0];
+    const pairs = query.split(/[&;]/).map((piece) => {
+      const eq = piece.indexOf("=");
+      return eq < 0 ? [piece.toLowerCase(), ""] : [piece.slice(0, eq).toLowerCase(), piece.slice(eq + 1)];
+    });
+    // Also split the typed query before decoding: an encoded hash is value text, and an
+    // encoded equals sign stays in its own name or value. Keep the whole-decode reading above.
+    const typed = String(url);
+    const typedStart = typed.indexOf("?");
+    const typedQuery = typedStart < 0 ? "" : typed.slice(typedStart + 1).split("#", 1)[0];
+    const splitFirst = typedQuery.split(/[&;]/).map((piece) => {
+      const eq = piece.indexOf("=");
+      const name = eq < 0 ? piece : piece.slice(0, eq);
+      const value = eq < 0 ? "" : piece.slice(eq + 1);
+      return [decodeTranscriptUrl(name, false), decodeTranscriptUrl(value, false, true)];
+    });
+    const ampOnly = typedQuery.split("&").map((piece) => {
+      const eq = piece.indexOf("=");
+      const name = eq < 0 ? piece : piece.slice(0, eq);
+      const value = eq < 0 ? "" : piece.slice(eq + 1);
+      return [decodeTranscriptUrl(name, false), decodeTranscriptUrl(value, false, true)];
+    });
+    return pairs.concat(splitFirst, ampOnly);
+  }
+
+  const bodyTranscriptValues = new WeakSet();
+  // Read plain curl bodies for include gating; an unreadable body is not plain.
+  function readBody(text) {
+    const trimmed = text.trim();
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+      let root;
+      try { root = JSON.parse(trimmed); } catch { return null; }
+      const pairs = [];
+      const stack = [[root, false]];
+      let keys = 0;
+      while (stack.length) {
+        const [value, visited] = stack.pop();
+        if (!value || typeof value !== "object") continue;
+        if (!visited) {
+          stack.push([value, true]);
+          for (const child of Object.values(value)) if (child && typeof child === "object") stack.push([child, false]);
+          continue;
+        }
+        let contains = false;
+        for (const name of Object.keys(value)) {
+          const child = value[name];
+          if (!Array.isArray(value)) {
+            keys++;
+            pairs.push([name.toLowerCase(), child]);
+            if (name.toLowerCase().includes("transcript")) contains = true;
+          }
+          if (typeof child === "string" ? child.toLowerCase().includes("transcript") : child && typeof child === "object" && bodyTranscriptValues.has(child)) contains = true;
+        }
+        if (contains) bodyTranscriptValues.add(value);
+      }
+      const string = /"(?:[^"\\]|\\.)*"/y;
+      let tokens = 0;
+      for (let i = 0; i < trimmed.length;) {
+        if (trimmed[i] !== '"') { i++; continue; }
+        string.lastIndex = i;
+        if (string.exec(trimmed) === null) return null;
+        i = string.lastIndex;
+        while (i < trimmed.length && /\s/.test(trimmed[i])) i++;
+        if (trimmed[i] === ":") tokens++;
+      }
+      return tokens === keys ? pairs : null;
+    }
+    return text.split(/[&;]/).concat(text.split("&")).map((piece) => {
+      const eq = piece.indexOf("=");
+      const name = eq < 0 ? piece : piece.slice(0, eq);
+      const value = eq < 0 ? "" : piece.slice(eq + 1);
+      return [decodeTranscriptUrl(name.replace(/\+/g, " "), false), decodeTranscriptUrl(value.replace(/\+/g, " "), false, true)];
+    });
   }
 
   // curl treats `\` as a path separator and rewrites it to `/`, so
@@ -629,15 +925,14 @@ try {
   const UNRESOLVED_FLOOR = FALLBACK_BIG.reduce((a, [, v]) => Math.max(a, v), 5);
 
   // HTTP verb for this command. curl defaults to GET; an explicit -X/--request wins,
-  // otherwise a body flag implies POST. Flags are command-global, so in a chained command
-  // a POST flag can be attributed to a sibling GET URL — that OVER-states cost (counts more)
-  // and never under-states it, which is the safe direction for a spend guard.
+  // otherwise a body flag implies POST. Retain this legacy command-wide reading as a floor
+  // beside each plain call's parsed verb, including historical sibling over-counts.
   // -G/--get (a short-flag bundle like `-sG` too; `-g` is globoff) makes curl send the body
   // flags' data as a GET query string, so the call is a GET (checker X3).
   const VERB = (() => {
     const m = cmd.match(/(?:-X|--request)[=\s]+['"]?([A-Za-z]+)/);
     if (m) return m[1].toUpperCase();
-    if (/(?:^|\s)(?:--get|-[A-Za-z]*G[A-Za-z]*)(?=\s|$)/.test(cmd)) return "GET";
+    if (cmd.split(/\s+/).some((w) => w === "--get" || (/^-[A-Za-z]+$/.test(w) && w.includes("G")))) return "GET";
     return /(?:^|\s)(?:-d|--data|--data-raw|--data-binary|--data-urlencode|--json)\b/.test(cmd)
       ? "POST"
       : "GET";
@@ -688,14 +983,14 @@ try {
   const gatedFor = (verb, p) => tableLookup(GATED, verb, p);
   const conditionalFor = (verb, p) => tableLookup(CONDITIONAL, verb, p);
 
-  // A can't-count call with a STATED maximum commits that maximum when it runs (Joe,
+  // A can't-count call with a STATED maximum commits that maximum when it runs (the owner,
   // 09.28.26): prism/investigate its `budget` param ("Holds `budget` credits (default 40, max
   // 200)"), or 200 when none is given; web/sessions 20 ("the 3,600s maximum = 20");
   // economy/imports 20 ("20 credits per call, whatever the limit", 10-06, R18 H1). POST
   // prism/jobs, web/batch-scrape and web/monitors state none, so they commit 0 (a stated
   // LIMIT). Verb-exact only: a twin verb on the same path never takes this price.
   // No surcharge overlay is added anywhere: the catalogue labels (09-23, and 10-06 since R18)
-  // already include every conditional leg, and the old MANUAL_SURCHARGE table counted all five of its rows twice (Joe, 09.28.26).
+  // already include every conditional leg, and the old MANUAL_SURCHARGE table counted all five of its rows twice (the owner, 09.28.26).
   // Two budgets commit the larger; a budget that is not a plain number commits 200, and so does
   // any budget in a command that is not plain (R14a.2: `-K -` or `--expand-data budget=150` can
   // send another budget than the one visible).
@@ -782,16 +1077,20 @@ try {
     return other;
   }
 
-  // Classify one (already-lowercased) socialcrawl URL.
-  // Returns "GATED" | "UNPRICED" | number of credits.
-  function costOf(url) {
+  // Classify one socialcrawl URL. Returns "GATED", "UNPRICED", "UNRESOLVED" or credits.
+  // skipGate also skips body gating in classify(), giving every gate its ungated floor.
+  function costOf(url, skipGate = false, verb = VERB, gate = null) {
     const clean = decodeUrl(url); // full percent-decode so gates cannot be hidden by encoding
     const pm = clean.match(/\/v1\/([a-z0-9_/.-]+)/);
     const p = pm ? pm[1].replace(/\?.*$/, "") : "";
-    // Gated (was: banned, 08.27.26): any 'transcript' token in the path, or an
-    // include=...transcript param. The token test is deliberately broader than the _gated
-    // table so a brand-new transcript endpoint is still caught before costs.json knows it.
-    if (/transcript/.test(p) || /[?&]include=[^&"'\s]*transcript/.test(clean)) return "GATED";
+    // Retain the legacy tests and supplement them with tolerant path and query readings.
+    if (!skipGate) {
+      if (/transcript/.test(p) || /[?&]include=[^&"'\s]*transcript/.test(clean)) return "GATED";
+      const pairs = gate.pairs;
+      const includeTranscript = pairs.some(([name, value]) => includeName(name) &&
+        value.toLowerCase().includes("transcript"));
+      if (/transcript/.test(gate.wholePath) || includeTranscript || transcriptParam(pairs)) return "GATED";
+    }
     // Endpoints the vendor has never published a price for (the cohorts surface). Without
     // this they fall to the 5cr unknown default and the hook states a number that does not
     // exist. Checked before the map: they are absent from it by construction.
@@ -808,7 +1107,7 @@ try {
     if (p.startsWith("credits/") || /^monitors(?:\/|$)/.test(p)) return 0;
     let c;
     if (COSTS) {
-      const hit = num(lookup(VERB, p));
+      const hit = num(lookup(verb, p));
       // An endpoint the map cannot resolve is UNPRICEABLE, not cheap. The old 5cr "unknown
       // endpoint" default only looked conservative: four ordinary shell shapes truncate a
       // real URL into junk that still substring-matches the host — a split quote
@@ -827,14 +1126,20 @@ try {
     // flips it. deep_scan is 15 on instagram/comment but only 6 on tiktok/comment, and
     // get_ad_details is 25 on google/company/ads — one blanket floor could not say that.
     let condHit = null;
-    for (const r of conditionalFor(VERB, p) || []) {
-      if (new RegExp(`[?&]${r.param}=${r.value}(?:[&"'\\s]|$)`, "i").test(clean)) {
+    let legacyCond = false;   // a conditional row matched by the 0.4.0 test alone
+    const pricePairs = gate ? gate.pairs : transcriptQueryPairs(url);
+    const pricePresent = (param) => pricePairs.some(([name, value]) => parameterName(name) === param && value !== "false" && value !== "0");
+    for (const r of conditionalFor(verb, p) || []) {
+      const legacy = new RegExp(`[?&]${r.param}=${r.value}(?:[&"'\\s]|$)`, "i").test(clean);
+      if (legacy) legacyCond = true;
+      if (legacy || pricePresent(r.param)) {
         condHit = condHit === null ? r.credits : Math.max(condHit, r.credits);
       }
     }
-    if (condHit !== null) {
-      c = Math.max(c, condHit);
-    } else if (/[?&]deep_scan=true/.test(clean)) {
+    if (condHit !== null) c = Math.max(c, condHit);
+    // The floor also holds wherever 0.4.0 applied it (its row test missed but its floor test hit,
+    // e.g. `deep_scan=true;a=1` on a row priced under 15): no count goes down.
+    if ((condHit === null && pricePresent("deep_scan")) || (!legacyCond && /[?&]deep_scan=true/.test(clean))) {
       // LOAD-BEARING HARDCODE — do not remove. For any endpoint we have NO measured
       // conditional record for, a deep_scan variant bills far higher than its base, so hold
       // the conservative floor of 15. Endpoints that DO have a record use it instead (the
@@ -845,7 +1150,7 @@ try {
     return c;
   }
 
-  // PLAIN COMMANDS — the allow-list (R14a.2, Joe 09.28.26: "plain" = the plugin's template
+  // PLAIN COMMANDS — the allow-list (R14a.2, the owner 09.28.26: "plain" = the plugin's template
   // grammar plus tidy output). Four patch rounds of repeat readers each left new silent
   // under-count shapes (checkers X1, X4, X5-X7, X8-X11); a deny-list of shapes cannot close that
   // class, an allow-list can. The guard stays silent only for a command it fully reads:
@@ -868,6 +1173,8 @@ try {
   // in the URL word of a plain curl segment (a URL in a header, a body or a comment is not).
   // Unsure = not plain = the deny: the money-safe direction.
   const LIT_PATH = /^[A-Za-z0-9_.\/~+,:@=-]+$/;
+  let plainBodies = [];
+  let neverClose = false;
   function plainCommand(src) {
     // 1. Tokens: words (with their quoting) and operators; `\`-newline outside single quotes joins.
     const toks = [];
@@ -892,6 +1199,7 @@ try {
         i += m[0].length;
         continue;
       }
+      const at = i;
       const parts = [];                                  // [{t: "u"|"s"|"d", v}]
       const add = (t, v) => {
         const last = parts[parts.length - 1];
@@ -919,7 +1227,7 @@ try {
         add("u", ch); raw += ch; i++;
       }
       const one = parts.length === 1 ? parts[0] : null;
-      toks.push({ raw, lit: one && one.t === "u" ? one.v : undefined, q: one && one.t !== "u" ? one : null });
+      toks.push({ at, end: i, raw, lit: one && one.t === "u" ? one.v : undefined, q: one && one.t !== "u" ? one : null });
       lineStart = false;
     }
     // 2. The pieces of a plain curl.
@@ -943,11 +1251,15 @@ try {
     const FLAGS = new Set(["-s", "-S", "-sS", "-N", "-f", "--fail"]);
     const METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
     const isWord = (t) => !!t && !t.op && !t.comment;
+    const bodies = [];
     // The number of socialcrawl.dev occurrences in a plain curl segment's URL word; -1 = not plain.
     function curlSeg(seg) {
       if (seg[0].lit !== "curl") return -1;
       let k = 1;
       let url = null;
+      const data = [];
+      const headers = [];
+      let verb = null;
       for (; k < seg.length && isWord(seg[k]); k++) {
         const t = seg[k];
         const nw = isWord(seg[k + 1]) ? seg[k + 1] : null;
@@ -957,12 +1269,42 @@ try {
             (t.lit === "-H" && nw.q && headerOk(nw.q.v)) ||
             (t.lit === "-d" && nw.q && nw.q.t === "s" && !nw.q.v.includes("@")) ||
             (t.lit === "-o" && litPath(nw)) ||
-            (t.lit === "-w" && nw.q && nw.q.t === "s"))) { k++; continue; }
-        if (!url && t.q && urlOk(t.q.v)) { url = t.q.v; continue; }
+            (t.lit === "-w" && nw.q && nw.q.t === "s"))) {
+          if (t.lit === "-d") data.push(nw.q.v);
+          if (t.lit === "-H") headers.push(nw.q);
+          if (t.lit === "-X") verb = nw.lit;
+          if (t.lit === "--max-time") neverClose = true;
+          k++; continue;
+        }
+        if (!url && t.q && urlOk(t.q.v)) { url = t; continue; }
         return -1;
       }
       if (!url) return -1;
+      if (headers.some(h => h.v.slice(0, h.v.indexOf(":")).trim().toLowerCase() === "authorization")) neverClose = true;
+      if ([...new URL(url.q.v).searchParams].some(([name, value]) =>
+        /^(api_key|apikey|key|x_api_key|access_token|token|auth)$/.test(name.toLowerCase().replace(/-/g, "_")) ||
+        /^sc_|SOCIALCRAWL_API_KEY|api_key\)/i.test(value))) neverClose = true;
+      const keys = headers.filter(h => h.v.slice(0, h.v.indexOf(":")).trim().toLowerCase() === "x-api-key");
+      const value = keys.length === 1 ? keys[0].v.slice(keys[0].v.indexOf(":") + 1).trim() : "";
+      const envKey = String(process.env.SOCIALCRAWL_API_KEY || "").trim();
+      let sameSource = false;
+      if (envKey.startsWith("sc_")) sameSource = value === "$SOCIALCRAWL_API_KEY" || value === "${SOCIALCRAWL_API_KEY}";
+      else {
+        const file = /^\$\(cat ([^()\s]+)\)$/.exec(value);
+        if (file) {
+          const expanded = file[1].startsWith("~/") ? `${homedir()}/${file[1].slice(2)}` : file[1];
+          if (!expanded.split(/[\\/]/).some(part => part === "." || part === "..")) {
+            const actual = resolve(expanded);
+            const expected = join(homedir(), ".config", "socialcrawl", "api_key");
+            sameSource = process.platform === "win32" ? actual.toLowerCase() === expected.toLowerCase() : actual === expected;
+          }
+        }
+      }
+      if (new URL(url.q.v).hostname.toLowerCase() !== "www.socialcrawl.dev" || keys.length !== 1 || keys[0].t !== "d" || !sameSource) neverClose = true;
+      const path = new URL(url.q.v).pathname.replace(/^\/v1\//i, "").replace(/\/+/g, "/").replace(/^\/|\/$/g, "").toLowerCase();
+      if (ASYNC_START.has(path)) neverClose = true;
       while (k < seg.length && seg[k].op === "|" && !seg[k].fd) {       // tidy output stages
+        neverClose = true;
         const stage = [];
         for (k++; k < seg.length && isWord(seg[k]); k++) stage.push(seg[k]);
         const [a, ...rest] = stage;
@@ -979,35 +1321,74 @@ try {
             (r.fd === "2" && r.op === ">" && t.lit === "/dev/null") ||
             (r.fd === "2" && r.op === ">&" && t.lit === "1"))) return -1;
       }
-      return (url.match(/socialcrawl\.dev/gi) || []).length;
+      bodies.push({ at: url.at, end: url.end, data, verb: verb || (data.length ? "POST" : "GET") });
+      return (url.q.v.match(/socialcrawl\.dev/gi) || []).length;
     }
     // 3. Segments: split on top-level `&&`, `;` and newlines.
     const segs = [[]];
+    const joins = [];
     for (const t of toks) {
-      if (t.op === "&&" || t.op === ";" || t.op === "\n") segs.push([]);
+      if (t.op === "&&" || t.op === ";" || t.op === "\n") { joins.push(t.op); segs.push([]); }
       else segs[segs.length - 1].push(t);
     }
     let inUrls = 0;
-    for (const seg of segs) {
+    let curlBefore = false, separated = false, andPending = false;
+    for (const [index, seg] of segs.entries()) {
+      const sep = joins[index - 1];
+      if (sep === "&&") andPending = true;
+      if (curlBefore && (sep === ";" || (sep === "\n" && !andPending))) separated = true;
       if (!seg.length) continue;
       if (seg[0].comment) { if (seg.length === 1 && seg[0].lineStart) continue; return false; }
+      andPending = false;
+      if (separated) neverClose = true;
       if (seg.length === 2 && seg[0].lit === "sleep" && /^\d+$/.test(seg[1].lit || "")) continue;
       const n = curlSeg(seg);
       if (n < 0) return false;
       inUrls += n;
+      curlBefore = true;
     }
     // Every socialcrawl.dev in the command must be inside a plain curl's URL word.
+    plainBodies = bodies;
     return inUrls > 0 && inUrls === (src.match(/socialcrawl\.dev/gi) || []).length;
   }
   let plain = false;
   try { plain = plainCommand(cmd); } catch {}           // local wrap (F-F8): unsure = not plain
   if (NOT_BASH) plain = false;                          // 0.3.1: not the Bash tool = never plain
+  const bodyIncludes = new Set();
+  const bodyParams = new Map();
+  if (plain) {
+    for (const body of plainBodies) {
+      if (!body.data.length) continue;
+      const pairs = readBody(body.data.join("&"));
+      if (pairs === null) { plain = false; break; }
+      bodyParams.set(body, transcriptParam(pairs));
+      if (pairs.some(([name, value]) => includeName(name) &&
+          (typeof value === "string" ? value.toLowerCase().includes("transcript") : value && typeof value === "object" && bodyTranscriptValues.has(value)))) {
+        bodyIncludes.add(body);
+      }
+    }
+  }
+  if (!plain) plainBodies = [];
 
   // EVERY socialcrawl API URL in the command (chained curls, &&, ;, pipes). `found` keeps each
   // match as typed, with its offset, for sentValues(). In a plain command each is a curl's URL
   // word; in any other command these are only the URLs visible in it (the not-plain deny's log).
   const found = [...cmd.matchAll(/socialcrawl\.dev\/v1\/[^"'\s]*/gi)];
-  const urls = found.map((m) => m[0].toLowerCase());
+  const urls = found.map((m) => m[0]);
+  // Validate before either transcript detection or price lookup. A literal percent left by
+  // decoding is checked on the next pass too; malformed or still-encoded URLs are not plain.
+  for (const url of urls) {
+    try { decodeStable(url); } catch { plain = false; }
+  }
+  if (!plain) plainBodies = [];
+  let bodyIndex = 0;
+  const callBodies = found.map((m) => {
+    while (bodyIndex < plainBodies.length && plainBodies[bodyIndex].end <= m.index) bodyIndex++;
+    const body = plainBodies[bodyIndex];
+    return body && body.at <= m.index && m.index < body.end ? body : undefined;
+  });
+  const callBodyIncludes = callBodies.map((body) => bodyIncludes.has(body));
+  const callBodyParams = callBodies.map((body) => bodyParams.get(body));
 
   // ---------------------------------------------------------------------------
   // COMMAND-LEVEL costing. One Bash command can chain several SocialCrawl calls,
@@ -1022,6 +1403,11 @@ try {
     const clean = decodeUrl(u);
     const pm = clean.match(/\/v1\/([a-z0-9_/.-]+)/);
     return pm ? pm[1].replace(/\?.*$/, "") : "";
+  }
+
+  function wholePathOf(gatedUrl) {
+    const pm = resolveDots(backslashPath(gatedUrl.replace(/%2f/gi, "/").toLowerCase())).match(/\/v1\/([^?#]*)/);
+    return pm ? pm[1] : "";
   }
 
   // Worst case for ONE metered row: its PUBLISHED CEILING, always. Null only when
@@ -1056,14 +1442,16 @@ try {
   // Worst case for ONE call, and what kind of call it is.
   //   kind: "gated" | "unpriced" | "metered" | "flat"
   //   worst: credits this single call can cost at its ceiling
-  function classify(u, i) {
+  function classify(u, i, skipGate = false, verb = VERB, gate = null) {
     const p = pathOf(u);
     // costOf already applies the conditional pin and the deep_scan floor to the flat price.
-    const base = costOf(u);
-    const m = meteredFor(VERB, p);
+    let base = costOf(u, skipGate, verb, gate);
+    if (!skipGate && (callBodyIncludes[i] || callBodyParams[i])) base = "GATED";
+    const m = meteredFor(verb, p);
 
     if (base === "GATED") {
-      const g = gatedFor(VERB, p);
+      const wholePath = gate.wholePath;
+      const g = gatedFor(verb, p);
       // A transcript price is PER UNIT. 10 is the non-YouTube rate and the conservative
       // pick when the generated table has no row (a brand-new transcript endpoint).
       const band = g ? num(g.credits) : null;
@@ -1073,10 +1461,15 @@ try {
       // was quoted at the generic 10cr band, 30x under, and the counter recorded 10
       // (checker R1 defect D2). The figure counted has to be the billable one.
       const mw = m ? meteredWorst(m) : null;
+      // Every transcript call also holds at least its ordinary price.
+      const previousWorst = classify(u, i, true, verb, gate).worst;
       return {
         p,
         kind: "gated",
-        worst: Math.max(band === null ? 10 : band, mw === null ? 0 : mw),
+        wholePath,
+        param: !/transcript/.test(wholePath) ? transcriptParam(gate.pairs) || callBodyParams[i] : undefined,
+        bolt: !/transcript/.test(wholePath),
+        worst: Math.max(band === null ? 10 : band, mw === null ? 0 : mw, previousWorst),
         unit: g ? g.unit : (m && m.unit) || "item",
         g,
         m,
@@ -1095,7 +1488,7 @@ try {
       return { p, kind: "unpriced", worst: 0 };
     }
 
-    // No dry-run discount (R14a.2, Joe 09.28.26, supersedes P8): a `dry_run=1` is counted at
+    // No dry-run discount (R14a.2, the owner 09.28.26, supersedes P8): a `dry_run=1` is counted at
     // its full price, because a hidden ~/.curlrc, `-K`, `--expand-data` or `--request-target`
     // can change what curl sends. costs.json's `dryRun` field stays a vendor fact nothing here reads.
     const flat = num(base) === null ? 0 : base;
@@ -1106,7 +1499,7 @@ try {
         // case exists to quote. It contributes only its STATED maximum, if the vendor states
         // one (STATED_MAX, verb-exact), and 0 otherwise, like an unpriced row, because any other
         // figure would be invented (a stated LIMIT, D28a).
-        const stated = m.key === `${VERB} ${p}` && STATED_MAX[m.key] ? STATED_MAX[m.key](found[i]) : 0;
+        const stated = m.key === `${verb} ${p}` && STATED_MAX[m.key] ? STATED_MAX[m.key](found[i]) : 0;
         return { p, kind: "uncomputable", worst: stated, m };
       }
       // Never below what the flat price or a conditional pin already established.
@@ -1115,11 +1508,37 @@ try {
     return { p, kind: "flat", worst: flat };
   }
 
+  // prism/brief-check pulls each post's transcript (its own label), so the transcript lock covers
+  // it too (0.4.1). It is NOT gated: its kind stays "flat" and it counts 15 as at 0.4.0; only
+  // transcriptCalls below includes it. Extra slashes are ignored because the server reads
+  // prism//brief-check and prism/brief-check/ as the same endpoint.
+  function isBriefCheck(p) {
+    return p.replace(/\/+/g, "/").replace(/^\/|\/$/g, "") === "prism/brief-check";
+  }
+
   // A command that is not plain is denied below whatever its costing does: an error costing it only
   // loses its visible figure in the unattended log. A plain command's costing error reaches failed().
   let calls = [];
-  try { calls = urls.map(classify); } catch (e) { if (plain) throw e; }
+  try {
+    calls = urls.map((u, i) => {
+      const quote = url => {
+        const gatedUrl = decodeTranscriptUrl(url, false, true);
+        const gate = { wholePath: wholePathOf(gatedUrl), pairs: transcriptQueryPairs(url, gatedUrl) };
+        const perCall = classify(url, i, false, plain ? callBodies[i].verb : VERB, gate);
+        if (!plain || callBodies[i].verb === VERB) return perCall;
+        const legacy = classify(url, i, false, VERB, gate);
+        return legacy.worst > perCall.worst ? legacy : perCall;
+      };
+      const typed = quote(u);
+      const normalized = u.replace(/(\/v1\/)([^?]*)/i, (_, prefix, path) => prefix + path.replace(/\/+/g, "/").replace(/^\/+|\/+$/g, ""));
+      if (normalized === u) return typed;
+      const normal = quote(normalized);
+      return normal.worst > typed.worst ? normal : typed;
+    });
+  } catch (e) { if (plain) throw e; }
+  // gatedCalls: priced as transcripts. transcriptCalls: what the lock denies (gated + brief-check).
   const gatedCalls = calls.filter((c) => c.kind === "gated");
+  const transcriptCalls = calls.filter((c) => c.kind === "gated" || isBriefCheck(c.p));
   const unpricedCalls = calls.filter((c) => c.kind === "unpriced");
   const meteredCalls = calls.filter((c) => c.kind === "metered");
   const uncomputableCalls = calls.filter((c) => c.kind === "uncomputable");
@@ -1150,6 +1569,7 @@ try {
     plain &&
     cmdWorst === 0 &&
     !gatedCalls.length &&
+    !transcriptCalls.length &&
     !unpricedCalls.length &&
     !meteredCalls.length &&
     !uncomputableCalls.length &&
@@ -1181,12 +1601,13 @@ try {
     return deny(M_LOST, "lost");
   }
   if (st.lost) return lost();
-  const spent = st.spent;
+  let spent = st.spent;
 
   // The budget file (contract §1, as amended by 3b R6): <revxl>/socialcrawl-budget.json, written by
-  // the person (the mod's Budget tab, or by hand), never by Claude. Read here, inline: regression.mjs
+  // the person (the mod's Settings tab, or by hand), never by Claude. Read here, inline: regression.mjs
   // copies this file alone, so no new import. It is read whatever time is left: a skipped read would
-  // loosen a tighter budget (H5/H7). No file, a folder, bad JSON, an array or a string is no budget.
+  // loosen a tighter budget (H5/H7). No file is no budget; a folder, bad JSON, an array or a string
+  // denies paid calls. Transcript calls retain their own settings-file denial below.
   // A file that is there but still can't be read (readRetry) denies a paid call and never loosens
   // the limit; a call whose worst case is 0 carries on as with no file. It never throws. A number
   // field counts only as an integer from 1 to 20,000 (D24).
@@ -1200,10 +1621,17 @@ try {
     );
   }
   let budget = {};
+  let budgetRead = bfRead.code === "ENOENT" || bfRead.code === "ENOTDIR" ? "absent" : "bad";
   try {
     const o = bfRead.code ? null : JSON.parse(text(bfRead.raw));   // UTF-16LE or UTF-8, its byte order mark dropped (3c, 3d)
-    if (o && typeof o === "object" && !Array.isArray(o)) budget = o;
+    if (o && typeof o === "object" && !Array.isArray(o)) {
+      budget = o;
+      budgetRead = "ok";
+    }
   } catch {}
+  if (budgetRead === "bad" && cmdWorst > 0 && transcriptCalls.length === 0) {
+    return deny("SocialCrawl call not run: your SocialCrawl settings file can't be read, so this session's credit limit can't be checked. Re-save your limit in SocialCrawl → Settings to fix it." + T, "error");
+  }
   const valid = (v) => Number.isInteger(v) && v >= 1 && v <= 20000;
 
   // This call's limit (contract §3, as amended by D28a), first true wins.
@@ -1219,8 +1647,8 @@ try {
     //    balance is cached whatever its value; a failed try caches nothing and is counted, and after
     //    3 the session stops trying. The try is counted and saved BEFORE it is made: a state that
     //    can't be saved can't hold a balance or a count, so it is never read (checker X1), and the
-    //    call itself is then refused by recorded(). An integer balance of 0 or more gives
-    //    min(500, 25% of it) (R18-1), so 0-3 gives 0; any other balance, or none, gives 500.
+    //    call itself is then refused by recorded(). A finite balance of 0 or more is floored,
+    //    then gives min(500, floor(25% of it)), so 0-3 gives 0; any other balance, or none, gives 500.
     if (cmdWorst > 0 && num(st.balance) === null && (num(st.balanceFails) || 0) < 3) {
       const fails = num(st.balanceFails) || 0;
       st.balanceFails = fails + 1;
@@ -1235,23 +1663,82 @@ try {
       }
     }
     const balance = st.balance;
-    if (Number.isInteger(balance) && balance >= 0) {
-      limit = Math.min(500, Math.floor(0.25 * balance));
-      src = `the automatic cap: the smaller of 500 and a quarter of your ${balance}-credit balance`;
+    if (Number.isFinite(balance) && balance >= 0) {
+      const flooredBalance = Math.floor(balance);
+      limit = Math.min(500, Math.floor(0.25 * flooredBalance));
+      src = `the automatic cap: the smaller of 500 and a quarter of your ${flooredBalance}-credit balance`;
     } else {
       limit = 500;
       src = "the fallback cap of 500, because your balance couldn't be read";
     }
   }
 
+  // The transcript lock (0.4.1): the person's stored choice, `transcripts` in the budget file, saved
+  // by the pane's save step (helper.mjs budget-write) or by hand, never by Claude. The guard only
+  // reads the stored value: it never looks for a local transcription tool or key (that check is
+  // helper.mjs `routes`, advisory). Applies to transcriptCalls: gated calls and prism/brief-check.
+  // Checked once the limit is picked, so the deny's record line carries the limit. No file, no key,
+  // or the stored let-them-run value: counted as before. `block`, any other value or type, or a
+  // file that is there but does not parse to an object (a folder too): denied, kind transcript-locked.
+  // A file that can't be read at all was already denied above, kind error. An error inside this
+  // block denies, attended too. Since F5, an error before it refuses a command mentioning the word
+  // transcript after decoding; other commands take failed(). The permitted value is matched by a
+  // pattern because fixture P3g-A2 (tests/fixtures/d28.mjs) lets no quoted permit literal into this file.
+  if (transcriptCalls.length > 0) {
+    let fix = "";
+    try {
+      const first = transcriptCalls[0];
+      // First match wins; brief-check is tested before the others.
+      fix = isBriefCheck(first.p) ? " Fetch the media and transcribe it with your own tool." :
+        first.param ? (/^[a-z0-9_.\[\]-]{1,64}$/.test(first.param) && !first.param.includes("sc_") ?
+          ` Drop ${first.param} and run the call again.` : " Drop include=transcript and run the call again.") :
+        first.bolt ? " Drop include=transcript and run the call again." :
+        first.p.replace(/\/+/g, "/").replace(/^\/|\/$/g, "") === "youtube/transcripts" ? " Use the 1-credit subtitles endpoint per video." :
+        first.wholePath.startsWith("youtube/") ? " Use the 1-credit subtitles endpoint, or free yt-dlp captions if yt-dlp is installed." :
+        " Fetch the media and transcribe it with your own tool.";
+      let lead = null;
+      let tail = " To fix it, open SocialCrawl → Settings and press Save.";   // M7: Settings named once
+      if (budgetRead === "bad") lead = "Your SocialCrawl settings file can't be read, so transcripts are blocked.";
+      else if (budgetRead === "ok" && Object.prototype.hasOwnProperty.call(budget, "transcripts")) {
+        if (budget.transcripts === "block") { lead = "Transcripts are blocked in your SocialCrawl settings."; tail = " Change this in SocialCrawl → Settings."; }
+        else if (typeof budget.transcripts !== "string" || !/^allow$/.test(budget.transcripts)) lead = "The transcript setting in your SocialCrawl settings is unrecognised, so transcripts are blocked.";
+      }
+      if (lead) return deny(lead + fix + tail, "transcript-locked");
+    } catch {
+      return deny("SocialCrawl call not run: the credit guard hit an error while checking this transcript call. Run the command again." + T, "transcript-locked");
+    }
+  }
+
   // 5. The hard limit (D28): a command that would take the committed total past the limit is
   //    denied, and reaching it exactly passes. A command whose worst case is 0 can't take it past,
   //    so it is never denied here, even above a lowered limit (3b R4, H2).
+  if (cmdWorst > 0 && spent + cmdWorst > limit && Object.values(st.holds || {}).some(h => h.post !== undefined) && (st.led?.fails || 0) < 3 && Date.now() - (st.led?.at || 0) >= 30000 && locked) {
+    const gb = await giveBack();
+    if (gb && gb.hasKey() && left() > 700) {
+      initLedger(st);
+      st.led.at = Date.now();
+      if (!recorded()) return;
+      if (await unlock(stateFile)) {
+        locked = false;
+        const read = await gb.readLedger(st, { left });
+        locked = await lock(stateFile, "session lock");
+        if (!locked) { recorded(); return; }
+        st = await readState();
+        if (!st) return deny(`SocialCrawl call not run: the session file ${stateFile} can't be read right now, so this session's committed total can't be checked. Run the command again.` + T, "error");
+        if (st.lost) return lost();
+        if (read && !read.failed) {
+          const settled = saveRecompute(st, gb, read, true);
+          if (settled) st = settled;
+        } else if (left() > 0) readFailure(st, read);
+        spent = st.spent;
+      }
+    }
+  }
   if (cmdWorst > 0 && spent + cmdWorst > limit) {
     return deny(
       `SocialCrawl call not run: it would take this session past its credit limit. Committed so far: ` +
         `~${spent} credits; this command's worst case: ~${cmdWorst} credits; the limit is ${limit} credits ` +
-        `(${src}). To go further, the person raises it in the SocialCrawl Budget pane.` + T,
+        `(${src}). To go further, raise your limit in SocialCrawl → Settings (up to 20,000).` + T,
       "over-limit"
     );
   }
@@ -1261,13 +1748,22 @@ try {
   //    is emitted. A commit that
   //    can't be recorded (no session folder or a read-only one, a full disk, no session lock) would
   //    leave this call uncounted, so recorded() refuses it. Unattended, the pass is logged.
+  initHolds(st);
   st.spent = spent + cmdWorst;
+  const id = input.tool_use_id;
+  if (validId(id) && !Object.hasOwn(st.holds, id)) {
+    Object.defineProperty(st.holds, id, { value: { t: Date.now(), u: uptime() * 1000, ...(neverClose ? { nc: true } : {}), sha: sha(rawCmd), calls: calls.map(c => [normalPath(c.p).replace(/sc_[^/?#]*/gi, "sc_…"), num(c.worst) === null ? 0 : c.worst]) },
+      enumerable: true, configurable: true, writable: true });
+    st.full = (st.full || 0) + calls.length;
+  } else st.fixed += cmdWorst;
+  st.usage ??= 0;
+  st.full ??= 0;
   if (!recorded()) return;
-  if (UNATTENDED) logUnattended(sid, "pass", "under-cap", logPaths(), cmdWorst, st.spent, limit);
+  if (UNATTENDED || ROUTINE) logUnattended(sid, "pass", "under-cap", logPaths(), cmdWorst, st.spent, limit);
   logCall("pass", "under-cap", st.spent);   // attended or not (3d)
   return done();
 } catch {
-  return failed(sid); // an unexpected error -> pass attended, deny unattended or in a routine (R14b, 3f)
+  return failed(sid); // decoded transcript text is refused in every run; other errors deny unattended or in a routine
 } finally {
   if (locked) await unlock(stateFile);
 }

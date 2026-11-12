@@ -451,33 +451,35 @@ resolve, a docs page, a pricing page).
 
 | Your goal | Use this | Credits |
 |-----------|----------|---------|
-| One page's content, right now | `/scrape` | 1 |
-| A keyword search of the open web | `/search` | 2 |
+| One page's content, right now | `/scrape` | 1 (up to 5, metered) |
+| A keyword search of the open web | `/search` | 2 per 10 results (2–120, metered) |
 | What URLs exist on this site? | `/map` | 1 |
 | Pull named fields out of a page (price, headline, offer) | `/extract` | 5 |
-| Many pages / a whole site | `POST /crawl` or `POST /batch-scrape` → poll `/jobs/{job_id}` | 1 |
-| Watch a page for changes over time | `POST /monitors` | 0 |
-| Click, type, and navigate a page | `POST /sessions` then `POST /sessions/{id}/execute` | 5 to open, 0 per action |
+| Many pages / a whole site | `POST /crawl` or `POST /batch-scrape` → poll `/jobs/{job_id}` | crawl 1 per page (holds `limit`, 10 by default, up to 10,000); batch-scrape 1 per URL, counted at 0 by the guard |
+| Watch a page for changes over time | `POST /monitors` | 0 to create; each check then bills its upstream cost + 1, unseen by the guard |
+| Click, type, and navigate a page | `POST /sessions` then `POST /sessions/{id}/execute` | 5–20 to open (20 per browser-hour), 0 per action |
 | Turn an uploaded PDF/doc into text | `POST /parse` | 1 |
 | Nothing above worked and the task needs judgement | `POST /agent` | **25** |
 
 ### Cost shape — most of this platform is free
 
 The async machinery is 0cr: listing jobs, polling `/jobs/{job_id}`, cancelling, and every
-monitor and session operation except opening the session. You pay to *start* work
-(`crawl`/`batch-scrape` 1cr, `sessions` 5cr, `agent` 25cr), not to supervise it. Poll job
+monitor and session operation except opening the session (a running monitor's checks still
+bill: see the table). You pay to *start* work
+(`crawl` 1cr per page, `batch-scrape` 1cr per URL, `sessions` 5–20cr, `agent` 25cr), not to
+supervise it. Poll job
 status as often as you like.
 
-`/scrape` at 1cr is the workhorse. Before escalating, ask whether one page would answer the
+`/scrape` at 1cr (up to 5) is the workhorse. Before escalating, ask whether one page would answer the
 question — `/extract` (5cr) is `/scrape` plus structured field-pulling, so if you are going to
 read the page yourself anyway, scrape it.
 
-### POST /agent is the most expensive call in the entire API
+### POST /agent is 25 credits for one judgement call
 
 25 credits, one call. It is an agentic browse-and-extract job for cases where you cannot say
-in advance which pages to visit. Confirm the spend with the user every time — no exceptions,
-and never in a loop. If you can name the URLs, `batch-scrape` (1cr) does the job for a
-twenty-fifth of the price.
+in advance which pages to visit. Name the spend to the user every time — no exceptions,
+and never in a loop. If you can name the URLs, `batch-scrape` (1cr per URL) does the job for a
+twenty-fifth of the price per URL.
 
 ### Async jobs
 
@@ -488,8 +490,9 @@ and robots-blocked URLs. Cancel with `DELETE /jobs/{job_id}` (0cr).
 
 ### Sessions are stateful and cost per session, not per action
 
-`POST /sessions` (5cr) opens an interactive browser session; each `POST
+`POST /sessions` (5–20cr: 20 per browser-hour, minimum 5) opens an interactive browser session; each `POST
 /sessions/{id}/execute` is free. That inverts the usual math: a multi-step interaction
-(accept a dialog, paginate, click through a gate) costs a flat 5cr no matter how many steps.
+(accept a dialog, paginate, click through a gate) costs the session's hold (5 for the default 60
+seconds, up to 20 for an hour) no matter how many steps.
 Close it with `DELETE /sessions/{session_id}` when done. Note the cost asymmetry — `GET
-/sessions` is free, `POST /sessions` is 5cr.
+/sessions` is free, `POST /sessions` is 5–20cr.

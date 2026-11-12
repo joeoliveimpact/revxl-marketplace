@@ -27,9 +27,8 @@
  *                                        a 1605 ceiling)   PASS at the fix HEAD.
  */
 import { readFileSync } from "node:fs";
-import { run, V1, COSTS, quoted as countOf, assert } from "../lib.mjs";
+import { run, V1, COSTS, quoted as countOf, assert, NOLOCAL } from "../lib.mjs";
 
-const NOLOCAL = { unsetEnv: ["GROQ_API_KEY"], env: { PATH: "" } };
 // D28: a budget above every published ceiling, so the figure each row counts is committed.
 const ROOMY = { ...NOLOCAL, budget: { sessionBudget: 20000 } };
 // The stated maximum a no-ceiling row counts (verb-exact, as the guard's STATED_MAX), else 0 (D28a).

@@ -73,7 +73,7 @@
 | /ads/search | `company` / `keyword` / `companyId` | 5 | Search LinkedIn ads |
 | /profile/posts/archive | `url` | **5-500** | Walk a LinkedIn member's COMPLETE post history, 100 posts a page, with exact publish times and share counts the other lanes cannot return. Metered: 5 credits per post returned, so try the cheaper /v1/linkedin/profile/posts first |
 | /search/posts | `query` / `from_member` / `from_company` | **1-56** | Search public LinkedIn posts by keyword |
-| /post/transcript | `url` | 10 | Get a LinkedIn post video transcript — ⚠️ **Gated in this plugin: 10 credits per post — 100 of them = 1000 credits. Run it only on an explicit yes; the credit guard counts it and never asks. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.** |
+| /post/transcript | `url` | 10 | Get a LinkedIn post video transcript — ⚠️ **Gated in this plugin: 10 credits per post — 100 of them = 1000 credits. Run it only on an explicit yes. The credit guard never asks: it refuses it when the user's transcript setting (SocialCrawl → Settings) is Blocked, and counts it otherwise. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.** |
 | /profile/full | `url` | 5 | LinkedIn company profile, recent posts, and computed analytics in one call. Company pages only; a member's profile is `/v1/linkedin/profile/all`. |
 
 ### Parameter legend
@@ -1135,7 +1135,7 @@ Fetches the transcript from a LinkedIn post video when LinkedIn exposes one publ
 
 **Reposts.** LinkedIn does not show a repost's content to logged-out viewers, so a repost URL is read from the original post it shares: the response carries a `_warnings` note naming the original post's URL (in `data._warnings`, or in `error.details._warnings` when the original has no transcript), and it costs the same as any other transcript request. A post that cannot be read logged-out and cannot be resolved to an original answers `404 RESOURCE_NOT_FOUND` with `details.reason: "post_not_public"`, at no charge.
 
-> ⚠️ **Gated in this plugin: 10 credits per post — 100 of them = 1000 credits. Run it only on an explicit yes; the credit guard counts it and never asks. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.**
+> ⚠️ **Gated in this plugin: 10 credits per post — 100 of them = 1000 credits. Run it only on an explicit yes. The credit guard never asks: it refuses it when the user's transcript setting (SocialCrawl → Settings) is Blocked, and counts it otherwise. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.**
 
 **Parameters**
 

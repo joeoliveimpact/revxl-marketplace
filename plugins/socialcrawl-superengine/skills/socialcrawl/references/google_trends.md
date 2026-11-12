@@ -97,6 +97,6 @@ land. `/explore` is for validating a term you are already committed to — confi
 before building around it.
 
 Trends measures *search* demand. For social demand on the same topic, pair with
-`reddit/omni-search` (1cr) or `tiktok/search/hashtag` (1cr); for a fused consumer-demand
+`reddit/omni-search` (5–9cr) or `tiktok/search/hashtag` (1–5cr); for a fused consumer-demand
 index across app reviews, web and Reddit, `prism/demand-signals` (30cr) is the one-call
 version.

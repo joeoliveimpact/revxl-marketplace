@@ -960,7 +960,8 @@ curl "https://www.socialcrawl.dev/v1/prism/investigate?goal=<goal>" \
 
 ## Choosing a Prism endpoint
 
-⚠️ **This platform holds the most expensive calls in the API.** Costs run from 0 to 50 credits
+⚠️ **This platform holds some of the most expensive calls in the API.** A flat call costs 0 to 50
+credits and a metered one goes far higher (`share-of-voice` up to 200, `ai-visibility` up to 1,605),
 with no tier ladder — the label tells you nothing, so read the number every time. Anything at
 25cr or above is a one-shot report, not a data pull: decide the question before you spend, and
 confirm with the user first.
@@ -1014,7 +1015,7 @@ you pull it. Spend it before any large sweep.
 `/creator-vet` 50–75 · `/leads` 50
 
 Before booking one of these, check whether a cheap ladder answers the same question:
-`/audience-questions` (30cr) versus `reddit/omni-search` (1cr); `/brand-mentions` (50cr)
+`/audience-questions` (30cr) versus `reddit/omni-search` (5–9cr); `/brand-mentions` (50cr)
 versus `search/forums` (10cr); `/product-reviews` (30cr) versus two marketplace review calls.
 The composites are worth it when you need the fusion and the scoring — not when you need the
 raw material.

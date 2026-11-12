@@ -16,10 +16,11 @@ import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
   session, V1, GUARD, COSTS, M_NOTPLAIN, M_NOTBASH, M_LOST, mLimit, ROUTINE, ROUTINES_ON,
-  SRC_SESSION, srcAuto, today, assert,
+  SRC_SESSION, srcAuto, today, assert, T,
 } from "../lib.mjs";
 
 const UN = { CLAUDE_CODE_SESSION_ATTENDED: "0" };
+const M_SETTINGS = "SocialCrawl call not run: your SocialCrawl settings file can't be read, so this session's credit limit can't be checked. Re-save your limit in SocialCrawl → Settings to fix it." + T;
 const B = String.fromCharCode(92);                        // one backslash
 const BOM = String.fromCharCode(0xfeff);                  // the byte order mark PowerShell 5.1 writes
 const fwd = (p) => p.split(B).join("/");                  // a Windows path with forward slashes
@@ -43,7 +44,7 @@ const K = [
 /** M_TAMPER, whole (no T: nothing about SocialCrawl was sent or counted). */
 const mTamper = (what, k) =>
   `SocialCrawl guard file left alone: this ${what} names ${K[k][1]}, which holds the person's SocialCrawl budget or spend ` +
-  `record. Claude never changes it; the person sets the budget in the SocialCrawl Budget tab. To look at it, use the Read tool.`;
+  `record. Claude is not to change it (the guard refuses the plain ways; a glob, a link to the folder, an MCP tool or a script can still get past it); the person sets the limit in SocialCrawl → Settings. To look at it, use the Read tool.`;
 /** A tamper deny's whole stdout, as done() writes it. */
 const denyOut = (m) =>
   JSON.stringify({ hookSpecificOutput: { permissionDecision: "deny", hookEventName: "PreToolUse", permissionDecisionReason: m }, systemMessage: m });
@@ -122,7 +123,7 @@ function mutant(id, pairs) {
   return { file: join(d, "credit-guard.mjs"), dir: d };
 }
 const SUGGEST = [{ hooks: [{ type: "command", command: 'node "${CLAUDE_PLUGIN_ROOT}/hooks/research-suggest.mjs"', timeout: 10 }] }];
-/** What C-A5 finds wrong with a hooks.json text; [] when it holds exactly the 3c registration. */
+/** What C-A5 finds wrong with hooks.json; [] for the three guard registrations and unchanged suggester. */
 function hooksProblems(text) {
   const bad = [];
   const cfg = JSON.parse(text);
@@ -130,9 +131,14 @@ function hooksProblems(text) {
   for (const [event, list] of Object.entries(cfg.hooks || {})) for (const m of list) for (const h of m.hooks || []) {
     if (String(h.command || "").includes("credit-guard.mjs")) entries.push({ event, matcher: m.matcher, ...h });
   }
-  if (entries.length !== 1) bad.push(`${entries.length} credit-guard entries`);
-  const g = entries[0] || {};
-  if (g.event !== "PreToolUse" || g.matcher !== MATCHER || g.timeout !== 10) bad.push(`the entry is ${JSON.stringify(g)}`);
+  if (entries.length !== 3) bad.push(`${entries.length} credit-guard entries`);
+  const command = 'node "${CLAUDE_PLUGIN_ROOT}/hooks/' + 'credit' + '-guard.mjs"';
+  for (const [event, matcher, timeout] of [["PreToolUse", MATCHER, 10], ["PostToolUse", "Bash", 5], ["PostToolBatch", undefined, 5]]) {
+    const matches = entries.filter(e => e.event === event);
+    const g = matches[0] || {};
+    if (matches.length !== 1 || g.matcher !== matcher || g.timeout !== timeout || g.type !== "command" || g.command !== command)
+      bad.push(`the ${event} entry is ${JSON.stringify(g)}`);
+  }
   if (JSON.stringify(cfg.hooks && cfg.hooks.UserPromptSubmit) !== JSON.stringify(SUGGEST)) bad.push("research-suggest changed");
   const d = String(cfg.description || "");
   if (/(?:^|[^a-z])(?:ask|asks|asked)(?:[^a-z]|$)/i.test(d)) bad.push("the description says ask");
@@ -213,7 +219,7 @@ export default [
   },
   {
     id: "P3c-A3-ordinary-work-passes",
-    desc: "C-A3: ordinary work passes untouched (no output, exit 0, nothing in the session folder changed), beside near twins that are denied: a Write of C:/proj/socialcrawl-budget.json (no revxl; twin in C:/proj/revxl); Writes in <revxl> of jev-ask.json, jev-candidates.jsonl, entities.jsonl, teach-level, tools.json, voc-contract.md and credit-guard-unattended.seen (twin: the unattended log); of socialcrawl-report.json in <revxl> and in a brand folder (a session file needs sessions; twin in <revxl>/sessions); of joeoliveimpact/voc/x.md; an Edit of this plugin's skills/socialcrawl/SKILL.md whose new text names socialcrawl.dev, ~/.claude/revxl and socialcrawl-budget.json; a Read of the budget file; through Bash and PowerShell, git grep -n socialcrawl-day.json (no revxl; twin with -- ~/.claude/revxl), node tools/socialcrawl/lint_curated.mjs, ls ~/.claude/revxl (no name; twin: ls of the budget file), cat of <revxl>/socialcrawl-report.json (twin in sessions/) and of credit-guard-unattended.seen (twin: the log)",
+    desc: "C-A3: ordinary work passes untouched (no output, exit 0, nothing in the session folder changed), beside near twins that are denied: a Write of C:/proj/socialcrawl-budget.json (no revxl; twin in C:/proj/revxl); Writes in <revxl> of jev-ask.json, jev-candidates.jsonl, entities.jsonl, teach-level, tools.json, voc-contract.md and credit-guard-unattended.seen (twin: the unattended log); of socialcrawl-report.json in <revxl> and in a brand folder (a session file needs sessions; twin in <revxl>/sessions); of examplebrand/voc/x.md; an Edit of this plugin's skills/socialcrawl/SKILL.md whose new text names socialcrawl.dev, ~/.claude/revxl and socialcrawl-budget.json; a Read of the budget file; through Bash and PowerShell, git grep -n socialcrawl-day.json (no revxl; twin with -- ~/.claude/revxl), node tools/socialcrawl/lint_curated.mjs, ls ~/.claude/revxl (no name; twin: ls of the budget file), cat of <revxl>/socialcrawl-report.json (twin in sessions/) and of credit-guard-unattended.seen (twin: the log)",
     fn() {
       const rows = [];
       const pass = (label, make) => {
@@ -234,9 +240,9 @@ export default [
       }
       twin("Write <revxl>/credit-guard-unattended.jsonl", W(at(REAL, ["credit-guard-unattended.jsonl"])), "edit", 2);
       pass("Write <revxl>/socialcrawl-report.json", W(at(REAL, ["socialcrawl-report.json"])));
-      pass("Write <revxl>/joeoliveimpact/socialcrawl-report.json", W(at(REAL, ["joeoliveimpact", "socialcrawl-report.json"])));
+      pass("Write <revxl>/examplebrand/socialcrawl-report.json", W(at(REAL, ["examplebrand", "socialcrawl-report.json"])));
       twin("Write <revxl>/sessions/socialcrawl-report.json", W(at(REAL, ["sessions", "socialcrawl-report.json"])), "edit", 4);
-      pass("Write <revxl>/joeoliveimpact/voc/x.md", W(at(REAL, ["joeoliveimpact", "voc", "x.md"])));
+      pass("Write <revxl>/examplebrand/voc/x.md", W(at(REAL, ["examplebrand", "voc", "x.md"])));
       pass("Edit skills/socialcrawl/SKILL.md naming socialcrawl.dev and the budget file", () => ["", {
         extra: { tool_name: "Edit", tool_input: { file_path: SKILL_MD, old_string: "a", new_string: `Set it in ~/.claude/revxl/socialcrawl-budget.json; see ${V1}credits/balance` } },
       }]);
@@ -290,7 +296,7 @@ export default [
   },
   {
     id: "P3c-A5-hooks-json",
-    desc: "C-A5: hooks.json holds exactly one credit-guard entry, PreToolUse with matcher exactly Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit and timeout 10; research-suggest's UserPromptSubmit entry is unchanged; the description names the four write-type tools and each guarded file and the Budget pane's save step budget-write, and has no ask, asks or asked",
+    desc: "C-A5: hooks.json holds three guard entries: PreToolUse with the exact write/shell matcher and timeout 10, PostToolUse/Bash and PostToolBatch/no matcher with timeout 5, all with the same command; suggester and guarded-file description checks remain unchanged",
     fn() {
       const bad = hooksProblems(readFileSync(HOOKS_JSON, "utf8"));
       assert(!bad.length, `hooks.json: ${bad.join("; ")}`);
@@ -330,7 +336,7 @@ export default [
   },
   {
     id: "P3c-A7-bom",
-    desc: "C-A7 (3b HUNT 1): one leading byte order mark is dropped before the budget and session files are parsed: a BOM'd {sessionBudget: 50} is the limit (40 + 50 is exactly M_LIMIT naming 50 and your session budget; 0 + 50 passes and counts 50); a BOM'd day file is never read (D55): a routine with a BOM'd routines budget and a BOM'd day file of today at 3990 passes 50 silently, counted 50, the day file byte-identical; a BOM'd session file at 100 reads as 100 (50 more passes and counts 150; at 190 a 50cr call is exactly M_LIMIT naming 190), never lost; two marks, a mark alone and a mark before garbage read as they did: no budget (the automatic cap), a lost total",
+    desc: "C-A7 (3b HUNT 1): one leading byte order mark is dropped before the budget and session files are parsed: a BOM'd {sessionBudget: 50} is the limit (40 + 50 is exactly M_LIMIT naming 50 and your session budget; 0 + 50 passes and counts 50); a BOM'd day file is never read (D55): a routine with a BOM'd routines budget and a BOM'd day file of today at 3990 passes 50 silently, counted 50, the day file byte-identical; a BOM'd session file at 100 reads as 100 (50 more passes and counts 150; at 190 a 50cr call is exactly M_LIMIT naming 190), never lost; two marks, a mark alone and a mark before garbage give a settings-file error for the budget and a lost total for the session",
     fn() {
       const rows = [];
       const stateBom = (s, spent, marks = BOM) => writeFileSync(s.stateFile, marks + JSON.stringify({ balance: 800, spent }));
@@ -349,12 +355,12 @@ export default [
       rows.push(cell("a BOM'd session file at 100, then at 190", [`${verdict(s100)} saved ${s100.stateRaw}`, verdict(s190)]));
       assert(s100.raw === "" && s100.state.spent === 150 && !s100.state.lost, `a BOM'd session file at 100: passes, counted 150, never lost, read ${verdict(s100)} / ${s100.stateRaw}`, s100);
       assert(s190.decision === "deny" && s190.message === mLimit({ spent: 190, worst: 50, limit: 200, src: srcAuto(800), bf: s190.bf }), `a BOM'd session file at 190: exactly M_LIMIT naming 190, read ${s190.message.slice(0, 220)}`, s190);
-      // Garbled as before: two marks, a mark alone, a mark before garbage.
+      // Garbled budget files fail closed; garbled session files still lose the total.
       for (const [label, marks, body] of [["two marks", BOM + BOM, null], ["a mark alone", BOM, ""], ["a mark before garbage", BOM, "{bad"]]) {
         const bb = once(() => [P50, { prep: (s) => { s.seed({ spent: 40 }); s.budget(marks + (body === null ? '{"sessionBudget":50}' : body)); } }]);
         const ss = once(() => [P50, { prep: (s) => writeFileSync(s.stateFile, marks + (body === null ? JSON.stringify({ balance: 800, spent: 100 }) : body)) }]);
         rows.push(cell(label, [`budget: ${verdict(bb)} counted ${bb.state.spent}`, `session: ${verdict(ss)}`]));
-        assert(bb.raw === "" && bb.state.spent === 90, `${label}, the budget file: no budget, so 40 + 50 passes on the automatic cap, read ${verdict(bb)} / ${bb.message.slice(0, 160)}`, bb);
+        assert(bb.decision === "deny" && bb.message === M_SETTINGS && bb.state.spent === 40, `${label}, the budget file: unreadable settings deny, nothing counted, read ${verdict(bb)} / ${bb.message.slice(0, 160)}`, bb);
         assert(ss.decision === "deny" && ss.message === M_LOST && ss.state && ss.state.lost === true, `${label}, the session file: M_LOST, saved lost, read ${ss.message.slice(0, 120)} / ${ss.stateRaw}`, ss);
       }
       console.log(rows.join("\n"));
@@ -388,7 +394,7 @@ export default [
           ["Write <revxl>/socialcrawl-report.json", W(at(REAL, ["socialcrawl-report.json"])), passes],
         ]],
         ["K5's sessions parent dropped from the name only", [[' && dirs[dirs.length - 1] === "sessions") k = 4;', ") k = 4;"]], [
-          ["Write <revxl>/joeoliveimpact/socialcrawl-report.json", W(at(REAL, ["joeoliveimpact", "socialcrawl-report.json"])), passes],
+          ["Write <revxl>/examplebrand/socialcrawl-report.json", W(at(REAL, ["examplebrand", "socialcrawl-report.json"])), passes],
         ]],
         ["K5's sessions token dropped from the shell rule", [[`/sessions[${B}${B}/]+socialcrawl-/`, "/socialcrawl-/"]], [
           ["Bash: cat ~/.claude/revxl/socialcrawl-report.json", S("cat ~/.claude/revxl/socialcrawl-report.json"), passes],
@@ -430,7 +436,7 @@ export default [
       assert(text.split(`"${MATCHER}"`).length === 2, "hooks.json: the matcher occurs exactly once");
       const cut = hooksProblems(text.replace(`"${MATCHER}"`, '"Bash|PowerShell|Write|Edit|NotebookEdit"'));
       rows.push(cell("hooks.json, MultiEdit removed from the matcher", [`build ${hooksProblems(text).length} problems`, `mutant ${cut.length} problem(s)`]));
-      assert(!hooksProblems(text).length && cut.length, `hooks.json without MultiEdit is caught, read ${JSON.stringify(cut)}`);
+      assert(!hooksProblems(text).length && cut.length === 1 && cut[0].startsWith("the PreToolUse entry is "), `hooks.json without MultiEdit is caught for that reason only, read ${JSON.stringify(cut)}`);
       console.log(rows.join("\n"));
     },
   },

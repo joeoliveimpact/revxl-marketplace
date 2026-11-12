@@ -18,7 +18,7 @@
 | /highlights | `user_id` / `handle` | 1 | List Instagram story highlights |
 | /highlight/detail | `id`? | 1 | Get Instagram highlight detail |
 | /search/reels | `query` | **1-69** | Search Instagram reels |
-| /media/transcript | `url` | 10 | Get Instagram media transcript — ⚠️ **Gated in this plugin: 10 credits per media — 100 of them = 1000 credits. Run it only on an explicit yes; the credit guard counts it and never asks. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.** |
+| /media/transcript | `url` | 10 | Get Instagram media transcript — ⚠️ **Gated in this plugin: 10 credits per media — 100 of them = 1000 credits. Run it only on an explicit yes. The credit guard never asks: it refuses it when the user's transcript setting (SocialCrawl → Settings) is Blocked, and counts it otherwise. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.** |
 | /media/screen-text | `url` | 5 | Get Instagram post on-screen text |
 | /user/embed | `handle` | 1 | Get Instagram user embed HTML |
 | /audio/reels | `audio_id` | 1 | List Instagram reels using an audio track |
@@ -312,7 +312,7 @@ curl "https://www.socialcrawl.dev/v1/instagram/search/reels?query=<query>" \
 
 Returns an AI-generated transcript of the spoken words in an Instagram video or reel. Instagram has no caption track to read, so the audio itself is transcribed: a video with music, sound effects or on-screen text but no speech has nothing to transcribe. Videos up to 2 minutes (120 seconds) are supported. Every outcome below is deterministic for a given URL, so retrying returns the same answer, and none of them costs credits. A video with no speech returns 404 RESOURCE_NOT_FOUND with `error.details.reason: no_speech` (the video exists). A photo post, a carousel of photos, or a URL that no longer resolves returns 404 with `reason: no_video_or_gone`, because Instagram answers those identically. A video longer than 2 minutes returns 400 INVALID_REQUEST with a message giving its length.
 
-> ⚠️ **Gated in this plugin: 10 credits per media — 100 of them = 1000 credits. Run it only on an explicit yes; the credit guard counts it and never asks. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.**
+> ⚠️ **Gated in this plugin: 10 credits per media — 100 of them = 1000 credits. Run it only on an explicit yes. The credit guard never asks: it refuses it when the user's transcript setting (SocialCrawl → Settings) is Blocked, and counts it otherwise. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.**
 
 **Parameters**
 

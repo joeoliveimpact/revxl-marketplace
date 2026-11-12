@@ -1,6 +1,6 @@
 {
   "$comment": [
-    "Packages = the route table (Stage B rev4 R11). Transcribed from the Joe-ruled package list",
+    "Packages = the route table (Stage B rev4 R11). Transcribed from the owner-ruled package list",
     "(rev4 Package List, ruled 09.23.26) and the plan's R11 table. An uncurated option's id is built",
     "from its endpoint path(s) in kebab-case (search-then-size is the plan's own name); a curated",
     "option's label is that curated row's name.",

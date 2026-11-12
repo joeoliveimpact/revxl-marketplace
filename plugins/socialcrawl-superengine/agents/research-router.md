@@ -1,6 +1,6 @@
 ---
 name: research-router
-description: Composes a priced research plan for the research-plays front door. The front door dispatches it on every research ask that reaches the pitch, and on a Jev `none_fit` ask, handing over the ask, the absolute paths of the files it reads (`${CLAUDE_PLUGIN_ROOT}/skills/research-plays/curated-workflows.json`, `${CLAUDE_PLUGIN_ROOT}/skills/research-plays/references/packages.json`, `${CLAUDE_PLUGIN_ROOT}/hooks/costs.json` and the `${CLAUDE_PLUGIN_ROOT}/skills/socialcrawl/references/` folder), and either the rubric answers, the curated match or none and the roster line, or Jev's `cuts` survivors; it hands back either the open questions it still needs answered or two to three priced options for the user to pick from, and only options when it was handed survivors. It never asks the user anything and it never calls the SocialCrawl API — it reads the curated catalogue, the packages file, the cost map and the per-platform reference notes, then returns its answer to the session that dispatched it, and that session does the asking.
+description: Composes a priced research plan for the research-plays front door, which dispatches it on every research ask that reaches the pitch and on a Jev `none_fit` ask. It returns either the open questions it still needs answered or two to three priced options for the user to pick from (only options when handed Jev's survivors). It never asks the user anything and never calls the SocialCrawl API; it reads local files and returns its answer to the session that dispatched it, and that session does the asking.
 model: opus
 tools: Read, Grep, Glob
 ---
@@ -55,7 +55,9 @@ With a key, Jev's `none_fit` path:
 
 ## Output contract
 
-Return one JSON object with exactly one of these two arrays non-empty. Never both.
+Return one JSON object with exactly one of these two arrays non-empty. Never both. The one
+exception is an ask that should not have reached you (see "When you are not dispatched"): then
+both arrays are empty and a top-level `note` says why.
 
 ### `questions[]` — pass one, only when you are genuinely unsure
 
@@ -118,11 +120,13 @@ validator, which does not ship with the plugin, enforces both halves of this rul
   quote exists. The list lives in `costs.json` under `_unpriced`, and
   `${CLAUDE_PLUGIN_ROOT}/hooks/credit-guard.mjs` reads that same key and counts them at 0, so
   nothing at the shell holds them to a limit.
-- **Every transcript endpoint** — any path carrying a `transcript` token, and any
-  `include=transcript` parameter bolted onto another call. The nine known ones are listed in
+- **Every transcript endpoint** — any path carrying a `transcript` token, any
+  `include=transcript` parameter bolted onto another call, any parameter whose name holds
+  `transcript` (`search/everywhere` `include_transcripts`, `facebook/post` `get_transcript`),
+  and `prism/brief-check`. The nine known ones are listed in
   `costs.json` under `_gated`, each with the cheaper route to the same words;
-  `${CLAUDE_PLUGIN_ROOT}/hooks/credit-guard.mjs` matches the token itself, so a brand-new one is still counted before
-  `costs.json` knows about it. These bill per unit, which means a plan with one in it can be an
+  `${CLAUDE_PLUGIN_ROOT}/hooks/credit-guard.mjs` matches the token itself, so a brand-new one is still counted (or
+  refused, when the user's transcript setting is Blocked) before `costs.json` knows about it. These bill per unit, which means a plan with one in it can be an
   order of magnitude past what its leg count suggests. Never compose one into a plan. If the ask
   genuinely needs spoken words, put the cheaper route from `_gated` in the option's `notes[]` and
   let the user decide.
@@ -131,7 +135,8 @@ Refusing is not silence: say in `notes[]` that you left it out and why.
 
 ## When you are not dispatched
 
-Four asks never reach you, and if one does, return `options[]` empty with a note saying which:
+Four asks never reach you, and if one does, return `options[]` and `questions[]` empty with a
+top-level `note` saying which:
 
 1. **A single named call** — that is the `socialcrawl` skill's lane, not a research plan.
 2. **The express lane** — the user already named the play, so there is nothing to route.

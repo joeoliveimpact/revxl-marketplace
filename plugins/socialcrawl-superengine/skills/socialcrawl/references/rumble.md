@@ -10,7 +10,7 @@
 | /search | `query` | 1 | Search Rumble videos |
 | /channel/videos | `handle` / `url` | 1 | List videos for a Rumble channel |
 | /video | `url` | 1 | Get a Rumble video |
-| /video/transcript | `url` | 10 | Get a Rumble video transcript — ⚠️ **Gated in this plugin: 10 credits per video — 100 of them = 1000 credits. Run it only on an explicit yes; the credit guard counts it and never asks. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.** |
+| /video/transcript | `url` | 10 | Get a Rumble video transcript — ⚠️ **Gated in this plugin: 10 credits per video — 100 of them = 1000 credits. Run it only on an explicit yes. The credit guard never asks: it refuses it when the user's transcript setting (SocialCrawl → Settings) is Blocked, and counts it otherwise. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.** |
 | /video/comments | `url` | 1 | List top-level comments on a Rumble video |
 
 ### Parameter legend
@@ -76,7 +76,7 @@ curl "https://www.socialcrawl.dev/v1/rumble/video?url=<url>" \
 
 Returns the transcript for a Rumble video when captions are available. If Rumble doesn't expose captions, `transcript` is `null` and credits are not deducted.
 
-> ⚠️ **Gated in this plugin: 10 credits per video — 100 of them = 1000 credits. Run it only on an explicit yes; the credit guard counts it and never asks. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.**
+> ⚠️ **Gated in this plugin: 10 credits per video — 100 of them = 1000 credits. Run it only on an explicit yes. The credit guard never asks: it refuses it when the user's transcript setting (SocialCrawl → Settings) is Blocked, and counts it otherwise. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.**
 
 **Parameters**
 

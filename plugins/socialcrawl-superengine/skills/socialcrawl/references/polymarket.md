@@ -50,7 +50,7 @@ will this launch, will this regulation land, who wins — where sentiment analys
 tell you the current mood.
 
 At 5cr it is not a browsing tool. Frame the question once. For present-tense sentiment rather
-than future odds, the 1cr ladder (`reddit/omni-search`, `google_news/search`) is the right
+than future odds, the search ladder (`google_news/search` 1cr, `reddit/omni-search` 5–9cr) is the right
 instrument instead.
 
 ## How `/research` works

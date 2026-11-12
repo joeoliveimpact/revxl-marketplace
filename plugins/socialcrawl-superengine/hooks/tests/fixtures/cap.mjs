@@ -18,10 +18,9 @@ import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync,
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { session, run, visible, V1, HOST, TSCRIPT, GUARD, COSTS, BALANCE, LIMIT, M_NOTPLAIN, M_LOST, mLimit, srcAuto, assert, assertDecision, assertNoMatch } from "../lib.mjs";
+import { session, run, visible, V1, HOST, TSCRIPT, GUARD, COSTS, BALANCE, LIMIT, M_NOTPLAIN, M_LOST, mLimit, srcAuto, assert, assertDecision, assertNoMatch, NOLOCAL } from "../lib.mjs";
 
 const UNATTENDED = { env: { CLAUDE_CODE_SESSION_ATTENDED: "0" } };
-const NOLOCAL = { unsetEnv: ["GROQ_API_KEY"], env: { PATH: "" } };
 const FLAT = `curl -s "${V1}prism/leads?query=x"`;             // flat 50
 const METERED = `curl -s "${V1}search/news?query=x"`;           // metered 2-62, counted at 62
 const SMALL = `curl -s "${V1}amazon/product?asin=B1"`;          // flat 5
@@ -396,7 +395,7 @@ export default [
   },
   {
     id: "M10-balance-unknown",
-    desc: "BALANCE UNKNOWN (P5; D28a): no balance cached or readable means the fallback limit of 500, so the first paid call passes and is counted; an integer balance of 0 or more gives the automatic cap (0 and 3 give 0, so a paid call is denied with M_LIMIT naming that balance; 4 gives 1, which a 1cr call reaches exactly; 8 gives 2); a string, negative or fractional balance is no readable balance (the fallback 500)",
+    desc: "BALANCE UNKNOWN (P5; D28a): no balance cached or readable means the fallback limit of 500, so the first paid call passes and is counted; an integer balance of 0 or more gives the automatic cap (0 and 3 give 0, so a paid call is denied with M_LIMIT naming that balance; 4 gives 1, which a 1cr call reaches exactly; 8 gives 2); a string or negative balance is no readable balance (the fallback 500); a fractional balance is floored (999.5 gives cap 249)",
     fn() {
       const A = `curl -s "${V1}amazon/shop?q=a"`;
       const first = session({ balance: null });
@@ -408,10 +407,13 @@ export default [
         assertDecision(b, "deny", `balance ${balance}: the automatic cap is 0`);
         assert(b.message === mLimit({ spent: 0, worst: 1, limit: 0, src: srcAuto(balance), bf: b.bf }) && st.spent === 0, `balance ${balance}: M_LIMIT at limit 0, read ${b.message}`, b);
       }
-      for (const balance of ["1000", -5, 999.5]) {
+      for (const balance of ["1000", -5]) {
         const { r: b, st } = once(A, { spent: 0 }, { balance });
         assert(b.raw === "" && st.spent === 1, `balance ${JSON.stringify(balance)}: no readable balance, so the fallback 500, and it passes, read ${b.decision} / ${JSON.stringify(st)}`, b);
       }
+      const { r: fractional, st: sf } = once(A, { spent: 249 }, { balance: 999.5 });
+      assert(fractional.decision === "deny" && fractional.message === mLimit({ spent: 249, worst: 1, limit: 249, src: srcAuto(999) }) && sf.spent === 249,
+        "balance 999.5: floored balance 999 gives cap 249, so the next credit is denied", fractional);
       const { r: four, st: s4 } = once(A, { spent: 0 }, { balance: 4 });
       assert(four.raw === "" && s4.spent === 1, `balance 4: limit floor(0.25 x 4) = 1, which a 1cr call reaches exactly, read ${four.decision} / ${JSON.stringify(s4)}`, four);
       const eight = session({ balance: 8 }).seed({ spent: 0 });

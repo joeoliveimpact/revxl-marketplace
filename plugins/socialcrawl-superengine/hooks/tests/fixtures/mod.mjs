@@ -13,6 +13,8 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { Worker } from "node:worker_threads";
+import { isDeepStrictEqual } from "node:util";
 import { BALANCE, COSTS, FAKE_FETCH, GUARD, ROUTINE, V1, assert, session } from "../lib.mjs";
 import { ledgerUrl } from "../../ledger.mjs";
 import { ask } from "../lib-suggest.mjs";
@@ -83,7 +85,7 @@ function failsWith(reason, label, o, fetches) {
 const own = (home, root = join(home, "revxl")) => join(root, "heartbeat", PLUGIN);
 const age = (f, days) => { const t = new Date(Date.now() - days * DAY); utimesSync(f, t, t); };
 
-// ---- 5a-ii: `helper.mjs budget-write <revxl> <json>`, the Budget pane's only way to save.
+// ---- 5a-ii: the Settings tab's Save sends both keys in one `helper.mjs budget-write <revxl> <json>` call.
 const BUDGET = "socialcrawl-budget.json";
 const LIB = join(HOOKS, "mod", "lib.ts");
 const bfOf = (home) => join(home, "revxl", BUDGET);
@@ -141,6 +143,203 @@ function guardOn(s, env) {
 }
 
 export default [
+  {
+    id: "EGM B3b: 5-real-charge-starting-kinds",
+    desc: "real costs.json independently classifies all More rows, including 584 priced, 25 free and 7 request-priced; Search has 13 free calls",
+    fn() {
+      const costs = JSON.parse(readFileSync(COSTS, "utf8"));
+      const r = libJson(`const c = JSON.parse(readFileSync(process.env.COSTS_FILE, "utf8"));` +
+        `out({ rows: lib.moreOf(c, Object.keys(c._platforms)), shortlist: lib.ENDPOINTS.map(e => e.call), search: lib.moreOf(c, lib.GROUP_PLATFORMS.Search) });`, { COSTS_FILE: COSTS });
+      const expected = Object.keys(costs).filter(call => !call.startsWith("_") && !r.shortlist.includes(call));
+      assert(isDeepStrictEqual(r.rows.map(row => row.call), expected), "all real non-shortlist calls remain in file order");
+      const counts = ["priced", "free", "unpriced"].map(kind => r.rows.filter(row => row.kind === kind).length);
+      assert(isDeepStrictEqual(counts, [584, 25, 7]), `kinds 584/25/7, read ${counts.join("/")}`);
+      assert(r.search.filter(row => row.kind === "free").length === 13, "Search has 13 free calls");
+      for (const row of r.rows) {
+        const range = costs[row.call].range;
+        const kind = row.call === "PATCH web/monitors/{monitor_id}" || range === null ? "unpriced" : range[0] === 0 && range[1] === 0 ? "free" : "priced";
+        assert(row.kind === kind, `${row.call}: ${kind}, read ${row.kind}`);
+        if (kind === "unpriced") assert(row.price === null, `${row.call}: no price`);
+        if (kind === "free") assert(row.price === "free", `${row.call}: free price`);
+      }
+    },
+  },
+  {
+    id: "EGM W: 5-neutral-brand-comment",
+    desc: "brandSlug's comment uses the exact neutral My Brand/mybrand example",
+    fn() {
+      const source = readFileSync(LIB, "utf8");
+      assert(source.includes("/** A brand's folder name: lowercase letters and digits only (`My Brand` is `mybrand`). */"), "brandSlug comment uses (`My Brand` is `mybrand`)");
+    },
+  },
+  {
+    id: "5-costs-mirror",
+    desc: "the engine tests' evaluated costs-real.ts default export deep-equals the real hooks/costs.json",
+    fn() {
+      const mirror = pathToFileURL(join(HOOKS, "..", "tests", "costs-real.ts")).href;
+      const r = spawnSync(process.execPath, ["--no-warnings", "--input-type=module", "-e",
+        `import costs from ${JSON.stringify(mirror)}; process.stdout.write(JSON.stringify(costs));`], { encoding: "utf8" });
+      assert(r.status === 0, `costs-real.ts evaluated: ${r.status} ${r.stderr}`);
+      assert(isDeepStrictEqual(JSON.parse(r.stdout), JSON.parse(readFileSync(COSTS, "utf8"))), "costs-real.ts matches costs.json; regenerate the mirror when prices/platforms change");
+    },
+  },
+  {
+    id: "M6 C1: 5-runtime-more-inventory",
+    desc: "real costs through libJson: groups plus 56 other platforms partition all 616 non-shortlist calls, with pinned kinds, metering, transcript flags and unique verb-bearing keys",
+    fn() {
+      const groups = { Instagram: ["instagram"], TikTok: ["tiktok", "tiktokshop"], YouTube: ["youtube"], LinkedIn: ["linkedin"], "Facebook ads": ["facebook"], Reddit: ["reddit"], Search: ["prism", "search", "tavily", "perplexity", "web"] };
+      const r = libJson(`const c = JSON.parse(readFileSync(process.env.COSTS_FILE, "utf8")); const groups = JSON.parse(process.env.GROUPS);` +
+        `const others = lib.otherPlatforms?.(c); out({ groups: lib.GROUP_PLATFORMS, others, shortlist: lib.ENDPOINTS.map(e => e.call),` +
+        `sets: [...Object.values(groups), ...(others ?? []).map(p => [p])].map(ps => ({ ps, rows: lib.moreOf?.(c, ps) ?? null })),` +
+        `platformOptions: lib.platformOptions?.(c) });`, { COSTS_FILE: COSTS, GROUPS: JSON.stringify(groups) });
+      assert(JSON.stringify(r.groups) === JSON.stringify(groups), "M6 C1: GROUP_PLATFORMS is the exact seven-group map");
+      const costs = JSON.parse(readFileSync(COSTS, "utf8"));
+      const routes = Object.keys(costs).filter(c => !c.startsWith("_"));
+      const others = Object.keys(costs._platforms).filter(p => !Object.values(groups).flat().includes(p));
+      assert(routes.length === 645 && r.others?.length === 56 && new Set(r.others).size === 56 && others.every(p => r.others.includes(p)), "645 routes and exactly the other 56 platforms");
+      const rows = r.sets.flatMap(s => s.rows ?? []);
+      for (const { ps, rows: got } of r.sets) {
+        const want = routes.filter(c => ps.includes(c.split(" ")[1].split("/")[0]) && !r.shortlist.includes(c));
+        assert(JSON.stringify(got?.map(r => r.call)) === JSON.stringify(want), `${ps}: runtime file order/count ${want.length}, read ${got?.length}`);
+        for (const row of got) {
+          const [verb, path] = row.call.split(" ");
+          assert(row.platform === path.split("/")[0] && typeof row.name === "string" && row.name.length > 0, `${row.call}: platform and display name`);
+          assert(row.key === `more-${verb.toLowerCase()}-${path.replace(/\//g, "-")}`, `${row.call}: key holds the verb`);
+          assert(row.metered === (costs[row.call].metered === true), `${row.call}: metered flag from file`);
+          assert(row.transcript === (path.includes("transcript") || path === "prism/brief-check"), `${row.call}: guard's transcript rows`);
+        }
+      }
+      const remaining = routes.filter(c => !r.shortlist.includes(c));
+      assert(rows.length === 616 && new Set(rows.map(r => r.call)).size === 616 && remaining.every(c => rows.some(r => r.call === c)), "all and only the 616, each once");
+      assert(["priced", "free", "unpriced"].map(k => rows.filter(r => r.kind === k).length).join("/") === "584/25/7", "kinds 584/25/7");
+      assert(rows.filter(r => r.metered).length === 115 && rows.filter(r => r.transcript).length === 11, "115 metered and 11 transcript rows");
+      assert(new Set(rows.map(r => r.key)).size === 616, "unique More keys");
+      const shortKeys = r.shortlist.map(c => c.split(" ")[1].replace(/\//g, "-"));
+      assert(rows.every(row => !shortKeys.includes(row.key)), "no shortlist key reused");
+      const names = libJson(`out(Object.fromEntries(Object.keys(JSON.parse(readFileSync(process.env.COSTS_FILE, "utf8"))._platforms).map(p => [p, lib.siteName?.(p)])));`, { COSTS_FILE: COSTS });
+      const sorted = [...others].sort((a, b) => names[a].localeCompare(names[b]));
+      assert(JSON.stringify(r.others) === JSON.stringify(sorted), "other platforms sorted by display name");
+      const options = [{ value: "", label: "Choose a platform…" }, ...sorted.map(p => ({ value: p, label: `${names[p]} · ${rows.filter(r => r.platform === p).length}` }))];
+      assert(JSON.stringify(r.platformOptions) === JSON.stringify(options), "platform options display their live counts");
+    },
+  },
+  {
+    id: "M6 G1: 5-real-glossary-coverage",
+    desc: "SITES covers exactly the real 68 platform ids; one short sentence, digits only inside its own name, without superlatives or coach",
+    fn() {
+      const sites = libJson("out(lib.SITES ?? null);");
+      const costs = JSON.parse(readFileSync(COSTS, "utf8"));
+      assert(JSON.stringify(Object.keys(sites ?? {}).sort()) === JSON.stringify(Object.keys(costs._platforms).sort()), "M6 G1: SITES exactly covers the real _platforms ids");
+      for (const [id, { name, line }] of Object.entries(sites)) {
+        assert(typeof name === "string" && name.trim().length > 0, `${id}: non-empty name`);
+        assert(typeof line === "string" && line.length <= 160 && /^[^.?!]+[.]$/.test(line), `${id}: one sentence, at most 160 chars`);
+        assert(!/\d/.test(line.split(name).join("")), `${id}: digits only inside its own name: ${line}`);
+        assert(!/\b(?:most|best|largest|leading|popular|top|biggest|world's|coach)\b/i.test(line), `${id}: no superlative or coach: ${line}`);
+      }
+    },
+  },
+  {
+    id: "M6 P: 5-real-guard-ceiling-sweep",
+    desc: "H-79: every numeric-range route, plain and with each raising conditional, runs through the real offline guard; displayed ceiling covers every counted worst (eight isolated worker batches)",
+    async fn() {
+      const start = Date.now();
+      const costs = JSON.parse(readFileSync(COSTS, "utf8"));
+      const routes = Object.keys(costs).filter(c => !c.startsWith("_"));
+      const numeric = routes.filter(c => Array.isArray(costs[c].range) && costs[c].range.length === 2 && costs[c].range.every(n => typeof n === "number" && Number.isFinite(n)));
+      const prices = libJson(`const c = JSON.parse(readFileSync(process.env.COSTS_FILE, "utf8")); out(Object.fromEntries(Object.keys(c).filter(k => !k.startsWith("_")).map(k => [k, lib.rowPrice?.(c, k) ?? null])));`, { COSTS_FILE: COSTS });
+      const cases = numeric.flatMap(call => [{ call }, ...(costs._conditional?.[call] ?? []).map(c => ({ call, param: c.param, value: c.value ?? "true" }))]);
+      const driver = `const { parentPort, workerData } = require('node:worker_threads');
+        (async () => {
+          const { session, V1 } = await import(workerData.helpers);
+          const out = [];
+          for (const c of workerData.cases) {
+            const s = session({ balance: 1000000000 });
+            try {
+              s.seed({ spent: 0 }); s.budget({ sessionBudget: 20000, transcripts: 'allow' });
+              const [verb, template] = c.call.split(' ');
+              const path = template.replace(/\\{[^}]+\\}/g, 'plain-id');
+              const url = V1 + path + (c.param ? '?' + c.param + '=' + encodeURIComponent(c.value) : '');
+              const body = ['POST', 'PATCH', 'DELETE'].includes(verb) ? ' -X ' + verb + " -d '{}'" : '';
+              const cmd = 'curl -sS' + body + ' -H "x-api-key: $SOCIALCRAWL_API_KEY" "' + url + '"';
+              const r = s.run(cmd, { fetch: [{ body: { data: { balance: 1000000000 } } }] });
+              out.push({ ...c, exit: r.exit, raw: r.raw, decision: r.decision, spent: s.state()?.spent, worst: s.callLines().at(-1)?.worst });
+            } catch (e) { out.push({ ...c, error: String(e) }); }
+            finally { s.cleanup(); }
+          }
+          parentPort.postMessage(out);
+        })().catch(e => { throw e; });`;
+      const batches = Array.from({ length: 8 }, (_, i) => cases.filter((_, n) => n % 8 === i));
+      const results = (await Promise.all(batches.map(cases => new Promise((resolve, reject) => {
+        const w = new Worker(driver, { eval: true, workerData: { cases, helpers: pathToFileURL(join(HOOKS, "tests", "lib.mjs")).href } });
+        w.once("message", resolve); w.once("error", reject); w.once("exit", code => { if (code !== 0) reject(new Error(`guard worker exit ${code}`)); });
+      })))).flat();
+      const elapsed = Date.now() - start;
+      console.log(`    M6 P: ${results.length} real guard runs, ${numeric.length} numeric routes; skipped ${routes.length - numeric.length} unpriced; ${elapsed} ms`);
+      const errors = [];
+      // Re-read the inventory independently of the cases generator so omitted param runs cannot lower the expectation.
+      const inventory = JSON.parse(readFileSync(COSTS, "utf8"));
+      const expectedRoutes = Object.keys(inventory).filter(call => !call.startsWith("_") &&
+        Array.isArray(inventory[call].range) && inventory[call].range.length === 2 &&
+        inventory[call].range.every(n => typeof n === "number" && Number.isFinite(n)));
+      const expectedParams = Object.entries(inventory._conditional ?? {}).flatMap(([call, entries]) =>
+        expectedRoutes.includes(call) ? entries.map(({ param, value }) => ({ call, param, value: value ?? "true" })) : []);
+      const expectedRuns = expectedRoutes.length + expectedParams.length;
+      if (results.length !== expectedRuns) errors.push(`guard run count: expected ${expectedRuns} from fresh costs.json, read ${results.length}`);
+      for (const { call, param, value } of expectedParams) {
+        const matches = results.filter(r => r.call === call && r.param === param && r.value === value);
+        if (matches.length !== 1) errors.push(`${call} ${param}=${value}: expected exactly one conditional guard run, read ${matches.length}`);
+      }
+      for (const r of results) {
+        const m = /^(\d+)(?:–(\d+))? cr(?: · varies)?$/.exec(prices[r.call] ?? "");
+        const top = m ? Number(m[2] ?? m[1]) : NaN;
+        const counted = r.worst ?? r.spent;
+        if (r.error || r.exit !== 0 || r.raw !== "" || r.decision !== null || !Number.isFinite(counted) || !(counted <= top)) errors.push(`${r.call}${r.param ? ` ${r.param}=${r.value}` : ""}: counted=${counted}, displayed=${prices[r.call]}, decision=${r.decision}, error=${r.error ?? r.raw}`);
+      }
+      assert(results.length === cases.length && numeric.length === 639 && routes.length - numeric.length === 6, "all 639 numeric routes and each conditional tested; six unpriced skipped");
+      assert(errors.length === 0, `M6 P: shown ceiling must cover guard's count (${errors.length} failures; first 12):\n${errors.slice(0, 12).join("\n")}`);
+      assert(elapsed < 170000, `M6 P: guard sweep under ~170 s, read ${elapsed} ms`);
+    },
+  },
+  {
+    id: "M6 FX: 5-shared-toggle-six-buttons",
+    desc: "5a-iii-A5 addition: six Button calls remain six; the sixth is a top-level toggle with a string label, shared by help, sites and More options",
+    fn() {
+      const reg = readFileSync(REG, "utf8");
+      assert((reg.match(/\bButton\(/g) ?? []).length === 6, "six Button calls stay six");
+      assert(/function toggle\(\$: [^,]+, e: [^,]+, key: string, label: string, onPress:/.test(reg), "M6 FX: top-level toggle($, e, key, label, onPress) declares a string label");
+      const at = reg.indexOf("function toggle(");
+      const body = reg.slice(at, reg.indexOf("\n}", at) + 2);
+      assert(/Button\(\{ key, label, onPress \}\)/.test(body), "toggle owns Button({ key, label, onPress }): shorthand label is its plain string parameter");
+      for (const key of ["help-toggle", "sites-toggle"]) assert(new RegExp("toggle\\(\\$, e, ['\"]" + key).test(reg), `${key} uses toggle`);
+      assert(/toggle\(\$, e, [`'"]more-/.test(reg), "More options uses the same toggle");
+    },
+  },
+  {
+    id: "M6 FX: 5-more-prompts-no-built-url",
+    desc: "More options uses moreText as its only prompt builder; register.tsx holds no URL literal or API host, and no requestOf/endpointText builds a More call",
+    fn() {
+      const reg = readFileSync(REG, "utf8");
+      assert(/\bmoreText\(/.test(reg), "M6 FX: register uses moreText for More calls");
+      assert(!reg.includes("https://") && !reg.includes("social" + "crawl.dev"), "register holds no literal https:// or API host");
+      const src = readFileSync(LIB, "utf8");
+      assert((src.match(/export (?:function|const) moreText\b/g) ?? []).length === 1, "one More prompt builder");
+      assert((src.match(/My pick from the Endpoints tab, priced \$\{row.price\}/g) ?? []).length === 1 && !/My pick from the Endpoints tab/.test(reg), "only moreText owns the More prompt frame");
+      const contexts = reg.split("moreText(").slice(1).map(s => s.slice(0, s.indexOf("\n}")));
+      assert(contexts.every(s => !/requestOf\(|endpointText\(|https:\/\//.test(s)), "More launch path builds no URL");
+    },
+  },
+  {
+    id: "M6 FX: 5-single-inline-glossary",
+    desc: "lib.ts exports SITES exactly once; no other glossary file exists under hooks/mod",
+    fn() {
+      const src = readFileSync(LIB, "utf8");
+      assert((src.match(/export const SITES\b/g) ?? []).length === 1, "M6 FX: exactly one export const SITES");
+      const files = readdirSync(join(HOOKS, "mod"));
+      assert(!files.some(f => /sites|glossary/i.test(f)), "no separate glossary text file under hooks/mod");
+      const line = "Tavily web search: search the web with an optional written answer";
+      assert(walk(join(HOOKS, "mod")).filter(f => statSync(f).isFile() && readFileSync(f, "utf8").includes(line)).length === 1, "one inline glossary, not a second text file");
+    },
+  },
   {
     id: "5a-i-H1-balance-ok",
     desc: "A24/A25: `helper.mjs balance` GETs ledgerUrl('/v1/credits/balance') with the key in x-api-key and an abort signal, and prints exactly {\"ok\":true,\"balance\":<n>,\"at\":\"<ISO, whole seconds, Z>\"} and exit 0",
@@ -283,12 +482,15 @@ export default [
   },
   {
     id: "5a-i-S1-mod-source",
-    desc: "A2/A5/B6 (5c rewrite): the hooks module (register.tsx, lib.ts) never fetches and never names the key: no http.fetch, SOCIALCRAWL_API_KEY, api_key or x-api-key; its one model.complete is register.tsx's refresh, on haiku; and no Joe-only bit in any mod file (workspace.yml only inside the brand resolver)",
+    desc: "A2/A5/B6 (5c rewrite): the hooks module (register.tsx, lib.ts) never fetches and checks only key-file existence: no http.fetch, SOCIALCRAWL_API_KEY or x-api-key; its one model.complete is register.tsx's refresh, on haiku; and no Joe-only bit in any mod file (workspace.yml only inside the brand resolver)",
     fn() {
       for (const f of MOD) {
         const src = readFileSync(f, "utf8");
-        for (const bad of [/\.http\.fetch\b/, /SOCIALCRAWL_API_KEY/, /api_key/i, /x-api-key/i]) assert(!bad.test(src), `${f} holds ${bad}`);
+        for (const bad of [/\.http\.fetch\b/, /SOCIALCRAWL_API_KEY/, /x-api-key/i]) assert(!bad.test(src), `${f} holds ${bad}`);
       }
+      const keyCheck = "$.fs.exists(`${home}/.config/socialcrawl/api_key`).catch(() => false)";
+      const keyReg = readFileSync(REG, "utf8");
+      assert(keyReg.includes(keyCheck) && !/api_key/i.test(keyReg.replace(keyCheck, "")) && !/api_key/i.test(readFileSync(LIB, "utf8")), "api_key appears only in its guarded existence check");
       // 5c: exactly one model call in the module, inside register.tsx's refresh, with model 'haiku'.
       const reg = readFileSync(REG, "utf8");
       const inFn = (name, at) => { const s = reg.indexOf(`\nasync function ${name}(`); const e = reg.indexOf("\n}\n", s); return s > 0 && at > s && at < e; };
@@ -324,6 +526,8 @@ export default [
       assert(JSON.stringify(inRevxl(home)) === JSON.stringify(["credit-guard-unattended.jsonl", BUDGET, "socialcrawl-budget.json.lock", "socialcrawl-calls.jsonl", "socialcrawl-day.json", "sessions"].sort()),
         `no temporary file and nothing new, read ${inRevxl(home)}`);
       Object.entries(others).forEach(([n, t], i) => assert(readFileSync(join(home, "revxl", n), "utf8") === t && statSync(join(home, "revxl", n)).mtimeMs === before[i], `${n} untouched`));
+      assert(bw(home, '{"transcripts":"block"}').j.ok === true, "transcripts-only saved");
+      Object.entries(others).forEach(([n, t], i) => assert(readFileSync(join(home, "revxl", n), "utf8") === t && statSync(join(home, "revxl", n)).mtimeMs === before[i], `${n} untouched after transcripts-only save`));
       const none = fresh();
       bw(none, '{"sessionBudget":null}');
       assert(JSON.stringify(inRevxl(none)) === JSON.stringify([BUDGET]), `with no revxl folder yet, it makes the folder and the file alone, read ${inRevxl(none)}`);
@@ -332,13 +536,14 @@ export default [
   },
   {
     id: "5a-ii-H10-budget-write-keys",
-    desc: "A7/A8 (D55): sessionBudget null deletes the key (Automatic, D32); every key the pane doesn't own survives, equal in value, but an old routines block, which every save deletes (a session save and an Automatic save alike)",
+    desc: "A7/A8 (D55): sessionBudget null deletes the key (Automatic, D32); every key the pane doesn't own survives, equal in value, but an old routines block, which every save deletes (a session save, an Automatic save and a transcripts-only save alike)",
     fn() {
       const seed = { note: "hand-set ü", sessionBudget: 750, extra: { a: [1, 2.5, null], b: "x" }, routines: { enabled: false, perRun: 1000, perDay: 2000, x: 1 } };
       const kept = (f, label) => ["note", "extra"].forEach((k) => assert(JSON.stringify(f[k]) === JSON.stringify(seed[k]), `${label}: ${k} kept, read ${JSON.stringify(f[k])}`));
       for (const [label, json, check] of [
         ["Automatic", '{"sessionBudget":null}', (f) => !("sessionBudget" in f)],
         ["250", '{"sessionBudget":250}', (f) => f.sessionBudget === 250],
+        ["transcripts only", '{"transcripts":"block"}', (f) => f.sessionBudget === 750 && f.transcripts === "block"],
       ]) {
         const home = fresh(JSON.stringify(seed));
         bw(home, json);
@@ -352,7 +557,7 @@ export default [
   },
   {
     id: "5a-ii-H11-budget-write-invalid",
-    desc: "A9/A11 (D55): G's rule, integer 1-20,000, again in the helper, and exactly the one key sessionBudget: 0, 20001, 1.5, \"500\", -1, any routines key (a once-valid routines block included, alone or beside sessionBudget) and any other shape give {\"ok\":false,\"reason\":\"invalid\"} and write nothing; 1, 20000 and null pass",
+    desc: "A9/A11 (D55): G's rule, integer 1-20,000, again in the helper, and only the owned keys, sessionBudget and/or transcripts (\"block\" or \"allow\"), at least one (G2): 0, 20001, 1.5, \"500\", -1, any routines key (a once-valid routines block included, alone or beside sessionBudget) and any other shape give {\"ok\":false,\"reason\":\"invalid\"} and write nothing; 1, 20000 and null pass",
     fn() {
       const seed = '{"sessionBudget":500,"k":1}';
       const bad = ['{"sessionBudget":0}', '{"sessionBudget":20001}', '{"sessionBudget":1.5}', '{"sessionBudget":"500"}', '{"sessionBudget":-1}',
@@ -395,6 +600,8 @@ export default [
       assert(JSON.stringify(j) === '{"ok":false,"reason":"write"}', `the rename refused: write, read ${JSON.stringify(j)}`);
       assert(readFileSync(bfOf(home), "utf8") === seed, `the old file byte-identical, read ${readFileSync(bfOf(home), "utf8")}`);
       assert(JSON.stringify(inRevxl(home)) === JSON.stringify([BUDGET]), `no .tmp left, read ${inRevxl(home)}`);
+      const tr = bw(home, '{"transcripts":"block"}', { node: ["--import", pre.url] }).j;
+      assert(JSON.stringify(tr) === '{"ok":false,"reason":"write"}' && readFileSync(bfOf(home), "utf8") === seed && JSON.stringify(inRevxl(home)) === JSON.stringify([BUDGET]), "transcripts-only rename failure: old file byte-identical, no temporary file");
       rmSync(pre.dir, { recursive: true, force: true });
       rmSync(home, { recursive: true, force: true });
       const dir = fresh();
@@ -409,21 +616,21 @@ export default [
   },
   {
     id: "5a-ii-H13-budget-write-encodings",
-    desc: "A11: the file is decoded as G:324 does: a UTF-16LE file (FF FE) or a UTF-8 one with EF BB BF is re-written as UTF-8 with no mark, its keys kept; a garbled file is replaced by a fresh file of the owned keys",
+    desc: "A11: the file is decoded as G:324 does: a UTF-16LE file (FF FE) or a UTF-8 one with EF BB BF is re-written as UTF-8 with no mark, its keys kept; a garbled or non-object file is replaced by a fresh file of the owned keys, with transcripts \"block\" unless the save names transcripts (0.4.1)",
     fn() {
-      const le = Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from('{"keep":"é ü","sessionBudget":300}', "utf16le")]);
-      const bom = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from('{"keep":2,"sessionBudget":300}', "utf8")]);
+      const le = Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from('{"keep":"é ü","sessionBudget":300,"transcripts":"block"}', "utf16le")]);
+      const bom = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from('{"keep":2,"sessionBudget":300,"transcripts":"block"}', "utf8")]);
       for (const [label, seed, keep] of [["UTF-16LE", le, "é ü"], ["UTF-8 with a mark", bom, 2]]) {
         const home = fresh(seed);
         const { j } = bw(home, '{"sessionBudget":500}');
         const raw = readFileSync(bfOf(home));
         const f = JSON.parse(raw.toString("utf8"));
-        assert(j.ok === true && raw[0] === 0x7b && !raw.includes(0) && f.keep === keep && f.sessionBudget === 500, `${label}: UTF-8, no mark, keys kept, read ${raw.toString("utf8")}`);
+        assert(j.ok === true && raw[0] === 0x7b && !raw.includes(0) && f.keep === keep && f.sessionBudget === 500 && f.transcripts === "block", `${label}: UTF-8, no mark, keys kept, read ${raw.toString("utf8")}`);
         rmSync(home, { recursive: true, force: true });
       }
       const home = fresh("not json {");
       const { j } = bw(home, '{"sessionBudget":null}');
-      assert(j.ok === true && JSON.stringify(Object.keys(j.budget)) === '["updatedAt","updatedBy"]', `garbled: a fresh file of the owned keys, read ${JSON.stringify(j)}`);
+      assert(j.ok === true && JSON.stringify(Object.keys(j.budget)) === '["transcripts","updatedAt","updatedBy"]' && j.budget.transcripts === "block", `garbled: a fresh file of the owned keys, transcripts kept blocked (0.4.1), read ${JSON.stringify(j)}`);
       rmSync(home, { recursive: true, force: true });
     },
   },
@@ -467,7 +674,7 @@ export default [
     desc: "R2-1 (H-1): the real G denies Claude's Bash or PowerShell command naming budget-write with the tamper message (k=6) through Bash, PowerShell and with no tool_name, before the fast path, a SocialCrawl URL in the same command included; the seeded 250 is untouched; balance, heartbeat and look-alike names pass",
     fn() {
       const M_BW = "SocialCrawl guard file left alone: this command names the pane's budget save step (budget-write), which holds the person's " +
-        "SocialCrawl budget or spend record. Claude never changes it; the person sets the budget in the SocialCrawl Budget tab. To look at it, use the Read tool.";
+        "SocialCrawl budget or spend record. Claude is not to change it (the guard refuses the plain ways; a glob, a link to the folder, an MCP tool or a script can still get past it); the person sets the limit in SocialCrawl → Settings. To look at it, use the Read tool.";
       const deny = [
         ["bash", `node "C:/x/plugins/socialcrawl-superengine/hooks/mod/helper.mjs" budget-write "C:/u/.claude/revxl" '{"sessionBudget":20000}'`],
         ["bash", `node "$HOME/.claude/plugins/cache/x/hooks/mod/helper.mjs" budget-write "$HOME/.claude/revxl" '{"sessionBudget":20000}'`],
@@ -505,9 +712,23 @@ export default [
   },
   {
     id: "5a-ii-S2-budget-write-source",
-    desc: "A13/B1/B12 (5b A12/A13, 5c and 5d rewrites): the pane is the only shipped writer (and G refuses Claude's direct use of it, G1): no mod file calls $.fs.write, $.state or $.http or registers a tool, and its one $.model is the refresh's model.complete (S1); its only commands are socialcrawl-budget, socialcrawl-endpoints and socialcrawl-roundup; its only budget-write call sits inside the Save Button's onPress in the Budget pane; and its one $.prompt.submit sits inside the launcher Button's onPress",
+    desc: "A13/B1/B12 (M5): the Settings tab's Save sends both keys in one budget-write call inside its onPress; the pane is the only shipped writer (G1): no mod file calls $.fs.write, $.state or $.http or registers a tool; its one $.model is the refresh's model.complete (S1), its only command socialcrawl-budget, its one $.prompt.submit inside the launcher onPress; store holds only appearance, help entries live only in L, and routes is asked only on Settings activation, never from a draw",
     fn() {
       const reg = readFileSync(REG, "utf8");
+      const askAt = reg.indexOf("function askRoutes($: Api)");
+      const openAt = reg.indexOf("function openPane(");
+      const switchAt = reg.indexOf("function switchTab(");
+      const askEnd = reg.indexOf("\n}", askAt);
+      const openEnd = reg.indexOf("\n}", openAt);
+      const switchEnd = reg.indexOf("\n}", switchAt);
+      const renderAt = reg.indexOf("on('ui.render'");
+      const routeNames = [...reg.matchAll(/\baskRoutes\(/g)].map(m => m.index);
+      assert(askAt >= 0 && askEnd > askAt && openAt > askEnd && openEnd > openAt && switchAt > openEnd && switchEnd > switchAt && renderAt > switchEnd &&
+        routeNames.length === 3 && routeNames[0] === askAt + "function ".length &&
+        routeNames[1] > openAt && routeNames[1] < openEnd && routeNames[2] > switchAt && routeNames[2] < switchEnd &&
+        !reg.slice(renderAt).includes("askRoutes("), "askRoutes is declared once and called only in openPane and switchTab, never after the first render hook");
+      const routeHelpers = [...reg.matchAll(/helper\(\$, (["'`])routes\1\)/g)].map(m => m.index);
+      assert(routeHelpers.length === 1 && routeHelpers[0] > askAt && routeHelpers[0] < askEnd, "one routes helper call, inside askRoutes");
       // 5c: the one .model in the module is the refresh's model.complete (S1 pins where it sits).
       const models = MOD.flatMap((f) => [...readFileSync(f, "utf8").matchAll(/\.model\b/g)].map((m) => [f, m.index]));
       assert(models.length === 1 && models[0][0] === REG && reg.startsWith(".model.complete(", models[0][1]), `one .model in the module, the model.complete call, read ${JSON.stringify(models)}`);
@@ -522,31 +743,61 @@ export default [
       const calls = reg.match(/["'`]budget-write["'`]/g) || [];
       assert(calls.length === 1, `register.tsx has one budget-write call, read ${calls.length}`);
       const commands = [...reg.matchAll(/on\('command\.run', \{ command: '([^']+)' \}/g)].map((m) => m[1]);
-      assert(JSON.stringify(commands) === '["socialcrawl-budget","socialcrawl-endpoints","socialcrawl-roundup"]' && (reg.match(/on\('command\.run'/g) || []).length === 3,
-        `the only command hooks are socialcrawl-budget, socialcrawl-endpoints and socialcrawl-roundup, read ${commands}`);
+      assert(JSON.stringify(commands) === '["socialcrawl-budget"]' && (reg.match(/on\('command\.run'/g) || []).length === 1,
+        `the only command hook is socialcrawl-budget, read ${commands}`);
       // 5b A13: one submit, inside the onPress of the launcher's one Button call (never a start, timer or render path).
       // 5c: the only other prompt.submit is the hook that records the person's prompts and passes each on unchanged.
       const HOOK = "on('prompt.submit', async ($, e, next) => {";
       assert(reg.split(HOOK).length === 2 && (reg.match(/prompt\.submit/g) || []).length === 2, `register.tsx names prompt.submit twice: the launcher's call and the one recording hook`);
       const submits = [...reg.matchAll(/\$\.prompt\.submit\b/g)].map((m) => m.index);
       const launcherAt = reg.indexOf("function launcher(");
-      const btn = reg.indexOf("return Button({", launcherAt);
+      const btn = reg.indexOf("const button = Button({", launcherAt);
       const press = reg.indexOf("onPress: async () => {", btn);
-      const btnEnd = reg.indexOf("\n  } })\n}", btn);
+      const btnEnd = reg.indexOf("\n  } })", btn);
       assert(submits.length === 1 && launcherAt > 0 && btn > launcherAt && press > btn && submits[0] > press && btnEnd > submits[0] && reg.slice(btn, btnEnd).split("Button(").length === 2,
         `register.tsx's one prompt.submit sits inside the launcher Button's onPress (submits ${submits}, launcher ${launcherAt}, Button ${btn}, onPress ${press}, end ${btnEnd})`);
-      const paneAt = reg.indexOf("on('ui.render', { component: 'Pane', requestId: 'sc-budget' }");
+      const paneAt = reg.indexOf("on('ui.render', { component: 'Pane', requestId: 'sc-pane' }");
       const paneEnd = reg.indexOf("\n  on(", paneAt + 1);
       const save = reg.indexOf("Button({ key: 'save'", paneAt);
       const at = reg.search(/["'`]budget-write["'`]/);
       const nextButton = reg.indexOf("Button(", save + 1);
       assert(paneAt > 0 && save > paneAt && at > save && at < paneEnd && (nextButton < 0 || at < nextButton) && reg.slice(save, at).includes("onPress:"),
-        `the budget-write call sits inside the Save Button's onPress, in the Budget pane (pane ${paneAt}, save ${save}, call ${at}, end ${paneEnd})`);
+        `the budget-write call sits inside the Save Button's onPress, in the Settings tab (pane ${paneAt}, save ${save}, call ${at}, end ${paneEnd})`);
+      const lib = readFileSync(LIB, "utf8");
+      const stores = MOD.flatMap(f => [...readFileSync(f, "utf8").matchAll(/\.store\b/g)].map(m => [f, m.index]));
+      const styleAt = reg.indexOf("function styleNow(");
+      const styleEnd = reg.indexOf("\n}", styleAt);
+      const getAt = reg.indexOf('.store.get(APPEARANCE_KEY)');
+      const styleBody = reg.slice(styleAt, styleEnd);
+      assert(stores.length === 2 && stores.every(([f]) => f === REG) && reg.split('.store.get(APPEARANCE_KEY)').length === 2 && reg.split('.store.set(APPEARANCE_KEY,').length === 2 &&
+        styleAt >= 0 && getAt > styleAt && getAt < styleEnd &&
+        /return\s+styleOf\(\s*look\.style\s*\?\?\s*\(\s*await\s+\$\.store\.get\(APPEARANCE_KEY\)\s*\)\s*\)/.test(styleBody) &&
+        lib.includes("export const APPEARANCE_KEY = 'appearance'"), "Mfix FX/P2: exactly one appearance get inside styleNow's styleOf expression (fresh choice first), and one appearance set, in R only");
+      const bandAt = reg.indexOf("on('ui.render', { component: 'AbovePrompt' }");
+      const bandEnd = reg.indexOf("\n  })", bandAt);
+      const bandBody = reg.slice(bandAt, bandEnd);
+      assert(/const below = await next\(e\)\s+try\s*\{/.test(bandBody) && /catch\s*\{\s*return below\s*\}\s*$/.test(bandBody),
+        "Mfix FX/P1: everything after next(e) in the band handler is guarded by catch { return below }");
+      assert(!/\.store\.(delete|keys)\b/.test(reg + lib), "no store delete or keys");
+      assert((lib.match(/export const HOW_IT_WORKS\b/g) || []).length === 1 && !/(?:const|let|function) HOW_IT_WORKS\b/.test(reg) && reg.includes('HOW_IT_WORKS.flatMap('), "help declared once in L, drawn from the list in R");
+      const entries = libJson('out(lib.HOW_IT_WORKS);');
+      assert(entries.length === 11 && entries.every(e => !reg.includes(e.text)), "R holds no help entry text; all eleven entries live in L");
+    },
+  },
+  {
+    id: "5a-ii-Mfix-error-refusal",
+    desc: "Mfix: the error refusal covers both reading and saving guard files",
+    fn() {
+      const words = libJson('out([lib.refusalShort("error"), lib.refusalOf("error")]);');
+      assert(JSON.stringify(words) === JSON.stringify([
+        "guard could not read or save its files",
+        "guard could not read or save its files. Try the call again; if it keeps happening, ask Claude to check the guard's session and settings files.",
+      ]), `the error refusal words, read ${JSON.stringify(words)}`);
     },
   },
   {
     id: "5a-iii-A5-look-source",
-    desc: "A5/B3/B7/B8 (5c and 5d rewrites: seven Button calls, Summarize through launcher()): the Lantern look keeps the mod kit's rules in source: no hex colour in a color, borderColor or backgroundColor prop, none anywhere in register.tsx, and in lib.ts only inside its Lantern Svg section (whose only exports are esc, bandPill, hero and Drawing); no hover, Image, opacity or zIndex in either file; every Button a plain-text label (a label, no children, no Text, no JSX Button)",
+    desc: "A5/B3/B7/B8 (M6: six Button calls, shared toggle's string label, Summarize through launcher()): the Lantern look keeps the mod kit's rules in source: no hex colour in a color, borderColor or backgroundColor prop, none anywhere in register.tsx, and in lib.ts only inside its Lantern Svg section (whose only exports are Drawing, bandDial, chip, detailCards, esc, eyebrow, rowCard and sessionCard); no hover, Image, opacity or zIndex in either file; every Button a plain-text label (a label, no children, no Text, no JSX Button)",
     fn() {
       // 5b: no new module file (the source fixtures cover the hooks module whole; B10).
       assert(JSON.stringify(MOD.map((f) => f.slice(join(HOOKS, "mod").length + 1))) === '["lib.ts","register.tsx"]',
@@ -564,7 +815,7 @@ export default [
       const inside = at < 0 ? [] : lib.slice(at).match(HEX) || [];
       assert(at > 0 && outside.length === 0 && inside.length > 0, `lib.ts: hex only in the Lantern Svg section (section at ${at}, outside ${outside}, inside ${inside.length})`);
       const exported = [...lib.slice(at).matchAll(/^export (?:const|function|type) (\w+)/gm)].map((m) => m[1]).sort();
-      assert(JSON.stringify(exported) === '["Drawing","bandPill","esc","hero"]', `the Lantern section exports only esc, bandPill, hero and Drawing (never the palette), read ${exported}`);
+      assert(JSON.stringify(exported) === '["Drawing","bandDial","chip","detailCards","esc","eyebrow","rowCard","sessionCard"]', `the Lantern section exports only Drawing, bandDial, chip, detailCards, esc, eyebrow, rowCard and sessionCard (never the palette), read ${exported}`);
       assert(!/<Button\b/.test(reg), "register.tsx draws no JSX Button: each is a Button({...}) call, read below");
       const calls = [];
       for (let i = reg.indexOf("Button("); i >= 0; i = reg.indexOf("Button(", i + 1)) {
@@ -572,17 +823,16 @@ export default [
         for (; j < reg.length; j++) { if (reg[j] === "(") depth++; else if (reg[j] === ")" && --depth === 0) break; }
         calls.push(reg.slice(i, j + 1));
       }
-      assert(calls.length === 7, `the seven Button calls (Budget, Endpoints, Round-up, Suggested, a preset, Save, a launcher) are read, read ${calls.length}`);
-      // 5c: the Suggested tab's one Button of its own; a suggestion's Button is launcher()'s.
-      assert(calls.filter((c) => c.startsWith("Button({ key: 'sc-suggested-open', label: 'Suggested  →',")).length === 1, "the Suggested Button, sc-suggested-open, \"Suggested  →\"");
-      // 5d: the band's Round-up Button; Summarize has no Button call of its own, it is launcher()'s.
-      assert(calls.filter((c) => c.startsWith("Button({ key: 'sc-roundup-open', label: 'Round-up', hotkey: 'r',")).length === 1, "the band's Round-up Button, sc-roundup-open, hotkey r");
-      assert(reg.split("launcher($, Button, pane, 'sc-roundup-summarize', 'Summarize', 'Summarize  →', () => text)").length === 2, "Summarize is drawn by launcher(), once");
+      assert(calls.length === 6, `the six Button calls (the band's Open, a tab, the one pick, Save, the shared help/sites/More toggle, a launcher) are read, read ${calls.length}`);
+      assert(calls.filter((c) => c.startsWith("Button({ key: 'sc-open', label: 'Open SocialCrawl', hotkey: 'd',")).length === 1, "the band's Open Button, hotkey d");
+      for (const key of ["sc-suggested-open", "sc-roundup-open", "sc-endpoints-open", "sc-budget-open"]) assert(!reg.includes(key), `no old opener ${key}`);
+      assert(reg.split("launcher($, Button, pane, 'sc-roundup-summarize', 'Summarize', 'Summarize  →', () => text, e)").length === 2, "Summarize is drawn by launcher(), once");
       // The launcher's label is its string parameter, or "Queued · <name>" while its press is in flight (5b).
-      const LAUNCHER_LABEL = "label: tabs.queued === key ? `Queued · ${name}` : label,";
+      const LAUNCHER_LABEL = "label: tabs.queued === key ? (row || card ? 'Queued' : `Queued · ${name}`) : card ? 'Run  →' : row ? 'Run' : label,";
+      const TOGGLE_LABEL = "Button({ key, label, onPress })";
       for (const c of calls) {
         const label = c.match(/\blabel\b(\s*:\s*(.))?/);
-        assert(label && (!label[1] || label[2] === "'" || label[2] === '"' || c.includes(LAUNCHER_LABEL)) && !/\bchildren\b/.test(c) && !/\bText\(/.test(c),
+        assert(label && (!label[1] || label[2] === "'" || label[2] === '"' || c.includes(LAUNCHER_LABEL) || c.includes(TOGGLE_LABEL)) && !/\bchildren\b/.test(c) && !/\bText\(/.test(c),
           `a Button takes a plain-text label only (a label, no children, no Text), read ${c.slice(0, 120)}`);
       }
       assert(/const pick = \(key: string, label: string,/.test(reg), "the preset Buttons' label is pick's string parameter");
@@ -591,18 +841,18 @@ export default [
   },
   {
     id: "5b-A2-endpoint-prices",
-    desc: "A2/B1: lib.ts's rangeIn + priceOf over the real hooks/costs.json for all 29 calls: each entry there with a numeric range, the label's high end range[1] (G's worst, G:763-764), never `credits`; pins prism/lookup 1–5, reddit/omni-search 5–9, search/news 2–62, tiktok/ads/top 10–100, prism/post-stats 1–500, instagram/profile 1 cr",
+    desc: "A2/B1: lib.ts's rangeIn + rowPrice over the real hooks/costs.json for all 29 calls: each entry there with a numeric range, the label's high end range[1] (G's worst, G:763-764), never `credits`; pins prism/lookup 1–5, reddit/omni-search 5–9, search/news 2–62, tiktok/ads/top 10–100, prism/post-stats 1–500, instagram/profile 1 cr",
     fn() {
       const rows = libJson(`const costs = JSON.parse(readFileSync(process.env.COSTS_FILE, "utf8"));` +
-        `out(lib.ENDPOINTS.map((e) => { const r = lib.rangeIn(costs, e.call); return [e.call, r, r && lib.priceOf(r)]; }));`, { COSTS_FILE: COSTS });
+        `out(lib.ENDPOINTS.map((e) => { const r = lib.rangeIn(costs, e.call); return [e.call, r, lib.rowPrice(costs, e.call)]; }));`, { COSTS_FILE: COSTS });
       const costs = JSON.parse(readFileSync(COSTS, "utf8"));
       assert(rows.length === 29, `29 calls, read ${rows.length}`);
       for (const [call, r, label] of rows) {
         const want = costs[call] && costs[call].range;
         assert(Array.isArray(want) && want.length === 2 && want.every(Number.isFinite) && JSON.stringify(r) === JSON.stringify(want), `${call}: the range is costs.json's, read ${JSON.stringify(r)} (costs.json ${JSON.stringify(want)})`);
-        assert(label === (want[0] === want[1] ? `${want[1]} cr` : `${want[0]}–${want[1]} cr`), `${call}: the label comes from range, high end range[1], read ${label}`);
+        assert(label === (want[0] === want[1] ? `${want[1]} cr` : `${want[0]}–${want[1]} cr`) + (want[0] !== want[1] ? " · varies" : ""), `${call}: the label comes from range, high end range[1], read ${label}`);
       }
-      const pins = { "GET prism/lookup": "1–5 cr", "GET reddit/omni-search": "5–9 cr", "GET search/news": "2–62 cr", "GET tiktok/ads/top": "10–100 cr", "POST prism/post-stats": "1–500 cr", "GET instagram/profile": "1 cr" };
+      const pins = { "GET prism/lookup": "1–5 cr · varies", "GET reddit/omni-search": "5–9 cr · varies", "GET search/news": "2–62 cr · varies", "GET tiktok/ads/top": "10–100 cr · varies", "POST prism/post-stats": "1–500 cr · varies", "GET instagram/profile": "1 cr" };
       for (const [call, want] of Object.entries(pins)) {
         const got = (rows.find((x) => x[0] === call) || [])[2];
         assert(got === want, `pin ${call}: ${want}, read ${got}`);
@@ -616,7 +866,7 @@ export default [
       const TARGETS = ["mom's café #1 @x/y?z&w", "@nike", "nike", "https://www.youtube.com/watch?v=dQw4w9WgXcQ"];
       const cases = libJson(`const costs = JSON.parse(readFileSync(process.env.COSTS_FILE, "utf8")); const res = [];` +
         `for (const e of lib.ENDPOINTS) for (const t of e.kind === "none" ? [""] : JSON.parse(process.env.TARGETS)) {` +
-        ` const q = lib.requestOf(e, t); const price = lib.priceOf(lib.rangeIn(costs, e.call));` +
+        ` const q = lib.requestOf(e, t); const price = lib.rowPrice(costs, e.call);` +
         ` res.push({ call: e.call, kind: e.kind, target: t, note: "note" in q ? q.note : null, text: "note" in q ? null : lib.endpointText(e, price, q) }); }` +
         `out(res);`, { COSTS_FILE: COSTS, TARGETS: JSON.stringify(TARGETS) });
       const costs = JSON.parse(readFileSync(COSTS, "utf8"));
@@ -686,7 +936,7 @@ export default [
       const pins = [
         [lib, "lib.ts allowOf", "export function allowOf(combos: readonly { options: readonly Combo[] }[]): Set<string> {\n  return new Set([...ENDPOINTS.map(x => slugOf(x.call)), ...combos.flatMap(r => r.options.map(o => o.key))])\n}"],
         [lib, "lib.ts picksOf's exact match", "if (typeof id === 'string' && ok.has(id) && !out.some(p => p.id === id)) out.push({ id, why: whyOf(o?.why) })"],
-        [reg, "the Endpoints tab's rows", "...ENDPOINTS.filter(x => x.group === g).map(x => endpointLauncher($, Button, pane, costs, x)),"],
+        [reg, "the Endpoints tab's rows", "ENDPOINTS.filter(x => x.group === g).map(x => endpointLauncher($, Button, pane, costs, x, e, style))"],
         [reg, "endpointLauncher's key", "return launcher($, Button, pane, slugOf(x.call), x.name,"],
         [reg, "the Combos tab's rows", "const rows = await combosNow($)\n"],
         [reg, "comboLauncher's key", "return launcher($, Button, pane, o.key, o.label,"],
@@ -718,7 +968,7 @@ export default [
   },
   {
     id: "5d-A7-summarize-silent",
-    desc: "A7/B11-B13: the Summarize text lib.ts builds from a session's facts (callRows, outputsOf, mapPath, summaryOf) — the kit's A7 world exactly, a hostile one (perplexity/research, a saved path under a Socialcrawl folder, an @, a dotted host path, a revxl and a sessions/ path, an intent phrase) and an empty one with no limit — holds none of the forbidden words, and the real research-suggest.mjs on each text is silent; R2-3: a Kelvin-sign \"look into\" path that wakes the real hook is left out; R2-4: research-suggest's *_RE set is exactly WAKE, INTENT, URL and HANDLE, and each of their top-level alternatives holds an entry of lib.ts's UNSAFE as written",
+    desc: "A7/B11-B13: the Summarize text lib.ts builds from a session's facts (callRows, outputsOf, mapPath, summaryOf) — the kit's A7 world exactly, a hostile one (perplexity/research, a saved path under a Socialcrawl folder, an @, a dotted host path, a revxl and a sessions/ path, an intent phrase) and an empty one with no limit — holds none of the forbidden words, and the real research-suggest.mjs on each text is silent; R2-3: a Kelvin-sign \"look into\" path that wakes the real hook is left out; R2-4: research-suggest's *_RE set is exactly WAKE, INTENT, URL and HANDLE, and each of their top-level alternatives holds an entry of lib.ts's UNSAFE as written; M3 U7 pins both Usage sentences with known and automatic limits",
     fn() {
       const TEMP = "C:\\Users\\t\\AppData\\Local\\Temp";
       const L = (o) => JSON.stringify({ ts: "2026-10-15T12:00:00.000Z", sid: "sid-1", paths: ["/v1/instagram/profile"], worst: 1, committed: 1, decision: "pass", kind: "under-cap", limit: 500, balance: 800, balanceAt: null, ...o }) + "\n";
@@ -733,17 +983,17 @@ export default [
       ];
       const texts = libJson(`out(JSON.parse(process.env.WORLDS).map((w) => { const rows = lib.callRows(w.record, "sid-1");` +
         ` const files = [...new Set(w.cmds.reverse().flatMap((c) => lib.outputsOf(c).map((p) => lib.mapPath(p, process.env.TEMP5, "C:/Users/t"))))];` +
-        ` return lib.summaryOf(rows.paid, files, w.spent, w.limit); }));`, { WORLDS: JSON.stringify(worlds), TEMP5: TEMP });
+        ` return lib.summaryOf(rows.paid, files, w.spent, w.limit, null); }));`, { WORLDS: JSON.stringify(worlds), TEMP5: TEMP });
       const hm = (ts) => { const d = new Date(ts); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
       const HEAD = "Summarize what this session pulled, using only the facts below and the Read tool for the saved files. Make no new calls and run no commands. ";
       // The kit's 5d A7 press sends this same text (tests/mod.test.ts).
-      const want0 = HEAD + `Calls: ${hm("2026-10-15T12:03:00.000Z")} · youtube/channel, reddit/omni-search · up to 10 cr; ${hm("2026-10-15T12:01:00.000Z")} · instagram/profile · up to 1 cr. ` +
-        'Saved files: "C:/Users/t/AppData/Local/Temp/sc-a.json"; "out.json". Total: 11 of 500 credits (quotes, not charges).';
+      const want0 = HEAD + `Calls: ${hm("2026-10-15T12:03:00.000Z")} · youtube/channel, reddit/omni-search · counted 10 cr; ${hm("2026-10-15T12:01:00.000Z")} · instagram/profile · counted 1 cr. ` +
+        'Saved files: "C:/Users/t/AppData/Local/Temp/sc-a.json"; "out.json". Counted: 11 of 500 credits. No Usage read yet.';
       assert(texts[0] === want0, `the kit's A7 text, read ${texts[0]}`);
-      assert(texts[1].includes(`Calls: ${hm("2026-10-15T12:05:00.000Z")} · instagram/profile · up to 1 cr (2 more not listed here.)`) &&
+      assert(texts[1].includes(`Calls: ${hm("2026-10-15T12:05:00.000Z")} · instagram/profile · counted 1 cr (2 more not listed here.)`) &&
         texts[1].includes('Saved files: "C:/Users/t/AppData/Local/Temp/ok.json" (6 more not listed here.)') && !texts[1].includes("tiktok/trending"),
         `the hostile world: its safe facts kept, the rest counted, read ${texts[1]}`);
-      assert(texts[2] === HEAD + "Calls: none. Saved files: none. Total: 0 of automatic cap credits (quotes, not charges).", `the empty world, read ${texts[2]}`);
+      assert(texts[2] === HEAD + "Calls: none. Saved files: none. Counted: 0 of automatic cap credits. No Usage read yet.", `the empty world, read ${texts[2]}`);
       const BAD = [/social[\s-]?crawl/i, /research/i, /https?:\/\//i, /\bwww\./i, /@/, /revxl/i, /budget-write/i, /credit-guard/i, /sessions\//i, /\[SocialCrawl launcher\]/i, /look\s+into/i, /find\s+out\s+about/i, /my\.site\//];
       for (const [i, t] of texts.entries()) {
         for (const bad of BAD) assert(!bad.test(t), `world ${i}: the text holds ${bad}: ${t}`);
@@ -754,8 +1004,8 @@ export default [
       // R2-3: research-suggest reads the prompt lowercased (RS:290), so a Kelvin sign (U+212A) reads as k. Kept, the path wakes it;
       // Summarize leaves it out.
       const kel = libJson(`const p = "C:/x/loo" + String.fromCharCode(0x212a) + " into/y.json";` +
-        ` out({ p, t: lib.summaryOf(["12:00 · instagram/profile · up to 1 cr"], [p, "C:/x/ok.json"], 1, 500) });`);
-      const would = ask(HEAD + `Calls: 12:00 · instagram/profile · up to 1 cr. Saved files: "${kel.p}". Total: 1 of 500 credits (quotes, not charges).`);
+        ` out({ p, t: lib.summaryOf(["12:00 · instagram/profile · counted 1 cr"], [p, "C:/x/ok.json"], 1, 500, null) });`);
+      const would = ask(HEAD + `Calls: 12:00 · instagram/profile · counted 1 cr. Saved files: "${kel.p}". Counted: 1 of 500 credits. No Usage read yet.`);
       assert(would.fired, `the Kelvin-sign path kept would wake research-suggest, read ${would.raw.slice(0, 200)}`);
       const kt = ask(kel.t);
       assert(!kel.t.includes(kel.p) && kel.t.includes('Saved files: "C:/x/ok.json" (1 more not listed here.)') && !kt.fired && kt.raw === "",
@@ -786,6 +1036,22 @@ export default [
       for (const [, name, src] of lits) for (const a of alts(src).map(nob)) {
         assert(unsafe.some((u) => a.includes(u)), `${name}'s alternative ${a} holds no UNSAFE entry: lib.ts's mirror is out of date`);
       }
+      // M3: known and unknown Usage with a known limit and an automatic cap.
+      const cases = [{ usage: null, limit: 500 }, { usage: 1, limit: 500 }, { usage: null, limit: null }, { usage: 1, limit: null }];
+      const usageTexts = libJson(`out(JSON.parse(process.env.M3_CASES).map(({ usage, limit }) => lib.summaryOf(` +
+        `["12:00 · instagram/profile · counted 1 cr", "perplexity/research"],` +
+        `["C:/x/ok.json", "C:/look into/x.json", "sessions/x.json"], 17, limit, usage)));`, { M3_CASES: JSON.stringify(cases) });
+      const head = "Summarize what this session pulled, using only the facts below and the Read tool for the saved files. Make no new calls and run no commands. ";
+      const expected = cases.map(({ usage, limit }) => head +
+        'Calls: 12:00 · instagram/profile · counted 1 cr (1 more not listed here.) Saved files: "C:/x/ok.json" (2 more not listed here.) ' +
+        `Counted: 17 of ${limit === null ? "automatic cap" : "500"} credits. ` +
+        (usage === null ? "No Usage read yet." : "Usage read from the ledger: 1 credit."));
+      for (const [i, text] of usageTexts.entries()) {
+        for (const word of FORBIDDEN) assert(!text.includes(word), `M3 U7: world ${i} names ${word}`);
+        const r = ask(text);
+        assert(r.exit === 0 && !r.fired && r.raw === "", `M3 U7: world ${i} stays silent, read ${r.exit} ${JSON.stringify(r.raw)}`);
+      }
+      assert(JSON.stringify(usageTexts) === JSON.stringify(expected), `M3 U7: exact counted/Usage prompts, read ${JSON.stringify(usageTexts)}`);
     },
   },
 ];

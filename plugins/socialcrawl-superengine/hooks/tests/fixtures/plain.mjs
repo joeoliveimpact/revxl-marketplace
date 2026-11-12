@@ -12,10 +12,9 @@
 import { copyFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { session, V1, TSCRIPT, GUARD, COSTS, M_NOTPLAIN, M_NOTBASH, assert, assertDecision } from "../lib.mjs";
+import { session, V1, TSCRIPT, GUARD, COSTS, M_NOTPLAIN, M_NOTBASH, assert, assertDecision, NOLOCAL } from "../lib.mjs";
 
 const UNATTENDED = { env: { CLAUDE_CODE_SESSION_ATTENDED: "0" } };
-const NOLOCAL = { unsetEnv: ["GROQ_API_KEY"], env: { PATH: "" } };
 const DOCS = "https://docs." + "social" + "crawl" + ".dev";
 const P = `${V1}prism/leads?query=x`;                                  // flat 50
 const LQ = `${V1}linkedin/search/posts?keyword=x&dry_run=1`;          // declares dryRun; 56 in full

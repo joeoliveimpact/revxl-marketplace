@@ -23,7 +23,7 @@
 | /user/followers | `handle` / `user_id` | 1 | List TikTok user followers |
 | /user/following | `handle` / `user_id` | 1 | List TikTok user following |
 | /user/live | `handle` | 1 | Get TikTok user live stream |
-| /post/transcript | `url` | 10 | Get TikTok video transcript — ⚠️ **Gated in this plugin: 10 credits per post — 100 of them = 1000 credits. Run it only on an explicit yes; the credit guard counts it and never asks. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.** |
+| /post/transcript | `url` | 10 | Get TikTok video transcript — ⚠️ **Gated in this plugin: 10 credits per post — 100 of them = 1000 credits. Run it only on an explicit yes. The credit guard never asks: it refuses it when the user's transcript setting (SocialCrawl → Settings) is Blocked, and counts it otherwise. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.** |
 | /video/screen-text | `url` | 5 | Get TikTok video on-screen text |
 | /song | `clipId` | 1 | Get TikTok song details |
 | /song/videos | `clipId` | 1 | List TikTok videos using a song |
@@ -421,7 +421,7 @@ curl "https://www.socialcrawl.dev/v1/tiktok/user/live?handle=<handle>" \
 
 Returns the transcript of a TikTok video. Supports auto-generated captions and AI-powered transcription as fallback.
 
-> ⚠️ **Gated in this plugin: 10 credits per post — 100 of them = 1000 credits. Run it only on an explicit yes; the credit guard counts it and never asks. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.**
+> ⚠️ **Gated in this plugin: 10 credits per post — 100 of them = 1000 credits. Run it only on an explicit yes. The credit guard never asks: it refuses it when the user's transcript setting (SocialCrawl → Settings) is Blocked, and counts it otherwise. Cheaper first: pull the media URL from that platform's post/media endpoint (usually 1-5 credits) and transcribe it yourself.**
 
 **Parameters**
 
@@ -764,8 +764,8 @@ the API. Only six endpoints cost more.
 | Your goal | Use this | Credits |
 |-----------|----------|---------|
 | Profile / their videos / one post | `/profile` · `/profile/videos` · `/post` | 1 |
-| Search by keyword, hashtag, or top results | `/search` · `/search/hashtag` · `/search/top` | 1 |
-| Find creators | `/search/users` | 1 |
+| Search by keyword, hashtag, or top results | `/search` · `/search/hashtag` · `/search/top` | 1 a page; metered: `/search` up to 42, `/search/hashtag` up to 5 |
+| Find creators | `/search/users` | 1–100 (metered) |
 | Comments, and replies to a comment | `/post/comments` · `/video/comment/replies` | 1 |
 | Look up one comment by URL or id | `/comment` | 2 |
 | Followers / following | `/user/followers` · `/user/following` | 1 |

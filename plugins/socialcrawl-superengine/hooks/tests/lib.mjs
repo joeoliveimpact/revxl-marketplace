@@ -24,7 +24,7 @@
  * Test hygiene, not evasion — the guard under test still sees the fully assembled string.
  */
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, copyFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -43,6 +43,7 @@ export const HOST = "www." + "social" + "crawl" + "." + "dev";
 export const V1 = "https://" + HOST + "/v1/";
 // The token the transcript gate matches on, never spelled out in one piece.
 export const TSCRIPT = "trans" + "cript";
+export const NOLOCAL = { unsetEnv: ["GROQ_API_KEY"], env: { PATH: "" } };
 
 let seq = 0;
 
@@ -84,6 +85,22 @@ export const M_NOTBASH =
 export const M_LOST =
   "SocialCrawl call not run: this session's committed total was lost (its session file was damaged or unreadable), so its " +
   "credit limit can't be enforced. Start a new session to continue." + T;
+export const TRANSCRIPT_TAIL = " Change this in SocialCrawl → Settings.";
+export const TRANSCRIPT_FIX_TAIL = " To fix it, open SocialCrawl → Settings and press Save.";   // M7: Settings named once
+export const TRANSCRIPT_LEADS = {
+  blocked: "Transcripts are blocked in your SocialCrawl settings.",
+  unrecognised: "The transcript setting in your SocialCrawl settings is unrecognised, so transcripts are blocked.",
+  unreadable: "Your SocialCrawl settings file can't be read, so transcripts are blocked.",
+  error: "SocialCrawl call not run: the credit guard hit an error while checking this trans" + "cript call. Run the command again.",
+};
+export const TRANSCRIPT_FIXES = {
+  youtube: " Use the 1-credit subtitles endpoint, or free yt-dlp captions if yt-dlp is installed.",
+  bolt: " Drop include=transcript and run the call again.",
+  batch: " Use the 1-credit subtitles endpoint per video.",
+  other: " Fetch the media and transcribe it with your own tool.",
+};
+export const mTranscript = (lead, shape) => lead === "error" ? TRANSCRIPT_LEADS.error + T : TRANSCRIPT_LEADS[lead] +
+  (shape?.startsWith("param:") ? ` Drop ${shape.slice(6)} and run the call again.` : TRANSCRIPT_FIXES[shape] || "") + (lead === "blocked" ? TRANSCRIPT_TAIL : TRANSCRIPT_FIX_TAIL);
 export const mError = (notBash = false) =>
   "SocialCrawl call not run: the credit guard hit an error reading this command, so it could not count what it would cost." +
   (notBash ? USE_BASH : "") + T;
@@ -93,8 +110,8 @@ export const srcAuto = (balance) => `the automatic cap: the smaller of 500 and a
 /** M_LIMIT, the same for every run (D55): it names no file and no kind of budget. */
 export const mLimit = ({ spent, worst, limit, src }) =>
   `SocialCrawl call not run: it would take this session past its credit limit. Committed so far: ~${spent} credits; ` +
-  `this command's worst case: ~${worst} credits; the limit is ${limit} credits (${src}). To go further, the person ` +
-  `raises it in the SocialCrawl Budget pane.` + T;
+  `this command's worst case: ~${worst} credits; the limit is ${limit} credits (${src}). To go further, raise ` +
+  `your limit in SocialCrawl → Settings (up to 20,000).` + T;
 // Phase 3b's two read denies, whole.
 export const mStateRead = (sf) =>
   `SocialCrawl call not run: the session file ${sf} can't be read right now, so this session's committed total can't be checked. Run the command again.` + T;
@@ -160,6 +177,9 @@ export function session(opts = {}) {
     logLines() {
       return jsonl(join(dir, "revxl", "credit-guard-unattended.jsonl"));
     },
+    callLines() {
+      return jsonl(join(dir, "revxl", "socialcrawl-calls.jsonl"));
+    },
     /** Every balance request fake-fetch.mjs answered in this session: {url, key, signal}. */
     fetches() {
       return jsonl(join(dir, "fetches.jsonl"));
@@ -173,7 +193,7 @@ export function session(opts = {}) {
       delete env.CLAUDE_CODE_HOST_SCHEDULED_RUN;
       // Offline by default (R14b): no key in the env or under HOME, dead proxies, and the log in
       // this session's own folder.
-      for (const k of Object.keys(env)) if (/^(socialcrawl_api_key|no_proxy)$/i.test(k)) delete env[k];
+      for (const k of Object.keys(env)) if (/^(socialcrawl_api_key|no_proxy|node_options|claude_code_session_attended|claude_code_host_scheduled_run)$/i.test(k)) delete env[k];
       Object.assign(env, {
         HOME: dir, USERPROFILE: dir, SC_REVXL_HOME: join(dir, "revxl"),
         HTTPS_PROXY: DEAD, HTTP_PROXY: DEAD, ALL_PROXY: DEAD, NODE_USE_ENV_PROXY: "1",
@@ -182,7 +202,9 @@ export function session(opts = {}) {
       // fake-fetch.mjs). The fake key rides along; `unsetEnv: ["SOCIALCRAWL_API_KEY"]` drops it.
       if (o.fetch) Object.assign(env, { FAKE_FETCH: JSON.stringify(o.fetch), FAKE_FETCH_LOG: join(dir, "fetches.jsonl"), SOCIALCRAWL_API_KEY: FAKE_KEY });
       Object.assign(env, o.env || {});
-      for (const k of o.unsetEnv || []) delete env[k];
+      for (const k of o.unsetEnv || []) {
+        for (const name of Object.keys(env)) if (name.toLowerCase() === k.toLowerCase()) delete env[name];
+      }
       const before = this.stateRaw();
       const t0 = Date.now();
       const r = spawnSync(process.execPath, [...(o.fetch ? ["--import", FAKE_FETCH] : []), ...(o.node || []), o.guard || GUARD], {
@@ -277,8 +299,51 @@ export function visible(command, opts = {}) {
 export function assert(cond, msg, ctx) {
   if (!cond) {
     const extra = ctx ? `\n      guard said: ${JSON.stringify(ctx).slice(0, 900)}` : "";
-    throw new Error(msg + extra);
+    throw Object.assign(new Error(msg + extra), { code: "ERR_FIXTURE_ASSERTION" });
   }
+}
+
+/** Build-time mutation proof: identity first, then a loaded, executed mutant and an assertion.
+ * Scratch copies stay under this checkout's .lane; never mutate the installed plugin.
+ */
+export async function mutationEvidence(file, find, replacement, victim) {
+  await victim(GUARD); // An identity control must pass; setup failures are never kills.
+  const lane = resolve(dirname(GUARD), "../../..", ".lane");
+  mkdirSync(lane, { recursive: true });
+  const dir = mkdtempSync(join(lane, "g4-mutant-"));
+  const marker = join(dir, "ran");
+  const guardName = "credit" + "-guard.mjs";
+  try {
+    for (const name of [guardName, "give-back.mjs", "ledger.mjs", "costs.json"])
+      copyFileSync(join(dirname(GUARD), name), join(dir, name));
+    const target = join(dir, file);
+    const source = readFileSync(target, "utf8");
+    assert(source.includes(find), "mutation anchor exists");
+    writeFileSync(target, source.replace(find, replacement));
+    const syntax = spawnSync(process.execPath, ["--check", target], { encoding: "utf8" });
+    assert(syntax.status === 0, "a syntax error is not a mutant kill", syntax.stderr);
+    // Stamp entry into actual code, not just import or fixture setup.
+    if (file === guardName) {
+      const src = readFileSync(target, "utf8");
+      writeFileSync(target, src.replace("async function main() {", `async function main() { writeFileSync(${JSON.stringify(marker)}, "ran");`)
+        .replace("async function sessionMain(input, after) {",
+          `async function sessionMain(input, after) { writeFileSync(${JSON.stringify(marker)}, "ran");`));
+    } else {
+      const loaded = spawnSync(process.execPath, ["--input-type=module", "-e", `await import(${JSON.stringify(pathToFileURL(target).href)})`], { encoding: "utf8" });
+      assert(loaded.status === 0, "a module-load error is not a mutant kill", loaded.stderr);
+      let src = readFileSync(target, "utf8");
+      src = `import { writeFileSync as mutationStamp } from "node:fs";\n` + src;
+      src = src.replace("export function recompute(state, rows, vNow, off, uncovered = null, now, up) {",
+        `export function recompute(state, rows, vNow, off, uncovered = null, now, up) { mutationStamp(${JSON.stringify(marker)}, "ran");`);
+      src = src.replace("  try {\n    const key = resolveKey(env, home);", `  mutationStamp(${JSON.stringify(marker)}, "ran");\n  try {\n    const key = resolveKey(env, home);`);
+      writeFileSync(target, src);
+    }
+    let failure;
+    try { await victim(join(dir, guardName)); } catch (e) { failure = e; }
+    assert(existsSync(marker), "mutant must execute before a kill counts");
+    assert(failure?.code === "ERR_FIXTURE_ASSERTION", "mutant must fail a fixture assertion, not merely throw");
+    return { loaded: true, ran: true, assertion: failure.message };
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 }
 export function assertMatch(res, re, msg) {
   assert(re.test(res.message), `${msg} — expected /${re.source}/ in the message`, {

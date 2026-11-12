@@ -49,7 +49,7 @@ function Undo { try { if ($had) { [IO.File]::WriteAllBytes($file, $old) } else {
 try { [IO.File]::WriteAllText($file, $v) }
 catch { Undo; 'RESULT=FAIL step=write'; exit 3 }
 
-# Owner-only, as setup-key.ps1, after the write so a failed step never touches the old key's ACL.
+# Owner-only, after the write so a failed step never touches the old key's ACL.
 # Explicit rules are cleared too, so an extra rule on an old key file doesn't survive.
 try {
   $me = [Security.Principal.WindowsIdentity]::GetCurrent().Name

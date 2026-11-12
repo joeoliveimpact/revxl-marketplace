@@ -1,5 +1,30 @@
 # Changelog — socialcrawl-superengine
 
+## 0.4.1 - 2026-11-11
+
+One band, one pane, and credits that come back.
+
+- **One button, one pane.** The SocialCrawl band above the prompt has one button, **Open SocialCrawl** (hotkey d). It opens a pane with five tabs: Endpoints, Combos, Suggested, Round-up and Settings. The band shows from the start of a session once SocialCrawl is set up, not only after a paid call. The Budget, Endpoints and Round-up buttons and the `/socialcrawl-endpoints` and `/socialcrawl-roundup` commands are gone.
+- **Settings.** The session credit limit and the transcript setting live in SocialCrawl → Settings, saved with one Save button.
+- **Transcripts can be blocked.** With Blocked saved in Settings, the guard refuses every call that pulls a transcript before it runs: the `*/transcript` endpoints, `POST youtube/transcripts`, an `include` value naming `transcript` on any call (such as `prism/video-intel`), any parameter whose name holds `transcript` unless it is `false` or `0` (`search/everywhere` `include_transcripts`, `facebook/post` `get_transcript`), and `prism/brief-check`. Until Blocked is saved, they run and are counted, as before. Onboarding now checks, by name only, for free transcript tools on the computer (yt-dlp, Whisper) and a Groq key, and points to Settings, where Blocked is picked for you when one is found.
+- **Credits come back.** The guard still holds each paid call's highest price before it runs. After a batch of tool calls, while a paid call from the last 12 minutes or so is open, it makes one free read of SocialCrawl's ledger (at most one every 30 seconds) and, no sooner than about two minutes after a call returns and once the ledger shows a charge on that endpoint made while a call to it that finished cleanly was open, swaps the endpoint's finished holds for what was charged. The band shows this as Usage.
+- **Limits, stated plainly.**
+  - Credits come back about two minutes after a call returns, at the earliest; until then the band can read high, and the first ledger read can briefly push the total up.
+  - A call that fails, is interrupted, runs in the background, or is piped or chained keeps its hold, and can count its hold and its charge together for the rest of the session.
+  - A finished call on an endpoint with no charge on the ledger this session (a cache hit, a free not-found answer, a transcript with no captions) keeps its hold until a charge on that endpoint appears.
+  - Nothing comes back without a key, or after three failed ledger reads in a row.
+  - Other spending on the account, on the same endpoint while a call is open, counts against the session.
+  - A charge the vendor records more than about 2 minutes after its call returns can be counted late, or not at all.
+  - The guard refuses Claude running Save in any plain form; a deliberately disguised command is not caught.
+- **No typed commands.** Nothing the plugin tells a user asks them to type a command: onboarding's key fallbacks use a settings window (Windows) or a text editor Claude opens (macOS, Linux), and the briefing points to the band's button. `/socialcrawl-budget` still opens Settings for anyone who already uses it.
+- **Wording.** Every "Budget tab" and "Budget pane" is now SocialCrawl → Settings; the unattended notice says what was refused and counted, with no file path.
+- **Routines.** A Desktop routine with a budget now really spends up to its budget: credits it held come back the same way.
+- **Routine spending is reported.** A paid call a Desktop routine makes now reaches the unattended notice, like any other unattended paid call.
+- **Odd transcript spellings are refused.** With Blocked saved, a transcript parameter written with extra encoding or punctuation (`include+=`, `include.0=`, `include%20=`, a double-encoded `get_transcript`) is refused, and otherwise counted at the transcript price; a command with an escape the guard can't decode is treated as not plain.
+- **A broken settings file refuses paid calls, with the fix.** When the SocialCrawl settings file can't be read, paid calls are refused with "Re-save your limit in SocialCrawl → Settings to fix it."; free calls still pass.
+- **Updating a monitor is no longer listed as free.** In the pane's More options, `PATCH web/monitors/{monitor_id}` moves from the free calls to "Price depends on the request" and is shown as text only, since it can resume checks that bill later. The docs also say that creating a website monitor or a `/v1/monitors` recipe costs nothing, but each scheduled check then bills its price plus 1, unseen by the guard.
+- Removed the unused `setup/setup-key.command`, `setup/setup-key.ps1` and `setup/setup-key.bat` helpers: nothing has pointed to them since the key box replaced them, and `setup-key.ps1` had the person type the key at a prompt.
+
 ## 0.4.0 - 2026-11-03
 
 ### Added

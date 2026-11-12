@@ -6,9 +6,8 @@
  * Every fixture reproduces the checker's own command shape. They are written to FAIL on the
  * pre-fix build at 0c7d980 — that is the point of committing them.
  */
-import { run, session, visible, V1, HOST, TSCRIPT, quoted, mLimit, srcAuto, BALANCE, LIMIT, assert, assertDecision, assertCounted, assertNotPlain, assertNoMatch } from "../lib.mjs";
+import { run, session, visible, V1, HOST, TSCRIPT, quoted, mLimit, srcAuto, BALANCE, LIMIT, assert, assertDecision, assertCounted, assertNotPlain, assertNoMatch, NOLOCAL } from "../lib.mjs";
 
-const NOLOCAL = { unsetEnv: ["GROQ_API_KEY"], env: { PATH: "" } };
 const B = "https://" + HOST + "/v1/";
 
 export default [
@@ -162,9 +161,10 @@ export default [
         const l = visible(cmd, NOLOCAL);
         assert(l && l.cmdWorst === price, `${label}: decoded to the transcript's ${price}, not the 50 floor, read ${JSON.stringify(l)}`);
       }
-      // CONTROLS: a malformed escape must not break the decoder or the cost lookup.
+      // W3: malformed URL escapes are not plain; their visible price is still conservative.
       for (const bad of [`curl -s "${V1}prism/creator-vet?h=100%zz"`, `curl -s "${V1}prism/creator-vet?h=100%"`]) {
-        assertCounted(run(bad), 75, "a malformed escape must still price at 75");
+        assertNotPlain(run(bad), "a malformed URL escape fails closed");
+        assert(visible(bad).cmdWorst === 75, "a malformed escape still has a visible worst case of 75");
       }
       // The cheaper subtitles route is not a transcript: its own flat 1, not a transcript band.
       assertCounted(run(`curl -s "${V1}youtube/video/subtitles?id=abc"`, NOLOCAL), 1, "the cheaper subtitles route must not be gated");

@@ -142,6 +142,27 @@ export default [
     },
   },
 
+  {
+    id: "S2b-setup-ask-stays-with-onboarding",
+    desc: 'M6: "set up socialcrawl" and the other setup phrases carry no research nudge; "socialcrawl this handle" still fires',
+    fn() {
+      for (const p of ["set up socialcrawl", "socialcrawl setup", "connect my socialcrawl key", "onboard socialcrawl superengine", "install the social research engine", "set up my SocialCrawl key"]) {
+        const r = ask(p, { roster: [] });
+        assert(!/FRONT DOOR/.test(r.context || ""), `${p}: no front-door nudge, read ${r.raw}`);
+      }
+      assertFires(ask("socialcrawl this handle on ig", { roster: [] }), "a research ask with the wake-word still fires");
+      killedBy(
+        "if (SETUP_ASK.test(lower) && ",
+        "if (false && SETUP_ASK.test(lower) && ",
+        (path) => {
+          const m = ask("set up socialcrawl", { roster: [], hook: path });
+          assert(!/FRONT DOOR/.test(m.context || ""), "mutant");
+        },
+        "drop the setup short-circuit"
+      );
+    },
+  },
+
   // ---------------------------------------------------------------- S3: seeded roster
   {
     id: "S3-seeded-roster-fires",

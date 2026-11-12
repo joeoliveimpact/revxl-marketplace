@@ -136,7 +136,7 @@
     "One price the guard counts from its own code, not from costs.json, so the derivation has",
     "to state it too or it would disagree with the guard. credits/* are free account-meta",
     "calls and are absent from the generated map. prism/lookup has no hardcode since R10.1",
-    "(Joe, 09.24.26): costs.json prices it 1-5 from its own catalogue label, so the guard and",
+    "(owner, 09.24.26): costs.json prices it 1-5 from its own catalogue label, so the guard and",
     "the derivation both read it there."
   ],
 
@@ -581,7 +581,7 @@
       "artifact": "Platform map — which 2-3 platforms own this topic. Then leave this endpoint alone and search those platforms at 1 credit each.",
       "source": "plugins/socialcrawl-superengine/skills/research-plays/references/big-guns.md",
       "notes": [
-        "Climb the ladder before booking this: one platform search is 1 credit flat, reddit/omni-search is 8-9, search/news is 7-14, search/forums is 10 flat. Only pay 20 when you actually want the fused cross-platform result."
+        "Climb the ladder before booking this: one platform search is 1 credit a page on 12 platforms and up to 125 a call on others, reddit/omni-search is 5-9, search/news is 2-62, search/forums is 10 flat. Only pay 20 when you actually want the fused cross-platform result."
       ]
     },
 
