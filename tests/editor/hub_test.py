@@ -38,6 +38,7 @@ NAMES = ["reels", "tabs", "grade", "review", "sends", "health", "filmstrip", "la
 NAMES.append("storyboard")
 NAMES.append("rapid_sends")
 NAMES.append("walk_polish")
+NAMES.append("full_view")
 
 
 class Blocked(RuntimeError):
@@ -1089,18 +1090,19 @@ def case_strong_beats(p):
         else:
             write(placement, value)
         snapshot = {"do": "eval", "js": "JSON.stringify((() => {"
-            "const strip = document.querySelector('#strip').getBoundingClientRect();"
             "const note = document.querySelector('#strong-beat-note');"
-            "return {marks:[...document.querySelectorAll('#strip .strong-beat-mark')].map(e => {"
-            "const r = e.getBoundingClientRect(); return {time:Number(e.dataset.timeS),label:e.title,"
-            "aria:e.getAttribute('aria-label'),fraction:(r.left + r.width/2 - strip.left)/strip.width,"
-            "visible:r.width > 0 && r.height > 0};}),width:strip.width,"
+            "return {marks:[...document.querySelectorAll('#timeline .strong-beat-mark')].map(e => {"
+            "const r = e.getBoundingClientRect(), button = e.closest('.tl-beat'), box = button.getBoundingClientRect();"
+            "return {time:Number(e.dataset.timeS),label:e.title,beat:button.dataset.beat,"
+            "aria:e.getAttribute('aria-label'),fraction:parseFloat(e.style.left)/100,"
+            "pixelFraction:(r.left + r.width/2 - box.left - button.clientLeft)/button.clientWidth,"
+            "width:button.clientWidth,visible:r.width > 0 && r.height > 0};}),"
             "quiet:!note.hidden,note:note.textContent,suggestions:!document.querySelector('#strong-beat-suggestions').hidden,"
             "list:[...document.querySelectorAll('#strong-beat-times li')].map(e => e.textContent)};})())"}
         actions = [snapshot]
         if marked:
             # A suggestion click must not edit a beat, even when followed by Send.
-            actions.append({"do": "eval", "js": "document.querySelector('#strip .strong-beat-mark')?.click(), 0"})
+            actions.append({"do": "eval", "js": "document.querySelector('#timeline .strong-beat-mark')?.click(), 0"})
         reads = p.browse(open_map() + actions + [click('#send'),
             {"do": "waitFn", "js": "document.querySelector('#status').dataset.state==='sent'"}])
         view = reads[1]  # open_map records its scroll expression before the snapshot
@@ -1110,8 +1112,13 @@ def case_strong_beats(p):
             need([m["time"] for m in marks] == times, f"strong-beat times differ: {marks}")
             need(all(m["label"] == label and label in m["aria"] and m["visible"] for m in marks),
                  f"strong-beat labels or visibility differ: {marks}")
-            need(all(abs(m["fraction"] - at / total) * view["width"] <= 1 for m, at in zip(marks, times)),
-                 f"strong-beat strip positions differ: {marks}")
+            for m, at in zip(marks, times):
+                beat = next(b for b in seeded["beats"] if b["layout"] != "overlay"
+                            and b["start_f"] <= at * fixture.FPS < b["end_f"])
+                fraction = (at * fixture.FPS - beat["start_f"]) / (beat["end_f"] - beat["start_f"])
+                need(m["beat"] == beat["id"] and abs(m["fraction"] - fraction) < 1e-6 and
+                     abs(m["pixelFraction"] - fraction) * m["width"] <= 1,
+                     f"strong-beat timeline position differs: {m}")
             need(not view["quiet"] and view["suggestions"]
                  and view["list"] == [f"{t:.2f} s: {label}" for t in times],
                  f"strong-beat time list differs: {view}")
@@ -1168,7 +1175,8 @@ def case_broll(p):
     def open_map():
         return [click('#tab-beat-map'), {"do": "waitFn", "js": "!!document.querySelector('#panel iframe')"},
                 {"do": "eval", "js": "document.querySelector('#panel iframe').scrollIntoView({block:'end'}), 0"},
-                {"do": "frame", "sel": "#panel iframe", "wait": "#board:not([hidden]) #broll-0"}]
+                {"do": "frame", "sel": "#panel iframe", "wait": "#board:not([hidden]) #broll-0"},
+                click('#more > summary')]
 
     def set_value(sel, value):
         return {"do": "set", "sel": sel, "value": value}
@@ -1252,8 +1260,125 @@ def case_walk_polish(p):
     need("Post" in post["head"] and not post["button"], f"post next action: {post}")
 
 
+def case_full_view(p):
+    """H14: keep one live board in Full view; the lane runs the browser proof."""
+    import canvas_boards_test as fixture
+    d = p.videos / "reel-01"
+    fixture.reel_fixture(d)
+    p.py(p.plugin / "skills/reel-canvas-build/scripts/make_beat_map.py",
+         "--reel-dir", d, "--plan", d / "work/plan.json")
+    for name in ("tweak-selection.json", "work/edl.json"):
+        (d / name).unlink(missing_ok=True)
+    # Make one real manifest tab unavailable in this owned fixture, even as more boards ship.
+    manifest = read(p.doctor / "boards.json")
+    manifest["boards"]["trials"]["template"] = "skills/reel-trials/boards/h14-unbuilt"
+    write(p.doctor / "boards.json", manifest)
+    (p.editor / "trials/index.html").unlink(missing_ok=True)
+    data = p.refresh()
+    unbuilt = next((b["id"] for b in data["boards"] if not b["built"]), None)
+    need(unbuilt, "Full view proof needs an unavailable board tab")
+
+    def check(width=1024, core=False, layout="guided", controls="simple"):
+        full_view_static(p)
+        config = read(p.ws / "editor/editor.config.json")
+        config["controls"] = controls
+        write(p.ws / "editor/editor.config.json", config)
+        p.py(p.doctor / "hub_rows.py", "--root", p.ws)
+        p.browse([
+            {"do": "eval", "js": f"applyLayout({json.dumps(layout)}); localStorage.setItem('editor-controls',{json.dumps(controls)}); BoardClient.controls.apply(), 0"},
+            {"do": "fullView", "coreOnly": core, "unbuilt": unbuilt, "layout": layout, "controls": controls,
+             "python": sys.executable, "rows": str(p.doctor / "hub_rows.py"),
+             "root": str(p.ws), "reel": str(d)}],
+            viewport={"width": width, "height": 768 if width == 1024 else 800})
+
+    check()
+    check(470, layout="full", controls="advanced")
+    check(core=True, layout="full", controls="advanced")
+    check(470, core=True)
+    with p.mutant("hub.js", 'await enterFull();', 'await enterFull(false);'):
+        p.bites(check, "direct Full view skips the same-document Back entry")
+    for before, after, label in [
+        ('document.body.dataset.boardview = "full";',
+         '$("panel").innerHTML = $("panel").innerHTML; document.body.dataset.boardview = "full";',
+         "entering Full view recreates the iframe"),
+        ('frame.contentDocument?.addEventListener("keydown", boardEscape);',
+         'frame.contentDocument?.removeEventListener("keydown", boardEscape);',
+         "Escape inside the board is ignored"),
+        ('region.inert = false;', 'region.inert = true;', "exit leaves hub regions inert"),
+    ]:
+        with p.mutant("hub.js", before, after):
+            p.bites(lambda: check(core=True), label)
+    with p.mutant("index.html", '<button type="button" class="ghostbtn" id="fullview"',
+                  '<a target="_blank" href="/editor/hub/">Open board</a><button type="button" class="ghostbtn" id="fullview"'):
+        p.bites(lambda: full_view_static(p), "own-tab link returns")
+
+
+def full_view_static(p):
+    for name in ("index.html", "hub.js", "common.js", "review.html", "review.js"):
+        text = (p.hub / name).read_text(encoding="utf-8")
+        need(not re.search(r'target\s*=\s*[\"\x27]?_blank|window\s*\.\s*open\b', text, re.I),
+             f"hub opens another page: {name}")
+    for name in ("logic.ts", "register.ts"):
+        text = (p.plugin / "hooks/mod" / name).read_text(encoding="utf-8")
+        need(not re.search(r'window\s*\.\s*open\b|openExternal|target\s*=\s*[\"\x27]?_blank|editor/(?!editor\.config\.json\b|\.platform\.json\b)', text, re.I),
+             f"Cockpit opens a board address: {name}")
+
+
+def wording_checks(p):
+    """Reject client-opening instructions that escape the one-window hub."""
+    import ast
+    from types import SimpleNamespace
+    from urllib.parse import quote
+
+    skills = p.plugin / "skills"
+    texts = {f.relative_to(skills).as_posix(): f.read_text(encoding="utf-8")
+             for f in skills.rglob("*.md")}
+    ids = set(read(p.doctor / "boards.json")["boards"]) - {"hub"}
+    own_page = re.compile(r'editor/(?:' + '|'.join(map(re.escape, sorted(ids))) + r')/\?reel')
+    bare_video = re.compile(r'videos/[^\s`]+')
+    opening = re.compile(r'preview_start|in the Browser pane', re.I)
+    exceptions = (
+        ("editor-doctor/references/board-server.md", "A board's own page (`{url}editor/<board>/?reel=<reel>`) still loads; it is for tests and direct links only."),
+        ("reel-sound-pass/references/sound-board.md", "The client opens it inside the hub (board-server.md step 3); this address is the board's own page."),
+    )
+    sentence = "The hub is the client's one window: never open a second tab or a bare board or video address for them."
+
+    def check(docs):
+        for name, text in docs.items():
+            for n, line in enumerate(text.splitlines(), 1):
+                if any(name == file and substring in line for file, substring in exceptions):
+                    continue
+                need(not own_page.search(line) and not (bare_video.search(line) and opening.search(line)),
+                     f"bare board/video opening: {name}:{n}: {line}")
+        need(sum(text.count(sentence) for text in docs.values()) == 1, "one-window sentence must appear exactly once")
+
+    check(texts)
+    mutant = dict(texts)
+    mutant["reel-sound-pass/SKILL.md"] += "\nOpen `/editor/sound-board/?reel=<reel>` in the Browser pane.\n"
+    p.bites(lambda: check(mutant), "bare Sound Board instruction")
+    p.bites(lambda: check({name: text.replace(sentence, "") for name, text in texts.items()}),
+            "missing one-window sentence")
+
+    script = skills / "reel-sound-pass/scripts/new_board.py"
+    tree = ast.parse(script.read_text(encoding="utf-8"))
+    lines = [node.args[0] for node in ast.walk(tree) if isinstance(node, ast.Call)
+             and isinstance(node.func, ast.Name) and node.func.id == "print" and node.args
+             and any(isinstance(part, ast.Constant) and isinstance(part.value, str)
+                     and part.value.startswith("Open it ") for part in ast.walk(node.args[0]))]
+    need(len(lines) == 1, "new_board opening print missing or duplicated")
+    printed = eval(compile(ast.Expression(lines[0]), str(script), "eval"),
+                   {"a": SimpleNamespace(reel="reel one & two"), "quote": quote})
+    need(printed == "Open it inside the editor hub: /editor/hub/?reel=reel%20one%20%26%20two&board=sound-board&view=full",
+         f"new_board printed opening: {printed}")
+    check(dict(texts, **{"reel-sound-pass/scripts/new_board.py": printed}))
+    print("PASS data: hub-only wording, one-window sentence, new_board encoded opening + mutants", flush=True)
+
+
 def data_checks(p):
     """Useful proof in a sandbox that cannot take the shared browser lock; never substitutes for the UI cases."""
+    full_view_static(p)
+    print("PASS data: hub and Cockpit never open another page", flush=True)
+    wording_checks(p)
     data = p.refresh()
     need([r["id"] for r in data["reels"]] == ["reel-01", "reel-02"], "disk reel enumeration")
     manifest = read(p.doctor / "boards.json")["boards"]

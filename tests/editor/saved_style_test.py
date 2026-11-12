@@ -325,6 +325,34 @@ def case_isolated(ss):
         assert result.returncode == 0, (script, args, result.stderr)
 
 
+def case_fonts(ss):
+    exact = {"family": "Montserrat", "weight": 900, "style": "italic"}
+    ss.save({"font": exact})
+    saved = ss.load(name="default")
+    assert saved["font"] == "Montserrat Black Italic"
+    assert saved["font_face"] == {**exact, "file": "Montserrat-Variable-Italic.woff2"}
+    assert not any("built-in fonts" in line for line in ss.readback(saved))
+    assert exact == {"family": "Montserrat", "weight": 900, "style": "italic"}
+    ss.save({"font": {"family": "Montserrat", "weight": 650, "style": "italic"}})
+    variable = ss.load(name="default")
+    expected = {"family": "Montserrat", "weight": 650, "style": "italic",
+                "file": "Montserrat-Variable-Italic.woff2"}
+    assert variable["font_face"] == expected
+    assert ss.font_choice(variable["font"]) == (expected, None)
+    ss.save(variable)
+    assert ss.load(name="default")["font_face"] == expected
+    ss.save({"font": "Inter Tight ExtraBold"})
+    saved = ss.load(name="default")
+    assert saved["font"] == "Inter Tight ExtraBold"
+    assert saved["font_face"] == {"family": "Inter", "weight": 800,
+                                  "style": "normal", "file": "Inter-ExtraBold.woff2"}
+    note = ("Your style's font Inter Tight ExtraBold isn't one of the editor's built-in fonts, "
+            "so it uses Inter ExtraBold instead.")
+    assert ss.readback(saved).count(note) == 1
+    ss.save({"caption_style": {"style": "clean"}, "font_face": saved["font_face"]})
+    assert "font_face" not in ss.load(name="default")
+
+
 def case_unreadable_writes(ss):
     root = ss.path().parents[1]
     reel = root / "workspace/videos/reel"
@@ -374,7 +402,7 @@ def case_unreadable_writes(ss):
 
 CASES = {"table": case_table, "ladder": case_ladder, "readback": case_readback, "bad": case_bad,
          "readers": case_readers, "nonobject": case_nonobject, "isolated": case_isolated,
-         "unreadable-writes": case_unreadable_writes}
+         "unreadable-writes": case_unreadable_writes, "fonts": case_fonts}
 
 
 def main():

@@ -91,53 +91,44 @@ def brand_checks(tmp):
             assert captions.plan(reel)["style"]["accent"] == captions.DEFAULTS["accent"]
 
 
-def plant_brand_font(plugin):
-    """Alias a copy of shipped OFL Inter in a scratch scene's normal font source."""
-    fonts = plugin / "runtime/fonts"
-    fonts.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(SCRIPT.parents[3] / "runtime/fonts/Inter-Regular.woff2",
-                 fonts / "Caption-Test.woff2")
-    scene = plugin / "scenes/hook-title/scene.html"
-    scene.parent.mkdir(parents=True, exist_ok=True)
-    page = scene.read_text(encoding="utf-8") if scene.is_file() else ""
-    scene.write_bytes((page + '\n<style>@font-face {font-family: "Caption Test"; '
-                       'src: url("./fonts/Caption-Test.woff2"); font-weight: 400;}</style>\n').encode("utf-8"))
-    return "Caption Test"
-
-
 def brand_font_checks(tmp):
-    state, reel, plugin = tmp / "font-state", tmp / "font-reel", tmp / "font-plugin"
-    family = plant_brand_font(plugin)
+    state, reel = tmp / "font-state", tmp / "font-reel"
     fixture(reel, words("say this."))
-    put(state / "styles/default.json", {"font": family, "caption_style": {"style": "clean"}})
-    with patch.object(captions.rt, "state_dir", return_value=state), \
-            patch.object(captions.scene_check, "SCENES", plugin / "scenes"), \
-            patch.object(captions.scene_check, "FONTS", plugin / "runtime/fonts"):
-        captions.saved_style.pick(reel, "default")
-        doc = captions.plan(reel)
-        css, _, _ = captions.layer(doc, [(100, 1200, 900, 1400)] * len(doc["chunks"]), 1, str)
-        assert 'font-family: "Caption Test", "Inter";' in css, css
-        assert captions.scene_check.font_faces(css)[family] == ["./fonts/Caption-Test.woff2"]
-        assert not any("isn't available for captions" in n for n in doc["notes"])
+    with patch.object(captions.rt, "state_dir", return_value=state):
+        for font in ("Montserrat Black Italic", {"family": "Inter", "weight": 800, "style": "normal"}):
+            put(state / "styles/default.json", {"font": font, "caption_style": {"style": "clean"}})
+            captions.saved_style.pick(reel, "default")
+            doc = captions.plan(reel)
+            face = captions.bundled_fonts.parse_font(font)
+            record = captions.bundled_fonts.find(**face)
+            assert doc["font"] == {**face, "file": record["file"], "src": "./fonts/" + record["file"]}
+            css, _, _ = captions.layer(doc, [(100, 1200, 900, 1400)] * len(doc["chunks"]), 1, str)
+            assert f'font-weight: {face["weight"]}; font-style: {face["style"]};' in css
+            assert captions.scene_check.font_faces(css)[face["family"]][0] == "./fonts/" + record["file"]
+            assert not any("isn't one of" in n for n in doc["notes"])
 
 
 def brand_font_missing_checks(tmp):
-    state, reel, plugin = tmp / "missing-font-state", tmp / "missing-font-reel", tmp / "missing-font-plugin"
-    family = plant_brand_font(plugin)
+    state, reel = tmp / "missing-font-state", tmp / "missing-font-reel"
     fixture(reel, words("say this."))
-    with patch.object(captions.rt, "state_dir", return_value=state), \
-            patch.object(captions.scene_check, "SCENES", plugin / "scenes"), \
-            patch.object(captions.scene_check, "FONTS", plugin / "runtime/fonts"):
-        # A declaration without a file and an undeclared family both fall back.
-        (plugin / "runtime/fonts/Caption-Test.woff2").unlink()
-        for font in (family, "Missing Brand"):
+    with patch.object(captions.rt, "state_dir", return_value=state):
+        for font, weight, label in (("Inter Tight ExtraBold", 800, "Inter ExtraBold"),
+                                    ("Missing Brand", 400, "Inter Regular")):
             put(state / "styles/default.json", {"font": font, "caption_style": {"style": "clean"}})
             captions.saved_style.pick(reel, "default")
             doc = captions.plan(reel)
             for _ in range(2):
                 css, _, _ = captions.layer(doc, [(100, 1200, 900, 1400)] * len(doc["chunks"]), 1, str)
-            assert 'font-family: "Inter";' in css and '"Caption Test"' not in css
-            assert doc["notes"] == [f"Your brand font {font} isn't available for captions yet, so they use Inter."]
+            assert doc["font"]["family"] == "Inter" and doc["font"]["weight"] == weight
+            assert f'font-weight: {weight};' in css and font not in css
+            assert doc["notes"] == [f"Your style's font {font} isn't one of the editor's built-in fonts, "
+                                      f"so it uses {label} instead."]
+
+        for font in (" ", 42, {"family": []}):
+            put(state / "styles/default.json", {"font": font, "caption_style": {"style": "clean"}})
+            doc = captions.plan(reel)
+            assert {key: doc["font"][key] for key in ("family", "weight", "style")} == captions.STYLES["clean"]["font"]
+            assert doc["notes"] == ["Your saved font couldn't be read, so captions use this look's built-in font."]
 
 
 def reel_beats_saved_checks(tmp):
@@ -186,26 +177,126 @@ def mark_checks(tmp):
 
 def truth_checks(tmp):
     reel = tmp / "truth"
-    # A slower take would normally close the first pair. Keep the truthful run together.
+    # Send marks stay on the chosen word, even when a proposal would include a qualifier.
     fixture(reel, words("this doesn't work.", 0.3), {"style": "clean"}, marks=[{"w": 2, "mark": "emph"}])
     assert captions.pick_marks(["this", "doesn't", "work."], [{"w": 2, "mark": "emph"}]) == [
-        {"w0": 1, "w1": 2, "mark": "emph"}]
+        {"w0": 2, "w1": 2, "mark": "emph"}]
     doc = captions.plan(reel)
-    for c in doc["chunks"]:
-        if any(w["w"] == 2 and (w["mark"] or w["punch"]) for w in c["words"]):
-            assert any(w["w"] == 1 and w["mark"] == "emph" for w in c["words"]), c
-    # A truthful run that can't fit one caption loses its stress (a plain note), never its qualifier; no stop.
+    assert [w["w"] for c in doc["chunks"] for w in c["words"] if w["mark"]] == [2]
     fixture(reel, words("only if you post daily.", 0.1), {"style": "clean"}, marks=[{"w": 4, "mark": "emph"}])
+    doc = captions.plan(reel)
+    assert [w["w"] for c in doc["chunks"] for w in c["words"] if w["mark"]] == [4]
+    # A chosen run that can't fit one caption still loses its stress with a plain note.
+    fixture(reel, words("only if you post daily.", 0.1), {"style": "clean"},
+            marks=[{"w": i, "mark": "emph"} for i in range(5)])
     doc = captions.plan(reel)
     assert not any(w["mark"] or w["punch"] for c in doc["chunks"] for w in c["words"]), doc["chunks"]
     assert any("only if you post daily." in n for n in doc["notes"]), doc["notes"]
     fixture(reel, words("this doesn't work.", 0.3), {"style": "clean"},
             beats=[{"start_f": 0, "end_f": 18, "layout": "full"},
                    {"start_f": 18, "end_f": 180, "layout": "split"}],
-            marks=[{"w": 2, "mark": "emph"}])
+            marks=[{"w": 1, "mark": "emph"}, {"w": 2, "mark": "emph"}])
     doc = captions.plan(reel)
     assert not any(w["mark"] or w["punch"] for c in doc["chunks"] for w in c["words"]), doc["chunks"]
     assert any("doesn't work." in n for n in doc["notes"]), doc["notes"]
+
+
+MARK_SENTENCE = "So I finally worked out how to run more than one Gmail account in Claude. Next thing."
+
+
+def literal_send_check(tmp, marks):
+    reel = tmp / "literal"
+    fixture(reel, words(MARK_SENTENCE), {"style": "clean"}, marks=marks)
+    doc = captions.plan(reel)
+    actual = [{"w": w["w"], "mark": w["mark"]} for c in doc["chunks"] for w in c["words"] if w["mark"]]
+    assert actual == marks, actual
+    # The picker uses the same literal Send path on the client's own words.
+    picker = captions.picker_doc(reel)
+    assert "Truthful word marks overlap" not in " ".join(picker["notes"])
+
+
+def send_num_key_checks(tmp):  # T1: adjacent different marks must not widen or block.
+    literal_send_check(tmp, [{"w": 10, "mark": "num"}, {"w": 11, "mark": "key"}])
+
+
+def send_emph_key_checks(tmp):  # T2: separate accents in one sentence stay separate.
+    literal_send_check(tmp, [{"w": 2, "mark": "emph"}, {"w": 11, "mark": "key"}])
+
+
+def send_key_checks(tmp):  # T3: a single mark must not become a whole clause.
+    literal_send_check(tmp, [{"w": 11, "mark": "key"}])
+
+
+def proposal_checks(tmp):  # T4: long proposals fall back with an explanation, never a stop.
+    reel = tmp / "proposal"
+    fixture(reel, words(MARK_SENTENCE), {"style": "clean"})
+    for candidates in ([{"w": 11, "mark": "key"}],
+                       [{"w": 10, "mark": "num"}, {"w": 11, "mark": "key"}]):
+        output, notes = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(output), contextlib.redirect_stderr(notes):
+            assert captions.main(["marks", "--reel-dir", str(reel), "--candidates", json.dumps(candidates)]) == 0
+        assert json.loads(output.getvalue()) == candidates, output.getvalue()
+        assert 'Words 11-11' in notes.getvalue() and MARK_SENTENCE.split(" Next")[0] in notes.getvalue()
+        assert "too long" in notes.getvalue(), notes.getvalue()
+
+
+def proposal_collision_checks(tmp):
+    reel = tmp / "collision"
+    fixture(reel, words("this doesn't work."), {"style": "clean"})
+    # Candidate input may be unsorted; the short free negation phrase still widens.
+    for mark in ("key", "emph"):
+        candidates = [{"w": 0, "mark": mark}, {"w": 2, "mark": "emph"}]
+        output, notes = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(output), contextlib.redirect_stderr(notes):
+            assert captions.main(["marks", "--reel-dir", str(reel), "--candidates",
+                                  json.dumps(list(reversed(candidates)))]) == 0
+        assert json.loads(output.getvalue()) == [{"w": 0, "mark": mark}, {"w": 1, "mark": "emph"},
+                                                {"w": 2, "mark": "emph"}]
+    fixture(reel, words("this doesn't work."), {"style": "clean"})
+    output, notes = io.StringIO(), io.StringIO()
+    candidates = [{"w": 1, "mark": "key"}, {"w": 2, "mark": "emph"}]
+    with contextlib.redirect_stdout(output), contextlib.redirect_stderr(notes):
+        assert captions.main(["marks", "--reel-dir", str(reel), "--candidates", json.dumps(candidates)]) == 0
+    assert json.loads(output.getvalue()) == candidates
+    assert "Words 2-2" in notes.getvalue() and "doesn't work." in notes.getvalue()
+    assert "another marked word" in notes.getvalue()
+    # The collision rule also applies when the other candidate has the same accent.
+    fixture(reel, words("not a win."), {"style": "clean"})
+    candidates = [{"w": 0, "mark": "emph"}, {"w": 2, "mark": "emph"}]
+    output, notes = io.StringIO(), io.StringIO()
+    with contextlib.redirect_stdout(output), contextlib.redirect_stderr(notes):
+        assert captions.main(["marks", "--reel-dir", str(reel), "--candidates", json.dumps(candidates)]) == 0
+    assert json.loads(output.getvalue()) == candidates
+    assert '"not a win."' in notes.getvalue() and "another marked word" in notes.getvalue()
+
+
+def shared_marks_rule_checks(tmp):  # T6: a map accepted by make_beat_map's validator passes captions too.
+    reel = tmp / "shared"
+    items = words(MARK_SENTENCE)
+    cases = ([{"w": 11, "mark": "key"}],
+             [{"w": 10, "mark": "num"}, {"w": 11, "mark": "key"}],
+             [{"w": 2, "mark": "key"}, {"w": 2, "mark": "emph"}],
+             [{"w": 11, "mark": "key"}, {"w": 2, "mark": "emph"}],
+             [{"w": 2, "mark": "unknown"}], [{"w": 99, "mark": "key"}])
+    failures = []
+    for marks in cases:
+        doc = {"schema": 1, "reel": "shared", "fps": 30, "words": captions.DEFAULT_WORDS,
+               "beats": [], "word_marks": marks, "proposed": {}, "notes": {}, "needs": "", "sent_at": None,
+               "caption_style": {"style": "clean"}}
+        problems = captions.beat_schema.beat_map_problems(doc, [w["word"] for w in items])
+        fixture(reel, items, {"style": "clean"}, marks=marks)
+        put(reel / captions.SEND, doc)
+        try:
+            captions.plan(reel)
+            accepted = True
+        except captions.Stop as exc:
+            assert exc.code == 2
+            accepted = False
+            if problems and not all(problem in "\n".join(exc.lines) for problem in problems):
+                failures.append((marks, "schema diagnostics missing", exc.lines))
+        if accepted != (not problems):
+            failures.append((marks, problems, accepted))
+    assert not failures, failures
 
 
 def coverage_checks(tmp):
@@ -244,14 +335,16 @@ def layer_checks(tmp):
     t = lambda f: f"{f / 30:.6f}".rstrip("0").rstrip(".") or "0"
     for style in captions.STYLES:
         fixture(reel, words("<tag> & today. second phrase.", 0.15), {"style": style, "accent": "#123abc"},
-                marks=[{"w": 1, "mark": "emph"}])
+                marks=[{"w": 2, "mark": "emph"}])
         doc = captions.plan(reel)
         boxes = {c["i"]: (100, 1200, 900, 1400) for c in doc["chunks"]}
         css, layers, tl = captions.layer(doc, boxes, 2 / 3, t)
         source = css + "\n".join(layers + tl)
         assert 'font-family: "Inter"' in css and "z-index: 600" in source
         assert all(s not in source for s in ("@keyframes", "translateX", "onComplete", "repeat: -1", "text-transform"))
-        assert all(w == "400" for w in re.findall(r"font-weight:\s*(\d+)", source))
+        face = captions.STYLES[style]["font"]
+        assert f'font-weight: {face["weight"]}; font-style: {face["style"]};' in css
+        assert doc["font"]["family"] == face["family"] and doc["font"]["weight"] == face["weight"]
         assert "#123abc" in source
         assert "&amp;" in source and ("&lt;TAG&gt;" if captions.STYLES[style]["case"] == "upper" else "&lt;tag&gt;") in source
         assert source.count("xPercent: -50") == len(doc["chunks"])
@@ -378,10 +471,85 @@ def picker_style_checks(tmp):
         expect_stop(2, lambda e=extra: captions.check_style({"style": "clean", **e}), "caption_style")
 
 
+def face_width_checks(tmp):
+    width = captions.text_width_em
+    text = "more than one Gmail account"
+    assert width(text, "Montserrat 850") == width(text, "Montserrat 900")
+    assert width(text, "Montserrat 650 Italic") == width(text, "Montserrat 700 Italic")
+    assert width(text, "Montserrat 950") == width(text, "Montserrat 900")
+    table = captions.read_json(captions.CHAR_WIDTHS)
+    italic = table["faces"]["Montserrat|900|italic"]["widths"]
+    assert width(text, "Montserrat Black Italic") == sum(italic[ch] / table["units_per_em"] for ch in text)
+    assert width(text, "Montserrat Black Italic") >= width(text, "Montserrat 900")
+    for face in captions.bundled_fonts.faces():
+        weights = face["weight"]
+        weights = range(weights[0], weights[1] + 1, 100) if isinstance(weights, list) else [weights]
+        for weight in weights:
+            assert f'{face["family"]}|{weight}|{face["style"]}' in table["faces"], (face, weight)
+
+
+def missing_glyph_checks(tmp):
+    font = captions.STYLES["bold-pop"]["font"]
+    width = lambda text: captions.text_width_em(text, font)
+    assert abs(width("ÄÖÜ") - width("AOU")) < 1e-12
+    assert width("Ж") >= max(0.6, width("M"))
+
+
+def unknown_face_checks(tmp):
+    table = captions.read_json(captions.CHAR_WIDTHS)
+    for ch in "WiÄ—":
+        widest = max(face["widths"].get(ch, 0) for face in table["faces"].values())
+        assert captions.text_width_em(ch, "Unknown 400") == widest / table["units_per_em"]
+    note = {"notes": []}
+    captions._width_note(note, "Unknown 400")
+    assert len(note["notes"]) == 1
+
+
+def italic_look_checks(tmp):
+    assert captions._look("Italic", 64, "Inter", 600, style="italic")["font"] == {
+        "family": "Inter", "weight": 600, "style": "italic"}
+
+
+def spoken_marks_checks(tmp):
+    reel = tmp / "spoken"
+    items = words("it doesn't — work.")
+    fixture(reel, items, {"style": "clean"})
+    with contextlib.redirect_stdout(io.StringIO()) as output:
+        assert captions.main(["marks", "--reel-dir", str(reel), "--candidates",
+                              '[{"w": 3, "mark": "emph"}]']) == 0
+    assert json.loads(output.getvalue()) == [{"w": 1, "mark": "emph"}, {"w": 3, "mark": "emph"}]
+
+
+def unspoken_mark_validation_checks(tmp):
+    reel = tmp / "unspoken"
+    for unspoken in ("—", "", " ", "– —"):
+        items = words("it doesn't — work.")
+        items[2]["word"] = unspoken
+        marks = [{"w": 2, "mark": "emph"}]
+        doc = {"schema": 1, "reel": "unspoken", "fps": 30, "words": captions.DEFAULT_WORDS,
+               "beats": [], "word_marks": marks, "proposed": {}, "notes": {}, "needs": "", "sent_at": None,
+               "caption_style": {"style": "clean"}}
+        problems = captions.beat_schema.beat_map_problems(doc, [w["word"] for w in items])
+        assert len(problems) == 1 and "has no spoken word" in problems[0], problems
+        assert captions.beat_schema.marks_problems(marks, items) == problems
+        fixture(reel, items, {"style": "clean"}, marks=marks)
+        put(reel / captions.SEND, doc)
+        expect_stop(2, lambda: captions.plan(reel), problems[0])
+
+
+def spoken_symbol_marks_checks(tmp):
+    reel = tmp / "symbols"
+    fixture(reel, words("we grew 40 % & more today."), {"style": "clean"})
+    with contextlib.redirect_stdout(io.StringIO()) as output:
+        assert captions.main(["marks", "--reel-dir", str(reel), "--candidates",
+                              '[{"w": 4, "mark": "emph"}]']) == 0
+    assert json.loads(output.getvalue()) == [{"w": 4, "mark": "emph"}], output.getvalue()
+
+
 def marker_width_checks(tmp):
     reel = tmp / "marker"
     fixture(reel, words("this doesn't work.", 0.3), {"style": "clean", "mark_look": "marker"},
-            marks=[{"w": 2, "mark": "emph"}])
+            marks=[{"w": 1, "mark": "emph"}, {"w": 2, "mark": "emph"}])
     doc = captions.plan(reel)
     boxes = [(100, 1200, 900, 1400)] * len(doc["chunks"])
     css, markup, tl = captions.layer(doc, boxes, 1, lambda f: str(f / 30))
@@ -410,12 +578,14 @@ def marker_width_checks(tmp):
     with patch.object(captions, "CHAR_WIDTHS", table):
         normal = captions.plan(reel)
         _, original, _ = captions.layer(normal, [(100, 1200, 600, 1400)], 1, str)
-        put(table, {"units_per_em": 1000, "widths": {"W": 4000}, "default": 600})
+        put(table, {"units_per_em": 1000, "faces": {"Inter|400|normal": {"widths": {"W": 4000}}}, "default": 600})
         wide = captions.plan(reel)
         _, fitted, _ = captions.layer(wide, [(100, 1200, 600, 1400)], 1, str)
         size = lambda lines: float(re.search(r'font-size: ([0-9.]+)px', "".join(lines))[1])
         assert size(fitted) < size(original) and any("smaller" in n for n in wide["notes"])
-        assert captions.text_width_em("W?") == 4.6  # missing glyph retains the old estimate
+        assert captions.text_width_em("W?") == 8  # missing glyphs use the face's widest letter
+        assert captions.text_width_em("W?", {"family": "Inter", "weight": 600}) == 8
+        assert not any("no measured width table" in n for n in wide["notes"])
 
 
 def loud_checks(tmp):
@@ -434,7 +604,7 @@ def loud_checks(tmp):
     put(reel / "work/envelope.json", {"win_s": 0.01, "db": db})
     candidates = captions.suggest_loud(reel, items)
     assert candidates == [{"w": 2, "mark": "emph"}], candidates
-    assert captions.pick_marks(items, candidates) == [{"w0": 1, "w1": 2, "mark": "emph"}]
+    assert captions.pick_marks(items, candidates) == [{"w0": 2, "w1": 2, "mark": "emph"}]
     doc = captions.plan(reel)
     assert [w["w"] for c in doc["chunks"] for w in c["words"] if w["mark"]] == [1, 2]
     assert any("loud" in n.lower() for n in doc["notes"])
@@ -539,8 +709,12 @@ def main():
     failed = 0
     with tempfile.TemporaryDirectory() as tmp:
         for check in (style_checks, brand_checks, brand_font_checks, brand_font_missing_checks,
-                      reel_beats_saved_checks, chunk_checks, mark_checks, truth_checks, coverage_checks, layer_checks,
-                      broll_backing_checks, cli_checks, picker_style_checks, marker_width_checks, loud_checks, picker_doc_checks,
+                      reel_beats_saved_checks, chunk_checks, mark_checks, truth_checks,
+                      send_num_key_checks, send_emph_key_checks, send_key_checks, proposal_checks,
+                      proposal_collision_checks, shared_marks_rule_checks, coverage_checks, layer_checks,
+                      broll_backing_checks, cli_checks, picker_style_checks, face_width_checks, missing_glyph_checks,
+                      unknown_face_checks, italic_look_checks, spoken_marks_checks, unspoken_mark_validation_checks,
+                      spoken_symbol_marks_checks, marker_width_checks, loud_checks, picker_doc_checks,
                       remembered_unpicked_checks):
             root = Path(tmp) / check.__name__
             root.mkdir()

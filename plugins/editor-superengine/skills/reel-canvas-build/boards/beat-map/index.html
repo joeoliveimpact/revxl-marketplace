@@ -6,7 +6,7 @@
 <title>Beat map</title>
 <style>
   :root { --bg:#14161b; --panel:#1d2028; --line:#2c313c; --text:#e7e9ee; --muted:#9aa3b2; --accent:#7aa7ff;
-          --full:#4f7fd8; --split:#36a47a; --stack:#c9892b; --pip:#9a6ad6; --overlay:#d35c7c; --bad:#ff8a8a; }
+          --face:#5b8def; --graphic:#d9962f; --bad:#ff8a8a; }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
@@ -17,26 +17,49 @@
   .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin: 16px 0; }
   :focus-visible { outline: 3px solid #ffd166; outline-offset: 2px; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  #strip { display: flex; height: 34px; border-radius: 6px; overflow: hidden; background: var(--line); gap: 2px; }
-  #strip div { flex-basis: 0; min-width: 2px; }
-  #strip { position: relative; }
+  main, .panel, .focus-content { min-width: 0; overflow-wrap: anywhere; }
+  .timeline-scroll { max-width: 100%; overflow-x: auto; padding: 5px; }
+  #timeline { display: flex; gap: 6px; }
+  .tl-beat { position: relative; min-width: 52px; padding: 6px 4px; }
+  .tl-beat[aria-current=true] { border-color: var(--accent); background: #2b3550; }
+  .tl-beat .sketch { width: 28px; margin: 0 auto 4px; }
+  .tl-beat .tl-number, .tl-beat .tl-time { display: block; }
+  .sketch { display: block; position: relative; aspect-ratio: 9 / 16; overflow: hidden; border: 1px solid var(--muted); border-radius: 6px; background: #12141a; }
+  .sketch-area { position: absolute; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .face-area, .face-swatch { background: var(--face); }
+  .graphic-area, .graphic-swatch { background: var(--graphic); }
+  .head-mark { display: block; width: 28%; aspect-ratio: 1; border-radius: 50%; background: #14213b; }
+  .graphic-lines { width: 65%; }
+  .graphic-lines span { display: block; height: 2px; background: #382407; margin: 3px 0; }
+  .graphic-lines span:last-child { width: 65%; }
+  .flag-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #ffd166; }
+  .tl-beat > .flag-dot { position: absolute; top: 5px; right: 4px; }
+  .flag-reason { border-left: 3px solid #ffd166; padding-left: 10px; }
+  .focus-columns { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 16px; }
+  .focus-sketch .sketch { width: 120px; }
+  .focus-content p { margin: 0 0 8px; }
+  .focus-content h3 { font-size: 15px; margin: 8px 0 4px; }
+  .focus-meta .chip { margin-top: 0; }
+  .layout-picker { display: flex; flex-wrap: wrap; gap: 8px; }
+  .layout-choice { width: 110px; padding: 8px; }
+  .layout-choice .sketch { width: 42px; margin: 0 auto 6px; }
+  .layout-choice[aria-pressed=true] { border-color: var(--accent); background: #2b3550; }
+  .more-controls { margin-top: 12px; }
+  summary { cursor: pointer; }
+  .beat-nav { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0 8px; }
+  .primary { background: var(--accent); color: #0d1320; font-weight: 600; }
+  button:disabled { opacity: .5; cursor: default; }
+  input, select { max-width: 100%; min-width: 0; }
   .strong-beat-mark { position: absolute; top: 0; bottom: 0; width: 6px; transform: translateX(-50%);
     background: var(--accent); border: 1px solid #0d1320; border-radius: 3px; }
   #strong-beat-suggestions { margin-top: 10px; font-size: 13px; color: var(--muted); }
   #strong-beat-note { margin-bottom: 0; font-size: 13px; }
   .legend { display: flex; flex-wrap: wrap; gap: 14px; list-style: none; padding: 0; margin: 10px 0 0; color: var(--muted); font-size: 13px; }
   .legend span { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
-  .l-full { background: var(--full); } .l-split { background: var(--split); } .l-stack { background: var(--stack); }
-  .l-pip { background: var(--pip); } .l-overlay { background: var(--overlay); }
-  .tablewrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; vertical-align: top; padding: 10px 8px; border-bottom: 1px solid var(--line); }
-  th { color: var(--muted); font-weight: 600; font-size: 13px; }
-  tr.changed td:first-child { box-shadow: inset 4px 0 0 var(--accent); }
+  .legend .flag-dot { border-radius: 50%; }
   .chip { display: none; margin-top: 6px; font-size: 12px; padding: 1px 8px; border-radius: 999px; background: #2b3b5c; color: #cfe0ff; white-space: nowrap; }
-  tr.changed .chip { display: inline-block; }
+  #focus.changed .chip { display: inline-block; }
   .time { white-space: nowrap; color: var(--muted); }
-  .say { min-width: 220px; max-width: 360px; }
   .word { border-radius: 4px; padding: 1px 2px; cursor: pointer; }
   .word:hover { background: #2a2f3a; }
   .word[data-mark] { background: #2b3550; }
@@ -51,8 +74,6 @@
   input[aria-invalid=true] { border-color: var(--bad); }
   .err { color: var(--bad); font-size: 13px; margin: 4px 0 0; }
   textarea { width: 100%; min-height: 60px; padding: 8px; resize: vertical; }
-  td textarea { min-width: 160px; }
-  .shows { min-width: 180px; }
   .shows .why { color: var(--muted); font-size: 13px; margin-top: 4px; }
   label.block { display: block; font-weight: 600; margin-bottom: 6px; }
   .scene-controls { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 14px; }
@@ -81,15 +102,15 @@
   #send:disabled { opacity: .5; cursor: default; }
   @media (max-width: 1100px) {
     main { padding: 14px 12px 130px; }
-    thead { display: none; }
-    table, tbody, tr, td { display: block; width: 100%; }
-    tr { border: 1px solid var(--line); border-radius: 8px; margin-bottom: 12px; padding: 4px 0; }
-    td { border: 0; padding: 6px 12px; }
-    td::before { content: attr(data-label); display: block; color: var(--muted); font-size: 12px; }
-    .say, .shows { min-width: 0; max-width: none; overflow-wrap: anywhere; }
-    td textarea, td select, td input { min-width: 0; max-width: 100%; }
-    td select { width: 100%; }
     .bar { flex-wrap: wrap; }
+  }
+  @media (max-width: 559px) {
+    .focus-columns { grid-template-columns: 72px minmax(0, 1fr); gap: 8px 12px; }
+    .focus-sketch { grid-column: 1; grid-row: 1; }
+    .focus-sketch .sketch { width: 72px; }
+    .focus-content { display: contents; }
+    .focus-content > * { grid-column: 1 / -1; }
+    .focus-content > .focus-meta { grid-column: 2; grid-row: 1; align-self: center; }
   }
 .advanced-controls{border:1px solid var(--line);border-radius:8px;padding:10px;margin:10px 0}
 .advanced-controls>summary{cursor:pointer;font-weight:600}
@@ -98,15 +119,16 @@
 <body>
 <main>
   <h1>Beat map</h1>
-  <p class="muted">Each row is one beat of your video. Check the layout and the number for each one, tap words to mark them, and leave notes. Your changes save by themselves.</p>
+  <p class="muted">Check each beat's layout. Tap a beat on the timeline, pick the layout that looks right, then press Looks good, next. Your changes save by themselves.</p>
 
   <p id="empty" class="panel" hidden>No beat map yet. Ask Claude to build it from your cut.</p>
 
   <div id="board" hidden>
-    <section class="panel" aria-labelledby="strip-h">
-      <h2 id="strip-h">The whole video at a glance</h2>
-      <div id="strip" role="list" aria-label="Beats in order, sized by length"></div>
+    <section class="panel" aria-labelledby="timeline-h">
+      <h2 id="timeline-h">Your video, start to finish</h2>
+      <div class="timeline-scroll"><div id="timeline" role="group" aria-label="Beats in order, sized by length"></div></div>
       <ul class="legend" id="legend"></ul>
+      <p class="muted" id="punchin-layout-note" hidden>With Punch-ins, every beat stays full screen. Choose Layout switches in Editing style, further down, to use these layouts.</p>
       <details id="strong-beat-suggestions" hidden>
         <summary>Strong beats (up to 3 suggestions)</summary>
         <p>Choose a punch-in or transition yourself; these marks do not change your edit.</p>
@@ -114,6 +136,8 @@
       </details>
       <p class="muted" id="strong-beat-note" hidden>No steady beat in the music, so no strong-beat suggestions.</p>
     </section>
+
+    <section class="panel" id="focus" aria-labelledby="focus-h"></section>
 
     <section class="panel" aria-labelledby="style-h">
       <h2 id="style-h">Editing style</h2>
@@ -181,18 +205,6 @@
 </details>
     </section>
 
-    <section class="panel" aria-labelledby="beats-h">
-      <h2 id="beats-h">Beats</h2>
-      <p class="muted">Tap a word to mark it: number, key word, stress, call to action, then off again.</p>
-      <p id="words-note" class="err" hidden>The words couldn't load, so word marks are off for now.</p>
-      <div class="tablewrap">
-        <table id="beats">
-          <thead><tr><th>#</th><th>Time</th><th>What you say</th><th>Layout</th><th>Number shown</th><th>What's on screen / why</th><th>Your note</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
-
     <section class="panel">
       <label class="block" for="needs">Anything you need from Claude?</label>
       <textarea id="needs" rows="3"></textarea>
@@ -210,6 +222,21 @@
 "use strict";
 const LAYOUTS = [["full", "Full screen"], ["split", "Split"], ["stack", "Stack"], ["pip", "Picture-in-picture"], ["overlay", "Overlay"]];
 const LAYOUT_NAME = Object.fromEntries(LAYOUTS);
+const LAYOUT_DESC = {
+  full: "Full screen: your face fills the screen",
+  split: "Split: graphic on the top half, your face on the bottom half",
+  stack: "Stack: your face on top, graphic below",
+  pip: "Picture-in-picture: graphic fills the screen, your face in a small box at the top right",
+  overlay: "Overlay: your face fills the screen, with a card over the lower part"
+};
+// [x, y, w, h] on 1080x1920. Must match layouts/*.html.
+const LAYOUT_BOXES = {
+  full:    {face: [0, 0, 1080, 1920], graphic: null},
+  split:   {face: [0, 960, 1080, 960], graphic: [0, 0, 1080, 960]},
+  stack:   {face: [0, 0, 1080, 844], graphic: [0, 858, 1080, 1062]},
+  pip:     {face: [738, 28, 312, 555], graphic: [0, 0, 1080, 1920]},
+  overlay: {face: [0, 0, 1080, 1920], graphic: [24, 1280, 1032, 564]},
+};
 const MARKS = ["num", "key", "emph", "cta"];
 const MARK_NAME = {num: "number", key: "key word", emph: "stress", cta: "call to action"};
 const $ = (s) => document.querySelector(s);
@@ -224,9 +251,82 @@ const STRONG_BEAT_LABEL = "strong beat: good spot for a punch-in or transition";
 const TRANSITION_MENU = {"flash":{"kind":"cut","params":{"color":"color"},"dur_min":1,"dur_max":"ceil(fps/3)"},"whip":{"kind":"cut","moves_aroll":true,"params":{"dir":["l","r","u","d"]},"dur_min":1,"dur_max":"ceil(fps/3)"},"zoom":{"kind":"cut","moves_aroll":true,"params":{},"dur_min":1,"dur_max":"ceil(fps/3)"},"glitch":{"kind":"cut","moves_aroll":true,"params":{},"dur_min":1,"dur_max":"ceil(fps/3)"},"fade":{"kind":"overlay","params":{},"dur_min":1,"dur_max":"min(fps,beat_length/2)"},"push":{"kind":"overlay","params":{"dir":["l","r","u","d"]},"dur_min":1,"dur_max":"min(fps,beat_length/2)"},"wipe":{"kind":"overlay","params":{"dir":["l","r","u","d"]},"dur_min":1,"dur_max":"min(fps,beat_length/2)"},"shader":{"kind":"overlay","params":{"shader":["light-leak","sdf-iris","chromatic-split","cross-warp-morph","flash-through-white","glitch"]},"dur_min":1,"dur_max":"min(fps,beat_length/2)"}};
 let forbidden;
 let sceneCatalog = [], sceneSuggestions = {}, sceneReasons = {}, sketchScenes = {}, sceneFieldId = 0;
+let sceneCatalogLoaded = false;
 let brollClips = [];
-const invalidBroll = new Set();
-const invalid = new Set();   // beat ids whose number box holds something that isn't a number
+const invalidBroll = new Map();   // unfinished start text, kept in memory per beat
+const invalid = new Map();   // unfinished number text, never written into doc
+let focusIndex = null, moreOpen = false, seen = new Set(), seenSig = "";
+
+function sketch(layout) {
+  const valid = Object.hasOwn(LAYOUT_BOXES, layout);
+  const frame = el("span", {class: "sketch", role: "img", "aria-label": valid ? LAYOUT_DESC[layout] : "No layout yet"});
+  const boxes = valid ? LAYOUT_BOXES[layout] : null;
+  if (!boxes) return frame;
+  const area = (kind, box) => {
+    const [x, y, w, h] = box;
+    return el("span", {class: "sketch-area " + kind + "-area", "aria-hidden": "true",
+      style: `left:${x/1080*100}%;top:${y/1920*100}%;width:${w/1080*100}%;height:${h/1920*100}%`},
+      kind === "face" ? el("span", {class: "head-mark"}) :
+        el("span", {class: "graphic-lines"}, el("span"), el("span"), el("span")));
+  };
+  if (layout === "pip") frame.append(area("graphic", boxes.graphic), area("face", boxes.face));
+  else {
+    frame.append(area("face", boxes.face));
+    if (boxes.graphic) frame.append(area("graphic", boxes.graphic));
+  }
+  return frame;
+}
+
+function seenKey() { return "beat-map-seen:" + doc.reel; }
+function loadSeen() {
+  seenSig = JSON.stringify(doc.beats.map(b => [b.id, doc.proposed?.[b.id]?.layout ?? null]));
+  try {
+    const saved = JSON.parse(localStorage.getItem(seenKey()));
+    if (saved?.sig === seenSig && Array.isArray(saved.ids))
+      seen = new Set(saved.ids.filter(id => doc.beats.some(b => b.id === id)));
+  } catch (e) { /* memory only when storage is unavailable */ }
+}
+function lookAt(b) {
+  seen.add(b.id);
+  try { localStorage.setItem(seenKey(), JSON.stringify({sig: seenSig, ids: [...seen]})); }
+  catch (e) { /* keep working in memory */ }
+}
+function flagReason(b) {
+  if (!b) return null;
+  if (!Object.hasOwn(LAYOUT_NAME, b.layout)) return "This beat has no layout yet. Pick one below.";
+  if (invalid.has(b.id)) return "The number in More isn't a number yet.";
+  if (invalidBroll.has(b.id)) return "The B-roll start time in More isn't valid.";
+  if (seen.has(b.id)) return null;
+  if (b.scene && sceneCatalogLoaded) {
+    const spec = sceneSpec(b.scene.id);
+    if (!spec) return "This beat's scene isn't available any more. Open More and pick another, or press Remove scene.";
+    const suggestions = sceneSuggestions[b.id];
+    if (suggestions && typeof suggestions === "object" && !suggestions[b.scene.id]) {
+      const reason = sceneReasons[b.id]?.[b.scene.id];
+      if (typeof reason === "string" && reason.trim()) {
+        const text = reason.trimEnd();
+        return "The " + sceneTitle(spec) + " card doesn't fit this beat: " + text + (text.endsWith(".") ? "" : ".");
+      }
+      return "The " + sceneTitle(spec) + " card doesn't fit this beat's words or length. Open More and pick another, or press Remove scene.";
+    }
+  }
+  const p = doc.proposed?.[b.id];
+  if (typeof p?.check === "string" && p.check.trim() && b.layout === p.layout) return p.check;
+  return null;
+}
+
+function openBeat(index, focusHeading = false) {
+  focusIndex = index;
+  renderTimeline(); renderFocus();
+  const current = $("#timeline .tl-beat[aria-current=true]");
+  if (current) {
+    // scrollIntoView also scrolls the page/hub. Move only this timeline's scroll box.
+    const scroller = $(".timeline-scroll"), box = scroller.getBoundingClientRect(), beat = current.getBoundingClientRect();
+    if (beat.left < box.left) scroller.scrollLeft -= box.left - beat.left;
+    else if (beat.right > box.right) scroller.scrollLeft += beat.right - box.right;
+  }
+  if (focusHeading) $("#focus-h")?.focus();
+}
 
 function el(tag, attrs, ...kids) {
   const e = document.createElement(tag);
@@ -238,7 +338,17 @@ function el(tag, attrs, ...kids) {
   for (const c of kids) if (c != null) e.append(c);   // strings become text nodes, never markup
   return e;
 }
-function setStatus(state, msg) { statusEl.dataset.state = state; statusEl.textContent = msg; }
+function pendingValueProblem() {
+  const i = doc.beats.findIndex(b => invalid.has(b.id) || invalidBroll.has(b.id));
+  if (i < 0) return null;
+  return "Beat " + (i + 1) + (invalid.has(doc.beats[i].id)
+    ? "'s number isn't a number yet. It isn't saved."
+    : "'s B-roll needs a start time of zero seconds or more. It isn't saved.");
+}
+function setStatus(state, msg) {
+  const pending = (state === "saving" || state === "saved") && pendingValueProblem();
+  statusEl.dataset.state = pending ? "error" : state; statusEl.textContent = pending || msg;
+}
 function secs(f) { return (f / doc.fps).toFixed(1); }
 function encPath(rel) {
   if (typeof rel !== "string" || !rel.trim() || rel.includes("\\") || rel.startsWith("/") ||
@@ -399,6 +509,7 @@ let savedWordMoves = {}, savedCameraMoves = {}, wordMoveChanged = false, cameraM
 
 function styleVisibility() {
   const punch = $("#edit-style").value === "punch-in", words = $("#word-punches").value, on = !!words;
+  $("#punchin-layout-note").hidden = !punch;
   $("#punch-options").hidden = !punch;
   $("#punch-advanced-options").hidden = !punch;
   $("#punch-shape-options").hidden = !["dramatic", "subtle"].includes(words);
@@ -466,15 +577,25 @@ function readEditStyle() {
   styleVisibility();
 }
 
-function renderStrip() {
-  const strip = $("#strip");
-  strip.replaceChildren();
-  doc.beats.filter((b) => b.layout !== "overlay").forEach((b) => {
-    const n = doc.beats.indexOf(b) + 1;
-    strip.append(el("div", {"data-beat": b.id, role: "listitem", class: "l-" + b.layout,
-      style: "flex-grow:" + Math.max(0, b.end_f - b.start_f),
-      title: "Beat " + n + ", " + (LAYOUT_NAME[b.layout] || "No layout") + ", " + secs(b.start_f) + "–" + secs(b.end_f) + " s",
-      "aria-label": "Beat " + n + ", " + (LAYOUT_NAME[b.layout] || "No layout")}));
+function renderTimeline() {
+  const timeline = $("#timeline");
+  timeline.replaceChildren();
+  doc.beats.forEach((b, i) => {
+    const flagged = !!flagReason(b);
+    const button = el("button", {type: "button", class: "tl-beat", "data-beat": b.id,
+      style: "flex:" + Math.max(0, b.end_f - b.start_f) + " 1 0",
+      "aria-label": "Beat " + (i + 1) + ", " + (LAYOUT_NAME[b.layout] || "No layout yet") +
+        ", starts at " + secs(b.start_f) + " s" + (flagged ? ", flagged for you" : "") +
+        (seen.has(b.id) ? ", looked at" : "")},
+      sketch(b.layout), el("span", {class: "tl-number", text: String(i + 1)}),
+      el("span", {class: "tl-time", text: Math.round(b.start_f / doc.fps) + "s"}));
+    if (i === focusIndex) button.setAttribute("aria-current", "true");
+    if (flagged) button.append(el("span", {class: "flag-dot", "aria-hidden": "true"}));
+    button.onclick = () => {
+      openBeat(i);
+      $("#timeline .tl-beat[aria-current=true]").focus({preventScroll: true});
+    };
+    timeline.append(button);
   });
   renderStrongBeats();
 }
@@ -484,8 +605,13 @@ function renderStrongBeats() {
   const total = Math.max(0, ...doc.beats.map(b => b.end_f)) / doc.fps;
   const times = strongBeatTimes.filter(t => Number.isFinite(t) && t >= 0 && t < total);
   for (const at of times) {
-    $("#strip").append(el("span", {class: "strong-beat-mark", role: "listitem", "data-time-s": at,
-      style: "left:" + (100 * at / total) + "%", title: STRONG_BEAT_LABEL,
+    const index = doc.beats.findIndex(b => b.layout !== "overlay" && b.start_f <= at * doc.fps && at * doc.fps < b.end_f);
+    if (index < 0) continue;
+    const beat = doc.beats[index];
+    const button = $("#timeline").children[index];
+    button.setAttribute("aria-label", button.getAttribute("aria-label") + ", strong beat at " + at.toFixed(2) + " s");
+    button.append(el("span", {class: "strong-beat-mark", "aria-hidden": "true", "data-time-s": at,
+      style: "left:" + (100 * (at * doc.fps - beat.start_f) / (beat.end_f - beat.start_f)) + "%", title: STRONG_BEAT_LABEL,
       "aria-label": at.toFixed(2) + " s: " + STRONG_BEAT_LABEL}));
   }
   $("#strong-beat-times").replaceChildren(...times.map(at =>
@@ -506,7 +632,7 @@ function setMark(span, w, mark) {
 }
 
 function wordCell(b) {
-  const td = el("td", {class: "say", "data-label": "What you say"});
+  const td = el("div", {class: "say"});
   const a = b.speech_anchor || {};
   if (!words) { td.textContent = a.text || ""; return td; }
   const marks = new Map((doc.word_marks || []).map((m) => [m.w, m.mark]));
@@ -543,28 +669,37 @@ function brollControls(b, i) {
   }
   select.value = brollClips.length ? (b.broll?.ledger_id || "") : "";
   fit.value = b.broll?.fit || "cover";
-  start.value = String((b.broll?.in || 0) / doc.fps);
+  start.value = invalidBroll.get(b.id) ?? String((b.broll?.in || 0) / doc.fps);
+  const err = el("p", {class: "err", id: start.id + "-error", text: "Type a start time of zero seconds or more."});
+  start.setAttribute("aria-describedby", err.id);
+  const showError = () => {
+    err.hidden = !invalidBroll.has(b.id);
+    if (err.hidden) start.removeAttribute("aria-invalid");
+    else start.setAttribute("aria-invalid", "true");
+  };
   const enabled = () => { fit.disabled = start.disabled = !b.broll || !brollClips.length; };
   const update = () => {
-    invalidBroll.delete(b.id);
     if (!select.value) b.broll = null;
     else {
       const clip = brollClips.find((c) => c.ledger_id === select.value);
       const seconds = start.value.trim() === "" ? NaN : Number(start.value);
-      if (!clip || !Number.isFinite(seconds) || seconds < 0) { invalidBroll.add(b.id); edited(); return; }
+      if (!clip || !Number.isFinite(seconds) || seconds < 0) {
+        invalidBroll.set(b.id, start.value); showError(); edited(false); return;
+      }
       const from = Math.round(seconds * doc.fps);
       b.broll = {src: clip.src, in: from, out: from + b.end_f - b.start_f, fit: fit.value, ledger_id: clip.ledger_id};
     }
-    enabled(); edited();
+    invalidBroll.delete(b.id); showError(); enabled(); edited();
   };
   select.addEventListener("change", update);
   fit.addEventListener("change", update);
   start.addEventListener("input", update);
-  enabled();
+  enabled(); showError();
   wrap.append(el("label", {for: select.id, text: "B-roll"}), select,
               el("details", {class: "advanced-controls", "data-controls-key": "broll-" + b.id}, el("summary", {text: "Advanced controls"}),
                 el("label", {for: fit.id, text: "Fit"}), fit,
-                el("label", {for: start.id, text: "Starts at (seconds)"}), start));
+                el("label", {for: start.id, text: "Starts at (seconds)"}), start, err));
+  if (invalidBroll.has(b.id)) wrap.querySelector("details").open = true;
   return wrap;  // Loading never rewrites a saved choice.
 }
 
@@ -663,23 +798,29 @@ function transitionControls(b, i) {
   refresh(); return wrap;
 }
 
-function row(b, i) {
-  const tr = el("tr", {"data-beat": b.id});
+function renderFocus() {
+  const previousMore = $("#more");
+  if (previousMore) moreOpen = previousMore.open;
+  const i = focusIndex, b = doc.beats[i], tr = $("#focus");
+  if (!b) {
+    tr.removeAttribute("data-beat"); tr.classList.remove("changed");
+    tr.replaceChildren(el("h2", {id: "focus-h", tabindex: "-1", text: "No beats yet"}),
+      el("p", {text: "No beats yet. Ask Claude to build the beat map from your cut."}));
+    return;
+  }
+  tr.dataset.beat = b.id;
   const mark = () => tr.classList.toggle("changed", isChanged(b));
   const fid = (k) => k + "-" + i;
 
-  const sel = el("select", {name: "layout", id: fid("layout")});
-  LAYOUTS.forEach(([v, name]) => sel.append(el("option", {value: v, text: name})));
-  sel.value = b.layout;
-  sel.addEventListener("change", () => { b.layout = sel.value; mark(); renderStrip(); edited(); });
-
   const val = el("input", {name: "value", id: fid("value"), type: "text", inputmode: "decimal", autocomplete: "off"});
-  val.value = b.value == null ? "" : String(b.value);
-  const err = el("p", {class: "err", hidden: "", text: "Type a number, like 3 or 2.5, or leave it empty."});
+  val.value = invalid.get(b.id) ?? (b.value == null ? "" : String(b.value));
+  const err = el("p", {class: "err", id: fid("value-error"), hidden: "", text: "Type a number, like 3 or 2.5, or leave it empty."});
+  val.setAttribute("aria-describedby", err.id);
   val.addEventListener("input", () => {
     const t = val.value.trim();
     if (t !== "" && !/^[-+]?(\d+(\.\d*)?|\.\d+)$/.test(t)) {
-      invalid.add(b.id); err.hidden = false; val.setAttribute("aria-invalid", "true");
+      invalid.set(b.id, val.value); err.hidden = false; val.setAttribute("aria-invalid", "true");
+      edited(false);
       return;   // not a number: shown, not saved
     }
     invalid.delete(b.id); err.hidden = true; val.removeAttribute("aria-invalid");
@@ -692,6 +833,9 @@ function row(b, i) {
     }
     mark(); edited();
   });
+  if (invalid.has(b.id)) {
+    err.hidden = false; val.setAttribute("aria-invalid", "true");
+  }
 
   const note = el("textarea", {name: "note", id: fid("note"), rows: "2"});
   note.value = (doc.notes && doc.notes[b.id]) || "";
@@ -702,17 +846,55 @@ function row(b, i) {
   });
 
   const p = (doc.proposed && doc.proposed[b.id]) || {};
-  tr.append(
-    el("td", {"data-label": "#"}, String(i + 1), el("br"), el("span", {class: "chip", text: "You changed this"})),
-    el("td", {class: "time", "data-label": "Time", text: secs(b.start_f) + "–" + secs(b.end_f) + " s"}),
-    wordCell(b),
-    el("td", {"data-label": "Layout"}, el("label", {class: "sr", for: fid("layout"), text: "Layout for beat " + (i + 1)}), sel),
-    el("td", {"data-label": "Number shown"}, el("label", {class: "sr", for: fid("value"), text: "Number shown in beat " + (i + 1)}), val, err),
-    el("td", {class: "shows", "data-label": "What's on screen / why"},
-      el("div", {text: p.shows || "—"}), el("div", {class: "why", text: p.why || ""}), sceneControls(b.id), brollControls(b, i), transitionControls(b, i)),
-    el("td", {"data-label": "Your note"}, el("label", {class: "sr", for: fid("note"), text: "Your note on beat " + (i + 1)}), note));
+  const content = el("div", {class: "focus-content"},
+    el("p", {class: "focus-meta"}, el("span", {class: "time", text: secs(b.start_f) + "–" + secs(b.end_f) + " s"}), " ",
+      el("span", {class: "chip", text: "You changed this"})));
+  const reason = flagReason(b);
+  if (reason) content.append(el("p", {class: "flag-reason", text: "Flagged for you: " + reason}));
+  content.append(el("h3", {text: "What you say"}), wordCell(b),
+    el("p", {class: "muted", text: "Tap a word to mark it: number, key word, stress, call to action, then off again."}),
+    el("p", {id: "words-note", class: "err", text: "The words couldn't load, so word marks are off for now."}));
+  content.lastChild.hidden = !!words;
+  content.append(el("div", {class: "shows"}, el("p", {text: "On screen: " + (p.shows || "—")}),
+    el("p", {class: "why", text: p.why || ""})), el("h3", {text: "Layout"}));
+  const picker = el("div", {role: "group", "aria-label": "Layout for beat " + (i + 1), class: "layout-picker"});
+  for (const [layout, name] of LAYOUTS) {
+    const choice = el("button", {type: "button", class: "layout-choice", "data-layout": layout,
+      "aria-pressed": String(b.layout === layout)}, sketch(layout), el("span", {text: name}));
+    choice.onclick = () => {
+      b.layout = layout; lookAt(b); renderTimeline(); renderFocus(); edited();
+      $("#focus .layout-choice[aria-pressed=true]").focus({preventScroll: true});
+    };
+    picker.append(choice);
+  }
+  const more = el("details", {class: "more-controls", id: "more"},
+    el("summary", {text: "More: number, scene, B-roll, transition, note"}),
+    el("label", {class: "block", for: fid("value"), text: "Number shown"}), val, err,
+    sceneControls(b.id), brollControls(b, i), transitionControls(b, i),
+    el("label", {class: "block", for: fid("note"), text: "Your note"}), note);
+  more.open = moreOpen;
+  more.ontoggle = () => { if (more.isConnected) moreOpen = more.open; };
+  const back = el("button", {type: "button", id: "prev-beat", text: "Back"});
+  back.disabled = i === 0;
+  back.onclick = () => openBeat(i - 1, true);
+  const next = el("button", {type: "button", id: "ok-beat", class: "primary",
+    text: i === doc.beats.length - 1 ? "Looks good" : "Looks good, next"});
+  next.onclick = () => { lookAt(b); openBeat(Math.min(i + 1, doc.beats.length - 1), true); };
+  content.append(picker, more, el("nav", {class: "beat-nav", "aria-label": "Beat review"}, back, next),
+    el("p", {id: "review-progress", class: "muted", role: "status"}));
+  tr.replaceChildren(el("h2", {id: "focus-h", tabindex: "-1", text: "Beat " + (i + 1) + " of " + doc.beats.length}),
+    el("div", {class: "focus-columns"}, el("div", {class: "focus-sketch"}, sketch(b.layout)), content));
+  reviewProgress();
   mark();
-  return tr;
+}
+
+function reviewProgress() {
+  const progress = $("#review-progress");
+  if (!progress) return;
+  const count = doc.beats.filter(b => seen.has(b.id)).length, flags = doc.beats.filter(b => flagReason(b)).length;
+  progress.textContent = count === doc.beats.length && !flags ?
+    "All " + count + " beats looked at. Press Send to Claude when you're ready." :
+    count + " of " + doc.beats.length + " looked at · " + flags + " still flagged for you";
 }
 
 function renderLoops() {
@@ -809,13 +991,13 @@ function reminderNote() {
   if (index < 0) return;
   const beat = doc.beats[index], card = sceneSpec("cta-reminder");
   if (!card) {
-    hint.textContent = "The reminder card isn't ready. Ask Claude to prepare the scene choices, then open Add a scene on beat " + (index + 1) + ".";
+    hint.textContent = "The reminder card isn't ready. Ask Claude to prepare the scene choices, then open beat " + (index + 1) + ", then More, then Add a scene.";
   } else if (!sceneSuggestions[beat.id]?.[card.id]) {
-    hint.textContent = "On beat " + (index + 1) + ", open Add a scene. The " + sceneTitle(card) +
+    hint.textContent = "Open beat " + (index + 1) + ", then More, then Add a scene. The " + sceneTitle(card) +
       " card is greyed out. " + (sceneReasons[beat.id]?.[card.id] || "Ask Claude to prepare a reminder card that fits this beat, then rebuild the board.");
   } else {
-    hint.textContent = "To put your reminder on screen, open Add a scene on beat " + (index + 1) +
-      ", then choose " + sceneTitle(card) + ".";
+    hint.textContent = "To put your reminder on screen, open beat " + (index + 1) +
+      ", then More, then Add a scene, then choose " + sceneTitle(card) + ".";
   }
   hint.hidden = false;
 }
@@ -905,10 +1087,11 @@ function reminderProblem() {
 
 function render() {
   doc.beats = (doc.beats || []).slice().sort((a, b) => a.start_f - b.start_f);
-  $("#legend").replaceChildren(...LAYOUTS.map(([v, name]) => el("li", {}, el("span", {class: "l-" + v}), name)));
-  renderStrip();
-  $("#words-note").hidden = !!words;
-  $("#beats tbody").replaceChildren(...doc.beats.map(row));
+  loadSeen();
+  $("#legend").replaceChildren(...[["face-swatch", "Your face"], ["graphic-swatch", "Graphic or screen"],
+    ["flag-dot", "Flagged for you"]].map(([className, name]) => el("li", {}, el("span", {class: className}), name)));
+  const flagged = doc.beats.findIndex(b => flagReason(b));
+  openBeat(flagged < 0 ? 0 : flagged);
   loadEditStyle();
   renderLoops();
   renderReminderHolds();
@@ -917,7 +1100,13 @@ function render() {
   needs.addEventListener("input", () => { doc.needs = needs.value; edited(); });
 }
 
-function edited() {
+function edited(saveChange = true) {
+  renderTimeline();
+  reviewProgress();
+  const reason = flagReason(doc.beats[focusIndex]), content = $("#focus .focus-content");
+  $("#focus .flag-reason")?.remove();
+  if (reason && content) content.firstChild.after(el("p", {class: "flag-reason", text: "Flagged for you: " + reason}));
+  if (!saveChange) { setStatus("error", pendingValueProblem()); return; }
   if (doc.loops && forbidden.test(JSON.stringify(doc.loops))) {
     clearTimeout(timer); setStatus("error", "Use honest trial-reel wording in the loop ledger."); return;
   }
@@ -945,8 +1134,8 @@ function problem() {
   if (loopBad) return loopBad;
   const reminderBad = reminderProblem();
   if (reminderBad) return reminderBad;
-  if (invalidBroll.size) return "B-roll needs a start time of zero seconds or more.";
-  if (invalid.size) return "One of the numbers isn't a number yet. Fix the box marked in red first.";
+  if (invalidBroll.size) return "Beat " + (doc.beats.findIndex(b => invalidBroll.has(b.id)) + 1) + "'s B-roll needs a start time of zero seconds or more.";
+  if (invalid.size) return "Beat " + (doc.beats.findIndex(b => invalid.has(b.id)) + 1) + "'s number isn't a number yet. Fix the box marked in red first.";
   if (doc.edit_style?.style === "punch-in" && (!Number.isFinite(doc.edit_style.punch_scale) ||
       doc.edit_style.punch_scale < 1 || doc.edit_style.punch_scale > 4))
     return "Check the punch level before sending. Choose a number from 1.00 to 1.30, or keep your saved level up to 4.";
@@ -958,7 +1147,7 @@ function problem() {
       if (clip && b.broll.out > clip.frames) return "The B-roll clip is too short for beat " + (i + 1) + ". Choose another clip or an earlier start.";
     }
     if (typeof b.id !== "string" || !b.id.trim()) return "Beat " + (i + 1) + " is missing its label. Ask Claude to rebuild the beat map.";
-    if (!ok.has(b.layout)) return "Beat " + (i + 1) + " needs a layout. Pick one in its row.";
+    if (!ok.has(b.layout)) return "Beat " + (i + 1) + " needs a layout. Open it on the timeline and pick one.";
     if (!(b.start_f <= b.end_f)) return "Beat " + (i + 1) + " ends before it starts. Ask Claude to rebuild the beat map.";
   }
   let prev = -1;
@@ -974,7 +1163,14 @@ async function send() {
   clearTimeout(timer);
   readEditStyle();
   const bad = problem();
-  if (bad) { setStatus("error", bad); return; }
+  if (bad) {
+    const beat = bad.match(/\bbeat (\d+)\b/i);
+    if (beat && doc.beats[Number(beat[1]) - 1]) {
+      openBeat(Number(beat[1]) - 1);
+      moreOpen = true; $("#more").open = true;
+    }
+    setStatus("error", bad); return;
+  }
   sendBtn.disabled = true;
   ++seq;
   setStatus("saving", "Sending…");
@@ -1036,6 +1232,7 @@ async function init() {
   holdCuts = (cuts?.segments || []).map(s => s.out_in_f).filter(Number.isInteger);
   transitionTotal = cuts?.segments?.at(-1)?.out_out_f ?? null;
   boardConfig = config || {};
+  sceneCatalogLoaded = Array.isArray(catalog);
   sceneCatalog = Array.isArray(catalog) ? catalog : [];
   const clips = await reelJson("broll/clips.json");
   brollClips = clips && Array.isArray(clips.clips) ? clips.clips : [];

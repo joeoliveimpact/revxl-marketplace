@@ -42,6 +42,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(_HERE)), "_share
 sys.path.insert(0, _HERE)
 from enginecfg import cfg  # noqa: E402
 from win_encoding import ensure_utf8_output  # noqa: E402
+import saved_style  # noqa: E402
 
 REGISTRY_VERSION = "1.0"
 KINDS = {"base", "enclave"}
@@ -532,6 +533,16 @@ def cmd_list(_args) -> None:
               f"{c['omitted']:2} omitted · {c['missing']:2} missing{inh}{drift}")
 
 
+def font_for_editor(entry):
+    """Preserve the decoded name beside the face the editor can actually draw."""
+    family, _ = resolve_role(entry, "type.body.family")
+    weight, _ = resolve_role(entry, "type.body.weight")
+    requested = {"family": (family or {}).get("v") or "Inter",
+                 "weight": (weight or {}).get("v") or 400, "style": "normal"}
+    face, note = saved_style.font_choice(requested)
+    return saved_style.font_label(requested), face, note
+
+
 def cmd_show(args) -> None:
     entry = load_entry(args.id)
     out = {"id": entry.get("id"), "kind": entry.get("kind"),
@@ -548,6 +559,9 @@ def cmd_show(args) -> None:
         out["roles"][role] = rec
     if args.width:
         out["output_width_px"] = args.width
+    out["font"], out["font_face"], note = font_for_editor(entry)
+    if note:
+        out["notes"] = [note]
     print(json.dumps(out, indent=2, ensure_ascii=False))
 
 

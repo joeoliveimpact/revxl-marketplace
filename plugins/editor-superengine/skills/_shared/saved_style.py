@@ -13,6 +13,7 @@ from pathlib import Path
 # The editor's standard -I flag leaves this script's folder off sys.path.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import runtime
+import bundled_fonts
 
 NOTE = "Your saved style couldn't be read, so this reel uses its own choices."
 WRITE_NOTE = "Your saved style file can't be read, so I didn't change it. Ask Claude to repair it."
@@ -440,6 +441,43 @@ def _valid(value, kind):
                               "integer": int}[kind]) and not (kind == "integer" and isinstance(value, bool))
 
 
+def font_label(value):
+    """A readable face name, also used when explaining a bundled substitution."""
+    if isinstance(value, str):
+        return value.strip()
+    font = bundled_fonts.parse_font(value)
+    weight = next((name for name, number in bundled_fonts.WEIGHTS.items()
+                   if number == font["weight"]), str(font["weight"]))
+    return " ".join((font["family"], weight, "Italic" if font["style"] == "italic" else "")).strip()
+
+
+def font_choice(value):
+    """Resolve a saved font without ever selecting a system font."""
+    if (not isinstance(value, (str, dict)) or isinstance(value, str) and not value.strip()
+            or isinstance(value, dict) and (not isinstance(value.get("family"), str)
+                                            or not value["family"].strip())):
+        raise ValueError("Your saved brand font needs a family name, so the scenes use their own fonts.")
+    font = bundled_fonts.parse_font(value)
+    if font["style"] not in ("normal", "italic") or not 100 <= font["weight"] <= 900:
+        raise ValueError("Your saved font needs a weight from 100 to 900 and a normal or italic style.")
+    record, weight, exact = bundled_fonts.nearest(**font)
+    face = dict(family=record["family"], weight=weight, style=record["style"], file=record["file"])
+    note = None if exact else (f"Your style's font {font_label(value)} isn't one of the editor's built-in fonts, "
+                               f"so it uses {font_label(face)} instead.")
+    return face, note
+
+
+def with_font_face(data):
+    """Keep the original readable name and record the exact bundled face beside it."""
+    data = copy.deepcopy(data)
+    if data.get("font") is not None:
+        data["font_face"], _ = font_choice(data["font"])
+        data["font"] = font_label(data["font"])
+    else:
+        data.pop("font_face", None)
+    return data
+
+
 def validate(data):
     if not isinstance(data, dict):
         raise ValueError("Save the style as an object of choices.")
@@ -454,6 +492,9 @@ def validate(data):
             if not isinstance(current, dict):
                 raise ValueError(f"{row['plain']} needs an object of choices.")
         value = _get(data, row["key"])
+        if row["key"] == "font" and value is not None:
+            font_choice(value)
+            continue
         if value is not None and not _valid(value, row["type"]):
             raise ValueError(f"{row['plain']} has the wrong kind of value.")
         if value is not None and "allowed" in row and value not in row["allowed"]:
@@ -495,11 +536,22 @@ def decoded_choices(spec):
     roles = _get(remaining, "typography.roles")
     if isinstance(roles, list):
         defaults = [role for role in roles if isinstance(role, dict) and role.get("caption_default") is True]
-        if len(defaults) == 1 and text(defaults[0].get("closest_available")):
+        if len(defaults) == 1 and (text(defaults[0].get("closest_available"))
+                                   or isinstance(defaults[0].get("closest_available"), dict)):
             role = defaults[0]
-            data["font"] = role["closest_available"]
+            font = bundled_fonts.parse_font(role["closest_available"])
+            if role.get("weight") is not None:
+                font["weight"] = role["weight"]
+            if role.get("style") in ("normal", "italic"):
+                font["style"] = role["style"]
+            try:
+                font_choice(font)
+            except (ValueError, TypeError):
+                unmapped.append("Brand font could not be matched")
+            else:
+                data["font"] = role["closest_available"] if font == bundled_fonts.parse_font(role["closest_available"]) else font
             # Role formatting still needs a report; evidence and identifiers are bookkeeping.
-            for key in ("closest_available", "caption_default", "id", "evidence", "observed_in", "confidence"):
+            for key in ("closest_available", "weight", "style", "caption_default", "id", "evidence", "observed_in", "confidence"):
                 role.pop(key, None)
             if _blank(role):
                 roles.remove(role)
@@ -586,7 +638,7 @@ def decoded_choices(spec):
             count = f" ({len(finding)})" if isinstance(finding, list) else ""
             unmapped.append(label + count)
     validate(data)
-    return data, unmapped
+    return with_font_face(data), unmapped
 
 
 def _siblings(target):
@@ -628,6 +680,7 @@ def save(data, name="default", *, archive=False, make_default=True):
     load(name=name, for_write=True)
     index = _index(for_write=True)
     validate(data)
+    data = with_font_face(data)
     if name not in index["styles"] and _has_choices(data):
         label = index["archived"].get(name)
         if not label or any(row["label"].casefold() == label.casefold() for row in index["styles"].values()):
@@ -751,7 +804,7 @@ def readback(data):
         transitions += ", sounds on" if value("transitions.sfx_pair") else ", sounds off"
     attempt = value("cut.default_attempt")
     lines = [f"Caption look: {caption}", f"Brand accent: {colour(value('accent', missing))}",
-            f"Brand font: {value('font', missing)}", f"Grade look: {grade}", f"Editing style: {editing}",
+            f"Brand font: {font_label(value('font')) if value('font') is not None else missing}", f"Grade look: {grade}", f"Editing style: {editing}",
             f"Transitions: {transitions}", f"Retake choice: {label(attempt) + ' attempt' if attempt else missing}"]
     if value("style_id"):
         if not value("caption_style.style"):
@@ -772,6 +825,13 @@ def readback(data):
     if "picks" in data:
         import standing_notes
         lines.extend(standing_notes.pick_lines(data))
+    if value("font") is not None:
+        try:
+            _, note = font_choice(value("font"))
+            if note:
+                lines.append(note)
+        except (ValueError, TypeError):
+            pass  # The reader retains its tolerance of old malformed choices.
     return lines
 
 
@@ -927,6 +987,7 @@ def save_from_reel(reel_dir, name=None, workspace=None, from_decoded=None):
                 pick(reel, "fresh")
             raise ValueError("Nothing in that decoded style matches an editor setting yet, so I didn't save it. This reel starts fresh: I'll ask about each choice.")
         raise ValueError("This reel has no choices to save yet. Send a board first.")
+    data = with_font_face(data)
     _workspace_skill(workspace, data, label)
     save(data, name, archive=True, make_default=from_decoded is None)
     if from_decoded is not None:

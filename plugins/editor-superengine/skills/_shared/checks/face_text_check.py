@@ -271,7 +271,7 @@ def run(ctx):
                     text = min(fill, accent)
                 # Judge only the part the words (and any plate) cover, not the empty rest of the band.
                 x0, y0, x1, y1 = chunk["box"]
-                width = min(x1 - x0, drawn(chunk.get("text", ""), chunk["box"], STYLES[style["style"]])[2])
+                width = min(x1 - x0, drawn(chunk.get("text", ""), chunk["box"], STYLES[style["style"]], captions.get("font"))[2])
                 middle = (x0 + x1) / 2
                 ratio = contrast(picture, size, (middle - width / 2, y0, middle + width / 2, y1), text)
                 if ratio < 3:

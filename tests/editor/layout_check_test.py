@@ -151,7 +151,8 @@ def case_offscreen(scratch):
     ck("offscreen chunk: exactly one off-frame row in qa.json", p.returncode == 1
        and len(offscreen) == 1 and offscreen[0]["check"] == "caption-off-frame"
        and offscreen[0]["module"] == "caption_check", (p.stdout, p.stderr, qa))
-    width = captions.text_width_em(doc["chunks"][0]["text"]) * 64
+    width = captions.text_width_em(doc["chunks"][0]["text"],
+                                   doc.get("font", captions.STYLES[doc["style"]["style"]]["font"])) * 64
     centre = 1088 - width / 2
     doc["chunks"][0]["box"] = [centre - 380, 1400, centre + 380, 1540]
     examine(d, doc, "offscreen word contained in off-frame chunk", [], 0)

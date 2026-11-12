@@ -192,6 +192,11 @@ def synthetic(scratch):
             value = 255 if 45 <= x < 55 and 40 <= y < 60 else 40
             narrow[(y * 100 + x) * 3:(y * 100 + x) * 3 + 3] = bytes([value] * 3)
     ck("a short caption on its own dark plate over a white page stays readable", findings(narrow) == [])
+    caps["font"] = dict(family="Inter", weight=100, style="italic")
+    with patch.object(module, "drawn", wraps=module.drawn) as measured:
+        findings(narrow)
+    ck("contrast measures with the document's saved brand font",
+       measured.call_args.args[3:] == (caps["font"],), measured.call_args)
     caps["style"]["style"] = "none"
     ck("captions off skips contrast", findings(picture(255)) == [])
 

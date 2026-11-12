@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "editor-superengine",
   "description": "Raw talking-head recording to a finished reel. It installs and checks its own tools, checks the camera and mic before recording, and the client cuts on the Cut Board and Tweak Board. Then captions, on-screen design and scenes, B-roll, colour, sound and music, a cover, trial reels, and an editable timeline for Resolve. Saved styles carry a client's look from reel to reel, and a style can be decoded from a reel they like. 15 skills, no commands to type.",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "author": {
     "name": "Joe Olive",
     "email": "joe@engineforimpact.com"

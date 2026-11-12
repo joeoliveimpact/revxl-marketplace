@@ -4,8 +4,8 @@
 
 Copies the sound library into the reel folder (sfx/ and beds/, so the board can play them), measures every sound,
 computes the waveforms, and writes the board's config.json, waveforms.json and sfx_measured.json into
-<paths.videos>/<reel>/. The board loads them from /videos/<reel>/<file>; open it at /editor/sound-board/?reel=<reel>
-on the editor's board server.
+<paths.videos>/<reel>/. The board loads them from /videos/<reel>/<file>.
+Open it inside the editor hub: /editor/hub/?reel=<reel>&board=sound-board&view=full
 
 Everything measured comes from the files themselves: durations and peaks are probed, because sound libraries are
 not level matched and written tables go stale.
@@ -27,6 +27,7 @@ row's peak_s is where its hit lands (measure_sfx), so the board can start the fi
 """
 import argparse, json, math, shutil, sys
 from pathlib import Path
+from urllib.parse import quote
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -180,7 +181,7 @@ def main(argv=None):
     write_json(reel / "config.json", cfg)
 
     print("Sound Board ready: %d cues proposed, %d sound effects, %d music beds." % (len(cues), len(library), len(beds)))
-    print("Open it on the editor's board server at /editor/sound-board/?reel=%s" % a.reel)
+    print("Open it inside the editor hub: /editor/hub/?reel=%s&board=sound-board&view=full" % quote(a.reel, safe=""))
     return 0
 
 

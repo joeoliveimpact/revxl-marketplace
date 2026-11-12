@@ -50,7 +50,7 @@ Offer the optional **Open loops** panel in the Beat Map: viewer question, on-scr
 
 Offer the optional **slots** scene for a list reel: two to six labels of one or two words, shown as empty slots in the hook, re-shown and filled in order at the client's section starts, ending on the completed list. Set `count` and `section_starts` (comma-separated local seconds, one per active slot), fill `label1` through `label6`, and leave unused labels empty. Every numbered label must be said in the reel. Place it only when chosen and when its duration fits; never retime the approved cut to make it fit.
 
-Refresh and open the hub using `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/hub.md`, then select **Trial reels**. Play the base and versions side by side; use **Muted** and **Watch the opening** to play the first five seconds together. Ask the client to mark keep or skip for each version, add any note, then Send. Read `trials-selection.json` and report the exact choices in plain words. A keep is a choice to try posting, never permission to publish; posting and result collection remain with the client.
+Refresh and open the hub at `board=trials`, Full view, using `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/hub.md`. Play the base and versions side by side; use **Muted** and **Watch the opening** to play the first five seconds together. Ask the client to mark keep or skip for each version, add any note, then Send. Read `trials-selection.json` and report the exact choices in plain words. A keep is a choice to try posting, never permission to publish; posting and result collection remain with the client.
 
 ## Failure report (offer after any failure you can't fix in two tries)
 
@@ -63,7 +63,7 @@ Tell the client what went wrong in plain words, and whether anything was charged
 2. Draft it. Keep the summary short. Put the summary, step and error line in single quotes, drop any
    apostrophe from them, and use no script names:
 
-`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.2.1 --skill reel-trials --step 'making trial reels' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
+`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.2.2 --skill reel-trials --step 'making trial reels' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
 
 3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
 4. Send, using the path after `DRAFT:`:

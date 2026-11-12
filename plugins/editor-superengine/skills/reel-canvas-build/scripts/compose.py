@@ -54,6 +54,7 @@ sys.path.insert(0, str(HERE))
 from win_encoding import ensure_utf8_output  # noqa: E402
 import runtime as rt  # noqa: E402
 import saved_style  # noqa: E402
+import bundled_fonts  # noqa: E402
 import beat_schema  # noqa: E402
 import effect_gate  # noqa: E402
 import fps as fpsmod  # noqa: E402
@@ -681,14 +682,13 @@ def brand_params(spec, html, beat_params, saved):
         else:
             notes.append("Your saved brand colour needs six colour digits, such as #E0218A, so the scenes use their own colours.")
     if "font" in declared and "font" in saved:
-        font = saved["font"]
-        if not isinstance(font, str) or not font.strip():
+        try:
+            face, note = saved_style.font_choice(saved["font"])
+            params["font"] = face["family"]
+            if note and "font" not in beat_params:
+                notes.append(note)
+        except (ValueError, TypeError):
             notes.append("Your saved brand font needs a family name, so the scenes use their own fonts.")
-        elif font not in scene_check.font_faces(html):
-            notes.append(f"Your brand font {font} isn't available for on-screen graphics yet, "
-                         f"so they use {declared['font']['default']}.")
-        else:
-            params["font"] = font
     params.update(beat_params)
     return params, notes
 
@@ -710,6 +710,15 @@ def saved_brand(reel=None):
     return {key: saved[key] for key in ("accent", "font") if key in saved}
 
 
+def print_notes(inp, notes):
+    """Report each plain note once across the scene and caption planning stages."""
+    printed = inp.setdefault("_printed_notes", [])
+    for note in notes:
+        if note not in printed:
+            print(f"note: {note}")
+            printed.append(note)
+
+
 def plan(inp, hook_text, extra_spans=None, *, ctx=None):
     """Notes, scene checks, the hook, and the effect gate; raises Stop before anything renders."""
     beats, rate = inp["beats"], inp["rate"]
@@ -722,22 +731,24 @@ def plan(inp, hook_text, extra_spans=None, *, ctx=None):
     # --- end G5 ---
     scened = [b for b in beats if b["scene"] is not None]
     saved = saved_brand(inp.get("style_reel", inp.get("reel_dir"))) if scened else {}
-    brand_notes = set()
     opens = set()  # H-S6b-19: a scene that opens the reel is complete at frame 0 when it can be
     for b in scened:
         params = b["scene"].get("params", {})  # no params key = {} (as fill_problems reads it)
         declared = scene_params(b["scene"])
         if isinstance(params, dict):
+            explicit_font = "font" in params
             try:
                 page = (scene_check.SCENES / b["scene"]["id"] / "scene.html").read_text(encoding="utf-8")
             except OSError:
                 page = ""  # fill_problems names the missing scene below
             params, notes = brand_params({"params": declared}, page, params, saved)
             b["scene"] = dict(b["scene"], params=params)
-            for note in notes:
-                if note not in brand_notes:
-                    print(f"note: {note}")
-                    brand_notes.add(note)
+            if "font" in declared and "font" in saved and not explicit_font:
+                try:
+                    b["_font_face"], _ = saved_style.font_choice(saved["font"])
+                except (ValueError, TypeError):
+                    b.pop("_font_face", None)
+            print_notes(inp, notes)
         if b["start_f"] == 0 and isinstance(params, dict) and "entrance" in declared:
             b["scene"] = dict(b["scene"], params=dict(params, entrance="none"))
             opens.add(b["id"])
@@ -1227,7 +1238,19 @@ def scene_project(dst, beat, rate):
     (dst / "vendor").mkdir(parents=True)
     shutil.copy2(P / "runtime" / "gsap" / "gsap.min.js", dst / "vendor" / "gsap.min.js")
     shutil.copytree(P / "runtime" / "fonts", dst / "fonts")
-    (dst / "index.html").write_bytes((src[:root.start()] + tag + src[root.end():]).encode("utf-8"))
+    page = src[:root.start()] + tag + src[root.end():]
+    face = beat.get("_font_face")
+    if face is None and beat["scene"].get("params", {}).get("font"):
+        font = bundled_fonts.parse_font(beat["scene"]["params"]["font"])
+        if bundled_fonts.find(**font):
+            face, _ = saved_style.font_choice(font)
+    if face:
+        rule = bundled_fonts.css_face(face["family"], face["weight"], face["style"])
+        rule += (f'\n#{sid}, #{sid} * {{ font-family: "{face["family"]}" !important; '
+                 f'font-weight: {face["weight"]} !important; font-style: {face["style"]} !important; '
+                 'font-synthesis: none; }')
+        page = page.replace("</head>", f"<style>{rule}</style>\n</head>", 1)
+    (dst / "index.html").write_bytes(page.encode("utf-8"))
 
 
 # ---- N3: 3D scenes (category "3d", layer band 300-399, three.js from ./vendor) ----
@@ -1732,8 +1755,7 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
                 page = page.replace(b'        window.__timelines =', sets.encode("utf-8") + b'        window.__timelines =', 1)
         # --- end G6 ---
         captions.write(reel, doc)  # layer() can add fitting notes
-        for line in doc["notes"][printed_notes:]:
-            print(f"note: {line}")
+        print_notes(inp, doc["notes"][printed_notes:])
         assert b"\r" not in page
         (proj / "index.html").write_bytes(page)
         video = tmp / ("video.mov" if layers in ("overlay", "captions") else "video.mp4")
@@ -2251,8 +2273,11 @@ def selftest():
            brand_params(spec, face, beat_params, saved)[0] == beat_params)
     params, notes = brand_params(spec, face, {}, {"font": "Comic Sans MS"})
     expect("brand: unlicensed font falls back with the plain note",
-           params == {} and notes == ["Your brand font Comic Sans MS isn't available for on-screen graphics yet, "
-                                     "so they use Inter."])
+           params == {"font": "Inter"} and notes == ["Your style's font Comic Sans MS isn't one of the editor's built-in fonts, "
+                                     "so it uses Inter Regular instead."])
+    expect("brand: exact bundled weight and italic are accepted",
+           brand_params(spec, face, {}, {"font": {"family": "Montserrat", "weight": 900, "style": "italic"}})
+           == ({"font": "Montserrat"}, []))
     for accent in ("magenta", "#123", "#E0218A\n", None, [], 123):
         params, notes = brand_params(spec, face, {}, {"accent": accent})
         expect(f"brand: malformed accent {accent!r} is ignored with a note", params == {} and bool(notes))
@@ -2679,10 +2704,17 @@ def selftest():
             with contextlib.redirect_stdout(io.StringIO()) as said:
                 plan(branded, None)
             expect("brand: plan applies before fill checks, keeps beat override and entrance none",
-                   first["scene"]["params"] == {"accent": "#123abc", "entrance": "none"}
-                   and second["scene"]["params"] == {"accent": "#E0218A"})
+                   first["scene"]["params"] == {"accent": "#123abc", "font": "Inter", "entrance": "none"}
+                   and second["scene"]["params"] == {"accent": "#E0218A", "font": "Inter"})
             expect("brand: plan prints each distinct font note once",
-                   said.getvalue().count("note: Your brand font Comic Sans MS") == 1)
+                   said.getvalue().count("note: Your style's font Comic Sans MS") == 1)
+            font_note = saved_style.font_choice("Comic Sans MS")[1]
+            caption_notes = [font_note]
+            with contextlib.redirect_stdout(said):
+                print_notes(branded, caption_notes)
+            expect("brand: the caption reporting stage retains the note but does not print it twice",
+                   caption_notes == [font_note]
+                   and said.getvalue().count("note: Your style's font Comic Sans MS") == 1)
         for i, n in enumerate((prev, "Reel 7 Preview 720p - 11.04.26.mp4", "Reel 7 Preview 720p - 11.06.26.partial.mp4")):
             (r / n).write_bytes(b"x")
             os.utime(r / n, (now - 100 + i * 10, now - 100 + i * 10))
@@ -2818,6 +2850,16 @@ def selftest():
             expect("3d: the project copies both engine files",
                    all((root / "project" / "vendor" / name).read_bytes() == (three / name).read_bytes()
                        for name in ("three.module.js", "three.core.js")))
+            branded = dict(b, _font_face=saved_style.font_choice({
+                "family": "Montserrat", "weight": 900, "style": "italic"})[0])
+            scene_project(root / "font-project", branded, Fraction(25))
+            branded_page = (root / "font-project/index.html").read_text(encoding="utf-8")
+            expect("brand: scene draws the exact bundled variable weight and style without synthesis",
+                   bundled_fonts.css_face("Montserrat", 900, "italic") in branded_page
+                   and 'font-weight: 900 !important; font-style: italic !important;' in branded_page
+                   and 'font-synthesis: none;' in branded_page
+                   and hashlib.sha256((root / "font-project/fonts/Montserrat-Variable-Italic.woff2").read_bytes()).hexdigest()
+                   == bundled_fonts.find("Montserrat", 900, "italic")["sha256"])
             with patch.dict(globals(), THREE_RUNTIME=root / "missing"):
                 try:
                     scene_project(root / "missing-project", b, Fraction(25))

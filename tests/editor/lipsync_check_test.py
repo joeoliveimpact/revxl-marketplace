@@ -17,6 +17,7 @@ Tools and child Python come from the editor install, like n1_map_test.py.
 import argparse
 import importlib.util
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -27,7 +28,8 @@ import cut_safety_test as cs  # noqa: E402
 
 CHECK = cs.REPO / "plugins/editor-superengine/skills/_shared/checks/lipsync_check.py"
 FPS = 30
-CASES = ("clean", "stale", "onefr", "length", "noraw", "noaroll", "graded", "speed")
+CASES = ("clean", "stale", "onefr", "length", "noraw", "noaroll", "graded", "speed",
+         "older", "pastend", "badraw")
 fails = []
 
 
@@ -74,7 +76,7 @@ def fixture(scratch, name, raw):
     write(d / "work/probe.json", dict(input=str(raw), video=dict(width=320, height=568)))
     r = cs.module("render.py")
     conform = r.conform(dict(width=320, height=568))
-    shift = {"stale": 41, "onefr": 1, "speed": 42}.get(name, 0)
+    shift = {"stale": 41, "older": 41, "onefr": 1, "speed": 42}.get(name, 0)
     end = 140 if name == "length" else 150
     grade = ",eq=contrast=1.4:saturation=0.5" if name == "graded" else ""
     retime = ",setpts=(PTS-STARTPTS)/1.5,fps=30" if name == "speed" else ""
@@ -94,6 +96,16 @@ def fixture(scratch, name, raw):
         (renders / "master-100x.mp4").unlink()
     elif name == "speed":
         (renders / "master-100x.mp4").rename(renders / "master-150x.mp4")
+    if name == "older":
+        stamp = (renders / "master-100x.mp4").stat().st_mtime + 2
+        os.utime(d / "work/cuts.json", (stamp, stamp))
+    elif name == "pastend":
+        cuts["segments"][1].update(src_in_f=300, src_out_f=345)
+        write(d / "work/cuts.json", cuts)
+    elif name == "badraw":
+        broken = d / "broken.mp4"
+        broken.write_bytes(b"not a recording\n")
+        write(d / "work/probe.json", dict(input=str(broken), video=dict(width=320, height=568)))
     return d, cuts
 
 
@@ -105,23 +117,34 @@ def check_case(scratch, name, raw, mod):
     ck(name + ": contract rows", isinstance(rows, list) and all(
         {"check", "level", "msg", "where"} <= h.keys() and h["level"] in ("block", "warn")
         and "\n" not in h["msg"] for h in rows), rows)
-    if name in ("stale", "length", "speed"):
+    if name in ("stale", "older", "length", "speed"):
         blocks = [h for h in rows if h["level"] == "block"]
         ck(name + ": camera-stale, standalone exit 1", p.returncode == 1 and blocks
            and all(h["check"] == "camera-stale" for h in blocks)
            and "camera-stale" in p.stdout, (p.returncode, rows, p.stderr))
-        if name == "stale":
+        if name in ("stale", "older"):
             offsets = [float(m.group(1)) for h in blocks
-                       if (m := re.search(r"out of step by about ([\d.]+) s", h["msg"]))]
+                       if (m := re.search(r"picture is about ([\d.]+) s", h["msg"]))]
             ck("stale: second segment is 41 frames (1.37 s) late",
                bool(offsets) and all(abs(v - 41 / FPS) <= 1 / FPS for v in offsets)
                and all(1.5 <= h.get("at", -1) < 3.0 for h in blocks), rows)
+            ck(name + ": older claim requires file-time evidence",
+               all(("older than your latest cut" in h["msg"].lower()) == (name == "older")
+                   for h in blocks), rows)
         elif name == "speed":
             offsets = [float(m.group(1)) for h in blocks
-                       if (m := re.search(r"out of step by about ([\d.]+) s", h["msg"]))]
+                       if (m := re.search(r"picture is about ([\d.]+) s", h["msg"]))]
             ck("speed: 42 source frames reported in output seconds",
                bool(offsets) and all(abs(v - 42 / FPS / 1.5) <= 1 / FPS for v in offsets)
                and all(1.0 <= h.get("at", -1) < 2.0 for h in blocks), rows)
+    elif name in ("pastend", "badraw"):
+        expected = 3 if name == "pastend" else 6
+        ck(name + ": every unreadable piece warns at its cut time", p.returncode == 0
+           and len(rows) == expected and all(h["check"] == "lipsync-unchecked"
+               and h["level"] == "warn" and "recording has no picture there" in h["msg"]
+               and "%.2f s" % h.get("at", -1) in h["msg"] for h in rows), (rows, p.stderr))
+        ck(name + ": summary counts compared and not compared",
+           "%d compared, %d not compared" % (6 - expected, expected) in p.stdout, p.stdout)
     elif name == "noraw":
         ck("noraw: one lipsync-unchecked warn, standalone exit 0", p.returncode == 0
            and len(rows) == 1 and rows[0]["check"] == "lipsync-unchecked"

@@ -70,20 +70,19 @@ def _intersection(a, b):
             min(a[2], b[2]), min(a[3], b[3]))
 
 
-def _word_boxes(chunk, box, spec):
+def _word_boxes(chunk, box, spec, font=None):
     x0, y0, x1, y1 = box
     if x1 <= x0 or y1 <= y0:
         raise ValueError("A caption needs a positive-size box; place it again.")
-    pad = min(16, (x1 - x0) / 8)
-    size = min(spec["size"], (x1 - x0 - 2 * pad)
-               / (captions.text_width_em(chunk["text"]) * spec["punch"]["scale"]))
-    x = (x0 + x1) / 2 - captions.text_width_em(chunk["text"]) * size / 2
+    font = font or spec.get("font")
+    pad, size, _ = captions.drawn(chunk["text"], box, spec, font)
+    x = (x0 + x1) / 2 - captions.text_width_em(chunk["text"], font) * size / 2
     top, height = y0 + pad, size * spec["line_h"]
     result = []
     for word in chunk["words"]:
-        width = captions.text_width_em(word["text"]) * size
+        width = captions.text_width_em(word["text"], font) * size
         result.append((word["text"], (x, top, x + width, top + height)))
-        x += width + captions.text_width_em(" ") * size
+        x += width + captions.text_width_em(" ", font) * size
     return result
 
 
@@ -131,7 +130,7 @@ def run(ctx):
                 continue  # The single not-judged block covers every missing position.
             box = tuple(v * scale for v in chunk["box"])
             elements.append(dict(where=f"caption {i}", start=chunk["start_f"], end=chunk["end_f"],
-                                 box=box, words=_word_boxes(chunk, box, spec)))
+                                 box=box, words=_word_boxes(chunk, box, spec, doc.get("font"))))
     hooks = compose.saved_hooks(reel, doc.get("hooks"))
     if hooks is None:  # older caption documents did not record the rendered hook
         fallback = _hook(reel, rate)

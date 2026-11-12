@@ -53,7 +53,7 @@ Read the cut and propose cues: each a moment with 2-3 candidate sounds, more tha
 
 When the client sent the Beat Map (`videos/<reel>/beat-map-selection.json` exists), pre-fill the cues instead of writing them by hand: `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-sound-pass/scripts/prefill_cues.py" --reel <reel> --out <cues.json>` proposes a transition at each look change and a hit on each marked word, never in the closer. Review them (keep more than should ship), then pass them to `new_board.py --cues`; they arrive undecided.
 
-Start the board server and open `/editor/sound-board/?reel=<reel>` in the Browser pane, as `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/board-server.md` says. The client auditions each cue against the picture, keeps or rejects, slides the music, sets stops and fades, then presses Send (it writes `sound-selection.json`; undecided cues are kept, never mixed).
+Start the board server and open the Sound Board inside the hub (`board=sound-board`, Full view), as `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/board-server.md` step 3 says. The client auditions each cue against the picture, keeps or rejects, slides the music, sets stops and fades, then presses Send (it writes `sound-selection.json`; undecided cues are kept, never mixed).
 
 Taste tips to offer, never rules: keep it subtle; long swooshes and echo tails rarely help; let the closer land in silence; one sound per moment, not two doubled. The board shows these too, and never blocks a choice.
 
@@ -107,7 +107,7 @@ Tell the client what went wrong in plain words, and whether anything was charged
 2. Draft it. Keep the summary short. Put the summary, step and error line in single quotes, drop any
    apostrophe from them, and use no script names:
 
-`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.2.1 --skill reel-sound-pass --step '<library, prefill, board, music, mix, auphonic or master>' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
+`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.2.2 --skill reel-sound-pass --step '<library, prefill, board, music, mix, auphonic or master>' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
 
 3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
 4. Send, using the path after `DRAFT:`:

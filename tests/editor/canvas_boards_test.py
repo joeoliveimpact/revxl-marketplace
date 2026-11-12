@@ -7,7 +7,7 @@
 Prints one "✓ <case>" / "✗ <case>: <why>" line per case, then "N passed, M failed". Exit 0 only when all pass.
 The browser work runs through canvas_boards_click.js (puppeteer-core, headless shell, a fresh profile per browser).
 """
-import base64, contextlib, copy, datetime, http.client, io, json, os, shutil, socket, subprocess, sys, tempfile, threading
+import base64, contextlib, copy, datetime, http.client, io, json, os, re, shutil, socket, subprocess, sys, tempfile, threading
 from pathlib import Path
 from html.parser import HTMLParser
 
@@ -41,7 +41,7 @@ PLAN = {"beats": [{"w0": 0, "w1": 3, "layout": "full", "shows": "the title", "wh
         "needs": ""}
 D1, D2 = "d_bold", "d_calm"
 
-# Kept here because this work order permits no change to canvas_boards_click.js.
+# Specialized iframe proofs share the installed browser and board server.
 # Uses the same puppeteer install, run(), fixture and board server as the existing cases.
 SCENE_BROWSER = r"""
 const fs = require('fs'), {pathToFileURL} = require('url');
@@ -71,7 +71,7 @@ const fs = require('fs'), {pathToFileURL} = require('url');
     async function click(selector) {
       if (selector === '#send') await frame.waitForSelector('#send:not([disabled])');
       await frame.$eval(selector, e => {
-        for(let p=e.parentElement;p;p=p.parentElement) if(p.matches('details.advanced-controls')) p.open=true;
+        for(let p=e.parentElement;p;p=p.parentElement) if(p.matches('details.advanced-controls, details.more-controls')) p.open=true;
         e.scrollIntoView({block:'center'});
         // A fixed footer inside the hub iframe also needs the outer page to scroll.
         parent.scrollBy(0, window.frameElement.getBoundingClientRect().top + e.getBoundingClientRect().top - parent.innerHeight / 2);
@@ -231,7 +231,7 @@ const fs = require('fs'), {pathToFileURL} = require('url');
     async function click(s) {
       if (s === '#send') await frame.waitForSelector('#send:not([disabled])');
       await frame.$eval(s, e => {
-        for(let p=e.parentElement;p;p=p.parentElement) if(p.matches('details.advanced-controls')) p.open=true;
+        for(let p=e.parentElement;p;p=p.parentElement) if(p.matches('details.advanced-controls, details.more-controls')) p.open=true;
         e.scrollIntoView({block:'center'});
         parent.scrollBy(0, window.frameElement.getBoundingClientRect().top + e.getBoundingClientRect().top - parent.innerHeight/2); });
       await frame.click(s);
@@ -287,6 +287,7 @@ const fs = require('fs'), {pathToFileURL} = require('url');
     need(await frame.$eval(row + ' .use-sketch-scene',e=>e.textContent.includes('picked in Sketches')), 'Sketches offer missing');
     await click(row + ' .use-sketch-scene'); need(await frame.$eval(input,e=>e.value) === 'From Sketches', 'Sketches fill lost');
     await send(); await click(row + ' .remove-scene');
+    await click('#timeline .tl-beat[data-beat="b_002"]');
     step = 'counter lock'; const cr = '.scene-controls[data-beat="b_002"]';
     await click(cr + ' .add-scene'); await click(cr + ' .scene-choice[data-scene="counter"]');
     const number = cr + ' input[data-param="value"]';
@@ -297,10 +298,10 @@ const fs = require('fs'), {pathToFileURL} = require('url');
     await frame.evaluate(() => { doc.beats.find(b=>b.id==='b_002').scene.params.value = 47; });
     await send();
     // Editing the beat updates its locked scene number.
-    await frame.$eval('#beats tr[data-beat="b_002"] input[name=value]', e => {
+    await frame.$eval('#focus[data-beat="b_002"] input[name=value]', e => {
       e.value='48'; e.dispatchEvent(new Event('input',{bubbles:true})); });
     need(await frame.$eval(number,e=>e.value) === '48', 'beat edit did not update scene');
-    await frame.$eval('#beats tr[data-beat="b_002"] input[name=value]', e => {
+    await frame.$eval('#focus[data-beat="b_002"] input[name=value]', e => {
       e.value='47'; e.dispatchEvent(new Event('input',{bubbles:true})); });
     step = 'numeric compositor fixture';
     const label = cr + ' textarea[data-slot="label"]';
@@ -398,6 +399,11 @@ def check_editing_style_controls(html):
               if tag == "section" and attrs.get("aria-labelledby") == "style-h"]
     need(len(panels) == 1, "beat-map: expected one Editing style panel")
     panel = panels[0]
+    board = parser.ids["board"]
+    order = [attrs.get("aria-labelledby") for tag, attrs, parents in parser.nodes
+             if tag == "section" and parents and parents[-1] == board]
+    need(order == ["timeline-h", "focus-h", "style-h", None],
+         f"beat-map: panel order must be timeline, focus, style, needs: {order}")
     advanced = {i for i, (tag, attrs, parents) in enumerate(parser.nodes)
                 if tag == "details" and "advanced-controls" in attrs.get("class", "").split() and panel in parents}
     need(len(advanced) == 1, "beat-map: Editing style needs exactly one Advanced controls toggle")
@@ -432,6 +438,51 @@ def editing_style_controls_case():
         need(str(e) == "beat-map: #word-punches must be outside Advanced controls", f"wrong mutant rejection: {e}")
     else:
         raise Fail("Editing style mutant survived: Word punches folded in Simple mode")
+    focus = '<section class="panel" id="focus" aria-labelledby="focus-h"></section>'
+    style = re.search(r'<section class="panel" aria-labelledby="style-h">.*?</section>', html, re.S)[0]
+    mutant = html.replace(focus, "", 1).replace(style, style + "\n" + focus, 1)
+    try:
+        check_editing_style_controls(mutant)
+    except Fail as e:
+        need(str(e).startswith("beat-map: panel order must be"), f"wrong order mutant rejection: {e}")
+    else:
+        raise Fail("Editing style mutant survived: style before focused beat")
+
+
+def check_sketch_geometry(html):
+    match = re.search(r"const LAYOUT_BOXES = (\{.*?\n\});", html, re.S)
+    need(match, "beat-map: missing LAYOUT_BOXES")
+    boxes = json.loads(re.sub(r"\b([a-z]+):", r'"\1":', match[1]).replace(",\n}", "\n}"))
+    need(set(boxes) == {"full", "split", "stack", "pip", "overlay"}, "sketch layout set differs")
+    need(boxes["full"] == {"face": [0, 0, 1080, 1920], "graphic": None}, "full sketch differs")
+    for name in ("split", "stack", "pip", "overlay"):
+        template = (PLUGIN / "skills/reel-canvas-build/layouts" / (name + ".html")).read_text(encoding="utf-8")
+        face = list(map(int, re.search(r'data-box="([\d ]+)"', template)[1].split()))
+        plate = re.search(r'class="layout-plate" style="([^"]+)"', template)[1]
+        graphic = [int(re.search(r"\b" + key + r":\s*(\d+)px", plate)[1])
+                   for key in ("left", "top", "width", "height")]
+        need(boxes[name]["face"] == face, f"{name} sketch face differs from compose")
+        need(boxes[name]["graphic"] == graphic, f"{name} sketch graphic differs from compose")
+
+
+def sketch_geometry_case():
+    html = (PLUGIN / "skills/reel-canvas-build/boards/beat-map/index.html").read_text(encoding="utf-8")
+    check_sketch_geometry(html)
+    mutant = html.replace("face: [0, 0, 1080, 844], graphic: [0, 858, 1080, 1062]",
+                          "face: [0, 858, 1080, 1062], graphic: [0, 0, 1080, 844]", 1)
+    need(mutant != html, "stack geometry mutant anchor differs")
+    try:
+        check_sketch_geometry(mutant)
+    except Fail as e:
+        need(str(e) == "stack sketch face differs from compose", f"wrong geometry mutant rejection: {e}")
+    else:
+        raise Fail("swapped stack geometry mutant survived")
+
+
+def beat_map_reference_case():
+    text = (PLUGIN / "skills/reel-canvas-build/references/beat-map.md").read_text(encoding="utf-8")
+    for required in ('scene_fill.py" catalog', '### Editing style', '"check"', "keeps your face"):
+        need(required in text, f"Beat Map reference lost {required}")
 
 
 def free_port(*taken):
@@ -734,11 +785,20 @@ def main():
         print("scene_fill passed")
         return 0
     if "--data-only" in sys.argv:
-        send_loading_case()
-        print("Send loading static check + enabled-button mutant passed")
-        editing_style_controls_case()
-        print("Editing style static check + folded Word punches mutant passed")
-        return 0
+        results = []
+        for name, fn in (("Send loading static check + enabled-button mutant", send_loading_case),
+                         ("Editing style static check + folded Word punches mutant", editing_style_controls_case),
+                         ("Sketch geometry check + swapped stack mutant", sketch_geometry_case),
+                         ("Beat Map planner reference guidance", beat_map_reference_case)):
+            try:
+                fn()
+                results.append(True)
+                print(name + " passed")
+            except Exception as e:
+                results.append(False)
+                print(f"✗ {name}: {e}")
+        print(f"{sum(results)} passed, {len(results) - sum(results)} failed")
+        return 0 if all(results) else 1
     tools, missing = find_tools()
     if missing:
         print(f"✗ This test needs an installed editor state: set EDITOR_SE_HOME to one "
@@ -789,11 +849,11 @@ def main():
             p = run(py + ["-B", str(DOCTOR / name), "--root", str(ws)], env=env)
             need(p.returncode == 0, f"hub setup {name}: {p.stdout} {p.stderr}")
 
-    def browse(page_url, actions, viewport=None):
-        """A NEW browser (fresh profile) runs the actions; returns its reads."""
+    def browse(page_url, actions, viewport=None, profile=None):
+        """A new browser runs the actions; reuse a profile only for the storage proof."""
         S["browsers"] += 1
         job = scratch / f"job-{S['browsers']}.json"
-        write_json(job, {"url": page_url, "userDataDir": str(scratch / f"profile-{S['browsers']}"),
+        write_json(job, {"url": page_url, "userDataDir": str(scratch / f"profile-{profile or S['browsers']}"),
                          "actions": actions, "viewport": viewport})
         p = run([tools["node"], str(CLICK), tools["pup"], tools["chrome"], str(job)])
         try:
@@ -842,22 +902,24 @@ def main():
 
     def c2():
         start(S["A"])
-        narrow = browse(url("beat-map"), [{"do": "goto"}, {"do": "wait", "sel": "#beats tr[data-beat]"},
-                        {"do": "read"}], viewport={"width": 1024, "height": 768})[0]["narrow"]
-        need(narrow == {"width": 1024, "pageFits": True, "tableFits": True, "notesVisible": True},
+        narrow = browse(url("beat-map"), [{"do": "goto"}, {"do": "wait", "sel": "#focus[data-beat]"},
+                        {"do": "click", "sel": "#more summary"}, {"do": "read"}], viewport={"width": 1024, "height": 768})[0]["narrow"]
+        need(narrow == {"width": 1024, "pageFits": True, "notesVisible": True},
              f"Beat Map must show Your note without horizontal scrolling: {narrow}")
         bid = S["bid"]
-        row = f'#beats tr[data-beat="{bid}"]'
+        row = f'#focus[data-beat="{bid}"]'
         reads = browse(url("beat-map"), [
-            {"do": "goto"}, {"do": "wait", "sel": row},
-            {"do": "select", "sel": f"{row} select[name=layout]", "value": "split"},
+            {"do": "goto"}, {"do": "wait", "sel": "#focus[data-beat]"},
+            {"do": "click", "sel": f'#timeline .tl-beat[data-beat="{bid}"]'},
+            {"do": "click", "sel": f'{row} .layout-choice[data-layout="split"]'},
             {"do": "type", "sel": f"{row} input[name=value]", "text": "3"},
             {"do": "type", "sel": f"{row} textarea[name=note]", "text": "tighter here"},
-            {"do": "click", "sel": '#beats span.word[data-w="5"]'},
-            {"do": "click", "sel": '#beats span.word[data-w="5"]'},
+            {"do": "click", "sel": '#focus span.word[data-w="5"]'},
+            {"do": "click", "sel": '#focus span.word[data-w="5"]'},
             {"do": "type", "sel": "#needs", "text": "logo please"},
             {"do": "waitState", "state": "saved", "change": True},
-            {"do": "goto"}, {"do": "wait", "sel": row}, {"do": "read"},
+            {"do": "goto"}, {"do": "wait", "sel": "#focus[data-beat]"},
+            {"do": "click", "sel": f'#timeline .tl-beat[data-beat="{bid}"]'}, {"do": "read"},
             {"do": "click", "sel": "#send"}, {"do": "waitState", "state": "sent"}, {"do": "read"}])
         edits_shown(reads[0], bid)
         S["sent_read"] = reads[1]
@@ -879,7 +941,8 @@ def main():
     def c4():
         got = start(S["B"])
         need(got != S["A"], f"restarted on port {got}, the same as before")
-        reads = browse(url("beat-map"), [{"do": "goto"}, {"do": "wait", "sel": f'#beats tr[data-beat="{S["bid"]}"]'},
+        reads = browse(url("beat-map"), [{"do": "goto"}, {"do": "wait", "sel": "#focus[data-beat]"},
+                                         {"do": "click", "sel": f'#timeline .tl-beat[data-beat="{S["bid"]}"]'},
                                          {"do": "read"}])
         edits_shown(reads[0], S["bid"])
         need((reads[0]["status"] or {}).get("state") == "sent", f"status is {reads[0]['status']}")
@@ -1138,7 +1201,7 @@ def main():
         need(initial["enabled"] and (initial["keyword"], initial["at"], initial["hold"]) == ("NOTES", "0.5", "0.25"),
              "saved reminder did not load")
         need("Show a short" not in initial["label"] and "timing" in initial["label"], "reminder label promises drawing")
-        need(all(t in initial["hint"] for t in ("beat 1", "Add a scene", title)), "reminder hint lacks the exact pick")
+        need(initial["hint"] == "To put your reminder on screen, open beat 1, then More, then Add a scene, then choose Cta reminder.", "reminder hint lacks the exact pick")
         need(initial["outside"], "outside-window note disappeared")
         need(not reads[1]["reminder"]["hint"], "picked reminder still has a hint")
         need(reads[2]["reminder"]["hint"], "removal did not refresh reminder hint")
@@ -1149,6 +1212,7 @@ def main():
             {"do": "click", "sel": "#reminder-holds summary"}, {"do": "click", "sel": "#reminder-enabled"},
             {"do": "type", "sel": "#reminder-at", "text": "0.5"},
             {"do": "type", "sel": "#reminder-hold", "text": "5"},
+            {"do": "click", "sel": '#timeline .tl-beat[data-beat="b_002"]'},
             {"do": "click", "sel": other_row + " .add-scene"},
             {"do": "click", "sel": other_row + ' .scene-choice[data-scene="cta-reminder"]'}, {"do": "read"},
             {"do": "type", "sel": "#reminder-hold", "text": "0.25"}, {"do": "read"},
@@ -1166,17 +1230,432 @@ def main():
         import scene_fill
         scene_fill.write_catalog(sr, short["beats"], WORDS, FPS)
         reads = browse(url("beat-map", sr.name), [{"do": "goto"}, {"do": "wait", "sel": "#send:not([disabled])"}, {"do": "read"}])
-        need(all(t in reads[0]["reminder"]["hint"] for t in ("beat 1", title, "greyed out", "ask Claude to change this beat's length")),
+        reason = load(sr / "scenes/why.json")["b_001"]["cta-reminder"]
+        need(reads[0]["reminder"]["hint"] == "Open beat 1, then More, then Add a scene. The Cta reminder card is greyed out. " + reason,
              "grey reminder hint lacks the next step")
         (sr / "scenes/why.json").unlink()
         reads = browse(url("beat-map", sr.name), [{"do": "goto"}, {"do": "wait", "sel": "#send:not([disabled])"}, {"do": "read"}])
         counter = next(c for c in reads[0]["scenes"][0]["choices"] if c["id"] == "counter")
         need(counter["disabled"] and "doesn't fit this beat's words or length" in counter["text"], "missing reasons broke the fallback")
+        (sr / "scenes/catalog.json").unlink()
+        reads = browse(url("beat-map", sr.name), open_focus() + [{"do": "read"}])
+        need(reads[0]["reminder"]["hint"] == "The reminder card isn't ready. Ask Claude to prepare the scene choices, then open beat 1, then More, then Add a scene.",
+             "unprepared reminder hint lacks the exact next step")
+
+    def focus_fixture(name, change=None, selection_only=False):
+        sr = videos / name
+        reel_fixture(sr)
+        doc = json.loads(S["seeded"])
+        doc["reel"] = name
+        if change:
+            change(doc)
+        write_json(sr / ("beat-map-selection.json" if selection_only else "beat-map.state.json"), doc)
+        return sr, doc
+
+    def open_focus():
+        return [{"do": "goto"}, {"do": "wait", "sel": "#send:not([disabled])"}]
+
+    def timeline_case():
+        sr, doc = focus_fixture("timeline-proof")
+        reads = browse(url("beat-map", sr.name), open_focus() + [{"do": "read"},
+            {"do": "click", "sel": '#timeline .tl-beat[data-beat="b_003"]'}, {"do": "read"}])
+        tiles = reads[0]["timeline"]
+        need(len(tiles) == 5 and [t["beat"] for t in tiles] == [b["id"] for b in doc["beats"]],
+             f"timeline lost or reordered beats: {tiles}")
+        names = {"full": "Full screen", "split": "Split", "stack": "Stack", "pip": "Picture-in-picture", "overlay": "Overlay"}
+        for i, (tile, beat) in enumerate(zip(tiles, doc["beats"])):
+            need(tile["number"] == str(i + 1) and tile["time"] == f'{int(beat["start_f"] / FPS + .5)}s',
+                 f"timeline number/time differs: {tile}")
+            need(tile["sketch"].startswith(names[beat["layout"]] + ":") and
+                 tile["label"] == f'Beat {i + 1}, {names[beat["layout"]]}, starts at {beat["start_f"] / FPS:.1f} s',
+                 f"timeline labels differ: {tile}")
+        need(reads[1]["focus"] == "Beat 3 of 5" and
+             [t["beat"] for t in reads[1]["timeline"] if t["current"] == "true"] == ["b_003"], "timeline did not open beat 3")
+        need(len(reads[1]["rows"]) == 1 and reads[1]["rows"][0]["beat"] == "b_003", "unfocused controls remain")
+
+    def layout_contract_case():
+        sr, before = focus_fixture("layout-contract", lambda d: d["proposed"]["b_001"].update(
+            check="A/B test <b>your layout</b>?"))
+        reads = browse(url("beat-map", sr.name), open_focus() + [
+            {"do": "click", "sel": '#focus .layout-choice[data-layout="split"]'},
+            {"do": "waitState", "state": "saved", "change": True}, {"do": "read"}])
+        saved = load(sr / "beat-map.state.json")
+        expected = copy.deepcopy(before)
+        expected["beats"][0]["layout"] = "split"
+        need(saved == expected, "autosave changed more than one layout")
+        browse(url("beat-map", sr.name), open_focus() + [
+            {"do": "click", "sel": "#send"}, {"do": "waitState", "state": "sent"}])
+        saved, sent = load(sr / "beat-map.state.json"), load(sr / "beat-map-selection.json")
+        expected["sent_at"] = sent["sent_at"]
+        need(saved == sent == expected, "layout swap or Send changed unrelated data")
+        for path in (sr / "beat-map.state.json", sr / "beat-map-selection.json"):
+            doc = load(path)
+            need(set(doc) == set(before) and all(set(a) == set(b) for a, b in zip(doc["beats"], before["beats"])),
+                 "layout swap added saved keys")
+            rc, out = check("check", path)
+            need(rc == 0, out)
+        need("looked at" in reads[0]["timeline"][0]["label"], "layout choice did not mark looked at")
+
+    def flags_case():
+        reason = "I wanted the graphic alone here. Stack keeps your face on top."
+
+        def fixture(name):
+            sr = videos / name
+            reel_fixture(sr)
+            plan = copy.deepcopy(PLAN)
+            plan["beats"][0]["shows"] = "GRAPHIC ONLY: two cards"
+            plan["beats"][2]["check"] = reason
+            write_json(sr / "work/plan.json", plan)
+            p = run(py + [str(SEED), "--reel-dir", str(sr), "--plan", str(sr / "work/plan.json")], env=env)
+            need(p.returncode == 0, f"check fixture seed: {p.stdout} {p.stderr}")
+            return sr, load(sr / "beat-map.state.json")
+
+        for mode in ("look", "layout"):
+            sr, before = fixture("explicit-check-" + mode)
+            actions = open_focus() + [{"do": "read"}]
+            if mode == "look":
+                actions += [{"do": "click", "sel": "#ok-beat"}, {"do": "read"}]
+            else:
+                actions += [{"do": "click", "sel": '#focus .layout-choice[data-layout="split"]'},
+                            {"do": "waitState", "state": "saved", "change": True}, {"do": "read"}]
+            actions += [{"do": "goto"}, {"do": "wait", "sel": "#send:not([disabled])"}, {"do": "read"},
+                        {"do": "click", "sel": "#send"}, {"do": "waitState", "state": "sent"}]
+            reads = browse(url("beat-map", sr.name), actions)
+            reviewed_profile = S["browsers"]
+            need(reads[0]["focus"] == "Beat 3 of 5" and
+                 [t["beat"] for t in reads[0]["timeline"] if t["flagged"]] == ["b_003"], "wrong initial flag/open beat")
+            need(reads[0]["reason"] == "Flagged for you: " + reason, "explicit flag reason differs")
+            need(reads[1]["progress"] == "1 of 5 looked at · 0 still flagged for you" and reads[1]["reason"] is None,
+                 "review or layout change did not clear flag and count review")
+            need(all(not any(t["flagged"] for t in view["timeline"]) for view in reads[1:]), "flag returned after reload")
+            need("looked at" in reads[2]["timeline"][2]["label"], "reload lost looked-at storage")
+            for path in (sr / "beat-map.state.json", sr / "beat-map-selection.json"):
+                saved = load(path)
+                expected = copy.deepcopy(before)
+                if mode == "layout":
+                    expected["beats"][2]["layout"] = "split"
+                expected["sent_at"] = saved["sent_at"]
+                need(saved == expected and saved["proposed"]["b_003"]["check"] == reason, "review changed the saved check or unrelated data")
+                rc, out = check("check", path)
+                need(rc == 0, out)
+            # A rebuilt layout proposal resets review in the same browser profile.
+            changed = load(sr / "beat-map.state.json")
+            changed["proposed"]["b_003"]["layout"] = "pip" if mode == "look" else "split"
+            changed["beats"][2]["layout"] = changed["proposed"]["b_003"]["layout"]
+            write_json(sr / "beat-map.state.json", changed)
+            view = browse(url("beat-map", sr.name), open_focus() + [{"do": "read"}], profile=reviewed_profile)[0]
+            need(view["focus"] == "Beat 3 of 5" and view["timeline"][2]["flagged"] and
+                 "looked at" not in view["timeline"][2]["label"], "rebuilt proposal did not reset review storage")
+
+        sr, _ = focus_fixture("missing-layout", lambda d: d["beats"][2].update(layout="grid"))
+        reads = browse(url("beat-map", sr.name), open_focus() + [{"do": "read"},
+            {"do": "click", "sel": "#ok-beat"}, {"do": "click", "sel": "#send"},
+            {"do": "waitState", "state": "error"}, {"do": "read"}])
+        need(reads[0]["reason"] == "Flagged for you: This beat has no layout yet. Pick one below." and
+             reads[0]["timeline"][2]["sketch"] == "No layout yet", "missing layout not flagged")
+        need(reads[1]["timeline"][2]["flagged"] and reads[1]["focus"] == "Beat 3 of 5" and
+             reads[1]["status"]["text"] == "Beat 3 needs a layout. Open it on the timeline and pick one.",
+             "missing layout review or Send failed to reopen beat")
+        need(not (sr / "beat-map-selection.json").exists(), "missing layout was sent")
+
+    def scene_flags_case():
+        title = "Callout"
+        spec = {"id": "callout", "title": title, "kind": "overlay", "slots": [], "params": []}
+        reason = "This beat is too short."
+        for name, catalog, reasons, suggestions, expected in (
+                ("grey", [spec], {"callout": reason}, {}, "The Callout card doesn't fit this beat: " + reason),
+                ("grey-no-stop", [spec], {"callout": reason[:-1]}, {}, "The Callout card doesn't fit this beat: " + reason),
+                ("missing", [], {}, {}, "This beat's scene isn't available any more. Open More and pick another, or press Remove scene."),
+                ("not-loaded", None, {"callout": reason}, {}, None),
+                ("suggested", [spec], {"callout": reason}, {"callout": {"id": "callout", "slots": {}}}, None),
+                ("no-reason", [spec], {"callout": "  "}, {}, "The Callout card doesn't fit this beat's words or length. Open More and pick another, or press Remove scene."),
+                ("no-suggestions-file", [spec], {"callout": reason}, None, None),
+                ("no-suggestions-beat", [spec], {"callout": reason}, "missing", None)):
+            def prepare(d):
+                d["beats"][2]["scene"] = {"id": "callout", "slots": {}}
+                d["beats"][2]["layout"] = "pip"  # Scene facts are independent of the proposed layout.
+            sr, _ = focus_fixture("scene-flag-" + name, prepare)
+            if catalog is not None:
+                write_json(sr / "scenes/catalog.json", catalog)
+            write_json(sr / "scenes/why.json", {"b_003": reasons})
+            if suggestions is not None:
+                write_json(sr / "scenes/suggest.json", {} if suggestions == "missing" else {"b_003": suggestions})
+            actions = open_focus() + [{"do": "read"}]
+            if expected:
+                actions += [{"do": "click", "sel": "#ok-beat"}, {"do": "read"},
+                            {"do": "goto"}, {"do": "wait", "sel": "#send:not([disabled])"}, {"do": "read"}]
+            reads = browse(url("beat-map", sr.name), actions)
+            need(reads[0]["timeline"][2]["flagged"] == bool(expected), f"wrong scene flag: {name}")
+            need(reads[0]["reason"] == ("Flagged for you: " + expected if expected else None), f"wrong scene reason: {name}")
+            for view in reads[1:]:
+                need(not any(t["flagged"] for t in view["timeline"]), f"looked-at scene flag returned: {name}")
+            if expected:
+                # Removing or changing the saved scene clears its hard-fact flag too.
+                for action in ("remove", "change"):
+                    steps = open_focus() + [{"do": "click", "sel": '#more .remove-scene'}]
+                    if action == "change":
+                        write_json(sr / "scenes/catalog.json", [spec])
+                        write_json(sr / "scenes/suggest.json", {"b_003": {"callout": {"id": "callout", "slots": {}}}})
+                        steps += [{"do": "click", "sel": '#more .add-scene'},
+                                  {"do": "click", "sel": '#more .scene-choice[data-scene="callout"]'}]
+                    # Restore the state between fresh profiles; neither action marks a beat looked at.
+                    doc = load(sr / "beat-map.state.json")
+                    doc["beats"][2]["scene"] = {"id": "callout" if catalog else "retired", "slots": {}}
+                    write_json(sr / "beat-map.state.json", doc)
+                    steps[2:2] = [{"do": "click", "sel": '#timeline .tl-beat[data-beat="b_003"]'}]
+                    view = browse(url("beat-map", sr.name), steps + [
+                        {"do": "waitState", "state": "saved", "change": True}, {"do": "read"}])[0]
+                    need(not view["timeline"][2]["flagged"] and view["reason"] is None, f"{action} left a scene flag")
+
+    def old_state_case():
+        for name in ("base", "optional", "selection"):
+            def prepare(d):
+                for key in ("edit_style", "loops", "cta_reminder", "holds"):
+                    d.pop(key, None)
+                if name == "optional":
+                    d.update(edit_style={"style": "layout-switch"}, loops=[], holds=[],
+                             cta_reminder={"at_s": 1, "hold_s": .25, "gain": 0, "keyword": "NOTES"})
+            sr, before = focus_fixture("old-" + name, prepare, selection_only=name == "selection")
+            view = browse(url("beat-map", sr.name), open_focus() + [{"do": "read"},
+                {"do": "click", "sel": "#send"}, {"do": "waitState", "state": "sent"}])[0]
+            need(len(view["timeline"]) == 5 and view["focus"] == "Beat 1 of 5", f"old {name} failed to load")
+            need(not any(t["flagged"] for t in view["timeline"]) and view["reason"] is None, f"old {name} acquired a flag")
+            sent = load(sr / "beat-map-selection.json")
+            need(set(sent) == set(before), f"old {name} acquired keys")
+            before["sent_at"] = sent["sent_at"]
+            need(sent == before, f"old {name} round-trip changed data")
+            rc, out = check("check", sr / "beat-map-selection.json")
+            need(rc == 0, out)
+
+    def focus_layout_case():
+        sr, _ = focus_fixture("focus-layout-proof")
+        actions = open_focus()
+        for width, height in ((1024, 768), (560, 800), (470, 800), (400, 800)):
+            actions += [{"do": "viewport", "width": width, "height": height}, {"do": "read"}]
+        reads = browse(url("beat-map", sr.name), actions, viewport={"width": 1024, "height": 768})
+        desktop = reads[0]["focusLayout"]
+        # A short scroll is at most 160px, measured above the fixed Send bar.
+        need(desktop["pickerBottom"] <= desktop["usableHeight"] + 160,
+             f"default Layout picker needs more than one short scroll: {desktop}")
+        for view in reads:
+            width, layout = view["narrow"]["width"], view["focusLayout"]
+            sketch, meta, columns = layout["sketch"], layout["meta"], layout["columns"]
+            need(abs(sketch["width"] - (120 if width >= 560 else 72)) < 1,
+                 f"wrong focused sketch width at {width}: {sketch}")
+            if width < 560:
+                need(meta["left"] >= sketch["right"] and meta["top"] < sketch["bottom"] and
+                     meta["bottom"] > sketch["top"], f"mobile time/chip is not beside sketch: {layout}")
+                need(all(abs(r["left"] - columns["left"]) < 1 and abs(r["right"] - columns["right"]) < 1 and
+                         r["top"] >= sketch["bottom"] for r in layout["rest"]),
+                     f"mobile content must run full width below the sketch: {layout}")
+
+    def word_marks_case(with_neighbours=False):
+        w = 5
+
+        def prepare(d):
+            # Also test existing neighbour marks different from W's first mark.
+            if with_neighbours:
+                d["word_marks"] += [{"w": w - 1, "mark": "emph"}, {"w": w + 1, "mark": "cta"}]
+            d["word_marks"].sort(key=lambda m: m["w"])
+
+        sr, before = focus_fixture("word-marks-proof-" + str(with_neighbours).lower(), prepare)
+        state_path, send_path = sr / "beat-map.state.json", sr / "beat-map-selection.json"
+        original = before["word_marks"]
+        word = f'#focus .word[data-w="{w}"]'
+        beat = '#timeline .tl-beat[data-beat="b_002"]'
+        actions = open_focus() + [{"do": "click", "sel": beat}]
+        for mark in ("num", "key", "emph", "cta", None):
+            actions += [{"do": "click", "sel": word}, {"do": "waitState", "state": "saved", "change": True},
+                        {"do": "readJson", "path": str(state_path)}]
+            if mark == "cta":
+                actions += [{"do": "click", "sel": "#ok-beat"}, {"do": "click", "sel": "#prev-beat"},
+                            {"do": "read"}, {"do": "goto"}, {"do": "wait", "sel": "#send:not([disabled])"},
+                            {"do": "click", "sel": beat}, {"do": "read"},
+                            {"do": "readJson", "path": str(state_path)},
+                            {"do": "click", "sel": "#send"}, {"do": "waitState", "state": "sent"},
+                            {"do": "readJson", "path": str(send_path)}]
+        actions += [{"do": "click", "sel": "#send"}, {"do": "waitState", "state": "sent"},
+                    {"do": "readJson", "path": str(send_path)}]
+        reads = browse(url("beat-map", sr.name), actions)
+        snapshots = [view["json"] for view in reads if "json" in view]
+        expected_marks = ("num", "key", "emph", "cta", "cta", "cta", None, None)
+        need(len(snapshots) == len(expected_marks), "missing word-mark save snapshots")
+        entry_bytes = lambda m: json.dumps(m, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        for doc, mark in zip(snapshots, expected_marks):
+            marks = doc["word_marks"]
+            indices = [m["w"] for m in marks]
+            need(indices == sorted(set(indices)), f"word indices must be sorted and unique after {mark}: {marks}")
+            own = [m for m in marks if m["w"] == w]
+            need(own == ([{"w": w, "mark": mark}] if mark else []), f"wrong mark for W after {mark}: {own}")
+            need([entry_bytes(m) for m in marks if m["w"] != w] == [entry_bytes(m) for m in original],
+                 f"marking W changed another entry after {mark}: {marks}")
+            for neighbour in (w - 1, w + 1):
+                need([entry_bytes(m) for m in marks if m["w"] == neighbour] ==
+                     [entry_bytes(m) for m in original if m["w"] == neighbour],
+                     f"marking W changed neighbour {neighbour}")
+            expected = sorted(original + ([{"w": w, "mark": mark}] if mark else []), key=lambda m: m["w"])
+            need(marks == expected, f"word marks differ after {mark}")
+            if mark is None:
+                need(marks == original, "off did not restore the original list")
+            # Validate each saved snapshot, including the marked and off Send snapshots.
+            snapshot_path = scratch / "word-marks-snapshot.json"
+            write_json(snapshot_path, doc)
+            rc, out = check("check", snapshot_path, "--words", sr / "work/edit_map.cut.json")
+            need(rc == 0, out)
+        views = [view for view in reads if "marks" in view]
+        need(len(views) == 2, "missing re-render/reload word-mark views")
+        original_by_word = {str(m["w"]): m["mark"] for m in original}
+        for view in views:
+            need(view["focus"] == "Beat 2 of 5" and view["marks"].get(str(w)) == "cta" and
+                 all(view["marks"].get(str(n)) == original_by_word.get(str(n)) for n in (w - 1, w + 1)),
+                 f"re-render or reload lost a word's own mark: {view['marks']}")
+        need(load(state_path)["word_marks"] == load(send_path)["word_marks"] == original,
+             "final saved and sent marks differ from the original")
+
+    def overflow_case():
+        sr, _ = focus_fixture("overflow-proof", lambda d: d["proposed"]["b_001"].update(shows="Long" * 400))
+        actions = open_focus()
+        for width, height in ((1024, 768), (470, 800), (400, 800)):
+            actions += [{"do": "viewport", "width": width, "height": height}, {"do": "read"},
+                        {"do": "click", "sel": "#more summary"}, {"do": "read"},
+                        {"do": "click", "sel": "#more summary"}]
+        reads = browse(url("beat-map", sr.name), actions)
+        need(all(v["narrow"]["pageFits"] for v in reads), f"sideways page scroll: {reads}")
+        need(all(v["narrow"]["notesVisible"] for v in reads[1::2]), "open More hides notes")
+        need(all(not v["moreOpen"] for v in reads[::2]) and all(v["moreOpen"] for v in reads[1::2]), "More state differs")
+
+    def keyboard_case():
+        sr, _ = focus_fixture("keyboard-proof")
+        reads = browse(url("beat-map", sr.name), open_focus() + [
+            {"do": "key", "sel": '#timeline .tl-beat[data-beat="b_002"]', "key": "Enter"}, {"do": "read"},
+            {"do": "keyboardReview"},
+            {"do": "key", "sel": '#focus .layout-choice[data-layout="split"]', "key": "Enter"},
+            {"do": "waitState", "state": "saved", "change": True}, {"do": "read"},
+            {"do": "key", "sel": "#ok-beat", "key": "Enter"}, {"do": "read"},
+            {"do": "key", "sel": "#prev-beat", "key": "Enter"}, {"do": "read"}])
+        need(reads[0]["focus"] == "Beat 2 of 5" and reads[0]["activeBeat"] == "b_002", "Enter on timeline lost focus")
+        need(reads[1]["rows"][0]["layout"] == "split", "Enter did not pick layout")
+        need(reads[2]["active"] == "focus-h" and reads[2]["focus"] == "Beat 3 of 5", "next did not focus heading")
+        need(reads[3]["active"] == "focus-h" and reads[3]["focus"] == "Beat 2 of 5", "Back did not focus heading")
+        need(load(sr / "beat-map.state.json")["beats"][1]["layout"] == "split", "keyboard layout did not save")
+
+    def review_navigation_case():
+        sr, before = focus_fixture("review-navigation")
+        actions = open_focus() + [{"do": "read"}, {"do": "click", "sel": "#more summary"},
+            {"do": "click", "sel": '#timeline .tl-beat[data-beat="b_002"]'}, {"do": "read"},
+            {"do": "click", "sel": '#timeline .tl-beat[data-beat="b_001"]'}, {"do": "read"}]
+        actions += [{"do": "click", "sel": "#ok-beat"} for _ in before["beats"]]
+        actions += [{"do": "read"}, {"do": "click", "sel": "#send"}, {"do": "waitState", "state": "sent"}]
+        reads = browse(url("beat-map", sr.name), actions)
+        need(not reads[0]["moreOpen"] and reads[1]["moreOpen"] and reads[2]["moreOpen"], "More did not remember this visit's state")
+        need(reads[3]["progress"] == "All 5 beats looked at. Press Send to Claude when you're ready." and
+             reads[3]["focus"] == "Beat 5 of 5", "review completion or last beat differs")
+        sent = load(sr / "beat-map-selection.json")
+        before["sent_at"] = sent["sent_at"]
+        need(sent == before, "review-only navigation changed saved data")
+
+    def pending_values_case():
+        for kind, bad_text, fixed_text, message, reason in (
+                ("value", "unfinished", "3", "Beat 2's number isn't a number yet. Fix the box marked in red first.",
+                 "The number in More isn't a number yet."),
+                ("broll-start", "-1", "0", "Beat 2's B-roll needs a start time of zero seconds or more.",
+                 "The B-roll start time in More isn't valid.")):
+            sr, before = focus_fixture("pending-" + kind)
+            if kind == "broll-start":
+                # Supply a clip so the real B-roll controls can be exercised in this fixture.
+                write_json(sr / "broll/clips.json", {"clips": [{"ledger_id": "f01", "src": "broll/clip.mp4",
+                    "name": "clip.mp4", "frames": 900, "origin": "own"}]})
+                before["beats"][1]["broll"] = {"ledger_id": "f01", "src": "broll/clip.mp4", "in": 0,
+                    "out": before["beats"][1]["end_f"] - before["beats"][1]["start_f"], "fit": "cover"}
+                write_json(sr / "beat-map.state.json", before)
+            box = '#focus input[name=' + kind + ']'
+            actions = open_focus() + [
+                {"do": "click", "sel": '#timeline .tl-beat[data-beat="b_002"]'},
+                {"do": "type", "sel": box, "text": bad_text},
+                {"do": "waitState", "state": "error", "change": True}, {"do": "read"},
+                {"do": "readJson", "path": str(sr / "beat-map.state.json")},
+                {"do": "type", "sel": "#needs", "text": "Keep this valid edit."},
+                {"do": "waitState", "state": "error", "change": True}, {"do": "read"},
+                {"do": "readJson", "path": str(sr / "beat-map.state.json")},
+                # Looks good must not clear a pending hard error.
+                {"do": "click", "sel": "#ok-beat"}, {"do": "read"},
+                {"do": "click", "sel": "#more summary"},
+                {"do": "click", "sel": "#send"}, {"do": "waitState", "state": "error"}, {"do": "read"},
+                {"do": "readExists", "path": str(sr / "beat-map-selection.json")},
+                {"do": "type", "sel": box, "text": fixed_text},
+                {"do": "waitState", "state": "saved", "change": True}, {"do": "read"},
+                {"do": "click", "sel": "#send"}, {"do": "waitState", "state": "sent"}]
+            reads = browse(url("beat-map", sr.name), actions)
+            pending_message = ("Beat 2's number isn't a number yet. It isn't saved." if kind == "value" else
+                               "Beat 2's B-roll needs a start time of zero seconds or more. It isn't saved.")
+            for view in (reads[0], reads[2], reads[4]):
+                need(view["status"] == {"state": "error", "text": pending_message},
+                     f"pending {kind} claimed saved: {view['status']}")
+            need(reads[1]["json"] == before, "pending text changed the saved document")
+            before["needs"] = "Keep this valid edit."
+            need(reads[3]["json"] == before, "valid edit did not save while bad value was pending")
+            need(reads[4]["focus"] == "Beat 3 of 5" and reads[4]["timeline"][1]["flagged"],
+                 "pending error disappeared after Looks good and leaving the beat")
+            view = reads[5]
+            row = view["rows"][0]
+            need(view["status"] == {"state": "error", "text": message} and view["focus"] == "Beat 2 of 5" and
+                 view["moreOpen"] and view["reason"] == "Flagged for you: " + reason,
+                 f"Send did not reopen the pending {kind} error: {view}")
+            prefix = "value" if kind == "value" else "broll"
+            need(row["value" if kind == "value" else "brollStart"] == bad_text and
+                 row[prefix + "Invalid"] == "true" and row[prefix + "Error"], "pending text/error was not restored")
+            need(not reads[6]["exists"], "Send accepted a pending bad value")
+            fixed = reads[7]
+            need(fixed["status"] == {"state": "saved", "text": "All changes saved."}, "fixed value did not restore saved status")
+            need(not fixed["timeline"][1]["flagged"] and fixed["reason"] is None, "fixed value stayed flagged")
+            sent = load(sr / "beat-map-selection.json")
+            expected = copy.deepcopy(before)
+            if kind == "value":
+                expected["beats"][1]["value"] = 3
+            expected["sent_at"] = sent["sent_at"]
+            need(sent == expected, "fixing a pending value changed unrelated saved data")
+            rc, out = check("check", sr / "beat-map-selection.json")
+            need(rc == 0, out)
+
+    def empty_beats_case():
+        def prepare(d):
+            d.update(beats=[], proposed={}, word_marks=[], notes={})
+        sr, before = focus_fixture("empty-beats", prepare)
+        rc, out = check("check", sr / "beat-map.state.json")
+        need(rc == 0, out)
+        reads = browse(url("beat-map", sr.name), open_focus() + [{"do": "read"},
+            {"do": "type", "sel": "#needs", "text": "Please build my beat map."},
+            {"do": "waitState", "state": "saved", "change": True}, {"do": "read"},
+            {"do": "select", "sel": "#edit-style", "value": "layout-switch"},
+            {"do": "waitState", "state": "saved", "change": True}, {"do": "read"}])
+        need(reads[0]["timeline"] == [] and reads[0]["rows"] == [] and
+             "No beats yet. Ask Claude to build the beat map from your cut." in reads[0]["focusText"],
+             "empty beat map did not show its empty focus panel")
+        need(all(v["status"]["text"] == "All changes saved." for v in reads[1:]), "empty beat edits did not save")
+        before.update(needs="Please build my beat map.", edit_style={"style": "layout-switch"})
+        need(load(sr / "beat-map.state.json") == before, "empty beat edits changed unrelated data")
+
+    def strong_beats_accessibility_case():
+        sr, before = focus_fixture("strong-beats-accessibility")
+        write_json(sr / "sound/placement.json", {"bed": {"beat": {"big_hits_s": [.5, 1.25]}}})
+        reads = browse(url("beat-map", sr.name), open_focus() + [{"do": "read"}])
+        view = reads[0]
+        need(view["timelineRole"] == "group", "timeline label lacks a group role")
+        need(len(view["strongBeats"]) == 2, "strong beat marks missing")
+        for mark in view["strongBeats"]:
+            need(mark["role"] is None and mark["hidden"] == "true" and
+                 mark["title"] == "strong beat: good spot for a punch-in or transition" and
+                 mark["label"] == f'{float(mark["time"]):.2f} s: ' + mark["title"] and
+                 f', strong beat at {float(mark["time"]):.2f} s' in mark["owner"],
+                 f"strong beat accessibility differs: {mark}")
 
     S["A"] = free_port()
     S["B"] = free_port(S["A"])
     try:
         case("Send starts disabled with a loading cue; enabling it early is rejected", send_loading_case)
+        case("Editing style structure and folded-control mutant", editing_style_controls_case)
+        case("Sketch geometry matches compose; swapped stack fails", sketch_geometry_case)
+        case("Beat Map planner reference guidance", beat_map_reference_case)
         case("schema_scene: scene shapes and Sketches beat keys", schema_scene_case)
         case("scene_fill: catalog, honest fills, timing and planted bad suggestions", scene_fill_case)
         if "--scenes-only" in sys.argv:
@@ -1193,6 +1672,20 @@ def main():
         case("2 edit + reload: layout, value, note, word mark and needs survive a reload", c2)
         case("3 Send: beat-map-selection.json is valid and carries the edits and sent_at", c3)
         case("4 port change + new browser: the edits and sent come back from disk", c4)
+        case("timeline includes overlay, sketches, labels and focus", timeline_case)
+        case("layout swap preserves the state and Send contracts", layout_contract_case)
+        case("word marks cycle on one word, preserve neighbours, survive reload and Send", word_marks_case)
+        case("word marks preserve existing different marks on adjacent words", lambda: word_marks_case(True))
+        case("explicit checks, free-text exclusion, review storage and missing layouts", flags_case)
+        case("saved scene facts, punctuation, catalog loading and flag clearing", scene_flags_case)
+        case("old base, optional and selection-only state round-trip", old_state_case)
+        case("no page overflow at 1024, 470 and 400 with More open and closed", overflow_case)
+        case("focused beat sketch sizes, mobile row and short scroll to Layout", focus_layout_case)
+        case("keyboard reaches review controls and focuses headings", keyboard_case)
+        case("More persists and review finishes without document edits", review_navigation_case)
+        case("pending number and B-roll errors survive navigation, block Send and clear on fixing", pending_values_case)
+        case("empty beats show a message and save needs and style", empty_beats_case)
+        case("timeline and strong beats have accessible group and button labels", strong_beats_accessibility_case)
         case("remembered style: badge, Ask default and untouched Send", remembered_style)
         case("5 sketches: lock waits for a pick; pick, lock, notes saved, Send valid, restored on a new port", c5)
         case("6 init exits: empty and failed boards clear Loading, keep Send disabled; cleanup mutants fail", c6)

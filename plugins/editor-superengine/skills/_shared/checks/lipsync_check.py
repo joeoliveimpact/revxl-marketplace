@@ -3,9 +3,14 @@
 
 python lipsync_check.py <reel_dir>
 
-Match up to twelve half-second pieces by FRAME NUMBER, searching two seconds
-either side of the current source position. Each file gets one selected-frame
+Match up to twelve half-second pieces on the cut list's frame grid, searching
+two seconds either side of the current source time. Each file gets one selected-frame
 ffmpeg decode, shared by all pieces (including repeated uses of a raw take).
+Recordings are conformed with fps=<cut fps>:start_time=0 BEFORE frame selection,
+just like render.py. This uses timestamps for non-integer rates and VFR; a raw
+index formula round(f / cut_fps * raw_fps) accumulates NTSC rounding errors and
+cannot represent VFR, which has no single raw_fps. The cut video is already on
+the cut grid and keeps its original decode.
 Spatial normalisation tolerates exposure/contrast changes. Static pictures are
 uncheckable, not evidence of stale media. No cut video yet means no rows.
 Reported offsets are output seconds (source offset divided by playback speed).
@@ -92,12 +97,14 @@ def normalise(frame):
     return array("f", ((v - mean) / std for v in frame)) if std >= 2.0 else None
 
 
-def decode(path, numbers, geometry=""):
-    """No seeking, timestamps or output fps conversion: select uses input n."""
+def decode(path, numbers, geometry="", fps=None):
+    """Select cut-grid n after timestamp conformance for recordings only."""
     numbers = sorted(numbers) if numbers is not None else None
     if numbers == []:
         return {}
     vf = "select='%s'," % select_ranges(numbers) if numbers is not None else ""
+    if fps is not None:
+        vf = "fps=%r:start_time=0," % fps + vf
     vf += (geometry + "," if geometry else "") + "scale=%d:%d:flags=area,format=gray" % (W, H)
     p = subprocess.run([rt.tool("ffmpeg"), "-v", "error", "-i", str(path), "-map", "0:v:0",
                         "-an", "-vf", vf, "-fps_mode", "passthrough", "-pix_fmt", "gray",
@@ -164,7 +171,10 @@ def match(piece, master, raw, radius):
     return best, scores[best] - baseline
 
 
-def run(ctx):
+def run(ctx, summary=None):
+    """Return finding rows; optionally fill compared/not_compared piece counts."""
+    summary = summary if summary is not None else {}
+    summary.update(compared=0, not_compared=0)
     reel = Path(ctx["reel_dir"]).resolve()
     work = reel / "work"
     try:
@@ -213,6 +223,7 @@ def run(ctx):
                          msg="The cut video has %d frames, but your latest cut needs %d. "
                              "Ask Claude to remake the cut video." % (got, total))]
         samples = pieces(cuts, sources)
+        summary["not_compared"] = len(samples)
         radius = round(2 * fps)
         needed = {}
         for piece in samples:
@@ -225,23 +236,41 @@ def run(ctx):
         for raw, video, take in sources.values():
             if raw in raws or raw not in needed:
                 continue
-            video = video or probe(raw)
-            geometry = render_module().conform(video, crop if not mixed or take == "1" else None)
-            raws[raw] = decode(raw, needed[raw], geometry)
+            try:
+                video = video or probe(raw)
+                geometry = render_module().conform(video, crop if not mixed or take == "1" else None)
+                raws[raw] = decode(raw, needed[raw], geometry, fps=fps)
+            except (OSError, ValueError, KeyError, TypeError, IndexError, subprocess.SubprocessError, SystemExit):
+                raws[raw] = {}
         hits, checked = [], 0
+        cuts_path = work / "cuts.json"
+        older = cuts_path.is_file() and master.stat().st_mtime_ns < cuts_path.stat().st_mtime_ns
         for piece in samples:
+            at = piece["out"][0] / fps
+            if any(n not in raws[piece["path"]] for n in piece["src"]):
+                row = unchecked(piece["path"], "could not compare the picture at %.2f s: "
+                                "the recording has no picture there" % at)[0]
+                row["at"] = at
+                hits.append(row)
+                continue
             result = match(piece, camera, raws[piece["path"]], radius)
             if result is None:
+                row = unchecked(master, "could not compare the picture at %.2f s: "
+                                "the pictures could not be matched reliably" % at)[0]
+                row["at"] = at
+                hits.append(row)
                 continue
             checked += 1
+            summary.update(compared=checked, not_compared=len(samples) - checked)
             offset, gain = result
             if abs(offset) > 1 and gain >= MIN_GAIN:
-                at = piece["out"][0] / fps
                 hits.append(dict(check="camera-stale", level="block", where=str(master), at=at,
-                                 msg="The video and the voice are out of step by about %.2f s from %.2f s: "
-                                     "the cut video is older than your latest cut. "
-                                     "Ask Claude to remake the cut video." % (abs(offset) / fps / speed, at)))
-        return hits if checked else unchecked(master, "the picture changes too little to match reliably")
+                                 msg=("The picture is about %.2f s (%.1f frames) %s the voice from %.2f s. "
+                                      % (abs(offset) / fps / speed, abs(offset) / speed,
+                                         "ahead of" if offset > 0 else "behind", at))
+                                     + ("The cut video is older than your latest cut. " if older else "")
+                                     + "Ask Claude to remake the cut video."))
+        return hits if hits or checked else unchecked(master, "the picture changes too little to match reliably")
     except (OSError, ValueError, KeyError, TypeError, IndexError, subprocess.SubprocessError, SystemExit):
         return unchecked(work, "the cut or its pictures could not be read; check the recordings and editor setup")
 
@@ -251,11 +280,13 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("reel_dir", type=Path)
     a = ap.parse_args()
-    hits = run(dict(reel_dir=a.reel_dir))
+    summary = {}
+    hits = run(dict(reel_dir=a.reel_dir), summary)
     for hit in hits:
         print("%s  %s  %s  (%s)" % (hit["level"].upper(), hit["check"], hit["msg"], hit["where"]))
     if not hits:
         print("lipsync check: clean, the cut video matches your latest cut")
+    print("lipsync check: %d compared, %d not compared" % (summary["compared"], summary["not_compared"]))
     return 1 if any(h["level"] == "block" for h in hits) else 0
 
 

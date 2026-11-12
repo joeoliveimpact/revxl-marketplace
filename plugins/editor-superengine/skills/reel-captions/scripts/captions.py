@@ -53,7 +53,8 @@
 No tools or rendering in plan(); reading a Send remembers its caption look.
 Only write() saves work/captions.json.
 Word positions always refer to the original cut word list, including empty rows.
-pick_marks() returns inclusive truthful runs; the planner retains later accents
+pick_marks() returns literal Send runs; only propose_marks() widens phrases.
+The planner retains later accents
 and separately records the one punch event allowed per sentence.
 """
 import argparse
@@ -79,6 +80,7 @@ for directory in (SKILLS / "_shared", SKILLS / "reel-canvas-build/scripts",
 from win_encoding import ensure_utf8_output  # noqa: E402
 import runtime as rt  # noqa: E402
 import saved_style  # noqa: E402
+import bundled_fonts  # noqa: E402
 import standing_notes  # noqa: E402
 import beat_schema  # noqa: E402
 import scene_check  # noqa: E402
@@ -94,8 +96,8 @@ DEFAULTS = {"accent": "#FFD84D", "under_small_overlays": True, "line_breaks": Tr
             "mark_look": "accent", "loud_emphasis": False}  # taste: reading-time suggestion
 
 
-def _look(label, size, case="none", stroke=None, plate=None, start=None, frames=4, karaoke=False):
-    return {"label": label, "size": size, "case": case, "color": "#FFFFFF", "accent": "#FFD84D",
+def _look(label, size, family, weight, case="none", stroke=None, plate=None, start=None, frames=4, karaoke=False, style="normal"):
+    return {"label": label, "size": size, "font": {"family": family, "weight": weight, "style": style}, "case": case, "color": "#FFFFFF", "accent": "#FFD84D",
             "stroke": stroke, "plate": plate, "line_h": 1.2,
             "pop": {"from": start or {"autoAlpha": 0, "y": 12},
                     "to": {"autoAlpha": 1, "y": 0, "scale": 1}, "frames": frames, "ease": "power2.out"},
@@ -104,13 +106,18 @@ def _look(label, size, case="none", stroke=None, plate=None, start=None, frames=
 
 # taste: sizes, outlines, plate, line height, pop and punch values are client choices.
 STYLES = {
-    "clean": _look("Clean", 64),
-    "bold-pop": _look("Bold pop", 84, "upper", stroke="#000000",
+    "clean": _look("Clean", 64, "Inter", 600),
+    "bold-pop": _look("Bold pop", 84, "Montserrat", 900, "upper", stroke="#000000",
                       start={"autoAlpha": 0, "scale": 0.7}, frames=5),
-    "boxed": _look("Boxed", 60, plate="rgba(0,0,0,0.72)", start={"autoAlpha": 0, "scale": 0.9}),
-    "karaoke": _look("Karaoke", 68, start={"autoAlpha": 0}, frames=3, karaoke=True),
-    "outline-caps": _look("Outline caps", 76, "upper", stroke="accent", start={"autoAlpha": 0, "y": 20}),
+    "boxed": _look("Boxed", 60, "Inter", 700, plate="rgba(0,0,0,0.72)", start={"autoAlpha": 0, "scale": 0.9}),
+    "karaoke": _look("Karaoke", 68, "Inter", 800, start={"autoAlpha": 0}, frames=3, karaoke=True),
+    "outline-caps": _look("Outline caps", 76, "Montserrat", 800, "upper", stroke="accent", start={"autoAlpha": 0, "y": 20}),
 }
+
+
+for _sid, _spec in STYLES.items():
+    if bundled_fonts.find(**_spec["font"]) is None:
+        raise ValueError(f"Caption look {_sid} names a font that isn't bundled with the editor.")
 
 
 class Stop(Exception):
@@ -302,51 +309,55 @@ def chunk(words, fps, switch_f, total_f, line_breaks=True):
     return _timed(words, _groups(words, rate, switches, line_breaks), rate, switches, total_f)
 
 
-def _mark_runs(words, candidates):
-    """Expand through the shared rule; merge adjacent equal candidates before expansion."""
+def _mark_runs(words, candidates, *, propose=False):
+    """Keep Send marks literal; bound truthful widening to safe, short proposals."""
     tokens = [w["word"] if isinstance(w, dict) else w for w in words]
-    if not all(isinstance(w, str) for w in tokens) or not isinstance(candidates, list):
-        raise Stop(2, "Word marks need a word list and a list of {w, mark} choices in the Beat Map Send.")
-    seen, initial = set(), []
-    for c in candidates:
-        if not (isinstance(c, dict) and set(c) == {"w", "mark"} and _int(c["w"])
-                and 0 <= c["w"] < len(tokens) and c["mark"] in beat_schema.MARKS and c["w"] not in seen
-                and tokens[c["w"]].strip()):
-            raise Stop(2, "Fix word_marks in the Beat Map Send: use unique word positions and num, key, emph or cta.")
-        seen.add(c["w"])
+    if propose and isinstance(candidates, list):
+        candidates = sorted(candidates, key=lambda c: c.get("w") if isinstance(c, dict) and _int(c.get("w")) else -1)
+    problems = beat_schema.marks_problems(candidates, tokens)
+    if problems:
+        raise Stop(2, "Fix the word marks in the Beat Map Send: " + "\n".join(problems))
+    if not all(isinstance(w, str) for w in tokens):
+        raise Stop(2, "Word marks need a word list in the Beat Map Send.")
+    initial = []
     sentence, n = [], 0
     for word in tokens:
         sentence.append(n)
         n += word.rstrip().endswith((".", "!", "?"))
-    for c in sorted(candidates, key=lambda c: c["w"]):
+    for c in candidates:
         if (initial and initial[-1]["w1"] + 1 == c["w"] and initial[-1]["mark"] == c["mark"]
                 and sentence[initial[-1]["w1"]] == sentence[c["w"]]):
             initial[-1]["w1"] = c["w"]
         else:
             initial.append({"w0": c["w"], "w1": c["w"], "mark": c["mark"]})
-    # tokenize can split one transcript word (e.g. an em dash). Map back without renumbering.
-    flat, owners, bounds = [], [], []
-    for i, word in enumerate(tokens):
-        start = len(flat)
-        parts = tokenize(word)
-        flat.extend(parts)
-        owners.extend([i] * len(parts))
-        bounds.append((start, len(flat)))
-    expanded = []
-    for run in initial:
-        if bounds[run["w0"]][0] == bounds[run["w1"]][1]:
-            raise Stop(2, "A word mark has no spoken word. Choose words in the Beat Map Send, not a dash alone.")
-        a, e = truthful_span(flat, bounds[run["w0"]][0], bounds[run["w1"]][1])
-        expanded.append({"w0": owners[a], "w1": owners[e - 1], "mark": run["mark"]})
-    runs = []
-    for run in sorted(expanded, key=lambda r: (r["w0"], r["w1"])):
-        if runs and run["w0"] <= runs[-1]["w1"]:
-            if run["mark"] != runs[-1]["mark"]:
-                raise Stop(2, "Truthful word marks overlap with different accents. Pick one mark for that phrase in the Beat Map Send.")
-            runs[-1]["w1"] = max(run["w1"], runs[-1]["w1"])
-        else:
-            runs.append(dict(run))
-    punches, notes, used = set(), [], set()
+    runs, notes = initial, []
+    if propose:
+        # Tokenization can split one transcript word. Map back without renumbering.
+        flat, owners, bounds = [], [], []
+        for i, word in enumerate(tokens):
+            start = len(flat)
+            parts = tokenize(word)
+            flat.extend(parts)
+            owners.extend([i] * len(parts))
+            bounds.append((start, len(flat)))
+        runs = []
+        for i, run in enumerate(initial):
+            a, e = truthful_span(flat, bounds[run["w0"]][0], bounds[run["w1"]][1])
+            widened = {"w0": owners[a], "w1": owners[e - 1], "mark": run["mark"]}
+            reason = None
+            if widened["w1"] - widened["w0"] + 1 > 3:
+                reason = "is too long to stress"
+            elif any(widened["w0"] <= other["w1"] and other["w0"] <= widened["w1"]
+                     for j, other in enumerate(initial) if i != j):
+                reason = "would run into another marked word"
+            elif any(widened["w0"] <= other["w1"] and other["w0"] <= widened["w1"] for other in runs):
+                reason = "would run into another marked word"
+            if reason:
+                said = " ".join(tokens[w] for w in range(widened["w0"], widened["w1"] + 1))
+                notes.append(f"Words {run['w0']}-{run['w1']} keep their mark as chosen; "
+                             f'the fuller phrase "{said}" {reason}.')
+            runs.append(dict(run) if reason else widened)
+    punches, used = set(), set()
     for i, run in enumerate(runs):
         if run["mark"] in ("key", "emph"):
             sent = sentence[run["w0"]]
@@ -359,8 +370,14 @@ def _mark_runs(words, candidates):
 
 
 def pick_marks(words, candidates):
-    """Inclusive truthful runs. Later stress runs retain accents; plan() limits punches."""
+    """Inclusive literal Send runs. Later runs retain accents; plan() limits punches."""
     return _mark_runs(words, candidates)[0]
+
+
+def propose_marks(words, candidates):
+    """Offer short truthful phrases without consuming another candidate's words."""
+    runs, _, notes = _mark_runs(words, candidates, propose=True)
+    return runs, notes
 
 
 def suggest_loud(reel_dir, words, notes=None):
@@ -441,30 +458,23 @@ def _slot_tokens(value):
     return re.findall(r"[\w']+", str(value).casefold())
 
 
-def _brand_font(notes, reel):
-    """Use scenes' declared faces and shipped, licensed runtime/fonts files."""
-    fallback = {"family": "Inter", "src": "./fonts/Inter-Regular.woff2"}
+def _brand_font(notes, reel, default=None):
+    """Resolve the saved face, or use the look's bundled face."""
+    default = default or {"family": "Inter", "weight": 400, "style": "normal"}
     try:
         with contextlib.redirect_stderr(io.StringIO()):
             saved = saved_style.load(reel)
     except (OSError, ValueError):
-        return fallback
-    font = saved.get("font") if isinstance(saved, dict) else None
-    if not font:
-        return fallback
-    if isinstance(font, str) and font.strip():
-        for scene in sorted(scene_check.SCENES.glob("*/scene.html")):
-            try:
-                urls = scene_check.font_faces(scene.read_text(encoding="utf-8")).get(font, [])
-                files = [(scene_check.FONTS / u[len("./fonts/"):]).resolve() for u in urls]
-                if urls and all(u.startswith("./fonts/")
-                                and f.is_relative_to(scene_check.FONTS.resolve()) and f.is_file()
-                                and f.suffix.lower() in scene_check.FONT_EXT for u, f in zip(urls, files)):
-                    return {"family": font, "src": urls[0]}
-            except (OSError, ValueError):
-                continue
-    notes.append(f"Your brand font {font} isn't available for captions yet, so they use Inter.")
-    return fallback
+        saved = {}
+    value = saved.get("font") if isinstance(saved, dict) else None
+    try:
+        face, note = saved_style.font_choice(value or default)
+    except (ValueError, TypeError):
+        face, _ = saved_style.font_choice(default)
+        note = "Your saved font couldn't be read, so captions use this look's built-in font."
+    if note and note not in notes:
+        notes.append(note)
+    return {**face, "src": "./fonts/" + face["file"]}
 
 
 def plan(reel_dir, fps=None, *, _style=None, style_reel=None, render_beats=None):
@@ -490,17 +500,17 @@ def plan(reel_dir, fps=None, *, _style=None, style_reel=None, render_beats=None)
     if cs["style"] == "none":
         doc["declared_drops"] = [{"w": i, "why": "captions off"} for i in range(len(words))]
         return doc
-    doc["font"] = _brand_font(doc["notes"], style_reel)
+    doc["font"] = _brand_font(doc["notes"], style_reel, STYLES[cs["style"]]["font"])
+    _width_note(doc, doc["font"])
     beats = _beats(bm if render_beats is None else dict(bm, beats=render_beats), total)
     switches = sorted({b["start_f"] for a, b in zip(beats, beats[1:]) if a["layout"] != b["layout"]})
     candidates = bm.get("word_marks", [])
-    if not isinstance(candidates, list):
-        raise Stop(2, "Word marks need a list of choices in the Beat Map Send. Send it again.")
+    runs, punches, notes = _mark_runs(words, candidates)
     if cs["loud_emphasis"] and not candidates:
         candidates = suggest_loud(reel, words, doc["notes"])
         if candidates:
             doc["notes"].append("Loudness suggestions supply the word marks; review the stressed phrases before rendering.")
-    runs, punches, notes = _mark_runs(words, candidates)
+        runs, punches, notes = _mark_runs(words, candidates, propose=True)
     doc["notes"].extend(notes)
     def fits(run):  # lane fix: a truthful run must fit one caption; else its stress is left off (a note, no stop)
         positions = [i for i in range(run["w0"], run["w1"] + 1) if words[i]["word"].strip()]
@@ -580,28 +590,58 @@ def _js(values):
     return "{" + ", ".join(f"{key}: {json.dumps(value)}" for key, value in values.items()) + "}"
 
 
-def text_width_em(text):
-    """Inter-based advances, approximate for brand fonts; the placer's 8 px margin absorbs it.
-
-    Retain the old 0.6 em estimate for missing glyphs and the same fit rule for every font.
-    """
+def _width_table(font=None):
+    face = bundled_fonts.parse_font(font or {"family": "Inter", "weight": 400, "style": "normal"})
+    key = f'{face["family"]}|{face["weight"]}|{face["style"]}'
     try:
         table = json.loads(CHAR_WIDTHS.read_text(encoding="utf-8"))
-        units, widths = table["units_per_em"], table["widths"]
-        if not _num(units) or units <= 0 or not isinstance(widths, dict):
+        units, faces = table["units_per_em"], table["faces"]
+        if not _num(units) or units <= 0:
             raise ValueError
+        candidates = sorted((int(k.split("|")[1]), k) for k in faces
+                            if k.split("|")[0] == face["family"] and k.split("|")[2] == face["style"])
+        known = bool(candidates)
+        if key in faces:
+            widths = faces[key]["widths"]
+        elif candidates:
+            key = next((k for weight, k in candidates if weight >= face["weight"]), candidates[-1][1])
+            widths = faces[key]["widths"]
+        else:
+            widths = {}
+            for measured in faces.values():
+                for ch, value in measured["widths"].items():
+                    if _num(value) and value >= 0:
+                        widths[ch] = max(widths.get(ch, 0), value)
+        default = max([0.6 * units] + [value for ch, value in widths.items()
+                                      if ch.isalnum() and _num(value) and value >= 0])
+        return units, widths, default, known
     except (OSError, ValueError, KeyError, TypeError):
-        units, widths = 1000, {}
-    return sum(widths[ch] / units if ch in widths and _num(widths[ch]) and widths[ch] >= 0 else 0.6
-               for ch in text) or 0.6
+        return 1000, {}, 600, False
 
 
-def drawn(text, box, spec):
+def _width_note(doc, font):
+    _, widths, _, known = _width_table(font)
+    if not known:
+        note = ("This font has no measured width table; captions use the widest measured value for each character."
+                if widths else "Measured caption widths are unavailable; unmeasured characters use 0.6 em.")
+        if note not in doc["notes"]:
+            doc["notes"].append(note)
+
+
+def text_width_em(text, font=None):
+    """Measured advances, rounding weights up; unknown families use per-character maxima."""
+    units, widths, default, _ = _width_table(font)
+    return (sum(widths[ch] / units if ch in widths and _num(widths[ch]) and widths[ch] >= 0
+                else default / units for ch in text) or default / units)
+
+
+def drawn(text, box, spec, font=None):
     """(padding, font size, drawn width) of one caption centred in its placed box, in master pixels."""
     x0, _, x1, _ = box
     pad = min(16, (x1 - x0) / 8)  # taste: reduce plate padding for very narrow boxes
-    size = min(spec["size"], (x1 - x0 - 2 * pad) / (text_width_em(text) * spec["punch"]["scale"]))
-    return pad, size, text_width_em(text) * size + 2 * pad
+    width = text_width_em(text, font or spec.get("font"))
+    size = min(spec["size"], (x1 - x0 - 2 * pad) / (width * spec["punch"]["scale"]))
+    return pad, size, width * size + 2 * pad
 
 
 def layer(doc, boxes, s, t):
@@ -618,16 +658,14 @@ def layer(doc, boxes, s, t):
     marker = doc["style"].get("mark_look", "accent") == "marker"
     # taste: soft shadow, 3 px outline and 16 px rounded plate corners.
     stroke = accent if spec["stroke"] == "accent" else spec["stroke"]
-    font = doc.get("font", {"family": "Inter", "src": "./fonts/Inter-Regular.woff2"})
+    font = doc.get("font", spec["font"])
+    _width_note(doc, font)
     family = json.dumps(font["family"], ensure_ascii=False)
     stack = family + ', "Inter"' if font["family"] != "Inter" else family
-    # compose copies the same runtime/fonts tree, including this face, next to Inter.
-    brand_face = (f'@font-face {{font-family: {family}; src: url({json.dumps(font["src"], ensure_ascii=False)}); font-weight: 400;}}\n'
-                  if font["family"] != "Inter" else '')
-    css = ('@font-face {font-family: "Inter"; src: url("fonts/Inter-Regular.woff2") format("woff2"); font-weight: 400;}\n'
-           + brand_face
+    css = (bundled_fonts.css_face(font["family"], font["weight"], font["style"]) + "\n"
+           + bundled_fonts.css_face("Inter", 400, "normal") + "\n"
            + '#captions .caption {position: absolute; '
-           + f'font-family: {stack}; font-weight: 400; font-synthesis: none; '
+           + f'font-family: {stack}; font-weight: {font["weight"]}; font-style: {font["style"]}; font-synthesis: none; '
            f'color: {spec["color"]}; line-height: {spec["line_h"]}; white-space: nowrap; text-align: center; '
            f'text-shadow: 0 {2*s:g}px {6*s:g}px rgba(0,0,0,0.65); '
            + (f'-webkit-text-stroke: {3*s:g}px {stroke}; paint-order: stroke fill; ' if stroke else '')
@@ -649,7 +687,7 @@ def layer(doc, boxes, s, t):
         if not (s > 0 and x1 > x0 and y1 > y0):
             raise Stop(2, "A caption needs a positive-size box and output scale. Place it again.")
         # Reserve plate and punch space around measured character advances.
-        pad, size, _ = drawn(c["text"], box, spec)
+        pad, size, _ = drawn(c["text"], box, spec, font)
         if size < spec["size"]:
             note = f"Caption at {float(t(c['start_f'])):.2f} seconds uses a smaller font to fit its safe spot."
             if note not in doc["notes"]:
@@ -789,7 +827,7 @@ def picker_doc(reel_dir):
         variants, sheets = {}, []
         for mode in ("accent", "marker"):
             doc = {"style": check_style({**preview_style, "style": sid, "mark_look": mode}, reel=reel),
-                   "chunks": [c], "notes": notes}
+                   "chunks": [c], "notes": notes, "font": _brand_font(notes, reel, spec["font"])}
             css, markup, _ = layer(doc, [box], 1, lambda f: str(float(Fraction(f) / rate)))
             # The board owns the animation; supply a visible, centred caption and settled marker.
             variants[mode] = "".join(markup[1:-1]).replace("visibility: hidden", "visibility: visible; transform: translateX(-50%)")
@@ -798,7 +836,7 @@ def picker_doc(reel_dir):
         css = sheets[0].replace('#captions .marked', '#captions .caption:not(.marker-mode) .marked')
         variants["marker"] = variants["marker"].replace('class="caption', 'class="caption marker-mode', 1)
         variants["marker"] = variants["marker"].replace('class="cap-marker-swipe"', 'class="cap-marker-swipe" style="transform: scaleX(1)"')
-        looks[sid] = {"label": spec["label"], "css": css, "html": variants,
+        looks[sid] = {"label": spec["label"], "font": doc["font"], "css": css, "html": variants,
                       "pop": {"from": dict(spec["pop"]["from"]), "to": dict(spec["pop"]["to"]),
                               "seconds": float(spec["pop"]["frames"] / rate), "ease": spec["pop"]["ease"]},
                       "punch": {"scale": spec["punch"]["scale"], "seconds": float(spec["punch"]["frames"] / rate)}}
@@ -813,6 +851,9 @@ def picker_doc(reel_dir):
             "sample": {"text": sample["text"], "words": sample["words"]}, "looks": looks,
             "options": {**DEFAULTS, "mark_look": ["accent", "marker"]}, "current": current,
             "recommended": recommended,
+            "fonts": list({record["file"]: record for record in
+                           [bundled_fonts.find(**{k: look["font"][k] for k in ("family", "weight", "style")})
+                            for look in looks.values()] + [bundled_fonts.find("Inter", 400)]}.values()),
             "tips": tips, "notes": notes}
 
 
@@ -840,8 +881,11 @@ def picker(reel_dir):
             raise Stop(2, "The preview pictures could not be made. Check the video tools and try again.") from None
         if result.returncode:
             raise Stop(2, "The preview pictures could not be made. Make the cut again and retry.")
-    # lane fix: the board loads the licensed Inter from here (FontFace), never an embedded copy
-    shutil.copy2(HERE.parents[2] / "runtime/fonts/Inter-Regular.woff2", reel / "work/look-picker/Inter-Regular.woff2")
+    for font in doc["fonts"]:
+        try:
+            shutil.copy2(PLUGIN / "runtime/fonts" / font["file"], reel / "work/look-picker" / font["file"])
+        except OSError:
+            doc["notes"].append(f"The preview font {font['family']} could not load. Update or reinstall the editor plugin and try again.")
     (reel / "work/look-picker.json").write_bytes((json.dumps(doc, indent=1, ensure_ascii=False) + "\n").encode("utf-8"))
     return doc
 
@@ -859,6 +903,8 @@ def selftest():
     with tempfile.TemporaryDirectory() as home, patch.object(rt, "state_dir", return_value=Path(home)):
         assert check_style({"style": "clean"})["accent"] == "#FFD84D"
     assert pick_marks(["this", "doesn't", "work."], [{"w": 2, "mark": "emph"}]) == [
+        {"w0": 2, "w1": 2, "mark": "emph"}]
+    assert propose_marks(["this", "doesn't", "work."], [{"w": 2, "mark": "emph"}])[0] == [
         {"w0": 1, "w1": 2, "mark": "emph"}]
     words = [{"word": text, "start": i / 10, "end": i / 10 + 0.08}
              for i, text in enumerate(("a", "new", "look"))]
@@ -902,6 +948,9 @@ def selftest():
                    for note in renumbered["notes"]), renumbered["notes"]
         layer(renumbered, [(60, 1336, 160, 1470)], 1, lambda f: str(float(Fraction(f) / 30)))
         assert any("Caption at 0.30 seconds uses a smaller font" in note for note in renumbered["notes"])
+    for spec in STYLES.values():
+        assert bundled_fonts.find(**spec["font"]) is not None
+        assert text_width_em("WIDE", spec["font"]) > text_width_em("WIDE")
     print("selftest ok")
     return 0
 
@@ -944,15 +993,16 @@ def main(argv=None):
             items = words.get("words") if isinstance(words, dict) else None
             _word_input(items)
             if a.loud:
-                _mark_runs(items, candidates)  # Validate explicit choices before combining suggestions.
+                propose_marks(items, candidates)  # Validate explicit choices before combining suggestions.
                 loud = suggest_loud(a.reel_dir, items)
                 chosen = {c["w"] for c in candidates}
                 candidates += [c for c in loud if c["w"] not in chosen]
-            runs, _, notes = _mark_runs(items, candidates)
+            runs, notes = propose_marks(items, candidates)
             for note in notes:
                 print(note, file=sys.stderr)
             print(json.dumps([{"w": w, "mark": r["mark"]} for r in runs
-                              for w in range(r["w0"], r["w1"] + 1) if items[w]["word"].strip()], ensure_ascii=False))
+                              for w in range(r["w0"], r["w1"] + 1)
+                              if not beat_schema.marks_problems([{"w": w, "mark": r["mark"]}], items)], ensure_ascii=False))
             return 0
         ap.print_help()
         return 2

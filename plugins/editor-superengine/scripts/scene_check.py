@@ -26,7 +26,7 @@ needs to render it:
                  element; `accent` and `font` are params so a saved style can override the look
                - offline: GSAP only from <script src="./vendor/gsap.min.js"> (the shipped runtime/gsap copy,
                  never inlined), no remote URL anywhere, fonts only from local @font-face rules whose file is
-                 in runtime/fonts (a render copies them to ./fonts), every family used declared, weight 400 only
+                 in runtime/fonts (a render copies them to ./fonts), every family and weight used declared
                - deterministic: one paused GSAP timeline, registered as window.__timelines["<id>"]; no
                  Math.random, Date.now, new Date, performance.now, setTimeout, setInterval,
                  requestAnimationFrame; no CSS @keyframes, animation or transition; centring with GSAP
@@ -79,6 +79,7 @@ import shutil
 import struct
 import sys
 import tempfile
+from html.parser import HTMLParser
 from pathlib import Path
 
 P = Path(__file__).resolve().parents[1]
@@ -88,6 +89,7 @@ sys.path.insert(0, str(P / "skills" / "reel-canvas-build" / "scripts"))
 from win_encoding import ensure_utf8_output  # noqa: E402
 from offline_selftest import REMOTE, INLINE_SCRIPT, GSAP_MARKS  # noqa: E402  (the S1c offline rules, reused)
 from beat_schema import load_words, SchemaError  # noqa: E402  (S3/S6a transcript word lists)
+import bundled_fonts  # noqa: E402
 
 SCENES = P / "scenes"
 FONTS = P / "runtime" / "fonts"
@@ -244,6 +246,208 @@ def font_faces(html):
     return faces
 
 
+def _font_declarations(text):
+    out = {}
+    for key, val in re.findall(r"([\w-]+)\s*:\s*([^;{}]+)", text):
+        key, val = key.lower(), val.strip().removesuffix("!important").strip()
+        if key == "font":
+            match = re.match(r"(.*?)\b[\d.]+(?:px|pt|em|rem|%)(?:\s*/\s*[\d.]+(?:px|em|%)?)?\s+(.+)", val)
+            if match:
+                prefix, family = match.groups()
+                weight = re.search(r"\b(?:[1-9]00|bold|bolder|lighter)\b", prefix)
+                out.update({"font-family": family, "font-weight": weight[0] if weight else "400",
+                            "font-style": "italic" if re.search(r"\bitalic\b", prefix) else "normal"})
+        elif key in ("font-family", "font-weight", "font-style"):
+            out[key] = val
+    return out
+
+
+def _font_families(value):
+    return [f.strip().strip("\"'") for f in value.split(",") if f.strip()]
+
+
+def _font_weight(value):
+    named = {"normal": 400, "bold": 700}
+    try:
+        return int(named.get(value.lower(), value))
+    except (ValueError, AttributeError):
+        return None
+
+
+class _FontElements(HTMLParser):
+    """Enough DOM for inherited CSS font properties; never executes scene scripts."""
+    def __init__(self, html):
+        super().__init__()
+        self.nodes, self.stack = [], []
+        self.feed(html)
+
+    def handle_starttag(self, tag, attrs):
+        node = {"tag": tag, "attrs": dict(attrs), "parent": self.stack[-1] if self.stack else None}
+        self.nodes.append(node)
+        if tag not in {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}:
+            self.stack.append(node)
+
+    def handle_endtag(self, tag):
+        for i in range(len(self.stack) - 1, -1, -1):
+            if self.stack[i]["tag"] == tag:
+                del self.stack[i:]
+                break
+
+
+def _font_selector(node, selector):
+    """Match the ordinary tag/id/class/attribute descendant selectors used by render templates."""
+    selector = selector.replace(":root", "html")
+    parts = re.sub(r"::?[\w-]+(?:\([^)]*\))?", "", selector.strip()).replace(">", " > ").split()
+
+    def atom(n, part):
+        tag = re.match(r"^[a-zA-Z][\w-]*", part)
+        if tag and n["tag"] != tag.group(0).lower():
+            return False
+        if any(n["attrs"].get("id") != ident for ident in re.findall(r"#([\w-]+)", part)):
+            return False
+        if any(cls not in n["attrs"].get("class", "").split() for cls in re.findall(r"\.([\w-]+)", part)):
+            return False
+        for key, _, value in re.findall(r"\[([\w-]+)(?:\s*([=])\s*[\"']?([^\]\"']+)[\"']?)?\]", part):
+            if key not in n["attrs"] or value and n["attrs"][key] != value.strip():
+                return False
+        return True
+
+    if not parts or not atom(node, parts[-1]):
+        return False
+    parent, i = node["parent"], len(parts) - 2
+    while i >= 0:
+        direct = parts[i] == ">"
+        if direct:
+            i -= 1
+        if i < 0:
+            return False
+        while parent is not None and not atom(parent, parts[i]):
+            if direct:
+                return False
+            parent = parent["parent"]
+        if parent is None:
+            return False
+        parent, i = parent["parent"], i - 1
+    return True
+
+
+def font_problems(sid, html, default_families=()):
+    """Check actual file descriptors and inherited CSS faces against the bundled registry."""
+    out, declared = [], {}
+    records = {r["file"]: r for r in bundled_fonts.faces()}
+    clean = re.sub(r"/\*.*?\*/", "", html, flags=re.S)
+    for block in re.findall(r"@font-face\s*\{([^}]*)\}", clean, re.I):
+        desc = _font_declarations(block)
+        family = desc.get("font-family", "").strip("\"'")
+        weight = desc.get("font-weight", "400")
+        style = desc.get("font-style", "normal")
+        src = re.search(r"\bsrc\s*:\s*([^;]+)", block, re.I)
+        urls = re.findall(r"url\(\s*[\"']?([^\"')]+)", src[1] if src else "", re.I)
+        if not urls or src and re.search(r"\blocal\s*\(", src[1], re.I):
+            out.append(f"{sid}: @font-face {family} {weight} must load a bundled font file, never local().")
+        for url in urls:
+            filename = url[len("./fonts/"):] if url.startswith("./fonts/") else None
+            record = records.get(filename)
+            if record is None or not (FONTS / filename).is_file():
+                out.append(f"{sid}: @font-face {family} {weight} points at {url}; use ./fonts/<a file shipped in runtime/fonts>.")
+                continue
+            expected = record["weight"]
+            expected = " ".join(map(str, expected)) if isinstance(expected, list) else str(expected)
+            if family != record["family"] or style != record["style"] or weight != expected:
+                out.append(f"{sid}: @font-face {family} {weight} {style} does not match bundled file {filename} "
+                           f"({record['family']} {expected} {record['style']}).")
+                continue
+            low, high = bundled_fonts._range(record)
+            declared.setdefault(family, []).append((low, high, style))
+    body = re.sub(r"@font-face\s*\{[^}]*\}", "", clean, flags=re.I)
+    css = " ".join(re.findall(r"<style\b[^>]*>(.*?)</style>", body, re.S | re.I))
+    # A caller may supply only the generated caption CSS.
+    if "<" not in body:
+        css = body
+    rules = []
+    for selectors, block in re.findall(r"([^{}]+)\{([^{}]*)\}", css):
+        props = _font_declarations(block)
+        if props:
+            for selector in selectors.split(","):
+                specificity = (selector.count("#"), len(re.findall(r"[.\[:][\w-]+", selector)),
+                               len(re.findall(r"(?:^|\s)[a-zA-Z]", selector)))
+                rules.append((selector.strip(), props, specificity))
+    seen = set()
+
+    def check(families, weight, style):
+        for index, family in enumerate(families):
+            if family.lower() in FONT_KEYWORDS:
+                continue
+            key = family, weight, style, index == 0
+            if key in seen:
+                continue
+            seen.add(key)
+            if family not in declared:
+                out.append(f"{sid}: font family {show(family)} has no @font-face in scene.html at weight {weight}; "
+                           "use a bundled font file (HF-8).")
+            elif index == 0 and (weight is None or not any(lo <= weight <= hi and st == style for lo, hi, st in declared[family])):
+                out.append(f"{sid}: font {family} weight {weight} {style} has no matching @font-face in this page; the browser would fake it.")
+            elif weight is not None and bundled_fonts.find(family, weight, style) is None:
+                out.append(f"{sid}: font {family} weight {weight} {style} is not bundled with the editor.")
+
+    nodes = _FontElements(body).nodes
+    for node in nodes:
+        props = dict(node["parent"].get("font", {})) if node["parent"] else {}
+        if node["tag"] in {"b", "strong", "h1", "h2", "h3", "h4", "h5", "h6", "th"}:
+            props["font-weight"] = "700"
+        matching = [(specificity, i, declarations) for i, (selector, declarations, specificity) in enumerate(rules)
+                    if _font_selector(node, selector)]
+        for _, _, declarations in sorted(matching):
+            props.update(declarations)
+        props.update(_font_declarations(node["attrs"].get("style", "")))
+        node["font"] = props
+        if "font-family" in props:
+            check(_font_families(props["font-family"]), _font_weight(props.get("font-weight", "400")),
+                  props.get("font-style", "normal"))
+    # Check declarations even when their sample element is not present (generated caption CSS).
+    for selector, props, _ in rules:
+        if "font-family" in props:
+            check(_font_families(props["font-family"]), _font_weight(props.get("font-weight", "400")), props.get("font-style", "normal"))
+    # Generated elements may have no sample DOM node. Validate every declared weight/style,
+    # including an !important rule hidden by a sample's inline value, against the page's
+    # known primary faces. This is deliberately conservative when a selector has no family.
+    page_faces = set()
+    for props in [node.get("font", {}) for node in nodes] + [props for _, props, _ in rules]:
+        families = _font_families(props.get("font-family", ""))
+        if families:
+            page_faces.add((families[0], _font_weight(props.get("font-weight", "400")), props.get("font-style", "normal")))
+    for selector, props, _ in rules:
+        if not {"font-weight", "font-style"} & props.keys():
+            continue
+        families = _font_families(props.get("font-family", ""))
+        candidates = [face for face in page_faces if not families or face[0] == families[0]]
+        for family, weight, style in candidates:
+            check([family], _font_weight(props["font-weight"]) if "font-weight" in props else weight,
+                  props.get("font-style", style))
+    for family in default_families:
+        if family not in declared:
+            check([family], 400, "normal")
+    for family in re.findall(r"fontFamily\s*[:=]\s*[\"']([^\"']+)[\"']", body):
+        if family not in declared:
+            check([family], 400, "normal")
+    # A script may set styles on generated elements that are absent from the sample DOM.
+    script_families = set(default_families)
+    for node in nodes:
+        families = _font_families(node.get("font", {}).get("font-family", ""))
+        if families:
+            script_families.add(families[0])
+    for script in INLINE_SCRIPT.findall(body):
+        for block in re.findall(r"[^{}]+", script):
+            weights = re.findall(r"\bfontWeight\s*[:=]\s*[\"']?([\w]+)", block)
+            styles = re.findall(r"\bfontStyle\s*[:=]\s*[\"']?([\w]+)", block)
+            if not weights and not styles:
+                continue
+            families = re.findall(r"\bfontFamily\s*[:=]\s*[\"']([^\"']+)[\"']", block) or sorted(script_families)
+            for weight in weights or ["400"]:
+                check(families, _font_weight(weight), styles[0] if styles else "normal")
+    return out
+
+
 def html_problems(sid, spec, html):
     out = []
     root = re.search(r"<[a-z]+\b[^>]*\bdata-composition-id\s*=\s*[\"']%s[\"'][^>]*>" % re.escape(sid), html, re.I)
@@ -306,34 +510,8 @@ def html_problems(sid, spec, html):
     if any(k in s.lower() for s in INLINE_SCRIPT.findall(html) for k in GSAP_MARKS):
         out.append(f"GSAP is pasted into the page; load the shipped copy from {GSAP_SRC} instead")
 
-    # fonts: every family declared by a local @font-face with a shipped file, weight 400 only
-    faces = font_faces(html)
-    for fam, urls in faces.items():
-        for u in urls:
-            if u == "local()" or not u.startswith("./fonts/") or not (FONTS / u[len("./fonts/"):]).is_file():
-                out.append(f"@font-face {show(fam)} points at {show(u)}; it must be ./fonts/<a file shipped in "
-                           f"runtime/fonts>")
-        if not urls:
-            out.append(f"@font-face {show(fam)} has no src file")
-    body = re.sub(r"@font-face\s*\{[^}]*\}", "", html, flags=re.I)
-    fams = set()
-    for val in re.findall(r"font-family\s*:\s*([^;}\n]+)", body, re.I):
-        fams.update(f.strip().strip("\"'") for f in val.split(","))
-    fams.update(re.findall(r"fontFamily\s*[:=]\s*[\"']([^\"']+)[\"']", body))
-    if isinstance(spec["params"].get("font"), dict):
-        fams.add(spec["params"]["font"].get("default"))
-    for f in sorted(x for x in fams if x and x.lower() not in FONT_KEYWORDS):
-        if f.lower() in GENERIC_FONTS:
-            out.append(f"font family {show(f)} is a system font; use a shipped font through @font-face (HF-8)")
-        elif f not in faces:
-            out.append(f"font family {show(f)} has no @font-face in scene.html, so the render would use some "
-                       f"other font; add one pointing at a font in runtime/fonts (HF-8)")
-    for w in re.findall(r"font-weight\s*:\s*([^;}\"']+)", html, re.I) + re.findall(r"fontWeight\s*[:=]\s*[\"']?(\w+)", html):
-        if w.strip().lower() not in ("400", "normal"):
-            out.append(f"font-weight {w.strip()} has no shipped face, so the browser would fake it; use 400")
-    if re.search(r"\bfont\s*:[^;}]*\b(bold|bolder|[5-9]00)\b", html, re.I) or re.search(r"<(b|strong|h[1-6]|th)\b", html, re.I):
-        out.append("bold text (a bold font value, or a <b>, <strong>, <h1>-<h6> or <th> tag) has no shipped face; "
-                   "use spans at weight 400")
+    out.extend(font_problems(sid, html, [spec["params"]["font"]["default"]]
+                             if isinstance(spec["params"].get("font"), dict) else ()))
 
     # TRI-4 and F-13
     for rx, why in BANNED:
@@ -752,7 +930,7 @@ def fill_problems(sid, fill, scenes=SCENES, words=None):
         return out
     merged = {k: p["default"] for k, p in spec["params"].items()}
     merged.update(params)
-    if "font" in params and params["font"] not in font_faces(html):
+    if "font" in params and params["font"] not in font_faces(html) and bundled_fonts.find(params["font"]) is None:
         out.append(f"font {show(params['font'])} has no @font-face in this scene, so the render would use another "
                    f"font; it has {', '.join(font_faces(html))}")
     cat = spec.get("category")

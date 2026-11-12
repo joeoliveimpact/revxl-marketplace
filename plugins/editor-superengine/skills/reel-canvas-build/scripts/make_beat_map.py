@@ -8,12 +8,13 @@ beat_schema, and writes videos/<reel>/beat-map.state.json for the Beat Map board
                    [--cuts work/cuts.json] [--replace]
   make_beat_map.py --selftest
 
-plan.json: {beats:[{w0, w1, layout, value?, shows?, why?}], word_marks?:[{w, mark}]}
+plan.json: {beats:[{w0, w1, layout, value?, shows?, why?, check?}], word_marks?:[{w, mark}]}
 Non-overlay beats tile the whole reel in plan order (increasing w0); overlay beats sit on top,
 timed by their own words.
 """
 import argparse
 import contextlib
+import copy
 import io
 import json
 import os
@@ -106,9 +107,246 @@ def build_doc(reel_dir, plan, words, items, words_rel, words_path, fps, total):
                       "scene": None, "broll": None, "transition": None})
         proposed[bid] = {"layout": pb.get("layout"), "value": pb.get("value"),
                          "shows": pb.get("shows", ""), "why": pb.get("why", "")}
+        if isinstance(pb.get("check"), str) and pb["check"].strip():
+            proposed[bid]["check"] = pb["check"].strip()
     return {"schema": beat_schema.SCHEMA, "reel": Path(reel_dir).resolve().name, "fps": fps, "words": words_rel,
             "beats": beats, "word_marks": plan.get("word_marks", []), "proposed": proposed, "notes": {},
             "needs": "", "sent_at": None}
+
+
+def _pick_label(beat):
+    anchor = beat.get("speech_anchor")
+    text = anchor.get("text", "") if isinstance(anchor, dict) else ""
+    text = " ".join(text.split()[:5]) if isinstance(text, str) else ""
+    return '"' + text.replace('"', "'") + '"' if text else "a beat"
+
+
+def _carry_reason(problem):
+    """Translate validator diagnostics without exposing ids, paths or saved JSON."""
+    if "whole beat" in problem:
+        return "the beat is now a different length"
+    if "dur_frames" in problem:
+        return "the transition's duration does not fit the beat's length or frame rate"
+    if "not a beat id" in problem:
+        return "the beat no longer exists"
+    if "slots" in problem:
+        return "the scene's text fields are not valid"
+    if "relative path" in problem:
+        return "the media path must stay inside the reel folder"
+    if "marked twice" in problem:
+        return "that word already has a mark"
+    if "sort word_marks" in problem:
+        return "the marks are not in word order"
+    if "not a mark" in problem:
+        return "that kind of mark is not supported"
+    if "no spoken word" in problem:
+        return "there is no spoken word there"
+    if "past the word list" in problem:
+        return "the word no longer exists"
+    if "not text" in problem:
+        return "the saved choice must be text"
+    if "not a number" in problem:
+        return "the saved number is not valid"
+    if "not a layout" in problem:
+        return "that layout is not supported"
+    if "not an object" in problem:
+        return "the saved choice is not in the required format"
+    if "closure words" in problem:
+        return "the loop's closure words are no longer spoken in the reel"
+    if "inside this cut" in problem:
+        return "the loop's closing time is outside the new cut"
+    if "setup before" in problem:
+        return "the loop's setup, updates and closure are not in time order"
+    if "missing" in problem:
+        return "the saved choice is missing required information"
+    if "unknown" in problem:
+        return "the saved choice contains unsupported settings"
+    if "needs an overlay layout" in problem:
+        return "the transition needs an overlay layout, scene or B-roll"
+    if "needs a scene" in problem:
+        return "the transition needs a scene"
+    if "transition" in problem.lower():
+        return "the saved transition settings are not valid"
+    if "cta_reminder" in problem:
+        return "the reminder needs valid timing, gain and a short keyword"
+    if "holds" in problem:
+        return "each hold needs a whole frame and a reason"
+    return "the saved choice does not meet the beat map's format requirements"
+
+
+def _remap_choice(value, old_ids, matches):
+    """Remap dictionary keys only; ambiguous reference values are reported, not guessed."""
+    if isinstance(value, dict):
+        result = {}
+        for key, item in value.items():
+            if key in old_ids:
+                if key not in matches:
+                    raise ValueError("a referenced beat's words changed or the beat no longer exists")
+                key = matches[key]["id"]
+            result[key] = _remap_choice(item, old_ids, matches)
+        return result
+    if isinstance(value, list):
+        return [_remap_choice(item, old_ids, matches) for item in value]
+    if isinstance(value, str) and value in old_ids:
+        raise ValueError("its beat reference cannot be carried safely in this format")
+    return value
+
+
+def _carry_marks(old, doc, words, pairs, plan_has_marks):
+    lost = []
+    marks = old.get("word_marks", [])
+    if not isinstance(marks, list):
+        return ["Couldn't keep your marks: the saved marks are not a list."]
+    if not plan_has_marks:
+        doc["word_marks"] = []
+    for mark in marks:
+        w = mark.get("w") if isinstance(mark, dict) else None
+        valid_index = isinstance(w, int) and not isinstance(w, bool)
+        word = words[w] if valid_index and 0 <= w < len(words) else "missing word"
+        # Prefer the old anchor's word when the cut itself changed.
+        for beat, _ in pairs:
+            anchor = beat.get("speech_anchor", {})
+            if (valid_index and isinstance(anchor, dict) and isinstance(anchor.get("w0"), int)
+                    and isinstance(anchor.get("w1"), int) and anchor["w0"] <= w <= anchor["w1"]):
+                tokens = str(anchor.get("text", "")).split()
+                if w - anchor["w0"] < len(tokens):
+                    word = tokens[w - anchor["w0"]]
+                break
+        label = '"' + " ".join(str(word).split()).replace('"', "'") + '"'
+        if plan_has_marks:
+            if mark not in doc["word_marks"]:
+                lost.append(f"Couldn't keep your mark on {label}: the new plan supplies different marks.")
+            continue
+        matched = any(new is not None and valid_index
+                      and beat["speech_anchor"]["w0"] <= w <= beat["speech_anchor"]["w1"]
+                      for beat, new in pairs)
+        if valid_index and 0 <= w < len(words) and pairs and all(new is not None for _, new in pairs):
+            matched = True  # Unchanged beats also preserve marks in gaps between anchors.
+        if not matched:
+            lost.append(f"Couldn't keep your mark on {label}: the beat's words changed or the beat no longer exists.")
+            continue
+        candidate = doc["word_marks"] + [copy.deepcopy(mark)]
+        problems = beat_schema.marks_problems(candidate, words)
+        if problems:
+            lost.append(f"Couldn't keep your mark on {label}: {_carry_reason(problems[0])}.")
+        else:
+            doc["word_marks"] = candidate
+    return lost
+
+
+def carry_picks(old, doc, words, fps, *, plan_has_marks=False):
+    """Carry each independent choice, rolling back only the choice that fails validation."""
+    old_beats = old.get("beats", [])
+    old_beats = [b for b in old_beats if isinstance(b, dict)] if isinstance(old_beats, list) else []
+    notes = old.get("notes", {})
+    notes = notes if isinstance(notes, dict) else {}
+    proposed = old.get("proposed", {})
+    proposed = proposed if isinstance(proposed, dict) else {}
+    pairs, used, matches = [], set(), {}
+    for beat in old_beats:
+        anchor = beat.get("speech_anchor")
+        new = None
+        if isinstance(anchor, dict) and all(k in anchor for k in ("w0", "w1", "text")):
+            for i, candidate in enumerate(doc["beats"]):
+                if (i not in used and candidate["speech_anchor"] == anchor
+                        and (candidate["layout"] == "overlay") == (beat.get("layout") == "overlay")):
+                    new = candidate
+                    used.add(i)
+                    if isinstance(beat.get("id"), str):
+                        matches[beat["id"]] = new
+                    break
+        pairs.append((beat, new))
+
+    kept, total, lost = 0, 0, []
+    for beat, new in pairs:
+        bid = beat.get("id")
+        original = proposed.get(bid, {}) if isinstance(bid, str) else {}
+        original = original if isinstance(original, dict) else {}
+        picks = [(key, beat[key]) for key in ("scene", "broll", "transition") if beat.get(key) is not None]
+        picks += [(key, beat[key]) for key in ("layout", "value")
+                  if key in beat and beat[key] != original.get(key)]
+        if isinstance(bid, str) and bid in notes:
+            picks.append(("note", notes[bid]))
+        if not picks:
+            continue
+        total += 1
+        carried = False
+        for key, value in picks:
+            name = {"broll": "B-roll", "value": "number"}.get(key, key)
+            reason = None
+            if new is None:
+                anchor = beat.get("speech_anchor", {})
+                same_start = isinstance(anchor, dict) and any(
+                    b["speech_anchor"]["w0"] == anchor.get("w0") for b in doc["beats"])
+                reason = "the beat's words changed" if same_start else "the beat no longer exists"
+                if isinstance(anchor, dict) and any(
+                        b["speech_anchor"] == anchor
+                        and (b["layout"] == "overlay") != (beat.get("layout") == "overlay")
+                        for b in doc["beats"]):
+                    reason = "the beat's layout type changed"
+            elif key == "note":
+                doc["notes"][new["id"]] = copy.deepcopy(value)
+                problems = (beat_schema.beat_problems(new, words, fps=fps)
+                            or beat_schema.beat_map_problems(doc, words))
+                if problems:
+                    del doc["notes"][new["id"]]
+                    reason = _carry_reason(problems[0])
+            else:
+                before = new[key]
+                new[key] = copy.deepcopy(value)
+                problems = beat_schema.beat_problems(new, words, fps=fps)
+                if problems:
+                    new[key] = before
+                    reason = _carry_reason(problems[0])
+            if reason:
+                lost.append(f"Couldn't keep your {name} on {_pick_label(beat)}: {reason}.")
+            else:
+                carried = True
+        kept += int(carried)
+
+    # Notes whose beat is absent from even the old beat list must not disappear silently.
+    old_ids = {b["id"] for b in old_beats if isinstance(b.get("id"), str)}
+    for bid in notes.keys() - old_ids:
+        lost.append("Couldn't keep your note on a missing beat: the beat no longer exists.")
+    lost += _carry_marks(old, doc, words, pairs, plan_has_marks)
+    choices = {"edit_style": "editing style", "caption_style": "caption look", "loops": "open loops",
+               "transitions": "transition settings", "cta_reminder": "keyword reminder",
+               "holds": "holds", "needs": "note to Claude"}
+    for key, name in choices.items():
+        if key not in old or old[key] is None:
+            continue
+        if key in doc and not (key == "needs" and doc[key] == ""):
+            if doc[key] != old[key]:
+                lost.append(f"Couldn't keep your {name}: the new document already supplies this choice.")
+            continue
+        if key not in beat_schema.MAP_KEYS or (key not in beat_schema.OPTIONAL_MAP_KEYS and key != "needs"):
+            lost.append(f"Couldn't keep your {name}: this document choice is not supported.")
+            continue
+        had_key, before = key in doc, doc.get(key)
+        try:
+            doc[key] = _remap_choice(old[key], old_ids, matches)
+        except ValueError as e:
+            lost.append(f"Couldn't keep your {name}: {e}.")
+            continue
+        problems = beat_schema.beat_map_problems(doc, words)
+        if problems:
+            if had_key:
+                doc[key] = before
+            else:
+                del doc[key]
+            lost.append(f"Couldn't keep your {name}: {_carry_reason(problems[0])}.")
+    doc["sent_at"] = None
+    return [f"Kept your picks on {kept} of {total} beats."] + lost
+
+
+def _read_old_picks(path):
+    try:
+        old = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(old, dict):
+            return old, []
+    except (OSError, ValueError, RecursionError):
+        pass
+    return None, ["Your old picks could not be read, so none were carried; the old file is kept as a backup."]
 
 
 def run(reel_dir, plan_path, words_rel, cuts_rel, replace):
@@ -124,9 +362,12 @@ def run(reel_dir, plan_path, words_rel, cuts_rel, replace):
     cuts = _read_json(cuts_path, "cut list", "re-run the cut step, or point --cuts at it")
     plan = _read_json(plan_path, "plan", "write the plan JSON first")
     fps, total = _total_frames(cuts, cuts_path)
-    doc = build_doc(reel, plan, words, data["words"], words_rel, words_path, fps, total)
-    beat_schema.validate_beat_map(doc, words)  # raises SchemaError before anything is written
     out = reel / OUT_NAME
+    old, carried = _read_old_picks(out) if out.exists() and replace else (None, [])
+    doc = build_doc(reel, plan, words, data["words"], words_rel, words_path, fps, total)
+    if old is not None:
+        carried = carry_picks(old, doc, words, fps, plan_has_marks="word_marks" in plan)
+    beat_schema.validate_beat_map(doc, words)  # raises SchemaError before anything is written
     if out.exists():
         if not replace:
             raise Fail(REFUSE)
@@ -143,6 +384,8 @@ def run(reel_dir, plan_path, words_rel, cuts_rel, replace):
         scene_fill.write_catalog(reel, doc["beats"], words, fps)
     except Exception:  # the beat map stays usable even when scenes couldn't be prepared
         print("Couldn't prepare the scene list for the boards, so the boards won't offer scenes; the beat map is fine.")
+    for line in carried:
+        print(line)
     print(f"✓ Beat map ready: {len(doc['beats'])} beats, {len(doc['word_marks'])} word marks.")
     return 0
 
@@ -200,7 +443,8 @@ def selftest():
             return r
 
         plan = {"beats": [
-            {"w0": 0, "w1": 3, "layout": "full", "value": 3, "shows": "a counter to 3", "why": "a number said aloud"},
+            {"w0": 0, "w1": 3, "layout": "full", "value": 3, "shows": "a counter to 3", "why": "a number said aloud",
+             "check": "  I wanted the graphic alone here. Full screen keeps your face on screen.  "},
             {"w0": 4, "w1": 7, "layout": "split"},
             {"w0": 5, "w1": 6, "layout": "overlay", "value": 40},
             {"w0": 8, "w1": 11, "layout": "stack"}],
@@ -223,6 +467,10 @@ def selftest():
                 fails.append(f"anchor text: got {doc['beats'][0]['speech_anchor']}")
             if doc["word_marks"] != plan["word_marks"]:
                 fails.append(f"marks not carried: {doc['word_marks']}")
+            if doc["proposed"]["b_001"].get("check") != plan["beats"][0]["check"].strip():
+                fails.append("plan check was not carried through and trimmed")
+            if "check" in doc["proposed"]["b_002"]:
+                fails.append("a beat without a plan check acquired the key")
             if doc["proposed"]["b_002"] != {"layout": "split", "value": None, "shows": "", "why": ""}:
                 fails.append(f"proposed defaults: {doc['proposed']['b_002']}")
             if (doc["reel"], doc["fps"], doc["needs"], doc["notes"], doc["sent_at"]) != ("demo", 30, "", {}, None):

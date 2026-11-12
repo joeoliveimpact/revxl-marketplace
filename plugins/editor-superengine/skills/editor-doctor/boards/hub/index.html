@@ -3,6 +3,10 @@
 <title>Editor Superengine hub</title><link rel="stylesheet" href="hub.css">
 <script src="board-client.js" defer></script><script src="common.js" defer></script><script src="hub.js" defer></script></head>
 <body data-layout="guided">
+<div id="fullbar" role="toolbar" aria-label="Board full view" hidden>
+  <button type="button" id="fullback" class="ghostbtn">Back to hub</button>
+  <span id="fullreel"></span><span id="fullboard"></span><div id="fullsteps" aria-label="Steps"></div>
+</div>
 <div class="glow" id="glow"><img id="glowimg" alt=""></div>
 <header class="top">
   <a class="mark" href="#reels">Editor Superengine</a><span id="crumb" class="writes">All reels</span>
@@ -32,7 +36,7 @@
         <section class="move" id="move" aria-live="polite"></section>
         <section class="tile" id="attention-card" hidden><h3>Needs attention</h3><ul id="attention"></ul></section>
         <section class="boards" id="boards" aria-label="Boards">
-          <div class="bhead"><h3 class="sec">All boards</h3><a class="ghostbtn" id="owntab" target="_blank" rel="noopener" hidden>Open in its own tab</a></div>
+          <div class="bhead"><h3 class="sec">All boards</h3><button type="button" class="ghostbtn" id="fullview" aria-pressed="false" hidden>Full view</button></div>
           <div class="tabs" id="tabs" role="tablist" aria-label="Reel boards"></div>
           <div id="panel" class="panel" role="tabpanel"><p class="empty">Choose a board to begin.</p></div><p class="hint" id="bhint"></p>
         </section>

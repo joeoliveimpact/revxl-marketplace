@@ -4,6 +4,28 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.2] — 2026-11-11
+
+### Added
+- **Caption fonts**: the full Inter and Montserrat font families ship with the plugin (19 new
+  font files). Caption looks use real heavy weights, and the doctor checks the bundled font
+  files.
+- **Full view**: a board opens in Full view inside the editor hub, with Back to hub and a step
+  band, in place of a separate tab.
+
+### Changed
+- **Beat Map**: rebuilt as one beat at a time, with a small sketch of each layout, a timeline of
+  the whole reel, and a flag on a beat Claude wants looked at.
+- **Rebuilding a Beat Map** keeps the picks already made on beats whose words did not change,
+  and names any it could not keep.
+
+### Fixed
+- **Word marks**: a mark stays on the word or words you marked. One marked word no longer grows
+  into a whole sentence, and two marks in one sentence no longer stop the captions step.
+- **Picture-match check**: it no longer blocks a correct cut from a recording that is not 30
+  frames a second. It reports what it measured, says the cut video is older only when the file
+  times show it, and reports any piece it could not compare.
+
 ## [0.2.1] — 2026-11-11
 
 ### Fixed

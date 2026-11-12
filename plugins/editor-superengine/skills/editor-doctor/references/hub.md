@@ -19,6 +19,14 @@ Sends. Layout is in the hub's own `hub.state.json`, saved through `__state?name=
 across reel selection and browser reload. With no reels the toggle is disabled: the server requires an existing
 reel for every state write. Deleting the state-owning reel also deletes that preference.
 
+The Full view button fills the hub with the client's open board under a slim step bar. Back to hub, Escape, or the pane's Back
+leaves Full view in the same hub document with your board tab, draft and place kept, including when opened at a Full view address.
+Messages and the copy-line fallback show just under the bar in Full view. The step buttons open built boards inside the same hub.
+Use `editor/hub/?reel=<reel>&board=<board id>&view=full` to open a built board (or `board=review` for Master
+review) in Full view. Omit `view=full` to keep the hub visible. The address follows your board and view;
+unknown or unbuilt boards open the hub with a short status line. A refresh follows the next step when you
+are still on the previous step's board and keyboard focus is outside the board frame.
+
 ## What Claude reads after a Send
 
 All Sends use `/videos/<reel>/__save?board=hub&name=<file>`. A successful Send records a request; it does not

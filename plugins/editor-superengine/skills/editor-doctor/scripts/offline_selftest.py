@@ -93,8 +93,11 @@ def render_checks(tmp):
     shutil.copytree(FIXTURE, proj, ignore=shutil.ignore_patterns("speech10s.*"))
     (proj / "vendor").mkdir()
     shutil.copy2(P / "runtime" / "gsap" / "gsap.min.js", proj / "vendor" / "gsap.min.js")
-    (proj / "fonts").mkdir()
-    shutil.copy2(P / "runtime" / "fonts" / "Inter-Regular.woff2", proj / "fonts" / "selftest-font.woff2")
+    # Cover both the document URL and a composition-relative URL after HF rebasing.
+    font_paths = [proj / "fonts" / "Inter-Regular.woff2", proj / "compositions" / "fonts" / "Inter-Regular.woff2"]
+    for font_path in font_paths:
+        font_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(P / "runtime" / "fonts" / "Inter-Regular.woff2", font_path)
     for d in ("home", "cache", "tmp"):
         (tmp / d).mkdir()
     log = tmp / "netguard.jsonl"
@@ -118,7 +121,8 @@ def render_checks(tmp):
     videos = {}
     for tag in ("font", "nofont"):
         if tag == "nofont":
-            (proj / "fonts" / "selftest-font.woff2").unlink()
+            for font_path in font_paths:
+                font_path.unlink()
         mp4 = tmp / f"{tag}.mp4"
         rc, out, err = run(rt.hyperframes_cmd("render", proj, "-o", mp4), env)
         ok = rc == 0 and mp4.exists()

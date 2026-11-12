@@ -29,6 +29,7 @@ sys.path.insert(0, str(HERE.parents[1] / "_shared"))
 sys.path.insert(0, str(HERE))
 from win_encoding import ensure_utf8_output  # noqa: E402
 import runtime as rt  # noqa: E402
+import bundled_fonts  # noqa: E402
 import install  # noqa: E402  (IMPORTS, ENGINE_MODEL, Setup.sha256: one copy of each)
 
 INSTALL_SH = HERE / "install.sh"
@@ -307,8 +308,18 @@ def switch_line(state, picked, language):
     return None
 
 
+def font_check(rep):
+    issues = bundled_fonts.problems()
+    if issues:
+        rep.add("bundled-fonts", "missing", issues[0],
+                "The fonts are part of the plugin. Update or reinstall the editor plugin from the marketplace, then run the doctor again.")
+    else:
+        rep.add("bundled-fonts", "ok", f"{len(bundled_fonts.faces())} font files")
+
+
 def run_checks(rep, st, picked, reason):
     """Adds one STATUS line per component; returns the engine that is really installed (or None)."""
+    font_check(rep)
     st = Path(st)
     state = rt.load_state(st)
     comps = state.get("components", {})
@@ -574,6 +585,29 @@ def selftest():
         here = os.getcwd()
         os.chdir(td)  # read_config() reads the cwd's editor/; keep the real workspace out of it
         try:
+            # Bundled files: both missing and altered files produce the marketplace repair line.
+            font_dir = td / "fonts"
+            font_dir.mkdir()
+            source_fonts = bundled_fonts.FONTS
+            registry = {"families": [{"files": [bundled_fonts.faces()[0]]}]}
+            atomic_write(font_dir / "VERSION.json", json.dumps(registry))
+            bundled_fonts.FONTS = font_dir
+            try:
+                rep = Report()
+                font_check(rep)
+                assert rep.required_missing and "missing" in rep.items[0]["detail"]
+                assert "marketplace" in rep.items[0]["fix"]
+                atomic_write(font_dir / registry["families"][0]["files"][0]["file"], "changed font bytes")
+                rep = Report()
+                font_check(rep)
+                assert rep.required_missing and "wrong byte size" in rep.items[0]["detail"]
+                assert any("SHA256" in problem for problem in bundled_fonts.problems())
+            finally:
+                bundled_fonts.FONTS = source_fonts
+            rep = Report()
+            font_check(rep)
+            assert rep.items[0]["level"] == "ok" and rep.items[0]["detail"] == "20 font files"
+            n += 1
             # config: every key and empty block; an existing config keeps its values, gains missing keys
             assert write_config(ws, engine="parakeet-cpu", nle="none")
             c = json.loads(rt.config_path(ws).read_text(encoding="utf-8"))

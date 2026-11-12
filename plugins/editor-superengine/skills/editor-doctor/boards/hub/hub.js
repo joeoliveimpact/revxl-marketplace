@@ -10,6 +10,95 @@ const pct = r => r.ready_to_post ? 100 : Math.round(r.lanes.reduce((n,l) => n + 
 const ago = at => !at ? "never" : Math.max(0, Math.round((Date.now() - new Date(at).getTime())/60000)) + " min ago";
 const skillLabels = {captions:"Create captions", cover:"Pick a cover", qa:"Run QA", broll:"Add B-roll", trial:"Create a trial version", style:"Save this style", styles:"My styles", health:"Check my editor", goldmine:"Run Goldmine", handoff:"Hand off to your editor"};
 const adjustments = {};
+let fullScroll = [0, 0], fullRegions = [], fullEntry = 0, fullExit = null, finishExit, fullSteps = "";
+const isFull = () => document.body.dataset.boardview === "full";
+function address() {
+  const url = new URL(location);
+  if (CUR) url.searchParams.set("reel", CUR); else url.searchParams.delete("reel");
+  if (TAB) url.searchParams.set("board", TAB); else url.searchParams.delete("board");
+  if (isFull()) url.searchParams.set("view", "full"); else url.searchParams.delete("view");
+  history.replaceState(history.state, "", url);
+}
+function drawFullBar() {
+  const r = current();
+  $("fullreel").textContent = r.title;
+  $("fullboard").textContent = TAB === "review" ? "Master review" : DATA.boards.find(b => b.id === TAB)?.label || "";
+  const steps = DATA.stages.map((s, i) => {
+    const id = boardFor(s), built = id === "review" || DATA.boards.some(b => b.id === id && b.built);
+    const state = i === r.cur ? "current" : r.done[i] ? "done" : "to do";
+    return `<button type="button" data-step="${i}" ${built ? "" : "disabled"} class="${r.done[i] ? "done" : ""}" ${i === r.cur ? 'aria-current="step"' : ""} aria-label="Step ${i+1} of ${DATA.stages.length}: ${esc(s.name)}, ${state}"><span>${i+1}</span>${r.done[i] ? '<span aria-hidden="true">&#10003;</span>' : ""}${i === r.cur ? `<span>${esc(s.name)}</span>` : ""}</button>`;
+  }).join("");
+  // A data refresh must not replace a focused step button.
+  if (fullSteps !== steps) {
+    const focused = document.activeElement?.closest("#fullsteps button")?.dataset.step;
+    $("fullsteps").innerHTML = steps;
+    fullSteps = steps;
+    if (focused != null) $("fullsteps").querySelector(`[data-step="${focused}"]`)?.focus({preventScroll:true});
+  }
+}
+function boardEscape(e) {
+  if (e.key !== "Escape" || e.defaultPrevented || !isFull()) return;
+  if (e.target.closest?.('dialog[open], [role="dialog"]')) return;
+  e.preventDefault(); leaveFull();
+}
+function listenFrame() {
+  const frame = $("panel").querySelector("iframe");
+  if (!frame?.dataset.loaded) return;
+  try { frame.contentDocument?.addEventListener("keydown", boardEscape); } catch (_) { /* same origin boards only */ }
+}
+function boardFieldFocused() {
+  const frame = $("panel").querySelector("iframe");
+  return document.activeElement === frame;
+}
+async function enterFull(push = true) {
+  if (fullExit) await fullExit;
+  if (isFull() || !$("panel").querySelector("iframe")) return;
+  fullScroll = [scrollX, scrollY];
+  if (push) history.pushState({boardview:"full", hubFull:++fullEntry}, "");
+  document.body.style.setProperty("--hub-scroll", -fullScroll[1] + "px");
+  document.body.dataset.boardview = "full";
+  $("fullbar").hidden = false;
+  $("fullview").setAttribute("aria-pressed", "true");
+  // Inert only siblings along the panel's ancestor chain, never the live iframe's ancestors.
+  for (let node = $("panel"); node !== document.body; node = node.parentElement) {
+    for (const sibling of node.parentElement.children) {
+      if (sibling === node || sibling === $("fullbar") || sibling === $("delivery") || sibling.inert) continue;
+      sibling.inert = true; sibling.setAttribute("data-full-hidden", ""); fullRegions.push(sibling);
+    }
+  }
+  history.scrollRestoration = "manual";
+  drawFullBar(); listenFrame(); address();
+  $("fullback").focus({preventScroll:true});
+}
+function restoreFullScroll() {
+  scrollTo(...fullScroll);
+  $("fullview").focus({preventScroll:true});
+}
+function leaveFull(back = true) {
+  if (!isFull()) return fullExit;
+  delete document.body.dataset.boardview;
+  document.body.style.removeProperty("--hub-scroll");
+  for (const region of fullRegions) { region.inert = false; region.removeAttribute("data-full-hidden"); }
+  fullRegions = [];
+  $("fullbar").hidden = true;
+  $("fullview").setAttribute("aria-pressed", "false");
+  restoreFullScroll();
+  if (back && history.state?.boardview === "full" && history.state?.hubFull === fullEntry && fullEntry > 0) {
+    fullExit = new Promise(resolve => { finishExit = resolve; });
+    history.back();
+  } else address();
+  return fullExit;
+}
+addEventListener("popstate", () => {
+  const exiting = isFull() || !!fullExit;
+  if (isFull()) leaveFull(false);
+  address();
+  if (exiting) restoreFullScroll();
+  if (finishExit) { const done = finishExit; finishExit = null; fullExit = null; done(); }
+});
+document.addEventListener("keydown", boardEscape);
+$("fullview").onclick = () => enterFull();
+$("fullback").onclick = () => leaveFull();
 
 function pending(fn) {
   Hub.pending++;
@@ -129,23 +218,26 @@ function drawTabs() {
 function openBoard(id) {
   const r = current(), b = id === "review" ? {id, label:"Master review", built:true} : DATA.boards.find(b=>b.id===id);
   if (!b) return;
+  if (!b.built) leaveFull();
   TAB = id;
   $$("#tabs [role=tab]").forEach(el=>{ const on = (el.dataset.board || (el.dataset.review ? "review" : "")) === id; el.setAttribute("aria-selected",String(on)); el.tabIndex=on ? 0 : -1; });
-  const own = $("owntab"), panel = $("panel"); own.hidden = !b.built;
-  if (!b.built) { own.removeAttribute("href"); panel.innerHTML = `<p class="empty">${esc(b.label)} is not built yet.</p>`; }
+  const full = $("fullview"), panel = $("panel"); full.hidden = !b.built;
+  if (!b.built) { panel.innerHTML = `<p class="empty">${esc(b.label)} is not built yet.</p>`; }
   else {
     const path = id === "review" ? "/editor/hub/review.html" : "/editor/" + encodeURIComponent(id) + "/";
     const src = path + "?reel=" + encodeURIComponent(CUR);
-    own.href = src;
     // Preserve the board and its unsaved work whenever its URL is unchanged.
     if (panel.querySelector("iframe")?.getAttribute("src") !== src)
       panel.innerHTML = `<div class="frame"><iframe src="${esc(src)}" title="${esc(b.label)}"></iframe></div>`;
+    // Listen once the board has loaded: reading a new frame's document before then swaps the page it starts on.
+    panel.querySelector("iframe").onload = e => { e.currentTarget.dataset.loaded = "true"; listenFrame(); };
   }
   panel.setAttribute("aria-labelledby", "tab-" + id);
   const stamps = r.boards[id];
   const sent = stamps ? Math.max(0, ...Object.values(stamps.sends).filter(v=>v!=null)) : 0;
   $("bhint").textContent = `${b.label}${b.built ? " saves as you work" : " is not built yet"} · last auto-save ${ago(stamps?.saved_at)} · last sent ${ago(sent)}`;
   drawAdjust();
+  drawFullBar(); address();
 }
 function drawAdjust() {
   const r=current(), a=adjustments[CUR] || (adjustments[CUR]={pause:0.28,music:-18,duck:true,look:"",strength:0.6});
@@ -178,9 +270,10 @@ function drawPages() {
 async function selectReel(id) {
   if (!DATA.reels.some(r=>r.id===id)) return;
   const changed=CUR!==id;
+  if (changed) await leaveFull();
   CUR=id;
   if (changed) { $("note").value=""; $("request-detail").value=""; TAB=null; $("panel").innerHTML='<p class="empty">Choose a board to begin.</p>'; }
-  const url=new URL(location); url.searchParams.set("reel",CUR); history.replaceState(null,"",url);
+  address();
   drawWall(); drawHead(); drawTabs(); drawAdjust();
   await drawSaved(id);
 }
@@ -218,6 +311,8 @@ function route() {
 }
 async function load(first=false) {
   try {
+    const previous = DATA?.reels.find(r => r.id === CUR), previousBoard = previous && boardFor(DATA.stages[previous.cur]);
+    const initial = first ? new URLSearchParams(location.search) : null;
     const next=await HubIO.json("/editor/hub/hub-data.json");
     if (!next || !Array.isArray(next.reels)) throw new Error("No hub data");
     DATA=next; $("error").hidden=true; drawPages();
@@ -228,6 +323,23 @@ async function load(first=false) {
     if (DATA.reels.length) {
       const chosen=DATA.reels.find(r=>r.id===CUR) || DATA.reels.find(r=>r.id===new URLSearchParams(location.search).get("reel")) || [...DATA.reels].sort((a,b)=>b.activity-a.activity)[0];
       await selectReel(chosen.id);
+      if (first && initial.has("board")) {
+        const id = initial.get("board");
+        if (id === "review" || DATA.boards.some(b => b.id === id && b.built)) {
+          openBoard(id);
+          if (initial.get("view") === "full") {
+            // Keep a hub entry beneath Full view so Back preserves this document and its draft.
+            address();
+            await enterFull();
+          }
+        } else HubIO.status("That board isn't ready yet, so the hub opened instead.");
+      } else if (previous && previous.id === CUR && previous.cur !== chosen.cur && !boardFieldFocused() && (!TAB || TAB === previousBoard)) {
+        const id = boardFor(stage());
+        if (id) {
+          openBoard(id);
+          HubIO.status(`Moved to ${id === "review" ? "Master review" : DATA.boards.find(b => b.id === id)?.label} for the next step.`);
+        }
+      }
     } else { CUR=null; drawWall(); $("lede").textContent="Add your first reel folder to videos."; $("baton").textContent="Nothing in the edit"; }
     $("fresh").textContent="Refreshed " + ago(DATA.refreshed);
     route(); Hub.ready=true;

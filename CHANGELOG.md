@@ -4,6 +4,16 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.93] ... 2026-11-11
+
+### Changed
+- **editor-superengine v0.2.2** ... the Beat Map is rebuilt: one beat at a time, with a small
+sketch of each layout and a timeline of the whole reel. Captions now use real fonts at real
+weights (19 new font files ship with the plugin). Marked words are used exactly as marked, and
+rebuilding a Beat Map keeps the picks already made. Boards open in Full view inside the editor
+hub in place of a separate tab. The picture-match check no longer blocks footage that was not
+recorded at 30 frames a second.
+
 ## [0.1.92] ... 2026-11-11
 
 ### Added

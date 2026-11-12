@@ -61,8 +61,9 @@ the named change, then make the preview again. Otherwise it prints `✓ Preview 
   (`editor-superengine:reel-sound-pass`); the final video picks up the finished sound once it's mixed on this cut.
 - `out`: the preview's place inside the reel folder.
 
-Open `{url}videos/<reel>/<out>` (`{url}` is the address the board server printed) with `Claude_Browser:preview_start`,
-each space written as `%20`. Tell the client: "Watch it through, then tell me it's OK, or what to change." Never hand back stills taken off the finished file: the video
+Refresh the hub data (`${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/hub.md`), then open
+`{url}editor/hub/?reel=<reel>&board=review&view=full` with `Claude_Browser:preview_start`, URL-encoding the reel name.
+The Master review tab plays the newest preview (and the master once there is one) with its own sound controls. Tell the client: "Watch it through, then tell me it's OK, or what to change." Never hand back stills taken off the finished file: the video
 itself is what they review.
 
 ## 3. Record the OK
@@ -90,8 +91,8 @@ The master runs the QA pre check itself and stops on a block; see [QA check](qa-
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/scripts/compose.py" master --reel-dir "<reel folder>"`
 
 If the preview had `--hook-text`, add the same one here. `✓ Master ready` means it made `<reel folder>/renders/<reel> Master - MM.DD.YY.mp4`
-at full size (1080 wide, 1920 tall), the file the Editor Cockpit (the editor's own panel in Claude, apart from the hub) shows as the final video. Open it in the Browser pane the same way as the preview, then give the
-summary and the next step.
+at full size (1080 wide, 1920 tall), the file the Editor Cockpit (the editor's own panel in Claude, apart from the hub) shows as the final video. Refresh the hub data (`${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/hub.md`), then open
+`{url}editor/hub/?reel=<reel>&board=review&view=full` with `Claude_Browser:preview_start`, URL-encoding the reel name. The Master review tab plays the newest preview and the master with its own sound controls. Then give the summary and the next step.
 
 When it refuses, nothing is made. In plain words, with the one next step:
 

@@ -7,7 +7,7 @@
     "email": "joe@engineforimpact.com"
   },
   "metadata": {
-    "version": "0.1.92"
+    "version": "0.1.93"
   },
   "plugins": [
     {
@@ -221,10 +221,10 @@
     },
     {
       "name": "editor-superengine",
-      "description": "v0.2.1 · Raw talking-head recording to a finished reel. It installs and checks its own tools, checks the camera and mic before recording, and the client cuts on the Cut Board and Tweak Board. Then captions, on-screen design and scenes, B-roll, colour, sound and music, a cover, trial reels, and an editable timeline for Resolve. Saved styles carry a client's look from reel to reel, and a style can be decoded from a reel they like. 15 skills, no commands to type.",
+      "description": "v0.2.2 · Raw talking-head recording to a finished reel. It installs and checks its own tools, checks the camera and mic before recording, and the client cuts on the Cut Board and Tweak Board. Then captions, on-screen design and scenes, B-roll, colour, sound and music, a cover, trial reels, and an editable timeline for Resolve. Saved styles carry a client's look from reel to reel, and a style can be decoded from a reel they like. 15 skills, no commands to type.",
       "source": "./plugins/editor-superengine",
       "category": "marketing",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"

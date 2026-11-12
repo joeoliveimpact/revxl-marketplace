@@ -14,6 +14,7 @@
 //   {do: "eval", js}                     push the value of a JS expression (awaited) onto reads
 //   {do: "bounds", sel}                  snapshot bounds and visibility through the iframe and hub, without scrolling
 //   {do: "sleep", ms}
+//   {do: "fullView", ...}               H14 hub proof (including page count and disk-stage refresh)
 // Prints {reads, errors, requests} as JSON: every request URL the page made, from any frame. On a timeout or an
 // error: also {error} and exit code 1.
 "use strict";
@@ -152,6 +153,9 @@ const {pathToFileURL} = require("url");
         }));
       } else if (a.do === "sleep") {
         await new Promise((r) => setTimeout(r, a.ms));
+      } else if (a.do === "fullView") {
+        await require("./hub_full_view.js")(page, browser, job, a);
+        ctx = page;
       } else {
         throw new Error("unknown action");
       }

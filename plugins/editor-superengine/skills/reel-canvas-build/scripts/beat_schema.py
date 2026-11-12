@@ -41,6 +41,7 @@ MAP_KEYS = ("schema", "reel", "fps", "words", "beats", "word_marks", "proposed",
             "edit_style", "caption_style", "loops", "transitions", "cta_reminder", "holds")
 OPTIONAL_MAP_KEYS = ("edit_style", "caption_style", "loops", "transitions", "cta_reminder", "holds")  # Optional document choices; old Sends stay valid.
 PROPOSED_KEYS = ("layout", "value", "shows", "why")  # Claude's original pick per beat; the board highlights changes
+OPTIONAL_PROPOSED_KEYS = ("check",)  # A plain reason to review a beat; absent in old files.
 DEFAULT_WORDS = "work/edit_map.cut.json"  # H-S4b-5: re-transcribed cut words, S3 edit-map shape, index from 0
 SKETCHES_KEYS = ("schema", "reel", "rough", "directions", "pick", "sketches", "note", "sent_at", "locked_at", "scenes", "storyboard")
 DIRECTION_KEYS = ("id", "name", "why", "frames", "note")  # the user picks ONE direction
@@ -212,7 +213,7 @@ def beat_problems(beat, words=None, *, where="beat", fps=None):
     return out
 
 
-def _marks_problems(marks, words):
+def marks_problems(marks, words=None):
     if not isinstance(marks, list):
         return [f"word_marks {_show(marks)} is not a list; use [] or a list of {{w, mark}}"]
     out, seen, prev = [], set(), None
@@ -230,6 +231,11 @@ def _marks_problems(marks, words):
             continue
         if words is not None and w >= len(words):
             out.append(f"{where}.w {w} is past the word list ({len(words)} words); use an index below {len(words)}")
+        elif words is not None:
+            text = words[w].get("word", "") if isinstance(words[w], dict) else words[w]
+            # Blank or dash-only rows carry nothing to mark; symbols said aloud (&, %, +) stay markable.
+            if isinstance(text, str) and not text.replace("—", " ").replace("–", " ").strip():
+                out.append(f"{where}.w {w} marks {_show(text)}, which has no spoken word; mark a spoken word")
         if w in seen:
             out.append(f"{where}.w {w} is marked twice; keep one mark per word")
         elif prev is not None and w < prev:
@@ -266,7 +272,7 @@ def _beat_keyed_problems(obj, name, beat_ids, check_value):
 
 
 def _proposed_value_problems(v, where):
-    out = _keys(v, PROPOSED_KEYS, where)
+    out = _keys(v, PROPOSED_KEYS + OPTIONAL_PROPOSED_KEYS, where, OPTIONAL_PROPOSED_KEYS)
     if out:
         return out
     if v["layout"] not in LAYOUTS:
@@ -276,6 +282,10 @@ def _proposed_value_problems(v, where):
     for k in ("shows", "why"):
         if not isinstance(v[k], str):
             out.append(f"{where}.{k} {_show(v[k])} is not text; use a string")
+    if "check" in v:
+        check = v["check"]
+        if not (isinstance(check, str) and "\n" not in check and "\r" not in check and 1 <= len(check.strip()) <= 200):
+            out.append(f"{where}.check must be one line of text with 1 to 200 characters after trimming")
     return out
 
 
@@ -360,7 +370,7 @@ def beat_map_problems(doc, words=None, timed_words=None):
     if "sent_at" in doc:
         out += _iso_problems(doc["sent_at"], "sent_at")
     if "word_marks" in doc:
-        out += _marks_problems(doc["word_marks"], words)
+        out += marks_problems(doc["word_marks"], words)
     if "edit_style" in doc and not isinstance(doc["edit_style"], dict):
         out.append(f"edit_style {_show(doc['edit_style'])} is not an object; use {{\"style\": ...}} or leave it out")
     if "cta_reminder" in doc:
@@ -624,6 +634,12 @@ def selftest():
         ("sketches scene", sketches_problems(dict(sketches, scenes={"b_001": {"id": "x", "slots": {}}}), good), None),
         ("sketches scene unknown beat", sketches_problems(dict(sketches, scenes={"b_999": {"id": "x", "slots": {}}}), good), "scenes key 'b_999'"),
         ("valid map", beat_map_problems(good, words), None),
+        ("proposed without check", beat_map_problems(good, words), None),
+        ("proposed with check", beat_map_problems(m(lambda d: d["proposed"]["b_001"].update(
+            check="I wanted the graphic alone here.")), words), None),
+        ("proposed check trimmed length", beat_map_problems(m(lambda d: d["proposed"]["b_001"].update(
+            check="  " + "x" * 200 + "  ")), words), None),
+        ("proposed check one character", beat_map_problems(m(lambda d: d["proposed"]["b_001"].update(check="x")), words), None),
         ("valid map, no words", beat_map_problems(good), None),
         ("map with an edit_style object", beat_map_problems(m(lambda d: d.update(edit_style={"style": "punch-in"})),
                                                             words), None),
@@ -642,6 +658,8 @@ def selftest():
         ("unknown mark", beat_map_problems(m(lambda d: d["word_marks"][0].update(mark="bold")), words), "is not a mark"),
         ("mark w out of range", beat_map_problems(m(lambda d: d["word_marks"].append({"w": 6, "mark": "key"})), words),
          "past the word list"),
+        ("mark without a spoken word", marks_problems([{"w": 0, "mark": "emph"}], [{"word": "—"}]),
+         "word_marks[0].w 0 marks '—', which has no spoken word; mark a spoken word"),
         ("anchor text mismatch", beat_map_problems(
             m(lambda d: d["beats"][0]["speech_anchor"].update(text="three small wins")), words), "does not match words"),
         ("bool start_f", beat_map_problems(m(lambda d: both(d, "start_f", False)), words), "is not a frame"),
@@ -668,6 +686,19 @@ def selftest():
             dict(sketches, directions=[dict(sketches["directions"][0], frames=["../f1.png"])]), good),
          "directions[0].frames[0] '../f1.png' is not a plain relative path"),
     ]
+    for name, value in (("null", None), ("empty", ""), ("blank", "  "), ("number", 3),
+                        ("boolean", True), ("list", []), ("object", {}), ("newline", "one\ntwo"),
+                        ("carriage return", "one\rtwo"), ("trailing newline", "one\n"),
+                        ("too long", "x" * 201), ("trimmed too long", "  " + "x" * 201 + "  ")):
+        cases.append(("proposed check " + name, beat_map_problems(m(
+            lambda d: d["proposed"]["b_001"].update(check=value)), words),
+            "check must be one line of text with 1 to 200 characters after trimming"))
+    cases.extend([
+        ("proposed check does not replace required keys", _proposed_value_problems(
+            {"value": None, "shows": "", "why": "", "check": "Look here."}, "proposed"), "missing layout"),
+        ("proposed still rejects unknown keys", _proposed_value_problems(
+            dict(good["proposed"]["b_001"], extra="unknown"), "proposed"), "unknown keys extra"),
+    ])
     clip = {"src": "broll/ingested/own.mp4", "in": 6, "out": 36, "fit": "cover", "ledger_id": "f01"}
     for name, changes, want in (
             ("cover", {}, None), ("blur-fill", {"fit": "blur-fill"}, None),

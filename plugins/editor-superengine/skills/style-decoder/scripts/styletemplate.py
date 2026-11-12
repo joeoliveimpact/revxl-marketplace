@@ -42,6 +42,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from enginecfg import cfg                                          # noqa: E402
 import stylespec                                                   # noqa: E402  (puts _shared on sys.path)
+import bundled_fonts                                              # noqa: E402
 from win_encoding import ensure_utf8_output                        # noqa: E402
 
 GENERATOR_VERSION = "0.1.0"
@@ -664,6 +665,12 @@ def cmd_plan(args) -> None:
             for r in recurring],
         "claim_payoff_candidates": candidates,
     }
+    if plan["design_system"]:
+        import designsystem as ds
+        plan["font"], plan["font_face"], font_note = ds.font_for_editor(ds.load_entry(plan["design_system"]))
+        if font_note:
+            plan["notes"] = [font_note]
+            print(font_note)
     json.dump(plan, open(os.path.join(out_dir, "build-plan.json"), "w", encoding="utf-8"),
               indent=2, ensure_ascii=False)
     json.dump(eff, open(os.path.join(out_dir, "effective-params.json"), "w", encoding="utf-8"),
@@ -823,11 +830,18 @@ def cmd_build(args) -> None:
         footage_src = footage_src[0]
     shutil.copy2(footage_src, os.path.join(assets_dir, "footage.mp4"))
     shutil.copy2(gsap_src, os.path.join(assets_dir, "gsap.min.js"))
-    for f in (entry.get("fonts") or []):
-        for rel in (f.get("files") or []):
-            src = os.path.join(os.path.dirname(ds.fonts_dir()), rel)
-            if os.path.exists(src):
-                shutil.copy2(src, os.path.join(assets_dir, os.path.basename(rel)))
+    if "font_face" not in plan:
+        plan["font"], plan["font_face"], note = ds.font_for_editor(entry)
+        if note:
+            print(note)
+    face = plan["font_face"]
+    record = bundled_fonts.find(face["family"], face["weight"], face["style"])
+    if record is None or record["file"] != face["file"]:
+        sys.exit("The build plan's font isn't a bundled face. Run plan again before building.")
+    shutil.copy2(bundled_fonts.FONTS / face["file"], os.path.join(assets_dir, face["file"]))
+    with open(plan_path, "w", encoding="utf-8", newline="\n") as stream:
+        json.dump(plan, stream, indent=2, ensure_ascii=False)
+        stream.write("\n")
 
     dur_s = proof_s or (stylespec.ffprobe_duration(footage_src) or 0)
     groups = [g for g in plan["captions"]["groups"] if g["start_ms"] / 1000.0 < dur_s]
@@ -835,18 +849,14 @@ def cmd_build(args) -> None:
     # --- look, entirely from the design system via the look-map's roles
     bg, _ = _role(entry, "palette.bg.page", "#FEF7EF")
     ink, _ = _role(entry, "palette.ink.primary", "#141414")
-    fam, _ = _role(entry, "type.body.family", "Poppins")
-    wgt, _ = _role(entry, "type.body.weight", 700)
+    fam, wgt, font_style = face["family"], face["weight"], face["style"]
     cw = int(entry.get("reference_width_px") or 720)
 
     # size is EDIT, never look — read from the spec, never from the registry
     size_pct, y_pct = caption_role(spec)
 
     W, H = 720, 1280
-    font_css, missing_fonts = _font_faces(entry, "assets/")
-    if missing_fonts:
-        sys.exit(f"missing vendored font file(s): {missing_fonts} — an offline render would "
-                 f"exit 0 in the fallback font and corrupt every derived rect")
+    font_css = bundled_fonts.css_face(fam, wgt, font_style, "assets/")
 
     clips, tweens = [], []
     for g in groups:
@@ -896,7 +906,7 @@ def cmd_build(args) -> None:
       .stage {{ position:absolute; inset:0; width:{W}px; height:{H}px; object-fit:cover; }}
       .cap {{ position:absolute; left:0; right:0; top:{y_pct}%; display:flex;
               justify-content:center; }}
-      .cap-line {{ font-family:'{fam}'; font-weight:{wgt}; color:{ink};
+      .cap-line {{ font-family:'{fam}'; font-weight:{wgt}; font-style:{font_style}; font-synthesis:none; color:{ink};
                    font-size:{size_pct * cw / 100:.1f}px; line-height:1.1;
                    max-width:{cw * 0.68:.0f}px; text-align:center; }}
     </style>
@@ -947,7 +957,7 @@ def cmd_build(args) -> None:
 
     print(f"build -> {out_html}")
     print(f"  {len(clips)} caption clips · {len(tweens)} tweens · {dur_s:.2f}s @ {fps}fps")
-    print(f"  fonts vendored: {len(entry.get('fonts') or [])} families, 0 missing")
+    print(f"  font bundled: {fam} {wgt} {font_style} ({face['file']})")
     _run_check(plan_dir, verbose=False)
 
 
@@ -1018,7 +1028,7 @@ def _run_check(build_dir: str, verbose: bool = True) -> int:
     # 6. every font-family has an @font-face whose file exists
     for fam in set(re.findall(r"font-family:'([^']+)'", html)):
         checks += 1
-        fm = re.search(rf"@font-face\{{font-family:'{re.escape(fam)}';[^}}]*url\('([^']+)'\)", html)
+        fm = re.search(rf'''@font-face\s*\{{\s*font-family:\s*["']{re.escape(fam)}["'];[^}}]*url\(["']([^"']+)["']\)''', html)
         if not fm:
             errors.append(f"font-family {fam!r} has no @font-face")
         elif not os.path.exists(os.path.join(build_dir, fm.group(1))):

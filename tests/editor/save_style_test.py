@@ -172,7 +172,8 @@ def case_decoded_apply(root):
     expected = {"edit_style": {"style": "layout-switch"},
                 "caption_style": {"style": "karaoke", "accent": "#123ABC", "min_read_s": 0.45},
                 "look": {"id": "mono", "strength": 1.0}, "font": "Inter", "accent": "#123ABC",
-                "transitions": {"allowed": ["zoom"]}}
+                "transitions": {"allowed": ["zoom"]},
+                "font_face": {"family": "Inter", "weight": 400, "style": "normal", "file": "Inter-Regular.woff2"}}
     assert mapped == expected and spec == original, (mapped, spec)
     ss.validate(mapped)
     ss.pick(reel, "copy")
@@ -225,7 +226,7 @@ def case_decoded_siblings(root):
     note = json.loads(raw)
     assert note["schema"] == 1 and note["slug"] == "coach"
     assert note["spec_version"] == "1.0" and note["spec_status"] == "approved"
-    assert note["mapped"] == ["accent", "caption_style", "edit_style", "font", "look", "transitions"]
+    assert note["mapped"] == ["accent", "caption_style", "edit_style", "font", "font_face", "look", "transitions"]
     assert any("spin" in line.lower() for line in note["unmapped"])
     assert note["saved_at"] and b"\r" not in raw
     ss.rename("style-1", "Coach")
@@ -512,6 +513,42 @@ def case_set(root):
         assert {p.relative_to(root): p.read_bytes() for p in root.rglob("*") if p.is_file()} == before
 
 
+def case_fonts(root):
+    _, reel, bm = fixture(root)
+    bm["font"] = {"family": "Montserrat", "weight": 900, "style": "italic"}
+    write(reel / "beat-map-selection.json", bm)
+    result = run("save-from-reel", reel, "--name", "default")
+    assert result.returncode == 0, result.stderr
+    assert ss.load(name="default")["font_face"] == {
+        "family": "Montserrat", "weight": 900, "style": "italic", "file": "Montserrat-Variable-Italic.woff2"}
+    assert "built-in fonts" not in result.stdout
+    bm["font"] = "Inter Tight ExtraBold"
+    write(reel / "beat-map-selection.json", bm)
+    result = run("save-from-reel", reel, "--name", "default")
+    assert result.returncode == 0, result.stderr
+    assert ss.load(name="default")["font"] == "Inter Tight ExtraBold"
+    assert ss.load(name="default")["font_face"] == {
+        "family": "Inter", "weight": 800, "style": "normal", "file": "Inter-ExtraBold.woff2"}
+    assert result.stdout.count("Your style's font Inter Tight ExtraBold isn't one of the editor's built-in fonts, "
+                               "so it uses Inter ExtraBold instead.") == 1
+    decoded, _ = ss.decoded_choices({"typography": {"roles": [{"caption_default": True,
+        "closest_available": {"family": "Montserrat", "weight": 800, "style": "italic"}}]}})
+    assert decoded["font"] == "Montserrat ExtraBold Italic"
+    assert decoded["font_face"] == {"family": "Montserrat", "weight": 800,
+                                     "style": "italic", "file": "Montserrat-Variable-Italic.woff2"}
+    decoded, _ = ss.decoded_choices({"typography": {"roles": [{"caption_default": True,
+        "closest_available": "Inter Tight", "weight": 800}]}})
+    assert decoded["font_face"]["file"] == "Inter-ExtraBold.woff2"
+    assert any("Your style's font Inter Tight ExtraBold" in line for line in ss.readback(decoded))
+    sys.path.insert(0, str(SKILLS / "style-decoder/scripts"))
+    import designsystem
+    name, face, note = designsystem.font_for_editor({"type": {
+        "body.family": {"v": "Inter Tight"}, "body.weight": {"v": 800}}})
+    assert name == "Inter Tight ExtraBold" and face == decoded["font_face"]
+    assert note == ("Your style's font Inter Tight ExtraBold isn't one of the editor's built-in fonts, "
+                    "so it uses Inter ExtraBold instead.")
+
+
 def case_refresh(root):
     workspace, reel, _ = fixture(root)
     skill = workspace / ".claude/skills/my-editing-style/SKILL.md"
@@ -552,7 +589,7 @@ CASES = {"fromreel": case_fromreel, "keep": case_keep, "named": case_named,
          "decoded_siblings": case_decoded_siblings, "decoded_empty": case_decoded_empty,
          "decoded_old": case_decoded_old, "decoded_types": case_decoded_types,
          "decoded_contract": case_decoded_contract, "skill": case_skill, "longnotes": case_longnotes, "hub": case_hub,
-         "doctor": case_doctor, "set": case_set, "refresh": case_refresh}
+         "doctor": case_doctor, "set": case_set, "refresh": case_refresh, "fonts": case_fonts}
 
 
 def main():

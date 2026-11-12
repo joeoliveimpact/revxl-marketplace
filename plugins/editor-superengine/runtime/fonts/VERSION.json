@@ -1,0 +1,213 @@
+{
+ "schema": 1,
+ "families": [
+  {
+   "family": "Inter",
+   "version": "4.1",
+   "source": "https://github.com/rsms/inter/releases/download/v4.1/Inter-4.1.zip",
+   "source_sha256": "9883fdd4a49d4fb66bd8177ba6625ef9a64aa45899767dde3d36aa425756b11e",
+   "licence": "SIL Open Font License 1.1",
+   "licence_file": "LICENSES/OFL-Inter.txt",
+   "files": [
+    {
+     "file": "Inter-Thin.woff2",
+     "family": "Inter",
+     "weight": 100,
+     "style": "normal",
+     "bytes": 109548,
+     "sha256": "70ca998635d9fc627dede8108f04d0989e6e03346183f0ad0917723e790f6973",
+     "upstream": "web/Inter-Thin.woff2"
+    },
+    {
+     "file": "Inter-ThinItalic.woff2",
+     "family": "Inter",
+     "weight": 100,
+     "style": "italic",
+     "bytes": 116880,
+     "sha256": "930d666b74e0dc0c26c2821f5643b701f8a41beaf3bb95ce146298104f29169c",
+     "upstream": "web/Inter-ThinItalic.woff2"
+    },
+    {
+     "file": "Inter-ExtraLight.woff2",
+     "family": "Inter",
+     "weight": 200,
+     "style": "normal",
+     "bytes": 112728,
+     "sha256": "ba4fc81dbb25871f1bcabc664b1e37703fca0a05f7248a923e7db497c6d211cc",
+     "upstream": "web/Inter-ExtraLight.woff2"
+    },
+    {
+     "file": "Inter-ExtraLightItalic.woff2",
+     "family": "Inter",
+     "weight": 200,
+     "style": "italic",
+     "bytes": 119320,
+     "sha256": "38bad3a6a9ad1a7fcd8082e6423ba5e0baea16598f2cf304e527844f697e32b2",
+     "upstream": "web/Inter-ExtraLightItalic.woff2"
+    },
+    {
+     "file": "Inter-Light.woff2",
+     "family": "Inter",
+     "weight": 300,
+     "style": "normal",
+     "bytes": 112592,
+     "sha256": "e111a1e2ad914ccda9179b95e83fb10234dd52a1932e0b93c480476227983fd9",
+     "upstream": "web/Inter-Light.woff2"
+    },
+    {
+     "file": "Inter-LightItalic.woff2",
+     "family": "Inter",
+     "weight": 300,
+     "style": "italic",
+     "bytes": 119608,
+     "sha256": "050265b27d11860a26c66c054210852661abb5d229c4e0bb3525757a830f3790",
+     "upstream": "web/Inter-LightItalic.woff2"
+    },
+    {
+     "file": "Inter-Regular.woff2",
+     "family": "Inter",
+     "weight": 400,
+     "style": "normal",
+     "bytes": 111268,
+     "sha256": "e06f6b1bc553aaea4e4668023ed0ab0a147129c3107f511bc7d03d361b0ae085",
+     "upstream": "web/Inter-Regular.woff2"
+    },
+    {
+     "file": "Inter-Italic.woff2",
+     "family": "Inter",
+     "weight": 400,
+     "style": "italic",
+     "bytes": 117700,
+     "sha256": "2d078cb3bc8f934740d53b39dd23b0678f2f97477e49ec785dd9d8acd8b96bfc",
+     "upstream": "web/Inter-Italic.woff2"
+    },
+    {
+     "file": "Inter-Medium.woff2",
+     "family": "Inter",
+     "weight": 500,
+     "style": "normal",
+     "bytes": 114348,
+     "sha256": "0ff3e94614e1493eb556314fd247ae6c4a85a7783b4cc86be539940cf83f2a48",
+     "upstream": "web/Inter-Medium.woff2"
+    },
+    {
+     "file": "Inter-MediumItalic.woff2",
+     "family": "Inter",
+     "weight": 500,
+     "style": "italic",
+     "bytes": 120784,
+     "sha256": "1b0df503de488a92082a8c5d72ddc4c0229183ceb645ae1c25c2d0d63778517c",
+     "upstream": "web/Inter-MediumItalic.woff2"
+    },
+    {
+     "file": "Inter-SemiBold.woff2",
+     "family": "Inter",
+     "weight": 600,
+     "style": "normal",
+     "bytes": 114812,
+     "sha256": "5cb7103e4e605989afebc03d989c79201e54b21b5183db33981f70db9178a301",
+     "upstream": "web/Inter-SemiBold.woff2"
+    },
+    {
+     "file": "Inter-SemiBoldItalic.woff2",
+     "family": "Inter",
+     "weight": 600,
+     "style": "italic",
+     "bytes": 121416,
+     "sha256": "5e2a2bc3b5b9af0644f005693b10499dab18065d6aedbf46c8b74ccede27daeb",
+     "upstream": "web/Inter-SemiBoldItalic.woff2"
+    },
+    {
+     "file": "Inter-Bold.woff2",
+     "family": "Inter",
+     "weight": 700,
+     "style": "normal",
+     "bytes": 114840,
+     "sha256": "fa888127b6da015b65569f0351f3b5c391ad928904951f1c20e9f8462a8d95ea",
+     "upstream": "web/Inter-Bold.woff2"
+    },
+    {
+     "file": "Inter-BoldItalic.woff2",
+     "family": "Inter",
+     "weight": 700,
+     "style": "italic",
+     "bytes": 121500,
+     "sha256": "4a10532d76c90c4597c0ad4bfc9284600e597d3012dd1ec16c1d44e0ad0058ab",
+     "upstream": "web/Inter-BoldItalic.woff2"
+    },
+    {
+     "file": "Inter-ExtraBold.woff2",
+     "family": "Inter",
+     "weight": 800,
+     "style": "normal",
+     "bytes": 114856,
+     "sha256": "6f75025856f8db1b2186e9cb89be9de9894932c8b7b20f4df5e65916ff714e34",
+     "upstream": "web/Inter-ExtraBold.woff2"
+    },
+    {
+     "file": "Inter-ExtraBoldItalic.woff2",
+     "family": "Inter",
+     "weight": 800,
+     "style": "italic",
+     "bytes": 121516,
+     "sha256": "53bb20ba292e2ac28a0777bf0f56f31b98be432a3cc04359e2eb608c758349c7",
+     "upstream": "web/Inter-ExtraBoldItalic.woff2"
+    },
+    {
+     "file": "Inter-Black.woff2",
+     "family": "Inter",
+     "weight": 900,
+     "style": "normal",
+     "bytes": 111668,
+     "sha256": "12ed0eed6749099b46c7b2e8198dc30c2d7e0f2a4e5fb1d12f0b6ae2c4f33cc4",
+     "upstream": "web/Inter-Black.woff2"
+    },
+    {
+     "file": "Inter-BlackItalic.woff2",
+     "family": "Inter",
+     "weight": 900,
+     "style": "italic",
+     "bytes": 118420,
+     "sha256": "308e101141e9dee3b6b121614da03969eb8179886975a9eeb5348021b04368fe",
+     "upstream": "web/Inter-BlackItalic.woff2"
+    }
+   ]
+  },
+  {
+   "family": "Montserrat",
+   "version": "9.000",
+   "source": "https://github.com/JulietaUla/Montserrat",
+   "tag": "v9.000",
+   "commit": "f1f4e9b630b6ac52f1c55c572b29d2a5c3535139",
+   "licence": "SIL Open Font License 1.1",
+   "licence_file": "LICENSES/OFL-Montserrat.txt",
+   "note": "Variable files (weight axis 100 to 900), bytes unchanged; renamed because square brackets break CSS urls.",
+   "files": [
+    {
+     "file": "Montserrat-Variable.woff2",
+     "family": "Montserrat",
+     "weight": [
+      100,
+      900
+     ],
+     "style": "normal",
+     "bytes": 212148,
+     "sha256": "793a3a2c50319dc8a309bfd99c2dfe8b31e15189f6f0ecefdd0c6d1bdbd74352",
+     "upstream": "fonts/webfonts/Montserrat[wght].woff2"
+    },
+    {
+     "file": "Montserrat-Variable-Italic.woff2",
+     "family": "Montserrat",
+     "weight": [
+      100,
+      900
+     ],
+     "style": "italic",
+     "bytes": 228324,
+     "sha256": "251630f23ce77ea250ac8a723fdff6d10b03070e90f9e20ac1ed612db2968f7b",
+     "upstream": "fonts/webfonts/Montserrat-Italic[wght].woff2"
+    }
+   ]
+  }
+ ]
+}

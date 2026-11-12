@@ -12,7 +12,7 @@ reel folder (`sfx/`, `beds/`), probes every sound, computes the waveforms, and w
 `waveforms.json` and `sfx_measured.json` into `<paths.videos>/<reel>/` (the waveforms come from
 `scripts/make_waveforms.py`, which `new_board.py` calls). The board page itself is
 `boards/sound-board/index.html`; it loads those files from `/videos/<reel>/<file>`. Open it at
-`/editor/sound-board/?reel=<reel>` on the editor's board server.
+`/editor/sound-board/?reel=<reel>` on the editor's board server. The client opens it inside the hub (board-server.md step 3); this address is the board's own page.
 
 - `--cues cues.json` seeds proposed cues, a list of `{id, beat, short, why, time, candidates:[...]}`. Leave it
   out for an empty board the client fills.

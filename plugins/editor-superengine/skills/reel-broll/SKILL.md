@@ -30,7 +30,7 @@ Run from the client's workspace:
 
 If setup is missing, invoke `editor-superengine:editor-doctor`. If there is no cut, invoke `editor-superengine:reel-first-cuts`. An unreadable clip is skipped with its name; ask for a readable copy.
 
-Open the hub using `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/board-server.md`, then its Beat Map tab. If the reel needs its first Beat Map, follow `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/beat-map.md`; preserve an existing one. Per beat, pick B-roll (or None), Fit (Cover or Blurred fill), and Starts at in seconds. The board saves whole frames and refuses clips shorter than the beat. Loading keeps saved picks unchanged. Have the client press Send once. Read `beat-map-selection.json`, then invoke `editor-superengine:reel-canvas-build` for the preview and the final after the client's OK.
+Open the hub at `board=beat-map`, Full view, using `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/board-server.md`. If the reel needs its first Beat Map, follow `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/beat-map.md`; preserve an existing one. Per beat, pick B-roll (or None), Fit (Cover or Blurred fill), and Starts at in seconds. The board saves whole frames and refuses clips shorter than the beat. Loading keeps saved picks unchanged. Have the client press Send once. Read `beat-map-selection.json`, then invoke `editor-superengine:reel-canvas-build` for the preview and the final after the client's OK.
 
 ## Generate a clip
 
@@ -63,7 +63,7 @@ Tell the client what went wrong in plain words, and whether anything was charged
 2. Draft it. Keep the summary short. Put the summary, step and error line in single quotes, drop any
    apostrophe from them, and use no script names:
 
-`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.2.1 --skill reel-broll --step 'adding the clients clips' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
+`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.2.2 --skill reel-broll --step 'adding the clients clips' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
 
 3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
 4. Send, using the path after `DRAFT:`:

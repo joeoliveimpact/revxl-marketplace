@@ -62,9 +62,17 @@ skills/reel-canvas-build/boards/sketches/tweakpane.min.js, skills/reel-first-cut
 scenes/glass-card-3d/scene.html (its tone-map-once order and dead-frame gate)
   Ideas from viettranx/3dviz-pro-max (MIT), rewritten in our own code; nothing copied.
 
-runtime/fonts/Inter-Regular.woff2
-  Inter 4.1, web/Inter-Regular.woff2 from https://github.com/rsms/inter/releases/download/v4.1/Inter-4.1.zip, unmodified.
+runtime/fonts/Inter-*.woff2 (18 files: nine weights, upright and italic)
+  Inter 4.1, the web/Inter-<weight>.woff2 files from https://github.com/rsms/inter/releases/download/v4.1/Inter-4.1.zip
+  (zip sha256 9883fdd4a49d4fb66bd8177ba6625ef9a64aa45899767dde3d36aa425756b11e), unmodified;
+  per-file sha256s in runtime/fonts/VERSION.json.
   Copyright (c) 2016 The Inter Project Authors. SIL Open Font License 1.1, full text in LICENSES/OFL-Inter.txt.
+
+runtime/fonts/Montserrat-Variable.woff2, runtime/fonts/Montserrat-Variable-Italic.woff2
+  Montserrat 9.000, fonts/webfonts/Montserrat[wght].woff2 and fonts/webfonts/Montserrat-Italic[wght].woff2 from
+  https://github.com/JulietaUla/Montserrat at tag v9.000 (commit f1f4e9b630b6ac52f1c55c572b29d2a5c3535139).
+  Bytes unchanged; the files are renamed (square brackets break CSS urls). Per-file sha256s in runtime/fonts/VERSION.json.
+  Copyright 2024 The Montserrat.Git Project Authors. SIL Open Font License 1.1, full text in LICENSES/OFL-Montserrat.txt.
 
 skills/editor-doctor/selftest/speech10s.flac
   11.6 s excerpt (60.10-71.70 s) of "The Art of War" by Sun Tzu, tr. Lionel Giles, chapter 2 "Waging War",

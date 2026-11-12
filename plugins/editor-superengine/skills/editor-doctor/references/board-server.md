@@ -14,9 +14,12 @@ bare `py`, `python` or `python3`.
 
 2. Wait for its one line, `Editor boards: http://127.0.0.1:<port>/`. If a server for this workspace is already
    running, the line names that one and the command ends at once; that is normal.
-3. Open the board in the Browser pane with `preview_start`, using the printed URL plus the board and reel:
-   `{url}editor/<board>/?reel=<reel>`, e.g. `http://127.0.0.1:8747/editor/cut-board/?reel=<reel>`.
+3. Open the board inside the hub in the Browser pane with `preview_start`:
+   `{url}editor/hub/?reel=<reel>&board=<board id>&view=full`, e.g. `http://127.0.0.1:8747/editor/hub/?reel=<reel>&board=cut-board&view=full`.
    `<reel>` is the reel's folder name under the workspace's videos folder.
+   When the hub is already open in the Browser pane, the same address switches it to that board.
+   The hub is the client's one window: never open a second tab or a bare board or video address for them.
+   A board's own page (`{url}editor/<board>/?reel=<reel>`) still loads; it is for tests and direct links only.
 
 It copies the boards into the workspace first (the same work as `board_sync.py`, below), takes the port from
 `ports.board` in `editor/editor.config.json` (8747) and picks any free port when that one is busy. It stops by
@@ -32,11 +35,11 @@ A refresh overwrites only the board's own template files; saved work and the cli
 
 H-HUB-1 deliberately opens boards inside the hub so the client keeps reel context and the other boards together.
 
-For "Open my <board> for <reel>" (Cut Board, Tweak Board, Beat Map, Sketches, Sound Board or Grade Board),
-refresh the hub data using `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/hub.md`, then start or reuse
-the server with steps 1 and 2 above. Open `{url}editor/hub/?reel=<reel>` in the Browser pane with
-`preview_start`, URL-encoding the reel name. The hub accepts `reel` but has no board-tab query or hash:
-open the hub and name the requested tab for the client, e.g. "Your Sound Board is in the Sound Board tab."
+For "Open my <board> for <reel>", use the asked board's id: Cut Board `cut-board`, Tweak Board `tweak-board`,
+Beat Map `beat-map`, Sketches `sketches`, Sound Board `sound-board`, Grade Board `grade-board`.
+Refresh the hub data using `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/hub.md`, then start or reuse
+the server with steps 1 and 2 above. Open `{url}editor/hub/?reel=<reel>&board=<board id>&view=full` in the Browser pane with
+`preview_start`, URL-encoding the reel name. Tell the client: "Your <board> is open. Back to hub, at the top left, shows everything else."
 
 ## A pasted "Restart my editor boards" line
 

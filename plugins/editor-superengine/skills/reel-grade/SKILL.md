@@ -54,7 +54,7 @@ It measures black, white and skin hue on three frames, bakes each look and check
 
 `<editor python> -X utf8 -I "<scripts>/looks_sheet.py" --reel-dir videos/<reel>`
 
-It writes `videos/<reel>/grade/looks-sheet.jpg`: the face frame through None and each look, labelled. Show it. Then start the board server and open the Grade Board (its hub tab, order 60) at `/editor/grade-board/?reel=<reel>` in the Browser pane, as `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/board-server.md` says. The client picks a colour and its strength, tries the suggested fix, compares with the wipe and A/B, then presses Send (it writes `grade-selection.json`).
+It writes `videos/<reel>/grade/looks-sheet.jpg`: the face frame through None and each look, labelled. Show it. Then start the board server and open the Grade Board inside the hub (`board=grade-board`, Full view), as `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/board-server.md` step 3 says. The client picks a colour and its strength, tries the suggested fix, compares with the wipe and A/B, then presses Send (it writes `grade-selection.json`).
 
 No board, or the client picks from the sheet in chat: run step 1's `make_grade.py` again with `--look <id> --strength <0-1>`, then go to step 4.
 
@@ -92,7 +92,7 @@ Tell the client what went wrong in plain words, and whether anything was charged
 2. Draft it. Keep the summary short. Put the summary, step and error line in single quotes, drop any
    apostrophe from them, and use no script names:
 
-`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.2.1 --skill reel-grade --step '<measure, match, sheet, board, bake or apply>' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
+`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.2.2 --skill reel-grade --step '<measure, match, sheet, board, bake or apply>' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
 
 3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
 4. Send, using the path after `DRAFT:`:

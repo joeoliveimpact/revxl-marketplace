@@ -28,11 +28,12 @@ description: Plans burned-in captions for the signed-off spoken cut, proposes tr
 - There is no default look. “No captions” is an explicit choice, never a fallback.
 - Your captions automatically get a dark backing over B-roll when your chosen look has no plate.
 - All looks and options are the client's taste. Read `${CLAUDE_PLUGIN_ROOT}/skills/reel-captions/references/looks.md`.
-- Use Inter Regular only, weight 400, with its licence on file. Use the literal family name Inter.
-- Keep the smallest truthful phrase: “doesn't work”, never “work” alone.
+- Looks use only bundled fonts (`runtime/fonts/VERSION.json`), declared once in `captions.py`; other style fonts get the nearest bundled face, with notice.
+- Keep user-sent marks exactly as marked. Claude proposes the smallest truthful phrase: “doesn't work”,
+  never “work” alone, when three words or fewer and clear of other marks; otherwise explain in a note.
 - At most one punch event per sentence, even when it spans several words. Later marks keep their accent;
   numbers and calls to action never punch. Do not remove qualifiers to make a phrase fit.
-- A truthful marked phrase longer than three words, or one that straddles a layout change, is shown
+- A marked phrase longer than three words, or one that straddles a layout change, is shown
   without its stress, with a plain note. Offer a shorter truthful phrase if the client wants it stressed.
 
 ## Flow
@@ -42,7 +43,7 @@ description: Plans burned-in captions for the signed-off spoken cut, proposes tr
 
    `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-captions/scripts/captions.py" picker --reel-dir "<reel folder>"`
 
-   Open the Look Picker tab in the hub. The client compares the looks, picks the options and presses Send.
+   Open the hub at `board=look-picker`, Full view. The client compares the looks, picks the options and presses Send.
    A remembered look is highlighted as “Your last pick”; it is recommended, and the client still chooses and presses Send.
    When clients explain their pick, keep their words: `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/standing_notes.py" pick <key> --value <json> --note "<their words>"`.
    Layouts there are previews only. IDs are `clean`, `bold-pop`, `boxed`, `karaoke`, `outline-caps`, or `none`.
@@ -51,12 +52,11 @@ description: Plans burned-in captions for the signed-off spoken cut, proposes tr
 
    `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-captions/scripts/captions.py" marks --reel-dir "<reel folder>" --candidates '<JSON list of {w, mark}>'`
 
-   Use only `num`, `key`, `emph`, `cta`. The returned JSON is the truthful expanded word positions for the
-   Beat Map plan's `word_marks`. Preserve the one-punch note; later marks keep their accents.
+   Use `num`, `key`, `emph`, `cta`. Put the returned positions in `word_marks`. Keep the notes.
     If the Beat Map was already sent, tell the client which marks changed and ask whether to update it; on yes, rebuild it as `reel-canvas-build/references/beat-map.md` says (`--replace`, only after their OK) and have them Send it again; on no, leave it as sent.
    Optionally add `--loud` to suggest marks from louder words. `loud_emphasis: true` uses these only when
    the Send has no word marks. Offer `mark_look: "marker"` for a swipe behind the whole marked phrase;
-   the default stays `"accent"`. Both options preserve truthful spans and the one-punch limit.
+   the default stays `"accent"`. The one-punch limit still applies.
 3. Save the choices, then plan:
 
    `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-captions/scripts/captions.py" plan --reel-dir "<reel folder>"`
@@ -79,7 +79,7 @@ Tell the client what went wrong in plain words, and whether anything was charged
 2. Draft it. Keep the summary short. Put the summary, step and error line in single quotes, drop any
    apostrophe from them, and use no script names:
 
-`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.2.1 --skill reel-captions --step '<the caption look, the word marks or the caption plan>' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
+`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.2.2 --skill reel-captions --step '<the caption look, the word marks or the caption plan>' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
 
 3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
 4. Send, using the path after `DRAFT:`:

@@ -84,9 +84,6 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);flex:none
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const REEL=new URLSearchParams(location.search).get('reel')||'';
 const BASE='/videos/'+encodeURIComponent(REEL)+'/';
-// lane fix: the licensed Inter font comes from the reel's picker folder (captions.py picker copies it)
-const INTER=new FontFace('Inter',"url('"+BASE+"work/look-picker/Inter-Regular.woff2') format('woff2')",{weight:'400'});
-document.fonts.add(INTER);INTER.load().catch(()=>{});
 const reelUrl=p=>BASE+String(p).split('/').map(encodeURIComponent).join('/');
 const LAYOUTS=['full','split','stack','pip','overlay'];
 const LABELS={full:'Full frame',split:'Split',stack:'Stack',pip:'Picture in picture',overlay:'Overlay'};
@@ -253,7 +250,7 @@ function render(){
   const label=document.createElement('span');label.className='label';label.textContent=LABELS[layout];card.append(label);
   card.onclick=()=>replay(p);$('#layouts').append(card);
  }
- for(const tip of C.tips||[]){const p=document.createElement('p');p.textContent=tip;$('#tips').append(p);}
+ for(const tip of [...(C.tips||[]),...(C.notes||[])]){const p=document.createElement('p');p.textContent=tip;$('#tips').append(p);}
  syncControls();
 }
 function localISO(){
@@ -279,6 +276,18 @@ async function send(){
  }catch(e){S.sent_at=null;await saveState().catch(()=>{});status('FAILED. Try Send again in a moment.',true);}
  finally{sending=false;syncPick();}
 }
+async function loadFonts(){
+ const failed=[];
+ await Promise.all((C.fonts||[]).map(async f=>{
+  const weight=Array.isArray(f.weight)?f.weight.join(' '):String(f.weight);
+  const face=new FontFace(f.family,"url('"+reelUrl('work/look-picker/'+f.file)+"') format('woff2')",
+                          {weight,style:f.style});
+  try{await face.load();document.fonts.add(face);}
+  catch(e){failed.push('The preview font '+f.family+' could not load. Update or reinstall the editor plugin and try again.');}
+ }));
+ await document.fonts.ready;
+ C.notes=[...new Set([...(C.notes||[]),...failed])];
+}
 async function init(){
  $('#send').onclick=send;
  try{
@@ -286,6 +295,7 @@ async function init(){
   const [config,state,last]=await Promise.all([json('work/look-picker.json'),bc.load(),json('look-picker-selection.json')]);
   if(!config){$('#empty').hidden=false;return;}
   C=config;
+  await loadFonts();
   if(C.recommended)restore({style:C.recommended.value});
   restore(C.current);restore(last);baseline=last&&last.sent_at?choice():null;restore(state);  // only this reel's own Send counts as sent
  dirty=choice()!==baseline;

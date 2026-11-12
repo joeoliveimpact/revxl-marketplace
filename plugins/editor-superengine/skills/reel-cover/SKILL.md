@@ -37,7 +37,7 @@ Run, as Claude:
 
 The newest final is used, or the cut master if there is no final. Use `--video "<chosen video>"` only when the client chose a different existing reel video. Frames, scores, head boxes and the reel's word list are in `cover/candidates.json`.
 
-Refresh and open the hub using `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/hub.md`, then select **Cover Picker**. Let the client pick a frame, optionally enter their short title, optionally check **Use this cover as the first frame of the reel** (off by default), then Send. The live preview marks the protected head and face band and title area. If the title cannot fit beside the face even one size smaller, say: "The title doesn't fit beside your face on this frame, even one size smaller. Use a shorter title, or pick another cover frame from the picker."
+Refresh and open the hub at `board=cover-picker`, Full view, using `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/hub.md`. Let the client pick a frame, optionally enter their short title, optionally check **Use this cover as the first frame of the reel** (off by default), then Send. The live preview marks the protected head and face band and title area. If the title cannot fit beside the face even one size smaller, say: "The title doesn't fit beside your face on this frame, even one size smaller. Use a shorter title, or pick another cover frame from the picker."
 
 After Send, read `cover-picker-selection.json`, then run:
 
@@ -56,7 +56,7 @@ Tell the client what went wrong in plain words, and whether anything was charged
 2. Draft it. Keep the summary short. Put the summary, step and error line in single quotes, drop any
    apostrophe from them, and use no script names:
 
-`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.2.1 --skill reel-cover --step 'picking the cover' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
+`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.2.2 --skill reel-cover --step 'picking the cover' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
 
 3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
 4. Send, using the path after `DRAFT:`:

@@ -2,7 +2,16 @@
 
 When no caption accent is chosen, captions use the saved brand colour if it is valid.
 
-All five looks use the licensed Inter Regular font. These are the client's taste:
+| Look | Family | Weight |
+|---|---|---|
+| Clean | Inter | 600 |
+| Bold pop | Montserrat | 900 |
+| Boxed | Inter | 700 |
+| Karaoke | Inter | 800 |
+| Outline caps | Montserrat | 800 |
+
+Looks use only fonts bundled in `runtime/fonts/VERSION.json`, declared once in `captions.py`; other style fonts get the nearest bundled face, with notice.
+These are the client's taste:
 
 - **Clean:** white words with a soft shadow and a small rise as they appear.
 - **Bold pop:** larger uppercase words, a black outline and a quick pop in size.

@@ -5,7 +5,7 @@ const boards = {
   "cut-board": ["[data-pick]", "#send", "[data-play]", "[data-drop]", "[data-all]", "[data-note]", "#reset"],
   "tweak-board": ["[data-text]", "#send", "[data-add=cut]", "[data-add=tight]", "[data-add=loose]", "[data-add=note]", "[data-del]", "[data-play]"],
   "sound-board": ["#cuebody select", "#send", "#play", "#rew", "#suggest", "#vvol", "#vmute", "#mfree", "#mown", "#bedsel", "#bedvol", "#rejall", "#reset", "#cuebody input[type=range]", "#cuebody td:last-child button"],
-  "beat-map": ["#beats select[name=layout]", "#send", "#edit-style", "#word-punches", "#camera-move", "#needs", "#beats textarea[name=note]", "select[name=broll]", ".add-scene"],
+  "beat-map": ["#focus .layout-choice", "#send", "#edit-style", "#word-punches", "#camera-move", "#needs", "#focus textarea[name=note]", "select[name=broll]", ".add-scene"],
   "sketches": ["#directions input[type=radio]", "#lock", "#send", "#note", "[data-slot]", ".add-scene", ".remove-scene"],
   "grade-board": ["#rail figure", "#send", "#strength", "#suggest", "#frames button"],
   "look-picker": ["#looks button", "#send", "#none", "#replay", "#make-default"],
@@ -79,6 +79,11 @@ const fine = {
         .catch(async () => assert.fail(board + ": tab did not open its board; panel: " +
           await page.$eval("#panel", e => e.innerHTML.slice(0, 300))));
       const frame = await (await page.$("#panel iframe")).contentFrame();
+      if (board === "beat-map") {
+        await frame.waitForSelector('#more');
+        assert.strictEqual(await frame.$eval('#more', e => e.open), false, 'More must start closed in either mode');
+        await frame.$eval('#more', e => { e.open = true; });
+      }
       // Look strength only exists once a look is picked (hub_test case_grade picks "warm" the same way).
       if (board === "grade-board") await (await frame.waitForSelector('#rail figure[data-look="warm"]')).click();
       for (const selector of selectors) await frame.waitForSelector(selector);
@@ -90,6 +95,7 @@ const fine = {
       await frame.waitForFunction("window.BoardClient?.controls");
       await frame.evaluate(() => BoardClient.controls.ready);
       await folds(frame, job.mode, board);
+      if (board === "beat-map") assert.ok(await frame.$eval('#more', e => e.open), 'controls mode changed More');
       await everyday(frame, selectors, board);
       if (job.mode === "simple") {
         if (board !== "trials") {
@@ -115,6 +121,7 @@ const fine = {
           await page.waitForFunction("Hub.pending===0");
         } else { await flip(frame, "advanced"); await flip(frame, "simple"); }
         await everyday(frame, selectors, board);
+        if (board === "beat-map") assert.ok(await frame.$eval('#more', e => e.open), 'mode flips closed More');
       }
       checked.push(board);
     }
