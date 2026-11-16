@@ -91,7 +91,7 @@ built-in library"), and keep going.
 (F9) A trend deep dive, creator vetting, share of voice or lead finding is beyond
 `../_shared/references/socialcrawl-endpoints.md`, and this plugin will not fake
 one with a shallower call. Probe for the install the way that file says, then:
-1. Get it installed first ... ask me to install socialcrawl-superengine from the RevXL marketplace, then say the phrase. It ships the same credit guard this plugin does. Say: "vet this creator" (if installed)
+1. Get it installed first ... ask me to install socialcrawl-superengine from the RevXL marketplace, then say the phrase. It ships the SocialCrawl credit guard. Say: "vet this creator" (if installed)
 2. What I can do today: the fresh pass on the table's own endpoints, `google_news/search` 1cr, `google_trends/explore` 5cr, `reddit/search` 1cr. Say: "refresh next week's plan"
 3. *If `analysis` is set and the marker is on disk:* field search inside the roster runs in the pulse. Say: "search the field for <keyword>"
 

@@ -365,7 +365,7 @@ opt-out.
 
 **Never** call any `*/transcript` endpoint and never add `include=transcript`
 to a paid call: 10 credits per reel for no advantage over the free local chain.
-The `hooks/credit-guard.mjs` PreToolUse hook hard-denies them.
+No hook blocks them for this plugin; the rule alone stands.
 
 The chain, the vocabulary prompt, timestamps, the caption-only floor and the
 signed-CDN expiry trap: `./references/transcription.md`.

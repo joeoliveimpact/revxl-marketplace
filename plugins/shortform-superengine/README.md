@@ -133,8 +133,8 @@ Two hooks ship in `hooks/hooks.json`:
   Silent on everything else; exit 0 always; fail-open on empty or malformed
   input. Ceiling: it fires in Claude Code (terminal and Desktop, verified on
   Windows Desktop 09.04.26) and never in Cowork, which does not load plugin hooks.
-- **Credit guard** (`PreToolUse` on `Bash`, `hooks/credit-guard.mjs` plus
-  `hooks/costs.json`) ... the same file socialcrawl-superengine ships:
-  hard-denies the banned `*/transcript` endpoints and asks before metered or
-  >=5-credit SocialCrawl calls. The two copies must be updated together. Same
-  Cowork ceiling as above.
+- **No credit guard of its own** (removed in 0.6.3). SocialCrawl spending is
+  guarded by socialcrawl-superengine, which never asks: in-budget calls pass and
+  the rest are blocked with the fix. Without socialcrawl-superengine installed,
+  the spend rules in `skills/_shared/references/credit-guard.md` are the only
+  guard.
