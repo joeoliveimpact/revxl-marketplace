@@ -249,7 +249,7 @@ less if you are willing to read. Pay for `/repo/top-issues` when you want the ve
 than the material, and `/repo/dossier` (5cr) when you want releases, issue load and the
 request/complaint pair rolled together.
 
-For a whole organisation rather than one repo, `prism/org-radar` (26cr) expands an org's top
+For a whole organisation rather than one repo, `prism/org-radar` (6–51cr, 26 at the default 5 repos; `repos` bounds it) expands an org's top
 repos into dossiers and rolls them up. For how a launch landed across Hacker News and dev
 blogs, `prism/launch-echo` (20cr) or `prism/devtool-pulse` (20cr).
 

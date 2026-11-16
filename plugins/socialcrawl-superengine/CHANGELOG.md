@@ -1,5 +1,9 @@
 # Changelog — socialcrawl-superengine
 
+## 0.4.2 - 2026-11-12
+
+Every hand-written credit price in the skills and references now matches the price list (costs.json): about 180 quotes that were lower than the real maximum are corrected, and a new check stops a too-low price from shipping again.
+
 ## 0.4.1 - 2026-11-11
 
 One band, one pane, and credits that come back.

@@ -451,8 +451,8 @@ resolve, a docs page, a pricing page).
 
 | Your goal | Use this | Credits |
 |-----------|----------|---------|
-| One page's content, right now | `/scrape` | 1 (up to 5, metered) |
-| A keyword search of the open web | `/search` | 2 per 10 results (2–120, metered) |
+| One page's content, right now | `/scrape` | 1–5 (5 with `proxy` or `pdf_parse`, metered) |
+| A keyword search of the open web | `/search` | 2–120 (2 per 10 results; `include_content=true` adds 1 per result, metered) |
 | What URLs exist on this site? | `/map` | 1 |
 | Pull named fields out of a page (price, headline, offer) | `/extract` | 5 |
 | Many pages / a whole site | `POST /crawl` or `POST /batch-scrape` → poll `/jobs/{job_id}` | crawl 1 per page (holds `limit`, 10 by default, up to 10,000); batch-scrape 1 per URL, counted at 0 by the guard |
@@ -466,11 +466,11 @@ resolve, a docs page, a pricing page).
 The async machinery is 0cr: listing jobs, polling `/jobs/{job_id}`, cancelling, and every
 monitor and session operation except opening the session (a running monitor's checks still
 bill: see the table). You pay to *start* work
-(`crawl` 1cr per page, `batch-scrape` 1cr per URL, `sessions` 5–20cr, `agent` 25cr), not to
+(`crawl` 1cr per page, holding `limit` up front, up to 10,000cr; `batch-scrape` 1cr per URL, `sessions` 5–20cr, `agent` 25cr), not to
 supervise it. Poll job
 status as often as you like.
 
-`/scrape` at 1cr (up to 5) is the workhorse. Before escalating, ask whether one page would answer the
+`/scrape` at 1cr (up to 5cr) is the workhorse. Before escalating, ask whether one page would answer the
 question — `/extract` (5cr) is `/scrape` plus structured field-pulling, so if you are going to
 read the page yourself anyway, scrape it.
 

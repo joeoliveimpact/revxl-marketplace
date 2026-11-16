@@ -307,20 +307,20 @@ curl "https://www.socialcrawl.dev/v1/twitter/profile/full?handle=<handle>" \
 
 | Your goal | Use this | Credits |
 |-----------|----------|---------|
-| Profile / their tweets / one tweet | `/profile` · `/user/tweets` · `/tweet` | 1 |
+| Profile / their tweets / one tweet | `/profile` · `/user/tweets` · `/tweet` | 1 (tweets up to 5 with a paid `label=`) |
 | A community and its tweets | `/community` · `/community/tweets` | 1 |
 | **Search X by natural-language question** | `/ai-search` | 5 |
 | Profile + posts + analytics in one call | `/profile/full` | 5 |
 | Transcript | ⚠️ `/tweet/transcript` — gated: **10cr per tweet**, run only on an explicit yes. Cheaper: pull the media URL (1–5cr) and transcribe it yourself | **10** |
 
-### There is no plain keyword search
+### Keyword search, or a question
 
-X does not expose an ordinary search endpoint here — `/ai-search` (5cr, via xAI Grok) is the
-only way to search, and it takes a question rather than a keyword. That changes the framing:
+X has an ordinary keyword search, `/search/tweets` (1–9cr: 1 a page, up to 4 more each for `relevant_to=` and a paid `label=`), and
+`/ai-search` (5cr, via xAI Grok), which takes a question rather than a keyword. For `/ai-search` that changes the framing:
 ask it what you want to know, not what string to match.
 
-If you already know whose account matters, `/user/tweets` (1cr) is five times cheaper than
-searching for them. Resolve the handle elsewhere and come in directly.
+If you already know whose account matters, `/user/tweets` (1cr a page, up to 5cr with a paid `label=`) is five times cheaper than
+an `/ai-search` question. Resolve the handle elsewhere and come in directly.
 
 `prism/voice` (5cr) merges one person's posts across X, Threads, Bluesky and Truth Social into
 one time-ordered feed — the right call when you want someone's whole public voice rather than

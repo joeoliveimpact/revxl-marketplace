@@ -83,7 +83,7 @@ curl "https://www.socialcrawl.dev/v1/truthsocial/post?url=<url>" \
 All 1 credit, no search — bring the handle with you.
 
 `prism/truthsocial-pulse` (20cr) is the composite: profile, recent posts, per-post detail drill
-and the surrounding news echo in one call. Three 1cr calls cover the raw data; pay the 20cr
+and the surrounding news echo in one call. Three calls, `/profile`, `/user/posts` and `/post` at 1cr each, cover the raw data; pay the 20cr
 only when you want the news reaction folded in. `prism/voice` (5cr) merges a person's posts
 here with X, Threads and Bluesky into one time-ordered feed.
 

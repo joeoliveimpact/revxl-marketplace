@@ -158,11 +158,11 @@ curl "https://www.socialcrawl.dev/v1/threads/search/users?query=<query>" \
 | Search posts by keyword | `/search` | 1–34 (metered) |
 | Find users | `/search/users` | 1–13 (metered) |
 | A profile | `/profile` | 1 |
-| Their posts | `/user/posts` | 1 |
+| Their posts | `/user/posts` | 1–165 (1 for about 15 posts; a `limit` above 15 is 3 per post, `include=engagement` holds up to 15 more) |
 | One post | `/post` | 1 |
 
-Everything is 1 credit and, unlike X, there is a plain keyword search — which makes Threads
-the cheapest text-social platform to explore here.
+Every endpoint starts at 1 credit, with a plain keyword search, `/search` (1–34cr: 1 a window, more with `limit`), and the metered ones climb with `limit` or `include=`, `/user/posts` up to 165cr — which makes Threads
+one of the cheapest text-social platforms to explore here.
 
 Because Threads accounts are tied to Instagram handles, a handle you already hold from
 `instagram/profile` usually resolves directly. `prism/voice` (5cr) merges someone's posts

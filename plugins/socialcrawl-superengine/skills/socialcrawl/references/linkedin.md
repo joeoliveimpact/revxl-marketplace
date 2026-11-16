@@ -1167,8 +1167,8 @@ curl "https://www.socialcrawl.dev/v1/linkedin/profile/full?url=<url>" \
 ## Choosing a LinkedIn endpoint
 
 ⚠️ **LinkedIn has no 1cr tier for content.** Profile, company and post are all **5 credits**
-here, against 1cr on every other social platform, and the search endpoints are **10**. Only
-three lookup helpers are 1cr. Budget accordingly — a casual "just check their profile" costs
+here, against 1cr on most other social platforms (Xiaohongshu 5, Douyin 6), and most search endpoints are **10** or more (`/search/people` 10–50cr with `include=profile`; `/search/posts` 1–56cr). Only
+three lookup helpers (`/search/location`, `/search/schools`, `/search/industry`) are 1cr. Budget accordingly — a casual "just check their profile" costs
 five times what it does on Instagram.
 
 | Your goal | Use this | Credits |
@@ -1183,18 +1183,18 @@ five times what it does on Instagram.
 | CV detail (experience, education, skills, certs…) | `/profile/experiences` · `/educations` · `/skills` · `/certifications` … | 5 each |
 | Company posts / affiliated pages / insights | `/company/posts` · `/company/affiliated-pages` · `/company/insights` | 5 |
 | Ads a company is running | `/ads/search` · `/ad` | 5 |
-| Search public posts by keyword | `/search/posts` | 5 |
-| **Search people** | `/search/people` | **10** |
-| **People at a company** | `/company/people` | **10** |
-| **Who reacted to a post** | `/post/reactions` | **10** |
+| Search public posts by keyword | `/search/posts` | 5 a page, up to 56 (`relevant_to=` and paid labels hold more) |
+| **Search people** | `/search/people` | **10–50** (`include=profile` holds 4 per row) |
+| **People at a company** | `/company/people` | **10–50** (`include=profile` holds 4 per row) |
+| **Who reacted to a post** | `/post/reactions` | **10–50** (`include=profile` holds 4 per row) |
 | **Jobs** | `/search/jobs` · `/company/jobs` | **10** |
 | Transcript | ⚠️ `/post/transcript` — gated: **10cr per post**, run only on an explicit yes. Cheaper: pull the media URL (1–5cr) and transcribe it yourself | **10** |
 
-### Resolve with the 1cr helpers before any 10cr search
+### Resolve with the 1cr helpers before any 10cr-and-up search
 
 `/search/location`, `/search/schools` and `/search/industry` (1cr each) exist to turn a
 human name into the id that the expensive search endpoints require. Guessing the id and
-firing `/search/people` (10cr) at it is how you pay 10 credits for an empty result.
+firing `/search/people` (10cr, up to 50cr with `include=profile`) at it is how you pay 10 credits for an empty result.
 
 ### The CV endpoints are individually billed
 

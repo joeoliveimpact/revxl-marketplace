@@ -63,8 +63,8 @@ substantially private, so treat this as an existence-and-identity check: does th
 exist, what is the display name and subscriber-facing detail. It confirms a creator's presence
 in a cross-platform roster; it will not tell you what they post.
 
-For a handle's footprint across platforms in one call, `prism/creator-card` (5cr) or
-`prism/handle-audit` (5cr).
+For a handle's footprint across platforms in one call, `prism/creator-card` (5–8cr) or
+`prism/handle-audit` (5–8cr; each +1 per platform past 4).
 
 ## Field Maps
 

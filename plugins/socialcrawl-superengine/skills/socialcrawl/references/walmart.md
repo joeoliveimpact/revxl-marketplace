@@ -140,11 +140,11 @@ curl "https://www.socialcrawl.dev/v1/walmart/offers?product_id=<product_id>" \
 |-----------|----------|---------|
 | Find products for a keyword | `/search` | 5 |
 | One product's detail | `/product` | 5 |
-| What buyers say | `/reviews` | 5 |
+| What buyers say | `/reviews` | 5–9 (5 a page; a paid label adds up to 4) |
 | Browse a category | `/category` | 5 |
 | Every seller offering this product | `/offers` | 5 |
 
-⚠️ **Flat 5 credits, every endpoint.** There is no 1cr rung on Walmart — unlike Amazon, where
+⚠️ **A fixed 5 credits on every endpoint except `/reviews` (5–9cr with a paid label).** There is no 1cr rung on Walmart — unlike Amazon, where
 search and sellers are 1cr. A three-call product investigation here is 15 credits. Decide what
 you need before you start, and prefer one `/product` call over `/search` → `/product` when you
 already hold the item id.

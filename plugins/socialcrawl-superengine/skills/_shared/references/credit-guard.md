@@ -37,13 +37,13 @@ ground chasing an outcome.
    | Endpoint | Real cost | What drives it |
    |----------|-----------|----------------|
    | `prism/lookup` | **1–5cr** (never 0: the resolved endpoint's own price, 5 on Amazon and LinkedIn) | the resolved endpoint |
-   | `prism/post-stats` | **1cr per successful URL**, 2cr Instagram, 5cr LinkedIn → 100 IG URLs = **200cr** | URL count × platform |
-   | `prism/comments` | **2–200cr** (1cr/internal page, min 2; an Instagram URL is a flat 5) | `max=`, not `limit=` |
+   | `prism/post-stats` | **1–500cr** (1cr per successful URL, 2cr Instagram, 5cr LinkedIn, up to 100 URLs) → 100 IG URLs = **200cr** | URL count × platform |
+   | `prism/comments` | **2–200cr** (1cr/internal page, min 2); an Instagram URL is a flat 5 | `max=`, not `limit=` |
    | `reddit/omni-search` | **5–9cr** (1cr/search page + 1cr/expanded thread, min 5) | pages + threads expanded |
 
-   Genuinely cheap: a single `/v1/{platform}/profile` (flat, 1cr on most platforms; LinkedIn and
-   Xiaohongshu 5, Douyin 6), or one page of `/v1/{platform}/search` (1cr a page on 12 platforms, a flat
-   5 on 11, and more on the rest (most metered), up to 125 a call: Douyin 5–125, web 2–120, Xiaohongshu 5–100, TikTok 1–42, Reddit 1–34, Threads 1–34). **Never promise an outcome that would zap their balance, and never quote a
+   Genuinely cheap: a single `/v1/{platform}/profile` (1–6cr, a fixed price per platform: 1 on most; LinkedIn and
+   Xiaohongshu 5, Douyin 6), or one page of `/v1/{platform}/search` (1cr a page on 12 platforms, a fixed
+   5 on 11, and more on the rest (most metered), up to 125cr a call: Douyin 5–125, web 2–120, Xiaohongshu 5–100, TikTok 1–42, Reddit 1–34, Threads 1–34). **Never promise an outcome that would zap their balance, and never quote a
    metered endpoint's floor as its price.**
 
 ## The session cap (every call)
@@ -98,7 +98,7 @@ deny of a SocialCrawl call (never a guard-file deny, which is not logged) and ev
 | Call | What happens |
 |------|------|
 | **0cr** — balance, cache hits, refunds | a free endpoint (the balance) is never counted; a cache hit or a refund costs nothing at the vendor, but the guard can't tell before the call, so it holds that call's price like any other (a `dry_run=1` too) |
-| **flat** — incl. `prism/lookup` at 5 | counted at its price. A **loop** over items is not a plain `curl` and is denied (see below), so say the count first ("~N handles × 1cr = ~Ncr"), then send one plain `curl` per item |
+| **flat** — incl. `prism/lookup` at 5 | counted at its price. A **loop** over items is not a plain `curl` and is denied (see below), so say the count first ("~N handles × `instagram/profile` 1cr = ~Ncr"), then send one plain `curl` per item |
 | **metered** — `post-stats`, `comments`, `omni-search`, `ai-visibility`, `share-of-voice`, `org-radar`, `search/news`, `threads/search`, `*/profile/*/full`, the batch POSTs that state a ceiling (`profiles`, `comment-lookup`, `youtube/videos`, `web/crawl`) | counted at the **worst case**, never the floor. State `low–high` and what drives it before the first call |
 | **transcripts** — any path with `transcript` in it (the 9 `*/transcript` endpoints and `POST youtube/transcripts`), an `include` value naming `transcript` on any call (e.g. `prism/video-intel`), any parameter whose name holds `transcript` unless it is `false` or `0` (`search/everywhere` `include_transcripts`, `facebook/post` `get_transcript`), and `prism/brief-check` | refused before it runs when the user's transcript setting (SocialCrawl → Settings) is Blocked. The lock catches these known spellings: a command with odd URL encoding is refused as not plain, and a spelling it doesn't know can get past the lock, where it is counted at that call's ordinary price, which can be lower than the transcript price. Otherwise counted at one unit's price (10 where no price is listed), or at the call's metered ceiling when that is higher, and a call that bills many units is counted low. Run one only on an explicit yes (see Never) |
 | **can't price up front** — an unreadable endpoint, `cohorts`, a per-unit call with no ceiling | an unreadable endpoint (one the cost map doesn't know) counts 50; `cohorts` are unpriced and count 0; a call with no computable ceiling counts its stated maximum (`prism/investigate` its `budget`, 200 when none is given; `web/sessions` and `economy/imports` 20), or 0 when none is stated (`POST prism/jobs`, `POST web/batch-scrape`, `POST web/monitors`). A call counted at 0 is never refused by the limit, even once the limit is used up, so the limit does not stop it: state its real price before running it |
@@ -126,7 +126,7 @@ The guard does not check any of this; it enforces only the limit and the transcr
 
 - Never *skip the price*: a `*/transcript` endpoint, or `&include=transcript` on a
   paid call (e.g. `prism/video-intel`), runs only after you show the price and the
-  cheaper route first. Both are real, usable endpoints and both bill **per item** — 3cr per
+  cheaper route first. Both are real, usable endpoints and both bill **per item** — `youtube/video/transcript` 3cr per
   YouTube video, ~10cr per item on every other platform, and `include=transcript`
   adds a paid transcript leg to a call that is already billing (**+10 credits,
   refunded if the transcript comes back null**). When the user's transcript setting is

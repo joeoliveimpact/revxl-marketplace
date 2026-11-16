@@ -25,10 +25,11 @@ audience vocabulary for a niche.
    call ([execution.md](execution.md) §1), never a loop. **Estimate: ~20–32cr
    total** — say it before the first call.
 2. Comments under proven content: `GET /v1/prism/comments?url=<top post>` (**2–200cr each**,
-   metered: 1cr per internal page with a floor of 2, driven by `max=`; an Instagram URL is
-   a flat 5cr) on the client's and competitors' top 3–5 posts. Say the running total.
-   Try prism first; fall back to platform-native (`instagram/post/comments` 5cr,
-   `tiktok/post/comments` 1cr, `youtube/video/comments` 1cr) only if prism coverage fails
+   metered: 1cr per internal page with a floor of 2, driven by `max=`, but an Instagram URL is
+   always 5cr) on the client's and competitors' top 3–5 posts. Say the running total.
+   Try prism first; fall back to platform-native (`instagram/post/comments` 5–19cr,
+   `tiktok/post/comments` 1–7cr, `youtube/video/comments` 1–5cr: the low figure is a page,
+   spam/toxic labels hold more) only if prism coverage fails
    for that platform.
 3. Optional deep add-on (big gun): `prism/audience-questions` (30cr) — see
    [big-guns.md](big-guns.md).
@@ -69,11 +70,11 @@ asked?" — the AI-era SEO check.
 1. Draft 5–10 prompts a real buyer would ask an AI (topic + "best X for Y" + "who should
    I follow for X").
 2. `GET /v1/prism/ai-visibility?...` — ⚠️ **the most under-quoted endpoint in the system.**
-   It is **2cr per probe, and a probe is `prompt × run × engine`**, not per prompt. At
+   It is **2–1,605cr a call: 2cr per probe, and a probe is `prompt × run × engine`**, not per prompt. At
    defaults (`runs=8` × 2 engines = 16 probes per prompt) a **5-prompt audit is ~160cr, not
-   10.** Measured live: `preset=quick` = **20cr**; 20 prompts × 20 runs = **1,600cr**.
+   10.** Measured live: `preset=quick` = **20cr**, 20 prompts × 20 runs = **1,600cr** (`include=web_baseline` adds 5, the 1,605cr ceiling).
    **Always pass an explicit `preset=` for a flat budget, state the number, and get an
-   explicit yes.** This is a big-gun gate, not a 2cr call.
+   explicit yes.** This is a big-gun gate (up to 1,605cr), not a 2cr call.
 3. Read per-engine appearance-% + the cited-domain ranking.
 
 **Output:** AI-visibility report — per prompt: which engines mention the brand, who IS
@@ -89,7 +90,7 @@ are the story.
 1. Get the bio URL from the profile you already have (or `instagram/profile` 1cr).
 2. `GET /v1/prism/lookup?url=<bio url>` (**1–5cr**, worst case 5 — 1 for most social
    links, 5 for an advanced one such as Amazon or LinkedIn) — dispatches linktree/linkbio/linkme/
-   komi/pillar automatically; direct page endpoints are 1cr if needed.
+   komi/pillar automatically; direct page endpoints (`linktree/page` and its siblings) are 1cr if needed.
 3. For non-link-in-bio sites, note the URL for a web-scrape tool (outside this API).
 
 **Output:** offer-ladder map — every link, its offer, price point if visible, and funnel
@@ -117,15 +118,15 @@ identity). Pairs well with a competitor handle for contrast (+5cr, confirm).
 **When:** operator-side intel — track what's shipping in AI/dev tooling, monitor repos this
 stack depends on, mine tool complaints for build ideas.
 
-1. Pulse: `GET /v1/hackernews/search?query=<tool/topic>` (1cr) → interesting story →
+1. Pulse: `GET /v1/hackernews/search?query=<tool/topic>` (1–9cr: 1 a page, up to 4 more each for `relevant_to=` and a paid `label=`) → interesting story →
    `hackernews/story/comments` (1cr).
 2. Repo watch: `github/repo/releases` · `repo/issues` · `repo/readme` (1cr each).
 3. Build-gap radar: `github/repo/top-issues` (5cr) — a repo's top feature request + top
    complaint in one call. Deeper: `github/repo/dossier` (5cr).
 4. Gated bundles when it matters (see big-guns): `prism/launch-echo` (20cr flat, how a launch
-   landed), `prism/devtool-pulse` (20cr flat), `prism/org-radar` (**6–26cr**, metered: 1cr to
-   resolve the org + 5cr per repo dossiered; unused per-repo credits auto-refund, so 1 repo
-   measured at 6cr and 26 is the ceiling reservation, not the price).
+   landed), `prism/devtool-pulse` (20cr flat), `prism/org-radar` (**6–51cr**, metered: 1cr to
+   resolve the org + 5cr per repo dossiered, 5 repos by default and up to 10 with `repos`; unused per-repo credits auto-refund, so 1 repo
+   measured at 6cr, and 26 (the 5-repo default) and 51cr (10 repos) are reservations, not the price).
 
 **Output:** a dated radar note — what moved, what broke, what people are begging for, and
 any build idea it suggests.

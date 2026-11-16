@@ -38,7 +38,7 @@ Unified social + research data API. One API key, one response format, **645 endp
 > local Whisper** chain (any RevXL format engine's `onboarding` installs it) for 0 credits.
 > **`&include=transcript` on any paid call** (e.g. `prism/video-intel`) is the same deal — it
 > adds a paid transcript leg to a call that is already billing: **+10 credits, refunded if the
-> transcript comes back null**.
+> transcript comes back null** (on video-intel, 5–15cr in all).
 > **Every call that pulls a transcript** falls under the same rule: the 9 above, `POST
 > youtube/transcripts`, an `include` value naming `transcript` on any call (`prism/video-intel`),
 > any parameter whose name holds `transcript` unless it is `false` or `0` (`search/everywhere`
@@ -93,7 +93,7 @@ Tell the client what went wrong in plain words, and whether anything was charged
    apostrophe from them, and use no script names, web addresses or file paths (those go in the body
    file; a command carrying the SocialCrawl address that isn't a plain `curl` is refused):
 
-`python "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin socialcrawl-superengine --plugin-version 0.4.1 --skill socialcrawl --step '<step>' --error-line '<the error line>' --summary '<headline>' --body-file socialcrawl-superengine/reports/report-body.md`
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin socialcrawl-superengine --plugin-version 0.4.2 --skill socialcrawl --step '<step>' --error-line '<the error line>' --summary '<headline>' --body-file socialcrawl-superengine/reports/report-body.md`
 
 3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
 4. Send, using the path after `DRAFT:`:
@@ -153,10 +153,10 @@ Five endpoints that change the cost math for everything:
 | Endpoint | Credits | Why it matters |
 |----------|---------|----------------|
 | `GET /v1/prism/lookup?url=…` | **1–5** | Universal URL dispatcher — any social/commerce URL → the right detail endpoint's unified response. ⚠️ **Not free: it bills the resolved endpoint's own price** — 1 credit for most social lookups, 5 for the advanced ones (Amazon, LinkedIn); `resolved.endpoint` in the response names what was charged. Still the cheapest way to resolve a pasted URL — just not a free one. |
-| `POST /v1/prism/post-stats` | **1 _per URL_** | Current engagement for up to 100 post URLs in one call (failed URLs refunded). ⚠️ **Metered per successful URL, NOT per call** — 1cr most platforms, **2cr Instagram, 5cr LinkedIn**. 100 IG URLs = **200 credits**, not 1. **POST only** — URLs go in a JSON body. |
-| `GET /v1/prism/comments?url=…` | **1 _per page_** | Every comment on a post, replies nested, paginated to completion. ⚠️ **Metered: 1cr per internal page scanned (min 2), driven by `max`, not `limit`.** A deep pull is not 1 credit. An Instagram URL is a flat 5cr instead. Still usually beats the platform-native comments call. |
-| `GET /v1/reddit/omni-search?query=…` | **1 _per page + thread_** | One keyword → threads across all of Reddit with top comments inline. Still the cheapest voice-of-customer entry point, but ⚠️ **metered: 1cr per search page + 1cr per expanded thread (min 5)**; failed threads refunded. |
-| `GET /v1/prism/handle-audit?handle=…` | **5** | Should you pull this handle? Scores it across platforms and **projects the data volume + credit cost** before you spend. |
+| `POST /v1/prism/post-stats` | **1–500** (1 _per URL_) | Current engagement for up to 100 post URLs in one call (failed URLs refunded). ⚠️ **Metered per successful URL, NOT per call** — 1cr most platforms, **2cr Instagram, 5cr LinkedIn**. 100 IG URLs = **200 credits**, not 1. **POST only** — URLs go in a JSON body. |
+| `GET /v1/prism/comments?url=…` | **2–200** (1 _per page_) | Every comment on a post, replies nested, paginated to completion. ⚠️ **Metered: 1cr per internal page scanned (min 2), driven by `max`, not `limit`.** A deep pull is not 1 credit. An Instagram URL is a flat 5cr instead. Still usually beats the platform-native comments call. |
+| `GET /v1/reddit/omni-search?query=…` | **5–9** (1 _per page + thread_) | One keyword → threads across all of Reddit with top comments inline. Still the cheapest voice-of-customer entry point, but ⚠️ **metered: 1cr per search page + 1cr per expanded thread (min 5)**; failed threads refunded. |
+| `GET /v1/prism/handle-audit?handle=…` | **5–8** (+1 per platform past 4) | Should you pull this handle? Scores it across platforms and **projects the data volume + credit cost** before you spend. |
 
 ## Making API Calls
 
@@ -198,11 +198,11 @@ curl -s -X POST "https://www.socialcrawl.dev/v1/prism/post-stats" \
 
 | Endpoint | Credits | What it's for |
 |----------|---------|---------------|
-| `POST /v1/prism/post-stats` | 1 **per URL** (IG 2, LI 5) | Up to 100 post URLs, current engagement, failures refunded |
-| `POST /v1/prism/profiles` | 1 **per item** (LI 5) | Up to 50 handles → canonical Author each |
-| `POST /v1/prism/comment-lookup` | 2 **per item** (IG 5) | Re-check up to 25 known comments |
+| `POST /v1/prism/post-stats` | 1 **per URL** (IG 2, LI 5), 1–500 a call | Up to 100 post URLs, current engagement, failures refunded |
+| `POST /v1/prism/profiles` | 1 **per item** (LI 5), 1–250 a call | Up to 50 handles → canonical Author each |
+| `POST /v1/prism/comment-lookup` | 2 **per item** (IG 5), 2–100 a call | Re-check up to 25 known comments |
 | `POST /v1/youtube/transcripts` | 3 **per video** | ⚠️ Gated — run it only on an explicit yes. No batch discount: 100 videos = **300cr**, the published ceiling for ONE call. Offer `youtube/video/subtitles` (1cr) first. |
-| `POST /v1/youtube/videos` · `/channels` | 5 **per 50-id chunk** | Batch video / channel detail, up to 1000 ids. Still the best saving available — 1000 ids = 20 chunks = 100cr vs 1000cr one-at-a-time — but it is not 5cr flat. |
+| `POST /v1/youtube/videos` · `/channels` | 5 **per 50-id chunk**, 5–100 a call | Batch video / channel detail, up to 1000 ids. Still the best saving available — 1000 ids = 20 chunks = 100cr vs 1000cr one-at-a-time — but it is not a flat 5cr. |
 | `POST /v1/web/crawl` | 1 **per page** crawled; holds `limit` up front (10 by default, up to **10,000**) | Start an async crawl job → poll `GET /v1/web/jobs/{job_id}` (0cr) |
 | `POST /v1/web/batch-scrape` | 1 **per URL** submitted, no ceiling | Start an async scrape job → poll `GET /v1/web/jobs/{job_id}` (0cr). ⚠️ The guard counts it at **0**, so the session limit does not stop it: name the price (URLs × 1) first. |
 | `POST /v1/web/agent` | **25** | Agentic browse-and-extract. Name the price first, every time. |
@@ -216,7 +216,7 @@ curl -s -X POST "https://www.socialcrawl.dev/v1/prism/post-stats" \
 >
 > | Endpoint | The unit you are billed for | Worked example |
 > |----------|-----------------------------|----------------|
-> | `POST /prism/post-stats` | one successful **URL** — 1cr, but **2cr Instagram**, **5cr LinkedIn** | 100 IG URLs = **200cr** |
+> | `POST /prism/post-stats` | one successful **URL** — 1cr, but **2cr Instagram**, **5cr LinkedIn** | 100 IG URLs = **200cr**, 100 LinkedIn URLs = **500cr** |
 > | `POST /prism/profiles` | one **item** — 1cr, LinkedIn 5cr | 50 LinkedIn handles = **250cr** |
 > | `POST /prism/comment-lookup` | one **item** — 2cr TikTok, 5cr Instagram, more with `deep_scan` | the whole batch holds at most **100cr** |
 > | `POST /youtube/transcripts` | one successful **row** — 3cr | 100 videos = **300cr** (⚠️ gated — explicit yes only, and 300 is this call's published ceiling) |
@@ -358,7 +358,7 @@ call.
 
 | Your goal | Use this | Credits |
 |-----------|----------|---------|
-| Just the profile object | `/v1/{platform}/profile` | 1 (LinkedIn 5) |
+| Just the profile object | `/v1/{platform}/profile` | 1 (LinkedIn and Xiaohongshu 5, Douyin 6) |
 | Profile + recent posts + analytics in one call | `/v1/{platform}/profile/full` | 5 |
 
 `profile/full` exists for tiktok, instagram, youtube, twitter, facebook and linkedin. Use plain
@@ -371,22 +371,22 @@ unlock what it hides.
 
 | Your goal | Use this | Credits |
 |-----------|----------|---------|
-| Profile, posts, reels, a single post | `/v1/instagram/profile` · `/profile/posts` · `/profile/reels` · `/post` | 1 |
-| A post's **share count** | `/v1/instagram/post/stats` | 5 |
-| Followers / following / similar accounts | `/v1/instagram/followers` · `/following` · `/similar` | 5 |
-| Comments on a post | `/v1/instagram/post/comments` | 5 |
+| Profile, posts, reels, a single post | `/v1/instagram/profile` · `/v1/instagram/profile/posts` · `/profile/reels` · `/v1/instagram/post` | 1 (posts up to 17 and reels up to 18 a page with include= and label= extras) |
+| A post's **share count** | `/v1/instagram/post/stats` | 5–9 (include=saves holds 4 more) |
+| Followers / following / similar accounts | `/v1/instagram/followers` · `/following` · `/similar` | 5 (followers/following up to 10 with coverage=full, similar up to 85 with include=profile and limit=80) |
+| Comments on a post | `/v1/instagram/post/comments` | 5–19 (5 a page, spam/toxic labels hold more) |
 | Posts by hashtag | `/v1/instagram/search/hashtag` | 5 |
-| Find accounts by keyword | `/v1/instagram/search/profiles` | 1 |
+| Find accounts by keyword | `/v1/instagram/search/profiles` | 1–25 (include=about adds 2 per row filled) |
 
-The trap: `/post` (1cr) returns everything about a post **except** shares. Reach for
-`/post/stats` (5cr) only when you specifically need the share count.
+The trap: `/v1/instagram/post` (1cr) returns everything about a post **except** shares. Reach for
+`/post/stats` (5–9cr) only when you specifically need the share count.
 
 ### A raw list, or the enriched `/full` list?
 
 | Your goal | Use this | Credits |
 |-----------|----------|---------|
-| One page of a user's reels / posts | `/v1/instagram/profile/reels` · `/profile/posts` | 1 |
-| …with views, likes, comments and per-item shares | `/v1/instagram/profile/reels/full` · `/profile/posts/full` | **5 _per page_** ⚠️ metered — measured 5cr at one page, 10cr at two. Not 5cr flat for a back catalogue. |
+| One page of a user's reels / posts | `/v1/instagram/profile/reels` · `/v1/instagram/profile/posts` | 1 (reels up to 18 and posts up to 17 a page with include= and label= extras) |
+| …with views, likes, comments and per-item shares | `/v1/instagram/profile/reels/full` · `/profile/posts/full` | **5–25** (5 _per page_, up to 5 pages with `limit`) ⚠️ metered — measured 5cr at one page, 10cr at two. Not a flat 5cr for a back catalogue. |
 
 Paging a long back catalogue without needing per-item shares? The plain list is far cheaper.
 
@@ -424,7 +424,7 @@ first rung.
 | One query across 14 platforms (up to 17 sources) | `/v1/search/everywhere` | 20 |
 
 If the platform is known, per-platform `search` is the answer — 1cr a page on some platforms and a
-flat 5 on others, and more on the rest (most metered), up to 125 a call (Douyin): read its range in the platform's
+flat 5 on others, and more on the rest (most metered), up to 125cr a call (Douyin): read its range in the platform's
 reference.
 `search/forums` (10cr) is the middle rung for voice-of-customer questions
 that span discussion sites. Escalate to `/v1/search/everywhere` (20cr) only when you genuinely
@@ -434,13 +434,13 @@ want the cross-platform sweep and would otherwise be fusing a dozen results by h
 
 | Your goal | Use this | Credits |
 |-----------|----------|---------|
-| One page of top-level comments | `/v1/{platform}/post/comments` | 1 (Reddit + Instagram 5) |
+| One page of top-level comments | `/v1/{platform}/post/comments` | 1 a page on most (Reddit, Instagram and LinkedIn 5); spam/toxic labels hold more (Instagram up to 19); Threads up to 10 with a limit above 25; Douyin and Xiaohongshu bill per comment returned, up to 100 |
 | Every comment on a post, replies nested, paged to completion | `/v1/prism/comments` | **2–200** ⚠️ metered: 1/internal page (min 2), driven by `max`; Instagram URL = flat 5 |
-| Look up one comment by URL or id | `/v1/{platform}/comment` | 2 (Instagram 5) |
+| Look up one comment by URL or id | `/v1/{platform}/comment` | 2 (Instagram 5); deep_scan=true makes it 6 (Instagram 15) |
 | Re-check up to 25 known comments | `POST /v1/prism/comment-lookup` | **2 _per item_** ⚠️ metered — 2cr TikTok, 5cr Instagram, more with `deep_scan`; a batch holds at most **100cr**, not 2. |
 
 `/v1/prism/comments` is usually the right call: complete thread, no pagination loop. On Reddit
-it undercuts the 5cr platform-native list on a shallow pull — but it is **metered by pages
+it undercuts the platform-native `reddit/post/comments` (5–9cr) on a shallow pull — but it is **metered by pages
 scanned**, so a deep pull can pass it. Cap `max` and quote the range.
 
 ### Getting a transcript
@@ -466,7 +466,7 @@ quote the 3–10cr-per-item paid route alongside it when it does not.
 Point a URL at `/v1/prism/lookup` (**1–5 credits** — 5 on Amazon and LinkedIn) and it
 dispatches to the correct detail
 endpoint automatically. When you don't know whether a handle is worth pulling at all,
-`/v1/prism/handle-audit` (5cr) projects the data volume and credit cost before you spend.
+`/v1/prism/handle-audit` (5–8cr, +1 per platform past 4) projects the data volume and credit cost before you spend.
 
 ## Workflow
 
@@ -497,7 +497,7 @@ detail endpoint's unified response — prefer it over per-platform URL parsing.
 **User wants a search ("what's everyone saying about X", "search across Reddit + Twitter + YouTube + …"):**
 1. **Climb the ladder — start at the bottom rung that answers the question**, not at the top:
    - One platform named or implied → `/v1/{platform}/search` (**1cr a page** on 12 platforms,
-     a flat 5 on 11, more on the rest (most metered), up to 125 a call (Douyin 5–125, web 2–120, Xiaohongshu 5–100, TikTok 1–42, Reddit 1–34, Threads 1–34): read the range in the
+     a fixed 5 on 11, more on the rest (most metered), up to 125cr a call (Douyin 5–125, web 2–120, Xiaohongshu 5–100, TikTok 1–42, Reddit 1–34, Threads 1–34): read the range in the
      platform's reference). All of Reddit → `/v1/reddit/omni-search` (**5–9cr**, metered: 1cr per
      search page + 1cr per expanded thread, min 5). News → `/v1/search/news` (**2–62cr**, metered:
      2 + 1cr per leg returning articles, up to 14 on the default engine).
@@ -508,8 +508,8 @@ detail endpoint's unified response — prefer it over per-platform URL parsing.
 4. For `everywhere`, construct `/v1/search/everywhere?query=…` (sync JSON or SSE — see search.md)
 
 > Do not reach for `search/everywhere` because the request *sounds* broad. "What are people
-> saying about X on Reddit" is one `reddit/search` page: **1 credit**, up to 34 with extras
-> such as `include_body`. The 20cr endpoint is for when you want the
+> saying about X on Reddit" is one `reddit/search` page: **1 credit**, up to 34 credits with extras
+> such as `include_body`. The `search/everywhere` endpoint (20cr) is for when you want the
 > planned, fused, reranked cross-platform result and would otherwise fuse a dozen calls by hand.
 
 **User asks about capabilities:**
@@ -545,7 +545,7 @@ The tier ladder covers most endpoints, but it is NOT the whole story:
 | standard | 1 credit | 359 endpoints — profiles, posts, comments, basic search |
 | advanced | 5 credits | 240 endpoints — full-profile bundles, ad libraries, trending, audience |
 | premium | 10 credits | 46 endpoints — transcripts (⚠️ gated: 10cr **per item**, explicit yes only), age/gender, deep listings |
-| **flat override** | **0–50 credits** | 98 of those 645 priced individually, up to 50 credits for a flat call; a metered call goes far higher: **up to 200** (`share-of-voice`), **1,605** (`ai-visibility`), **10,000** (`web/crawl`) |
+| **flat override** | **0–50 credits** | 98 of those 645 priced individually, up to 50 credits for a flat call; a metered call goes far higher: `share-of-voice` **up to 200cr**, `ai-visibility` **1,605cr**, `web/crawl` **10,000cr** |
 
 **The override band is the trap.** `prism/creator-vet` holds **50–75**; `prism/leads` **50 per
 call**; `prism/share-of-voice` 40 **per brand**, up to 200 (5 brands); several `prism/*` reports 25–35; every `content_analysis/*`

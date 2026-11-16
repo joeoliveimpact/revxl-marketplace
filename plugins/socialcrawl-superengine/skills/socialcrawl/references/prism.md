@@ -961,9 +961,10 @@ curl "https://www.socialcrawl.dev/v1/prism/investigate?goal=<goal>" \
 ## Choosing a Prism endpoint
 
 ⚠️ **This platform holds some of the most expensive calls in the API.** A flat call costs 0 to 50
-credits and a metered one goes far higher (`share-of-voice` up to 200, `ai-visibility` up to 1,605),
-with no tier ladder — the label tells you nothing, so read the number every time. Anything at
-25cr or above is a one-shot report, not a data pull: decide the question before you spend, and
+credits and a metered one goes far higher (`share-of-voice` up to 200cr, `ai-visibility` up to 1,605),
+with no tier ladder — the label tells you nothing, so read the number every time.
+
+Anything at 25cr or above is a one-shot report, not a data pull: decide the question before you spend, and
 confirm with the user first.
 
 ### Free and near-free — reach for these constantly
@@ -971,15 +972,15 @@ confirm with the user first.
 | Your goal | Use this | Credits |
 |-----------|----------|---------|
 | Any social/commerce URL → the right detail endpoint | `/lookup` | **1–5** |
-| Every comment on a post, replies nested, paged to completion | `/comments` | 1 |
-| Up to 100 post URLs → current engagement | `POST /post-stats` | 1 **per URL** |
-| Up to 50 (platform, handle) pairs → one Author each | `POST /profiles` | 1 **per item** |
-| Re-check up to 25 known comments | `POST /comment-lookup` | 2 **per item** |
-| AI share-of-voice / GEO monitoring | `/ai-visibility` | 2 |
-| One handle's unified cards across platforms | `/creator-card` | 5 |
-| One video → detail + stats + comments | `/video-intel` | 5 |
+| Every comment on a post, replies nested, paged to completion | `/comments` | 2–200 (1 per page scanned, min 2; an Instagram URL is 5) |
+| Up to 100 post URLs → current engagement | `POST /post-stats` | 1 **per URL** (IG 2, LI 5), 1–500 a call |
+| Up to 50 (platform, handle) pairs → one Author each | `POST /profiles` | 1 **per item** (LI 5), 1–250 a call |
+| Re-check up to 25 known comments | `POST /comment-lookup` | 2 **per item** (IG 5), 2–100 a call |
+| AI share-of-voice / GEO monitoring | `/ai-visibility` | 2–1,605 (2 per probe: prompts × runs × engines) |
+| One handle's unified cards across platforms | `/creator-card` | 5–8 (+1 per platform past 4) |
+| One video → detail + stats + comments | `/video-intel` | 5–15 (`include=transcript` adds 10) |
 | One person's posts across X/Threads/Bluesky/Truth Social | `/voice` | 5 |
-| **Should I even pull this handle?** | `/handle-audit` | 5 |
+| **Should I even pull this handle?** | `/handle-audit` | 5–8 (+1 per platform past 4) |
 
 > ### ⚠️ The three `POST` batch endpoints are metered PER ROW, not per call
 > This is the most expensive misreading available in the API, and the plugin shipped it wrong
@@ -987,7 +988,7 @@ confirm with the user first.
 >
 > | Endpoint | Per row | Worst case |
 > |----------|---------|-----------|
-> | `POST /post-stats` | 1cr most platforms, **2cr Instagram**, **5cr LinkedIn** | 100 IG URLs = **200cr** |
+> | `POST /post-stats` | 1cr most platforms, **2cr Instagram**, **5cr LinkedIn** | 100 IG URLs = **200cr**, 100 LinkedIn URLs = **500cr** |
 > | `POST /profiles` | 1cr most, **5cr LinkedIn** | 50 LinkedIn handles = **250cr** |
 > | `POST /comment-lookup` | 2cr TikTok, **5cr Instagram**, more with `deep_scan` | the whole batch holds at most **100cr** |
 >
@@ -996,10 +997,10 @@ confirm with the user first.
 > you send.** Verified live 08.08.26 on the sibling endpoint `POST /youtube/transcripts`:
 > 2 ids in, 1 succeeded, `credits_used: 3` — exactly the single-row price, batch or not.
 
-`/comments` at 1cr genuinely beats `instagram/post/comments` or `reddit/post/comments` at 5cr,
-and returns the whole thread rather than one page — that one is a flat per-call price.
+`/comments` (2–200cr, 1 per page scanned, min 2) can beat `instagram/post/comments` (5–19cr) or `reddit/post/comments` (5–9cr) on a shallow pull,
+and returns the whole thread rather than one page — but it is metered by pages scanned, not a flat per-call price.
 
-`/handle-audit` (5cr) projects the data volume and credit cost of pulling a handle *before*
+`/handle-audit` (5–8cr, +1 per platform past 4) projects the data volume and credit cost of pulling a handle *before*
 you pull it. Spend it before any large sweep.
 
 ### Mid-range reports
@@ -1025,7 +1026,7 @@ raw material.
 - **Post/detail URLs work best.** A bare profile URL (e.g. `https://www.instagram.com/instagram/`)
   can be rejected `400 INVALID_REQUEST — Unsupported URL` even though the platform is supported —
   the matcher targets post/product/detail link shapes. For profiles, call the platform's
-  `profile` endpoint directly (usually 1cr).
+  `profile` endpoint directly (usually 1cr, up to 6cr on Douyin).
 - **Supported-link list (from the live 400 message):** TikTok, Instagram, YouTube, X/Twitter,
   Facebook, LinkedIn, Bluesky, Pinterest, Reddit, Threads, Rumble, Truth Social, GitHub,
   Amazon, Spotify.

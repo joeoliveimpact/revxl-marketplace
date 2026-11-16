@@ -133,13 +133,13 @@ curl "https://www.socialcrawl.dev/v1/google_shopping/price-history?product_id=<p
 |-----------|----------|---------|
 | Find products for a keyword | `/product-search` | 5 |
 | One product's detail | `/product` | 1 |
-| What buyers say | `/reviews` | 1 |
+| What buyers say | `/reviews` | 1–5 (1 a page; a paid label adds up to 4) |
 | Who sells it and at what price | `/sellers` | 1 |
 
 ### The cost shape is inverted here — search is the expensive one
 
-Unlike most retail platforms, the *search* costs 5cr and everything downstream is 1cr. Once
-you hold a product id, detail, reviews and seller spread are 1cr each. So: search once, then
+Unlike most retail platforms, the *search* costs 5cr and everything downstream starts at 1cr. Once
+you hold a product id, detail and seller spread are 1cr each and `/reviews` 1–5cr (1 a page, a paid label adds up to 4). So: search once, then
 enrich freely.
 
 `/sellers` (1cr) is the cross-retailer price view — the cheapest way in the whole API to see

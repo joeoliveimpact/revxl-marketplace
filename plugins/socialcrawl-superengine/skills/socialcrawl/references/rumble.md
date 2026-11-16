@@ -111,10 +111,10 @@ curl "https://www.socialcrawl.dev/v1/rumble/video/comments?url=<url>" \
 | Audience reaction | `/video/comments` | 1 |
 | Transcript | ⚠️ `/video/transcript` — gated: **10cr per video**, run only on an explicit yes. Cheaper: pull the media URL (1–5cr) and run the local Whisper chain | **10** |
 
-Everything usable here is 1 credit, so Rumble is cheap to explore. There is no `/full`
+Everything here is 1 credit except the gated `/video/transcript` (10cr), so Rumble is cheap to explore. There is no `/full`
 composite and no profile endpoint — a creator's footprint is `/channel/videos` plus per-video
 `/video` calls.
 
-`prism/video-intel` (5cr) covers Rumble and returns detail + stats + top comments for one
+`prism/video-intel` (5–15cr, `include=transcript` adds 10) covers Rumble and returns detail + stats + top comments for one
 video URL in a single call, which beats three separate 1cr calls once you want comments and
 stats together.

@@ -184,7 +184,7 @@ curl "https://www.socialcrawl.dev/v1/google_play/languages" \
 | What apps exist for this keyword? | `/app-search` | 5 |
 | Cheap keyword expansion (what people type) | `/search-suggestions` | 1 |
 | One app's full listing | `/app-info` | 5 |
-| What users complain about | `/app-reviews` | 5 |
+| What users complain about | `/app-reviews` | 5–9 (5 a page; a paid label adds up to 4) |
 | Who is ranking in a category chart | `/app-list` | 5 |
 | Deep, paginated listings-database search | `/app-listings-search` | **10** |
 | Category / storefront / language reference | `/categories` · `/locations` · `/languages` | 1 |

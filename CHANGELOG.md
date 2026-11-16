@@ -4,6 +4,13 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.96] ... 2026-11-16
+
+### Fixed
+- **socialcrawl-superengine v0.4.2** ... every hand-written credit price in the skills and
+references now matches the price list: about 180 quotes that were lower than the real maximum
+are corrected, and a new check stops a too-low price from shipping again.
+
 ## [0.1.95] ... 2026-11-16
 
 ### Removed

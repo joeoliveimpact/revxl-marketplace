@@ -640,28 +640,28 @@ curl "https://www.socialcrawl.dev/v1/youtube/profile/full?handle=<handle>" \
 
 | Your goal | Use this | Credits |
 |-----------|----------|---------|
-| Channel info / its videos / one video | `/channel` · `/channel/videos` · `/video` | 1 |
-| Shorts, lives, community posts, playlists | `/channel/shorts` · `/channel/lives` · `/channel/community-posts` · `/channel/playlists` | 1 |
+| Channel info / its videos / one video | `/channel` · `/channel/videos` · `/video` | 1 (videos up to 2 with `include=channel`) |
+| Shorts, lives, community posts, playlists | `/channel/shorts` · `/channel/lives` · `/channel/community-posts` · `/channel/playlists` | 1 (shorts up to 2 and lives up to 7 with `include=` extras) |
 | Search, with filters | `/search` · `/search/advanced` | 1 a page; metered: up to 19 and 11 |
 | What people type into YouTube | `/search/suggestions` | 1 |
-| Comments, and replies | `/video/comments` · `/video/comment/replies` | 1 |
-| What's trending | `/videos/trending` | 1 |
+| Comments, and replies | `/video/comments` · `/video/comment/replies` | 1–5 (1 a page; spam/toxic labels add up to 4) |
+| What's trending | `/videos/trending` | 1–6 (`include=channel` adds up to 5) |
 | Captions (the cheap transcript route) | `/video/subtitles` | 1 |
 | Thumbnails | `/video/thumbnails` | 1 |
-| Trending shorts | `/shorts/trending` | 5 |
+| Trending shorts | `/shorts/trending` | 5–15 (`include=channel` adds up to 10) |
 | Audio / video file streams | `/video/audio` · `/video/files` | 5 |
 | Profile + posts + analytics in one call | `/profile/full` | 5 |
-| **Up to 1000 videos or channels at once** | `POST /videos` · `POST /channels` | 5 **per 50-id chunk** |
+| **Up to 1000 videos or channels at once** | `POST /videos` · `POST /channels` | 5 **per 50-id chunk**, 5–100 a call |
 | Who sponsored this video | `/video/sponsors` | **10** |
 | Transcript | ⚠️ `/video/transcript` — gated: **3cr per video**, run only on an explicit yes. Cheaper: `/video/subtitles` at 1cr — see below | **3** |
 
 ### Batch before you loop — but know what the unit is
 
 `POST /videos` and `POST /channels` take up to 1000 ids per call and are **metered per 50-id
-chunk at 5 credits**, not 5 credits flat. So 200 ids = 4 chunks = **20cr**, and 1000 ids =
+chunk at 5 credits** (5–100cr a call), not a flat 5 credits. So 200 ids = 4 chunks = **20cr**, and 1000 ids =
 20 chunks = **100cr** — against 1000cr fetching them one at a time. Still the single largest
 saving available on YouTube, roughly 10×, just not free after the first 50. A request that
-resolves nothing returns an empty list at **0 credits**.
+resolves nothing returns an empty list at **0 credits**, its chunk charge (up to 100cr) refunded in full.
 
 ### Transcripts: quote `/video/subtitles` first, then the paid transcript endpoints
 
@@ -674,7 +674,7 @@ The credit guard never asks: it refuses them when the user's transcript setting 
 counts them otherwise. **The batch one is 3 credits per
 successful video, not 3 per call** — verified live 08.08.26 (2 ids in, 1 succeeded,
 `credits_used: 3`), so 100 videos is 300 credits, the published ceiling for ONE call. There
-is no batch discount here, so captions at 1cr plus the local chain stay cheaper — quote both
+is no batch discount here, so `/video/subtitles` captions at 1cr plus the local chain stay cheaper — quote both
 and let the user choose.
 
 Note the two rules disagree on the batch endpoint: the generator's rule is "path ends
@@ -698,5 +698,5 @@ The `channel` endpoint returns an `Author` response normalized by the `youtube-a
 endpoint and the credit guard does not gate it. Legit use: the paid fallback rung in the
 captions-first transcription chain when `yt-dlp` is blocked on a machine (e.g. antivirus):
 yt-dlp captions (free) → `video/subtitles` (1cr) → Groq → local Whisper.
-`video/transcript` (3cr) stays gated at 3cr per video — the chain above is cheaper, so quote
+`/video/transcript` (3cr) stays gated at 3cr per video — the chain above is cheaper, so quote
 both and run the paid one only on an explicit yes.

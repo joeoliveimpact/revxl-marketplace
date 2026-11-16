@@ -96,7 +96,7 @@ curl "https://www.socialcrawl.dev/v1/bluesky/search?query=<query>" \
 | That user's posts | `/user/posts` | 1 |
 | One post's detail | `/post` | 1 |
 
-All 1 credit. There is **no search endpoint** here — you must already know the handle. To
+All 1 credit, including `/search` (1cr), which finds posts by keyword; there is no account search, so to look up an account you must already know the handle. To
 discover who to look at, find them elsewhere (`twitter/profile`, `threads/search/users`) and
 carry the handle over; many accounts reuse the same handle across networks.
 

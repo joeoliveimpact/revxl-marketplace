@@ -758,16 +758,16 @@ curl "https://www.socialcrawl.dev/v1/tiktok/profile/full?handle=<handle>" \
 
 ## Choosing a TikTok endpoint
 
-Almost everything here is 1 credit, which makes TikTok the cheapest deep-research platform in
-the API. Only six endpoints cost more.
+Most TikTok endpoints start at 1 credit, which makes TikTok the cheapest deep-research platform in
+the API. Twelve start higher, and the metered ones rise with options: read each row.
 
 | Your goal | Use this | Credits |
 |-----------|----------|---------|
-| Profile / their videos / one post | `/profile` · `/profile/videos` · `/post` | 1 |
-| Search by keyword, hashtag, or top results | `/search` · `/search/hashtag` · `/search/top` | 1 a page; metered: `/search` up to 42, `/search/hashtag` up to 5 |
+| Profile / their videos / one post | `/profile` · `/profile/videos` · `/post` | 1 (videos up to 5 with a paid `label=`) |
+| Search by keyword, hashtag, or top results | `/search` · `/search/hashtag` · `/search/top` | 1 a page; metered: `/search` up to 42 and `/search/hashtag` up to 5 |
 | Find creators | `/search/users` | 1–100 (metered) |
-| Comments, and replies to a comment | `/post/comments` · `/video/comment/replies` | 1 |
-| Look up one comment by URL or id | `/comment` | 2 |
+| Comments, and replies to a comment | `/post/comments` · `/video/comment/replies` | 1 a page; spam/toxic labels hold more (comments up to 7 and replies up to 5) |
+| Look up one comment by URL or id | `/comment` | 2 (6 with `deep_scan=true`) |
 | Followers / following | `/user/followers` · `/user/following` | 1 |
 | What audio is this, and who else used it | `/song` · `/song/videos` | 1 |
 | Where is this creator based | `/profile/region` | 1 |
@@ -781,7 +781,7 @@ the API. Only six endpoints cost more.
 ### The two endpoints worth paying 5cr for
 
 **`/user/audience` (5cr)** is the only demographic read in the platform — who actually watches
-a creator, rather than how many. For partnership or positioning questions that is the whole
+a creator, rather than how many: for partnership or positioning questions that is the whole
 answer, and there is no 1cr substitute.
 
 **`/video/screen-text` (5cr)** extracts the text burned into the video frames. On short-form,
@@ -790,7 +790,7 @@ a video worked, this reads the part that did the work.
 
 ### Format research runs on the 1cr endpoints
 
-`/profile/videos` (1cr) returns views, likes and comments per item. Because independent
+`/profile/videos` (1cr a page, up to 5cr with a paid `label=`) returns views, likes and comments per item. Because independent
 operators repeat what their private analytics tell them works, format repetition across
 several creators is itself a performance signal — so a cheap sweep of several profiles beats
 one expensive deep pull on a single account.

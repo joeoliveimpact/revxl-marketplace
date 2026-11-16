@@ -136,7 +136,7 @@ All 1 credit — which makes Tavily the cheapest general web toolkit in the API.
 
 ### Tavily or `web`?
 
-They overlap. The deciding factor is cost shape: `web/scrape` is 1cr, `web/search` is 2cr and
+They overlap. The deciding factor is cost shape: `web/scrape` is 1–5cr (5 with a proxy or PDF parsing), `web/search` is 2–120cr (2 per 10 results, more with `include_content`) and
 `web/extract` is 5cr, while every Tavily endpoint is 1cr. For search and structured extraction,
 **Tavily is cheaper**. Reach for `web` when you need what Tavily has no equivalent for: async
 crawl jobs, page monitors, interactive sessions, or document parsing.

@@ -71,9 +71,9 @@ curl "https://www.socialcrawl.dev/v1/trustpilot/reviews?domain=<domain>" \
 | Your goal | Use this | Credits |
 |-----------|----------|---------|
 | Find the business record | `/business-search` | 1 |
-| Its reviews | `/reviews` | 5 |
+| Its reviews | `/reviews` | 5–9 (5 a page; a paid label adds up to 4) |
 
-A two-step: resolve with `/business-search` (1cr), then pull `/reviews` (5cr). Budget 6cr for
+A two-step: resolve with `/business-search` (1cr), then pull `/reviews` (5–9cr). Budget 6–10cr for
 "what do customers say about X".
 
 ### What it's good for

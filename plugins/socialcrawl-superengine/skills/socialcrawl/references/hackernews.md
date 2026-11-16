@@ -111,7 +111,7 @@ curl "https://www.socialcrawl.dev/v1/hackernews/profile?handle=<handle>" \
 | Its comments — where the substance is | `/story/comments` | 1 |
 | A user's profile | `/profile` | 1 |
 
-1 credit each, except `/search`, which is metered (1–9). HN's value is concentrated in `/story/comments`: for developer tools, technical
+1 credit each, except `/search`, which is metered (1–9cr). HN's value is concentrated in `/story/comments`: for developer tools, technical
 products and startup positioning, the comment thread is a blunter and better-informed critique
 than anything on social. Budget 2cr for the usual pair (up to 10 if `/search` adds paid labels) — `/search`, then comments on the
 thread that matters.

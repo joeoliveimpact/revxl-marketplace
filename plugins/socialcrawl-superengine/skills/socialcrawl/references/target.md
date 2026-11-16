@@ -110,7 +110,7 @@ curl "https://www.socialcrawl.dev/v1/target/stores?query=<query>" \
 | Your goal | Use this | Credits |
 |-----------|----------|---------|
 | One product's detail (by TCIN) | `/product` | 5 |
-| What buyers say | `/reviews` | 5 |
+| What buyers say | `/reviews` | 5–9 (5 a page; a paid label adds up to 4) |
 | Browse a category | `/category` | 5 |
 | The category taxonomy | `/categories` | 1 |
 | Stores near a location | `/stores` | 1 |
@@ -122,5 +122,5 @@ category that actually exists. `/stores` (1cr) is the only local-availability si
 
 Note there is **no keyword search** on Target: you need a TCIN (Target's item id) for
 `/product`, or you browse in via `/category`. If all you have is a product name, find the TCIN
-elsewhere first — `google_shopping/product-search` (5cr) or `web/search` (2cr) will surface
+elsewhere first — `google_shopping/product-search` (5cr) or `web/search` (2cr per 10 results, up to 120cr with `include_content`) will surface
 the Target listing URL.

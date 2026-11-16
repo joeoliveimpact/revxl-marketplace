@@ -102,10 +102,10 @@ curl "https://www.socialcrawl.dev/v1/home_depot/stores?query=<query>" \
 | Your goal | Use this | Credits |
 |-----------|----------|---------|
 | One product's detail (by item id or URL) | `/product` | 5 |
-| What buyers say | `/reviews` | 5 |
+| What buyers say | `/reviews` | 5–9 (5 a page; a paid label adds up to 4) |
 
-Two endpoints, both 5 credits, no keyword search. You need an item id or a product URL to
-start — if you only have a product name, resolve the URL first with `web/search` (2cr) or
+`/product` is 5 credits and `/reviews` 5–9cr; the keyword `/search` is 5cr and `/stores` 1cr. `/product` needs an item id or a product URL
+— if you only have a product name, `/search` (5cr) finds it here, or resolve the URL first with `web/search` (2cr per 10 results, up to 120cr with `include_content`) or
 `google_shopping/product-search` (5cr), then come here.
 
 Useful for home-improvement and trade niches where review text carries the real buying

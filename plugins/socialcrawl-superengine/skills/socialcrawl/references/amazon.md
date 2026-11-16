@@ -165,16 +165,16 @@ curl "https://www.socialcrawl.dev/v1/amazon/seller?seller_id=<seller_id>" \
 |-----------|----------|---------|
 | Find products for a keyword | `/product-search` | 1 |
 | One product's full detail (by ASIN) | `/product` | 5 |
-| What buyers actually say | `/reviews` | 5 |
+| What buyers actually say | `/reviews` | 5–9 (5 a page; a paid label adds up to 4) |
 | Who else sells this, and at what price | `/sellers` | 1 |
 | A creator's Amazon storefront | `/shop` | 1 |
 
 ### The 1cr / 5cr split is the whole decision
 
-`/product-search` and `/sellers` are 1cr; `/product` and `/reviews` are 5cr. If a search
+`/product-search` and `/sellers` are 1cr; `/product` is 5cr and `/reviews` 5–9cr. If a search
 result already carries the title, price and rating you needed, stop there — you do not need
 `/product`. Reach for `/product` (5cr) only when you need the full listing for a specific
-ASIN, and `/reviews` (5cr) only when you need review *text*.
+ASIN, and `/reviews` (5–9cr) only when you need review *text*.
 
 `/shop` (1cr) reads a creator's Amazon storefront page — useful for mapping what a creator
 actually promotes, which is a monetization signal rather than a commerce one.
@@ -182,6 +182,6 @@ actually promotes, which is a monetization signal rather than a commerce one.
 ### Cross-marketplace questions
 
 For a product's reputation across marketplaces, `prism/product-reviews` (30cr) folds Amazon +
-Google Shopping + Trustpilot into one rating with themed pros and cons. Two 5cr Amazon calls
+Google Shopping + Trustpilot into one rating with themed pros and cons. Two Amazon calls (`/product` 5cr + `/reviews` 5–9cr)
 answer an Amazon-only question; the 30cr call answers "is this product well regarded
 anywhere".

@@ -14,15 +14,15 @@ without its cost is how a 2cr call becomes a surprise.
    and will not answer.
 2. **Subject** — whose accounts? Named handles and URLs, a client, a competitor set, or a whole
    niche with no names yet.
-   **COST:** named handles resolve on `profile` (**1cr most platforms, 5cr on LinkedIn**) and
+   **COST:** named handles resolve on `profile` (**1cr most platforms, 5cr on LinkedIn and Xiaohongshu, 6cr on Douyin**) and
    per-platform `search` calls; "the whole niche" needs discovery calls before any of that.
    **COVERAGE:** with no named subject we can only describe the category, never their actual
    content.
 3. **Platforms** — which platforms genuinely matter for this question?
    **COST:** most known platforms land on `/v1/{platform}/search` at **1cr** (5cr on the retail
-   ones) — the bottom rung of Ground rule 6. **LinkedIn and X have no 1cr rung: 5cr is their
-   floor**, Facebook has no general content search (its `marketplace` and `events` searches are
-   1cr but narrow), and Snapchat has none at all. "Everywhere" is the 20cr sweep.
+   ones, metered up to 125cr on others) — the bottom rung of Ground rule 6. **LinkedIn, X and Facebook have no `{platform}/search`: they search
+   through `linkedin/search/posts` (1–56cr), `twitter/search/tweets` (1–9cr, 1 a page) and `facebook/search/posts` (1–9cr, 1 a page)**;
+   Facebook's `marketplace/search` and `events/search` are 1cr but narrow, and Snapchat has no search at all. "Everywhere" is the 20cr sweep.
    **COVERAGE:** every platform dropped is a named blind spot; every one added is another rung.
    Say which, out loud.
 4. **Depth & freshness** — a quick read or a defensible audit? A snapshot of right now, or a

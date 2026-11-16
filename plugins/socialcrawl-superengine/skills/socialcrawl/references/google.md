@@ -249,7 +249,7 @@ library, and Google Business Profiles (the local/maps listing). Pick by job, not
 | A local business's listing | `/business/info` | 1 |
 | What that business posts | `/business/updates` | 1 |
 | Q&A on the listing | `/business/questions` | 5 |
-| Reviews, pulled from several sources | `/business/extended-reviews` | 5 |
+| Reviews, pulled from several sources | `/business/extended-reviews` | 5–9 (5 a page; a paid label adds up to 4) |
 | Hotels | `/hotels/search` (1) then `/hotels/info` (5) | 1 / 5 |
 
 ### The ad library is a two-step
@@ -261,9 +261,9 @@ X running on Google", and compare against Facebook's ad library (`facebook/adlib
 
 ### Business Profile: check the cheap ones first
 
-`/business/info` and `/business/updates` are 1cr; `/business/questions` and
-`/business/extended-reviews` are 5cr. If you only need star rating, category, hours or
-location, `/business/info` alone answers it. `extended-reviews` is worth 5cr only when you
+`/business/info` and `/business/updates` are 1cr; `/business/questions` is 5cr and
+`/business/extended-reviews` 5–9cr. If you only need star rating, category, hours or
+location, `/business/info` alone answers it. `extended-reviews` is worth its 5–9cr only when you
 want review *text* from multiple sources — for a reputation verdict across Trustpilot and the
 app stores as well, `prism/reputation` (30cr) is the one-call version.
 

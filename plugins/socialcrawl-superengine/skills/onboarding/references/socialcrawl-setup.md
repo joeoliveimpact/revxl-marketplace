@@ -57,8 +57,8 @@ dashboard's **API Keys** page, then Claude opens the key box for it.
 ## Credits — rough guide
 
 Most research plays run on 1–5 credit calls: a voice-of-customer mining pass is
-~5–10 credits, an ad-library teardown ~15–35, an AI-visibility audit 2–1,605 (a quick one
-billed 20 when measured). The big-gun one-shots (creator vetting, lead discovery, share of voice) cost 15–200
+~5–10 credits, an ad-library teardown ~15–65, an AI-visibility audit 2–1,605 (a quick one
+billed 20 when measured). The big-gun one-shots (creator vetting, lead discovery, share of voice and the rest) cost up to 243
 credits **per call**; Claude names each one's price first and runs it only on your pick (a run with
 nobody there makes one only when its own prompt names it). 100 free credits
 covers plenty of exploring; a real research engagement usually needs a top-up.

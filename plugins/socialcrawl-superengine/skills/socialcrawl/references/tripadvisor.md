@@ -352,11 +352,11 @@ curl "https://www.socialcrawl.dev/v1/tripadvisor/cruise/reviews?url_path=<url_pa
 | Your goal | Use this | Credits |
 |-----------|----------|---------|
 | Find a place or business | `/search` | 1 |
-| Its reviews | `/reviews` | 1 |
+| Its reviews | `/reviews` | 1–5 (1 a page; a paid label adds up to 4) |
 
-Both 1 credit — the cheapest review source in the API. A full "what do people say about this
-venue" answer costs 2 credits total.
+`/search` is 1 credit and `/reviews` 1–5cr (1 a page) — the cheapest review source in the API. A full "what do people say about this
+venue" answer costs 2 credits total, up to 6 credits with a paid label.
 
 Scope is hospitality and location-based business: hotels, restaurants, attractions. For a
 local business that is not travel-shaped, `google/business/info` (1cr) and
-`google/business/extended-reviews` (5cr) are the better fit.
+`google/business/extended-reviews` (5–9cr) are the better fit.

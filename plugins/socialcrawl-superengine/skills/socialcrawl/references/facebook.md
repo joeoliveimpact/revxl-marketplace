@@ -598,31 +598,31 @@ curl "https://www.socialcrawl.dev/v1/facebook/search/groups?query=<query>" \
 
 ## Choosing a Facebook endpoint
 
-Two very different things live here: ordinary page/profile data at 1cr, and the **Ad Library**
-at 5cr. The Ad Library is the reason most research reaches for Facebook at all.
+Two very different things live here: ordinary page/profile data, most of it from 1cr a page, and the **Ad Library**
+from 5cr (up to 35cr a page with `include=audience`). The Ad Library is the reason most research reaches for Facebook at all.
 
 | Your goal | Use this | Credits |
 |-----------|----------|---------|
-| Page profile / its posts / one post | `/profile` · `/profile/posts` · `/post` | 1 |
-| Comments, and replies to a comment | `/post/comments` · `/post/comment/replies` | 1 |
-| Photos, reels, events for a page | `/profile/photos` · `/profile/reels` · `/profile/events` | 1 |
+| Page profile / its posts / one post | `/profile` · `/profile/posts` · `/post` | 1 (posts up to 4 with `include=engagement`) |
+| Comments, and replies to a comment | `/post/comments` · `/post/comment/replies` | 1–5 (1 a page; a paid label adds up to 4) |
+| Photos, reels, events for a page | `/profile/photos` · `/profile/reels` · `/profile/events` | 1 (photos and events up to 9 with `include=details`) |
 | Group posts | `/group/posts` | 1 |
 | Marketplace search / one item / locations | `/marketplace/search` · `/marketplace/item` · `/marketplace/location/search` | 1 |
-| Events by keyword or city | `/events/search` · `/events` · `/event/details` | 1 |
+| Events by keyword or city | `/events/search` · `/events` · `/event/details` | 1 (events up to 13 with `include=details`) |
 | **What ads is this company running?** | `/adlibrary/company/ads` | 5 a page; 5–35 with `include=audience` (1 per ad) |
 | Find the advertiser first | `/adlibrary/search/companies` | 5 |
 | Search ad creatives by keyword | `/adlibrary/search/ads` | 5 |
 | One ad's full detail | `/adlibrary/ad` | 5 |
 | Profile + posts + analytics in one call | `/profile/full` | 5 |
-| Reels with exact views/likes/comments/shares | `/profile/reels/full` | 5 |
+| Reels with exact views/likes/comments/shares | `/profile/reels/full` | 5–25 (5 a page, up to 5 pages with `limit`) |
 | Transcript | ⚠️ `/post/transcript`, `/adlibrary/ad/transcript` — gated: **10cr per item**, run only on an explicit yes. Cheaper: pull the media URL (1–5cr) and transcribe it yourself | **10** |
 
 ### The Ad Library is a competitor's paid strategy, stated openly
 
-`/adlibrary/company/ads` (5cr a page, up to 35 with `include=audience`) returns the ads a company is actively running — their claims,
+`/adlibrary/company/ads` (5cr a page, up to 35cr with `include=audience`) returns the ads a company is actively running — their claims,
 their offers, their hooks, and how long each has been live. A creative that has run for months
 is one they are still paying for, which is the closest thing to seeing a competitor's test
-results. Budget 10cr for the usual two-step: `/adlibrary/search/companies` to resolve the
+results. Budget 10–40cr for the usual two-step: `/adlibrary/search/companies` to resolve the
 advertiser, then `/adlibrary/company/ads` to pull the creatives.
 
 Compare with `google/company/ads` (5cr) for search-side advertising and

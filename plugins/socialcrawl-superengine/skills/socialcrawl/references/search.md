@@ -200,7 +200,7 @@ it returns a fused ranked list with top comments inline on hero threads by defau
 
 `/everywhere` (20cr) earns its price only when you genuinely want the planned, fused, reranked
 cross-platform result. "What are people saying about X on Reddit" is one `reddit/search` page:
-**1 credit**, up to 34 with extras such as `include_body`. Do not escalate because a request merely *sounds* broad.
+**1 credit**, up to 34 credits with extras such as `include_body`. Do not escalate because a request merely *sounds* broad.
 
 ## Endpoint
 

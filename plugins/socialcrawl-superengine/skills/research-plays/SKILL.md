@@ -53,8 +53,8 @@ require is stated in both modes.
    [../_shared/references/credit-guard.md](../_shared/references/credit-guard.md).
 5. Shortcuts first — **but none of them are free, and three of them are metered.** A pasted
    URL goes through `prism/lookup` (**1–5cr**, 5 on Amazon and LinkedIn); re-checking
-   many posts goes through `prism/post-stats` (**1cr per successful URL, 2cr on Instagram
-   and 5cr on LinkedIn** — 100 IG URLs is **200cr**, not 1); comment pulls try `prism/comments`
+   many posts goes through `prism/post-stats` (**1–500cr**: 1cr per successful URL, 2cr on Instagram
+   and 5cr on LinkedIn — 100 IG URLs is **200cr**, not 1); comment pulls try `prism/comments`
    (**2–200cr**, 1cr per internal page with a floor of 2, driven by `max=`) before
    platform-native comment endpoints. Quote the range, never the floor.
 6. **Search cheap-first — climb the ladder, never open at the top.** The rungs, their prices,
@@ -301,7 +301,7 @@ Tell the client what went wrong in plain words, and whether anything was charged
    apostrophe from them, and use no script names, web addresses or file paths (those go in the body
    file; a command carrying the SocialCrawl address that isn't a plain `curl` is refused):
 
-`python "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin socialcrawl-superengine --plugin-version 0.4.1 --skill research-plays --step '<step>' --error-line '<the error line>' --summary '<headline>' --body-file socialcrawl-superengine/reports/report-body.md`
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin socialcrawl-superengine --plugin-version 0.4.2 --skill research-plays --step '<step>' --error-line '<the error line>' --summary '<headline>' --body-file socialcrawl-superengine/reports/report-body.md`
 
 3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
 4. Send, using the path after `DRAFT:`:

@@ -321,9 +321,9 @@ curl "https://www.socialcrawl.dev/v1/reddit/omni-search?query=<query>" \
 | **One keyword across all of Reddit, top comments inline** | `/omni-search` | **5–9** ⚠️ metered |
 | Search posts | `/search` | 1–34 (metered) |
 | Search inside one subreddit | `/subreddit/search` | 1–26 (metered) |
-| A subreddit's posts / its details | `/subreddit` · `/subreddit/details` | 1 |
+| A subreddit's posts / its details | `/subreddit` · `/subreddit/details` | 1 (posts up to 5 with a paid `label=`) |
 | One post | `/post` | 1 |
-| That post's comments | `/post/comments` | 5 |
+| That post's comments | `/post/comments` | 5–9 (5 a page; spam/toxic labels add up to 4) |
 | Transcript | ⚠️ `/post/transcript` — gated: **10cr per post**, run only on an explicit yes. Cheaper: pull the media URL (1–5cr) and transcribe it yourself | **10** |
 
 ### `/omni-search` is the best value in the API for voice-of-customer — but it is metered
@@ -339,11 +339,11 @@ question, better — but quote **5–9cr per keyword**, and multiply before runn
 
 ### Watch the comment endpoint
 
-`/post/comments` is **5 credits** on Reddit — one of the few 5cr comment lists in the API.
-`prism/comments` returns every comment on the post with replies nested and paginates to
+`/post/comments` is **5 credits** a page on Reddit (up to 9cr with spam/toxic labels) — one of the few 5cr comment lists in the API.
+`prism/comments` (2–200cr) returns every comment on the post with replies nested and paginates to
 completion, so it is usually more complete — but it is **metered at 1cr per internal page
 scanned (min 2), driven by `max` rather than `limit`**, so it is cheaper only on a shallow
-pull. Measured live: **3cr**. Cap `max`, or use the native endpoint when you specifically
+pull (measured live: **3cr**). Cap `max`, or use the native endpoint when you specifically
 want to control paging at a known flat price.
 
 ## Field Maps

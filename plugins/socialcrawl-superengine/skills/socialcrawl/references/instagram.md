@@ -745,13 +745,13 @@ unlock what it hides. Getting this wrong is the most common way to overspend in 
 
 | Your goal | Use this | Credits |
 |-----------|----------|---------|
-| Profile, posts, reels, one post | `/profile` · `/profile/posts` · `/profile/reels` · `/post` | 1 |
-| Find accounts by keyword | `/search/profiles` | 1 |
+| Profile, posts, reels, one post | `/profile` · `/profile/posts` · `/profile/reels` · `/post` | 1 (posts up to 17 and reels up to 18 a page with paid `include=` and `label=` extras) |
+| Find accounts by keyword | `/search/profiles` | 1–25 (`include=about` adds 2 per row filled) |
 | Find reels by keyword | `/search/reels` | 1 a page; up to 69 with `include=creator` |
 | Reels using a given audio | `/audio/reels` | 1 |
-| A post's **share count** | `/post/stats` | 5 |
-| Followers / following / similar accounts | `/followers` · `/following` · `/similar` | 5 |
-| Comments on a post | `/post/comments` | 5 |
+| A post's **share count** | `/post/stats` | 5–9 (`include=saves` holds 4 more) |
+| Followers / following / similar accounts | `/followers` · `/following` · `/similar` | 5 (followers/following up to 10 with `coverage=full`, similar up to 85 with `include=profile` and `limit=80`) |
+| Comments on a post | `/post/comments` | 5–19 (5 a page; spam/toxic labels hold more) |
 | Posts by hashtag | `/search/hashtag` | 5 |
 | Posts an account is tagged in | `/tagged` | 5 |
 | Aggregate engagement stats | `/engagement` | 5 |
@@ -759,11 +759,11 @@ unlock what it hides. Getting this wrong is the most common way to overspend in 
 
 ### The two traps
 
-**`/post` (1cr) vs `/post/stats` (5cr).** The cheap one returns everything about a post
-*except* the share count. Pay 5cr only when shares are the actual question.
+**`/post` (1cr) vs `/post/stats` (5–9cr).** The cheap one returns everything about a post
+*except* the share count. Pay 5cr (up to 9cr with `include=saves`) only when shares are the actual question.
 
-**Plain list vs `/full`.** `/profile/posts` and `/profile/reels` are 1cr for a page.
-`/profile/posts/full` and `/profile/reels/full` are 5cr and fan out per item to attach views,
+**Plain list vs `/full`.** `/profile/posts` and `/profile/reels` are 1cr for a page, up to 17cr (posts) and 18cr (reels) with paid `include=` and `label=` extras.
+`/profile/posts/full` and `/profile/reels/full` are 5cr a page (up to 25cr with `limit`) and fan out per item to attach views,
 likes, comments and per-item shares. Paging a long back catalogue without needing per-item
 shares? The plain list is five times cheaper.
 
@@ -786,7 +786,7 @@ Start at `/highlights` (1cr): an account with no highlights is refunded to **0 c
 probing blind is free. `/story/download` needs a `story_id` from a prior `/stories` call,
 making it a 10cr two-step. Story *text* is burned into the pixels — `content.text` is null and
 `_warnings` reports `caption.text did not resolve`. Recover it free with frame extraction +
-OCR, or at 1cr/item via `/post`.
+OCR, or via `/post` at 1cr/item.
 
 `duration == 5.000` exactly means a still image rendered as mp4 (Instagram's default photo-story
 length) — a free static-vs-video classifier with no download needed.

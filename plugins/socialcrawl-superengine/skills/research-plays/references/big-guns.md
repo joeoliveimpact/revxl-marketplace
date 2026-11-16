@@ -58,7 +58,7 @@ background check, not a curiosity.
 **You get:** engagement quality, commenter authenticity (bot share), posting cadence, and
 controversy signals — optionally across platforms.
 **Deliverable:** go / no-go one-pager with the three strongest signals quoted.
-**Cheaper first pass:** `prism/handle-audit` (5cr) + `prism/creator-card` (5cr) answer
+**Cheaper first pass:** `prism/handle-audit` (5–8cr) + `prism/creator-card` (5–8cr; each 5 for 4 platforms, +1 per platform beyond) answer
 "is this account worth anything" for a fraction of the price — reserve creator-vet for the final
 check on a shortlist of one.
 
@@ -78,10 +78,10 @@ go stale in days, not weeks.
 **Worth it when:** a competitive-audit deliverable needs the headline number — who owns
 the conversation in this niche?
 **Call:** `GET /v1/prism/share-of-voice?brands=<2-5 brands CSV>`
-⚠️ **Cost is 40cr PER BRAND, not 40cr per call** (20cr/brand if you restrict it to web-only).
+⚠️ **Cost is 40cr PER BRAND, not 40cr per call** (20cr/brand if you restrict it to web-only):
 `brands=` accepts 2–5, so the real range is **80–200cr** — the priciest big gun after a full
 `ai-visibility` audit (up to 1,605). **Count the brands, multiply, and name that number in the gate.**
-Measured live: 40cr at one brand.
+Measured live: `share-of-voice` cost 40cr at one brand (5 brands: 200cr).
 **You get:** engagement-weighted SoV with web + social split, emotion overlay, and excess
 share of voice (ESOV).
 **Deliverable:** the flagship page of a competitive audit — SoV pie + "where the gap is"
@@ -144,4 +144,4 @@ live?" Fourteen platforms (up to 17 sources), one ranked + clustered result.
 **Call:** `GET /v1/search/everywhere?query=<topic>` (sync JSON or SSE — see
 [search.md](../../socialcrawl/references/search.md); auto-refunds if every source fails).
 **Deliverable:** platform map — which 2–3 platforms own this topic. Then leave this
-endpoint alone and search those platforms at 1cr each.
+endpoint alone and search those platforms with their own `/v1/{platform}/search` (1–125cr a call, set by the platform and its options).

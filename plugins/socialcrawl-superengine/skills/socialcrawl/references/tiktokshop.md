@@ -145,11 +145,11 @@ curl "https://www.socialcrawl.dev/v1/tiktokshop/sales?query=<query>" \
 |-----------|----------|---------|
 | Search products | `/search` | 1 |
 | One product's detail | `/product` | 1 |
-| Its reviews | `/product/reviews` | 1 |
+| Its reviews | `/product/reviews` | 1–5 (1 a page; a paid label adds up to 4) |
 | A list of products | `/products` | 1 |
 | What a creator sells | `/user/showcase` | 1 |
 
-Everything is 1 credit, so this platform is cheap to explore.
+Every endpoint here costs 0–8cr: 1 credit for most, `/product/reviews` 1–5cr with a paid label and `/sales` 0–8cr (1 per market page that finds something), so this platform is cheap to explore.
 
 ### What it's good for
 
