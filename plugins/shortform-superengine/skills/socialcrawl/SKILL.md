@@ -30,8 +30,8 @@ Unified social + research data API. One API key, one response format, **43 platf
 > captions or an offline transcriber.
 > Transcribe with the **captions → Groq → local Whisper** chain instead (any RevXL format
 > engine's `onboarding` installs it). **Also never add `&include=transcript`** to any paid
-> call (e.g. `prism/video-intel`) — same ban; it silently adds ~10 credits (hard-denied
-> wherever the credit-guard hook is installed). These transcript endpoints are the **only** SocialCrawl
+> call (e.g. `prism/video-intel`) — same ban; it silently adds ~10 credits (no hook blocks
+> it for this plugin; the rule alone stands). These transcript endpoints are the **only** SocialCrawl
 > calls that are **banned outright**; all other paid calls just need the usual
 > balance + cost + confirm. If a transcript is genuinely needed, get it from the local chain.
 

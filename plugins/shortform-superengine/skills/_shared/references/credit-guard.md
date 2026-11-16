@@ -12,7 +12,7 @@
 > socialcrawl-superengine relies on this ritual alone.
 > Deep plays beyond the endpoints table (`socialcrawl-endpoints.md`) ... field
 > search past the table, creator vetting, share of voice, lead finding ... live
-> in socialcrawl-superengine, which ships the same hook.
+> in socialcrawl-superengine, which ships the credit-guard hook.
 
 SocialCrawl calls cost **real money** — the client's own credits. Two rules: never
 spend without the user seeing the cost first, and never spend the client into the
