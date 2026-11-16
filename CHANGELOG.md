@@ -4,6 +4,13 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.97] ... 2026-11-16
+
+### Fixed
+- **socialcrawl-superengine v0.4.2** ... the catalog description and README row now say what the
+plugin itself says: paid calls count against a silent session limit, and a few calls it can't
+price (batch jobs, batch scrapes, web monitors, cohorts) are counted at 0. No plugin change.
+
 ## [0.1.96] ... 2026-11-16
 
 ### Fixed
