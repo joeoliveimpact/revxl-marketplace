@@ -4,6 +4,14 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.95] ... 2026-11-16
+
+### Removed
+- **shortform-superengine v0.6.3** ... removes its own SocialCrawl credit guard, the hook that
+showed an "Allow?" box before SocialCrawl calls of 5 credits or more and every 15 credits after.
+That box stalled scheduled tasks, where nobody is there to click it. SocialCrawl spending is now
+guarded only by socialcrawl-superengine, which never asks.
+
 ## [0.1.94] ... 2026-11-11
 
 ### Fixed

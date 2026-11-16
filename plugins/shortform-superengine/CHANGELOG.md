@@ -2,6 +2,18 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.3] ... 2026-11-16
+
+### Removed
+- **The SocialCrawl credit guard** (`hooks/credit-guard.mjs`, `hooks/costs.json` and its
+  `PreToolUse` entry). It asked "Allow?" before any SocialCrawl call of 5 credits or more, at
+  every 15 credits of session spend, on metered calls and on a Goldmine fetch over 600. A
+  scheduled task waits on that box forever. socialcrawl-superengine's guard now covers
+  SocialCrawl spending on its own, and it never asks. The ban on transcript calls is now a
+  written rule only. Without socialcrawl-superengine installed, the spend rules in
+  `skills/_shared/references/credit-guard.md` are the only guard. The Goldmine fetch still
+  stops at the amount you approved.
+
 ## [0.6.2] ... 2026-10-15
 
 ### Added

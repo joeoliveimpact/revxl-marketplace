@@ -59,8 +59,8 @@ never echoed into a transcript, and never written anywhere but that file.
 
 **Never call any `*/transcript` endpoint on any platform, and never add
 `include=transcript` to a paid call.** The nine banned endpoints are each 3 to
-10 credits with no advantage over free captions. The PreToolUse hook
-(`hooks/credit-guard.mjs`) hard-denies them. Transcribe with the local
+10 credits with no advantage over free captions. No hook blocks them for this plugin;
+the rule alone stands. Transcribe with the local
 captions -> Groq -> Whisper chain that onboarding installs.
 
 ## Is socialcrawl-superengine installed?

@@ -81,7 +81,7 @@ Writes:  <project>/reel-build/goldmine-run.json  (this run's state: which files 
 import collections, datetime, glob, json, os, random, re, shutil, statistics, subprocess, sys, tarfile, tempfile, time
 import urllib.error, urllib.parse, urllib.request
 
-BUDGET = 600          # goldmine per-pull credit budget; mirrored in hooks/credit-guard.mjs
+BUDGET = 600          # goldmine per-pull credit budget; fetch hard-stops at --approved
 COMMENT_CR = 5        # prism/comments, one page, per breakout
 MIN_BASELINE_N = 3    # non-CTA reels with a rate needed before a creator median is trusted
 BASE = "https://www.socialcrawl.dev/v1/"
