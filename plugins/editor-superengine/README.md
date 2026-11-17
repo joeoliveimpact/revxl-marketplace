@@ -44,7 +44,7 @@ Sets the colour. The editor measures your footage, shows every colour option sid
 ### `reel-canvas-build`
 **Say:** "plan what goes on screen", "add a scene", "lower third", "end card", "design the hook", "add a transition", "render it", "make the final video".
 
-Plans, designs and renders what plays on screen over your cut. On the Beat Map you plan what shows on each line; on Sketches you pick one direction; then a few looks for the hook are tweaked until one lands. It renders a 720p preview for you to watch, then the final video once you OK it. Your styles live here too ("save this as my style", "make Style 2 my default", "auto edit").
+Plans, designs and renders what plays on screen over your cut. Plan each line on the Beat Map and lock one look on Sketches. Then Claude builds the look into scenes (Build motion) and you review them on the Motion review board. The preview, sound and final approval flow is in [the render guide](skills/reel-canvas-build/references/build.md#1-before-rendering). Your styles live here too ("save this as my style", "make Style 2 my default", "auto edit").
 
 ### `reel-broll`
 **Say:** "add B-roll", "use my clip over this line", "generate B-roll".

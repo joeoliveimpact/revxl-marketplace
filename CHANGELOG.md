@@ -4,6 +4,15 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.98] ... 2026-11-17
+
+### Changed
+- **editor-superengine v0.2.3** ... motion scenes get their own build step with a Motion review
+board, checked at every common frame rate. The Beat Map can hide private details in B-roll with
+blur or black boxes that every render applies, and screenshots work as B-roll. Sound effects are
+levelled on their own, and the mix always reaches the master. The Cut Board handles ad-libs,
+and the hub opens a new reel without switching to another one.
+
 ## [0.1.97] ... 2026-11-16
 
 ### Fixed

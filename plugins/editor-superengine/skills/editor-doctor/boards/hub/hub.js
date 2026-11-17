@@ -272,6 +272,7 @@ async function selectReel(id) {
   const changed=CUR!==id;
   if (changed) await leaveFull();
   CUR=id;
+  $("error").hidden=true; $("work").hidden=false;
   if (changed) { $("note").value=""; $("request-detail").value=""; TAB=null; $("panel").innerHTML='<p class="empty">Choose a board to begin.</p>'; }
   address();
   drawWall(); drawHead(); drawTabs(); drawAdjust();
@@ -313,7 +314,17 @@ async function load(first=false) {
   try {
     const previous = DATA?.reels.find(r => r.id === CUR), previousBoard = previous && boardFor(DATA.stages[previous.cur]);
     const initial = first ? new URLSearchParams(location.search) : null;
-    const next=await HubIO.json("/editor/hub/hub-data.json");
+    const requested = CUR || new URLSearchParams(location.search).get("reel");
+    const next=await HubIO.json("/editor/hub/hub-data.json?reel=" + encodeURIComponent(requested || ""));
+    if (requested && (!next || Array.isArray(next.reels) && !next.reels.some(r => r.id === requested))) {
+      CUR=requested; DATA=next || {reels:[]};
+      await leaveFull(false);
+      $("work").hidden=true; $("panel").innerHTML=""; $("fullview").hidden=true;
+      $("error").hidden=false;
+      $("error").textContent=`I can't find the reel "${requested}" yet. Ask Claude to set it up.`;
+      $("lede").textContent=""; $("baton").textContent=""; $("status").textContent="";
+      drawWall(); route(); Hub.ready=true; return;
+    }
     if (!next || !Array.isArray(next.reels)) throw new Error("No hub data");
     DATA=next; $("error").hidden=true; drawPages();
     if (first && DATA.state_reel) { layoutState=await HubIO.json(HubIO.base(DATA.state_reel)+"hub.state.json",{}); applyLayout(layoutState.layout); }
@@ -321,7 +332,7 @@ async function load(first=false) {
     $("controls").disabled=!DATA.state_reel;
     $("work").hidden=!DATA.reels.length;
     if (DATA.reels.length) {
-      const chosen=DATA.reels.find(r=>r.id===CUR) || DATA.reels.find(r=>r.id===new URLSearchParams(location.search).get("reel")) || [...DATA.reels].sort((a,b)=>b.activity-a.activity)[0];
+      const chosen=DATA.reels.find(r=>r.id===requested) || [...DATA.reels].sort((a,b)=>b.activity-a.activity)[0];
       await selectReel(chosen.id);
       if (first && initial.has("board")) {
         const id = initial.get("board");

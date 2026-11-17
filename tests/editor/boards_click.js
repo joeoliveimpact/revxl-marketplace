@@ -55,6 +55,11 @@ const {pathToFileURL} = require("url");
         await ctx.$eval(a.sel, (e) => {
           for (let p=e.parentElement; p; p=p.parentElement) if (p.matches("details.advanced-controls")) p.open=true;
           e.scrollIntoView({block: "center"});
+          // A fixed footer can be visible inside the iframe while below the hub's
+          // viewport. Expose the target in the outer page too, as in SCENE_BROWSER.
+          if (window !== window.top)
+            parent.scrollBy(0, window.frameElement.getBoundingClientRect().top +
+              e.getBoundingClientRect().top - parent.innerHeight / 2);
         });
         await ctx.click(a.sel);
       } else if (a.do === "domclick") {

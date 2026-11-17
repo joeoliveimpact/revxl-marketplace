@@ -25,8 +25,9 @@ import numpy as np
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from _media import SR, decode, write_wav, probe, find_picture, workspace, write_json  # noqa: E402
+from _media import SR, decode, write_wav, probe, find_picture, cut_picture, PictureError, workspace, write_json  # noqa: E402
 import music_fit, room_tone  # noqa: E402
+import level_sfx  # noqa: E402
 
 
 class BakeError(Exception):
@@ -72,13 +73,16 @@ def cue_clip(reel, c, fps):
 
 def bake(reel, picture):
     """Writes the stems and returns placement (dict). Raises BakeError on a failed check."""
-    reel, picture = Path(reel), Path(picture)
+    reel = Path(reel)
+    picture = cut_picture(reel, picture)
     sel = read_json(reel / "sound-selection.json") or {}
     info = probe(picture)
     dur, fps = info["dur"], fps_of(reel, picture)
     N = int(round(dur * SR))
     out = reel / "sound"
     (out / "cues").mkdir(parents=True, exist_ok=True)
+    levels = level_sfx.level(reel, sel.get("cues", []), sel.get("auto_level", True))
+    write_json(out / "levels.json", levels)
 
     src = decode(picture)
     pad = max(0, N - len(src))
@@ -86,8 +90,8 @@ def bake(reel, picture):
 
     sfx = np.zeros((N, 2), np.float32)
     place, lanes_end, own = [], [], []
-    for c in sorted(sel.get("cues", []), key=lambda c: c["time"]):
-        f0, s0, clip, x = cue_clip(reel, c, fps)
+    for c, lev in sorted(zip(sel.get("cues", []), levels["cues"]), key=lambda pair: pair[0]["time"]):
+        f0, s0, clip, x = cue_clip(reel, dict(c, gain_db=lev["gain"]), fps)
         lane = next((i for i, e in enumerate(lanes_end) if e <= s0), None)
         if lane is None:
             lane = len(lanes_end)
@@ -99,9 +103,11 @@ def bake(reel, picture):
         e = min(N, s0 + len(clip))
         if e > s0:
             sfx[s0:e] += clip[:e - s0]
-        own.append((s0, clip[:max(0, e - s0)]))
+        own.append((s0, clip[:max(0, e - s0)], lev["skipped"]))
         place.append({"id": c.get("id"), "beat": c.get("beat", ""), "file": "cues/" + name.strip(), "frame": f0,
                       "start_sample": s0, "lane": lane, "time": c["time"],
+                      "gain_db": lev["gain"], "auto": not lev["by_hand"] and levels["auto_level"], "capped": lev["capped"],
+                      "skipped": bool(lev["skipped"]),
                       "peak_s": float(c.get("peak_s") or 0), "seconds": round(len(clip) / SR, 4),
                       "peak_dbfs": round(float(20 * np.log10(np.abs(x).max() + 1e-12)), 2)})
 
@@ -122,15 +128,15 @@ def bake(reel, picture):
     if not np.array_equal(got["voice"][:n], src[:n]):
         raise BakeError("voice.wav is not bit-exact to the picture's sound")
     rebuilt = np.zeros((N, 2), np.float32)
-    for s0, clip in own:
+    for s0, clip, _ in own:
         rebuilt[s0:s0 + len(clip)] += clip
     if not np.array_equal(got["sfx"], rebuilt):
         raise BakeError("sfx.wav is not exactly its cues")
-    for (s0, clip), p in zip(own, place):
+    for (s0, clip, skipped), p in zip(own, place):
         others = rebuilt.copy()
         others[s0:s0 + len(clip)] -= clip
         alone = got["sfx"][s0:s0 + len(clip)] - others[s0:s0 + len(clip)]
-        if len(clip) == 0 or np.abs(clip).max() < 1e-6 or np.abs(alone - clip).max() > 1e-5:
+        if len(clip) == 0 or (not skipped and np.abs(clip).max() < 1e-6) or np.abs(alone - clip).max() > 1e-5:
             raise BakeError("cue %s (%s) is missing from the sound effects" % (p["id"], p["beat"]))
     for s in b.get("stops", []) if b.get("file") else []:
         inside = got["music"][int(s["start_s"] * SR) + 1:int(s["end_s"] * SR)]
@@ -155,7 +161,7 @@ def main(argv=None):
     ensure_utf8_output()
     ap = argparse.ArgumentParser(description="Bake the Sound Board ruling into stems.")
     ap.add_argument("--reel", required=True)
-    ap.add_argument("--video", help="the picture-locked video (default: the board's picture, else the newest master)")
+    ap.add_argument("--video", help="the audition video to check against the cut master")
     a = ap.parse_args(argv)
     reel = workspace()[1] / a.reel
     picture = find_picture(reel, a.video)
@@ -164,6 +170,9 @@ def main(argv=None):
         return 2
     try:
         bake(reel, picture)
+    except PictureError as e:
+        print(e)
+        return e.code
     except (BakeError, room_tone.NoRoomTone) as e:
         print("The sound stems failed a check: %s. Nothing was mixed." % e)
         return 1

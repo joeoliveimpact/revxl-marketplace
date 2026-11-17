@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """script_diff.py: line the client's script up against the transcript and fix brand names the speech model misheard.
 
-usage: python script_diff.py <script.txt> work/edit_map.json [--map editor/word-fixes.json] [--never "Cling,Veo"]
+usage: python script_diff.py <script.txt> work/edit_map.json [--map editor/word-fixes.json] [--never "Brindel,Vexa"]
 
 Both texts are split into words and lined up with difflib (case and edge punctuation ignored).
 - Under 25 % of the shorter text lines up, the script is probably the wrong one: it warns, changes nothing, exits 1.
 - A small replaced run (up to 3 heard words against up to 3 script words) is fixed when the script words are
   brand-like and sound close to what was heard. Brand-like = a capital mid-sentence (never "I"), a capital inside the
-  word (ChatGPT), a digit, or a word word-fixes.json already knows (a fixes or phrases value, a cta keyword).
+  word (MapGlow), a digit, or a word word-fixes.json already knows (a fixes or phrases value, a cta keyword).
   Same-length runs are fixed word by word. A run with fewer heard words gets the extra script words joined onto its
-  last heard word. Up to 3 heard words for 1 script word ("Data Dog" for "Datadog") are merged into one word; any
+  last heard word. Up to 3 heard words for 1 script word ("Cedar Fox" for "Cedarfox") are merged into one word; any
   other run with more heard words than script words goes to REVIEW.
 - Every other difference goes to the REVIEW list. A heard word on the --never list (the client's) is never changed.
 Fixes go through fix_words.py --at / --merge (word index), so an edit map gets its word_list_hash recomputed and
@@ -48,7 +48,7 @@ def script_words(text):
 
 
 def sound(t):
-    """Rough sound key: letters and digits only, lower case, doubled letters once ("Datadogg" = "Datadog")."""
+    """Rough sound key: letters and digits only, lower case, doubled letters once ("Cedarfoxx" = "Cedarfox")."""
     return re.sub(r"(.)\1+", r"\1", re.sub(r"[^a-z0-9]", "", t.lower()))
 
 
@@ -62,7 +62,21 @@ def known_words(fm):
     return {fw.core(str(v)).lower() for v in vals if fw.core(str(v))}
 
 
-def diff(words, script, known, never):
+def propagate_fixes(words, idx, fixes, kept, never):
+    """Apply a confirmed single-word correction to every occurrence of its heard text."""
+    replacements = {f["heard"].lower(): f["new"] for f in fixes if "merge" not in f}
+    done = {i for f in fixes + kept for i in f.get("merge", [f["at"]])}
+    for i in idx:
+        heard = fw.core(words[i][fw.key(words[i])])
+        new = replacements.get(heard.lower())
+        if i in done or new is None or fw.core(new) == heard:
+            continue
+        rec = dict(at=i, id=words[i].get("id"), heard=heard, new=new)
+        (kept if heard.lower() in never else fixes).append(rec)
+    fixes.sort(key=lambda f: f["at"])
+
+
+def diff_once(words, script, known, never):
     """(match share, fixes, review, never_kept). Fixes are {at, id, heard, new}; `at` = index in the word list.
     A merge fix also carries `merge`: the indexes of the heard words it joins into one (`at` = the first)."""
     idx = [i for i, w in enumerate(words) if fw.core(w[fw.key(w)])]
@@ -95,7 +109,7 @@ def diff(words, script, known, never):
         else:
             todo = []
         for k, new in todo:
-            if new == h[k]:   # a join an earlier run already made ("Eleven Labs" heard as one word)
+            if new == h[k]:   # a join an earlier run already made ("Meadow Labs" heard as one word)
                 continue
             i = idx[i1 + k]
             rec = dict(at=i, id=words[i].get("id"), heard=h[k], new=new)
@@ -106,6 +120,32 @@ def diff(words, script, known, never):
             else:
                 why = "not a brand-like word that sounds close"
             review.append(dict(item, why=why))
+    propagate_fixes(words, idx, fixes, kept, never)
+    return match, fixes, review, kept
+
+
+def diff(words, script, known, never, passes=3):
+    """diff_once(), then again on a copy with its single-word fixes in place, so one run finds what a second run would
+    (F29: a fix that repeats a heard word can leave a run that now lines up). Match is the first pass's; review is the
+    last pass's. Merge fixes are never applied to the copy, so word indexes stay those of the map as read."""
+    match, fixes, review, kept = diff_once(words, script, known, never)
+    work = [dict(w) for w in words]
+    for _ in range(passes - 1):
+        for f in fixes + kept:
+            if "merge" not in f:
+                w = work[f["at"]]
+                k = fw.key(w)
+                w[k] = w[k].replace(fw.core(w[k]), f["new"], 1)
+        _, more, review, more_kept = diff_once(work, script, known, never)
+        seen = {i for f in fixes + kept for i in f.get("merge", [f["at"]])}
+        new = [f for f in more if not seen & set(f.get("merge", [f["at"]]))]
+        new_kept = [f for f in more_kept if not seen & set(f.get("merge", [f["at"]]))]
+        if not new and not new_kept:
+            break
+        for f in new + new_kept:   # report what was heard, not the copy's text
+            f["heard"] = " ".join(fw.core(words[i][fw.key(words[i])]) for i in f.get("merge", [f["at"]]))
+        fixes = sorted(fixes + new, key=lambda f: f["at"])
+        kept = kept + new_kept
     return match, fixes, review, kept
 
 

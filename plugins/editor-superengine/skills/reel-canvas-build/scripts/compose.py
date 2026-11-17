@@ -53,9 +53,11 @@ sys.path.insert(0, str(P / "scripts"))
 sys.path.insert(0, str(HERE))
 from win_encoding import ensure_utf8_output  # noqa: E402
 import runtime as rt  # noqa: E402
+from heavy_job import heavy_job, HeavyJobError, free_ram_mb  # noqa: E402
 import saved_style  # noqa: E402
 import bundled_fonts  # noqa: E402
 import beat_schema  # noqa: E402
+import broll_mask  # noqa: E402
 import effect_gate  # noqa: E402
 import fps as fpsmod  # noqa: E402
 import styles  # noqa: E402  (S6c: the editing style's plan)
@@ -63,6 +65,7 @@ import scene_check  # noqa: E402  (P/scripts: the G2-a scene contract)
 import licence_rows  # noqa: E402  (G4's licence check, as mix.py imports it)
 import footage_check  # noqa: E402
 import check as qa_check  # noqa: E402
+import mix_approval  # noqa: E402
 # --- G5 transitions (VES-1) ---
 import transitions
 # --- end G5 ---
@@ -111,6 +114,60 @@ def ts(f, rate):
     return s
 
 
+def word_param(beat, word, rate):
+    """A cut word's nearest frame as beat-local seconds; beat end frames are exclusive."""
+    start = word.get("out_start")
+    if not isinstance(start, (int, float)) or isinstance(start, bool) or not math.isfinite(start):
+        raise ValueError(f"Word {word.get('id', '?')} needs a finite cut start time (out_start).")
+    rate = fpsmod.as_fraction(str(rate))
+    position = Fraction(str(start)) * rate
+    frame = round(position)
+    if not (beat["start_f"] <= position < beat["end_f"] and beat["start_f"] <= frame < beat["end_f"]):
+        raise ValueError(f"Word {word.get('id', '?')} is outside beat {beat['id']}.")
+    return float(ts(frame - beat["start_f"], rate))
+
+
+def cut_words(reel):
+    """Read the cut word list shared by cue lookup and caption-band diagnostics."""
+    try:
+        words = json.loads((reel / "work/word_map.json").read_text(encoding="utf-8"))["words"]
+        if not isinstance(words, list):
+            raise ValueError
+    except (OSError, ValueError, KeyError, TypeError):
+        raise ValueError("The cut word list work/word_map.json is missing or unreadable.") from None
+    return words
+
+
+def cut_word(reel, word_id):
+    """Resolve an explicit cut-word identity; never use source transcript times."""
+    words = cut_words(reel)
+    matches = [w for w in words if isinstance(w, dict) and w.get("id") == word_id]
+    if len(matches) != 1:
+        raise ValueError(f"Word {word_id} must appear exactly once in the cut word list.")
+    return matches[0]
+
+
+def check_word_params(beats, rate, reel):
+    """Refuse one-frame drift in declared word cues before rendering or taking a job lock."""
+    for beat in beats:
+        scene = beat.get("scene") or {}
+        if not scene.get("id", "").startswith("reel-"):
+            continue
+        for name, param in scene_params(scene, reel).items():
+            if "word" not in param:
+                continue
+            wid = param["word"]
+            try:
+                expected = word_param(beat, cut_word(reel, wid), rate)
+                value = scene.get("params", {}).get(name, param["default"])
+                if not isinstance(value, (int, float)) or isinstance(value, bool) or not math.isfinite(value):
+                    raise ValueError("The timed value must be a finite number.")
+                if abs(round(value * rate) - round(expected * rate)) >= 1:
+                    raise ValueError("The timed value misses its word; get it from motion_review.py times.")
+            except ValueError as error:
+                raise ValueError(f"Beat {beat['id']}, {name}, word {wid}: {error}") from None
+
+
 def us(f, rate):
     """Frame f's time in whole microseconds, rounded DOWN from the exact Fraction: HyperFrames seeks frame n to
     n / fps, so a set or a move placed here takes effect on frame f itself, never a frame late."""
@@ -147,6 +204,93 @@ def geom(lay):
     never tweens left/top (lint gsap_non_transform_motion); width/height stay box sizes (the video re-covers them)."""
     x, y, w, h = lay["box"]
     return f"x: {x:g}, y: {y:g}, width: {w:g}, height: {h:g}, borderRadius: {lay['radius']:g}"
+
+
+def world_area(area):
+    """Scene [x, y, w, h], derived from the composition's face boxes at authoring size."""
+    _, _, w, h = layout("full", 1)["box"]
+    if area == "full":
+        return 0, 0, w, h
+    if area == "stack":
+        _, y, _, face_h = layout("stack", 1)["box"]
+        return 0, y + face_h, w, h - y - face_h
+    if area == "split":
+        _, y, _, _ = layout("split", 1)["box"]
+        return 0, 0, w, y
+    raise ValueError("A world scene needs area full, stack or split.")
+
+
+def face_layout(beat, edit_style, reel=None):
+    """The drawn face layout shared by compose's world slots and Motion review."""
+    sid = (beat.get("scene") or {}).get("id", "")
+    world = False
+    if beat["layout"] in ("stack", "split", "pip") and sid.startswith("reel-"):
+        try:
+            spec = json.loads((scene_check.scene_dir(sid, reel) / "scene.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            pass  # Scene validation reports this; uncertain inputs never exempt a head.
+        else:
+            area = "full" if beat["layout"] == "pip" else beat["layout"]
+            world = spec.get("kind") == "world" and spec.get("area") == area
+    return styles.face_layout(beat, edit_style, world=world)
+
+
+def world_face_slots(beats, reel=None):
+    """Draw-time face slots; the saved style track continues unchanged underneath."""
+    slots = []
+    for beat in beats:
+        name = face_layout(beat, {"style": "punch-in"}, reel)
+        if name != "full":
+            slots.append((beat["start_f"], beat["end_f"], name))
+    return slots
+
+
+def world_face_context(inp):
+    """Read-only drawn geometry, when this reel has a style track to draw."""
+    reel = inp.get("reel_dir")
+    if reel is None or not (Path(reel) / styles.TRACK).is_file():
+        return None
+    import placer
+    try:
+        ctx = placer.load_ctx(reel)
+    except (OSError, ValueError) as error:
+        raise Stop(1, str(error)) from None
+    if inp.get("track"):
+        ctx = dict(ctx, track=inp["track"])
+    return ctx
+
+
+def world_area_problem(beat, spec, reel=None, *, ctx=None):
+    """Area compatibility, including the explicit user choice; overlay never takes a world."""
+    area, name = spec["area"], beat["layout"]
+    fits = (name != "overlay" and
+            (area == "full" and (beat.get("cover_face") is True or name == "pip")
+             or area == name and area in ("stack", "split")))
+    if fits:
+        if area in ("stack", "split") and ctx is None and reel is not None:
+            ctx = world_face_context({"reel_dir": reel})
+        if area in ("stack", "split") and ctx is not None:
+            import placer
+            head = placer.head_box_at(ctx, beat["start_f"], beat["end_f"] - 1)
+            x, y, w, h = world_area(area)
+            if head is not None and placer.hits(head, (x, y, x + w, y + h)):
+                return (f"The graphic on beat {beat['id']} covers your drawn head in the {area} area. "
+                        "Move the face clear of that area or rebuild the graphic before rendering.")
+        return None
+    if name == "overlay":
+        return (f"Beat {beat['id']} uses the overlay layout, which can't hold a full graphic. "
+                "Pick full, stack, split or pip for this beat.")
+    title = scene_title(beat['scene']['id'], reel)
+    if area == "full":
+        return (f"{title} covers the whole screen, which hides you on beat {beat['id']}. "
+                "Switch this beat to the pip layout, or tick 'Graphics take the whole screen "
+                "(hides you)' for this beat.")
+    target = "full" if name == "pip" else name
+    advice = ("ask Claude to build a full-screen version and tick 'Graphics take the whole "
+              "screen (hides you)'." if name == "full" else
+              f"ask Claude to build this graphic for the {target} area.")
+    return (f"{title} was made for the {area} layout, but beat {beat['id']} uses the {name} layout. "
+            f"Switch the beat to the {area} layout, or {advice}")
 
 
 def chrome(lay):
@@ -240,7 +384,7 @@ def hook_record(inp):
     first = next((b for b in inp["beats"] if b["start_f"] == 0 and b.get("scene")), None)
     if first is not None and first["scene"]["id"] == "hf-hook-title":
         scene = first["scene"]
-        params = {k: p["default"] for k, p in scene_params(scene).items()}
+        params = {k: p["default"] for k, p in scene_params(scene, inp.get("reel_dir")).items()}
         params.update(scene.get("params", {}))
         box = [60, params["top"], 960, params["top"] + params["height"]]
         measured = inp.get("scene_boxes", {}).get(str(first["id"]))
@@ -335,25 +479,35 @@ def hook_shown_positions(hooks, words):
     return shown
 
 
-def build_spans(beats, kinds, hook_f, extra_spans=None):
+def build_spans(beats, kinds, hook_f, extra_spans=None, *, reel=None):
     """Gate spans: the scenes (spans_from_beats; the a-roll's own moves are not made here) + the compose hook as an
     overlay + extra_spans (the editing style's moves from styles.py, so they face the same VES-1 check)."""
-    spans = effect_gate.spans_from_beats(beats, 0, scene_kind=kinds)
+    mapped = {sid: "takeover" if kind == "world" else kind for sid, kind in kinds.items()}
+    spans = effect_gate.spans_from_beats(beats, 0, scene_kind=mapped)
+    for beat in beats:
+        scene = beat.get("scene")
+        if scene and kinds.get(scene["id"]) == "world":
+            spec = json.loads((scene_check.scene_dir(scene["id"], reel) / "scene.json").read_text(encoding="utf-8"))
+            # A graphic-area world leaves the speaker visible and must not gain a full-frame underlay.
+            if spec["area"] != "full" or beat["layout"] == "pip":
+                for span in spans:
+                    if span.get("id") == beat["id"] and span["layer"] == "takeover":
+                        span["layer"] = "overlay"
     if hook_f:
         spans.append({"layer": "overlay", "start_f": 0, "end_f": hook_f, "id": "hook title"})
     return spans + list(extra_spans or [])
 
 
-def picture_covers(beats, fps=None, *, opaque_only=False):
+def picture_covers(beats, fps=None, *, opaque_only=False, reel=None):
     """Covering pictures shared with handoff proofs; ends are exclusive.
 
     Face checks need opaque coverage: transitions and underlay fades can still
     show the speaker. Proofs exclude those uncertain pictures as before.
     The rate is only needed for takeover underlays.
     """
-    kinds = {b["scene"]["id"]: json.loads((scene_check.SCENES / b["scene"]["id"] / "scene.json")
+    kinds = {b["scene"]["id"]: json.loads((scene_check.scene_dir(b["scene"]["id"], reel) / "scene.json")
              .read_text(encoding="utf-8"))["kind"] for b in beats if b.get("scene")}
-    spans = build_spans(beats, kinds, 0)
+    spans = build_spans(beats, kinds, 0, reel=reel)
     labels = {"broll": "B-roll", "takeover": "full-frame scenes"}
     if not opaque_only:
         labels["transition"] = "transition pictures"
@@ -451,29 +605,6 @@ def tail(s, n=300):
     return " ".join(s.split())[-n:]
 
 
-def free_ram_mb():
-    """Available physical RAM in MB, or None when this machine cannot report it."""
-    try:
-        if sys.platform == "win32":
-            import ctypes
-
-            class MemoryStatus(ctypes.Structure):
-                _fields_ = [("length", ctypes.c_uint32), ("load", ctypes.c_uint32)] + [
-                    (name, ctypes.c_ulonglong) for name in (
-                        "total_phys", "avail_phys", "total_page", "avail_page",
-                        "total_virtual", "avail_virtual", "avail_extended")]
-
-            status = MemoryStatus()
-            status.length = ctypes.sizeof(status)
-            if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
-                return status.avail_phys // (1024 * 1024)
-        elif sys.platform.startswith("linux"):
-            return os.sysconf("SC_AVPHYS_PAGES") * os.sysconf("SC_PAGE_SIZE") // (1024 * 1024)
-    except Exception:
-        pass  # A failed RAM read uses the conservative one-worker budget.
-    return None
-
-
 def master_budget(free_mb, gpu):
     # ponytail: GPU and CPU caps are 2; masked-CPU 2 workers took 286 s, peak 2.4 GB Node.
     # Raise either cap only after a measured 3-worker pass.
@@ -526,6 +657,12 @@ def remove_tree(d):
 
 def ffmpeg(*args):
     return run([rt.tool("ffmpeg"), "-v", "error", *args], rt.python_env())
+
+
+def mux_audio(video, audio_src, partial):
+    """Copy the rendered picture and selected audio into the delivery file."""
+    return ffmpeg("-y", "-i", video, "-i", audio_src, "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy",
+                  "-c:a", "copy", "-movflags", "+faststart", partial)
 
 
 def packet_md5(path, sel):
@@ -593,6 +730,7 @@ def load_inputs(reel):
     master = reel / "work" / "renders" / f"master-{tag}.mp4"
     if not master.is_file():
         raise Stop(2, f"✗ The cut master work/renders/{master.name} is missing; make the cut first.")
+    check_reel_scenes(bm["beats"], reel)
     return {"bm": bm, "beats": bm["beats"], "words": words, "timed_words": timed_words,
             "cuts": cuts, "master": master, "reel_dir": reel}
 
@@ -643,7 +781,7 @@ def broll_plan(inp):
             row = matches[0]
             category = None
             if b.get("scene"):
-                spec = json.loads((scene_check.SCENES / b["scene"]["id"] / "scene.json").read_text(encoding="utf-8"))
+                spec = json.loads((scene_check.scene_dir(b["scene"]["id"], inp.get("reel_dir")) / "scene.json").read_text(encoding="utf-8"))
                 category = spec.get("category")
             if row.get("origin") == "ai" and (b.get("value") is not None or category in scene_check.NUMBER_SCENES):
                 problems.append(f"BLOCK beat {b['id']}: an AI clip can't sit on a beat that shows a number: it would look like proof")
@@ -660,6 +798,23 @@ def broll_plan(inp):
         problems.append("BLOCK the B-roll could not be checked: " + str(e).splitlines()[0])
     if problems:
         raise Stop(1, *problems, "Nothing was rendered; fix the B-roll and Send again.")
+
+
+def masked_broll(reel, inp, b):
+    """A single fail-closed boundary for every B-roll render consumer."""
+    clip = b["broll"]
+    boxes = inp["bm"].get("broll_masks", {}).get(clip["ledger_id"], [])
+    if not boxes:
+        return reel / clip["src"]
+    try:
+        path = broll_mask.masked_copy(reel, clip["src"], boxes)
+        if not path.is_file() or broll_mask.check(reel, clip["src"], boxes, path):
+            raise ValueError("private areas could not be verified")
+        inp.setdefault("masked", {})[clip["ledger_id"]] = broll_mask.sha256(path)
+        return path
+    except Exception:
+        raise Stop(1, f"Couldn't hide the private areas on clip {clip['ledger_id']}, so nothing was rendered. "
+                      "Re-open Hide private details on that clip, or ask Claude to check it.") from None
 
 
 def footage_licences(inp, tier):
@@ -719,9 +874,40 @@ def print_notes(inp, notes):
             printed.append(note)
 
 
+def check_reel_scenes(beats, reel, *, ctx=None):
+    """One plain scene-specific refusal before any render or other planning."""
+    for number, beat in enumerate(beats, 1):
+        sid = (beat.get("scene") or {}).get("id")
+        if not isinstance(sid, str) or not sid.startswith("reel-"):
+            continue
+        try:
+            folder = scene_check.scene_dir(sid, reel)
+        except (OSError, ValueError):
+            raise Stop(1, f"The graphic for beat {number} ({sid}) is missing or unavailable. "
+                          "Ask Claude to rebuild the motion.") from None
+        try:
+            problems = scene_check.scene_problems(folder)
+        except (OSError, ValueError) as error:
+            problems = [str(error)]
+        if problems:
+            raise Stop(1, f"Scene {sid}: {' '.join(problems[0].splitlines())}")
+        spec = json.loads((scene_check.scene_dir(sid, reel) / "scene.json").read_text(encoding="utf-8"))
+        if spec["kind"] == "world":
+            problem = world_area_problem(beat, spec, reel, ctx=ctx)
+            if problem:
+                raise Stop(1, problem)
+
+
 def plan(inp, hook_text, extra_spans=None, *, ctx=None):
     """Notes, scene checks, the hook, and the effect gate; raises Stop before anything renders."""
     beats, rate = inp["beats"], inp["rate"]
+    if ctx is None and world_face_slots(beats, inp.get("reel_dir")):
+        ctx = world_face_context(inp)
+    check_reel_scenes(beats, inp.get("reel_dir"), ctx=ctx)
+    try:
+        check_word_params(beats, rate, inp.get("reel_dir"))
+    except ValueError as error:
+        raise Stop(1, str(error)) from None
     broll_plan(inp)
     # --- G5 transitions (VES-1) ---
     try:
@@ -734,12 +920,12 @@ def plan(inp, hook_text, extra_spans=None, *, ctx=None):
     opens = set()  # H-S6b-19: a scene that opens the reel is complete at frame 0 when it can be
     for b in scened:
         params = b["scene"].get("params", {})  # no params key = {} (as fill_problems reads it)
-        declared = scene_params(b["scene"])
+        declared = scene_params(b["scene"], inp.get("reel_dir"))
         if isinstance(params, dict):
             explicit_font = "font" in params
             try:
-                page = (scene_check.SCENES / b["scene"]["id"] / "scene.html").read_text(encoding="utf-8")
-            except OSError:
+                page = (scene_check.scene_dir(b["scene"]["id"], inp.get("reel_dir")) / "scene.html").read_text(encoding="utf-8")
+            except (OSError, ValueError):
                 page = ""  # fill_problems names the missing scene below
             params, notes = brand_params({"params": declared}, page, params, saved)
             b["scene"] = dict(b["scene"], params=params)
@@ -753,10 +939,10 @@ def plan(inp, hook_text, extra_spans=None, *, ctx=None):
             b["scene"] = dict(b["scene"], params=dict(params, entrance="none"))
             opens.add(b["id"])
     bad = [f"✗ beat {b['id']}: {p}" for b in scened
-           for p in scene_check.fill_problems(b["scene"].get("id"), b, words=inp["words"])]
+           for p in scene_check.fill_problems(b["scene"].get("id"), b, words=inp["words"], reel=inp.get("reel_dir"))]
     if bad:
         raise Stop(1, *bad, "Fix the scene on the Beat Map board and Send again; nothing was rendered.")
-    specs = {b["scene"]["id"]: json.loads((scene_check.SCENES / b["scene"]["id"] / "scene.json")
+    specs = {b["scene"]["id"]: json.loads((scene_check.scene_dir(b["scene"]["id"], inp.get("reel_dir")) / "scene.json")
                                           .read_text(encoding="utf-8")) for b in scened}
     problems = []
     for b in scened:
@@ -793,7 +979,7 @@ def plan(inp, hook_text, extra_spans=None, *, ctx=None):
     title_notes = place_hook_titles(inp, ctx) if ctx is not None else []
     kinds = {sid: spec["kind"] for sid, spec in specs.items()}
     try:
-        spans = build_spans(beats, kinds, inp["hook_f"], extra_spans)
+        spans = build_spans(beats, kinds, inp["hook_f"], extra_spans, reel=inp.get("reel_dir"))
         spans.extend(dict(layer="overlay", start_f=h["start_f"], end_f=h["end_f"], id="hook title")
                      for h in inp["hooks"] if h["start_f"] > 0)
     except ValueError as e:
@@ -805,10 +991,10 @@ def plan(inp, hook_text, extra_spans=None, *, ctx=None):
     return title_notes
 
 
-def scene_params(scene):
+def scene_params(scene, reel=None):
     """The params a scene's scene.json declares ({} when it can't be read; fill_problems then says why)."""
     try:
-        spec = json.loads((scene_check.SCENES / str(scene.get("id")) / "scene.json").read_text(encoding="utf-8"))
+        spec = json.loads((scene_check.scene_dir(scene.get("id"), reel) / "scene.json").read_text(encoding="utf-8"))
         return spec.get("params") or {}
     except (OSError, ValueError, AttributeError):
         return {}
@@ -824,9 +1010,9 @@ def scene_fill_hash(scene):
     return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
 
-def scene_title(sid):
+def scene_title(sid, reel=None):
     """The Beat Map's sceneTitle fallback, with catalog titles preferred."""
-    spec = json.loads((scene_check.SCENES / sid / "scene.json").read_text(encoding="utf-8"))
+    spec = json.loads((scene_check.scene_dir(sid, reel) / "scene.json").read_text(encoding="utf-8"))
     words = re.sub(r"^hf-", "", sid).replace("-", " ")
     return spec.get("title") or spec.get("label") or words[:1].upper() + words[1:]
 
@@ -851,7 +1037,7 @@ def write_scene_boxes(path, beats):
     write_json(path, dict(schema=1, beats=beats))
 
 
-def write_omitted_scene_boxes(path, sources, beats, *, layers="all"):
+def write_omitted_scene_boxes(path, sources, beats, *, layers="all", reel=None):
     """Record scenes removed with a placement note, including plain-hook replacements."""
     if layers not in ("all", "overlay"):
         return {}  # These layers do not render or measure scenes; preserve the box file.
@@ -860,7 +1046,7 @@ def write_omitted_scene_boxes(path, sources, beats, *, layers="all"):
         bid = str(beat["id"])
         if bid in sources and not beat.get("scene"):
             source = sources[bid]
-            kind = json.loads((scene_check.SCENES / source["id"] / "scene.json").read_text(encoding="utf-8"))["kind"]
+            kind = json.loads((scene_check.scene_dir(source["id"], reel) / "scene.json").read_text(encoding="utf-8"))["kind"]
             entries[bid] = dict(scene_box_entry(source, source, None, kind), omitted=True)
     write_scene_boxes(path, entries)
     return entries
@@ -1055,7 +1241,7 @@ def callout_placement(ctx, beat):
     placed = face_clear_placement(head, placed["size"], 36, candidate)
     if placed is None:
         return None, CALLOUT_DROP
-    declared = scene_params(scene)
+    declared = scene_params(scene, ctx.get("reel_dir"))
     changed = {key for key in ("top", "size") if key in explicit
                and explicit[key] != declared[key]["default"] and placed[key] != explicit[key]}
     if "top" in changed:
@@ -1163,6 +1349,11 @@ def choose_audio(reel, inp, tier):
     if line:
         print(f"note: the {tier} uses the cut's own sound: {line}")
     if kind == "mix":
+        if tier == "master":
+            try:
+                mix_approval.require_approved_mix(reel, final)
+            except mix_approval.MixApprovalError as error:
+                raise Stop(1, str(error)) from None
         rows = licence_rows.music({"reel_dir": reel, "fps": float(inp["rate"]), "cuts": inp["cuts"],
                                  "beats": inp["beats"], "render": None})
         blocks = [r["msg"] for r in rows if r["level"] == "block"]
@@ -1227,9 +1418,11 @@ def hf_render(proj, out, env, what, extra, *, tier=None):
     print(f"info: {what} rendered in {time.perf_counter() - t0:.1f} s")
 
 
-def scene_project(dst, beat, rate):
+def scene_project(dst, beat, rate, reel=None):
     sid = beat["scene"]["id"]
-    src = (scene_check.SCENES / sid / "scene.html").read_text(encoding="utf-8")
+    check_reel_scenes([beat], reel)
+    folder = scene_check.scene_dir(sid, reel)
+    src = (folder / "scene.html").read_text(encoding="utf-8")
     root = re.search(r'<[^>]*\bdata-composition-id="%s"[^>]*>' % re.escape(sid), src)
     if not root or 'data-duration="' not in root.group(0):
         raise Stop(1, f"✗ The {sid} scene has no root duration to set; the scene file is damaged, reinstall the editor.")
@@ -1250,6 +1443,10 @@ def scene_project(dst, beat, rate):
                  f'font-weight: {face["weight"]} !important; font-style: {face["style"]} !important; '
                  'font-synthesis: none; }')
         page = page.replace("</head>", f"<style>{rule}</style>\n</head>", 1)
+    if sid.startswith("reel-"):
+        for name, source in scene_check.reel_assets(folder, src).items():
+            (dst / "assets").mkdir(exist_ok=True)
+            shutil.copy2(source, dst / "assets" / name)
     (dst / "index.html").write_bytes(page.encode("utf-8"))
 
 
@@ -1259,16 +1456,16 @@ THREE_RUNTIME = P / "runtime" / "three"
 _n3_scene_project = scene_project
 
 
-def scene_is_3d(beat):
+def scene_is_3d(beat, reel=None):
     scene = beat.get("scene")
     if not scene:
         return False
-    spec = json.loads((scene_check.SCENES / scene["id"] / "scene.json").read_text(encoding="utf-8"))
+    spec = json.loads((scene_check.scene_dir(scene["id"], reel) / "scene.json").read_text(encoding="utf-8"))
     return spec.get("category") == "3d"
 
 
-def scene_z(beat, i):
-    if scene_is_3d(beat):
+def scene_z(beat, i, reel=None):
+    if scene_is_3d(beat, reel):
         z = Z_3D + i
         if z >= 400:
             raise Stop(1, "This reel has more scenes than the 3D layer holds; use fewer scenes.")
@@ -1276,9 +1473,9 @@ def scene_z(beat, i):
     return Z_SCENE + i
 
 
-def scene_project(dst, beat, rate):
-    result = _n3_scene_project(dst, beat, rate)
-    if scene_is_3d(beat):
+def scene_project(dst, beat, rate, reel=None):
+    result = _n3_scene_project(dst, beat, rate, reel)
+    if scene_is_3d(beat, reel):
         files = ("three.module.js", "three.core.js")
         if not all((THREE_RUNTIME / name).is_file() for name in files):
             raise Stop(1, "The 3D engine files are missing, reinstall the editor.")
@@ -1292,9 +1489,9 @@ MOTION_RUNTIME = P / "runtime" / "motion"
 _g2c_scene_project = scene_project
 
 
-def scene_project(dst, beat, rate):
-    result = _g2c_scene_project(dst, beat, rate)
-    html = (scene_check.SCENES / beat["scene"]["id"] / "scene.html").read_text(encoding="utf-8")
+def scene_project(dst, beat, rate, reel=None):
+    result = _g2c_scene_project(dst, beat, rate, reel)
+    html = (scene_check.scene_dir(beat["scene"]["id"], reel) / "scene.html").read_text(encoding="utf-8")
     parser = scene_check._N3Scripts()
     parser.feed(html)
     sources = [attrs.get("src") for attrs, _ in parser.scripts]
@@ -1303,7 +1500,7 @@ def scene_project(dst, beat, rate):
         if not source.is_file():
             raise Stop(1, "The Motion engine file is missing, reinstall the editor.")
         shutil.copy2(source, dst / "vendor" / source.name)
-    if scene_is_3d(beat):
+    if scene_is_3d(beat, reel):
         # Validate before using map values as filesystem paths.
         maps = [body for attrs, body in parser.scripts if attrs.get("type", "").strip().lower() == "importmap"]
         if maps:
@@ -1337,6 +1534,8 @@ def main_html(inp, w, h, scene_files, layers="all"):
     if layers not in ("all", "aroll", "overlay", "captions"):
         raise ValueError("unknown render layers")
     which = layers
+    slots = world_face_slots(inp.get("beats", []), inp.get("reel_dir")) if which in ("all", "aroll") else []
+    face_ctx = world_face_context(inp) if scene_files and slots else None
     if which == "aroll":
         inp = dict(inp, beats=[], under=[], hook_f=0, hooks=[], captions=None)
         scene_files = []
@@ -1397,14 +1596,42 @@ def main_html(inp, w, h, scene_files, layers="all"):
                       f'{t0});')
             tl.append(f'        tl.fromTo("#aroll-box", {{ {geom(a)} }}, {{ {geom(b)}, {end}')
             tl.append(f'        tl.set("#aroll-box", {{ {chrome(b)}, immediateRender: false }}, {at(m["end_f"], rate)});')
+    # A world beat owns the outer face slot, even while a style tween crosses it.
+    # CSS overrides drop scale only inside the beat; the original timeline resumes
+    # at its exact current state on end_f, without rewriting or splitting its moves.
+    slot_css = ""
+    for name in sorted({name for _, _, name in slots}):
+        face = lay(name)
+        x, y, fw, fh = face["box"]
+        selector = f'#aroll-box[data-world-face="{name}"]'
+        slot_css += (f'{selector} {{ transform: translate({x:g}px, {y:g}px) !important; '
+                     f'width: {fw:g}px !important; height: {fh:g}px !important; '
+                     f'border-radius: {face["radius"]:g}px !important; '
+                     f'box-shadow: {face["shadow"]} !important; z-index: {face["z"]} !important; }}\n'
+                     f'{selector} #aroll-move {{ transform: none !important; }}\n')
+    for frame in sorted({f for a, e, _ in slots for f in (a, e)}):
+        name = next((name for a, e, name in slots if a <= frame < e), "")
+        tl.append(f'        tl.set("#aroll-box", {{ attr: {{ "data-world-face": "{name}" }}, '
+                  f'immediateRender: {"true" if frame == 0 else "false"} }}, {at(frame, rate)});')
     for i, (b, name) in enumerate(scene_files):
-        z = scene_z(b, i)
+        spec = {}
+        if b.get("scene") and b["scene"]["id"].startswith("reel-"):
+            spec = json.loads((scene_check.scene_dir(b["scene"]["id"], inp.get("reel_dir")) / "scene.json").read_text(encoding="utf-8"))
+        scene_style = ""
+        if spec.get("kind") == "world":
+            problem = world_area_problem(b, spec, inp.get("reel_dir"), ctx=face_ctx)
+            if problem:
+                raise Stop(1, problem)
+            x, y, sw, sh = world_area(spec["area"])
+            scene_style = (f'style="left: {x * s:g}px; top: {y * s:g}px; width: {sw * s:g}px; '
+                           f'height: {sh * s:g}px; object-fit: fill" ')
+        z = scene_z(b, i, inp.get("reel_dir"))
         if z >= Z_PIP:
             raise Stop(1, "✗ This reel has more scenes than the scene layer holds; use fewer scenes.")
         layers.append(f'      <div class="band" style="z-index: {z}"><video id="scene-{name}" class="clip" '
                       f'src="media/{name}.mov" data-start="{ts(b["start_f"], rate)}" '
                       f'data-duration="{ts(b["end_f"] - b["start_f"], rate)}" data-track-index="{i + 1}" muted '
-                      f'playsinline preload="auto"></video></div>')
+                      f'{scene_style}playsinline preload="auto"></video></div>')
     for k, u in enumerate(inp["under"]):
         el, n = f'"#underlay-{k}"', u["end_f"] - u["start_f"]
         f = min(FADE_F, n // 2)
@@ -1466,7 +1693,7 @@ def main_html(inp, w, h, scene_files, layers="all"):
     fill = {"W": str(w), "H": str(h), "UNDERLAY": UNDERLAY, "HOOK_X": f"{x:.1f}", "HOOK_Y": f"{y:.1f}",
             "HOOK_W": f"{bw:.1f}", "HOOK_SIZE": f"{size:.1f}", "DURATION": ts(inp["total"], rate),
             "HOOK_SHADOW": f"0 0 {6 * s:.1f}px rgba(0, 0, 0, 0.9), 0 {2 * s:.1f}px {4 * s:.1f}px rgba(0, 0, 0, 0.9)",
-            "LAYERS": "\n".join(layers), "TIMELINE": "\n".join(tl), "CAPTION_CSS": caption_css}
+            "LAYERS": "\n".join(layers), "TIMELINE": "\n".join(tl), "CAPTION_CSS": caption_css + slot_css}
     out = TEMPLATE.read_text(encoding="utf-8").replace("#hook {", ".plain-hook {")
     if which in ("overlay", "captions"):
         out = out.replace("background: #000000;", "background: transparent;")
@@ -1543,8 +1770,6 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
     if layers != "all":
         tier = "master"
     tmp = reel / "work" / "render-tmp"
-    if tmp.exists() and not remove_tree(tmp):  # an earlier run that crashed can leave it behind
-        raise Stop(1, f"✗ The old work/render-tmp folder can't be deleted; close what uses it, then run this again.")
     inp = load_inputs(reel)
     source_scenes = {str(b["id"]): copy.deepcopy(b["scene"]) for b in inp["beats"] if b.get("scene")}
     boxes_path = reel / "work/scene-boxes.json"
@@ -1561,6 +1786,13 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
         if line:
             raise Stop(1, f"✗ {line}")
     probe_inputs(inp)
+    # Check every private area before rendering any scene, plate or final output.
+    broll_inputs = {b["id"]: masked_broll(reel, inp, b) for b in inp["beats"]
+                    if b.get("broll") and layers in ("all", "overlay")}
+    try:
+        check_word_params(inp["beats"], inp["rate"], reel)
+    except ValueError as error:
+        raise Stop(1, str(error)) from None
     try:  # H-R36: no editing style anywhere = the ask line, and nothing renders
         track = styles.plan(reel, fps=inp["fps"], remember_choices=remember_choices, style_reel=style_reel)
     except styles.Stop as e:
@@ -1569,6 +1801,8 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
         print(f"note: {line}")
     inp["track"] = track
     styles.write_json(reel / styles.TRACK, track)  # S7 reads it
+    check_reel_scenes(inp["beats"], reel, ctx=world_face_context(inp)
+                      if world_face_slots(inp["beats"], reel) else None)
     if tier == "preview" and layers == "all":
         # The 3D envelope needs JSON only; refuse before rendering any scene/video.
         qa_pre_or_stop(reel, only={"three_d_check"})
@@ -1649,149 +1883,160 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
     print("info: encode generations: camera -> cut master (1) -> this render (2)")
     env, cache = rt.hyperframes_env(), tmp / "hf-cache"
     proj = tmp / "proj"
-    # Replace old placements, retaining explicit records for compose's noted omissions.
-    measured_boxes = write_omitted_scene_boxes(boxes_path, source_scenes, inp["beats"], layers=layers)
-    try:
-        (proj / "media").mkdir(parents=True)
-        cache.mkdir()
-        scene_files = []
-        for i, b in enumerate(inp["scened"] if layers in ("all", "overlay") else []):
-            sid, name_i = b["scene"]["id"], safe_id(b["id"], i)
-            sproj = tmp / "scenes" / name_i
-            scene_project(sproj, b, inp["rate"])
-            vf = tmp / "scenes" / f"{name_i}.vars.json"
-            vf.write_bytes(json.dumps({**b["scene"]["slots"], **(b["scene"].get("params") or {})}).encode("utf-8"))
-            mov = proj / "media" / f"{name_i}.mov"
-            hf_render(sproj, mov, env, f"scene {sid} (beat {b['id']})",
-                      ["--format", "mov", "--fps", inp["fps"], "--strict-variables", "--variables-file", vf,
-                       "--frames-cache-dir", cache])
-            kind = json.loads((scene_check.SCENES / sid / "scene.json").read_text(encoding="utf-8"))["kind"]
-            box = measure_scene_box(mov, env)
-            measured_boxes[str(b["id"])] = scene_box_entry(source_scenes[str(b["id"])], b["scene"], box, kind)
-            write_scene_boxes(boxes_path, measured_boxes)
-            got, want = fpsmod.frame_count(mov), b["end_f"] - b["start_f"]
-            if got != want:
-                raise Stop(1, f"✗ The {sid} scene came out {got} frames long, not {want}; run it again.")
-            scene_files.append((b, name_i))
-        # Measure every scene first, then settle cards in beat order. Each move
-        # sees fixed titles, untouched later cards and remeasured earlier cards.
-        for b, name_i in scene_files:
-            sid = b["scene"]["id"]
-            entry = measured_boxes[str(b["id"])]
-            if entry["kind"] == "overlay":
-                if ctx is None:
-                    ctx = placer.load_ctx(reel)
-                dy, note = overlay_card_placement(ctx, b, inp["beats"], measured_boxes,
-                    explicit=(source_scenes[str(b["id"])].get("params") or {}).get("dy", 0) != 0)
-                if note is not None and note not in doc["notes"]:
-                    doc["notes"].append(note)
-                if "dy" in scene_params(b["scene"]):
-                    if dy is not None:
-                        sproj = tmp / "scenes" / name_i
-                        vf = tmp / "scenes" / f"{name_i}.vars.json"
-                        mov = proj / "media" / f"{name_i}.mov"
-                        b["scene"].setdefault("params", {})["dy"] = dy
-                        vf.write_bytes(json.dumps({**b["scene"]["slots"], **b["scene"]["params"]}).encode("utf-8"))
-                        moved_cache = cache / (name_i + "-dy")
-                        moved_cache.mkdir()
-                        mov.unlink()
-                        hf_render(sproj, mov, env, f"scene {sid} (beat {b['id']})",
-                                  ["--format", "mov", "--fps", inp["fps"], "--strict-variables", "--variables-file", vf,
-                                   "--frames-cache-dir", moved_cache])
-                        box = measure_scene_box(mov, env)
-                        measured_boxes[str(b["id"])] = scene_box_entry(source_scenes[str(b["id"])], b["scene"], box, entry["kind"])
-                        write_scene_boxes(boxes_path, measured_boxes)
-                        got, want = fpsmod.frame_count(mov), b["end_f"] - b["start_f"]
-                        if got != want:
-                            raise Stop(1, f"✗ The {sid} scene came out {got} frames long, not {want}; run it again.")
-                        number = inp["beats"].index(b) + 1
-                        print(f"note: The {scene_title(sid)} card would have covered your face on beat {number}, "
-                              f"so it was moved {'up' if dy < 0 else 'down'}.")
-        inp["scene_boxes"] = measured_boxes
-        if any(b["scene"]["id"] in ("hf-hook-title", "hf-callout") for b, _ in scene_files):
-            # These two cards already act as caption obstacles; use their real bounds now.
-            doc["hooks"] = placement_hooks(inp)
-            placer.set_hook_stills(ctx, doc["hooks"])
-            if doc["chunks"]:
-                ctx["notes"] = list(placement_state[0])
-                if placement_state[1] is None:
-                    ctx.pop("fallbacks", None)
-                else:
-                    ctx["fallbacks"] = list(placement_state[1])
-                bands = []
-                for c in doc["chunks"]:
-                    c["box"] = placer.place(ctx, c["start_f"], c["end_f"] - 1, captions.band_h(spec))
-                    bands.append(dict(start_f=c["start_f"], end_f=c["end_f"] - 1, box=c["box"]))
-                doc["notes"] = list(dict.fromkeys([n for n in doc["notes"] if n not in placement_notes]
-                                                  + ctx["notes"] + placer.ghosts(ctx, bands)))
-            captions.write(reel, doc)
-        if layers == "all":
-            write_json(reel / "work/hook.json", hook_record(inp))
-        if layers in ("all", "aroll"):
-            link_or_copy(inp["master"], proj / "media" / "aroll.mp4")
-        for i, b in enumerate(b for b in inp["beats"] if b.get("broll") and layers in ("all", "overlay")):
-            names = [broll_name(b, i)] + ([broll_name(b, i) + "-back"] if b["broll"]["fit"] == "blur-fill" else [])
-            for n in names:
-                link_or_copy(reel / b["broll"]["src"], proj / "media" / (n + ".mp4"))
-        (proj / "vendor").mkdir()
-        shutil.copy2(P / "runtime" / "gsap" / "gsap.min.js", proj / "vendor" / "gsap.min.js")
-        # --- G5 transitions (VES-1) ---
-        transitions.copy_vendor(inp, proj, layers)
-        # --- end G5 ---
-        shutil.copytree(P / "runtime" / "fonts", proj / "fonts")
-        page = main_html(inp, w, h, scene_files, layers=layers).encode("utf-8")
-        # --- G6 cover (embed) ---
-        cover_file, cover_image = reel / "cover.json", reel / "cover.jpg"
-        if layers == "all" and cover_file.is_file() and cover_image.is_file():
-            cover = read_json(cover_file, "The cover choice could not be read; Send the Cover Picker again.")
-            if cover.get("embed_first_frame") is True:
-                link_or_copy(cover_image, proj / "media" / "cover.jpg")
-                still = (f'<img id="cover-first-frame" src="media/cover.jpg" alt="" '
-                         f'style="position:absolute;left:0;top:0;width:{w}px;height:{h}px;z-index:650;'
-                         'visibility:hidden;object-fit:fill">\n')
-                sets = ('        tl.set("#cover-first-frame", { autoAlpha: 1, immediateRender: true }, 0);\n'
-                        f'        tl.set("#cover-first-frame", {{ autoAlpha: 0, immediateRender: false }}, {at(1, inp["rate"])});\n')
-                page = page.replace(b'    </div>\n    <script>', still.encode("utf-8") + b'    </div>\n    <script>', 1)
-                page = page.replace(b'        window.__timelines =', sets.encode("utf-8") + b'        window.__timelines =', 1)
-        # --- end G6 ---
-        captions.write(reel, doc)  # layer() can add fitting notes
-        print_notes(inp, doc["notes"][printed_notes:])
-        assert b"\r" not in page
-        (proj / "index.html").write_bytes(page)
-        video = tmp / ("video.mov" if layers in ("overlay", "captions") else "video.mp4")
-        hf_render(proj, video, env, f"{tier} ({w}x{h})",
-                  ["--fps", inp["fps"], "--frames-cache-dir", cache, *QUALITY[tier],
-                   *(["--format", "mov"] if layers in ("overlay", "captions") else [])], tier=tier)
-        renders.mkdir(exist_ok=True)
-        t0 = time.perf_counter()
-        if layers in ("overlay", "captions"):
-            rc, o, e = ffmpeg("-y", "-i", video, "-map", "0:v:0", "-an", "-c:v", "copy", partial)
-        else:
-            rc, o, e = ffmpeg("-y", "-i", video, "-i", audio_src, "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy",
-                              "-c:a", "copy", "-movflags", "+faststart", partial)
-        if rc != 0 or not partial.is_file():
-            raise Stop(1, f"✗ Adding the sound stopped (exit {rc}: {tail(o + e)}); run it again.")
-        print(f"info: sound added in {time.perf_counter() - t0:.1f} s")
-        got = fpsmod.frame_count(partial)
-        st = streams(partial)
-        dur = {s.get("codec_type"): float(s.get("duration") or 0) for s in st}
-        kinds = sorted(s.get("codec_type") for s in st)
-        if layers in ("overlay", "captions"):
-            pix = next((s.get("pix_fmt", "") for s in st if s.get("codec_type") == "video"), "")
-            if got != inp["total"] or kinds != ["video"] or not alpha_pix_fmt(pix):
-                raise Stop(1, f"The {layers} layer has the wrong frame count or no transparent channel; run it again.")
-        elif got != inp["total"] or kinds != ["audio", "video"] or abs(dur["audio"] - dur["video"]) > 1 / float(inp["rate"]):
-            raise Stop(1, f"✗ The render came out wrong ({got} frames for {inp['total']}, streams {kinds}, sound "
-                          f"{dur.get('audio', 0):.3f} s against picture {dur.get('video', 0):.3f} s), so it was "
-                          f"deleted; run it again.")
-        os.replace(partial, final)
-    finally:
-        partial.unlink(missing_ok=True)
-        kill_warm()
-        if keep_project and proj.is_dir():
-            print(f"info: render project kept at {proj}")
-        elif not remove_tree(tmp):
-            print("note: work/render-tmp couldn't be deleted; it's safe to delete by hand")
+    with heavy_job(f"{reel.name} {tier}"):
+        if tmp.exists() and not remove_tree(tmp):  # an earlier run that crashed can leave it behind
+            raise Stop(1, f"✗ The old work/render-tmp folder can't be deleted; close what uses it, then run this again.")
+        # Replace old placements, retaining explicit records for compose's noted omissions.
+        measured_boxes = write_omitted_scene_boxes(boxes_path, source_scenes, inp["beats"], layers=layers, reel=reel)
+        try:
+            (proj / "media").mkdir(parents=True)
+            cache.mkdir()
+            scene_files = []
+            for i, b in enumerate(inp["scened"] if layers in ("all", "overlay") else []):
+                sid, name_i = b["scene"]["id"], safe_id(b["id"], i)
+                sproj = tmp / "scenes" / name_i
+                scene_project(sproj, b, inp["rate"], reel)
+                vf = tmp / "scenes" / f"{name_i}.vars.json"
+                vf.write_bytes(json.dumps({**b["scene"]["slots"], **(b["scene"].get("params") or {})}).encode("utf-8"))
+                mov = proj / "media" / f"{name_i}.mov"
+                hf_render(sproj, mov, env, f"scene {sid} (beat {b['id']})",
+                          ["--format", "mov", "--fps", inp["fps"], "--strict-variables", "--variables-file", vf,
+                           "--frames-cache-dir", cache])
+                kind = json.loads((scene_check.scene_dir(sid, reel) / "scene.json").read_text(encoding="utf-8"))["kind"]
+                box = measure_scene_box(mov, env)
+                measured_boxes[str(b["id"])] = scene_box_entry(source_scenes[str(b["id"])], b["scene"], box, kind)
+                write_scene_boxes(boxes_path, measured_boxes)
+                got, want = fpsmod.frame_count(mov), b["end_f"] - b["start_f"]
+                if got != want:
+                    raise Stop(1, f"✗ The {sid} scene came out {got} frames long, not {want}; run it again.")
+                scene_files.append((b, name_i))
+            # Measure every scene first, then settle cards in beat order. Each move
+            # sees fixed titles, untouched later cards and remeasured earlier cards.
+            for b, name_i in scene_files:
+                sid = b["scene"]["id"]
+                entry = measured_boxes[str(b["id"])]
+                if entry["kind"] == "overlay":
+                    if ctx is None:
+                        ctx = placer.load_ctx(reel)
+                    dy, note = overlay_card_placement(ctx, b, inp["beats"], measured_boxes,
+                        explicit=(source_scenes[str(b["id"])].get("params") or {}).get("dy", 0) != 0)
+                    if note is not None and note not in doc["notes"]:
+                        doc["notes"].append(note)
+                    if "dy" in scene_params(b["scene"], inp.get("reel_dir")):
+                        if dy is not None:
+                            sproj = tmp / "scenes" / name_i
+                            vf = tmp / "scenes" / f"{name_i}.vars.json"
+                            mov = proj / "media" / f"{name_i}.mov"
+                            b["scene"].setdefault("params", {})["dy"] = dy
+                            vf.write_bytes(json.dumps({**b["scene"]["slots"], **b["scene"]["params"]}).encode("utf-8"))
+                            moved_cache = cache / (name_i + "-dy")
+                            moved_cache.mkdir()
+                            mov.unlink()
+                            hf_render(sproj, mov, env, f"scene {sid} (beat {b['id']})",
+                                      ["--format", "mov", "--fps", inp["fps"], "--strict-variables", "--variables-file", vf,
+                                       "--frames-cache-dir", moved_cache])
+                            box = measure_scene_box(mov, env)
+                            measured_boxes[str(b["id"])] = scene_box_entry(source_scenes[str(b["id"])], b["scene"], box, entry["kind"])
+                            write_scene_boxes(boxes_path, measured_boxes)
+                            got, want = fpsmod.frame_count(mov), b["end_f"] - b["start_f"]
+                            if got != want:
+                                raise Stop(1, f"✗ The {sid} scene came out {got} frames long, not {want}; run it again.")
+                            number = inp["beats"].index(b) + 1
+                            print(f"note: The {scene_title(sid, reel)} card would have covered your face on beat {number}, "
+                                  f"so it was moved {'up' if dy < 0 else 'down'}.")
+            inp["scene_boxes"] = measured_boxes
+            if any(b["scene"]["id"] in ("hf-hook-title", "hf-callout") for b, _ in scene_files):
+                # These two cards already act as caption obstacles; use their real bounds now.
+                doc["hooks"] = placement_hooks(inp)
+                placer.set_hook_stills(ctx, doc["hooks"])
+                if doc["chunks"]:
+                    ctx["notes"] = list(placement_state[0])
+                    if placement_state[1] is None:
+                        ctx.pop("fallbacks", None)
+                    else:
+                        ctx["fallbacks"] = list(placement_state[1])
+                    bands = []
+                    for c in doc["chunks"]:
+                        c["box"] = placer.place(ctx, c["start_f"], c["end_f"] - 1, captions.band_h(spec))
+                        bands.append(dict(start_f=c["start_f"], end_f=c["end_f"] - 1, box=c["box"]))
+                    doc["notes"] = list(dict.fromkeys([n for n in doc["notes"] if n not in placement_notes]
+                                                      + ctx["notes"] + placer.ghosts(ctx, bands)))
+                captions.write(reel, doc)
+            if layers == "all":
+                write_json(reel / "work/hook.json", hook_record(inp))
+            if layers in ("all", "aroll"):
+                link_or_copy(inp["master"], proj / "media" / "aroll.mp4")
+            for i, b in enumerate(b for b in inp["beats"] if b.get("broll") and layers in ("all", "overlay")):
+                names = [broll_name(b, i)] + ([broll_name(b, i) + "-back"] if b["broll"]["fit"] == "blur-fill" else [])
+                for n in names:
+                    link_or_copy(broll_inputs[b["id"]], proj / "media" / (n + ".mp4"))
+            (proj / "vendor").mkdir()
+            shutil.copy2(P / "runtime" / "gsap" / "gsap.min.js", proj / "vendor" / "gsap.min.js")
+            # --- G5 transitions (VES-1) ---
+            transitions.copy_vendor(inp, proj, layers)
+            # --- end G5 ---
+            shutil.copytree(P / "runtime" / "fonts", proj / "fonts")
+            page = main_html(inp, w, h, scene_files, layers=layers).encode("utf-8")
+            # --- G6 cover (embed) ---
+            cover_file, cover_image = reel / "cover.json", reel / "cover.jpg"
+            if layers == "all" and cover_file.is_file() and cover_image.is_file():
+                cover = read_json(cover_file, "The cover choice could not be read; Send the Cover Picker again.")
+                if cover.get("embed_first_frame") is True:
+                    link_or_copy(cover_image, proj / "media" / "cover.jpg")
+                    still = (f'<img id="cover-first-frame" src="media/cover.jpg" alt="" '
+                             f'style="position:absolute;left:0;top:0;width:{w}px;height:{h}px;z-index:650;'
+                             'visibility:hidden;object-fit:fill">\n')
+                    sets = ('        tl.set("#cover-first-frame", { autoAlpha: 1, immediateRender: true }, 0);\n'
+                            f'        tl.set("#cover-first-frame", {{ autoAlpha: 0, immediateRender: false }}, {at(1, inp["rate"])});\n')
+                    page = page.replace(b'    </div>\n    <script>', still.encode("utf-8") + b'    </div>\n    <script>', 1)
+                    page = page.replace(b'        window.__timelines =', sets.encode("utf-8") + b'        window.__timelines =', 1)
+            # --- end G6 ---
+            captions.write(reel, doc)  # layer() can add fitting notes
+            print_notes(inp, doc["notes"][printed_notes:])
+            assert b"\r" not in page
+            (proj / "index.html").write_bytes(page)
+            video = tmp / ("video.mov" if layers in ("overlay", "captions") else "video.mp4")
+            hf_render(proj, video, env, f"{tier} ({w}x{h})",
+                      ["--fps", inp["fps"], "--frames-cache-dir", cache, *QUALITY[tier],
+                       *(["--format", "mov"] if layers in ("overlay", "captions") else [])], tier=tier)
+            renders.mkdir(exist_ok=True)
+            t0 = time.perf_counter()
+            if layers in ("overlay", "captions"):
+                rc, o, e = ffmpeg("-y", "-i", video, "-map", "0:v:0", "-an", "-c:v", "copy", partial)
+            else:
+                mix_sha256 = None
+                if audio == "mix":
+                    try:
+                        mix_sha256 = (mix_approval.require_approved_mix(reel, audio_src) if tier == "master"
+                                      else mix_approval.sha256(audio_src))
+                    except mix_approval.MixApprovalError as error:
+                        raise Stop(1, str(error)) from None
+                rc, o, e = mux_audio(video, audio_src, partial)
+            if rc != 0 or not partial.is_file():
+                raise Stop(1, f"✗ Adding the sound stopped (exit {rc}: {tail(o + e)}); run it again.")
+            print(f"info: sound added in {time.perf_counter() - t0:.1f} s")
+            got = fpsmod.frame_count(partial)
+            st = streams(partial)
+            dur = {s.get("codec_type"): float(s.get("duration") or 0) for s in st}
+            kinds = sorted(s.get("codec_type") for s in st)
+            if layers in ("overlay", "captions"):
+                pix = next((s.get("pix_fmt", "") for s in st if s.get("codec_type") == "video"), "")
+                if got != inp["total"] or kinds != ["video"] or not alpha_pix_fmt(pix):
+                    raise Stop(1, f"The {layers} layer has the wrong frame count or no transparent channel; run it again.")
+            elif got != inp["total"] or kinds != ["audio", "video"] or abs(dur["audio"] - dur["video"]) > 1 / float(inp["rate"]):
+                raise Stop(1, f"✗ The render came out wrong ({got} frames for {inp['total']}, streams {kinds}, sound "
+                              f"{dur.get('audio', 0):.3f} s against picture {dur.get('video', 0):.3f} s), so it was "
+                              f"deleted; run it again.")
+            os.replace(partial, final)
+            if tier == "preview" and layers == "all":
+                write_json(final.with_suffix(".audio.json"), {"audio": audio, "mix_sha256": mix_sha256})
+        finally:
+            partial.unlink(missing_ok=True)
+            kill_warm()
+            if keep_project and proj.is_dir():
+                print(f"info: render project kept at {proj}")
+            elif not remove_tree(tmp):
+                print("note: work/render-tmp couldn't be deleted; it's safe to delete by hand")
     label = tier.capitalize() if layers == "all" else {"aroll": "A-roll", "overlay": "Overlay", "captions": "Captions"}[layers]
     if tier == "master" and layers == "all":
         write_json(reel / OK_FILE, dict(ok, hook_text=inp["hook_text"] if hook_text is not None else None))
@@ -1800,7 +2045,7 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
     else:
         print(f"✓ {label} ready: {renders.name}/{final.name}")
     return {"tier": tier, "out": f"{renders.name}/{final.name}", "frames": inp["total"], "fps": inp["fps"], "audio": None if layers in ("overlay", "captions") else audio,
-            "scenes": len(inp["scened"]), "seconds": round(time.perf_counter() - t_start, 1)}
+            "scenes": len(inp["scened"]), "seconds": round(time.perf_counter() - t_start, 1), "masked": inp.get("masked", {})}
 
 
 def alpha_pix_fmt(pix):
@@ -1825,6 +2070,9 @@ def qa_block_lines(blocks):
     lines = []
     for row in blocks:
         kind = row["check"]
+        if kind == "world-on-face":
+            lines.append(" ".join(row["msg"].split()))
+            continue
         advice = row.get("advice", "")
         if kind in ("caption-on-face", "word-covered") and not advice:
             advice = next((a for a in (caption_advice("overlay"),
@@ -1890,6 +2138,12 @@ def cmd_ok(reel, from_review, *, checker=None):
         if line:
             raise Stop(1, f"✗ {line}")
     doc = {"ok_at": datetime.now().astimezone().isoformat(), "preview": latest.name}
+    try:
+        facts = json.loads(latest.with_suffix(".audio.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        facts = None
+    if isinstance(facts, dict) and facts.get("audio") == "mix":
+        doc["mix_sha256"] = facts.get("mix_sha256")
     write_json(reel / OK_FILE, doc)
     try:
         import style_learn
@@ -2915,6 +3169,9 @@ def main(argv=None):
             return 0
         summary = cmd_ok(reel, a.from_review) if a.cmd == "ok" else render(
             reel, a.cmd, a.hook_text, keep_project=a.keep_project)
+    except HeavyJobError as s:
+        print(str(s))
+        return 1
     except Stop as s:
         if a.cmd == "layers":
             print(" ".join(s.lines))

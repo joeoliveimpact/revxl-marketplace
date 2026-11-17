@@ -9,7 +9,7 @@ Open it inside the editor hub: /editor/hub/?reel=<reel>&board=sound-board&view=f
 
 Everything measured comes from the files themselves: durations and peaks are probed, because sound libraries are
 not level matched and written tables go stale.
-  --video   default: the newest work/renders/master-*.mp4. A video outside the reel folder is copied to
+  --video   default: the newest current motion preview, else config picture_url, else work/renders/master-*.mp4. A video outside the reel folder is copied to
             media/locked.mp4 (the board can only play files inside the reel folder).
   --sfx / --beds   default: the workspace library, <paths.editor>/sound/ and <paths.editor>/sound/beds/.
             The client's own music library, <paths.editor>/music/ (music_pick.py), is added to the beds as well
@@ -33,6 +33,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from _media import decode, loudness, probe, find_picture, workspace, write_json, write_wav  # noqa: E402
 import measure_sfx, make_waveforms, music_fit, music_pick  # noqa: E402
+from sound_picture import picture_label  # noqa: E402
 
 
 def copy_sounds(src, dst):
@@ -131,7 +132,7 @@ def main(argv=None):
             return 1
 
     cfg = {"board_name": a.name, "project_key": a.key or a.reel, "blurb": a.blurb,
-           "picture": video.name, "picture_url": rel, "fps": round(info["fps"], 3), "dur": dur,
+           "picture": video.name, "picture_url": rel, "picture_label": picture_label(video, explicit=bool(a.video)), "fps": round(info["fps"], 3), "dur": dur,
            "library": library, "beds": beds, "cues": cues}
     if a.stops:
         cfg["bed_stops"] = load_list(a.stops)

@@ -1,7 +1,7 @@
 # Choose the reel's editing style
 
-Use this after the spoken cut is signed off. Keep the choice in the client's words;
-Claude handles the saved settings. Never show the client paths, filenames or JSON.
+Use this after the spoken cut is signed off. Keep the choice in the user's words;
+Claude handles the saved settings. Never show the user paths, filenames or JSON.
 
 ## Two choices
 
@@ -16,10 +16,10 @@ takes 0.6 seconds when there is room and must finish before the next cut.
 The punch-in moves are explained in `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/motion.md`.
 Ratchet steps, a slow push, Ken Burns and an edge reframe are optional punch-in moves, all off unless chosen.
 
-## Choose it with the client
+## Choose it with the user
 
 The Beat Map's **Editing style** panel is the easy way to choose for this reel.
-Its changes save as the client works; **Send to Claude** makes the choice available
+Its changes save as the user works; **Send to Claude** makes the choice available
 to the preview. The reel's Send uses `edit_style` with `style: "punch-in"` or
 `style: "layout-switch"`. Layout switches needs only that one key.
 
@@ -28,10 +28,8 @@ If neither has one, compose stops before rendering; its last line is:
 
 `ask: which editing style? punch-ins on jump cuts, or layout switches`
 
-Ask the client: "Do you want punch-ins on the jump cuts, or layout switches?"
-Then put their pick in the reel's Beat Map Send (`beat-map-selection.json`),
-under `edit_style`. The board control is easiest; Claude may write the Send for
-the client, preserving their other choices and checking it before previewing.
+Resolve the missing choice using [Build motion: Before building](motion-build.md#before-building),
+which owns the question, recording command and board-state sync. Have it recorded before rendering.
 **Ask me before the preview** removes the reel's choice; the style picked for this reel at its start, if any, still applies.
 
 **Saved styles** (save, default, rename and other saved choices): ${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/saved-styles.md.
@@ -47,7 +45,7 @@ Full screen keeps the speaker across the picture. The four alternatives are:
 - **Overlay:** the speaker stays full screen with a panel over the lower area.
 
 The Beat Map chooses the arrangement per beat. Layout switches does not invent
-graphics or pick a different layout for the client.
+graphics or pick a different layout for the user.
 
 ## Face position and limits
 

@@ -30,11 +30,12 @@ recording-preflight      before recording: check the setup, test clip
    -> reel-first-cuts    the spoken edit (fixes a joined master first)
    -> PICTURE LOCK       the cut is signed off and the timeline stops moving
    -> reel-grade   the colour (optional; before the visuals and the sound)
-   -> reel-canvas-build  the visuals: plan and looks (cutaway clips come in through reel-broll, on the Beat Map)
-   -> reel-captions      the words on the video: the look and the marked words (needs the Beat Map Send)
-   -> reel-sound-pass    the sound, mixed on the cut (after the lock, before the final video)
-   -> reel-canvas-build  the render: a 720p preview, then the final video once the client OKs it (it draws the captions and carries the finished sound)
-   -> reel-cover  optional: after the 720p preview, before the final video
+   -> reel-canvas-build  plan: Beat Map, then lock the look on Sketches (cutaway clips come in through reel-broll)
+   -> reel-captions      choose the words-on-video look, or no captions (needs the Beat Map Send)
+   -> reel-canvas-build  Build motion; the user sends the Motion review
+   -> render and sound   follow reel-canvas-build's references/build.md section 1
+                        (reel-sound-pass owns sound)
+   -> reel-cover  optional: after the preview with sound, before the final video
    -> reel-trials  optional: needs the OK'd preview
    (pre check before the final video, full check after it: reel-canvas-build's qa-check.md)
    -> pro-editor-handoff  only when asked
@@ -53,7 +54,7 @@ Before work on any reel, unless the picker already printed "This reel uses ..." 
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/saved_style.py" picker <reel folder>`
 
-Use `<editor python>` defined below. If it prints the question, ask it as ONE question with those options (saved styles with the default first, then "Start fresh", then "Copy a reel I like"; with no saved styles, "Start fresh" is first and recommended). Run the same script's `pick <reel folder> <style name|fresh|copy>` with the client's answer, quoting names with spaces. "Copy a reel I like" goes to `editor-superengine:style-decoder`; after the client approves the decoded style, save it with `${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/saved-styles.md` §5: it becomes a new Style N used on this reel, never the default unless the client asks. Offer the rename and say each "Not copied" line in plain words.
+Use `<editor python>` defined below. If it prints the question, ask it as ONE question with those options (saved styles with the default first, then "Start fresh", then "Copy a reel I like"; with no saved styles, "Start fresh" is first and recommended). Run the same script's `pick <reel folder> <style name|fresh|copy>` with the user's answer, quoting names with spaces. "Copy a reel I like" goes to `editor-superengine:style-decoder`; after the user approves the decoded style, save it with `${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/saved-styles.md` §5: it becomes a new Style N used on this reel, never the default unless the user asks. Offer the rename and say each "Not copied" line in plain words.
 
 When the picker prints "Auto edit with ...", say it word for word, then follow section 5 of house-rules.md (below). "stop" or "normal mode" runs `pick <reel folder> normal`.
 
@@ -73,7 +74,7 @@ Follow `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/whats-next.md`
 | "cut this", "build the A-roll", "make a first pass", "tighten the gaps", "the pause after X drags", "speed it up", "did the cut clip a word", "two recordings", "several clips", "sync camera and mic", "make Shorts from this long recording" | `editor-superengine:reel-first-cuts` |
 | "grade this reel", "colour grade", "fix the colour", "make it warmer", "the skin looks off", "open the Grade Board", "match the colour between my recordings" | `editor-superengine:reel-grade` |
 | "add B-roll", "generate B-roll", "AI cutaway", "cutaway", "use my clip over ..." | `editor-superengine:reel-broll` |
-| "build the beat map", "plan what goes on screen", "add a scene", "lower third", "counter", "end card", "title card", "pick a layout", "punch-ins", "zoom in on that word", "layout switches", "follow my face", "slow push", "ken burns", "ratchet zoom", "design the hook", "motion comps", "comp the intro", "direction options", "ladder the blur", "will the Instagram buttons cover this", "render it", "render the master", "make the preview", "make the final video", "export the reel", "add a transition", "whip", "glitch", "fade between" | `editor-superengine:reel-canvas-build` |
+| "build the beat map", "plan what goes on screen", "add a scene", "lower third", "counter", "end card", "title card", "pick a layout", "punch-ins", "zoom in on that word", "layout switches", "follow my face", "slow push", "ken burns", "ratchet zoom", "design the hook", "motion comps", "comp the intro", "direction options", "ladder the blur", "will the Instagram buttons cover this", "render it", "build the motion", "build my graphics", "motion review", "no motion graphics", "make the final video", "export the reel", "add a transition", "whip", "glitch", "fade between" | `editor-superengine:reel-canvas-build` |
 | "sound pass", "add sound effects", "mix the sound", "master the audio", "clean up my voice", "run Auphonic", "add music", "pick a track" | `editor-superengine:reel-sound-pass` |
 | "Run QA for <reel>", "check my reel before I post" | `editor-superengine:reel-canvas-build` |
 | "a hand-off to another editor", "open this reel in Resolve", "editable timeline" | `editor-superengine:pro-editor-handoff` (only when configured `nle` is `resolve` or `mcp`) |
@@ -106,12 +107,12 @@ Never improvise it here or in another skill.
 Check that it exists with a file check only: `[ -f <editor python> ]`.
 
 If it doesn't exist, or any skill reports a missing tool, invoke
-`editor-superengine:editor-doctor`. Nothing here installs anything, and the client never types a
-command.
+`editor-superengine:editor-doctor`. Nothing here installs anything, and the user never types a
+command. `deps.json` lists this router's needs for editor-doctor.
 
-## What the client hears
+## What the user hears
 
-The client never sees file names, paths, JSON, STATUS or FIX lines, or script names. Translate
+The user never sees file names, paths, JSON, STATUS or FIX lines, or script names. Translate
 every one into plain words. How, with a line for each moment:
 `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-the-user-hears.md`.
 
@@ -132,4 +133,4 @@ Do not ask for approval of a description, a plan or a table when the thing being
 picture or a sound. Render the frame. Serve the cut. Every gate in this plugin measures *fit*;
 none of them measures whether it lands. Three stages of `reel-first-cuts` stop for a ruling, and
 every look in `reel-canvas-build` is picked off a rendered comp; the Beat Map only plans which look goes where. That is the design, not a
-formality. In Auto edit, the client rules on the finished preview instead (house-rules section 5).
+formality. Auto edit stops at Motion review and the finished preview (house-rules section 5).

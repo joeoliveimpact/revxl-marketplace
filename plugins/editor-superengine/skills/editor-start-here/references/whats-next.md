@@ -1,8 +1,14 @@
 # What's next / act on my Send
 
-Ask which reel only when unclear. Keep paths and skill names out of client-facing lines.
+Ask which reel only when unclear. Keep paths and skill names out of user-facing lines.
 `<reel folder>` is `<paths.videos>/<reel>` from `editor/editor.config.json` (default `videos`);
 `<paths.editor>` defaults to `editor`. Use these configured folders throughout.
+
+## Contents
+- Refresh progress
+- Next move
+- Act on my Send
+- Optional steps not done
 
 ## Refresh progress
 
@@ -16,7 +22,7 @@ Then read only the reel's row in `<paths.editor>/hub/hub-data.json`: `stage`, `c
 `open_sends`, `qa`, `boards` and `lanes`. Do not Read any Send file to inspect progress: a successful
 main-agent Read acknowledges that Send in the Cockpit. The mod exports baseline and acknowledgements to
 `<paths.editor>/hub/cockpit-state.json`; the refresh computes `open_sends` without acknowledging them.
-If refresh fails or its row is unreadable, say progress is unknown and ask the client which step they reached.
+If refresh fails or its row is unreadable, say progress is unknown and ask the user which step they reached.
 Before editing, handle pending controls requests as described in
 `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/hub.md`.
 
@@ -25,11 +31,11 @@ Before editing, handle pending controls requests as described in
 First inspect `open_sends`. One unacted Send takes priority over every stage: say "Claude's move: pick up your
 <board> Send from <time>." Use its `board` and `mtimeMs` to name the board and time before acting. Ask which
 board only when two or more boards have unacted Sends. Finding a Send never authorizes action; wait for the
-client's go-ahead, then use Act on my Send below. Never inspect a Send with Read just to list options.
+user's go-ahead, then use Act on my Send below. Never inspect a Send with Read just to list options.
 
 No reel yet, including "Start a new reel": invoke `editor-superengine:reel-first-cuts` for its recording intake.
-It creates the configured reel folder, tells the client where to drop their take, and invokes recording-preflight.
-The client types no command. `RAW.mp4` at the top or any video in `raw/` makes the stage Cut; several
+It creates the configured reel folder, tells the user where to drop their take, and invokes recording-preflight.
+The user types no command. `RAW.mp4` at the top or any video in `raw/` makes the stage Cut; several
 recordings go through first-cuts' several-recordings path.
 
 Otherwise use `stage` from the refreshed row with this table. Grade is offered before visuals and sound,
@@ -42,10 +48,18 @@ while the next move is Ear pass or Beat map; it is optional and never becomes th
 | Ear pass | reel-first-cuts |
 | Grade (optional) | reel-grade |
 | Beat map | reel-canvas-build |
+| Look | reel-canvas-build |
 | Motion | reel-canvas-build |
 | Sound | reel-sound-pass |
 | Master | reel-canvas-build |
 | Post | caption-writer |
+
+For Look, the user locks the pick on Sketches. For Motion, follow `reel-canvas-build/references/motion-build.md`
+(Build motion and Motion review, or explicit `none` when the user wants no graphics).
+At Sound or Master, use reel-canvas-build's `references/build.md`, section 1 for prerequisite and
+approval checks, including the fresh-session check of preview and mix timestamps. Invoke canvas-build
+when that check calls for a preview; otherwise use the stage's owner above.
+Choose captions or no captions before the preview; Captions is a prerequisite, not a separate Cockpit stage.
 
 Routing exception: after open Sends, use an editor-Python filesystem check (not Read) for no
 `<reel folder>/beat-map-selection.json` and an existing `<reel folder>/sound/final.mp4`.
@@ -73,12 +87,17 @@ All paths below are relative to `<reel folder>`. Owners and picker/trial writes 
 | Tweak Board | `tweak-selection.json` | reel-first-cuts | same as Cut |
 | Beat Map | `beat-map-selection.json` | reel-canvas-build | `sketches.state.json` |
 | Sketches | `sketches-selection.json` | reel-canvas-build | none |
+| Motion review | `motion-review-selection.json` | reel-canvas-build | `motion/review/review.json` |
 | Sound Board | `sound-selection.json` | reel-sound-pass | none |
 | Grade Board | `grade-selection.json` | reel-grade | none |
 | Look Picker | `look-picker-selection.json` | reel-captions | owner's Send flow |
 | Cover Picker | `cover-picker-selection.json` | reel-cover | owner's Send flow |
 | Trial reels | `trials-selection.json` | reel-trials | owner's Send flow |
 
+**Lock this look is the go-ahead** for [Build motion](../../reel-canvas-build/references/motion-build.md):
+it sets `locked_at` in `sketches.state.json` immediately. Without it, just note the Sketches pick;
+a Sketches Send alone does not authorize Build motion.
+After an authorized Motion Send, rebuild noted scenes or follow `build.md` when every planned scene is ticked "Leave it".
 
 For pickers/trials, follow the owning skill's Send flow. Do not invent receipt files. Refresh again after acting.
 

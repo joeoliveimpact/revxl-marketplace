@@ -173,11 +173,12 @@ class HubRowsTest(unittest.TestCase):
 
     def test_voice_only_mix_without_sketches_or_sound_board(self):
         (self.reel / "beat-map.state.json").write_bytes(b'{"sent_at": "now", "beats": []}')
+        (self.reel / "motion-review-selection.json").write_bytes(b'{"none": true, "sections": []}')
         (self.reel / "sound").mkdir()
         (self.reel / "sound/final.mp4").write_bytes(b"mix")
         row = self.row()
         stages, _ = hub.cockpit_rules()
-        for name in ("Motion", "Sound"):
+        for name in ("Look", "Motion", "Sound"):
             self.assertTrue(row["done"][next(i for i, s in enumerate(stages) if s["name"] == name)])
         self.assertIs(row["sound_board"], False)
         self.assertIs(row["sound_pass_ran"], True)
@@ -225,6 +226,7 @@ class HubRowsTest(unittest.TestCase):
         os.utime(self.reel / "work/cuts.json", (200, 200))
         (self.reel / "beat-map.state.json").write_bytes(b'{"sent_at": "now", "beats": []}')
         (self.reel / "sound-selection.json").write_bytes(b"{}")
+        (self.reel / "motion-review-selection.json").write_bytes(b'{"none": true, "sections": []}')
         (self.reel / "renders").mkdir()
         (self.reel / "renders/New reel Master - 11.09.26.mp4").write_bytes(b"video")
         with patch.object(hub, "filmstrip", return_value=[]), patch.object(hub, "video_info", return_value={"streams": [{"codec_type": "video"}]}):
@@ -245,33 +247,40 @@ class HubRowsTest(unittest.TestCase):
         (self.reel / "RAW.mp4").write_bytes(b"")
         row = self.row()
         self.assertEqual(row["stage"], "Cut")
-        self.assertEqual(row["done"], [True, False, False, False, False, False, False, False, False])
+        self.assertEqual(row["done"], [True, False, False, False, False, False, False, False, False, False])
 
     def test_cockpit_rules_read_all_stages_and_reject_unknown_json_predicate(self):
         stages, _ = hub.cockpit_rules()
         self.assertEqual([s["name"] for s in stages],
-                         ["Record", "Cut", "Ear pass", "Beat map", "Motion", "Sound", "Grade", "Master", "Post"])
+                         ["Record", "Cut", "Ear pass", "Beat map", "Look", "Motion", "Sound", "Grade", "Master", "Post"])
         source = (PLUGIN / "hooks/mod/logic.ts").read_text(encoding="utf-8")
         with patch.object(hub.Path, "read_text", return_value=source.replace("when: sentWithoutScenes", "when: unknownPredicate")):
+            with self.assertRaisesRegex(ValueError, "Unrecognised Cockpit JSON rule for Look"):
+                hub.cockpit_rules()
+        with patch.object(hub.Path, "read_text", return_value=source.replace("when: motionApproved", "when: unknownMotion")):
+            with self.assertRaisesRegex(ValueError, "Unrecognised Cockpit JSON rule for Motion"):
+                hub.cockpit_rules()
+        with patch.object(hub.Path, "read_text", return_value=source.replace("when: motionNone", "when: unknownNone")):
             with self.assertRaisesRegex(ValueError, "Unrecognised Cockpit JSON rule for Motion"):
                 hub.cockpit_rules()
 
-    def test_motion_no_scenes_then_resend_with_scene(self):
+    def test_motion_null_scenes_stay_pending_then_resend_with_scene(self):
         self.motion_row()
         p = self.reel / "beat-map.state.json"
         for beats in ([], [{"scene": None}, {}]):
             p.write_bytes(json.dumps({"sent_at": 0, "beats": beats}).encode("utf-8"))
             row = self.row()
             self.assertTrue(row["done"][4])
-            self.assertEqual(row["stage"], "Sound")
+            self.assertFalse(row["done"][5])
+            self.assertEqual(row["stage"], "Motion")
         p.write_bytes(json.dumps({"sent_at": "later", "beats": [{"scene": None}, {"scene": "title"}]}).encode("utf-8"))
         row = self.row()
         self.assertFalse(row["done"][4])
-        self.assertEqual(row["stage"], "Motion")
+        self.assertEqual(row["stage"], "Look")
 
-    def test_motion_missing_or_malformed_beat_plans_require_locked_sketches(self):
+    def test_look_missing_or_malformed_beat_plans_require_locked_sketches(self):
         stages, _ = hub.cockpit_rules()
-        rule = next(s["rule"] for s in stages if s["name"] == "Motion")
+        rule = next(s["rule"] for s in stages if s["name"] == "Look")
         self.assertFalse(hub.stage_done(rule, {}, self.reel))
         states = [None, [], {}, {"sent_at": None, "beats": []}, {"beats": []}, {"sent_at": "now"},
                   {"sent_at": "now", "beats": {}}, {"sent_at": "now", "beats": [None]}]
@@ -282,9 +291,9 @@ class HubRowsTest(unittest.TestCase):
         (self.reel / "sketches.state.json").write_bytes(b'{"locked_at": "now"}')
         self.assertTrue(hub.stage_done(rule, {}, self.reel))
 
-    def test_motion_unlocked_locked_and_unreadable(self):
+    def test_look_unlocked_locked_and_unreadable(self):
         stages, _ = hub.cockpit_rules()
-        rule = next(s["rule"] for s in stages if s["name"] == "Motion")
+        rule = next(s["rule"] for s in stages if s["name"] == "Look")
         (self.reel / "beat-map.state.json").write_bytes(b'{"sent_at": "now", "beats": []}')
         p = self.reel / "sketches.state.json"
         for content, expected in ((b"{}", True), (b'{"locked_at": "now"}', True), (b"bad JSON", False)):
@@ -296,6 +305,75 @@ class HubRowsTest(unittest.TestCase):
                 raise PermissionError("busy")
             return read_text(path, *args, **kwargs)
         with patch.object(hub.Path, "read_text", busy):
+            self.assertFalse(hub.stage_done(rule, {}, self.reel))
+
+    def test_motion_lane_three_steps_and_current_approval(self):
+        self.motion_row()
+        self.reel.joinpath("beat-map.state.json").write_bytes(b'{"sent_at": 0, "beats": [{"scene": "title"}]}')
+        self.reel.joinpath("sketches.state.json").write_bytes(b'{"locked_at": "now"}')
+        review = self.reel / "motion/review/review.json"
+        review.parent.mkdir(parents=True)
+        review.write_bytes(b'{}')
+        os.utime(review, (200, 200))
+        selection = self.reel / "motion-review-selection.json"
+        def lane(row):
+            return next(l for l in row["lanes"] if l["label"] == "Motion")
+        row = self.row()
+        self.assertEqual(row["stage"], "Motion")
+        self.assertEqual((lane(row)["done"], lane(row)["total"]), (2, 3))
+        for sections, stamp, expected in (([{"leave": True}], 100, False),
+                                           ([{"leave": True}, {"leave": False}], 300, False),
+                                           ([{"leave": 1}], 300, False), ([None], 300, False),
+                                           ([{"leave": True}], 200, True)):
+            selection.write_bytes(json.dumps({"sections": sections}).encode())
+            os.utime(selection, (stamp, stamp))
+            row = self.row()
+            self.assertEqual(row["done"][5], expected)
+            self.assertEqual((lane(row)["done"], lane(row)["total"]), (2 + expected, 3))
+        self.reel.joinpath("beat-map.state.json").write_bytes(b'{"sent_at": 0, "beats": []}')
+        row = self.row()
+        self.assertEqual((lane(row)["done"], lane(row)["total"]), (3, 3))
+        selection.write_bytes(b'{"none": true, "sections": []}')
+        os.utime(selection, (100, 100))
+        row = self.row()
+        self.assertTrue(row["done"][5], "explicit none does not require review freshness")
+        self.assertEqual((lane(row)["done"], lane(row)["total"]), (2, 2))
+
+    def test_motion_completion_records(self):
+        self.motion_row()
+        (self.reel / "beat-map.state.json").write_bytes(
+            b'{"sent_at": 0, "beats": [{"scene": null}, {"scene": null}]}')
+        review = self.reel / "motion/review/review.json"
+        review.parent.mkdir(parents=True)
+        review.write_bytes(b'{}')
+        os.utime(review, (200, 200))
+        selection = self.reel / "motion-review-selection.json"
+        for record, expected in ((None, False), ({"none": True, "sections": []}, True),
+                                 ({"sections": [{"leave": True}, {"leave": True}]}, True),
+                                 ({"sections": [{"leave": True}, {"leave": False, "note": "Larger text"}]}, False),
+                                 ({"sections": []}, False), ({"none": 1, "sections": []}, False),
+                                 ({"none": True, "sections": [{"leave": False}]}, False)):
+            with self.subTest(record=record):
+                if record is not None:
+                    selection.write_bytes(json.dumps(record).encode("utf-8"))
+                    os.utime(selection, (200, 200))
+                row = self.row()
+                self.assertEqual(row["done"][5], expected)
+                lane = next(l for l in row["lanes"] if l["label"] == "Motion")
+                self.assertEqual(lane["total"], 2 if record is not None and record.get("none") is True
+                                 and record.get("sections") == [] else 3)
+
+    def test_motion_unknown_review_timestamp_does_not_approve(self):
+        stages, _ = hub.cockpit_rules()
+        rule = next(s["rule"] for s in stages if s["name"] == "Motion")
+        selection = self.reel / "motion-review-selection.json"
+        selection.write_bytes(b'{"sections": [{"leave": true}]}')
+        stat = hub.Path.stat
+        def busy(path, *args, **kwargs):
+            if path == self.reel / "motion/review/review.json":
+                raise PermissionError("busy")
+            return stat(path, *args, **kwargs)
+        with patch.object(hub.Path, "stat", busy):
             self.assertFalse(hub.stage_done(rule, {}, self.reel))
 
     def test_ear_pass_requires_an_applied_selection(self):
@@ -331,6 +409,23 @@ class HubRowsTest(unittest.TestCase):
                     self.assertEqual(self.row()["render_label"], expected)
                 p.unlink()
         self.assertEqual(self.row()["render_label"], "No render yet")
+
+    def test_mix_label_keeps_preview_approval_key(self):
+        preview = self.reel / "renders/New reel Preview 720p - INT13.mp4"
+        final = self.reel / "sound/final.mp4"
+        for p, stamp in ((preview, 100), (final, 200)):
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_bytes(b"video")
+            os.utime(p, (stamp, stamp))
+        with patch.object(hub, "filmstrip", return_value=[]):
+            row = self.row()
+            self.assertEqual(row["preview_label"], "Latest mix")
+            self.assertEqual(row["preview_name"], preview.name)
+            self.assertTrue(row["preview_url"].endswith("/sound/final.mp4"))
+            preview.unlink()
+            row = self.row()
+            self.assertEqual(row["preview_label"], "Latest mix")
+            self.assertEqual(row["preview_name"], "")
 
     def test_snapshot_open_send_then_ack(self):
         send = self.reel / "beat-map-selection.json"

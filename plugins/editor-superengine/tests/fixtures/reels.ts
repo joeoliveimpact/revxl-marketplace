@@ -118,9 +118,10 @@ const R1 = { 'raw/take1.mp4': f(5) }
 const R2 = { ...R1, 'work/edl.json': f(4) }
 // Ear pass is applied: its EDL is at least as new as the selection, preserving the walk's stage assertions.
 const R3 = { ...R2, 'tweak-selection.json': f(3), 'work/edl.json': f(3) }
-// The Motion step stays open in this fixture because it has an unlocked sketch direction.
+// Look stays open in this fixture because it has an unlocked sketch direction.
 const R4 = { ...R3, 'beat-map.state.json': json(2, { sent_at: '2026-11-02T10:00:00Z' }), 'sketches.state.json': json(2, {}) }
-const R5 = { ...R4, 'sketches.state.json': json(2, { locked_at: '2026-11-02T11:00:00Z' }) }
+const R5 = { ...R4, 'sketches.state.json': json(2, { locked_at: '2026-11-02T11:00:00Z' }),
+  'motion/review/review.json': json(2, { cards: [] }), 'motion-review-selection.json': json(2, { sections: [{ leave: true }] }) }
 const R6 = { ...R5, 'sound-selection.json': f(1) }
 const R7 = { ...R6, 'renders/r7 Master - 11.03.26.mp4': f(1) }
 /** name, files, the current stage's index, the stage names done. */
@@ -130,8 +131,8 @@ export const WALK: [string, Record<string, F>, number][] = [
   ['r2', R2, 2],
   ['r3', R3, 3],
   ['r4', R4, 4],
-  ['r5', R5, 5],
-  ['r6', R6, 7],   // Grade skipped: Master is next
-  ['r7', R7, 8],
+  ['r5', R5, 6],
+  ['r6', R6, 8],   // Grade skipped: Master is next
+  ['r7', R7, 9],
 ]
 export const walk = (i: number): Tree => ({ ...CONFIG_FILE, ...reel(WALK[i]![0], WALK[i]![1]) })

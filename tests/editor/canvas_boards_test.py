@@ -349,7 +349,7 @@ def check_send_loading(html, board):
 
 
 def send_loading_case():
-    for board in ("beat-map", "sketches"):
+    for board in ("beat-map", "sketches", "motion-review"):
         html = (PLUGIN / "skills/reel-canvas-build/boards" / board / "index.html").read_text(encoding="utf-8")
         check_send_loading(html, board)
         if board == "beat-map":
@@ -361,6 +361,46 @@ def send_loading_case():
                 need(str(e) == "beat-map: Send is live during load", f"wrong mutant rejection: {e}")
             else:
                 raise Fail("loading mutant survived: Send enabled before init")
+
+
+def motion_review_controls_case():
+    html = (PLUGIN / "skills/reel-canvas-build/boards/motion-review/index.html").read_text(encoding="utf-8")
+
+    def check(source):
+        check_send_loading(source, "motion-review")
+        functions = re.search(r"function reviewed\(section\).*?\nfunction canSend\(sections\).*?\n", source)
+        need(functions is not None, "motion-review: review guard missing")
+        script = functions[0] + """
+const empty = {note:'  ', leave:false}, note = {note:'Pull back less', leave:false}, leave = {note:'', leave:true};
+const cases = [[[],false], [[empty],false], [[note,empty],false], [[leave,empty],false], [[note,leave],true]];
+for (const [sections,want] of cases) if (canSend(sections)!==want) throw Error('Send enabled before every card answered');
+"""
+        result = subprocess.run([rt.tool("node"), "-e", script], capture_output=True, text=True, timeout=15)
+        need(result.returncode == 0, "motion-review: Send enabled before every card answered")
+        need('!canSend(sections)' in source and 'sections.filter(reviewed)' in source, "motion-review: guard not wired")
+        need(re.search(r'\$\("#send"\)\.disabled\s*=\s*busy\s*\|\|\s*!ready\s*\|\|\s*!canSend\(sections\)', source),
+             "motion-review: button enabled before every card answered")
+        need('__save?board=motion-review&name=motion-review-selection.json' in source, "motion-review: wrong Send path")
+        need('IntersectionObserver' in source and 'entry.target.pause()' in source, "motion-review: off-screen loops keep playing")
+        need('if (!locked)' in source and 'text:locked ? "Locked"' in source, "motion-review: locked card has inputs")
+        need('No graphics to review yet. Ask Claude to build the motion.' in source, "motion-review: empty state missing")
+    check(html)
+    mutant = html.replace('sections.every(reviewed)', 'sections.some(reviewed)', 1)
+    need(mutant != html, "motion-review: mutant anchor missing")
+    try:
+        check(mutant)
+    except Fail as error:
+        need("before every card answered" in str(error), "motion-review: wrong mutant rejection")
+    else:
+        raise Fail("motion-review: early Send mutant survived")
+    mutant = html.replace('disabled = busy || !ready || !canSend(sections)', 'disabled = busy || !ready', 1)
+    need(mutant != html, "motion-review: button mutant anchor missing")
+    try:
+        check(mutant)
+    except Fail as error:
+        need("button enabled before every card answered" in str(error), "motion-review: wrong button mutant rejection")
+    else:
+        raise Fail("motion-review: enabled-button mutant survived")
 
 
 def check_editing_style_controls(html):
@@ -483,6 +523,14 @@ def beat_map_reference_case():
     text = (PLUGIN / "skills/reel-canvas-build/references/beat-map.md").read_text(encoding="utf-8")
     for required in ('scene_fill.py" catalog', '### Editing style', '"check"', "keeps your face"):
         need(required in text, f"Beat Map reference lost {required}")
+    # BL.4: Claude asks about private details before the Beat Map Send and never answers for the user.
+    for required in ("Before Send, ask whether any B-roll shows private details", "Hide private details",
+                     "Never answer for them"):
+        need(required in text, f"Beat Map reference lost the private-details ask: {required}")
+    skill = (PLUGIN / "skills/reel-broll/SKILL.md").read_text(encoding="utf-8")
+    for required in ("Does any of your B-roll show private details", "Never answer for them",
+                     "**Hide private details**", "screenshots (png, jpg, webp)", "never decide for the client"):
+        need(required in skill, f"reel-broll SKILL.md lost the private-details ask: {required}")
 
 
 def free_port(*taken):
@@ -552,6 +600,29 @@ def reel_fixture(reel):
         "sketches": [{"id": "s_001", "beat": "b_001", "title": "Three wins", "media": None, "note": ""},
                      {"id": "s_002", "beat": "b_002", "title": "Next reel", "media": None, "note": ""}],
         "note": "", "sent_at": None, "locked_at": None})
+
+
+def privacy_clip_fixture(reel):
+    """Only generated pixels; no real reel media or committed binary."""
+    clip = {"ledger_id": "f01", "src": "broll/ingested/privacy-test.mp4",
+            "name": "Private details test.mp4", "frames": 120, "width": 320, "height": 180, "origin": "own"}
+    target = reel / clip["src"]
+    target.parent.mkdir(parents=True, exist_ok=True)
+    p = run([rt.tool("ffmpeg"), "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
+             "-i", "testsrc=size=320x180:rate=30", "-t", "4", "-c:v", "libx264",
+             "-preset", "ultrafast", "-pix_fmt", "yuv420p", str(target)])
+    need(p.returncode == 0, f"synthetic privacy clip: {p.stderr}")
+    return clip
+
+
+def assert_privacy_send(doc):
+    boxes = doc.get("broll_masks", {}).get("f01", [])
+    need(len(boxes) == 1, "Send lost the hidden box")
+    box = boxes[0]
+    need(all(abs(box[k] - value) < .01 for k, value in dict(x=.1, y=.2, w=.5, h=.3).items()),
+         f"box fractions differ from the picture drag: {box}")
+    need(box["kind"] == "fill" and box.get("from") == .5 and box.get("to") == 2,
+         f"box kind or range differs: {box}")
 
 
 def scene_fill_case():
@@ -740,6 +811,47 @@ def scene_fill_case():
         need(rc == 2 and len(out.splitlines()) == 1, "unexpected CLI error was not flattened to one exit-2 line")
 
 
+def reel_scene_catalog_case():
+    sys.path.insert(0, str(CANVAS))
+    import scene_fill
+    import scene_check
+    with tempfile.TemporaryDirectory() as tmp:
+        reel = Path(tmp)
+        shutil.copytree(Path(__file__).parent / "fixtures/reel-motion/motion", reel / "motion")
+        good = reel / "motion/reel-good-world"
+        (good / "preview.png").unlink()
+        # A source without a beat falls back to the beat already holding this scene.
+        spec = load(reel / "motion/reel-seek-world/scene.json")
+        spec["source"] = "Own text-only fixture, locked direction"
+        write_json(reel / "motion/reel-seek-world/scene.json", spec)
+        bad = reel / "motion/reel-band-world/scene.html"
+        bad.write_bytes(b"broken scene")
+        need(scene_check.scene_problems(bad.parent), "invalid scene fixture unexpectedly passes")
+        beats = [{"id": f"b_00{i}", "start_f": (i - 1) * 90, "end_f": i * 90,
+                  "speech_anchor": {"w0": 0, "w1": 1}, "value": None,
+                  "scene": {"id": "reel-seek-world", "slots": {"text": "Clear world"}, "params": {}}
+                  if i == 2 else None} for i in (1, 2, 3)]
+        # Explicit source ownership takes precedence over a scene planted on another beat.
+        beats[2]["scene"] = {"id": "reel-good-world", "slots": {"text": "Clear world"}, "params": {}}
+        scene_fill.write_catalog(reel, beats, ["Clear", "world"], FPS)
+        items = {s["id"]: s for s in load(reel / "scenes/catalog.json")}
+        need("reel-good-world" in items, "reel scene missing from catalog")
+        need("reel-band-world" not in items, "scene_check failure offered in catalog")
+        for sid, owner in (("reel-good-world", "b_001"), ("reel-seek-world", "b_002")):
+            item = items[sid]
+            need(item["reel"] is True and item["area"] == "full" and item["beats"] == [owner],
+                 "reel metadata or beat ownership missing")
+            need(next(p for p in item["params"] if p["name"] == "t1") ==
+                 {"name": "t1", "type": "number", "default": 1.5, "min": 1.4, "max": 1.6},
+                 "reel t param lost its type or bounds")
+            for beat in beats:
+                fills = load(reel / "scenes/suggest.json")[beat["id"]]
+                need((sid in fills) == (beat["id"] == owner), "reel scene suggested on the wrong beat")
+        need("preview" not in items["reel-good-world"], "missing preview was fabricated")
+        need(items["reel-seek-world"]["preview"] == "motion/reel-seek-world/preview.png",
+             "reel preview does not point at its own folder")
+
+
 def schema_scene_case():
     sys.path.insert(0, str(CANVAS))
     import beat_schema as bs
@@ -782,14 +894,18 @@ def main():
         return 0
     if "--scene-fill-only" in sys.argv:
         scene_fill_case()
+        reel_scene_catalog_case()
         print("scene_fill passed")
         return 0
     if "--data-only" in sys.argv:
+        from world_face_test import cover_control_case
         results = []
         for name, fn in (("Send loading static check + enabled-button mutant", send_loading_case),
+                         ("Motion review every-card guard + early Send mutant", motion_review_controls_case),
                          ("Editing style static check + folded Word punches mutant", editing_style_controls_case),
                          ("Sketch geometry check + swapped stack mutant", sketch_geometry_case),
-                         ("Beat Map planner reference guidance", beat_map_reference_case)):
+                         ("Beat Map planner reference guidance", beat_map_reference_case),
+                         ("World face choice + dropped-choice mutants", cover_control_case)):
             try:
                 fn()
                 results.append(True)
@@ -1273,6 +1389,98 @@ def main():
              [t["beat"] for t in reads[1]["timeline"] if t["current"] == "true"] == ["b_003"], "timeline did not open beat 3")
         need(len(reads[1]["rows"]) == 1 and reads[1]["rows"][0]["beat"] == "b_003", "unfocused controls remain")
 
+    def reel_scene_fixture(name, owner="b_002"):
+        sr = videos / name
+        reel_fixture(sr)
+        p = run(py + [str(SEED), "--reel-dir", str(sr), "--plan", str(sr / "work/plan.json")], env=env)
+        need(p.returncode == 0, f"reel scene seed: {p.stdout} {p.stderr}")
+        doc = load(sr / "beat-map.state.json")
+        shutil.copytree(Path(__file__).parent / "fixtures/reel-motion/motion", sr / "motion")
+        spec = load(sr / "motion/reel-good-world/scene.json")
+        spec["source"] = f"Own scene for beat {owner}, locked direction"
+        write_json(sr / "motion/reel-good-world/scene.json", spec)
+        doc["beats"][1]["scene"] = {"id": "reel-good-world", "slots": {"text": "Clear world"}, "params": {"t1": 1.5}}
+        write_json(sr / "beat-map.state.json", doc)
+        sys.path.insert(0, str(CANVAS))
+        import scene_fill
+        scene_fill.write_catalog(sr, doc["beats"], WORDS, FPS)
+        return sr, doc
+
+    def reel_scene_cover_case():
+        sr, doc = reel_scene_fixture("reel-scene-cover")
+        S["browsers"] += 1
+        job = scratch / "reel-scene-cover-job.json"
+        row = '.scene-controls[data-beat="b_002"]'
+        actions = [
+            {"do": "goto", "path": "", "wait": "#send:not([disabled])"},
+            {"do": "waitFn", "js": "!document.querySelector('.scene-choice[data-scene=\"reel-good-world\"]')"},
+            {"do": "click", "sel": '#timeline .tl-beat[data-beat="b_002"]'},
+            {"do": "click", "sel": "#focus .more-controls > summary"},
+            {"do": "click", "sel": row + ' input[data-cover-face="b_002"]'},
+            {"do": "click", "sel": "#send"},
+            {"do": "waitState", "board": "beat-map",
+             "js": "s.beats.find(b=>b.id==='b_002').cover_face===true && s.sent_at!==null"},
+            {"do": "waitFn", "js": "document.querySelector('#status').dataset.state==='sent'"},
+            {"do": "waitFn", "js": "document.querySelector('[data-param=\"t1\"]').type==='number' && "
+             "document.querySelector('[data-param=\"t1\"]').min==='1.4' && "
+             "document.querySelector('[data-param=\"t1\"]').max==='1.6'"}]
+        for value in ("1.3", "1.7", ""):
+            actions += [
+                {"do": "set", "sel": row + ' input[data-param="t1"]', "value": value},
+                {"do": "click", "sel": "#send"},
+                {"do": "waitFn", "js": "document.querySelector('#status').dataset.state==='error'"},
+                {"do": "eval", "js": "fetch('/videos/" + sr.name +
+                 "/beat-map-selection.json', {cache:'no-store'}).then(r=>r.json()).then(s=>"
+                 "s.beats.find(b=>b.id==='b_002').scene.params.t1)"}]
+        actions += [
+            {"do": "set", "sel": row + ' input[data-param="t1"]', "value": "1.6"},
+            {"do": "click", "sel": "#send"},
+            {"do": "waitState", "board": "beat-map",
+             "js": "s.beats.find(b=>b.id==='b_002').scene.params.t1===1.6"},
+            {"do": "waitFn", "js": "document.querySelector('#status').dataset.state==='sent'"}]
+        write_json(job, {"base": url("beat-map", sr.name),
+            "userDataDir": str(scratch / f"profile-{S['browsers']}"), "actions": actions})
+        p = run([tools["node"], str(Path(__file__).parent / "boards_click.js"),
+                 tools["pup"], tools["chrome"], str(job)])
+        need(p.returncode == 0, f"reel scene cover browser: {p.stdout} {p.stderr}")
+        result = json.loads(p.stdout.strip().splitlines()[-1])
+        need(not result["errors"] and result["reads"] == [1.5, 1.5, 1.5], "invalid t param reached the Send")
+        for name in ("beat-map.state.json", "beat-map-selection.json"):
+            saved = load(sr / name)
+            need(saved["beats"][1].get("cover_face") is True and saved["sent_at"], "reel scene cover choice not sent")
+            need(saved["beats"][1]["scene"]["params"]["t1"] == 1.6, "valid t param was not sent as a number")
+
+    def reel_scene_refusal_case(missing=False):
+        sr, doc = reel_scene_fixture("reel-scene-missing" if missing else "reel-scene-wrong-beat",
+                                     owner="b_002" if missing else "b_001")
+        message = ("The graphic for beat 2 is missing. Ask Claude to rebuild the motion." if missing else
+                   "The graphic on beat 2 was written for another beat. Ask Claude to rebuild the motion for beat 2.")
+        if missing:
+            # Keep the built catalog: the board must notice the deleted folder itself.
+            shutil.rmtree(sr / "motion/reel-good-world")
+        else:
+            need("reel-good-world" not in load(sr / "scenes/suggest.json")["b_002"],
+                 "wrong-beat reel scene offered in suggestions")
+        S["browsers"] += 1
+        job = scratch / f"reel-scene-refusal-{S['browsers']}.json"
+        write_json(job, {"base": url("beat-map", sr.name),
+            "userDataDir": str(scratch / f"profile-{S['browsers']}"), "actions": [
+                {"do": "goto", "path": "", "wait": "#send:not([disabled])"},
+                {"do": "click", "sel": '#timeline .tl-beat[data-beat="b_002"]'},
+                {"do": "eval", "js": "document.querySelector('#focus .flag-reason')?.textContent ?? null"},
+                {"do": "click", "sel": "#send"},
+                {"do": "waitFn", "js": "['error','sent'].includes(document.querySelector('#status').dataset.state)"},
+                {"do": "eval", "js": "document.querySelector('#status').textContent"}]})
+        p = run([tools["node"], str(Path(__file__).parent / "boards_click.js"),
+                 tools["pup"], tools["chrome"], str(job)])
+        need(p.returncode == 0, f"reel scene refusal browser: {p.stdout} {p.stderr}")
+        result = json.loads(p.stdout.strip().splitlines()[-1])
+        need(not result["errors"] and result["reads"] == ["Flagged for you: " + message, message],
+             f"reel scene refusal must name the beat and next step: {result['reads']}")
+        need(not (sr / "beat-map-selection.json").exists(), "invalid scene was sent")
+        need(load(sr / "beat-map.state.json")["beats"][1]["scene"] == doc["beats"][1]["scene"],
+             "unavailable scene was silently dropped or changed")
+
     def layout_contract_case():
         sr, before = focus_fixture("layout-contract", lambda d: d["proposed"]["b_001"].update(
             check="A/B test <b>your layout</b>?"))
@@ -1649,17 +1857,152 @@ def main():
                  f', strong beat at {float(mark["time"]):.2f} s' in mark["owner"],
                  f"strong beat accessibility differs: {mark}")
 
+    def privacy_fixture(name):
+        sr, before = focus_fixture("privacy-" + name)
+        clip = privacy_clip_fixture(sr)
+        write_json(sr / "broll/clips.json", {"fps": FPS, "clips": [clip]})
+        # An unknown clip's saved masks must survive every edit and Send untouched.
+        before["broll_masks"] = {"f99": [{"x": .2, "y": .3, "w": .4, "h": .1, "kind": "blur"}]}
+        write_json(sr / "beat-map.state.json", before)
+        return sr, before
+
+    def privacy_open():
+        return open_focus() + [{"do": "select", "sel": "#broll-0", "value": "f01"},
+            {"do": "read"}, {"do": "click", "sel": "#hide-private-0"},
+            {"do": "waitFn", "js": "document.querySelector('#mask-video').videoWidth === 320"}]
+
+    def privacy_send():
+        return [{"do": "click", "sel": "#mask-done"}, {"do": "click", "sel": "#send"},
+                {"do": "waitState", "state": "sent"}]
+
+    def privacy_draw_case(mutant=False):
+        sr, before = privacy_fixture("draw-mutant" if mutant else "draw")
+        actions = privacy_open() + [
+            {"do": "drag", "sel": "#mask-overlay", "from": [.1, .2], "to": [.6, .5]},
+            {"do": "click", "sel": "#mask-kind-0-fill"},
+            {"do": "click", "sel": "#mask-whole-0"},
+            {"do": "set", "sel": "#mask-from-0", "value": ".5"},
+            {"do": "set", "sel": "#mask-to-0", "value": "2"},
+            {"do": "eval", "js": "document.querySelector('#mask-video').currentTime=1; 0"},
+            {"do": "waitFn", "js": "!document.querySelector('#mask-overlay .mask-box').hidden"},
+            {"do": "read"},
+            {"do": "eval", "js": "document.querySelector('#mask-video').currentTime=3; 0"},
+            {"do": "waitFn", "js": "document.querySelector('#mask-overlay .mask-box').hidden"},
+            {"do": "read"}] + privacy_send()
+        board = ws / "editor/beat-map/index.html"
+        original = board.read_bytes()
+        if mutant:
+            anchor = "body: JSON.stringify(doc)"
+            text = original.decode("utf-8")
+            need(text.count(anchor) == 1, "privacy Send mutant anchor differs")
+            board.write_bytes(text.replace(anchor,
+                'body: JSON.stringify(Object.fromEntries(Object.entries(doc).filter(([k]) => k !== "broll_masks")))').encode("utf-8"))
+        try:
+            reads = browse(url("beat-map", sr.name), actions, viewport={"width": 400, "height": 800})
+            need(reads[0]["privacy"]["reminder"], "privacy reminder missing before drawing")
+            view = reads[2]  # eval(1) is read 1, then the visible-box snapshot
+            need(view["narrow"]["pageFits"] and view["privacy"]["panelFits"], "privacy panel overflows at 400 px")
+            need(not view["privacy"]["reminder"] and view["privacy"]["visible"] == 1,
+                 "privacy reminder or timed preview differs")
+            picture = view["privacy"]["picture"]
+            need(abs(picture["width"] / picture["height"] - 320/180) < .01,
+                 f"overlay includes letterboxing: {picture}")
+            need(reads[4]["privacy"]["visible"] == 0, "range preview did not hide after To")
+            sent = load(sr / "beat-map-selection.json")
+            if mutant:
+                try:
+                    assert_privacy_send(sent)
+                except Fail as e:
+                    need(str(e) == "Send lost the hidden box", f"wrong privacy mutant rejection: {e}")
+                else:
+                    raise Fail("privacy Send mutant survived")
+            else:
+                assert_privacy_send(sent)
+                need(sent["broll_masks"]["f99"] == before["broll_masks"]["f99"], "unknown clip masks changed")
+                rc, output = check("check", sr / "beat-map-selection.json")
+                need(rc == 0, f"privacy Send fails beat_schema: {output}")
+        finally:
+            if mutant:
+                board.write_bytes(original)
+
+    def privacy_keyboard_case():
+        sr, before = privacy_fixture("keyboard")
+        reads = browse(url("beat-map", sr.name), privacy_open() + [
+            {"do": "key", "sel": "#mask-add", "key": "Enter"},
+            {"do": "click", "sel": "#mask-position-0 > summary"}] + [
+            {"do": "set", "sel": "#mask-" + key + "-0", "value": str(value)}
+            for key, value in (("x", 12), ("y", 34), ("w", 56), ("h", 10))] + [
+            {"do": "waitState", "state": "saved", "change": True},
+            {"do": "goto"}, {"do": "wait", "sel": "#send:not([disabled])"},
+            {"do": "click", "sel": "#hide-private-0"}, {"do": "read"}])
+        view = reads[-1]["privacy"]
+        need(view["boxes"][0]["position"] == [12, 34, 56, 10] and view["boxes"][0]["whole"],
+             f"keyboard box was not restored: {view}")
+        need(view["status"] == "1 area hidden", f"restored area status differs: {view}")
+        sent_path = sr / "beat-map-selection.json"
+        shared = browse(url("beat-map", sr.name), open_focus() + [
+            {"do": "click", "sel": "#timeline .tl-beat:nth-child(2)"},
+            {"do": "select", "sel": "#broll-1", "value": "f01"},
+            {"do": "click", "sel": "#hide-private-1"}, {"do": "read"},
+            {"do": "key", "sel": "#mask-add", "key": "Enter"}, {"do": "read"},
+            {"do": "click", "sel": "#mask-delete-1"}, {"do": "click", "sel": "#mask-done"},
+            {"do": "click", "sel": "#timeline .tl-beat:first-child"}, {"do": "read"},
+            {"do": "click", "sel": "#hide-private-0"}, {"do": "click", "sel": "#mask-delete-0"}]
+            + privacy_send() + [{"do": "read"}])
+        need(shared[0]["privacy"]["boxes"][0]["position"] == [12, 34, 56, 10],
+             "another beat did not edit the same clip's box")
+        need(shared[1]["privacy"]["status"] == "2 areas hidden" and
+             shared[2]["privacy"]["status"] == "1 area hidden", "shared clip status did not update on both beats")
+        need(shared[3]["privacy"]["reminder"], "deleting the last placed box did not restore the reminder")
+        sent = load(sent_path)
+        need("f01" not in sent["broll_masks"], "Delete kept the empty clip key")
+        need(sent["broll_masks"]["f99"] == before["broll_masks"]["f99"], "Delete dropped unknown clip masks")
+
+    def privacy_bad_range_case():
+        sr, _ = privacy_fixture("bad-range")
+        reads = browse(url("beat-map", sr.name), privacy_open() + [
+            {"do": "key", "sel": "#mask-add", "key": "Enter"},
+            {"do": "click", "sel": "#mask-whole-0"},
+            {"do": "set", "sel": "#mask-from-0", "value": "2"},
+            {"do": "set", "sel": "#mask-to-0", "value": "1"}, {"do": "read"},
+            {"do": "click", "sel": "#mask-done"}, {"do": "click", "sel": "#send"},
+            {"do": "waitState", "state": "error"},
+            {"do": "readExists", "path": str(sr / "beat-map-selection.json")},
+            {"do": "click", "sel": "#hide-private-0"},
+            {"do": "set", "sel": "#mask-to-0", "value": "5"}, {"do": "read"},
+            {"do": "set", "sel": "#mask-to-0", "value": "3"}, {"do": "read"}] + privacy_send())
+        need(reads[1]["privacy"]["boxes"][0]["error"], "bad range has no inline error")
+        need(not reads[2]["exists"], "bad range was sent")
+        need(reads[3]["privacy"]["boxes"][0]["error"], "range beyond clip length was accepted")
+        need(not reads[4]["privacy"]["boxes"][0]["error"], "fixing range kept the error")
+        need(load(sr / "beat-map-selection.json")["broll_masks"]["f01"][0]["to"] == 3,
+             "fixed range was not sent")
+
     S["A"] = free_port()
     S["B"] = free_port(S["A"])
     try:
+        if "--reel-scenes-only" in sys.argv:
+            start(S["A"])
+            selected = sys.argv[sys.argv.index("--reel-case") + 1] if "--reel-case" in sys.argv else None
+            for name, fn in (("cover", reel_scene_cover_case),
+                             ("wrong-beat", reel_scene_refusal_case),
+                             ("missing", lambda: reel_scene_refusal_case(True))):
+                if selected is None or selected == name:
+                    case("beatmap_reel_scene: " + name, fn)
+            return 0 if results and all(results) else 1
         case("Send starts disabled with a loading cue; enabling it early is rejected", send_loading_case)
+        case("Motion review every-card guard + early Send mutant", motion_review_controls_case)
         case("Editing style structure and folded-control mutant", editing_style_controls_case)
         case("Sketch geometry matches compose; swapped stack fails", sketch_geometry_case)
         case("Beat Map planner reference guidance", beat_map_reference_case)
         case("schema_scene: scene shapes and Sketches beat keys", schema_scene_case)
         case("scene_fill: catalog, honest fills, timing and planted bad suggestions", scene_fill_case)
+        case("scene_fill: reel scenes stay on their beat and invalid scenes are omitted", reel_scene_catalog_case)
         if "--scenes-only" in sys.argv:
             start(S["A"])
+            case("beatmap_reel_scene: cover checkbox and Send", reel_scene_cover_case)
+            case("beatmap_reel_scene: wrong beat refuses Send", reel_scene_refusal_case)
+            case("beatmap_reel_scene: deleted folder refuses Send", lambda: reel_scene_refusal_case(True))
             case("sketches_scene: iframe picker, maxChars, Send, restore and remove", sketches_scene)
             case("sketches_scene reverse: skipping maxChars fails the same overflow assertion", lambda: sketches_scene(True))
             case("beatmap_scene: iframe picker, Sketches state, Send and compositor", beatmap_scene)
@@ -1673,6 +2016,9 @@ def main():
         case("3 Send: beat-map-selection.json is valid and carries the edits and sent_at", c3)
         case("4 port change + new browser: the edits and sent come back from disk", c4)
         case("timeline includes overlay, sketches, labels and focus", timeline_case)
+        case("beatmap_reel_scene: cover checkbox and Send", reel_scene_cover_case)
+        case("beatmap_reel_scene: wrong beat refuses Send", reel_scene_refusal_case)
+        case("beatmap_reel_scene: deleted folder refuses Send", lambda: reel_scene_refusal_case(True))
         case("layout swap preserves the state and Send contracts", layout_contract_case)
         case("word marks cycle on one word, preserve neighbours, survive reload and Send", word_marks_case)
         case("word marks preserve existing different marks on adjacent words", lambda: word_marks_case(True))
@@ -1684,6 +2030,10 @@ def main():
         case("keyboard reaches review controls and focuses headings", keyboard_case)
         case("More persists and review finishes without document edits", review_navigation_case)
         case("pending number and B-roll errors survive navigation, block Send and clear on fixing", pending_values_case)
+        case("hide private details: draw a box, pick solid, set a range, Send writes broll_masks", privacy_draw_case)
+        case("hide private details: keyboard Add box, exact position, delete, reload restores", privacy_keyboard_case)
+        case("hide private details: bad range blocks Send and clears on fixing", privacy_bad_range_case)
+        case("hide private details reverse: a board that drops broll_masks fails the Send assertion", lambda: privacy_draw_case(True))
         case("empty beats show a message and save needs and style", empty_beats_case)
         case("timeline and strong beats have accessible group and button labels", strong_beats_accessibility_case)
         case("remembered style: badge, Ask default and untouched Send", remembered_style)

@@ -290,6 +290,7 @@ textarea{border-radius:12px!important;font-family:var(--et-mono)!important}
 
 <h1 id="h1">Sound <em>mixing board</em></h1>
 <p class="sub" id="sub">loading...</p>
+<p class="sub" id="picture-label"></p>
 
 <div id="strip">
   <span id="savest" class="pending">not saved yet</span>
@@ -435,6 +436,7 @@ textarea{border-radius:12px!important;font-family:var(--et-mono)!important}
   <div>
     <div class="panel">
       <h2>proposed cues</h2>
+      <label class="flexlbl"><input type="checkbox" id="autolevel" checked> Match effect levels</label>
       <table id="cues">
         <thead><tr>
           <th style="width:132px">beat</th>
@@ -503,11 +505,11 @@ var hist = [], hpos = -1, histAt = 0, restoring = false;   /* undo: in-memory sn
 function stateJson(){
   return JSON.stringify({
     cues: CUES.map(function(c){
-      return {id:c.id, time:c.time, pick:c.pick, gain:c.gain, state:c.state,
+      return {id:c.id, time:c.time, pick:c.pick, gain:c.gain, byHand:!!c.byHand, state:c.state,
               beat:c.beat, why:c.why, short:c.short, candidates:c.candidates,
               user:!!c.user, dupOf:c.dupOf, len:c.len, endMode:c.endMode, fade:c.fade};
     }),
-    userCount: userCount,
+    userCount: userCount, auto_level: $("autolevel").checked,
     bed: {file: $("bedsel").value, gain: +$("bedvol").value,
           entry: BED.entry, exit: BED.exit, offset: BED.offset,
           fadeIn: BED.fadeIn, fadeOut: BED.fadeOut, stops: BED.stops, duck: +$("bedduck").value, beatSync: BED.beatSync,
@@ -547,6 +549,7 @@ function restore(json){
   var s = JSON.parse(json);
   restoring = true;
   CUES = s.cues.map(function(c){ return Object.assign({}, c); });
+  $("autolevel").checked = s.auto_level !== false;
   userCount = s.userCount || 0;
   $("bedsel").value = s.bed.file || "";
   $("bedvol").value = s.bed.gain; $("bedvoll").textContent = s.bed.gain + " dB";
@@ -651,6 +654,7 @@ var SCHED = {};              // cue id -> reel time its file was last scheduled 
 
 function payload(){
   return {
+    auto_level: $("autolevel").checked,
     project: CFG.board_name || "Sound mixing board",
     picture: CFG.picture,
     fps: CFG.fps,
@@ -682,6 +686,7 @@ function payload(){
         time: +c.time.toFixed(3),
         file: c.pick,
         gain_db: +c.gain,
+        gain_by_hand: !!c.byHand,
         length_s: c.len || null,
         end_mode: c.endMode || "hard",
         fade_out_s: (c.endMode === "fade") ? c.fade : null,
@@ -737,7 +742,59 @@ function tipsFor(c){
   }
   return out;
 }
-function defGain(file){ var row = libRow(file); return (row && row.peak_dbfs != null) ? +(-1 - row.peak_dbfs).toFixed(1) : 0; }
+function defGain(file){ var row = libRow(file); return (row && row.peak_dbfs != null) ? levelRound(-1 - row.peak_dbfs) : 0; }
+/* level-rule:start */
+/* toFixed rounds the binary value like Python; exact half ties go to even. */
+function levelRound(x){
+  var n = Math.floor(x * 10);
+  return Number.isInteger(x * 4) && x * 10 - n === 0.5 ? (n + (Math.abs(n) % 2)) / 10 : +x.toFixed(1);
+}
+function levelPlan(cues, ownByFile, autoLevel){
+  if(autoLevel === undefined) autoLevel = true;
+  var r = levelRound;
+  var values = cues.filter(function(c){ return ownByFile[c.file] != null; })
+    .map(function(c){ return ownByFile[c.file] + (c.gain_db || 0); }).sort(function(a,b){ return a-b; });
+  var mid = Math.floor(values.length / 2);
+  var target = values.length ? (values.length % 2 ? values[mid] : (values[mid-1] + values[mid]) / 2) : null;
+  return {target: target === null ? null : r(target), auto_level: !!autoLevel, cues: cues.map(function(c){
+    var own = ownByFile[c.file], skipped = own == null, was = c.gain_db || 0, wanted = skipped ? null : r(target - own);
+    var ceiling = c.source_peak_dbfs == null ? null : r(-1 - c.source_peak_dbfs);
+    var byHand = Object.prototype.hasOwnProperty.call(c, "gain_by_hand") ? !!c.gain_by_hand
+      : c.source_peak_dbfs != null && Math.abs(was - r(-1 - c.source_peak_dbfs)) > 0.05;
+    var active = !!autoLevel && !byHand && !skipped;
+    return {id:c.id, file:c.file, own:skipped ? null : r(own), was:was, wanted:wanted, ceiling:ceiling,
+      gain:active ? (ceiling === null ? wanted : Math.min(wanted, ceiling)) : was,
+      capped:active && ceiling !== null && wanted > ceiling, by_hand:byHand, skipped:skipped};
+  })};
+}
+/* level-rule:end */
+function savedByHand(s){
+  if(Object.prototype.hasOwnProperty.call(s, "byHand")) return !!s.byHand;
+  var row = libRow(s.pick);
+  return !!(row && row.peak_dbfs != null && Math.abs(s.gain - defGain(s.pick)) > 0.05);
+}
+function liveLevels(){
+  var own = {}, cues = CUES.filter(function(c){
+    var row = libRow(c.pick);
+    return c.state === "keep" && row && Object.prototype.hasOwnProperty.call(row, "max_m_lufs");
+  }).map(function(c){
+    var row = libRow(c.pick); own[c.pick] = row.max_m_lufs;
+    return {id:c.id, file:c.pick, gain_db:+c.gain, source_peak_dbfs:row.peak_dbfs, gain_by_hand:!!c.byHand};
+  });
+  return levelPlan(cues, own, $("autolevel").checked).cues;
+}
+function cueLevel(c){
+  return liveLevels().filter(function(r){ return r.id === c.id; })[0] || {gain:c.gain, capped:false};
+}
+function refreshLevels(){
+  var rows = $("cuebody").children;
+  CUES.forEach(function(c, i){
+    if(!rows[i]) return;
+    var lev = cueLevel(c), label = rows[i].querySelector(".gain"), tag = rows[i].querySelector(".capped");
+    label.textContent = (lev.gain > 0 ? "+" : "") + lev.gain + " dB";
+    tag.hidden = !lev.capped;
+  });
+}
 function trackLabel(file, row, metric, unit){
   var name = row && row.title || file.replace(/\.[^.]+$/, "");
   var advanced = BoardClient.controls && BoardClient.controls.mode() === "advanced";
@@ -759,7 +816,7 @@ function setPick(c, file){
   if(row && row.peak_dbfs != null){
     c.gain = (oldRow && oldRow.peak_dbfs != null)
       ? +(c.gain + oldRow.peak_dbfs - row.peak_dbfs).toFixed(1)
-      : +(-1 - row.peak_dbfs).toFixed(1);
+      : defGain(c.pick);
   }
   delete scheduled[c.id];
 }
@@ -867,19 +924,25 @@ function renderCues(){
     var gl = document.createElement("span");
     gl.className = "gain"; gl.textContent = (c.gain > 0 ? "+" : "") + c.gain + " dB";
     gr.oninput = function(){
-      c.gain = +gr.value;
-      gl.textContent = (c.gain > 0 ? "+" : "") + c.gain + " dB";
+      c.gain = +gr.value; c.byHand = true;
+      refreshLevels();
       refreshOut(); saveState();
     };
     gr.ondblclick = function(){   /* exact matched level, not snapped to the slider step */
-      c.gain = defGain(c.pick); gr.value = c.gain;
-      gl.textContent = (c.gain > 0 ? "+" : "") + c.gain + " dB";
+      c.gain = defGain(c.pick); c.byHand = false; gr.value = c.gain;
+      refreshLevels();
       refreshOut(); saveState();
     };
+    var lev = cueLevel(c);
+    gl.textContent = (lev.gain > 0 ? "+" : "") + lev.gain + " dB";
+    var cap = document.createElement("span"); cap.className = "pk capped"; cap.textContent = "capped";
+    cap.title = "at its loudest clean level; louder would clip"; cap.hidden = !lev.capped;
     var gainDetails = document.createElement("details"); gainDetails.className = "advanced-controls";
     gainDetails.innerHTML = "<summary>Advanced controls</summary>";
     gainDetails.appendChild(gl);
-    td4.appendChild(gr); td4.appendChild(gainDetails);
+    td4.appendChild(gr);
+    td4.appendChild(c.state === "keep" && libRow(c.pick) && Object.prototype.hasOwnProperty.call(libRow(c.pick), "max_m_lufs") ? gl : gainDetails);
+    td4.appendChild(cap);
 
     /* end behavior: hard cut at a length, or fade the tail */
     var endRow = ext(document.createElement("div"));
@@ -941,7 +1004,7 @@ function renderCues(){
     bAud.onclick = function(){ if(looping) endLoop(); else audition(c); };
     var bSolo = ext(document.createElement("button"));
     bSolo.className += " mini"; bSolo.textContent = "sound only";
-    bSolo.onclick = function(){ if(c.pick) fire(cueUrl(c), c.gain, undefined, cueOpts(c)); };
+    bSolo.onclick = function(){ if(c.pick) fire(cueUrl(c), cueLevel(c).gain, undefined, cueOpts(c)); };
     var bDup = ext(document.createElement("button"));
     bDup.className += " mini"; bDup.textContent = "add duplicate";
     bDup.title = "place a copy of this sound elsewhere on the timeline";
@@ -1034,7 +1097,7 @@ function tick(){
         var o = cueOpts(c);
         o.from = dt < -0.05 ? -dt : 0;   /* joined after the file's start (a seek, a head before 0): skip its head, the hit stays on time */
         SCHED[c.id] = t + Math.max(0, dt) - o.from;
-        fire(cueUrl(c), c.gain, ctx.currentTime + Math.max(0, dt) + lat, o);
+        fire(cueUrl(c), cueLevel(c).gain, ctx.currentTime + Math.max(0, dt) + lat, o);
       }
     });
   }
@@ -1178,6 +1241,7 @@ function CV(name, dflt){ var v = getComputedStyle(document.documentElement).getP
 /* the board as seeded from config.json: boot uses it, and "start over" goes back to it */
 function seedFromConfig(cfg){
   userCount = 0;
+  $("autolevel").checked = true;
   BED.entry = 0; BED.exit = null; BED.offset = 0; BED.fadeIn = 0.5; BED.fadeOut = 1.5; BED.beatSync = false;
   $("bedsel").value = ""; $("bedvol").value = -18; $("bedvoll").textContent = "-18 dB";
   setDuck(6); setCarve({on:true, strength:0.8}); MREQ = null; RIGHTS = {};   /* reset clears the music request and the rights tick */
@@ -1186,7 +1250,6 @@ function seedFromConfig(cfg){
   });
   CUES = cfg.cues.map(function(c, i){
     var pick = c.candidates[0];
-    var row = LIB[pick];
     return {
       id: c.id || ("cue" + i),
       beat: c.beat, why: c.why || "", short: c.short || "",
@@ -1195,7 +1258,8 @@ function seedFromConfig(cfg){
       pick: pick,
       /* start each candidate at a gain that brings its measured peak to about -1 dBFS,
          so a quiet master is not silently far below the rest of the mix */
-      gain: (row && row.peak_dbfs != null) ? +(-1 - row.peak_dbfs).toFixed(1) : 0,
+      gain: defGain(pick),
+      byHand: false,
       state: null,
       len: c.len || null, endMode: c.endMode || "hard", fade: c.fade || 0.25   /* a seeded cue may preset its length/end */
     };
@@ -1359,8 +1423,8 @@ function renderMusic(){
 
 /* ---------- boot ---------- */
 (bc ? Promise.all([
-  fetch(BASE + "config.json").then(function(r){
-    if(!r.ok){ var e = new Error("HTTP " + r.status + " loading config.json"); e.noCues = r.status === 404; throw e; }
+  fetch(BASE + "config.json?picture=current").then(function(r){
+    if(!r.ok){ var e = new Error("This reel has no sound board yet. Ask Claude to set it up."); e.noCues = r.status === 404; throw e; }
     return r.json();
   }),
   bc.load()
@@ -1371,6 +1435,7 @@ function renderMusic(){
   BEDS = cfg.beds || [];
 
   $("sub").innerHTML = cfg.blurb || "";
+  $("picture-label").textContent = cfg.picture_label || "Playing the first cut (no preview yet)";
   var boardName = cfg.board_name || "Sound mixing board";
   document.title = boardName;
   $("h1").innerHTML = boardName.replace(/(\S+)\s*$/, "<em>$1</em>");
@@ -1396,6 +1461,7 @@ function renderMusic(){
      flagged UNMATCHED, never dropped and never applied to the wrong cue. */
   var saved = DISK;
   if(saved && saved.cues){
+    $("autolevel").checked = saved.auto_level !== false;
     var claimed = {};
     saved.cues.forEach(function(s){
       var c = null;
@@ -1406,6 +1472,7 @@ function renderMusic(){
       if(c){
         claimed[c.id] = true;
         c.time = s.time; c.gain = s.gain; c.state = s.state;
+        c.byHand = savedByHand(s);
         if(s.pick) c.pick = s.pick;
         if(s.len !== undefined) c.len = s.len;
         if(s.endMode) c.endMode = s.endMode;
@@ -1414,7 +1481,7 @@ function renderMusic(){
         var flag = s.user ? "" : "UNMATCHED after refill (was " + s.id + "): ";
         CUES.push({id: s.user ? s.id : s.id + "-was", beat:s.beat, why: flag + (s.why || ""), short:s.short || "",
                    time:s.time, candidates:s.candidates || [], pick:s.pick,
-                   gain:s.gain, state:s.state, user:true, dupOf:s.dupOf,
+                   gain:s.gain, byHand:savedByHand(s), state:s.state, user:true, dupOf:s.dupOf,
                    len:s.len || null, endMode:s.endMode || "hard", fade:s.fade || 0.25});
       }
     });
@@ -1514,7 +1581,7 @@ $("tl").onclick = function(e){
       why: "duplicate of " + (src.pick || "").replace(/\.mp3$/, ""),
       short: src.short, time: t,
       candidates: src.candidates.slice(),
-      pick: src.pick, gain: src.gain,
+      pick: src.pick, gain: src.gain, byHand:!!src.byHand,
       len: src.len, endMode: src.endMode, fade: src.fade,   /* a duplicate keeps its trim */
       state: "keep", user: true
     });
@@ -1701,7 +1768,7 @@ $("suggest").onclick = function(){
     beat: "user added sound " + userCount,
     why: "you flagged this moment as missing a sound",
     short: "u" + userCount, time: t,
-    candidates: [], pick: null, gain: 0,
+    candidates: [], pick: null, gain: 0, byHand:false,
     state: "keep", user: true
   });
   CUES.sort(function(a, b){ return a.time - b.time; });
@@ -1787,6 +1854,7 @@ $("reset").onclick = function(){
   bedStateToInputs(); bedChanged(); mutated();
 };
 $("lat").onchange = function(){ refreshOut(); saveState(); stopBed(); startBed(); };
+$("autolevel").onchange = function(){ scheduled = {}; mutated(); };
 
 $("copy").onclick = function(){
   navigator.clipboard.writeText($("out").value).then(function(){
@@ -1862,8 +1930,9 @@ document.addEventListener("keydown", function(e){
     at = (e.key === "]") ? (at + 1) % list.length : (at <= 0 ? list.length - 1 : at - 1);
     setPick(c, list[at]); audition(c); refreshOut(); saveState();
   }
-  else if(e.key === "-" || e.key === "="){
-    c.gain = Math.max(-24, Math.min(12, +(c.gain + (e.key === "=" ? 0.5 : -0.5)).toFixed(1)));
+  else if(e.key === "-" || e.key === "=" || e.key === "+"){
+    c.byHand = true;
+    c.gain = Math.max(-24, Math.min(12, +(c.gain + (e.key === "-" ? -0.5 : 0.5)).toFixed(1)));
     renderCues(); refreshOut(); saveState();
   }
   else if(e.key === "," || e.key === "."){

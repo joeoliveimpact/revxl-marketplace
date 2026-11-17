@@ -39,6 +39,7 @@ NAMES.append("storyboard")
 NAMES.append("rapid_sends")
 NAMES.append("walk_polish")
 NAMES.append("full_view")
+NAMES.append("motion_review")
 
 
 class Blocked(RuntimeError):
@@ -211,6 +212,38 @@ def case_reels(p):
     check()
     with p.mutant("hub.js", "const reels = DATA.reels;", "const reels = DATA.reels.slice(0, 1);"):
         p.bites(check, "fixed reel list")
+
+
+def case_motion_review(p):
+    """Lane proof: Motion review in the real same-origin hub iframe, with a Send."""
+    d = p.videos / "reel-01"
+    review = d / "motion/review"
+    review.mkdir(parents=True, exist_ok=True)
+    p.run([p.tools["ffmpeg"], "-v", "error", "-y", "-i", p.clip, "-frames:v", "1", review / "start.png"])
+    shutil.copyfile(p.clip, review / "loop.mp4")
+    card = dict(scene="reel-good-world", beat="b_001", title="Wide world", start_s=0, end_s=2,
+                built="A camera crosses the desk.", start="motion/review/start.png", loop="motion/review/loop.mp4",
+                state="new", checks="passed")
+    write(review / "review.json", {"schema": 1, "reel": d.name, "cards": [card,
+          dict(card, scene="reel-locked-world", beat="b_002", state="locked")]})
+    p.refresh()
+    views = p.browse([click('#tab-motion-review'), {"do": "waitFn", "js": "!!document.querySelector('#panel iframe')"},
+        {"do": "frame", "sel": "#panel iframe", "wait": "#cards section"},
+        {"do": "eval", "js": "JSON.stringify({disabled:document.querySelector('#send').disabled,count:document.querySelector('#count').textContent,locked:document.querySelector('.locked').querySelectorAll('input,textarea').length})"},
+        {"do": "set", "sel": "#note-0", "value": "Keep the windows larger"},
+        {"do": "waitFn", "js": "!document.querySelector('#send').disabled"}, click('#send'),
+        {"do": "waitFn", "js": "document.querySelector('#status').dataset.state==='sent'"},
+        {"do": "bounds", "sel": "#send"}])
+    need(views[0] == {"disabled": True, "count": "1 of 2 reviewed", "locked": 0}, f"review gating: {views}")
+    need(views[1]["visible"] and views[1]["hit"], f"review Send outside the hub viewport or covered: {views[1]}")
+    sent = read(d / "motion-review-selection.json")
+    need(sent["schema"] == 1 and sent["reel"] == d.name and sent["sent_at"], "review Send envelope")
+    need(sent["sections"] == [dict(scene="reel-good-world", beat="b_001", note="Keep the windows larger", leave=False),
+                              dict(scene="reel-locked-world", beat="b_002", note="", leave=True)], "review Send sections")
+    write(p.hub / "cockpit-state.json", {"baseline": 0, "acked": {}})
+    data = p.refresh()
+    row = next(r for r in data["reels"] if r["id"] == d.name)
+    need(any(s["file"] == "motion-review-selection.json" for s in row["open_sends"]), "review Send not tracked")
 
 
 def case_tabs(p):
@@ -1162,8 +1195,7 @@ def case_broll(p):
     p.py(canvas / "make_beat_map.py", "--reel-dir", d, "--plan", d / "work/plan.json")
     seeded = read(d / "beat-map.state.json")
     heard = beat_schema.load_words(d / beat_schema.DEFAULT_WORDS)
-    clip = {"src": "broll/ingested/own.mp4", "ledger_id": "f01", "name": "My own clip.mov",
-            "frames": 900, "width": 1536, "height": 1920, "origin": "own"}
+    clip = dict(fixture.privacy_clip_fixture(d), name="My own clip.mov")
     short = dict(clip, src="broll/ingested/short.mp4", ledger_id="f02", name="Too short.mov", frames=1)
     ai = dict(clip, src="broll/ingested/ai.mp4", ledger_id="f03", name="Garden.mp4", origin="ai",
               job_id="test-123", request_sha256="a" * 64)
@@ -1193,9 +1225,14 @@ def case_broll(p):
     def pick_check():
         write(d / "beat-map.state.json", seeded)
         doc = sent([set_value('#broll-0', 'f01'), set_value('#broll-fit-0', 'blur-fill'),
-                    set_value('#broll-start-0', '0.2')])
+                    set_value('#broll-start-0', '0.2'), click('#hide-private-0'),
+                    click('#mask-add'), click('#mask-done')])
         need(doc["beats"][0].get("broll") == expected, f"B-roll Send differs: {doc['beats'][0].get('broll')}")
         need(read(d / "beat-map.state.json")["beats"][0]["broll"] == expected, "B-roll not saved in state")
+        box = {"x": .25, "y": .4, "w": .5, "h": .1, "kind": "blur"}
+        need(doc.get("broll_masks", {}).get("f01") == [box], "hub iframe Send lost the hidden box")
+        need(read(d / "beat-map.state.json").get("broll_masks") == doc["broll_masks"],
+             "hub iframe hidden box not saved in state")
 
     labels = p.browse(open_map() + [{"do": "eval", "js":
         "JSON.stringify(Array.from(document.querySelector('#broll-0').options, o => o.textContent))"}])[-1]
@@ -1235,19 +1272,20 @@ def case_walk_polish(p):
     d = p.videos / "reel-01"
     write(d / "tweak-selection.json", {})
     os.utime(d / "tweak-selection.json", (100, 100))
-    # A sent Beat Map with no scene on any beat: there is no motion step, so the sound pass is next.
+    # A sent Beat Map and an explicit no-motion record make the sound pass next.
     write(d / "beat-map.state.json", {"sent_at": "now", "beats": [{"id": "b_001", "scene": None}]})
+    p.py(p.plugin / "skills/reel-canvas-build/scripts/motion_review.py", "none", "--reel-dir", d)
     library = p.editor / "sound"
     write(library / "library-index.json", {"files": {"tick.wav": {"sha256": "fixture"}}})
     (library / "tick.wav").write_bytes(b"sound")
     p.refresh()
     rows = p.browse([
         {"do": "eval", "js": "JSON.stringify({head:document.querySelector('#move h2').textContent,"
-         "hint:document.querySelector('#move .what').textContent,step:document.querySelectorAll('#steps small')[5].textContent})"},
+         "hint:document.querySelector('#move .what').textContent,step:document.querySelectorAll('#steps small')[6].textContent})"},
         {"do": "eval", "js": "current().sound_pass_ran=true;current().sound_voice_only=true;drawHead();"
-         "JSON.stringify(document.querySelectorAll('#steps small')[5].textContent)"},
+         "JSON.stringify(document.querySelectorAll('#steps small')[6].textContent)"},
         {"do": "eval", "js": "current().sound_pass_ran=false;current().sound_pack_installed=false;drawHead();"
-         "JSON.stringify(document.querySelectorAll('#steps small')[5].textContent)"}])
+         "JSON.stringify(document.querySelectorAll('#steps small')[6].textContent)"}])
     need("No sound pass yet" in rows[0]["hint"] and "starter pack" in rows[0]["hint"] and
          "voice only" not in rows[0]["hint"] and rows[0]["hint"] == rows[0]["step"], f"next sound pass: {rows[0]}")
     need(all("voice only" in text for text in rows[1:]), f"voice-only alternatives: {rows[1:]}")
@@ -1339,16 +1377,18 @@ def wording_checks(p):
     opening = re.compile(r'preview_start|in the Browser pane', re.I)
     exceptions = (
         ("editor-doctor/references/board-server.md", "A board's own page (`{url}editor/<board>/?reel=<reel>`) still loads; it is for tests and direct links only."),
-        ("reel-sound-pass/references/sound-board.md", "The client opens it inside the hub (board-server.md step 3); this address is the board's own page."),
+        ("reel-sound-pass/references/sound-board.md", "The user opens it inside the hub (board-server.md step 3); this address is the board's own page."),
     )
-    sentence = "The hub is the client's one window: never open a second tab or a bare board or video address for them."
+    sentence = "The hub is the user's one window: never open a second tab or a bare board or video address for them."
 
     def check(docs):
         for name, text in docs.items():
             for n, line in enumerate(text.splitlines(), 1):
                 if any(name == file and substring in line for file, substring in exceptions):
                     continue
-                need(not own_page.search(line) and not (bare_video.search(line) and opening.search(line)),
+                pane_file = (re.search(r'\b(?:give|open)\b.*\b(?:file|video)\b.*in the Browser pane', line, re.I)
+                             and not re.search(r'\bhub\b', line, re.I))
+                need(not own_page.search(line) and not (bare_video.search(line) and opening.search(line)) and not pane_file,
                      f"bare board/video opening: {name}:{n}: {line}")
         need(sum(text.count(sentence) for text in docs.values()) == 1, "one-window sentence must appear exactly once")
 
@@ -1356,6 +1396,10 @@ def wording_checks(p):
     mutant = dict(texts)
     mutant["reel-sound-pass/SKILL.md"] += "\nOpen `/editor/sound-board/?reel=<reel>` in the Browser pane.\n"
     p.bites(lambda: check(mutant), "bare Sound Board instruction")
+    for line in ("Give the user the listening list and the file in the Browser pane.",
+                 "Open the mixed video in the Browser pane."):
+        p.bites(lambda: check(dict(texts, **{"reel-sound-pass/SKILL.md": texts["reel-sound-pass/SKILL.md"] + "\n" + line})),
+                "bare file/video in Browser pane")
     p.bites(lambda: check({name: text.replace(sentence, "") for name, text in texts.items()}),
             "missing one-window sentence")
 
@@ -1395,6 +1439,27 @@ def data_checks(p):
     p.refresh()
     need(stamps == {f: f.stat().st_mtime_ns for f in stamps}, "frame cache")
     print("PASS data: reel folders, manifest tabs, Health, Goldmine, cover, QA, attention, 24 frames + cache", flush=True)
+    d = p.videos / "reel-01"
+    latest_mix = d / "sound/final.mp4"
+    shutil.copyfile(p.clip, latest_mix)
+    mix_only = p.refresh()["reels"][0]
+    need(mix_only["preview_label"] == "Latest mix" and mix_only["preview_name"] == "",
+         "mix without a preview must reach review without inventing an approval key")
+    preview = d / "renders/reel-01 Preview 720p - SX.mp4"
+    shutil.copyfile(p.clip, preview)
+    newest = preview.stat().st_mtime
+    os.utime(latest_mix, (newest + 10, newest + 10))
+    latest = p.refresh()["reels"][0]
+    need(latest["preview_url"].endswith("/sound/final.mp4") and latest["preview_label"] == "Latest mix"
+         and latest["preview_name"] == preview.name,
+         "newer mix must be offered to Master review as Latest mix")
+    os.utime(latest_mix, (newest - 10, newest - 10))
+    older = p.refresh()["reels"][0]
+    need(not older["preview_url"].endswith("/sound/final.mp4") and older["preview_name"] == preview.name,
+         "older mix must not replace the preview")
+    latest_mix.unlink()
+    preview.unlink()
+    print("PASS data: newer mix reaches Master review; older mix leaves the preview", flush=True)
 
     # Import the builder, then compare its stage and open Sends with the actual TypeScript on each disk fixture.
     spec = importlib.util.spec_from_file_location("hub_rows_proof", p.doctor / "hub_rows.py")
@@ -1409,11 +1474,11 @@ def data_checks(p):
     write(p.hub / "cockpit-state.json", snap)
     def parity(expected):
         lists, js = {}, {}
-        for name in ("root", "raw", "work", "renders", "sound"):
+        for name in ("root", "raw", "work", "renders", "sound", "motion/review"):
             folder = d if name == "root" else d / name
             lists[name] = {"status": "ok", "value": [{"name": f.name, "kind": "file" if f.is_file() else "dir",
-                          "size": f.stat().st_size, "mtimeMs": f.stat().st_mtime*1000} for f in folder.iterdir()]}
-        for name in ("beat-map.state.json", "sketches.state.json"):
+                          "size": f.stat().st_size, "mtimeMs": f.stat().st_mtime*1000} for f in (folder.iterdir() if folder.is_dir() else [])]}
+        for name in ("beat-map.state.json", "sketches.state.json", "motion-review-selection.json"):
             js[name] = {"status": "ok", "value": read(d/name)} if (d/name).exists() else {"status": "missing"}
         inp = p.scratch / "parity.json"
         write(inp, {"reel": {"name": d.name, "lists": lists, "json": js, "probe": {}}, **snap})
@@ -1438,10 +1503,13 @@ def data_checks(p):
     write(d / "work/edl.json", [])
     parity("Beat map")
     write(d / "beat-map.state.json", {"sent_at": 0})  # != null, not a truthiness test
-    # Preserve the Motion assertion: this fixture has an open direction to lock.
+    # Look waits for a direction lock; Motion waits for a current all-Leave-it Send.
     write(d / "sketches.state.json", {})
-    parity("Motion")
+    parity("Look")
     write(d / "sketches.state.json", {"locked_at": "2026-11-05T12:00:00Z"})
+    parity("Motion")
+    write(d / "motion/review/review.json", {"schema": 1, "cards": []})
+    write(d / "motion-review-selection.json", {"sections": [{"leave": True}]})
     parity("Sound")
     master = next((d / "renders").glob("*.mp4"))
     master.unlink()
@@ -1453,7 +1521,7 @@ def data_checks(p):
         snap["acked"][f"{d.name}/{name}"] = (d/name).stat().st_mtime*1000
     write(p.hub / "cockpit-state.json", snap)
     parity("Post")
-    print("PASS data: executed logic.ts parity at all 8 mandatory stages, optional Grade skipped, Send baseline/acks/downstream", flush=True)
+    print("PASS data: executed logic.ts parity at all 9 mandatory stages (including Look and Motion), optional Grade skipped, Send baseline/acks/downstream", flush=True)
 
     p.start()
     def post(name):

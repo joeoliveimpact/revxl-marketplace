@@ -69,7 +69,7 @@ def run(ctx):
     words = beat_schema.load_words(words_path) if words_path.is_file() else None
     rows = []
     for beat in scened:
-        for problem in scene_check.fill_problems(beat["scene"].get("id"), beat, words=words):
+        for problem in scene_check.fill_problems(beat["scene"].get("id"), beat, words=words, reel=ctx["reel_dir"]):
             if problem.startswith("the counter ends on "):
                 check = "final-number"
             elif "it fits " in problem or "mid-count fits the display" in problem:

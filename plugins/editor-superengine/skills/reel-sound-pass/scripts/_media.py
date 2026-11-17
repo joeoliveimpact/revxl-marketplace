@@ -9,6 +9,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[1] / "_shared"))
 sys.path.insert(0, str(HERE.parents[1] / "editor-doctor" / "scripts"))
 import runtime as rt  # noqa: E402
+from sound_picture import find_picture  # noqa: E402
 
 SR = 48000          # every stem, mix and master: float32, 48 kHz, stereo
 
@@ -72,24 +73,53 @@ def video_md5(path):
                           capture_output=True, text=True).stdout.strip()
 
 
+class PictureError(ValueError):
+    def __init__(self, message, code=1):
+        super().__init__(message)
+        self.code = code
+
+
+def frame_count(path):
+    """Exact stream metadata when available, else count packets without decoding."""
+    command = [ffprobe(), '-v', 'error', '-select_streams', 'v:0']
+    out = subprocess.check_output(command + ['-show_entries', 'stream=nb_frames', '-of', 'json', str(path)])
+    frames = json.loads(out)['streams'][0].get('nb_frames')
+    if frames is not None and str(frames).isdigit():
+        return int(frames)
+    out = subprocess.check_output(command + ['-count_packets', '-show_entries', 'stream=nb_read_packets',
+                                             '-of', 'json', str(path)])
+    return int(json.loads(out)['streams'][0]['nb_read_packets'])
+
+
+def cut_picture(reel, video=None):
+    """The cut supplies picture and voice; the board's picture is only an audition."""
+    reel = Path(reel)
+    audition = find_picture(reel, video)
+    if audition is not None and not audition.is_file():
+        raise PictureError("Couldn't find the reel folder or its cut video. Check the reel name, then try again.", 2)
+    try:
+        cuts = json.loads((reel / 'work/cuts.json').read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        cuts = {}
+    if cuts.get('speed') is not None:
+        tag = ('%.2fx' % cuts['speed']).replace('.', '')
+        cut = reel / 'work/renders' / ('master-%s.mp4' % tag)
+    else:
+        masters = [p for p in (reel / 'work/renders').glob('master-*.mp4')
+                   if p.is_file() and '.partial' not in p.name.lower()]
+        cut = max(masters, key=lambda p: p.stat().st_mtime_ns, default=None)
+    if cut is None or not cut.is_file():
+        raise PictureError("Couldn't find the reel folder or its cut video. Check the reel name, then try again.", 2)
+    if audition and audition.resolve() != cut.resolve() and frame_count(audition) != frame_count(cut):
+        raise PictureError("The preview and the cut have different lengths, so the sound can't be lined up. "
+                           "Remake the preview, then mix again.")
+    return cut
+
+
 def workspace():
     """(editor folder, videos folder) of the client's workspace (the cwd), from editor.config.json paths."""
     import board_sync
     return board_sync.workspace_paths(Path.cwd())
-
-
-def find_picture(reel, video=None):
-    """The picture-locked video: --video, else the board config's picture_url, else the newest master render."""
-    if video:
-        return Path(video)
-    try:
-        url = json.loads((reel / 'config.json').read_text(encoding='utf-8')).get('picture_url')
-        if url and (reel / url).is_file():
-            return reel / url
-    except (OSError, ValueError):
-        pass
-    renders = sorted((reel / 'work' / 'renders').glob('master-*.mp4'), key=lambda p: p.stat().st_mtime)
-    return renders[-1] if renders else None
 
 
 def write_json(path, obj, indent=1):

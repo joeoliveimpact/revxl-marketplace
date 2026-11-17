@@ -25,6 +25,7 @@ sys.path[:0] = [str(P / "skills/reel-canvas-build/scripts"), str(P / "skills/_sh
                str(P / "skills/_shared/checks"), str(P / "skills/caption-writer/scripts")]
 try:
     import compose
+    from heavy_job import heavy_job, HeavyJobError
     import beat_schema
     import saved_style
     import loop_check
@@ -361,7 +362,8 @@ def grade(base, version, destination):
         raise Stop("That look cannot change the already baked base preview; choose another colour look.")
     cube = destination.parent / "look.cube"
     bake_grade.write_cube(cube, lattice, 33, "Trial colour look")
-    apply_grade.apply(base, cube, destination)
+    with heavy_job("Trial colour render"):
+        apply_grade.apply(base, cube, destination)
 
 
 def frame_differences(base, trial, count):
@@ -547,7 +549,7 @@ def render(reel, only=None, status=print):
             report["versions"].append(row)
             honest(report)
             save(report_path, report)
-        except (Stop, compose.Stop) as error:
+        except (Stop, compose.Stop, HeavyJobError) as error:
             destination.unlink(missing_ok=True)
             if planned["base_hashes"] != hashes(reel):
                 raise Stop("The reel inputs changed during rendering; the unfinished version was deleted.") from None
@@ -654,6 +656,7 @@ def selftest():
 
                 output = io.StringIO()
                 with patched(globals(), approved=lambda reel: None, hashes=lambda reel: changed.copy(),
+                             heavy_job=lambda label: contextlib.nullcontext(),
                              source_words=lambda reel: "3 clear cuts", scratch_render=fake_render,
                              grade=lambda base, version, dest: fake_render(reel, doc, None, dest),
                              frame_differences=lambda base, trial, count:
@@ -722,7 +725,9 @@ def main(argv=None):
     reel = args.reel_dir.resolve()
     # Tool chatter may contain client text or multiple errors. Only our plain summary leaves this entry point.
     output = sys.stdout
-    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+    # Queue messages stay visible; nested compose/grade renders reuse this same lock.
+    job = heavy_job("Trial reels") if args.command == "render" else contextlib.nullcontext()
+    with job, contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
         result = (plan(reel, args.spec) if args.command == "plan" else
                   render(reel, args.only, status=lambda line: print(line, file=output, flush=True)))
     count = len(result["versions"])
@@ -733,7 +738,7 @@ def main(argv=None):
 def guarded():
     try:
         return main()
-    except (Stop, compose.Stop) as error:
+    except (Stop, compose.Stop, HeavyJobError) as error:
         lines = error.lines if isinstance(error, compose.Stop) else (str(error),)
         for line in lines:
             line = " ".join(line.split())

@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motion review</title>
+<style>
+  :root { --bg:#14161b; --panel:#1d2028; --line:#2c313c; --text:#e7e9ee; --muted:#9aa3b2; --accent:#7aa7ff; --bad:#ff8a8a; }
+  * { box-sizing:border-box; }
+  [hidden] { display:none !important; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  main { max-width:980px; margin:auto; padding:20px 20px 110px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  h2 { font-size:17px; margin:0; }
+  .muted, .when, .built, .bar-check { color:var(--muted); }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; margin:16px 0; }
+  .top { display:flex; gap:12px; justify-content:space-between; align-items:baseline; }
+  .badge { color:var(--accent); font-size:13px; }
+  .locked .badge { color:#8fe0b0; }
+  .when, .bar-check { font-size:13px; }
+  .built { margin:8px 0 12px; }
+  .media { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  figure { margin:0; min-width:0; }
+  figcaption { font-size:13px; color:var(--muted); margin-bottom:6px; }
+  img, video { width:100%; aspect-ratio:9/16; object-fit:contain; display:block; border-radius:8px; background:#000; }
+  .note-label { display:block; margin:14px 0 6px; font-weight:600; }
+  textarea, button { font:inherit; color:var(--text); background:#12141a; border:1px solid #3a4150; border-radius:6px; }
+  textarea { width:100%; min-height:76px; padding:8px; resize:vertical; }
+  .leave { display:flex; gap:8px; align-items:center; margin-top:10px; cursor:pointer; }
+  input { width:18px; height:18px; accent-color:var(--accent); }
+  :focus-visible { outline:3px solid #ffd166; outline-offset:2px; }
+  .bar { position:fixed; bottom:0; left:0; right:0; padding:12px 20px; background:#0f1116; border-top:1px solid var(--line); display:flex; align-items:center; gap:14px; }
+  #status { flex:1; margin:0; color:var(--muted); }
+  #status[data-state=error] { color:var(--bad); }
+  #status[data-state=sent] { color:#8fe0b0; }
+  button { cursor:pointer; padding:9px 18px; }
+  #send { background:var(--accent); border-color:var(--accent); color:#0d1320; font-weight:600; }
+  #send:disabled { opacity:.5; cursor:default; }
+  @media(max-width:560px) { main { padding:14px 12px 150px; } .media { gap:8px; } .bar { flex-wrap:wrap; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Motion review</h1>
+  <p id="count" class="muted" aria-live="polite">0 of 0 reviewed</p>
+  <p class="muted">Watch each graphic over your real video. Tick Leave it, or write what to change, then Send. Claude rebuilds the cards with notes.</p>
+  <p id="empty" class="panel" hidden>No graphics to review yet. Ask Claude to build the motion.</p>
+  <div id="cards"></div>
+</main>
+<div class="bar">
+  <p id="status" role="status" aria-live="polite" data-state="loading">Loading…</p>
+  <button type="button" id="send" disabled>Send to Claude <small data-loading>Loading...</small></button>
+</div>
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const reel = new URLSearchParams(location.search).get("reel");
+const base = "/videos/" + encodeURIComponent(reel) + "/";
+let cards = [], sections = [], busy = false, ready = false, draftKey = "";
+function reviewed(section) { return section.leave === true || section.note.trim().length > 0; }
+function canSend(sections) { return sections.length > 0 && sections.every(reviewed); }
+function setStatus(state, text) { $("#status").dataset.state = state; $("#status").textContent = text; }
+function el(tag, attrs, ...children) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(attrs || {})) {
+    if (key === "text") node.textContent = value;
+    else node.setAttribute(key, value);
+  }
+  node.append(...children);
+  return node;
+}
+function mediaUrl(path) {
+  if (typeof path !== "string" || !path || path.startsWith("/") || path.includes("\\") ||
+      path.includes(":") || path.split("/").some(p => !p || p === "." || p === "..")) throw Error("Invalid media path");
+  return base + path.split("/").map(encodeURIComponent).join("/");
+}
+function refresh() {
+  const done = sections.filter(reviewed).length;
+  $("#count").textContent = `${done} of ${cards.length} reviewed`;
+  $("#send").disabled = busy || !ready || !canSend(sections);
+}
+function edited() {
+  try { localStorage.setItem(draftKey, JSON.stringify(sections)); } catch (e) { /* Inputs stay on the page. */ }
+  setStatus("saved", "Your notes are kept in this browser. Send when you're ready.");
+  refresh();
+}
+const observer = new IntersectionObserver(entries => entries.forEach(entry => {
+  if (entry.isIntersecting && !document.hidden) entry.target.play().catch(() => {});
+  else entry.target.pause();
+}), {threshold:0.4});
+document.addEventListener("visibilitychange", () => {
+  document.querySelectorAll("video").forEach(video => {
+    video.pause(); observer.unobserve(video); observer.observe(video);
+  });
+});
+function cardView(card, i) {
+  const section = sections[i], locked = card.state === "locked";
+  const start = el("img", {src:mediaUrl(card.start), alt:card.title + " start frame", loading:"lazy"});
+  const loop = el("video", {src:mediaUrl(card.loop), loop:"", playsinline:"", controls:"", preload:"metadata", "aria-label":card.title + " loop over your video"});
+  loop.muted = true;
+  // Manual play also obeys the on-screen rule.
+  loop.addEventListener("play", () => {
+    const r = loop.getBoundingClientRect();
+    if (document.hidden || r.bottom <= 0 || r.top >= innerHeight) loop.pause();
+  });
+  const panel = el("section", {class:locked ? "panel locked" : "panel", "data-scene":card.scene},
+    el("div", {class:"top"}, el("h2", {text:card.title}), el("span", {class:"badge", text:locked ? "Locked" : card.state === "rebuilt" ? "Rebuilt from your notes" : "New"})),
+    el("div", {class:"when", text:`${card.start_s.toFixed(2)} – ${card.end_s.toFixed(2)} s`}),
+    el("p", {class:"built", text:"What was built: " + card.built}),
+    el("div", {class:"media"}, el("figure", {}, el("figcaption", {text:"Start frame"}), start),
+       el("figure", {}, el("figcaption", {text:"Loop (with your video)"}), loop)));
+  if (!locked) {
+    const id = "note-" + i, note = el("textarea", {id, rows:"3", placeholder:"What should change?"});
+    note.value = section.note;
+    const leave = el("input", {type:"checkbox"}); leave.checked = section.leave;
+    note.addEventListener("input", () => {
+      section.note = note.value;
+      if (note.value.trim()) { section.leave = false; leave.checked = false; }
+      edited();
+    });
+    leave.addEventListener("change", () => {
+      section.leave = leave.checked;
+      if (leave.checked) { section.note = ""; note.value = ""; }
+      edited();
+    });
+    panel.append(el("label", {class:"note-label", for:id, text:"Your notes"}), note,
+                 el("label", {class:"leave"}, leave, "Leave it"));
+  }
+  panel.append(el("p", {class:"bar-check", text:"World wider than the frame · Real UI · Lift and depth · Lands on the word · Face and captions clear"}));
+  $("#cards").append(panel);
+  observer.observe(loop);
+}
+async function send() {
+  if (busy || !ready || !canSend(sections)) return;
+  busy = true; refresh();
+  setStatus("saving", "Sending…");
+  const doc = {schema:1, reel, sent_at:new Date().toISOString(),
+    sections:sections.map(s => ({scene:s.scene, beat:s.beat, note:s.note.trim(), leave:s.leave}))};
+  try {
+    const response = await fetch(base + "__save?board=motion-review&name=motion-review-selection.json",
+      {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(doc)});
+    const result = await response.json().catch(() => null);
+    if (!response.ok || !result || !result.ok) throw Error("Send failed");
+    setStatus("sent", "Sent. Tell Claude: your motion review is ready.");
+  } catch (e) {
+    setStatus("error", "Couldn't send. Your work is kept in this browser; try Send again in a moment.");
+  } finally { busy = false; refresh(); }
+}
+$("#send").addEventListener("click", send);
+async function init() {
+  try {
+    if (!reel) throw Error("No reel selected");
+    const response = await fetch(base + "motion/review/review.json", {cache:"no-store"});
+    if (response.status === 404) { $("#empty").hidden = false; setStatus("empty", ""); return; }
+    if (!response.ok) throw Error("Review couldn't load");
+    const doc = await response.json();
+    if (doc.schema !== 1 || !Array.isArray(doc.cards)) throw Error("Invalid review");
+    cards = doc.cards;
+    draftKey = "motion-review:" + reel + ":" + JSON.stringify(doc);
+    let draft = [];
+    try { draft = JSON.parse(localStorage.getItem(draftKey) || "[]"); } catch (e) { /* Fresh review. */ }
+    sections = cards.map(card => {
+      const saved = Array.isArray(draft) && draft.find(s => s.scene === card.scene && s.beat === card.beat);
+      return {scene:card.scene, beat:card.beat, note:card.state === "locked" ? "" : saved?.note || "",
+              leave:card.state === "locked" || saved?.leave === true};
+    });
+    cards.forEach(cardView);
+    ready = true;
+    $("#empty").hidden = cards.length > 0;
+    setStatus(cards.length ? "saved" : "empty", cards.length ? "Tick Leave it or add a note on every card." : "");
+  } catch (e) {
+    ready = false;
+    setStatus("error", "Couldn't load the motion review. Refresh the page; if it keeps failing, tell Claude.");
+  } finally {
+    $("[data-loading]")?.remove(); refresh();
+  }
+}
+init();
+</script>
+</body>
+</html>

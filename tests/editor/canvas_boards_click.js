@@ -5,6 +5,10 @@
 //   {do: "select", sel, value}    page.select (fires change)
 //   {do: "type", sel, text}       clear with Ctrl+A, Backspace, then page.type
 //   {do: "click", sel}
+//   {do: "drag", sel, from:[x,y], to:[x,y]}  pointer drag, fractions of the element
+//   {do: "set", sel, value}       set an input and fire input/change
+//   {do: "waitFn", js}            wait for a page expression
+//   {do: "eval", js}              push an expression's result onto reads
 //   {do: "waitState", state, change?}  wait for #status[data-state=<state>]; change: first give the page up
 //                                 to 1 s to leave its current state (so a stale "saved" can't pass)
 //   {do: "read"}                  push the DOM facts below onto reads
@@ -62,6 +66,21 @@ function readPage() {
     sketches: all("#sketches article.sketch[data-id]").map((a) => ({id: a.dataset.id, note: val(q("textarea[name=note]", a))})),
     note: val(q("#note")),
     send: q("#send") ? {disabled: q("#send").disabled, loading: !!q("#send [data-loading]")} : null,
+    privacy: {
+      reminder: !!q('#privacy-reminder')?.checkVisibility(),
+      status: q('.mask-status')?.textContent,
+      boxes: all('#mask-list .mask-row').map(e => ({
+        kind: q('input[type=radio]:checked', e)?.value, whole: q('.mask-whole', e)?.checked,
+        position: [...e.querySelectorAll('.mask-position input')].map(i => Number(i.value)),
+        error: q('.err', e)?.checkVisibility(),
+      })),
+      visible: all('#mask-overlay .mask-box').filter(e => !e.hidden).length,
+      picture: q('#mask-overlay') ? (() => {
+        const r = q('#mask-overlay').getBoundingClientRect();
+        return {width:r.width, height:r.height};
+      })() : null,
+      panelFits: !q('#mask-panel') || q('#mask-panel').scrollWidth <= q('#mask-panel').clientWidth,
+    },
     lock: q("#lock") ? {disabled: q("#lock").disabled} : null,
     locked: !!q("#directions") && q("#directions").classList.contains("locked"),
     localStorage: localStorage.length,
@@ -130,6 +149,26 @@ function readPage() {
           e.scrollIntoView({block: "center"});
         });
         await page.click(a.sel);
+      } else if (a.do === "drag") {
+        await page.$eval(a.sel, e => e.scrollIntoView({block:'center'}));
+        const r = await page.$eval(a.sel, e => {
+          const r = e.getBoundingClientRect();
+          return {x:r.x, y:r.y, width:r.width, height:r.height};
+        });
+        await page.mouse.move(r.x + a.from[0]*r.width, r.y + a.from[1]*r.height);
+        await page.mouse.down();
+        await page.mouse.move(r.x + a.to[0]*r.width, r.y + a.to[1]*r.height, {steps:8});
+        await page.mouse.up();
+      } else if (a.do === "set") {
+        await page.$eval(a.sel, (e, value) => {
+          e.value = value;
+          e.dispatchEvent(new Event('input', {bubbles:true}));
+          e.dispatchEvent(new Event('change', {bubbles:true}));
+        }, a.value);
+      } else if (a.do === "waitFn") {
+        await page.waitForFunction(a.js);
+      } else if (a.do === "eval") {
+        out.reads.push(await page.evaluate(a.js));
       } else if (a.do === "slider") {   // G2-c: move the actual Tweakpane slider with the pointer
         await page.$eval(a.sel, e => {
           for (let p=e.parentElement; p; p=p.parentElement) if (p.matches("details.advanced-controls")) p.open=true;

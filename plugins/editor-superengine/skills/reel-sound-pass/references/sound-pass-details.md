@@ -1,8 +1,9 @@
 # Sound pass: stage detail, checks and why
 
-Picture-locked reel in, finished sound out. The mix is the client's; the machinery only preserves it. Every
+Picture-locked reel in, finished sound out. The user's picks and hand-set levels rule; matching follows
+[sound-board.md](sound-board.md#matching-effect-levels). Every
 stage below exists because a looser version once shipped a reel with its sound effects missing or its music
-re-levelled behind the client's back.
+re-levelled behind the user's back.
 
 Packages: the scripts need numpy and ffmpeg, which the editor install puts in the editor's own Python (run
 `editor-superengine:editor-doctor` if they are missing; it does the equivalent of `pip install numpy`). `runtime`,
@@ -10,9 +11,9 @@ Packages: the scripts need numpy and ffmpeg, which the editor install puts in th
 
 ## The governing rules
 
-1. **Sound is finished after picture lock.** Cue times are spotted against the locked picture. If the picture
-   changes, the cue list is stale: open the board again.
-2. **A ratio the client set by ear is frozen.** Nothing re-levels it: no leveler on the mix; the board's voice carve
+1. **Sound is finished after picture lock.** Cue times follow the cut. After a recut, rebuild the board and
+   propose cues again as SKILL.md step 2 says; remaking the preview alone does not change cue times.
+2. **Hand-set ratios are kept.** Other effect gains follow the matching choice (sound-board.md); no leveler on the summed mix; the board's voice carve
    starts at strength 0.8 and lowers only the music's voice bands, with the speech dip as its fallback, and no "background/foreground"
    processing. Auphonic's multitrack mode always re-levels each track to its own targets
    (a quiet bed came back about 12 dB louder, a hot one about 20 dB quieter) and no setting turns that off, so
@@ -27,9 +28,9 @@ Packages: the scripts need numpy and ffmpeg, which the editor install puts in th
 1. **Quiet gate.** The recording's average loudness, as the transcription step measured it
    (`work/probe.json` `mean_loudness_db`, or measured the same way when it's missing). Under -45 dB the mix
    stops and nothing is written: the wrong microphone was almost certainly recording.
-2. **Stems (`bake.py`).** From the board's Send, baked exactly as the board played them: voice, sound effects
+2. **Stems (`bake.py`).** From the board's Send and matching plan: voice, sound effects
    and music, float 48 kHz stereo, one length (the picture's), every sound placed to the sample at the
-   picture's real frame rate. Gains, length caps and fades come straight from the Send, and so do music stops
+   picture's real frame rate. Gains come from `sound/levels.json` (see sound-board.md); length caps, fades and music stops come from the Send
    (the music is silent inside each stop; its fade-out ends where the stop starts and its fade-in starts where
    the stop ends, while the track keeps running underneath). Float overs are not clamped; the limiter handles
    peaks. Each cue's file starts `peak_s` (where its hit lands) before the cue's time, so the hit lands on the
@@ -40,7 +41,7 @@ Packages: the scripts need numpy and ffmpeg, which the editor install puts in th
    every stop. Each cue is also written as its own clip with a `placement.json` (frame, lane), for an editor
    that places clips on frames. Without a Send (or a library) the stems are voice only.
 3. **Voice clean-up, on the voice track only.** Free: a low cut at 80 Hz and light compression. Auphonic
-   (the client's choice, paid): one singletrack production on the voice track, never the summed mix, with
+   (the user's choice, paid): one singletrack production on the voice track, never the summed mix, with
    leveler, -14 LUFS loudness, -1 dB max peak, dynamic denoise and studio-voice filtering, WAV out. Its result
    is lined up with the original to the millisecond (more than 2 ms left over: nothing is replaced).
 4. **Ratio-keeping sum.** One static gain brings the cleaned voice back to the original voice track's
@@ -87,6 +88,7 @@ broadcast tolerance for sound running late (45 ms); the alignment step measures 
 
 ## Listening
 
-A passing check table is not approval. Hand the client a short list to listen for: every place the limiter works
+A passing check table is not approval. Hand the user a short list to listen for: every place the limiter works
 hardest (they are all cue transients; the hottest hit takes the most), the risers, the music stops, the closer.
-The client says ship, or names the moment; fix the cause, then mix again.
+Follow SKILL.md step 5 for the handoff or listening invitation; reel-canvas-build's `references/build.md`,
+section 1 owns the preview and OK order.

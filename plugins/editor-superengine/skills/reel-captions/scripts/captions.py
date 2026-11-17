@@ -503,7 +503,9 @@ def plan(reel_dir, fps=None, *, _style=None, style_reel=None, render_beats=None)
     doc["font"] = _brand_font(doc["notes"], style_reel, STYLES[cs["style"]]["font"])
     _width_note(doc, doc["font"])
     beats = _beats(bm if render_beats is None else dict(bm, beats=render_beats), total)
-    switches = sorted({b["start_f"] for a, b in zip(beats, beats[1:]) if a["layout"] != b["layout"]})
+    import placer  # local: compose and placer also use this module
+    switches = sorted({b["start_f"] for a, b in zip(beats, beats[1:]) if a["layout"] != b["layout"]}
+                      | set(placer.world_switches(beats, reel)))
     candidates = bm.get("word_marks", [])
     runs, punches, notes = _mark_runs(words, candidates)
     if cs["loud_emphasis"] and not candidates:
@@ -544,8 +546,8 @@ def plan(reel_dir, fps=None, *, _style=None, style_reel=None, render_beats=None)
             if not cs["under_small_overlays"]:
                 sid = scene["id"]
                 if sid not in kinds:
-                    scene_doc = read_json(scene_check.SCENES / sid / "scene.json")
-                    if not isinstance(scene_doc, dict) or scene_doc.get("kind") not in ("overlay", "takeover"):
+                    scene_doc = read_json(scene_check.scene_dir(sid, reel) / "scene.json")
+                    if not isinstance(scene_doc, dict) or scene_doc.get("kind") not in scene_check.KINDS:
                         raise Stop(2, f"The {sid} scene has no valid kind. Fix its scene.json.")
                     kinds[sid] = scene_doc["kind"]
                 if kinds[sid] == "overlay":

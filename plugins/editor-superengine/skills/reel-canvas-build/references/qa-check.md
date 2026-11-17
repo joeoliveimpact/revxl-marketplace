@@ -1,7 +1,7 @@
 # Check the reel before posting
 
 Use `<editor python>` and `<reel folder>` exactly as defined in this skill's
-SKILL.md. Claude runs both commands from the client's workspace.
+SKILL.md. Claude runs both commands from the user's workspace.
 
 Before making the 1080p final:
 
@@ -29,7 +29,7 @@ Blocks stop the final: do not make it when the pre check blocks, and do not
 deliver it when the full check blocks. Preview runs this same pre check after saving its file and positions;
 blocks stop it before "Preview ready" or an OK invitation. OK and master rerun the same gate.
 Show every grouped block line, help you make the named change, then make the preview again and OK it.
-Warnings are suggestions: explain the suggested improvement and let the client
+Warnings are suggestions: explain the suggested improvement and let the user
 choose. Pacing and dead zones never block.
 
 If a caption covers your face under an overlay card or hook-title scene, on the Look Picker open Advanced controls
@@ -37,10 +37,10 @@ and untick "Captions under small overlays", then Send and make a new preview. Fo
 advice: it only says to shorten the hook to one line when re-placing every blocked caption with that height clears it.
 Otherwise, or without an overlay, choose "No captions" on the Look Picker, then Send and make a new preview.
 
-If the client says a flagged freeze is intentional, Claude records that specific
+If the user says a flagged freeze is intentional, Claude records that specific
 moment in `work/qa-ok.json` as `{"allow":[{"check":"frozen","at":<s>}]}`,
 using the finding's time in seconds. Preserve existing approvals when adding it.
-Never approve a freeze on the client's behalf; rerun the full check afterward.
+Never approve a freeze on the user's behalf; rerun the full check afterward.
 
 Review aids live in `work/qa/`: `contact.jpg` shows one frame per second,
 `cut-NN.png` shows consecutive frames around each cut with the sound waveform
@@ -64,5 +64,5 @@ quality from a contact sheet alone; replay the video where needed.
 5. Does each shown number or example explain the point being made at that moment?
 6. Do the opening and closing pictures give the viewer a clear beginning and ending?
 
-Tell the client the useful findings in ordinary language, with suggested fixes.
-Keep paths, JSON and checker names out of the client-facing explanation.
+Tell the user the useful findings in ordinary language, with suggested fixes.
+Keep paths, JSON and checker names out of the user-facing explanation.

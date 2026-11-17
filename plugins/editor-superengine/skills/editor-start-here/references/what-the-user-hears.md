@@ -54,6 +54,10 @@ the moment.
 - "Your first cut is ready. Have a listen; I'll wait for your notes."
 - "The teardown page is ready. Here's how it looks on a phone."
 
+**Motion review.** "Watch each scene play, then send your choices and notes."
+**Voice-only preview.** "This preview has your voice, with no music or effects yet."
+**Leave it.** "Tick Leave it for a scene you want to keep as it is."
+
 **Waiting for their pick.** Make the choice clear and say you are waiting.
 - "Here are four ways to open the reel. Which one sounds most like you? Pick one, or say none
   of these and I'll try again."

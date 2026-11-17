@@ -26,16 +26,27 @@ import placer  # noqa: E402
 import three_d_placement  # noqa: E402
 
 
-def _scene_dir(sid):
-    if not isinstance(sid, str) or not safe_relpath(sid) or "/" in sid or sid in (".", ".."):
-        raise ValueError("Choose a scene from the catalog.")
-    return scene_check.SCENES / sid
+def _scene_dir(sid, reel=None):
+    scene_check._check_id(sid)
+    folder = scene_check.SCENES / sid
+    if not sid.startswith("reel-") and not folder.is_dir():
+        return folder  # scene_problems supplies the unavailable-card result.
+    return scene_check.scene_dir(sid, reel)
 
 
-def catalog():
+def catalog(reel=None, beats=()):
     """Metadata from scene.json for exactly the scenes scene_check allows to ship."""
     out = []
-    for folder in sorted(scene_check.SCENES.iterdir()):
+    folders = sorted(scene_check.SCENES.iterdir())
+    if reel is not None:
+        folders += sorted((Path(reel) / "motion").glob("reel-*"))
+    for folder in folders:
+        own = folder.name.startswith("reel-")
+        if own:
+            try:
+                folder = scene_check.scene_dir(folder.name, reel)
+            except ValueError:
+                continue
         if not folder.is_dir() or scene_check.scene_problems(folder):
             continue
         spec = json.loads((folder / "scene.json").read_text(encoding="utf-8"))
@@ -44,19 +55,25 @@ def catalog():
         item["slots"] = [{"name": n, "maxChars": s["maxChars"]} for n, s in spec["slots"].items()]
         item["params"] = [dict(name=n, **{k: p[k] for k in ("type", "min", "max", "enum", "default") if k in p})
                           for n, p in spec["params"].items()]
-        item["preview"] = (folder / "preview.png").as_posix()
+        if own:
+            named = [b["id"] for b in beats if re.search(
+                r"(?<![\w-])" + re.escape(b["id"]) + r"(?![\w-])", spec["source"])]
+            held = [b["id"] for b in beats if (b.get("scene") or {}).get("id") == spec["id"]]
+            item.update(reel=True, area=spec.get("area"), beats=named or held)
+        if (folder / "preview.png").is_file():
+            item["preview"] = (folder / "preview.png").as_posix()
         out.append(item)
     return out
 
 
-def suggest(scene_id, beat, words, fps, head=None):
+def suggest(scene_id, beat, words, fps, head=None, reel=None):
     """Return an honest fill, or None when words, duration or scene rules don't fit."""
-    return _suggest(scene_id, beat, words, fps, head)[0]
+    return _suggest(scene_id, beat, words, fps, head, reel)[0]
 
 
-def why_not(scene_id, beat, words, fps, head=None):
+def why_not(scene_id, beat, words, fps, head=None, reel=None):
     """Return the first reason a card cannot be filled, or None when it fits."""
-    return _suggest(scene_id, beat, words, fps, head)[1]
+    return _suggest(scene_id, beat, words, fps, head, reel)[1]
 
 
 def _plain_number(value):
@@ -71,9 +88,9 @@ def _duration(value):
     return f"{_plain_number(shown)} {'second' if shown == 1 else 'seconds'}"
 
 
-def _suggest(scene_id, beat, words, fps, head=None):
+def _suggest(scene_id, beat, words, fps, head=None, reel=None):
     """One set of checks supplies both the fill and the explanation."""
-    folder = _scene_dir(scene_id)
+    folder = _scene_dir(scene_id, reel)
     if scene_check.scene_problems(folder):
         return None, "This card is unavailable. Pick another card or ask Claude to check it."
     spec = json.loads((folder / "scene.json").read_text(encoding="utf-8"))
@@ -138,7 +155,7 @@ def _suggest(scene_id, beat, words, fps, head=None):
     if number_scene and "value" in spec["params"]:
         params["value"] = value
     fill = {"id": scene_id, "slots": slots, "params": params}
-    problems = scene_check.fill_problems(scene_id, dict(beat, scene=fill), words=heard)
+    problems = scene_check.fill_problems(scene_id, dict(beat, scene=fill), words=heard, reel=reel)
     if problems:
         if problems[0].startswith("the counter would show"):
             return None, "The number is too long for this card. Pick a card with more room for it."
@@ -166,7 +183,7 @@ def write_catalog(reel_dir, beats, words, fps):
     reel = Path(reel_dir)
     if not reel.is_dir():
         raise ValueError("The reel folder doesn't exist; choose an existing videos/<reel> folder.")
-    items = catalog()
+    items = catalog(reel, beats)
     fills = {b["id"]: {} for b in beats}
     reasons = {b["id"]: {} for b in beats}
     # The initial board has no Send/style/anchors yet; that is an unknown head.
@@ -180,13 +197,19 @@ def write_catalog(reel_dir, beats, words, fps):
         except (OSError, ValueError, KeyError, TypeError, AttributeError):
             head = None
         for item in items:
-            fill, reason = _suggest(item["id"], b, words, fps, head)
+            if item.get("reel") and b["id"] not in item["beats"]:
+                continue
+            fill, reason = _suggest(item["id"], b, words, fps, head, reel)
             if fill is not None:
                 fills[b["id"]][item["id"]] = fill
             else:
                 reasons[b["id"]][item["id"]] = reason
     _reel_path(reel, "scenes").mkdir(exist_ok=True)
     for item in items:
+        if item.get("reel"):
+            if "preview" in item:
+                item["preview"] = f"motion/{item['id']}/preview.png"
+            continue
         rel = f"scenes/{item['id']}.png"
         shutil.copyfile(_scene_dir(item["id"]) / "preview.png", _reel_path(reel, rel))
         item["preview"] = rel
@@ -299,7 +322,7 @@ def main(argv=None):
                 beat = next((b for b in doc["beats"] if b["id"] == a.beat), None)
                 if beat is None:
                     raise ValueError("That beat isn't in this reel's beat map.")
-                print(json.dumps(suggest(a.scene, beat, words, doc["fps"]), ensure_ascii=False))
+                print(json.dumps(suggest(a.scene, beat, words, doc["fps"], reel=reel), ensure_ascii=False))
             return 0
         ap.print_help()
         return 2
