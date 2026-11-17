@@ -1,0 +1,31 @@
+<!doctype html>
+<html data-composition-variables='[{"id": "text", "type": "string", "label": "Text", "default": "Clear world"}, {"id": "accent", "type": "color", "label": "accent", "default": "#4f8cff"}, {"id": "font", "type": "string", "label": "font", "default": "Inter"}, {"id": "t1", "type": "number", "label": "t1", "default": 1.5}]'>
+<head><script src="./vendor/gsap.min.js"></script><style>
+@font-face { font-family: "Inter"; src: url("./fonts/Inter-Regular.woff2"); font-weight: 400; font-style: normal; }
+html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; }
+#reel-good-world { position: absolute; width: 1080px; height: 1920px; z-index: 400; font-family: "Inter"; font-weight: 400; }
+.camera { position: absolute; left: 0px; top: 0px; width: 2400px; height: 1920px; }
+.slot { position: absolute; display: inline-block; left: 180px; top: 500px; font-size: 48px; line-height: 1.2; white-space: nowrap; }
+.label { position: absolute; left: 180px; top: 950px; font-size: 40px; line-height: 1.2; }
+.ui-row { position: absolute; left: 180px; top: 1360px; font-size: 32px; line-height: 1.2; }
+</style></head><body>
+<div id="reel-good-world" data-composition-id="reel-good-world" data-duration="3" data-width="1080" data-height="1920">
+  <div class="camera"><span class="slot" data-slot="text"></span><div class="label">World row above captions</div></div>
+</div>
+<script>
+const v = window.__hyperframes.getVariables();
+const root = document.getElementById("reel-good-world");
+root.querySelector('[data-slot]').textContent = v.text;
+root.style.color = v.accent;
+root.style.fontFamily = v.font;
+const camera = root.querySelector('.camera');
+const tl = gsap.timeline({ paused: true });
+tl.fromTo(camera, {x: 0}, {x: -1500, duration: .35, ease: "none", immediateRender: false}, .6);
+tl.to(camera, {x: 0, duration: .45, ease: "none"}, Number(v.t1) - .55);
+tl.to(camera, {x: 1200, duration: .3, ease: "none"}, 1.9);
+tl.to(camera, {x: 0, duration: .4, ease: "none"}, 2.2);
+tl.to(root, {opacity: 1, duration: .4}, 2.6);
+
+window.__timelines = window.__timelines || {};
+window.__timelines["reel-good-world"] = tl;
+</script></body></html>

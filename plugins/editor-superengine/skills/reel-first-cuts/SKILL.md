@@ -1,6 +1,6 @@
 ---
 name: editor-superengine:reel-first-cuts
-description: Turns raw talking-head footage into a finished first cut. The client picks lines and takes on the Cut Board, then fixes the cut on the Tweak Board. Use on "cut this reel", "open the Cut Board", "fix it on the Tweak Board", "tighten the gaps", "several clips", "two recordings", "sync camera and mic", "make Shorts from this long recording", long recordings, or a master joined from several clips (words chopping only after the first clip). Not for captions or sound.
+description: Turns raw talking-head footage into a finished first cut. The user picks lines and takes on the Cut Board, then fixes the cut on the Tweak Board. Use on "cut this reel", "open the Cut Board", "fix it on the Tweak Board", "tighten the gaps", "several clips", "two recordings", "sync camera and mic", "make Shorts from this long recording", long recordings, or a master joined from several clips (words chopping only after the first clip). Not for captions or sound.
 ---
 
 # Reel First Cuts
@@ -11,7 +11,7 @@ description: Turns raw talking-head footage into a finished first cut. The clien
    for its Send. At the hard fail: what failed, in plain words.
 2. After the render: the runtime, the silence-budget and cut-check results, and the review page with the
    listening checklist (Stage 8).
-3. A last line: what the client does next, or what still stops the cut.
+3. A last line: what the user does next, or what still stops the cut.
 4. On a failure you can't fix in two tries: what went wrong in plain words, then the failure report
    below.
 
@@ -25,16 +25,16 @@ Speak the way `${CLAUDE_PLUGIN_ROOT}/skills/editor-start-here/references/what-th
 - If the raw or its edit map changed after a board was built, build that board again: its Send is stale.
   To carry a Send over, follow `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/boards.md`, "Carry a Send over".
   If it refuses, ask for a new Send.
-- If the reel already has a Sound Board (`config.json`) or a Beat Map Send, a new cut means redoing the sound picks and the visuals plan. Tell the client before re-cutting.
+- If the reel already has a Sound Board (`config.json`) or a Beat Map Send, a new cut means redoing the sound picks, the visuals plan and motion scenes ([Build motion](../reel-canvas-build/references/motion-build.md#after-a-recut-or-beat-map-change)). Tell the user before re-cutting.
 - Never skip a ⛔ stage, on a re-run either.
 - Run the style picker first if it has not run for this reel (editor-start-here); follow sections 5 and 6 (Auto edit and controls in chat) of ${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/house-rules.md.
 
 ## Ground rules
 
-- **The client never types a command.** Claude runs each one with the Bash tool from the client's
+- **The user never types a command.** Claude runs each one with the Bash tool from the user's
   workspace folder (the scripts read `editor/editor.config.json` there). Every path below is inside the reel folder `<reel folder>` = `<paths.videos>/<reel>/` (editor/editor.config.json): put that folder in front of it when you run it. RAW.mp4 is the raw; the master render is `work/renders/master-<speed>x.mp4` (1.15x → `115x`).
 - `<editor python>` is the editor's own Python. Windows: `"$(H="$LOCALAPPDATA/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/Scripts/python.exe"`. macOS: `"$(H="$HOME/Library/Application Support/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/bin/python"`. If it doesn't exist, run `editor-superengine:editor-doctor` first. Every script runs as `<editor python> -X utf8 -I "<script>" ...`, never a bare `python`; the failure report's commands run exactly as written.
-- No board available, or the client asks to do it in chat: run Stages 2, 3 and 5 as
+- No board available, or the user asks to do it in chat: run Stages 2, 3 and 5 as
   `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/no-board-path.md` says.
 
 ## Definition of done
@@ -44,7 +44,7 @@ A rendered cut where:
 - no deletion contains sustained speech
 - no segment is a stranded fragment
 - **the whole cut is inside its silence budget** (Stage 7b): every other check is local, this one is the sum
-- the client has heard it and signed off
+- the user has heard it and signed off
 
 ## The stages, in order
 
@@ -102,18 +102,18 @@ If it says word alignment isn't available on this Mac, there's no edit map and n
 2, 3 and 5 by the no-board path, using `work/tx.json` wherever a command says `work/edit_map.json`.
 Skip cut checks 2 and 3 (both read the cut's edit map), and say so.
 
-**Script check** (only if the client names their script file): run `script_diff.py` before any Cut Board,
+**Script check** (only if the user names their script file): run `script_diff.py` before any Cut Board,
 as `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/map-and-script-checks.md` says. It fixes
 misheard brand names, warns under 25 % match and lists the rest for review.
 
 ### 2 · ⛔ Cut Board — RULING
-With the Write tool, put the approved script in `script.md` (one spoken line per line) (no script: write it from the transcript, one line per spoken sentence, and tell the client you did) and the shots in
+With the Write tool, put the approved script in `script.md` (one spoken line per line) (no script: write it from the transcript, one line per spoken sentence, and tell the user you did) and the shots in
 `shots.json` (`{"vocab": ["talking head", "screen"], "default": "talking head"}`), then:
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/make_board.py" --script script.md --take 1:work/edit_map.json:work/tx.16k.wav [--take 2:work/take2/edit_map.json:work/take2/tx.16k.wav] --shots shots.json --reel <reel> -o <reel folder>`
 
 Open the Cut Board as `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/boards.md`, "Cut Board", says.
-A line said twice in different words shows Keep first / Keep second / Keep both: the client picks; never cut one yourself. Then:
+A line said twice in different words shows Keep first / Keep second / Keep both: the user picks; never cut one yourself. Then:
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/selection_to_edl.py" cut-selection.json cut-board.config.json`
 
@@ -129,7 +129,7 @@ Exit 1 names each boundary inside a word or next to speech energy and prints how
 Not optional: word times are estimates (transcription-contract.md).
 
 Then `word_map.py`, then `map_check.py` (map-and-script-checks.md). Any block means no render: say its
-line to the client in plain words (also in `work/map_check.json`).
+line to the user in plain words (also in `work/map_check.json`).
 
 ### 4 · Tighten gaps — in source coordinates, no render
 Run the gaps.py or takes.py command Stage 2 (or 9) printed, exactly as printed. It writes `work/cuts.json` (whole
@@ -144,7 +144,7 @@ it surfaces; never resolve one silently.
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/render.py" work/ RAW.mp4 --master --scrub`
 
-If the client approved a grade (reel-grade step 4), add `--grade grade.json`, so a new cut keeps the colour.
+If the user approved a grade (reel-grade step 4), add `--grade grade.json`, so a new cut keeps the colour.
 Read `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/cut-checks.md`, "Render rules (Stage 6)".
 
 ### 7 · Verify + cut checks
@@ -162,7 +162,7 @@ gaps ranked with the words either side. `silencedetect` logs at **info**: never 
 A cut whose `work/cuts.json` has `takes` has no Tweak Board yet: follow `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/several-recordings.md`. Otherwise:
 Hand over the review page, `work/cut-review.html` (raw and cut side by side, the 20 largest cuts),
 **with the checklist** (`work/listen.txt`), and say plainly what the gates cannot see: they passed on
-all four defects the client caught in the reference build. Run `long_silence.py work --json` (short-clips.md, "After the cut"), then:
+all four defects the user caught in the reference build. Run `long_silence.py work --json` (short-clips.md, "After the cut"), then:
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/scripts/make_tweaks.py" --cut work/renders/master-<speed>x.mp4 --work work --config cut-board.config.json --take 1 --version v<N> -o <reel folder>`
 
@@ -184,33 +184,33 @@ go on to the next step. Don't re-render or open a new Tweak Board version.
 
 A complaint in plain words instead ("that pause drags"): **diagnose before fixing** and fix the
 mechanism, as `${CLAUDE_PLUGIN_ROOT}/skills/reel-first-cuts/references/correction-loop.md` says. Loop
-until the client signs off.
+until the user signs off.
 
 ## What this skill will not decide
 
-- **Lines, takes, runtime and speed**: the client rules on the boards.
+- **Lines, takes, runtime and speed**: the user rules on the boards.
 - **Protected beats.** Comedic timing is unmarked in audio: propose candidates from the script, then ask.
 - **Whether it sounds right.**
 
 ## Failure report (offer after any failure you can't fix in two tries)
 
-Tell the client what went wrong in plain words, and whether anything was charged or changed. Then offer:
+Tell the user what went wrong in plain words, and whether anything was charged or changed. Then offer:
 "Want me to send Joe a short report so he can fix it? You'll see exactly what's in it first."
 
-1. With the Write tool, put the details in `editor-superengine/reports/report-body.md`: what the client asked for, the step
-   that failed, the command shape, and the error output. Never a key, and never the client's own content
+1. With the Write tool, put the details in `editor-superengine/reports/report-body.md`: what the user asked for, the step
+   that failed, the command shape, and the error output. Never a key, and never the user's own content
    (their notes, contacts, messages, file text).
 2. Draft it. Keep the summary short. Put the summary, step and error line in single quotes, drop any
    apostrophe from them, and use no script names:
 
-`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.2.2 --skill reel-first-cuts --step '<the stage that failed>' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
+`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.2.3 --skill reel-first-cuts --step '<the stage that failed>' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
 
-3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
+3. Show the user the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
 4. Send, using the path after `DRAFT:`:
 
 `<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" send "<draft path>"`
 
-`SENT` means Joe has it. `SAVED LOCALLY: <path>` means it couldn't be sent; tell the client where the file is
+`SENT` means Joe has it. `SAVED LOCALLY: <path>` means it couldn't be sent; tell the user where the file is
 so they can email it to Joe. Skip instead:
 
 `<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" skip "<draft path>"`

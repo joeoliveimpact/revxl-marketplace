@@ -7,8 +7,9 @@ Cases: send, reload, reject_all, reset, writes_guard, tips, hub_tab, music, beat
 by hand (config.json, waveforms.json, a tiny mp4) and opens its own browser, so any one can run alone.
 Prints one "✓ <case>" / "✗ <case>: <why>" line per case, then "N passed, M failed". Exit 0 only when all pass.
 """
-import argparse, http.client, json, os, shutil, socket, subprocess, sys, tempfile, threading
+import argparse, contextlib, http.client, io, json, os, shutil, socket, subprocess, sys, tempfile, threading
 from pathlib import Path
+from unittest.mock import patch
 
 PLUGIN = Path(__file__).resolve().parents[2] / "plugins/editor-superengine"
 DOCTOR = PLUGIN / "skills/editor-doctor/scripts"
@@ -27,7 +28,7 @@ CUES = [{"id": "c01", "beat": "Opening hit", "short": "hit", "why": "the first w
         {"id": "c02", "beat": "Second tick", "short": "tick", "why": "the list starts", "time": 0.8, "candidates": ["tick.wav"]},
         {"id": "c03", "beat": "Closer", "short": "end", "why": "the last line", "time": 2.0, "candidates": ["long-swoosh.wav"]}]
 PAYLOAD_KEYS = {"project", "picture", "fps", "latency_ms", "bed", "unassigned", "cues", "rejected", "undecided",
-                "music_request"}
+                "music_request", "auto_level"}
 ROW = "#cuebody tr.cuerow:nth-child(%d)"
 LINE = "#musiclist .mline:nth-child(%d)"
 # board bed rows, the shape new_board.py writes into config.json beds[]
@@ -94,12 +95,116 @@ def load(p):
     return json.loads(Path(p).read_text(encoding="utf-8"))
 
 
+def picture_case():
+    """Picture selection + generated board config, without rendering or a browser."""
+    sys.path.insert(0, str(PLUGIN / "skills/reel-sound-pass/scripts"))
+    import new_board
+    from _media import find_picture
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        reel = root / "videos/test"
+        reel.joinpath("work/renders").mkdir(parents=True)
+        reel.joinpath("renders").mkdir()
+        cut = reel / "work/renders/master-1.mp4"
+        cut.write_bytes(b"fixture")
+        os.utime(cut, (150, 150))
+        write_json(reel / "config.json", {"picture": cut.name, "picture_url": "work/renders/master-1.mp4"})
+        selection = reel / "motion-review-selection.json"
+        selection.write_bytes(b"{}")
+        os.utime(selection, (200, 200))
+        preview = reel / "renders/test Preview 720p - 11.16.26.mp4"
+        preview.write_bytes(b"fixture")
+        os.utime(preview, (300, 300))
+        partial = preview.with_name("test Preview 720p - newer.partial.mp4")
+        partial.write_bytes(b"unfinished")
+        os.utime(partial, (400, 400))
+        need(find_picture(reel) == preview, "newer motion preview must win")
+        os.utime(selection, (400, 400))
+        need(find_picture(reel) == preview, "an incomplete Motion selection must not hide a preview newer than its cut")
+        for motion in ({"none": True, "sections": []}, {"sections": [{"leave": True}, {"leave": True}]}):
+            write_json(selection, motion)
+            os.utime(selection, (400, 400))
+            need(find_picture(reel) == cut, "a preview older than the completed Motion lock must use the cut")
+            os.utime(preview, (400, 400))
+            need(find_picture(reel) == cut, "the preview must be strictly newer than the Motion lock")
+            os.utime(preview, (500, 500))
+            need(find_picture(reel) == preview, "a preview newer than both cut and Motion lock must win")
+            os.utime(preview, (300, 300))
+        for motion in ({"sections": []}, {"sections": [{"leave": True}, {"leave": False}]},
+                       {"sections": [{"leave": "true"}]}):
+            write_json(selection, motion)
+            os.utime(selection, (400, 400))
+            need(find_picture(reel) == preview, "Motion not done must apply only the cut rule")
+        write_json(selection, {"sections": [{"leave": True}]})
+        os.utime(selection, (400, 400))
+        review = reel / "motion/review/review.json"
+        write_json(review, {"schema": 1, "cards": []})
+        os.utime(review, (500, 500))
+        need(find_picture(reel) == preview, "approval older than the review is not a completed Motion lock")
+        selection.write_bytes(b"invalid JSON")
+        need(find_picture(reel) == preview, "malformed Motion selection must apply only the cut rule")
+        need(find_picture(reel, cut) == cut, "--video must win")
+        with (patch.object(new_board, "workspace", return_value=(root / "editor", root / "videos")),
+              patch.object(new_board, "probe", return_value={"dur": 3, "fps": 30}),
+              patch.object(new_board.measure_sfx, "measure_dir", return_value={"hits": [], "beds": []}),
+              patch.object(new_board.make_waveforms, "make"),
+              patch.object(new_board, "decode", side_effect=RuntimeError("No audio")),
+              patch.object(new_board.music_fit, "speech_spans", return_value=[]),
+              contextlib.redirect_stdout(io.StringIO())):
+            need(new_board.main(["--reel", "test", "--bed-gain", "-18"]) == 0, "board generation failed")
+            cfg = load(reel / "config.json")
+            need(cfg["picture_url"] == preview.relative_to(reel).as_posix(), "board plays wrong picture")
+            expected = "Playing your preview: test Preview 720p - 11.16.26.mp4"
+            need(cfg.get("picture_label") == expected, "board must name the selected preview file")
+            os.utime(preview, (100, 100))
+            # Config points to the cut: an old preview must fall back to today's config order.
+            write_json(reel / "config.json", {"picture_url": cut.relative_to(reel).as_posix()})
+            need(find_picture(reel) == cut, "stale preview must not win")
+            selection.unlink()
+            need(find_picture(reel) == cut, "a preview older than the cut must not win without a selection")
+            os.utime(preview, (150, 150))
+            need(find_picture(reel) == cut, "equal timestamps do not prove a newer preview")
+            os.utime(preview, (300, 300))
+            need(find_picture(reel) == preview, "a preview newer than the cut wins without a selection")
+            preview.unlink()
+            write_json(reel / "config.json", {"picture_url": partial.relative_to(reel).as_posix()})
+            need(find_picture(reel) == cut, "config must not resurrect a partial preview")
+            write_json(reel / "config.json", {"picture_url": "work/renders/master-1.mp4"})
+            need(new_board.main(["--reel", "test", "--bed-gain", "-18"]) == 0, "first cut board failed")
+            need(load(reel / "config.json").get("picture_label") == "Playing the first cut (no preview yet)",
+                 "board must name first cut")
+            preview.write_bytes(b"fixture")
+            need(new_board.main(["--reel", "test", "--video", str(cut), "--bed-gain", "-18"]) == 0, "explicit video failed")
+            need(load(reel / "config.json")["picture_url"] == cut.relative_to(reel).as_posix(), "--video lost priority")
+            need(load(reel / "config.json")["picture_label"] == "Playing the first cut",
+                 "explicit first cut must not claim no preview yet")
+            external_preview = root / "elsewhere Preview 720p - 11.16.26.mp4"
+            custom = root / "custom-picture.mp4"
+            for video in (external_preview, custom):
+                video.write_bytes(b"fixture")
+                os.utime(video, (300, 300))
+            for video, label in ((preview, expected),
+                                 (external_preview, "Playing your preview: elsewhere Preview 720p - 11.16.26.mp4"),
+                                 (custom, "Playing custom-picture.mp4")):
+                need(new_board.main(["--reel", "test", "--video", str(video), "--bed-gain", "-18"]) == 0,
+                     "explicit picture failed")
+                cfg = load(reel / "config.json")
+                need(cfg["picture_label"] == label, f"wrong explicit picture label: {cfg['picture_label']}")
+        html = (PLUGIN / "skills/reel-sound-pass/boards/sound-board/index.html").read_text(encoding="utf-8")
+        need('id="picture-label"' in html and '$("picture-label").textContent = cfg.picture_label' in html,
+             "picture label must be visible in the board")
+    print("Picture selection: cut + completed Motion lock freshness, filename, stale/partial exclusion, first cut, --video passed")
+    return 0
+
+
 def main():
     ensure_utf8_output()
-    names = ["send", "reload", "reject_all", "reset", "writes_guard", "tips", "hub_tab", "music", "beat_sync", "carve", "voice_only"]
+    names = ["send", "reload", "reject_all", "reset", "writes_guard", "tips", "hub_tab", "music", "beat_sync", "carve", "voice_only", "capped", "preview"]
     ap = argparse.ArgumentParser(description="Sound Board done-test")
-    ap.add_argument("--case", choices=names + ["all"], default="all")
+    ap.add_argument("--case", choices=names + ["all", "picture"], default="all")
     pick = ap.parse_args().case
+    if pick == "picture":
+        return picture_case()
     want = names if pick == "all" else [pick]
     tools, missing = find_tools()
     if missing:
@@ -184,6 +289,39 @@ def main():
         return [c.get("state") for c in sorted(doc["cues"], key=lambda c: c["id"])]
 
     # ---- cases ----
+    def c_preview():
+        # Removing current-picture resolution must expose the old config's cut in the hub iframe.
+        tab = [{"do": "goto", "noRows": True}, {"do": "waitTrue", "js": "window.Hub && Hub.ready"},
+               {"do": "click", "sel": "#tab-sound-board"}, {"do": "frame", "sel": ".frame iframe"}]
+        for kind in ("fresh", "partial", "none", "stale", "lock-fresh", "lock-stale", "none-lock-fresh", "none-lock-stale"):
+            name = "preview-" + kind
+            d = reel(name, picture="master-1.mp4", picture_url="work/renders/master-1.mp4")
+            cut = d / "work/renders/master-1.mp4"
+            cut.parent.mkdir(parents=True)
+            shutil.copyfile(mp4, cut)
+            os.utime(cut, (200, 200))
+            if kind != "none":
+                preview = d / "renders" / (name + " Preview 720p - 11.16.26" +
+                                             (".partial" if kind == "partial" else "") + ".mp4")
+                preview.parent.mkdir()
+                shutil.copyfile(mp4, preview)
+                os.utime(preview, (100 if kind == "stale" else 300, 100 if kind == "stale" else 300))
+            if "lock" in kind:
+                selection = d / "motion-review-selection.json"
+                write_json(selection, {"none": True, "sections": []} if kind.startswith("none-lock")
+                           else {"sections": [{"scene": "fixture", "beat": "b_001", "leave": True}]})
+                lock_time = 400 if kind.endswith("stale") else 250
+                os.utime(selection, (lock_time, lock_time))
+            use_preview = kind in ("fresh", "lock-fresh", "none-lock-fresh")
+            before = (d / "config.json").read_bytes()
+            got = browse(name, tab + [{"do": "eval", "js": "({src:decodeURI(document.getElementById('v').getAttribute('src')), label:document.getElementById('picture-label').textContent, picture:CFG.picture})"}],
+                         page="editor/hub/")["reads"][-1]
+            url = f"/videos/{name}/" + (f"renders/{preview.name}" if use_preview else "work/renders/master-1.mp4")
+            label = "Playing your preview: " + preview.name if use_preview else "Playing the first cut (no preview yet)"
+            need(got == {"src": url, "label": label, "picture": preview.name if use_preview else cut.name},
+                 f"{kind} preview selection: {got}")
+            need((d / "config.json").read_bytes() == before, "opening the board changed config.json")
+
     def c_voice_only():
         (videos / "voice-only-reel").mkdir()
         read = browse("voice-only-reel", [{"do": "goto", "noRows": True},
@@ -486,7 +624,52 @@ def main():
         else:
             raise Fail(f"with snapping off the cue check still passed: {times(rev)}")
 
-    fns = {"send": ("send: decide one cue, Send writes sound-selection.json with every undecided cue", c_send),
+    def c_capped():
+        library = [dict(LIBRARY[0], max_m_lufs=-12), dict(LIBRARY[1], max_m_lufs=-35)]
+        d = reel("capped-reel", library=library)
+        tags = "[...document.querySelectorAll('#cuebody .capped')].map(e=>!e.hidden)"
+        gains = "CUES.map(c=>cueLevel(c).gain)"
+        out = browse("capped-reel", [{"do": "goto"}, {"do": "click", "sel": "#keepall"},
+            {"do": "eval", "js": tags}, {"do": "eval", "js": gains},
+            {"do": "gain", "row": 3, "db": -5}, {"do": "eval", "js": tags},
+            {"do": "waitSaved"}, {"do": "click", "sel": "#send"}, {"do": "waitSent"}])
+        need(out["reads"][0] == [False, False, True], f"capped tags: {out['reads']}")
+        need(out["reads"][1] == [2, 2, 1], f"preview gains: {out['reads']}")
+        need(out["reads"][2] == [False, False, False], "hand change retained cap tag")
+        doc = load(d / "sound-selection.json")
+        need(doc["auto_level"] and doc["cues"][2]["gain_by_hand"] is True
+             and doc["cues"][2]["gain_db"] == -5, f"hand gain Send: {doc}")
+        back = browse("capped-reel", [{"do": "goto"}, {"do": "eval", "js": "CUES[2].byHand"},
+            {"do": "click", "sel": "#autolevel"}, {"do": "waitSaved"},
+            {"do": "click", "sel": "#send"}, {"do": "waitSent"}])
+        need(back["reads"][0] is True and not load(d / "sound-selection.json")["auto_level"], "hand/toggle persistence")
+        off = browse("capped-reel", [{"do": "goto"}, {"do": "eval", "js": "document.getElementById('autolevel').checked"}])
+        need(off["reads"][0] is False, "matching off lost on reload")
+        old = load(d / "sound-board.state.json")
+        for c in old["cues"]:
+            c.pop("byHand", None)
+        old["cues"][0]["gain"] = -3
+        old.pop("auto_level", None)
+        write_json(d / "sound-board.state.json", old)
+        restored = browse("capped-reel", [{"do": "goto"},
+            {"do": "eval", "js": "({flags:CUES.map(c=>c.byHand),auto:document.getElementById('autolevel').checked})"},
+            {"do": "eval", "js": "document.querySelector('#cuebody tr:nth-child(3) input[type=range]').ondblclick(); CUES[2].byHand"},
+            {"do": "eval", "js": "setPick(CUES[0], 'long-swoosh.wav'); CUES[0].byHand"},
+            {"do": "eval", "js": "focusIdx=1; document.dispatchEvent(new KeyboardEvent('keydown',{key:'+'})); CUES[1].byHand"}])
+        need(restored["reads"] == [{"flags": [True, False, True], "auto": True}, False, True, True],
+             f"old-state heuristic, reset, swap and keyboard: {restored['reads']}")
+        reel("silent-level-reel", library=[dict(LIBRARY[0], max_m_lufs=-12), dict(LIBRARY[1], max_m_lufs=None)])
+        quiet = browse("silent-level-reel", [{"do": "goto"}, {"do": "click", "sel": "#keepall"},
+            {"do": "eval", "js": "liveLevels().map(c=>({skipped:c.skipped,gain:c.gain,capped:c.capped}))"},
+            {"do": "eval", "js": tags}])["reads"]
+        need(quiet == [[{"skipped": False, "gain": 2, "capped": False},
+                        {"skipped": False, "gain": 2, "capped": False},
+                        {"skipped": True, "gain": 1, "capped": False}], [False, False, False]],
+             f"silent library row must remain in the live plan with its raw gain and no cap: {quiet}")
+
+    fns = {"preview": ("preview: stale config yields to previews newer than cut and completed Motion lock; config stays unchanged", c_preview),
+           "capped": ("capped: clean ceiling, hand slider and toggle survive Send and reload", c_capped),
+           "send": ("send: decide one cue, Send writes sound-selection.json with every undecided cue", c_send),
            "voice_only": ("voice_only: no config opens a plain empty state without raw errors", c_voice_only),
            "reload": ("reload: decisions come back from disk in a new browser", c_reload),
            "reject_all": ("reject_all: Cancel changes nothing, OK rejects every cue", c_reject_all),
@@ -500,6 +683,8 @@ def main():
            "beat_sync": ("beat_sync: inside the hub's iframe, beat-sync snaps the music start and near cues to a beat, "
                          "a hit plays peak_s early, Send and reload carry it, a null grid disables it", c_beat_sync)}
     try:
+        if pick == "all":
+            case("picture: preview selection and visible picture label", picture_case)
         for n in want:
             case(*fns[n])
     finally:

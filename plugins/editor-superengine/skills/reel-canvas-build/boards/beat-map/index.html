@@ -100,6 +100,30 @@
   button { cursor: pointer; padding: 9px 18px; }
   #send { background: var(--accent); color: #0d1320; border-color: var(--accent); font-weight: 600; }
   #send:disabled { opacity: .5; cursor: default; }
+  #privacy-reminder { flex-basis: 100%; margin: 0; font-size: 13px; }
+  .bar:has(#privacy-reminder:not([hidden])) { flex-wrap: wrap; }
+  .broll-controls > select { max-width: 100%; }
+  .mask-status { display: inline-block; margin: 0 8px; color: var(--muted); }
+  #mask-panel { color: var(--text); background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; width: min(600px, calc(100% - 24px)); max-height: calc(100% - 24px);
+    padding: 16px; overflow: auto; overflow-wrap: anywhere; }
+  #mask-panel::backdrop { background: #000a; }
+  #mask-stage { position: relative; width: min(100%, 240px); aspect-ratio: 9 / 16; margin: 12px auto;
+    background: #000; touch-action: none; }
+  #mask-video { display: block; width: 100%; height: 100%; object-fit: contain; }
+  #mask-overlay { position: absolute; pointer-events: none; overflow: hidden; }
+  .mask-box { position: absolute; background: #ffffff80; border: 1px solid var(--accent); }
+  @supports (backdrop-filter: blur(8px)) {
+    .mask-box { background: #ffffff20; backdrop-filter: blur(8px); }
+  }
+  .mask-box[data-kind=fill] { background: #000; backdrop-filter: none; }
+  .mask-row { border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin: 12px 0; min-width: 0; }
+  .mask-row legend { padding: 0 4px; }
+  .mask-options { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 8px; }
+  .mask-range, .mask-position { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .mask-row input[type=number] { display: block; width: 100%; }
+  .mask-range button { padding: 6px; width: 100%; margin-top: 4px; }
+  .mask-row details { margin: 10px 0; }
   @media (max-width: 1100px) {
     main { padding: 14px 12px 130px; }
     .bar { flex-wrap: wrap; }
@@ -213,7 +237,8 @@
 </main>
 
 <div class="bar">
-  <p id="status" role="status" aria-live="polite" data-state="empty"></p>
+  <p id="privacy-reminder" hidden>Check your B-roll for private details (names, emails, money, messages) before you Send. Use Hide private details on a clip to cover them.</p>
+  <p id="status" role="status" aria-live="polite" data-state="loading">Loading...</p>
   <button type="button" id="send" disabled>Send to Claude <small data-loading>Loading...</small></button>
 </div>
 
@@ -252,8 +277,10 @@ const TRANSITION_MENU = {"flash":{"kind":"cut","params":{"color":"color"},"dur_m
 let forbidden;
 let sceneCatalog = [], sceneSuggestions = {}, sceneReasons = {}, sketchScenes = {}, sceneFieldId = 0;
 let sceneCatalogLoaded = false;
+let missingReelScenes = new Set();
 let brollClips = [];
 const invalidBroll = new Map();   // unfinished start text, kept in memory per beat
+const maskRanges = new Map(), maskPositions = new Map(); // unfinished text, never saved
 const invalid = new Map();   // unfinished number text, never written into doc
 let focusIndex = null, moreOpen = false, seen = new Set(), seenSig = "";
 
@@ -296,9 +323,11 @@ function flagReason(b) {
   if (!Object.hasOwn(LAYOUT_NAME, b.layout)) return "This beat has no layout yet. Pick one below.";
   if (invalid.has(b.id)) return "The number in More isn't a number yet.";
   if (invalidBroll.has(b.id)) return "The B-roll start time in More isn't valid.";
+  const reelProblem = reelSceneProblem(b);
+  if (reelProblem) return reelProblem;
   if (seen.has(b.id)) return null;
   if (b.scene && sceneCatalogLoaded) {
-    const spec = sceneSpec(b.scene.id);
+    const spec = sceneSpec(b.scene.id, b.id);
     if (!spec) return "This beat's scene isn't available any more. Open More and pick another, or press Remove scene.";
     const suggestions = sceneSuggestions[b.id];
     if (suggestions && typeof suggestions === "object" && !suggestions[b.scene.id]) {
@@ -339,6 +368,8 @@ function el(tag, attrs, ...kids) {
   return e;
 }
 function pendingValueProblem() {
+  const masks = maskProblem();
+  if (masks) return masks;
   const i = doc.beats.findIndex(b => invalid.has(b.id) || invalidBroll.has(b.id));
   if (i < 0) return null;
   return "Beat " + (i + 1) + (invalid.has(doc.beats[i].id)
@@ -366,7 +397,22 @@ async function reelJson(rel) {
   catch (e) { return null; }
 }
 function counterValue(spec, param) { return spec.category === "counter" && param.name === "value"; }
-function sceneSpec(id) { return sceneCatalog.find((s) => s.id === id); }
+function sceneSpec(id, beat) { return sceneCatalog.find((s) => s.id === id && (!s.reel || s.beats?.includes(beat))); }
+async function checkReelScenes() {
+  const ids = [...new Set(doc.beats.map(b => b.scene?.id).filter(id => typeof id === "string" && id.startsWith("reel-")))];
+  const checked = await Promise.all(ids.map(async id => [id, await reelJson("motion/" + id + "/scene.json")]));
+  missingReelScenes = new Set(checked.filter(([, spec]) => !spec).map(([id]) => id));
+}
+function reelSceneProblem(b) {
+  const id = b.scene?.id;
+  if (typeof id !== "string" || !id.startsWith("reel-")) return null;
+  const number = doc.beats.indexOf(b) + 1, spec = sceneCatalog.find(s => s.id === id);
+  if (missingReelScenes.has(id) || (sceneCatalogLoaded && !spec))
+    return "The graphic for beat " + number + " is missing. Ask Claude to rebuild the motion.";
+  if (spec && !sceneSpec(id, b.id))
+    return "The graphic on beat " + number + " was written for another beat. Ask Claude to rebuild the motion for beat " + number + ".";
+  return null;
+}
 function sceneTitle(scene) {
   const title = scene.title || scene.label;
   if (title) return title;
@@ -380,11 +426,12 @@ function refreshScenes() {
 function sceneControls(beat) {
   const wrap = el("div", {class: "scene-controls", "data-beat": beat});
   const b = doc.beats.find((b) => b.id === beat);
-  const fill = b.scene, spec = fill && sceneSpec(fill.id);
+  const fill = b.scene, spec = fill && sceneSpec(fill.id, beat);
   const add = el("button", {type: "button", class: "add-scene", text: "Add a scene", "aria-expanded": "false"});
   const picker = el("div", {class: "scene-picker", hidden: ""});
   const available = sceneSuggestions[beat] || {};
-  const ordered = [...sceneCatalog].sort((a, b) => Number(!!available[b.id]) - Number(!!available[a.id]));
+  const ordered = sceneCatalog.filter(s => !s.reel || s.beats?.includes(beat))
+    .sort((a, b) => Number(!!available[b.id]) - Number(!!available[a.id]));
   for (const item of ordered) {
     const choice = el("button", {type: "button", class: "scene-choice", "data-scene": item.id});
     const url = mediaUrl(item.preview);
@@ -399,13 +446,13 @@ function sceneControls(beat) {
     });
     picker.append(choice);
   }
-  add.disabled = !sceneCatalog.length;
+  add.disabled = !ordered.length;
   add.addEventListener("click", () => { picker.hidden = !picker.hidden; add.setAttribute("aria-expanded", String(!picker.hidden)); });
   wrap.append(add, picker);
-  if (!sceneCatalog.length) wrap.append(el("p", {class: "none", text: "Scene choices aren't ready yet. Ask Claude to prepare them."}));
-  if (!fill && sketchScenes[beat] && sceneSpec(sketchScenes[beat].id)) {
+  if (!ordered.length) wrap.append(el("p", {class: "none", text: "Scene choices aren't ready yet. Ask Claude to prepare them."}));
+  if (!fill && sketchScenes[beat] && sceneSpec(sketchScenes[beat].id, beat)) {
     const use = el("button", {type: "button", class: "use-sketch-scene",
-      text: sceneTitle(sceneSpec(sketchScenes[beat].id)) + " - picked in Sketches"});
+      text: sceneTitle(sceneSpec(sketchScenes[beat].id, beat)) + " - picked in Sketches"});
     use.addEventListener("click", () => {
       b.scene = JSON.parse(JSON.stringify(sketchScenes[beat])); refreshScenes(); edited();
     });
@@ -413,6 +460,14 @@ function sceneControls(beat) {
   }
   if (fill) {
     wrap.append(el("p", {text: sceneTitle(spec || fill)}));
+    const cover = el("input", {type: "checkbox", "data-cover-face": beat});
+    cover.checked = b.cover_face === true;
+    cover.addEventListener("change", () => {
+      if (cover.checked) b.cover_face = true;
+      else delete b.cover_face;
+      edited();
+    });
+    wrap.append(el("label", {}, cover, "Graphics take the whole screen (hides you)"));
     if (spec) {
       const slots = el("details", {class: "advanced-controls", "data-controls-key": "slots-" + beat}, el("summary", {text: "Advanced controls"}));
       wrap.append(slots);
@@ -475,7 +530,9 @@ function sceneProblem() {
   for (const b of doc.beats) {
     const fill = b.scene;
     if (fill == null) continue;
-    const spec = fill && sceneSpec(fill.id);
+    const reelProblem = reelSceneProblem(b);
+    if (reelProblem) return reelProblem;
+    const spec = fill && sceneSpec(fill.id, b.id);
     if (!spec) return "A saved scene isn't in the catalog. Remove it or ask Claude to prepare the scenes.";
     for (const slot of spec.slots) {
       const text = (fill.slots || {})[slot.name];
@@ -652,6 +709,196 @@ function wordCell(b) {
   return td;
 }
 
+const maskRound = n => Math.round(n * 10000) / 10000;
+function clipMasks(id) { return doc.broll_masks?.[id] || []; }
+function maskRangeValid(from, to, length) {
+  return Number.isFinite(from) && Number.isFinite(to) && from >= 0 && from < to && to <= length;
+}
+function maskProblem() {
+  if (maskRanges.size) return "Check the hidden area's From and To times before sending.";
+  if (maskPositions.size) return "Check the hidden area's exact position before sending.";
+  for (const clip of brollClips) {
+    if (clipMasks(clip.ledger_id).some(box => ("from" in box || "to" in box) &&
+        !maskRangeValid(box.from, box.to, clip.frames / doc.fps)))
+      return "Check the hidden area's From and To times before sending.";
+  }
+  return null;
+}
+function privacyStatus() {
+  const placed = doc.beats.filter(b => b.broll).map(b => b.broll.ledger_id);
+  $("#privacy-reminder").hidden = !placed.length || placed.some(id => clipMasks(id).length);
+  document.querySelectorAll(".mask-status").forEach(status => {
+    const count = clipMasks(status.dataset.clip).length;
+    status.textContent = count ? count + (count === 1 ? " area hidden" : " areas hidden") : "";
+  });
+}
+function openMasks(clip, opener) {
+  if ($("#mask-panel")) return;
+  const panel = el("dialog", {id: "mask-panel", "aria-labelledby": "mask-title"});
+  const video = el("video", {id: "mask-video", src: mediaUrl(clip.src), muted: "", playsinline: "", controls: "",
+    "aria-label": "Preview of " + clip.name});
+  video.muted = true;
+  const overlay = el("div", {id: "mask-overlay", "aria-hidden": "true"});
+  const stage = el("div", {id: "mask-stage"}, video, overlay);
+  const list = el("div", {id: "mask-list"});
+  const add = el("button", {id: "mask-add", type: "button", text: "Add box"});
+  const done = el("button", {id: "mask-done", type: "button", text: "Done"});
+  const length = clip.frames / doc.fps;
+  let drag = null;
+  const number = input => input.value.trim() === "" ? NaN : maskRound(Number(input.value));
+  const boxes = () => clipMasks(clip.ledger_id);
+  const paint = () => {
+    overlay.replaceChildren(...boxes().concat(drag?.box ? [drag.box] : []).map(box => el("div", {
+      class: "mask-box", "data-kind": box.kind,
+      style: `left:${box.x*100}%;top:${box.y*100}%;width:${box.w*100}%;height:${box.h*100}%`,
+      ...("from" in box && !(video.currentTime >= box.from && video.currentTime <= box.to) ? {hidden: ""} : {})
+    })));
+  };
+  const sizePicture = () => {
+    const ratio = video.videoWidth / video.videoHeight || clip.width / clip.height || 9/16;
+    const width = Math.min(video.clientWidth, video.clientHeight * ratio), height = width / ratio;
+    Object.assign(overlay.style, {left: (video.clientWidth-width)/2 + "px", top: (video.clientHeight-height)/2 + "px",
+      width: width + "px", height: height + "px"});
+    paint();
+  };
+  const changed = () => { paint(); privacyStatus(); edited(); };
+  const renderRows = () => {
+    list.replaceChildren(...boxes().map((box, i) => {
+      const row = el("fieldset", {class: "mask-row"}, el("legend", {text: "Box " + (i+1)}));
+      const options = el("div", {class: "mask-options"});
+      for (const [kind, title] of [["blur", "Blur"], ["fill", "Solid black"]]) {
+        const radio = el("input", {id: `mask-kind-${i}-${kind}`, type: "radio", name: "mask-kind-" + i, value: kind});
+        radio.checked = box.kind === kind;
+        radio.addEventListener("change", () => { if (radio.checked) { box.kind = kind; changed(); } });
+        options.append(el("label", {for: radio.id}, radio, " " + title));
+      }
+      const whole = el("input", {id: "mask-whole-" + i, class: "mask-whole", type: "checkbox"});
+      whole.checked = !maskRanges.has(box) && !("from" in box || "to" in box);
+      options.append(el("label", {for: whole.id}, whole, " Whole clip"));
+      const range = el("div", {class: "mask-range"});
+      const rangeInputs = {}, positionInputs = {};
+      const error = el("p", {id: "mask-error-" + i, class: "err", role: "status", "aria-live": "polite"});
+      const showError = () => {
+        const rangeBad = !whole.checked && !maskRangeValid(number(rangeInputs.from), number(rangeInputs.to), length);
+        const positionBad = maskPositions.has(box);
+        error.textContent = rangeBad ? "Use times from 0 to " + maskRound(length) + " seconds, with From before To." :
+          positionBad ? "Keep the box inside the picture, with a width and height greater than zero." : "";
+        error.hidden = !error.textContent;
+        Object.values(rangeInputs).forEach(input => input.setAttribute("aria-invalid", String(rangeBad)));
+        Object.values(positionInputs).forEach(input => input.setAttribute("aria-invalid", String(positionBad)));
+      };
+      for (const [key, title] of [["from", "From (s)"], ["to", "To (s)"]]) {
+        const input = el("input", {id: `mask-${key}-${i}`, type: "number", min: "0", max: length, step: "any",
+          "aria-describedby": error.id});
+        input.value = maskRanges.get(box)?.[key] ?? box[key] ?? (key === "from" ? 0 : Math.floor(length*10000)/10000);
+        rangeInputs[key] = input;
+        const set = el("button", {id: `mask-set-${key}-${i}`, type: "button", text: "Set from video",
+          "aria-label": "Set " + (key === "from" ? "From" : "To") + " from video"});
+        set.addEventListener("click", () => { input.value = maskRound(video.currentTime); input.dispatchEvent(new Event("input")); });
+        range.append(el("div", {}, el("label", {for: input.id, text: title}), input, set));
+      }
+      const updateRange = () => {
+        if (whole.checked) {
+          delete box.from; delete box.to; maskRanges.delete(box);
+        } else {
+          const from = number(rangeInputs.from), to = number(rangeInputs.to);
+          if (maskRangeValid(from, to, length)) { box.from = from; box.to = to; maskRanges.delete(box); }
+          else maskRanges.set(box, {from: rangeInputs.from.value, to: rangeInputs.to.value});
+        }
+        range.hidden = whole.checked; showError(); changed();
+      };
+      Object.values(rangeInputs).forEach(input => input.addEventListener("input", updateRange));
+      whole.addEventListener("change", updateRange);
+      range.hidden = whole.checked;
+      const position = el("div", {class: "mask-position"});
+      for (const [key, title] of [["x", "Left %"], ["y", "Top %"], ["w", "Width %"], ["h", "Height %"]]) {
+        const input = el("input", {id: `mask-${key}-${i}`, type: "number", min: "0", max: "100", step: "any",
+          "aria-describedby": error.id});
+        input.value = maskPositions.get(box)?.[key] ?? maskRound(box[key]*100);
+        positionInputs[key] = input;
+        input.addEventListener("input", () => {
+          const values = Object.fromEntries(Object.entries(positionInputs).map(([k, e]) => [k, maskRound(number(e)/100)]));
+          const {x, y, w, h} = values;
+          if (Object.values(values).every(Number.isFinite) && x >= 0 && y >= 0 && w > 0 && h > 0 &&
+              maskRound(x+w) <= 1 && maskRound(y+h) <= 1) {
+            Object.assign(box, values); maskPositions.delete(box);
+          } else maskPositions.set(box, Object.fromEntries(Object.entries(positionInputs).map(([k, e]) => [k, e.value])));
+          showError(); changed();
+        });
+        position.append(el("label", {for: input.id}, title, input));
+      }
+      const remove = el("button", {id: "mask-delete-" + i, type: "button", text: "Delete", "aria-label": "Delete Box " + (i+1)});
+      remove.addEventListener("click", () => {
+        maskRanges.delete(box); maskPositions.delete(box);
+        const next = boxes().filter(b => b !== box);
+        if (next.length) doc.broll_masks[clip.ledger_id] = next;
+        else delete doc.broll_masks[clip.ledger_id];
+        renderRows(); changed(); add.focus();
+      });
+      row.append(options, range, el("details", {id: "mask-position-" + i}, el("summary", {text: "Exact position"}), position), error, remove);
+      showError(); return row;
+    }));
+    paint();
+  };
+  const addBox = box => {
+    doc.broll_masks ||= {};
+    doc.broll_masks[clip.ledger_id] = [...boxes(), box];
+    renderRows(); changed();
+  };
+  add.addEventListener("click", () => addBox({x: .25, y: .4, w: .5, h: .1, kind: "blur"}));
+  const point = event => {
+    const r = overlay.getBoundingClientRect();
+    return {x: Math.max(0, Math.min(1, (event.clientX-r.left)/r.width)),
+      y: Math.max(0, Math.min(1, (event.clientY-r.top)/r.height))};
+  };
+  // The overlay never intercepts the video's native controls. Drags bubble from the picture.
+  stage.addEventListener("pointerdown", event => {
+    if (event.defaultPrevented || event.button !== 0 || !event.isPrimary || drag) return;
+    const r = overlay.getBoundingClientRect();
+    if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) return;
+    drag = {id: event.pointerId, start: point(event), box: null};
+  });
+  const move = event => {
+    if (!drag || event.pointerId !== drag.id) return;
+    const p = point(event), a = drag.start;
+    drag.large = Math.abs(p.x-a.x) >= .01 && Math.abs(p.y-a.y) >= .01;
+    if (drag.large && !stage.hasPointerCapture(event.pointerId)) stage.setPointerCapture(event.pointerId);
+    // Round endpoints first, so rounding can never push the far edge outside the frame.
+    drag.box = {x: Math.min(maskRound(a.x), maskRound(p.x)), y: Math.min(maskRound(a.y), maskRound(p.y)),
+      w: maskRound(Math.abs(maskRound(p.x)-maskRound(a.x))),
+      h: maskRound(Math.abs(maskRound(p.y)-maskRound(a.y))), kind: "blur"};
+    paint();
+  };
+  window.addEventListener("pointermove", move);
+  const finish = event => {
+    if (!drag || event.pointerId !== drag.id) return;
+    move(event);
+    const {box, large} = drag; drag = null;
+    if (stage.hasPointerCapture(event.pointerId)) stage.releasePointerCapture(event.pointerId);
+    if (large) addBox(box);
+    else paint();
+  };
+  window.addEventListener("pointerup", finish);
+  const cancelDrag = () => { drag = null; paint(); };
+  stage.addEventListener("pointercancel", cancelDrag);
+  stage.addEventListener("lostpointercapture", cancelDrag);
+  video.addEventListener("timeupdate", paint);
+  video.addEventListener("seeking", paint);
+  video.addEventListener("loadedmetadata", sizePicture);
+  const resize = new ResizeObserver(sizePicture);
+  resize.observe(stage);
+  panel.append(el("h2", {id: "mask-title", text: "Hide private details: " + clip.name}),
+    el("p", {text: "Drag on the picture to draw a box, or use Add box and Exact position."}), stage, add, list, done);
+  done.addEventListener("click", () => panel.close());
+  panel.addEventListener("close", () => {
+    video.pause(); resize.disconnect();
+    window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", finish);
+    panel.remove(); opener?.focus();
+  });
+  document.body.append(panel);
+  renderRows(); panel.showModal(); sizePicture(); add.focus();
+}
+
 function brollControls(b, i) {
   const wrap = el("div", {class: "broll-controls"});
   const select = el("select", {name: "broll", id: "broll-" + i});
@@ -671,13 +918,25 @@ function brollControls(b, i) {
   fit.value = b.broll?.fit || "cover";
   start.value = invalidBroll.get(b.id) ?? String((b.broll?.in || 0) / doc.fps);
   const err = el("p", {class: "err", id: start.id + "-error", text: "Type a start time of zero seconds or more."});
+  const status = el("span", {class: "mask-status", "data-clip": b.broll?.ledger_id || "", "aria-live": "polite"});
+  const hide = el("button", {id: "hide-private-" + i, type: "button", text: "Hide private details"});
+  hide.addEventListener("click", () => {
+    const clip = brollClips.find(c => c.ledger_id === b.broll?.ledger_id);
+    if (clip) openMasks(clip, hide);
+  });
   start.setAttribute("aria-describedby", err.id);
   const showError = () => {
     err.hidden = !invalidBroll.has(b.id);
     if (err.hidden) start.removeAttribute("aria-invalid");
     else start.setAttribute("aria-invalid", "true");
   };
-  const enabled = () => { fit.disabled = start.disabled = !b.broll || !brollClips.length; };
+  const enabled = () => {
+    fit.disabled = start.disabled = !b.broll || !brollClips.length;
+    hide.hidden = !brollClips.some(c => c.ledger_id === b.broll?.ledger_id);
+    status.dataset.clip = b.broll?.ledger_id || "";
+    const count = clipMasks(status.dataset.clip).length;
+    status.textContent = count ? count + (count === 1 ? " area hidden" : " areas hidden") : "";
+  };
   const update = () => {
     if (!select.value) b.broll = null;
     else {
@@ -695,7 +954,7 @@ function brollControls(b, i) {
   fit.addEventListener("change", update);
   start.addEventListener("input", update);
   enabled(); showError();
-  wrap.append(el("label", {for: select.id, text: "B-roll"}), select,
+  wrap.append(el("label", {for: select.id, text: "B-roll"}), select, status, hide,
               el("details", {class: "advanced-controls", "data-controls-key": "broll-" + b.id}, el("summary", {text: "Advanced controls"}),
                 el("label", {for: fit.id, text: "Fit"}), fit,
                 el("label", {for: start.id, text: "Starts at (seconds)"}), start, err));
@@ -825,7 +1084,7 @@ function renderFocus() {
     }
     invalid.delete(b.id); err.hidden = true; val.removeAttribute("aria-invalid");
     b.value = t === "" ? null : Number(t);
-    const spec = b.scene && sceneSpec(b.scene.id);
+    const spec = b.scene && sceneSpec(b.scene.id, b.id);
     if (spec && spec.category === "counter" && spec.params.some((p) => p.name === "value")) {
       if (!b.scene.params) b.scene.params = {};
       b.scene.params.value = b.value;
@@ -1087,6 +1346,7 @@ function reminderProblem() {
 
 function render() {
   doc.beats = (doc.beats || []).slice().sort((a, b) => a.start_f - b.start_f);
+  privacyStatus();
   loadSeen();
   $("#legend").replaceChildren(...[["face-swatch", "Your face"], ["graphic-swatch", "Graphic or screen"],
     ["flag-dot", "Flagged for you"]].map(([className, name]) => el("li", {}, el("span", {class: className}), name)));
@@ -1101,6 +1361,7 @@ function render() {
 }
 
 function edited(saveChange = true) {
+  privacyStatus();
   renderTimeline();
   reviewProgress();
   const reason = flagReason(doc.beats[focusIndex]), content = $("#focus .focus-content");
@@ -1128,6 +1389,8 @@ async function save(mine) {
 }
 
 function problem() {
+  const masks = maskProblem();
+  if (masks) return masks;
   const transitionBad = transitionProblem();
   if (transitionBad) return transitionBad;
   const loopBad = loopProblem();
@@ -1160,6 +1423,8 @@ function problem() {
 }
 
 async function send() {
+  sendBtn.disabled = true;
+  await checkReelScenes();
   clearTimeout(timer);
   readEditStyle();
   const bad = problem();
@@ -1169,7 +1434,7 @@ async function send() {
       openBeat(Number(beat[1]) - 1);
       moreOpen = true; $("#more").open = true;
     }
-    setStatus("error", bad); return;
+    setStatus("error", bad); sendBtn.disabled = false; return;
   }
   sendBtn.disabled = true;
   ++seq;
@@ -1234,6 +1499,7 @@ async function init() {
   boardConfig = config || {};
   sceneCatalogLoaded = Array.isArray(catalog);
   sceneCatalog = Array.isArray(catalog) ? catalog : [];
+  await checkReelScenes();
   const clips = await reelJson("broll/clips.json");
   brollClips = clips && Array.isArray(clips.clips) ? clips.clips : [];
   sceneSuggestions = suggestions && typeof suggestions === "object" ? suggestions : {};
@@ -1241,7 +1507,13 @@ async function init() {
   sketchScenes = {...((sketchesSend && sketchesSend.scenes) || {}), ...((sketchesState && sketchesState.scenes) || {})};
   $("#board").hidden = false;
   render();
-  if (doc.sent_at) setStatus("sent", "Last sent " + new Date(doc.sent_at).toLocaleString());
+  // The privacy reminder can make the fixed Send bar taller on a narrow screen.
+  new ResizeObserver(() => {
+    $("main").style.paddingBottom = ($(".bar").offsetHeight + 20) + "px";
+  }).observe($(".bar"));
+  const sceneBad = doc.beats.map(reelSceneProblem).find(Boolean);
+  if (sceneBad) setStatus("error", sceneBad);
+  else if (doc.sent_at) setStatus("sent", "Last sent " + new Date(doc.sent_at).toLocaleString());
   else setStatus("saved", "All changes saved.");
   sendBtn.addEventListener("click", send);
   sendBtn.querySelector("[data-loading]").remove();

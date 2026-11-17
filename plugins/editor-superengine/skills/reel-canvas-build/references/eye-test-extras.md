@@ -1,7 +1,7 @@
 # Five optional visual questions
 
 Ask each question exactly once after watching the finished reel. Each answer must be `yes` or `no`.
-Claude answers these itself from the finished reel's frames; to the client, say only a fix, in plain words. These are taste prompts, not permission to bypass QA.
+Claude answers these itself from the finished reel's frames; to the user, say only a fix, in plain words. These are taste prompts, not permission to bypass QA.
 
 | id | Question |
 | --- | --- |
@@ -40,6 +40,7 @@ Beat Map choice; the controls check the proposal and do not insert a beat.
 For older reels, `cta-reminder.json` in the reel folder is checked only when
 the document has no `cta_reminder` key.
 
+These Beat Map holds explain pauses in visual events; they are separate from scene rest points in `scene.json`.
 The Beat Map saves `holds: [{"at_f":90,"reason":"Let this comparison settle."}]`
 in `beat-map-selection.json`. Reasons in an older `work/holds.json` with the
 same `holds` list also count; the check uses both sources together.
@@ -51,7 +52,7 @@ Use the Sketches board's "How each beat comes in and goes out (optional)" panel 
 it saves the `storyboard` key in `sketches-selection.json`. The old way is `storyboard.json`, recording `{"beats":{"b_001":{"in":"fade","out":"slide",
 "ease_in":"soft","ease_out":"soft"}}}`. In Beat Map order, an exit transform
 that differs from the next entry produces one suggestion warning per boundary.
-The saved key takes priority over the old file. Without either there are no rows. These choices do not animate anything.
+The saved key takes priority over the old file. Without either there are no rows. The storyboard fields are suggestions; the motion itself is built in [Build motion](motion-build.md).
 
 For style origin and colour meanings, use the shared `style_intake.py` command:
 `save <id> <document.json>` or `read <id>`. Its document has `origin` of `client`,

@@ -25,6 +25,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve()
 sys.path.insert(0, str(HERE.parents[1]))
 import runtime as rt  # noqa: E402
+import mix_approval  # noqa: E402
 from win_encoding import ensure_utf8_output  # noqa: E402
 
 PHASE = "post"
@@ -71,6 +72,7 @@ def audio_source(reel, cuts):
         if not master.is_file():
             return None  # Cannot establish which sound compose would choose.
         if report.get("video_md5") == packet_md5(master, "v"):
+            mix_approval.require_approved_mix(reel, final)
             return final
     return master if master.is_file() else None
 
@@ -196,6 +198,8 @@ def run(ctx):
             if source is None:
                 raise ValueError("no original sound")
             original = packet_md5(source, "a:0")
+        except mix_approval.MixApprovalError as error:
+            out.append(row("sound-changed", "block", str(error), reel / "sound/final.mp4"))
         except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
             out.append(row("sound-unchecked", "warn", "The original sound could not be found or read, so its "
                            "match is unchecked; restore the cut master and sound files to check it.", reel / "work/renders"))

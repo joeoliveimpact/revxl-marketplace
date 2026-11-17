@@ -29,7 +29,7 @@ import numpy as np
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from _media import SR, decode, write_wav, loudness, ffmpeg, video_md5, find_picture, workspace, write_json, rt  # noqa: E402
+from _media import SR, decode, write_wav, loudness, ffmpeg, video_md5, cut_picture, PictureError, workspace, write_json, rt  # noqa: E402
 import auphonic, bake, master_audio, mix_check, room_tone  # noqa: E402
 import music_pick  # noqa: E402
 sys.path.insert(0, str(HERE.parents[1] / "_shared" / "checks"))
@@ -85,9 +85,13 @@ def mux(picture, master, out):
 
 def run(a):
     reel = workspace()[1] / a.reel
-    picture = find_picture(reel, a.video) if reel.is_dir() else None
+    try:
+        picture = cut_picture(reel, a.video) if reel.is_dir() else None
+    except PictureError as e:
+        print(e)
+        return e.code
     if not picture or not picture.is_file():
-        print("Couldn't find the reel folder or its picture-locked video. Pass --video with the locked video.")
+        print("Couldn't find the reel folder or its cut video. Check the reel name, then try again.")
         return 2
     mode = a.voice or rt.read_config().get("voice_cleanup") or "free"
 
@@ -163,14 +167,26 @@ def run(a):
     write_json(sound / "mix-report.json", report)
     g = report["passes"][-1]["gate"]
     if not report["pass"]:
+        weak = report["mix_check"]["weak_cues"]
+        reasons = []
+        for c in weak:
+            if c.get("why") == "silent":
+                reasons.append("the sound effect on '%s' has no audible sound (pick another file for that moment on the Sound Board)" % c["beat"])
+            elif c.get("why") == "clipped":
+                reasons.append("the sound effect on '%s' clipped (too loud, it distorted: lower it on the Sound Board)" % c["beat"])
+            elif c.get("why") == "masked":
+                reasons.append("the sound effect on '%s' was masked (buried under the voice or music: raise it, move it, or pick another sound)" % c["beat"])
+        legacy = [c["beat"] for c in weak if c.get("why") not in ("silent", "clipped", "masked")]
+        if legacy:
+            reasons.append("the check couldn't hear the sound effect on %s in the result" % ", ".join(legacy))
+        if weak:
+            next_step = ("Adjust the named moments on the Sound Board, then mix again." if not legacy else
+                         "Pick another sound or raise its level for that moment on the Sound Board, or drop it, then mix again.")
+        else:
+            next_step = "Adjust the music level on the Sound Board, then mix again."
         print("Mixed, but %s. Until the mix passes, the preview and the final video use your voice without music "
               "or sound effects. %s" % (
-                  ("the check couldn't hear the sound effect on %s in the result" % ", ".join(
-                      c["beat"] for c in report["mix_check"]["weak_cues"]))
-                  if report["mix_check"]["weak_cues"] else "the music level moved under the voice",
-                  "Pick another sound or raise its level for that moment on the Sound Board, or drop it, then mix again."
-                  if report["mix_check"]["weak_cues"] else
-                  "Adjust the music level on the Sound Board, then mix again."))
+                  "; ".join(reasons) if weak else "the music level moved under the voice", next_step))
         return 1
     print("Mixed: sound/final.mp4 (%.1f LUFS, peak %.1f dBTP, %s voice clean-up, %d sound effect%s)." % (
         g["integrated_lufs"], g["true_peak_dbtp"], mode, len(placement["cues"]), "" if len(placement["cues"]) == 1 else "s"))
@@ -183,7 +199,7 @@ def main(argv=None):
     ap.add_argument("--reel", required=True)
     ap.add_argument("--voice", choices=["free", "auphonic"])
     ap.add_argument("--yes", action="store_true", help="the client said yes to the Auphonic plan")
-    ap.add_argument("--video", help="the picture-locked video (default: the board's picture, else the newest master)")
+    ap.add_argument("--video", help="the audition video to check against the cut master")
     return run(ap.parse_args(argv))
 
 

@@ -1,8 +1,8 @@
 """The one validator for what the Beat Map and Sketches boards save (stdlib only).
 
-A beat is one stretch of the cut: exactly {id, start_f, end_f, speech_anchor, layout, value,
-scene, broll, transition}, timed in output frames. Word marks [{w, mark}] tag words of the
-cut's word list (w = list position) as num, key, emph or cta. The beat map document
+A beat is one stretch of the cut: {id, start_f, end_f, speech_anchor, layout, value,
+scene, broll, transition}, timed in output frames, with an optional boolean cover_face choice.
+Word marks [{w, mark}] tag words of the cut's word list (w = list position) as num, key, emph or cta. The beat map document
 (videos/<reel>/beat-map.state.json) holds the beats, marks, Claude's proposed picks and user
 notes; the sketches document (videos/<reel>/sketches.state.json) holds the rough preview, the
 directions (the user picks one) and the per-beat sketches.
@@ -35,11 +35,12 @@ MARKS = ("num", "key", "emph", "cta")  # H-M20's fixed set, meanings below
 # emph = a word to stress (S6c word punches and S8 captions read emph/key as suggestions)
 # cta  = a call-to-action word
 BEAT_KEYS = ("id", "start_f", "end_f", "speech_anchor", "layout", "value", "scene", "broll", "transition")
+OPTIONAL_BEAT_KEYS = ("cover_face",)
 ANCHOR_KEYS = ("text", "w0", "w1")
 MARK_KEYS = ("w", "mark")
 MAP_KEYS = ("schema", "reel", "fps", "words", "beats", "word_marks", "proposed", "notes", "needs", "sent_at",
-            "edit_style", "caption_style", "loops", "transitions", "cta_reminder", "holds")
-OPTIONAL_MAP_KEYS = ("edit_style", "caption_style", "loops", "transitions", "cta_reminder", "holds")  # Optional document choices; old Sends stay valid.
+            "edit_style", "caption_style", "loops", "transitions", "cta_reminder", "holds", "broll_masks")
+OPTIONAL_MAP_KEYS = ("edit_style", "caption_style", "loops", "transitions", "cta_reminder", "holds", "broll_masks")  # Optional document choices; old Sends stay valid.
 PROPOSED_KEYS = ("layout", "value", "shows", "why")  # Claude's original pick per beat; the board highlights changes
 OPTIONAL_PROPOSED_KEYS = ("check",)  # A plain reason to review a beat; absent in old files.
 DEFAULT_WORDS = "work/edit_map.cut.json"  # H-S4b-5: re-transcribed cut words, S3 edit-map shape, index from 0
@@ -160,10 +161,12 @@ def broll_problems(broll, where="broll"):
 
 def beat_problems(beat, words=None, *, where="beat", fps=None):
     """Problems with one beat. `words` (the cut's word list) turns on the speech_anchor index/text checks."""
-    out = _keys(beat, BEAT_KEYS, where)
+    out = _keys(beat, BEAT_KEYS + OPTIONAL_BEAT_KEYS, where, OPTIONAL_BEAT_KEYS)
     if not isinstance(beat, dict):
         return out
     b = beat
+    if "cover_face" in b and not isinstance(b["cover_face"], bool):
+        out.append(f"{where}.cover_face must be a boolean; use true or false")
     if "id" in b and not (isinstance(b["id"], str) and re.fullmatch(r"\S+", b["id"])):
         out.append(f"{where}.id {_show(b['id'])} is not a beat id; use a non-empty string with no spaces, e.g. 'b_001'")
     for k in ("start_f", "end_f"):
@@ -354,11 +357,47 @@ def loops_problems(doc, words=None, timed_words=None):
     return out
 
 
+def broll_masks_problems(masks):
+    """Clip-keyed private areas, in fractions of the ingested frame and clip seconds."""
+    if not isinstance(masks, dict):
+        return ["Hidden areas must be an object keyed by clip; save the areas again."]
+    out = []
+    for ident, boxes in masks.items():
+        if not isinstance(ident, str) or not re.fullmatch(r"f\d{2,}", ident):
+            out.append("Each hidden area needs a clip id such as f03; choose the clip again.")
+        if not isinstance(boxes, list):
+            out.append(f"Hidden areas on clip {ident} must be a list; save the areas again.")
+            continue
+        for i, box in enumerate(boxes, 1):
+            where = f"Box {i} on clip {ident}"
+            problems = _keys(box, ("x", "y", "w", "h", "kind", "from", "to"), where, ("from", "to"))
+            out += problems
+            if problems:
+                continue
+            if not all(_is_num(box[k]) for k in ("x", "y", "w", "h")):
+                out.append(f"{where} needs finite numbers for its position and size; draw it again.")
+            elif box["w"] <= 0 or box["h"] <= 0:
+                out.append(f"{where} needs a positive width and height; draw it again.")
+            elif (box["x"] < 0 or box["y"] < 0 or box["x"] + box["w"] > 1 + 1e-6
+                  or box["y"] + box["h"] > 1 + 1e-6):
+                out.append(f"{where} must stay inside the picture; draw it again.")
+            if box["kind"] not in ("blur", "fill"):
+                out.append(f"{where} must use blur or fill; choose how to hide it again.")
+            if ("from" in box) != ("to" in box):
+                out.append(f"{where} needs both a start and an end time; set both or remove both.")
+            elif "from" in box and (not _is_num(box["from"]) or not _is_num(box["to"])
+                                    or not 0 <= box["from"] < box["to"]):
+                out.append(f"{where} must start at zero or later and before it ends; set its times again.")
+    return out
+
+
 def beat_map_problems(doc, words=None, timed_words=None):
     """Problems with a whole beat map document. `words` = the cut's word list (see load_words)."""
     out = _keys(doc, MAP_KEYS, "beat map", OPTIONAL_MAP_KEYS)
     if not isinstance(doc, dict):
         return out
+    if "broll_masks" in doc:
+        out += broll_masks_problems(doc["broll_masks"])
     if "schema" in doc and not (_is_int(doc["schema"]) and doc["schema"] == SCHEMA):
         out.append(f"schema {_show(doc['schema'])} is not {SCHEMA}; set schema to {SCHEMA}")
     if "reel" in doc:
@@ -711,6 +750,24 @@ def selftest():
     cases.extend([("broll null", broll_problems(None), None),
                   ("broll not object", broll_problems("clip.mp4"), "not an object"),
                   ("broll missing keys", broll_problems({"src": "broll/x.mp4"}), "missing in, out, fit, ledger_id")])
+    mask = {"x": .06, "y": .31, "w": .52, "h": .07, "kind": "blur"}
+    for name, masks, want in (
+            ("valid", {"f03": [mask, dict(mask, kind="fill", **{"from": 2.4, "to": 5})]}, None),
+            ("empty", {"f03": []}, None), ("object", [], "object"),
+            ("id", {"b_001": []}, "clip id"), ("list", {"f03": {}}, "list"),
+            ("box", {"f03": [None]}, "object"), ("missing", {"f03": [{}]}, "missing")):
+        cases.append(("hidden areas " + name, beat_map_problems(dict(good, broll_masks=masks)), want))
+    for changes, want in (({"extra": 1}, "unknown"), ({"kind": "pixel"}, "blur or fill"),
+                          ({"x": True}, "numbers"), ({"y": float("nan")}, "numbers"),
+                          ({"w": 0}, "positive"), ({"h": -1}, "positive"),
+                          ({"x": -.1}, "inside"), ({"y": -.1}, "inside"),
+                          ({"w": 1}, "inside"), ({"h": 1}, "inside"),
+                          ({"from": 1}, "both"), ({"to": 2}, "both"),
+                          ({"from": -1, "to": 2}, "before"), ({"from": 2, "to": 2}, "before"),
+                          ({"from": 3, "to": 2}, "before"), ({"from": False, "to": 2}, "before"),
+                          ({"from": 1, "to": float("inf")}, "before")):
+        cases.append(("hidden area " + repr(changes),
+                      beat_map_problems(dict(good, broll_masks={"f03": [dict(mask, **changes)]})), want))
     fails = []
     for name, problems, want in cases:
         if want is None and problems:

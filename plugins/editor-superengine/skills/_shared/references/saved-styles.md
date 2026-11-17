@@ -4,14 +4,14 @@ Run each command from your workspace with the editor Python defined in editor-su
 
 ## 1. Save this reel as a style
 
-When the client says **"save this as my style"**, save a new style:
+When the user says **"save this as my style"**, save a new style:
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/saved_style.py" save-from-reel <reel folder>`
 
 Read back the choices, say the new name (Style N), and offer a rename in the same line.
 A new name runs the same script's `rename <style name> "<new name>"`.
 `save-from-reel <reel folder> --name <style name>` (quote names with spaces) updates an existing style, keeps its other settings,
-and writes the client's workspace skill. Tell the client: "Your default doesn't carry word punches to later reels. To get them on a later reel, pick Punch-ins and a Word punches setting in that reel's Editing style panel, then mark the words to stress; that reel then uses its panel choices instead of your default."
+and writes the user's workspace skill. Tell the user: "Your default doesn't carry word punches to later reels. To get them on a later reel, pick Punch-ins and a Word punches setting in that reel's Editing style panel, then mark the words to stress; that reel then uses its panel choices instead of your default."
 
 ## 2. Make one the default
 
@@ -37,15 +37,15 @@ This changes one saved choice in this reel's picked style and keeps its other ch
 
 ## 5. Save a decoded style as a new style
 
-After the client approves the decode, run:
+After the user approves the decode, run:
 
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/saved_style.py" save-from-reel <reel folder> --from-decoded <slug>`
 
-This saves a NEW Style N and uses it on this reel when its pick is Copy or missing; an existing different pick stays as chosen. It never makes the copied style the default unless the client asks for `set-default`. Say the new name and offer a rename in the same line.
+This saves a NEW Style N and uses it on this reel when its pick is Copy or missing; an existing different pick stays as chosen. It never makes the copied style the default unless the user asks for `set-default`. Say the new name and offer a rename in the same line.
 
 Copied choices: the editor edit style, caption look and grade look; the caption-default role's closest available font; the first valid accent colour (brand and captions); minimum caption reading time; and recognised transition types (whip, zoom, glitch, flash, fade, push, wipe, shader). Plain cuts need no setting. This reel's board Sends win over the decoded choices. Shot rhythm and speech distributions do not set the pause between lines.
 
-Before `index`, style-decoder writes `adapters.editor`, judging the closest choices from the frames (use `UNKNOWN` where unmeasurable). When the client came from "Copy a reel I like", after approval save the decoded style with this section's command. Allowed choices:
+Before `index`, style-decoder writes `adapters.editor`, judging the closest choices from the frames (use `UNKNOWN` where unmeasurable). When the user came from "Copy a reel I like", after approval save the decoded style with this section's command. Allowed choices:
 - `edit_style`: `punch-in`, `layout-switch`, or `UNKNOWN`.
 - `caption_style`: `clean`, `bold-pop`, `boxed`, `karaoke`, `outline-caps`, `none`, or `UNKNOWN`.
 - `look`: `natural`, `warm`, `punchy`, `soft-matte`, `mono`, `none`, or `UNKNOWN`.
@@ -54,7 +54,7 @@ Say every "Not copied" line in plain words: layouts, motion rules, structure, as
 
 ## 6. Standing notes
 
-For Standing notes, run `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/standing_notes.py" add` or `list`; `add --help` explains matching a choice. Tell the client plainly when a note "Could not be matched".
+For Standing notes, run `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/_shared/standing_notes.py" add` or `list`; `add --help` explains matching a choice. Tell the user plainly when a note "Could not be matched".
 
 ## 7. Auto edit on or off for good
 

@@ -437,7 +437,7 @@ fetch(BASE+'work/long-silences.json',{cache:'no-store'}).then(r=>r.ok?r.json():n
   if(C) renderLongQuiet();
 });
 
-(bc?Promise.all([fetch(BASE+'tweak-board.config.json').then(r=>{ if(!r.ok) throw new Error('no tweak-board.config.json for this reel (HTTP '+r.status+')'); return r.json(); }), bc.load(),
+(bc?Promise.all([fetch(BASE+'tweak-board.config.json').then(r=>{ if(!r.ok) throw new Error('This reel has no tweak board yet. Ask Claude to set it up.'); return r.json(); }), bc.load(),
   fetch(BASE+'tweak-selection.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null)]):Promise.reject(new Error('open this board with ?reel=<reel> in its address'))).then(([c,disk,sent])=>{
   C=c; $('#title').textContent=`Tweak Board · ${C.reel} · ${C.version} · ${fmt(C.duration)}`; v().src=reelUrl(C.video); $('#listen').textContent=listenNotes(C.listen); $('#listenh').hidden=!$('#listen').textContent;
   // a saved state stamped with another reel or version is not this cut's ruling

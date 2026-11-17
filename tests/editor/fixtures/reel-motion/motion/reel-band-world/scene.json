@@ -1,0 +1,43 @@
+{
+  "id": "reel-band-world",
+  "category": "reel-band-world",
+  "kind": "world",
+  "area": "full",
+  "holds": [
+    0,
+    "t1"
+  ],
+  "caption_band": [
+    1320,
+    1470
+  ],
+  "slots": {
+    "text": {
+      "maxChars": 12,
+      "default": "Clear world",
+      "required": true
+    }
+  },
+  "dur": [
+    1,
+    5
+  ],
+  "params": {
+    "accent": {
+      "type": "color",
+      "default": "#4f8cff"
+    },
+    "font": {
+      "type": "string",
+      "default": "Inter"
+    },
+    "t1": {
+      "type": "number",
+      "default": 1.5,
+      "min": 1.4,
+      "max": 1.6
+    }
+  },
+  "source": "Own text-only MB2 fixture for beat b_001, locked hold/seek test direction",
+  "licence": "own"
+}

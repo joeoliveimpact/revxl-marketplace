@@ -4,6 +4,47 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.3] — 2026-11-17
+
+### Added
+- **Build motion**: motion scenes are built and checked in their own step, after the caption
+  look and before the sound. A Motion review board shows every scene. Motion counts as done only
+  when each scene is left as it is, or when you say the reel gets no graphics. A beat can use a
+  scene written for its own reel, and one command places the scenes on the Beat Map.
+- **Hide private details**: on the Beat Map, draw blur or solid black boxes over a B-roll clip,
+  for the whole clip or for a time range. The boxes are applied on every render (preview,
+  master, trial reels and the hand-off). If a box cannot be applied, the render stops rather
+  than show the detail. Before the Beat Map Send, Claude asks whether any B-roll shows private
+  details and never answers for you.
+- **Stills as B-roll**: screenshots and images (PNG, JPG, WebP) can be placed as B-roll.
+- **Sound-effect levels**: the sound pass evens out sound-effect loudness on its own ("Match
+  effect levels" on the Sound Board, on by default). Levels you set by hand are kept, and an
+  effect that could not be raised enough is marked. The mix check says why a cue was not heard.
+
+### Changed
+- **Frame rates**: scenes keep exact frames at every common frame rate (checked at 23.976, 24,
+  25, 29.97, 30, 50 and 59.94), and the Motion review renders at the reel's own rate.
+- **World scenes**: on a stack or split layout the face stays in its slot unless you pick
+  "Graphics take the whole screen". The caption band is checked on every frame, and a crossing
+  names its beat, time and words.
+- **Sound Board**: it plays the newest preview made after the motion was approved, and says
+  which file it plays.
+- **Guides**: the skill guides and references match what the code does, with one owner for each
+  rule. Placing scenes or picking the style no longer reopens the Beat Map Send.
+
+### Fixed
+- **Cut Board ad-libs**: the Cut Board lines up the locked script with what was actually said,
+  ad-libs included, and a script fix replaces every match.
+- **Hub on a new reel**: opening the hub on a new reel builds its rows itself. It never switches
+  to another reel on its own or shows a raw 404.
+- **Sound in the master**: the sound mix always lines up with the cut, so it reaches the master.
+  Approving "Latest mix" approves the real preview, and a re-mix after your OK makes the master
+  ask for a new preview.
+- **Motion choice**: building motion clears an earlier "no motion graphics" choice, so new
+  scenes always reach the Motion review.
+- **Beat Map**: it shows Loading until it knows its state, and a reel scene on its own beat no
+  longer stops the Send.
+
 ## [0.2.2] — 2026-11-11
 
 ### Added

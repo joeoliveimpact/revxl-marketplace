@@ -8,15 +8,22 @@ needs to render it:
                           hook-title, cta-end-card, slots, cover-title (an own scene's category is its id; a vendored scene names
                           the category it fills, e.g. hf-counter is "counter")
                kind     = "overlay" (sits over the a-roll, leaves most of the frame clear) or
-                          "takeover" (may fill the frame)
+                          "takeover" (may fill the frame), or "world" (reel scenes only)
+               area     = world only, required full|stack|split; authored at compose.world_area()'s size
+               holds    = world only, required non-empty list of non-negative seconds or number param names;
+                          check text 0.25 s after each hold (clamped to the last frame), plus the last frame
+               caption_band = world only, required [y0, y1] inside the area's local height, at least 150 px tall;
+                          full keeps 220 <= y0 < y1 <= 1470, suggested [1320, 1470]; text stays out at holds
                slots    = {<name>: {maxChars: int >= 1, default: sample text, required?: boolean, hint?}}: the words a beat fills in
                dur      = [min_s, max_s], 0 < min <= max
-               params   = {<name>: {type: number|string|boolean|color, default, min?, max?, maxChars?, enum?, hint?}}
+               params   = {<name>: {type: number|string|boolean|color, default, min?, max?, maxChars?, enum?, hint?, word?}}
+                          word = optional cut-word id (w_0013) on a reel scene's numeric t1, t2, ... param;
+                          shape only here; compose and Motion review check its time against work/word_map.json
                           enum = the only values a fill may give: a non-empty list of the param's type, holding
                           the default
                source, licence = where it came from and under what terms (never empty); licence "own" =
                           written by us, anything else = vendored (see registry-allow.json below)
-  scene.html   a 1080x1920 HyperFrames composition of our own (or our rewrite of a vendored block):
+  scene.html   a HyperFrames composition at the world's area size, otherwise 1080x1920:
                - root element data-composition-id="<id>" with data-duration inside dur, CSS z-index in the
                  scene band 400-499 (nothing in the scene outside it), and no background on html, body or the
                  root (only the scene's own cards and plates are filled; their class is "plate")
@@ -32,7 +39,7 @@ needs to render it:
                  requestAnimationFrame; no CSS @keyframes, animation or transition; centring with GSAP
                  xPercent/yPercent, never CSS translate(-50%...) or translate: -50%
   preview.png  a real 9:16 PNG thumbnail rendered from the scene (tests/editor/scene_render_test.py
-               --write-previews), never hand-made
+               --write-previews), never hand-made; optional for reel scenes before rendering
 Assets: any other file in a scene folder that is not a font (.woff2 .woff .ttf .otf), and any non-font file
 scene.html references (src/href/poster/url(...) or a quoted image, audio or video file name; not ./vendor/gsap.min.js,
 ./fonts/*, #fragments or data: URIs), must be listed by file name in that scene's registry-allow.json `files`
@@ -65,7 +72,7 @@ number scales it, so "1.2k" and "1.2 thousand" read as 1200 (and also match the 
 ("forty-seven") are not read, so they never count as said. No transcript = fail, never a pass.
 
   scene_check.py check [<scenes dir>]
-  scene_check.py fill <scene id> <fill.json> [--transcript <words.json>] [--scenes DIR]
+  scene_check.py fill <scene id> <fill.json> [--transcript <words.json>] [--scenes DIR] [--reel DIR]
   scene_check.py --selftest
 Prints one "OK <id>" or one "FAIL <id>: <reason>" per problem; exit 0 only when everything passes, 1 when
 something fails, 2 when the check itself could not run.
@@ -96,8 +103,11 @@ FONTS = P / "runtime" / "fonts"
 GSAP_SRC = "./vendor/gsap.min.js"
 FILES = ("scene.html", "scene.json", "preview.png")
 KEYS = ("id", "category", "kind", "slots", "dur", "params", "source", "licence")
+WORLD_KEYS = ("holds", "caption_band", "area")
 CATEGORIES = ("lower-third", "callout", "counter", "list", "quote", "stat-card", "hook-title", "cta-end-card", "slots", "cover-title")
-KINDS = ("overlay", "takeover")
+KINDS = ("overlay", "takeover", "world")
+REEL_ID = re.compile(r"reel-[a-z0-9][a-z0-9-]{0,58}")
+SCENE_ID = re.compile(r"[a-z0-9][a-z0-9-]*")
 PARAM_TYPES = ("number", "string", "boolean", "color")
 NUMBER_SCENES = ("counter", "stat-card")  # categories that show a number, so VES-3 f applies
 ALLOW = "registry-allow.json"
@@ -129,6 +139,29 @@ FONT_KEYWORDS = {"inherit", "initial", "unset", "revert"}
 NUM = re.compile(r"(\d{1,3}(?:,\d{3})+|\d+)(\.\d+)?(?:\s*(thousand|million|billion|bn|k|m|b)(?![a-z]))?", re.I)
 SCALE = {"k": 1e3, "thousand": 1e3, "m": 1e6, "million": 1e6, "b": 1e9, "bn": 1e9, "billion": 1e9}
 HEX = re.compile(r"#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})", re.I)
+
+
+def _check_id(sid):
+    if (not isinstance(sid, str) or not SCENE_ID.fullmatch(sid)
+            or sid.startswith("reel-") and not REEL_ID.fullmatch(sid)):
+        raise ValueError("Unsafe scene id; use lowercase letters, digits and hyphens.")
+
+
+def scene_dir(sid, reel=None):
+    """Resolve one safe scene id, keeping catalog and reel scenes in separate trees."""
+    _check_id(sid)
+    if sid.startswith("reel-"):
+        if reel is None:
+            raise ValueError(f"Scene {sid} needs a reel directory.")
+        base = Path(reel) / "motion"
+    else:
+        base = SCENES
+    folder = base / sid
+    if not folder.is_dir():
+        raise ValueError(f"Scene {sid} folder is missing: {folder}")
+    if not folder.resolve().is_relative_to(base.resolve()):
+        raise ValueError(f"Scene {sid} folder points outside its scene directory.")
+    return folder
 
 
 def show(v, n=60):
@@ -163,15 +196,53 @@ def spec_problems(sid, spec):
     if not isinstance(spec, dict):
         return ["scene.json is not a JSON object"]
     out = [f"scene.json is missing {k}" for k in KEYS if k not in spec]
-    out += [f"scene.json has an unknown key {show(k)}; the keys are {', '.join(KEYS)}" for k in spec if k not in KEYS]
+    out += [f"scene.json has an unknown key {show(k)}; the keys are {', '.join(KEYS)}"
+            for k in spec if k not in KEYS + WORLD_KEYS]
     if out:
         return out
     if spec["id"] != sid:
         out.append(f"scene.json id {show(spec['id'])} is not the folder name {show(sid)}")
-    if spec["category"] not in CATEGORIES:
+    reel_scene = sid.startswith("reel-")
+    if reel_scene:
+        if not REEL_ID.fullmatch(sid):
+            out.append("reel scene id must match reel- followed by lowercase letters, digits and hyphens (64 characters at most)")
+        if spec["category"] != sid:
+            out.append("a reel scene category must equal its id")
+        if spec["licence"] != "own":
+            out.append("a reel scene licence must be own")
+    elif spec["category"] not in CATEGORIES:
         out.append(f"category {show(spec['category'])} must be one of {', '.join(CATEGORIES)}")
     if spec["kind"] not in KINDS:
-        out.append(f"kind {show(spec['kind'])} must be overlay or takeover")
+        out.append(f"kind {show(spec['kind'])} must be overlay, takeover or world")
+    if spec["kind"] == "world" and not reel_scene:
+        out.append("kind world is only allowed for a reel- scene")
+    if spec["kind"] == "world":
+        if spec.get("area") not in ("full", "stack", "split"):
+            out.append("area is required for a world scene; choose full, stack or split")
+        holds = spec.get("holds")
+        params = spec["params"] if isinstance(spec["params"], dict) else {}
+        if not isinstance(holds, list) or not holds:
+            out.append("holds must be a non-empty list of seconds or number param names")
+        else:
+            for hold in holds:
+                param = params.get(hold) if isinstance(hold, str) else None
+                value = param.get("default") if isinstance(param, dict) else hold
+                if (isinstance(hold, str) and (not isinstance(param, dict) or param.get("type") != "number")
+                        or not isinstance(value, (int, float)) or isinstance(value, bool)
+                        or not math.isfinite(value) or value < 0):
+                    out.append(f"holds entry {show(hold)} must be non-negative finite seconds or a number param name")
+        band = spec.get("caption_band")
+        # Full retains MB2's band limits; other areas use their own local height.
+        band_lo, band_hi = 220, 1470
+        if spec.get("area") in ("stack", "split"):
+            from compose import world_area
+            band_lo, band_hi = 0, world_area(spec["area"])[3]
+        if not (isinstance(band, list) and len(band) == 2
+                and all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) for v in band)
+                and band_lo <= band[0] < band[1] <= band_hi and band[1] - band[0] >= 150):
+            out.append(f"caption_band must be [y0, y1], {band_lo:g} <= y0 < y1 <= {band_hi:g}, at least 150 pixels tall")
+    else:
+        out.extend(f"{key} is only allowed on kind world" for key in WORLD_KEYS if key in spec)
     if not isinstance(spec["slots"], dict) or not spec["slots"]:
         out.append("slots must be an object with at least one slot")
     else:
@@ -191,6 +262,10 @@ def spec_problems(sid, spec):
         out.append("params must be an object")
     else:
         for name, p in spec["params"].items():
+            if isinstance(p, dict) and "word" in p and not (
+                    reel_scene and re.fullmatch(r"t[1-9][0-9]*", name) and p.get("type") == "number"
+                    and isinstance(p["word"], str) and re.fullmatch(r"w_[0-9]{4,}", p["word"])):
+                out.append(f"param {show(name)} word must be a cut-word id like w_0013 on a reel scene's number t param")
             if name in spec["slots"]:
                 out.append(f"{show(name)} is both a slot and a param; rename one")
             if not isinstance(p, dict) or p.get("type") not in PARAM_TYPES:
@@ -455,8 +530,46 @@ def html_problems(sid, spec, html):
         return [f"scene.html has no root element with data-composition-id=\"{sid}\""]
     tag = root.group(0)
     attr = lambda n: (re.search(r'\b%s\s*=\s*"([^"]*)"' % n, tag) or [None, None])[1]  # noqa: E731
-    if (attr("data-width"), attr("data-height")) != (str(W), str(H)):
-        out.append(f"the root must be data-width=\"{W}\" data-height=\"{H}\"")
+    width, height = W, H
+    if spec.get("kind") == "world" and spec.get("area") in ("full", "stack", "split"):
+        from compose import world_area
+        _, _, width, height = world_area(spec["area"])
+    if (attr("data-width"), attr("data-height")) != (f"{width:g}", f"{height:g}"):
+        if spec.get("kind") == "world":
+            out.append(f"made at {attr('data-width')}x{attr('data-height')}, its area {spec.get('area')} is {width:g}x{height:g}")
+        else:
+            out.append(f"the root must be data-width=\"{W}\" data-height=\"{H}\"")
+    if spec.get("kind") == "world":
+        # Resolve size declarations on the three canvas elements, including inline styles.
+        dom = _FontElements(html)
+        css = re.sub(r"/\*.*?\*/", "", " ".join(re.findall(r"<style\b[^>]*>(.*?)</style>", html, re.S | re.I)), flags=re.S)
+        for node in dom.nodes:
+            if node["tag"] not in ("html", "body") and node["attrs"].get("id") != sid:
+                continue
+            sizes = {}
+
+            def apply_sizes(block, specificity):
+                for prop, value in re.findall(r"(?:^|;)\s*(width|height)\s*:\s*([^;{}]+)", block, re.I):
+                    prop = prop.lower()
+                    important = bool(re.search(r"!\s*important\s*$", value, re.I))
+                    value = re.sub(r"!\s*important\s*$", "", value, flags=re.I).strip()
+                    rank = (important, *specificity)
+                    if prop not in sizes or rank >= sizes[prop][0]:
+                        sizes[prop] = rank, value
+
+            for selectors, block in re.findall(r"([^{}]+)\{([^{}]*)\}", css):
+                for selector in selectors.split(","):
+                    if "::" in selector or not _font_selector(node, selector.strip()):
+                        continue
+                    specificity = (0, len(re.findall(r"#[\w-]+", selector)),
+                                   len(re.findall(r"\.[\w-]+|\[|:(?!:)", selector)),
+                                   len(re.findall(r"(?:^|[\s>+~])[a-zA-Z][\w-]*", selector.strip())))
+                    apply_sizes(block, specificity)
+            apply_sizes(node["attrs"].get("style", ""), (1, 0, 0, 0))
+            actual = [sizes.get(k, (None, "missing"))[1] for k in ("width", "height")]
+            if any(not re.fullmatch(r"\d+(?:\.\d+)?px", v, re.I) or float(v[:-2]) != want
+                   for v, want in zip(actual, (width, height))):
+                out.append(f"{node['tag']} CSS made at {actual[0]}x{actual[1]}, its area {spec.get('area')} is {width:g}x{height:g}")
     try:
         dur = float(attr("data-duration"))
         if isinstance(spec.get("dur"), list) and len(spec["dur"]) == 2 and not spec["dur"][0] <= dur <= spec["dur"][1]:
@@ -845,9 +958,75 @@ def registry_problems(d, spec, allow, why):
     return out
 
 
+def _asset_name(name):
+    """A single local filename, with no path or URL components."""
+    return (isinstance(name, str) and name not in (".", "..")
+            and re.fullmatch(r"[^/\\:\x00-\x1f?#]+", name) is not None)
+
+
+def reel_assets(d, html):
+    """Referenced ./assets files verified against motion/assets.json; never fetch anything."""
+    manifest = d.parent / "assets.json"
+    listed = {}
+    if manifest.exists():
+        try:
+            data = json.loads(manifest.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as e:
+            raise ValueError(f"assets.json can't be read as JSON ({e})") from None
+        if not isinstance(data, dict) or not isinstance(data.get("files"), list):
+            raise ValueError("assets.json must be an object with a files list")
+        for entry in data["files"]:
+            if (not isinstance(entry, dict) or not _asset_name(entry.get("path"))
+                    or not isinstance(entry.get("sha256"), str)
+                    or not re.fullmatch(r"[a-fA-F0-9]{64}", entry["sha256"])
+                    or not isinstance(entry.get("source"), str) or not entry["source"].strip()):
+                raise ValueError("assets.json files need a file name, a sha256 hex digest and a non-empty source")
+            if entry["path"] in listed:
+                raise ValueError(f"assets.json lists {entry['path']} more than once")
+            listed[entry["path"]] = entry["sha256"].lower()
+    files = {}
+    refs = {ref.strip() for rx in ASSET_REFS for ref in rx.findall(html)}
+    # HTMLParser also sees unquoted attributes and decodes HTML entities.
+    refs.update(node["attrs"][key].strip() for node in _FontElements(html).nodes
+                for key in ("src", "href", "poster") if node["attrs"].get(key))
+    for ref in sorted(refs):
+        if ref.startswith(("data:", "#")) or ref == GSAP_SRC:
+            continue
+        if ref.startswith("./fonts/") and (FONTS / ref[8:]).is_file() and "/" not in ref[8:] and "\\" not in ref[8:]:
+            continue
+        if not ref.startswith("./assets/") or not _asset_name(ref[9:]):
+            raise ValueError(f"asset {ref} must reference ./assets/<name> listed in assets.json")
+        name = ref[9:]
+        if name not in listed:
+            raise ValueError(f"asset {ref} is not listed in assets.json")
+        file = d.parent / "assets" / name
+        if not file.is_file():
+            raise ValueError(f"asset {ref} is missing from motion/assets")
+        if not file.resolve().is_relative_to((d.parent / "assets").resolve()):
+            raise ValueError(f"asset {ref} points outside motion/assets")
+        if sha256(file) != listed[name]:
+            raise ValueError(f"asset {ref} sha256 does not match assets.json")
+        files[name] = file
+    # Assets belong to motion/assets, never inside individual reel scene folders.
+    for file in sorted(p for p in d.rglob("*") if p.is_file()):
+        if file.relative_to(d).as_posix() not in (*FILES, "locked"):
+            raise ValueError(f"asset {file.relative_to(d).as_posix()} must live in motion/assets and be listed in assets.json")
+    return files
+
+
 def scene_problems(d):
+    d = Path(d)
     sid = d.name
-    missing = [f for f in FILES if not (d / f).is_file()]
+    try:
+        _check_id(sid)
+    except ValueError as e:
+        return [str(e)]
+    reel_scene = sid.startswith("reel-")
+    if reel_scene and d.parent.name != "motion":
+        return ["a reel- scene must live in <reel>/motion, never in the catalog"]
+    if d.parent.name == "motion" and not reel_scene:
+        return ["a scene in <reel>/motion needs a reel- id"]
+    missing = [f for f in FILES if not (reel_scene and f == "preview.png") and not (d / f).is_file()]
     if missing:
         return [f"the folder is missing {', '.join(missing)}"]
     try:
@@ -858,19 +1037,27 @@ def scene_problems(d):
     if out:
         return out
     out += html_problems(sid, spec, (d / "scene.html").read_text(encoding="utf-8"))
-    out += registry_problems(d, spec, *read_allow(d.parent))
-    p = png_problem(d / "preview.png")
+    if reel_scene:
+        try:
+            reel_assets(d, (d / "scene.html").read_text(encoding="utf-8"))
+        except (OSError, ValueError) as e:
+            out.append(str(e))
+    else:
+        out += registry_problems(d, spec, *read_allow(d.parent))
+    preview = d / "preview.png"
+    p = png_problem(preview) if not reel_scene or preview.exists() else None
     return out + ([p] if p else [])
 
 
 def cmd_check(scenes):
     scenes = Path(scenes)
-    dirs = sorted(p for p in scenes.iterdir() if p.is_dir()) if scenes.is_dir() else []
+    dirs = sorted(p for p in scenes.iterdir() if p.is_dir()
+                  and not (scenes.name == "motion" and p.name in ("assets", "review"))) if scenes.is_dir() else []
     if not dirs:
         print(f"FAIL {scenes.name}: no scene folders in {scenes}")
         return 1
     bad = 0
-    why = read_allow(scenes)[1]
+    why = read_allow(scenes)[1] if scenes.name != "motion" else None
     if why:
         bad += 1
         print(f"FAIL {ALLOW}: {why}")
@@ -885,9 +1072,14 @@ def cmd_check(scenes):
 
 
 # ---- fill: one beat's scene --------------------------------------------------------------------------------
-def fill_problems(sid, fill, scenes=SCENES, words=None):
+def fill_problems(sid, fill, scenes=None, words=None, reel=None):
     """Plain problems with one beat's scene fill. words = the transcript's word strings, or None if not given."""
-    d = Path(scenes) / sid
+    try:
+        _check_id(sid)
+        # Explicit --scenes is retained for catalog fixtures and registry checks.
+        d = scene_dir(sid, reel) if sid.startswith("reel-") or scenes is None else Path(scenes) / sid
+    except ValueError as e:
+        return [str(e)]
     try:
         spec = json.loads((d / "scene.json").read_text(encoding="utf-8"))
         html = (d / "scene.html").read_text(encoding="utf-8")
@@ -989,7 +1181,7 @@ def fill_problems(sid, fill, scenes=SCENES, words=None):
     return out
 
 
-def cmd_fill(sid, fill_path, transcript, scenes):
+def cmd_fill(sid, fill_path, transcript, scenes, reel=None):
     try:
         fill = json.loads(Path(fill_path).read_text(encoding="utf-8"))
     except (OSError, ValueError) as e:
@@ -1002,7 +1194,7 @@ def cmd_fill(sid, fill_path, transcript, scenes):
         except SchemaError as e:
             print(f"FAIL {sid}: {e}")
             return 1
-    probs = fill_problems(sid, fill, scenes, words)
+    probs = fill_problems(sid, fill, scenes, words, reel=reel)
     for p in probs:
         print(f"FAIL {sid}: {p}")
     if not probs:
@@ -1177,7 +1369,8 @@ def main(argv=None):
     f.add_argument("id")
     f.add_argument("fill")
     f.add_argument("--transcript", help="the transcript words JSON ({words:[{word,...}]}, as S3 writes it)")
-    f.add_argument("--scenes", default=str(SCENES))
+    f.add_argument("--scenes", default=None)
+    f.add_argument("--reel", help="the reel directory for a reel- scene")
     a = ap.parse_args(argv)
     try:
         if a.selftest:
@@ -1185,7 +1378,7 @@ def main(argv=None):
         if a.cmd == "check":
             return cmd_check(a.scenes)
         if a.cmd == "fill":
-            return cmd_fill(a.id, a.fill, a.transcript, a.scenes)
+            return cmd_fill(a.id, a.fill, a.transcript, a.scenes, a.reel)
     except Exception as e:  # the check itself broke: say so plainly, never pass
         print(f"The scene check could not run ({type(e).__name__}: {e}). Nothing was checked; show this line to Claude.")
         return 2

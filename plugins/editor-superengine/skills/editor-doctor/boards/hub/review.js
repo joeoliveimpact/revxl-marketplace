@@ -3,16 +3,16 @@
   const $ = id => document.getElementById(id), io = HubIO;
   const reel = new URLSearchParams(location.search).get("reel");
   try {
-    const data = await io.json("/editor/hub/hub-data.json");
-    const r = data.reels.find(r => r.id === reel);
-    if (!r) throw new Error("This reel is not in the hub. Ask Claude to refresh your editor hub.");
+    const data = await io.json("/editor/hub/hub-data.json?reel=" + encodeURIComponent(reel || ""));
+    const r = data?.reels.find(r => r.id === reel);
+    if (!r) throw new Error(`I can't find the reel "${reel}" yet. Ask Claude to set it up.`);
     $("reel-name").textContent = r.title;
     if (r.preview_url) $("preview").src = r.preview_url;
     if (r.master_url) {
       $("master").src = r.master_url;
       $("master-section").hidden = false;
     }
-    $("render-label").textContent = r.preview_name || "No finished preview yet.";
+    $("render-label").textContent = r.preview_label || r.preview_name || "No finished preview yet.";
     const previous = await io.json(io.base(reel) + "review.json", {});
     $("review-note").value = previous.note || "";
     if (r.qa == null) $("qa").textContent = "QA hasn't run yet";

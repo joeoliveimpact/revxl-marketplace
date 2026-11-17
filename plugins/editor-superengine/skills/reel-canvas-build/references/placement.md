@@ -26,3 +26,6 @@ text area still cannot be placed.
 
 Active still hook titles and layout card plates are kept clear of captions whenever a safe spot exists, including a spot just below the still.
 A spoken opening hook shows its own words instead of duplicate captions; other captions sit just below it when that clears the eyes-to-mouth band, with the full head protected after it ends.
+
+The arrangement templates are `layouts/overlay.html`, `layouts/pip.html`, `layouts/split.html` and
+`layouts/stack.html` under this skill; compose reads their face boxes and plates.

@@ -5,7 +5,7 @@ treatment) before anything is rendered for real. `<editor python>` is the editor
 Python, as in SKILL.md's Ground rules.
 
 Two laws above
-everything: **the reviewer (the client) rules from frames, never prose** · **iteration is parametric,
+everything: **the reviewer (the user) rules from frames, never prose** · **iteration is parametric,
 not conversational.**
 
 Before the first comp, read
@@ -35,7 +35,7 @@ governing docs first, and show divergent directions before one finished thing).
    Rulings come off rendered frames, never off a description:
    `${CLAUDE_PLUGIN_ROOT}/skills/_shared/references/preview-before-render.md`.
 
-Done when the client's pick is a numbered ruling; a rejected ladder goes back to step 3.
+Done when the user's pick is a numbered ruling; a rejected ladder goes back to step 3.
 
 ## Measurement kit
 
@@ -69,10 +69,9 @@ Done when the client's pick is a numbered ruling; a rejected ladder goes back to
 - Comp animations = one infinite CSS keyframe timeline per element (cues as % of loop);
   JS class-toggle restarts silently fail in the Browser pane. Comps are mock-ups only: the
   final video never loops and never uses CSS keyframe animation, so a comp's timeline is
-  never ported as-is.
+  never ported as-is. Rebuild the locked look as reel scenes in [Build motion](motion-build.md).
 - Design comps show choreography, never the clock — a stamp lands on its word's onset
-  and a pop fires on its onset; re-check both against the word list when porting
-  to the render.
+  and a pop fires on its onset; re-check both against the word list when rebuilding in Build motion.
 - Word lists: consume by word number only, never segment number; skip empty-text tokens.
 
 ## Token discipline (the melt rules)
@@ -82,3 +81,6 @@ Done when the client's pick is a numbered ruling; a rejected ladder goes back to
 - Kill a runaway agent as soon as its useful work has landed; salvage and finish main-thread.
 - **One review surface** — a single canvas the reviewer comments on. Never mirror every
   iteration into a second copy.
+
+The Sketches controls ship their library notice in `boards/sketches/LICENSE-tweakpane` and version record
+in `boards/sketches/VERSION.json`; keep both with the board.

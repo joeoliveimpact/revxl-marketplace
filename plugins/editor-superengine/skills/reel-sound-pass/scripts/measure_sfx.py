@@ -17,6 +17,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _media import SR, decode, ffmpeg, ffprobe, write_json  # noqa: E402
+from level_sfx import own_loudness  # noqa: E402
 
 SOUND_EXT = (".mp3", ".wav")
 
@@ -81,6 +82,8 @@ def measure(path, want_lufs=False):
         row["lufs"] = lufs
     else:
         row["peak_s"] = peak_time(path)
+        own = own_loudness(path)
+        row["max_m_lufs"] = round(own, 1) if own is not None else None
     return row
 
 

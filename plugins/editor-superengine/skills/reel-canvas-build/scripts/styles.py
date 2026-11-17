@@ -333,6 +333,11 @@ def value_at(sets, tweens, prop, f):
     return tw["from"]
 
 
+def face_layout(beat, edit_style, *, world=False):
+    """World slots hold the face steady; other beats follow the editing style."""
+    return beat["layout"] if world or edit_style["style"] == "layout-switch" else "full"
+
+
 def build(inp, es, presets=None):
     """(keys, tweens, warnings) for the style; pure."""
     presets = presets or PRESETS
@@ -364,10 +369,8 @@ def build(inp, es, presets=None):
     solid = sorted((b for b in bm["beats"] if b["layout"] != "overlay"), key=lambda b: b["start_f"])
 
     def layout_at(f):
-        if punch:
-            return "full"  # the punch-in style covers jump cuts by scale; the a-roll stays full screen
         prev = [b for b in solid if b["start_f"] <= f]
-        return prev[-1]["layout"] if prev else "full"
+        return face_layout(prev[-1], es) if prev else "full"
 
     scale = [es["punch_scale"] if punch and i % 2 else 1.0 for i in range(len(segs))]
     anchors = inp["anchors"] or {}

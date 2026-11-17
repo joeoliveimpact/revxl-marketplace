@@ -6,6 +6,7 @@
     "tweak-board": {"skill": "reel-first-cuts", "template": "skills/reel-first-cuts/boards/tweak-board", "writes": ["tweak-selection.json"], "tab": {"label": "Tweak Board", "stages": ["tweak"], "order": 40}},
     "sound-board": {"skill": "reel-sound-pass", "template": "skills/reel-sound-pass/boards/sound-board", "writes": ["sound-selection.json"], "tab": {"label": "Sound Board", "stages": ["sound"], "order": 50}},
     "beat-map": {"skill": "reel-canvas-build", "template": "skills/reel-canvas-build/boards/beat-map", "writes": ["beat-map-selection.json"], "tab": {"label": "Beat Map", "stages": ["motion"], "order": 20}},
+    "motion-review": {"skill": "reel-canvas-build", "template": "skills/reel-canvas-build/boards/motion-review", "writes": ["motion-review-selection.json"], "tab": {"label": "Motion review", "stages": ["motion"], "order": 35}},
     "sketches": {"skill": "reel-canvas-build", "template": "skills/reel-canvas-build/boards/sketches", "writes": ["sketches-selection.json"], "tab": {"label": "Sketches", "stages": ["motion"], "order": 30}},
     "grade-board": {"skill": "reel-grade", "template": "skills/reel-grade/boards/grade-board", "writes": ["grade-selection.json"], "tab": {"label": "Grade Board", "stages": ["grade"], "order": 60}},
     "hub": {"skill": "editor-doctor", "template": "skills/editor-doctor/boards/hub", "writes": ["review.json", "reel-notes.json", "hub-requests.json"]},

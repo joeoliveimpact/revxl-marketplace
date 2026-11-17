@@ -4,16 +4,16 @@ Every track on the Sound Board comes from one of three places. The board shows w
 
 | Origin | Shown as | Where it lives | Its licence row |
 |---|---|---|---|
-| `pack` | Starter pack | `editor/sound/beds/` (catalogue `beds.json`) | ships with the pack, cleared for the client's own videos |
+| `pack` | Starter pack | `editor/sound/beds/` (catalogue `beds.json`) | ships with the pack, cleared for the user's own videos |
 | `free` | Free library | `editor/music/` (catalogue `library.json`) | the licence exactly as the download page shows it |
-| `own` | Your track | `editor/music/` (catalogue `library.json`) | the client ticks "I have the rights to use this track" on the board |
+| `own` | Your track | `editor/music/` (catalogue `library.json`) | the user ticks "I have the rights to use this track" on the board |
 
 ## Adding a free track (guided)
 
 When the board's Send says `music_request: "free"`:
 
 1. Offer a free library and open its page in the Browser pane: Pixabay Music, YouTube Audio Library, Free Music
-   Archive, or Kevin MacLeod's incompetech. The client picks and downloads the track themselves.
+   Archive, or Kevin MacLeod's incompetech. The user picks and downloads the track themselves.
 2. Read the licence off that track's page and record exactly what it says, no more:
    `music_pick.py add-free "<file>" --title "<title>" --author "<author>" --licence "<licence name>" --licence-url "<licence page>" [--attribution "<line>"] [--mood <word>]`.
    It refuses a row without the licence name, the author or the licence page link.
@@ -21,9 +21,9 @@ When the board's Send says `music_request: "free"`:
    is built: `"<title>" by <author>, licensed under <licence> (<licence page>)`. It lands in the reel's
    `credits.txt`, ready for the post caption.
 4. Non-commercial (NC) or no-derivatives (ND) licences get a plain warning, not a block: a reel that promotes a
-   business may not be allowed, and trimming or fading may count as a change. Say so; the client decides.
+   business may not be allowed, and trimming or fading may count as a change. Say so; the user decides.
 
-## The client's own track
+## The user's own track
 
 `music_pick.py add-own "<file>" --title "<title>"`. It shows on the board with an "I have the rights" box; until
 that box is ticked and sent, the final refuses it. The tick is kept in the library, so it is asked once.
@@ -40,7 +40,7 @@ that box is ticked and sent, the final refuses it. The tick is kept in the libra
 - **Where the track starts:** each bed's `suggest_entry_s` is a position in the track (seconds into the song) where
   its strongest section starts. It goes in the bed's track start (`offset_s`), never in the reel time the bed
   comes in.
-- **Beat-sync** (off by default, the client's button): each bed row's `grid` is its measured beat (`beat_grid.py`:
+- **Beat-sync** (off by default, the user's button): each bed row's `grid` is its measured beat (`beat_grid.py`:
   bpm, beat length, first beat and bar start in track seconds; null when no steady beat is found, and the board
   then greys the option out). On, the track start snaps to the nearest beat; if the track would then run out
   before the reel ends, it starts whole bars (4 beats) earlier, never before the first bar, and the mix says so.
@@ -55,4 +55,4 @@ the final, then the licence check: a picked track with no licence row, a changed
 author or link, a missing credit line, or an own track without the tick stops the final with one plain line
 naming what is missing. No music picked: voice only, nothing to check.
 
-Taste stays the client's: which track, how loud and how deep the dip are options to offer, never rules.
+Taste stays the user's: which track, how loud and how deep the dip are options to offer, never rules.

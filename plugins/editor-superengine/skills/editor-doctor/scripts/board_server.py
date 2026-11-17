@@ -8,6 +8,7 @@ A live server for the same workspace is reused: the line names it and this proce
 URLs (the same whatever editor.config.json `paths` says; the disk folders come from `paths`):
   GET/HEAD /editor/<board>/<file>          shared board copy, <paths.editor>/<board>/ (boards in boards.json only)
   GET/HEAD /videos/<reel>/<file>           the reel's files, <paths.videos>/<reel>/ (HTTP Range -> 206, for seeking)
+  GET/HEAD /videos/<reel>/config.json?picture=current   config with the current Sound Board picture (read only)
   POST     /videos/<reel>/__state?name=<board>   writes <paths.videos>/<reel>/<board>.state.json, one .prev kept
   POST     /videos/<reel>/__save?board=<board>&name=<file>   writes a Send output listed in boards.json "writes"
   POST     /heartbeat                      keeps the server alive; answers {"ok": true, "id": ...}
@@ -18,7 +19,7 @@ It exits on its own after --idle seconds without a heartbeat, or --grace seconds
 Port: ports.board in editor/editor.config.json (8747), else any free port. <paths.editor>/.board-server.json
 names the running server (url, port, pid, id). Exit 1 with a plain "✗ Editor boards: ..." line when it can't start.
 """
-import argparse, http.server, json, os, re, secrets, shutil, sys, threading, time, urllib.parse, urllib.request
+import argparse, http.server, io, json, os, re, secrets, shutil, sys, threading, time, urllib.parse, urllib.request
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -27,6 +28,8 @@ sys.path.insert(0, str(HERE))
 from win_encoding import ensure_utf8_output  # noqa: E402
 import runtime as rt  # noqa: E402
 import board_sync  # noqa: E402
+import hub_rows  # noqa: E402
+from sound_picture import find_picture, picture_label  # noqa: E402
 
 DEFAULT_PORT = 8747
 MAX_BODY = 2 * 1024 * 1024
@@ -47,6 +50,14 @@ def safe_reel(reel):
     return bool(REEL.match(reel)) and not reel.endswith((".", " "))
 
 
+def refresh_hub(root):
+    try:
+        return hub_rows.refresh(root, render_frames=False)
+    except (OSError, ValueError, KeyError, IndexError, hub_rows.subprocess.SubprocessError) as e:
+        print(f"Editor hub refresh failed: {e}", file=sys.stderr, flush=True)
+        return None
+
+
 class Server(http.server.ThreadingHTTPServer):
     daemon_threads = True
     # Windows SO_REUSEADDR lets a second socket take a port that is already listening, which would hide a busy port.
@@ -60,6 +71,7 @@ class Server(http.server.ThreadingHTTPServer):
         self.lock = threading.Lock()  # ponytail: one lock for every state write; per-file locks if boards ever contend
         self.started = self.last_beat = time.monotonic()
         self.beaten = False
+        refresh_hub(root)
 
     def touch(self):
         self.last_beat, self.beaten = time.monotonic(), True
@@ -158,9 +170,36 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         return full
 
     def send_head(self):
+        route = urllib.parse.urlsplit(self.path)
+        if route.path == '/editor/hub/hub-data.json':
+            requested = urllib.parse.parse_qs(route.query).get('reel', [''])[0]
+            with self.server.lock:
+                try:
+                    data = hub_rows.read(Path(self.server.editor_dir) / 'hub/hub-data.json', {})
+                except (OSError, ValueError):
+                    data = {}
+                if not data or (requested and not any(r['id'] == requested for r in data.get('reels', []))):
+                    refresh_hub(self.server.root)
         path = self._target()
         if path is None:
             return None
+        parts = urllib.parse.unquote(route.path).split('/')
+        if (len(parts) == 4 and parts[1] == 'videos' and parts[3] == 'config.json'
+                and route.query == 'picture=current'):
+            # Resolve at page load: a sound-pass config may predate the motion preview.
+            # Only the response changes; never overwrite the user's config or cue decisions.
+            cfg = json.loads(Path(path).read_text(encoding='utf-8'))
+            reel = Path(self.server.videos_dir) / parts[2]
+            picture = find_picture(reel)
+            if picture:
+                cfg.update(picture=picture.name, picture_url=picture.relative_to(reel).as_posix(),
+                           picture_label=picture_label(picture))
+            msg = json.dumps(cfg).encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(msg)))
+            self.end_headers()
+            return io.BytesIO(msg)
         try:
             f = open(path, "rb")
         except OSError:
@@ -358,6 +397,7 @@ def main(argv=None):
     info_path = editor_dir / INFO
     url = live_server(info_path)
     if url:
+        refresh_hub(root)
         print(f"Editor boards: {url}", flush=True)
         return 0
     try:

@@ -41,14 +41,21 @@ def check(final, voice_path, sound):
     bed = fit(N, decode(sound / P["bed"]["file"]).astype(np.float64).mean(1))
     lanes = [np.zeros(N) for _ in range(P["lanes"])]
     alone = []
+    clipped = []
+    silent = []
+    premaster = decode(sound / "premaster.wav") if (sound / "premaster.wav").is_file() else None
     for c in P["cues"]:
-        x = decode(sound / c["file"]).astype(np.float64).mean(1)
+        clip = decode(sound / c["file"])
+        x = clip.astype(np.float64).mean(1)
         s = c["start_sample"]
         e = min(N, s + len(x))
         one = np.zeros(N)
         one[s:e] = x[:max(0, e - s)]
         lanes[c["lane"]] += one
         alone.append((one, s, e))
+        silent.append(bool(not np.any(np.abs(clip) >= 0.001)))
+        clipped.append(bool(np.any(np.abs(clip) >= 0.999) or
+                            (premaster is not None and np.any(np.abs(premaster[s:e]) >= 0.999))))
 
     A = np.stack([voice] + lanes + [bed], 1)
     g, *_ = np.linalg.lstsq(A, y, rcond=None)
@@ -57,7 +64,7 @@ def check(final, voice_path, sound):
     gains = {n: (round(20 * np.log10(abs(v)), 2) if abs(v) > 1e-6 else None) for n, v in zip(names, g)}
 
     cues = []
-    for c, (one, cue_start, cue_end) in zip(P["cues"], alone):
+    for c, (one, cue_start, cue_end), clips, quiet in zip(P["cues"], alone, clipped, silent):
         placed = one[cue_start:cue_end]
         if np.any(placed):
             win = min(SR // 2, len(placed))
@@ -76,6 +83,8 @@ def check(final, voice_path, sound):
                "over_voice_db": round(rms_db(own) - rms_db(g[0] * voice[s:e]), 1)}
         if too_short:
             row["too_short"] = True
+        if row["corr"] < WEAK_CORR:
+            row["why"] = "silent" if quiet else "clipped" if clips else "masked"
         cues.append(row)
 
     ratios = []

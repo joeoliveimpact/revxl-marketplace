@@ -38,6 +38,7 @@ FX_FILES = ("edit_map.json", "tx.16k.wav", "probe.json", "envelope.json")
 WINDOW = (46.5, 59.5)            # the six sentences the script is made of
 GONE_FROM_T2 = 1                 # L02 is absent from take 2
 TABS = {"cut-board": ("Cut Board", ["cut"], 10), "beat-map": ("Beat Map", ["motion"], 20),
+        "motion-review": ("Motion review", ["motion"], 35),
         "sketches": ("Sketches", ["motion"], 30), "tweak-board": ("Tweak Board", ["tweak"], 40),
         "sound-board": ("Sound Board", ["sound"], 50), "grade-board": ("Grade Board", ["grade"], 60),
         "look-picker": ("Look Picker", ["captions"], 70), "cover-picker": ("Cover Picker", ["cover"], 80),
@@ -954,12 +955,37 @@ def case_offline(S, a):
     ck("offline: no page error", not out.get("errors"), out.get("errors"))
 
 
+def case_motion_review(S, a):
+    boards = json.loads((DOCTOR / "boards.json").read_text(encoding="utf-8"))["boards"]
+    entry = boards["motion-review"]
+    ck("motion-review: exact Send whitelist and tab", entry["writes"] == ["motion-review-selection.json"] and
+       entry["tab"] == {"label": "Motion review", "stages": ["motion"], "order": 35})
+    port = server()
+    d = G["videos"] / "motion-review"
+    d.mkdir(exist_ok=True)
+    c = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+    c.request("GET", "/editor/motion-review/?reel=motion-review")
+    response = c.getresponse()
+    ck("motion-review: board served", response.status == 200 and b"No graphics to review yet" in response.read())
+    c.close()
+    doc = {"schema": 1, "reel": d.name, "sent_at": "2026-11-16T00:00:00Z", "sections": [
+        {"scene": "reel-good-world", "beat": "b_001", "note": "", "leave": True}]}
+    c = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+    c.request("POST", "/videos/motion-review/__save?board=motion-review&name=motion-review-selection.json",
+              body=json.dumps(doc), headers={"Origin": f"http://127.0.0.1:{port}", "Content-Type": "application/json"})
+    response = c.getresponse()
+    ck("motion-review: Send round-trip", response.status == 200 and json.loads(response.read()).get("ok") and
+       cs.load(d / "motion-review-selection.json") == doc)
+    c.close()
+
+
 CASES = {"import": case_import, "cut-send": case_cut_send, "cut-reload": case_cut_reload, "all-take": case_all_take,
          "tweak-send": case_tweak_send, "roundtrip": case_roundtrip, "tweak-beat": case_tweak_beat, "drift": case_drift, "gitignore": case_gitignore,
          "port": case_port, "hub-roundtrip": case_hub_roundtrip, "tabs": case_tabs, "offline": case_offline}
 CASES["tweak-fine-tune"] = case_tweak_fine_tune
 CASES["tweak-silence"] = case_tweak_silence
 CASES["cut-duplicate"] = case_cut_duplicate
+CASES["motion-review"] = case_motion_review
 
 
 def main():

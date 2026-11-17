@@ -73,6 +73,14 @@ def cockpit_rules(plugin_root=rt.PLUGIN_ROOT):
         if "never: true" in rule:
             stage["rule"] = {"never": True}
         elif "json:" in rule:
+            motion = re.fullmatch(r"json: (" + STRING + r"), when: motionApproved, notOlderThan: (" + STRING + r"), "
+                                  r"or: { json: (" + STRING + r"), when: motionNone }", rule.strip())
+            if motion:
+                stage["rule"] = {"json": ast.literal_eval(motion[1]), "test": "motion-approved",
+                                 "notOlderThan": ast.literal_eval(motion[2]),
+                                 "or": {"json": ast.literal_eval(motion[3]), "test": "motion-none"}}
+                stages.append(stage)
+                continue
             when = re.fullmatch(r"json: (" + STRING + r"), when: s => (?:!!s\.(\w+)|s\.(\w+) != null)"
                                 r"(?:, or: { json: (" + STRING + r"), when: sentWithoutScenes })?", rule.strip())
             if not when:
@@ -121,10 +129,11 @@ def video_info(path):
                           "format=duration:stream=codec_type", "-of", "json", path]))
 
 
-def filmstrip(src, out):
+def filmstrip(src, out, *, render=True):
     if src is None:
         return []
-    out.mkdir(parents=True, exist_ok=True)
+    if render:
+        out.mkdir(parents=True, exist_ok=True)
     if not is_real(out):
         raise ValueError("The filmstrip folder is a link; left untouched")
     stamp = {"source": str(src), "mtime_ns": src.stat().st_mtime_ns}
@@ -134,6 +143,8 @@ def filmstrip(src, out):
     previous = read(out / ".source.json", {})
     if (previous.get("source") != stamp["source"] or previous.get("mtime_ns", -1) < stamp["mtime_ns"]
             or not all(f.is_file() for f in frames)):
+        if not render:
+            return []
         duration = float(video_info(src).get("format", {}).get("duration", 0))
         for i, f in enumerate(frames):
             t = min(max(0, duration - 0.08), duration * (i + 0.5) / 12)
@@ -165,6 +176,21 @@ def stage_done(rule, folders, reel):
         if rule["test"] == "no-scenes":
             return (isinstance(obj, dict) and obj.get("sent_at") is not None and isinstance(obj.get("beats"), list)
                     and all(isinstance(b, dict) and b.get("scene") is None for b in obj["beats"]))
+        if rule["test"] == "motion-none":
+            return isinstance(obj, dict) and obj.get("none") is True and obj.get("sections") == []
+        if rule["test"] == "motion-approved":
+            try:
+                at = (reel / rule["json"]).stat().st_mtime_ns
+                try:
+                    review_at = (reel / rule["notOlderThan"]).stat().st_mtime_ns
+                except FileNotFoundError:
+                    review_at = None
+                fresh = review_at is None or at >= review_at
+            except OSError:
+                fresh = False
+            done = (isinstance(obj, dict) and isinstance(obj.get("sections"), list) and bool(obj["sections"])
+                    and all(isinstance(s, dict) and s.get("leave") is True for s in obj["sections"]) and fresh)
+            return done or stage_done(rule["or"], folders, reel)
         value = obj.get(rule["property"]) if isinstance(obj, dict) else None
         done = value is not None if rule["test"] == "not-null" else bool(value)
         return done or "or" in rule and stage_done(rule["or"], folders, reel)
@@ -304,7 +330,7 @@ def sound_pack_installed(editor):
         return False
 
 
-def build(root, plugin_root=rt.PLUGIN_ROOT):
+def build(root, plugin_root=rt.PLUGIN_ROOT, *, render_frames=True):
     root = Path(root).resolve()
     editor, videos = workspace_paths(root)
     hub = editor / "hub"
@@ -335,9 +361,13 @@ def build(root, plugin_root=rt.PLUGIN_ROOT):
         previews = [p for p in folders["renders"] if p.match("* Preview 720p - *.mp4")
                     and not p.name.endswith(".partial.mp4")]
         preview = max(previews, key=lambda p: p.stat().st_mtime, default=None)
+        preview_name = preview.name if preview else ""
+        latest_mix = next((p for p in folders["sound"] if p.name == "final.mp4" and p.stat().st_size), None)
+        if latest_mix and (preview is None or latest_mix.stat().st_mtime_ns > preview.stat().st_mtime_ns):
+            preview = latest_mix
         render = max(masters or render_files, key=lambda p: p.stat().st_mtime_ns, default=None)
         url = lambda p: f"/videos/{quote(reel.name)}/" + quote(p.relative_to(reel).as_posix(), safe="/") if p else ""
-        frames = filmstrip(render, hub / "frames" / reel.name)
+        frames = filmstrip(render, hub / "frames" / reel.name, render=render_frames)
         state = {k: {"saved_at": mtime(reel / f"{k}.state.json"),
                      "sends": {n: mtime(reel / n) for n in v.get("writes", [])}} for k, v in manifest.items()}
         beat = read(reel / "beat-map.state.json", {}) or {}
@@ -364,8 +394,11 @@ def build(root, plugin_root=rt.PLUGIN_ROOT):
         activity = max([mtime(p) for ps in folders.values() for p in ps] or [0])
         board_for = lambda *actions: next((b["id"] for b in boards if any(a in b["stages"] for a in actions)), None)
         lane = lambda label, key, value, total, board: dict(label=label, layer=key, done=int(value), total=total, board=board)
+        stage_ticks = {s["name"]: tick for s, tick in zip(stages, done)}
+        no_scenes = stage_done({"json": "motion-review-selection.json", "test": "motion-none"}, folders, reel)
         lanes = [lane("Picture", "picture", (reel / "work/cuts.json").is_file(), 1, board_for("cut")),
-                 lane("Motion", "motion", bool(beat.get("sent_at")) + bool(sketches.get("locked_at")), 2, board_for("motion")),
+                 lane("Motion", "motion", stage_ticks["Beat map"] + stage_ticks["Look"] + (0 if no_scenes else stage_ticks["Motion"]),
+                      2 if no_scenes else 3, board_for("motion")),
                  lane("Captions", "captions", any(p.suffix in (".ass", ".srt", ".vtt") and "caption" in p.name.lower()
                                                   for p in folders["work"] + folders["root"]) or (reel / "work/captions.json").is_file(), 1, board_for("captions")),
                  lane("Grade", "grade", (reel / "grade.json").is_file(), 1, board_for("grade")),
@@ -381,7 +414,9 @@ def build(root, plugin_root=rt.PLUGIN_ROOT):
                          sound_voice_only=sound_voice_only,
                          ready_to_post=ready_to_post,
                          master_url=url(max(masters, key=lambda p: p.stat().st_mtime_ns, default=None)),
-                         preview_name=preview.name if preview else "", preview_url=url(preview),
+                         preview_label="Latest mix" if preview is not None and preview == latest_mix else preview_name,
+                         preview_name=preview_name,
+                         preview_url=url(preview),
                          cover_url=url(reel / "cover.jpg") if (reel / "cover.json").is_file() and (reel / "cover.jpg").is_file() else "",
                          qa=read(reel / "work/qa.json"), blocks=blocks, boards=state, lanes=lanes))
     # Use an existing hub state owner when available; sorting/selection does not move the workspace preference.
@@ -406,20 +441,30 @@ def style_rows(root):
     return rows
 
 
+def refresh(root, *, render_frames=True):
+    """Build and atomically save rows; servers reuse frames without rendering new ones."""
+    data = build(root, render_frames=render_frames)
+    editor, _ = workspace_paths(Path(root).resolve())
+    dest = editor / "hub/hub-data.json"
+    if not is_real(dest) or not is_real(dest.with_suffix(".json.tmp")):
+        raise ValueError("Hub data is a link; left untouched")
+    if not render_frames:
+        previous_frames = {r["id"]: r.get("frames", []) for r in read(dest, {}).get("reels", [])}
+        for row in data["reels"]:
+            row["frames"] = previous_frames.get(row["id"], row["frames"])
+    tmp = dest.with_suffix(".json.tmp")
+    tmp.write_bytes((json.dumps(data, ensure_ascii=False, indent=1) + "\n").encode("utf-8"))
+    os.replace(tmp, dest)
+    return data
+
+
 def main(argv=None):
     ensure_utf8_output()
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--root", default=".")
     a = ap.parse_args(argv)
     try:
-        data = build(a.root)
-        editor, _ = workspace_paths(Path(a.root).resolve())
-        dest = editor / "hub/hub-data.json"
-        if not is_real(dest) or not is_real(dest.with_suffix(".json.tmp")):
-            raise ValueError("Hub data is a link; left untouched")
-        tmp = dest.with_suffix(".json.tmp")
-        tmp.write_bytes((json.dumps(data, ensure_ascii=False, indent=1) + "\n").encode("utf-8"))
-        os.replace(tmp, dest)
+        data = refresh(a.root)
         print(f"Editor hub refreshed: {len(data['reels'])} reels, {len(data['boards'])} board tabs")
         return 0
     except (OSError, ValueError, KeyError, IndexError, subprocess.SubprocessError) as e:

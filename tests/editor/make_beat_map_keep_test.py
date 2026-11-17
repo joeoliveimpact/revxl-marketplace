@@ -158,6 +158,16 @@ class KeepPicks(unittest.TestCase):
         self.assertEqual(self.out.read_bytes(), before)
         self.assertFalse((self.reel / builder.PREV_NAME).exists())
 
+    def test_hidden_areas_survive_deleted_and_renumbered_beats(self):
+        old = json.loads(self.out.read_text())
+        masks = {"f03": [{"x": .1, "y": .2, "w": .3, "h": .1, "kind": "blur"}], "f04": []}
+        old["broll_masks"] = masks
+        put(self.out, old)
+        del self.plan["beats"][0]
+        doc, said = self.invoke()
+        self.assertEqual(doc["broll_masks"], masks)
+        self.assertNotIn("Couldn't keep", said)
+
     def test_plan_defaults_change_and_notes_follow_renumbered_beats(self):
         old = self.picks((1,))
         self.plan["beats"][0].update(layout="stack", value=40)

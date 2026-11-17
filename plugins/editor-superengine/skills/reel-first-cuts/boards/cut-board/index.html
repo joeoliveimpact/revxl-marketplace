@@ -344,7 +344,7 @@ function render(first){
     const kept=!s.drop&&att(i), warning=duplicateWarning(i);
     d.innerHTML=`<h2><span class="id">${esc(L.id)}</span> ${esc(L.label)} <span style="margin-left:auto"></span>
       ${s.flag&&s.drop?`<span class="flag warn">${esc(s.flag)}</span>`:''}${warning&&!s.drop?`<span class="flag warn">${esc(warning)}</span>`:''}<button data-drop="${i}">${s.drop?'restore':'drop line'}</button></h2><div class="script">${esc(L.text)}</div>`;
-    if(!L.attempts.length) d.innerHTML+=`<div class="warn">no attempt found in any take</div>`;
+    if(!L.attempts.length) d.innerHTML+=`<div class="warn">not said: no take has this line</div>`;
     L.attempts.forEach((a,j)=>{
       const on=s.pick===j, row=document.createElement('div'); row.className='att'+(on?' pick':'');
       row.innerHTML=`<div class="tag"><b>take ${a.take}</b> #${a.attempt}<br>${a.src_in.toFixed(2)}–${a.src_out.toFixed(2)}${a.snapped.every(x=>x)?'':' <span class="unsnap" title="some word edges in this read have no silence to sit in: a cut there lands mid-speech and gets waveform-checked at Stage 3">unsnapped</span>'}</div>
@@ -435,7 +435,7 @@ function bind(){
   const tk=Object.keys(C.takes);   // with one take "all take 1" does nothing (UI audit #9)
   $('#taketotals').innerHTML=tk.length>1?tk.map(t=>`<button data-all="${t}" title="every line on its last read from take ${t}; a line with no take-${t} read is dropped and flagged">all take ${t}</button>`).join(' '):'';
 }
-(bc?Promise.all([fetch(BASE+'cut-board.config.json').then(r=>{ if(!r.ok) throw new Error('no cut-board.config.json for this reel (HTTP '+r.status+')'); return r.json(); }), bc.load(),
+(bc?Promise.all([fetch(BASE+'cut-board.config.json').then(r=>{ if(!r.ok) throw new Error('This reel has no cut board yet. Ask Claude to set it up.'); return r.json(); }), bc.load(),
   fetch(BASE+'cut-selection.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null)]):Promise.reject(new Error('open this board with ?reel=<reel> in its address'))).then(([c,disk,sent])=>{
   C=c; $('#title').textContent='Cut Board · '+C.reel+' · '+C.rule;
   Object.values(C.takes).forEach(t=>{ const a=new Audio(reelUrl(t.wav)); a.preload='auto'; audio[t.n]=a; });

@@ -3,7 +3,16 @@
 These options belong to **Punch-ins on jump cuts**. Choose them in the Beat Map's
 Editing style panel and press **Send to Claude** before making the preview.
 They do not apply to Layout switches. Claude handles the settings below;
-the client only needs the controls and plain descriptions.
+the user only needs the controls and plain descriptions.
+
+## Contents
+- Settle in at the start
+- Word punches
+- Follow my face
+- Steps (ratchet)
+- Slow push in
+- Slow drift (Ken Burns)
+- Keep an edge in place
 
 ## Settle in at the start
 
@@ -49,10 +58,10 @@ starts again at every cut. It needs head samples from the face step after the cu
 master is made.
 It is off unless chosen. The effect gate refuses any move across a cut.
 
-When the client turns it on, after the cut master exists and before a preview
+When the user turns it on, after the cut master exists and before a preview
 with no fresh anchors, run with
 `run_in_background`: `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/scripts/face_crop.py" anchors --reel-dir "<reel folder>"`.
-`Face anchors saved: 0 frames` means no face was found: the camera stays put; tell the client.
+`Face anchors saved: 0 frames` means no face was found: the camera stays put; tell the user.
 Exit 2: the cut master is missing; make the cut first. After any new cut, run it again before
 the preview. Turning Follow my face off only stops the camera moving; keep the head
 samples because caption placement uses them.
@@ -93,7 +102,7 @@ Suits a closer view where the top should stay put. Claude can name shots and use
 `bottom`, `left` or `right` instead. The centre is set hard on the first frame so
 that edge holds during zooms; without any zoom, a note says it has nothing to hold.
 
-All four are off unless the client asks. Pick one moving camera per shot: push
+All four are off unless the user asks. Pick one moving camera per shot: push
 and Ken Burns cannot share a shot. Ken Burns and reframe also conflict because
 both place the zoom centre; push can use a reframe. On push or Ken Burns shots,
 word punches and ratchets are skipped with notes, as is the opening settle on

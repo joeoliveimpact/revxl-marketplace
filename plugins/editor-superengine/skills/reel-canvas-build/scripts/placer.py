@@ -177,10 +177,10 @@ def caption_cause(ctx, start_f, end_f):
             if (scene["id"] == "hf-hook-title" and saved.get("kind") == "plain"
                     and beat["start_f"] == hook[0]):
                 continue  # The saved render replaced this scene with a plain hook.
-            path = compose.scene_check.SCENES / scene["id"] / "scene.json"
             try:
+                path = compose.scene_check.scene_dir(scene["id"], ctx.get("reel_dir")) / "scene.json"
                 spec = json.loads(path.read_text(encoding="utf-8"))
-            except FileNotFoundError:
+            except (FileNotFoundError, ValueError):
                 unknown = True
                 continue
             if spec.get("kind") == "overlay":
@@ -275,7 +275,8 @@ def load_ctx(reel_dir, hook=None):
     if track["style"].get("style") == "layout-switch":
         stills.extend((b["start_f"], b["end_f"], _plate(layouts[b["layout"]]["plate"]),
                        f"{b['layout']} card plate") for b in beats if b["layout"] != "full")
-    return {"track": track, "segments": segments, "beats": beats, "fps": rate,
+    return {"reel_dir": reel, "track": track, "segments": segments, "beats": beats, "fps": rate,
+            "world_slots": compose.world_face_slots(beats, reel),
             "master_size": (WIDTH, HEIGHT), "boxes": boxes, "median_box": median,
             "layouts": {name: tuple(lay["box"]) for name, lay in layouts.items()},
             "stills": stills, "hooks": hooks, "notes": [], "broll_bands": broll_bands.read_cache(reel)}
@@ -293,6 +294,9 @@ def _options(ctx, prop, frame):
     A whole-state key inside another property's move must not hide that move.
     At the same frame as a key the renderer's fromTo starts after its set.
     """
+    slot = next((name for a, e, name in ctx.get("world_slots", []) if a <= frame < e), None)
+    if slot is not None:
+        return [{"scale": 1.0, "origin": (.5, .5), "layout": ctx["layouts"][slot]}[prop]]
     track = ctx["track"]
     key = max((k for k in track["keys"] if k["f"] <= frame), key=lambda k: k["f"])
     default = {"scale": 1.0, "origin": styles.ORIGIN, "layout": "full"}[prop]
@@ -348,6 +352,7 @@ def head_box_at(ctx, f0, f1):
     track = ctx["track"]
     events = {k["f"] for k in track["keys"]}
     events.update(t[k] for t in track["tweens"] for k in ("start_f", "end_f"))
+    events.update(f for a, e, _ in ctx.get("world_slots", []) for f in (a, e))
     mapped = []
     for i, (a, e) in enumerate(ctx["segments"]):
         lo, hi = max(f0, a), min(f1, e - 1)
@@ -374,7 +379,8 @@ def speaker_spans(ctx, start_f, end_f):
     """
     _check_span(ctx, start_f, end_f)
     try:
-        covers = compose.picture_covers(ctx.get("beats") or [], ctx.get("fps") or ctx.get("rate"), opaque_only=True)
+        covers = compose.picture_covers(ctx.get("beats") or [], ctx.get("fps") or ctx.get("rate"),
+                                        opaque_only=True, reel=ctx.get("reel_dir"))
     except (OSError, ValueError, KeyError, TypeError, AttributeError):
         return [(start_f, end_f)]
     track = ctx["track"]
@@ -394,7 +400,7 @@ def speaker_spans(ctx, start_f, end_f):
 
 
 def visible_head_box_at(ctx, start_f, end_f):
-    """The existing mapped head envelope, restricted to visible a-roll frames."""
+    """The full drawn head on frames where the speaker remains visible."""
     return _union(head_box_at(ctx, a, e) for a, e in speaker_spans(ctx, start_f, end_f))
 
 
@@ -450,14 +456,42 @@ def _broll_place(ctx, start_f, end_f, band_h, stills):
     return min(clear)[-1] if clear else None
 
 
+def world_switches(beats, reel_dir):
+    """Caption chunks must end at world boundaries, just as they do at layout switches."""
+    edges = set()
+    for beat in beats:
+        scene = beat.get("scene")
+        if scene and scene["id"].startswith("reel-"):
+            folder = compose.scene_check.scene_dir(scene["id"], reel_dir)
+            if _read(folder / "scene.json").get("kind") == "world":
+                edges.update((beat["start_f"], beat["end_f"]))
+    return sorted(edges)
+
+
 def place(ctx, start_f, end_f, band_h=134):
     """Keep base placement outside hooks; inside, clear active stills first."""
+    _check_span(ctx, start_f, end_f)
+    if not isinstance(band_h, (int, float)) or not math.isfinite(band_h) or band_h <= 0:
+        raise ValueError("Caption band height must be a positive number of pixels.")
+    for beat in ctx.get("beats", []):
+        scene = beat.get("scene")
+        if (scene and scene["id"].startswith("reel-")
+                and beat["start_f"] <= start_f and end_f < beat["end_f"]):
+            folder = compose.scene_check.scene_dir(scene["id"], ctx.get("reel_dir"))
+            spec = _read(folder / "scene.json")
+            if spec.get("kind") == "world":
+                top, bottom = spec["caption_band"]
+                _, area_y, _, _ = compose.world_area(spec["area"])
+                top, bottom = top + area_y, bottom + area_y
+                if band_h > bottom - top:
+                    raise NoRoom(f"Captions from {_seconds(ctx, start_f, end_f)} are too tall for "
+                                 f"the {scene['id']} caption band ({bottom - top:g} pixels).")
+                y = (top + bottom - band_h) / 2
+                return SAFE[0], y, SAFE[2], y + band_h
     head = head_box_at(ctx, start_f, end_f)
     hook = active_hook(ctx, start_f)
     stills = [box for a, e, box, label in ctx["stills"]
               if (hook is not None or label == "highlighted sentence") and start_f < e and end_f >= a]
-    if not isinstance(band_h, (int, float)) or not math.isfinite(band_h) or band_h <= 0:
-        raise ValueError("Caption band height must be a positive number of pixels.")
     x0, top, x1, bottom = SAFE
     last_y = bottom - band_h
     if last_y >= top:

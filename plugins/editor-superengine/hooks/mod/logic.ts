@@ -66,37 +66,38 @@ export function reelNames(videos: Read<Entry[]>): string[] {
 }
 
 /** The folders of a reel the stage rules and its activity look in; `root` is the reel folder itself. */
-export type Folder = 'root' | 'raw' | 'work' | 'renders' | 'sound'
-export const FOLDERS: readonly Folder[] = ['root', 'raw', 'work', 'renders', 'sound']
+export type Folder = 'root' | 'raw' | 'work' | 'renders' | 'sound' | 'motion/review'
+export const FOLDERS: readonly Folder[] = ['root', 'raw', 'work', 'renders', 'sound', 'motion/review']
 export type Probe = 'video' | 'novideo' | 'unknown'
 /** One reel as register.ts gathered it: its folder listings, the reel-root JSON files the rules read (missing when not
  *  listed), and ffprobe's answer per master candidate in renders/ (by file name). */
-export type ReelIn = { name: string; lists: Record<Folder, Read<Entry[]>>; json: Record<string, Read<unknown>>; probe: Record<string, Probe> }
+export type ReelIn = { name: string; lists: Record<Exclude<Folder, 'motion/review'>, Read<Entry[]>> & Partial<Record<'motion/review', Read<Entry[]>>>; json: Record<string, Read<unknown>>; probe: Record<string, Probe> }
 
 // Atomic writes leave `*.tmp`, state backups `*.prev`: never an artifact, never activity.
 const IGNORED = /\.(tmp|prev)$/i
 /** A reel folder's files as the rules see them: files only, *.tmp and *.prev left out. */
 export const filesIn = (r: ReelIn, f: Folder): Entry[] => {
   const l = r.lists[f]
-  return l.status === 'ok' ? l.value.filter(x => x.kind === 'file' && !IGNORED.test(x.name)) : []
+  return l?.status === 'ok' ? l.value.filter(x => x.kind === 'file' && !IGNORED.test(x.name)) : []
 }
 
 // ---------------------------------------------------------------- stages -----
 
-export type BoardId = 'cut' | 'tweak' | 'beatmap' | 'sketches' | 'sound' | 'grade'
-/** The six fixed board buttons, in order (Cockpit spec, H-R29): never read from boards.json. */
-export const BOARDS: readonly BoardId[] = ['cut', 'tweak', 'beatmap', 'sketches', 'sound', 'grade']
+export type BoardId = 'cut' | 'tweak' | 'beatmap' | 'sketches' | 'motionreview' | 'sound' | 'grade'
+/** The seven fixed board buttons, in order (Cockpit spec, H-R29): never read from boards.json. */
+export const BOARDS: readonly BoardId[] = ['cut', 'tweak', 'beatmap', 'sketches', 'motionreview', 'sound', 'grade']
 export const BOARD_NAME: Readonly<Record<BoardId, string>> = {
-  cut: 'Cut Board', tweak: 'Tweak Board', beatmap: 'Beat Map', sketches: 'Sketches', sound: 'Sound Board', grade: 'Grade Board',
+  cut: 'Cut Board', tweak: 'Tweak Board', beatmap: 'Beat Map', sketches: 'Sketches', motionreview: 'Motion review', sound: 'Sound Board', grade: 'Grade Board',
 }
 
 /** A stage's done rule. `in` or its optional `or`: a file in that reel folder whose name matches (`video`: also size > 0 and ffprobe did
  *  not say "no video"). `applied`: at least one reel-relative output is as new as the matched file.
  *  `json`: that reel-root JSON parses to an object that passes `when`, or its JSON `or` does.
+ *  `notOlderThan`: its file is at least as new as the named reel-relative review, if present.
  *  An unreadable primary JSON or an unknown absence blocks the alternative. `never`: no artifact. */
 export type Rule =
   | { in: Folder; match: RegExp; video?: true; applied?: readonly string[]; or?: { in: Folder; match: RegExp } }
-  | { json: string; when: (v: Record<string, unknown>) => boolean;
+  | { json: string; when: (v: Record<string, unknown>) => boolean; notOlderThan?: string;
       or?: { json: string; when: (v: Record<string, unknown>) => boolean } }
   | { never: true }
 
@@ -115,6 +116,12 @@ export const MASTER = /^.+ master - \d{2}\.\d{2}\.\d{2}\.mp4$/i
 const sentWithoutScenes = (s: Record<string, unknown>): boolean => s.sent_at != null && Array.isArray(s.beats)
   && s.beats.every(b => isRecord(b) && b.scene == null)
 
+const motionApproved = (s: Record<string, unknown>): boolean => Array.isArray(s.sections)
+  && s.sections.length > 0 && s.sections.every(section => isRecord(section) && section.leave === true)
+
+const motionNone = (s: Record<string, unknown>): boolean => s.none === true && Array.isArray(s.sections)
+  && s.sections.length === 0
+
 // The hub may change entries: each rule is one small data entry.
 export const STAGES: readonly Stage[] = [
   { name: 'Record', short: 'Record', rule: { in: 'raw', match: /\.(mp4|mov|m4v|mkv)$/i, or: { in: 'root', match: /^RAW\.mp4$/ } }, action: 'record',
@@ -125,8 +132,10 @@ export const STAGES: readonly Stage[] = [
     head: 'Do the ear pass', sub: 'Play the cut at ship speed, then press Send.' },
   { name: 'Beat map', short: 'Beats', rule: { json: 'beat-map.state.json', when: s => s.sent_at != null }, action: 'beatmap', board: 'beatmap',
     head: 'Rule the beat map', sub: 'Set the beat plan on the Beat Map, then press Send.' },
-  { name: 'Motion', short: 'Motion', rule: { json: 'sketches.state.json', when: s => !!s.locked_at, or: { json: 'beat-map.state.json', when: sentWithoutScenes } }, action: 'sketches', board: 'sketches',
-    head: 'Lock the motion', sub: "Lock each beat's motion on the Sketches board." },
+  { name: 'Look', short: 'Look', rule: { json: 'sketches.state.json', when: s => !!s.locked_at, or: { json: 'beat-map.state.json', when: sentWithoutScenes } }, action: 'sketches', board: 'sketches',
+    head: 'Lock the look', sub: 'Pick a look on the Sketches board and press Lock this look.' },
+  { name: 'Motion', short: 'Motion', rule: { json: 'motion-review-selection.json', when: motionApproved, notOlderThan: 'motion/review/review.json', or: { json: 'motion-review-selection.json', when: motionNone } }, action: 'motionreview', board: 'motionreview',
+    head: 'Build the motion', sub: 'Claude builds your graphics; review them on the Motion review board, then press Send.' },
   { name: 'Sound', short: 'Sound', rule: { in: 'root', match: /^sound-selection\.json$/, or: { in: 'sound', match: /^final\.mp4$/ } }, action: 'sound', board: 'sound',
     head: 'Review the sound', sub: 'Audition the cues on the Sound Board, then press Send.' },
   { name: 'Grade', short: 'Grade', optional: true, rule: { in: 'root', match: /^grade-selection\.json$/ }, action: 'grade', board: 'grade',
@@ -155,7 +164,11 @@ export function isDone(rule: Rule, r: ReelIn): boolean {
     if (!j || j.status === 'unreadable') return false
     if (j.status === 'missing' && (r.lists.root.status !== 'ok'
       || r.lists.root.value.some(x => x.name === rule.json))) return false
-    return (j.status === 'ok' && isRecord(j.value) && rule.when(j.value)) || !!rule.or && isDone(rule.or, r)
+    const reviewFolder = rule.notOlderThan?.slice(0, rule.notOlderThan.lastIndexOf('/')) as Folder | undefined
+    const fresh = !rule.notOlderThan || (mtimeAt(r, rule.json) !== undefined
+      && !!reviewFolder && r.lists[reviewFolder]?.status !== 'unreadable'
+      && mtimeAt(r, rule.json)! >= (mtimeAt(r, rule.notOlderThan) ?? -Infinity))
+    return (j.status === 'ok' && isRecord(j.value) && rule.when(j.value) && fresh) || !!rule.or && isDone(rule.or, r)
   }
   return filesIn(r, rule.in).some(x => rule.match.test(x.name)
     && (!rule.applied || rule.applied.some(p => (mtimeAt(r, p) ?? -Infinity) >= x.mtimeMs))
@@ -172,6 +185,7 @@ export const SENDS: readonly { file: string; board: BoardId; downstream: readonl
   { file: 'cut-selection.json', board: 'cut', downstream: ['work/cuts.json', 'work/edl.json'] },
   { file: 'tweak-selection.json', board: 'tweak', downstream: ['work/cuts.json', 'work/edl.json'] },   // a re-cut
   { file: 'beat-map-selection.json', board: 'beatmap', downstream: ['sketches.state.json'] },   // reel-canvas-build beat-map.md
+  { file: 'motion-review-selection.json', board: 'motionreview', downstream: ['motion/review/review.json'] },
   { file: 'sketches-selection.json', board: 'sketches', downstream: [] },
   { file: 'sound-selection.json', board: 'sound', downstream: [] },
   { file: 'grade-selection.json', board: 'grade', downstream: [] },
@@ -179,7 +193,7 @@ export const SENDS: readonly { file: string; board: BoardId; downstream: readonl
 export type OpenSend = { file: string; board: BoardId; mtimeMs: number }
 
 const mtimeAt = (r: ReelIn, rel: string): number | undefined => {
-  const i = rel.indexOf('/'), f = (i < 0 ? 'root' : rel.slice(0, i)) as Folder, n = i < 0 ? rel : rel.slice(i + 1)
+  const i = rel.lastIndexOf('/'), f = (i < 0 ? 'root' : rel.slice(0, i)) as Folder, n = i < 0 ? rel : rel.slice(i + 1)
   return filesIn(r, f).find(x => x.name === n)?.mtimeMs
 }
 
@@ -238,6 +252,7 @@ export const LABELS: Readonly<Record<ActionId, { label: string; phrase?: string 
   tweak: { label: 'Open Tweak Board', phrase: 'Open my Tweak Board for <reel>' },
   beatmap: { label: 'Open Beat Map', phrase: 'Open my Beat Map for <reel>' },
   sketches: { label: 'Open Sketches', phrase: 'Open my Sketches for <reel>' },
+  motionreview: { label: 'Open Motion review', phrase: 'Open my Motion review for <reel>' },
   sound: { label: 'Open Sound Board', phrase: 'Open my Sound Board for <reel>' },
   grade: { label: 'Open Grade Board', phrase: 'Open my Grade Board for <reel>' },
   master: { label: 'Render the master', phrase: 'Render the master for <reel>' },

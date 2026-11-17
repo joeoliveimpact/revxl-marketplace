@@ -20,7 +20,7 @@ description: Adds own or downloaded AI B-roll as cutaways over Beat Map beats. U
 
 ## Flow
 
-The client drops their own video clips in `videos/<reel>/broll/`. Claude runs every command; the client never types one. Translate file names and technical output into plain words for the client.
+The client drops their own video clips, or screenshots (png, jpg, webp), in `videos/<reel>/broll/`. A screenshot becomes a still clip as long as the longest beat (10 s before there's a Beat Map); cover an account name or icon on it with a Solid black box. Claude runs every command; the client never types one. Translate file names and technical output into plain words for the client.
 
 - `<editor python>` is the editor's own Python. Windows: `"$(H="$LOCALAPPDATA/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/Scripts/python.exe"`. macOS: `"$(H="$HOME/Library/Application Support/revxl/editor-superengine"; P="$(cat "$H/home-pointer.txt" 2>/dev/null | tr -d '\r\n')"; [ -n "$P" ] && [ -f "$P/state.json" ] && H="$P"; printf '%s' "$H")/venv/bin/python"`. Keep the quotes. If it's missing, run `editor-superengine:editor-doctor` first.
 
@@ -30,7 +30,7 @@ Run from the client's workspace:
 
 If setup is missing, invoke `editor-superengine:editor-doctor`. If there is no cut, invoke `editor-superengine:reel-first-cuts`. An unreadable clip is skipped with its name; ask for a readable copy.
 
-Open the hub at `board=beat-map`, Full view, using `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/board-server.md`. If the reel needs its first Beat Map, follow `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/beat-map.md`; preserve an existing one. Per beat, pick B-roll (or None), Fit (Cover or Blurred fill), and Starts at in seconds. The board saves whole frames and refuses clips shorter than the beat. Loading keeps saved picks unchanged. Have the client press Send once. Read `beat-map-selection.json`, then invoke `editor-superengine:reel-canvas-build` for the preview and the final after the client's OK.
+Open the hub at `board=beat-map`, Full view, using `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/board-server.md`. If the reel needs its first Beat Map, follow `${CLAUDE_PLUGIN_ROOT}/skills/reel-canvas-build/references/beat-map.md`; preserve an existing one. Per beat, pick B-roll (or None), Fit (Cover or Blurred fill), and Starts at in seconds. The board saves whole frames and refuses clips shorter than the beat. Loading keeps saved picks unchanged. Before the client presses Send, ask: "Does any of your B-roll show private details, like names, emails, money, messages or notifications?" Never answer for them or guess from the clip. If yes, have them open **Hide private details** on that clip and cover each spot with a Blur or Solid black box, for the whole clip or From and To. Boxes follow the clip into every beat, preview and final; a render that can't apply them stops instead of showing them. Then have the client press Send once. Read `beat-map-selection.json`, then invoke `editor-superengine:reel-canvas-build` for the preview and the final after the client's OK.
 
 ## Generate a clip
 
@@ -45,6 +45,7 @@ This needs the internet and spends the client's own Higgsfield credits: their pl
 ## Hard rules
 
 - Audio is removed on ingest and every B-roll layer stays muted; the voice sound is copied unchanged.
+- Private details: ask before every Beat Map Send and never decide for the client. Hidden areas apply to every render; a render that can't hide them stops.
 - The footage ledger must match the file's hash and identity. Source ranges cannot overlap themselves.
 - Start and end on whole cut frames; each clip plays for the whole beat. Two B-roll spans cannot overlap; one may cross cuts. The render checks the spans first.
 - An AI clip cannot sit on a beat with a value or a counter or stat-card scene: it would look like proof. Own clips pass; every AI ledger row carries its job id.
@@ -63,7 +64,7 @@ Tell the client what went wrong in plain words, and whether anything was charged
 2. Draft it. Keep the summary short. Put the summary, step and error line in single quotes, drop any
    apostrophe from them, and use no script names:
 
-`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.2.2 --skill reel-broll --step 'adding the clients clips' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
+`<editor python> "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin editor-superengine --plugin-version 0.2.3 --skill reel-broll --step 'adding the clients clips' --error-line '<the error line>' --summary '<headline>' --body-file editor-superengine/reports/report-body.md`
 
 3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
 4. Send, using the path after `DRAFT:`:

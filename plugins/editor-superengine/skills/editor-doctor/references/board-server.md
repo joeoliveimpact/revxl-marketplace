@@ -1,9 +1,9 @@
 # Editor boards: starting and recovering the board server
 
-The boards (Cut, Tweak, Sound, Beat Map, Sketches, Grade, Hub, Look Picker, Cover Picker) are web pages the
-client clicks through in the Browser pane. One small local server per workspace serves them and saves each
-board's work to disk. The client never types a command; Claude runs everything below in the Bash tool from the
-client's workspace folder. `<editor python>` is the editor's own Python (see the Ground rules in SKILL.md), never a
+The boards (Cut, Tweak, Sound, Beat Map, Sketches, Grade, Motion review, Hub, Look Picker, Cover Picker) are web pages the
+user clicks through in the Browser pane. One small local server per workspace serves them and saves each
+board's work to disk. The user never types a command; Claude runs everything below in the Bash tool from the
+user's workspace folder. `<editor python>` is the editor's own Python (see the Ground rules in SKILL.md), never a
 bare `py`, `python` or `python3`.
 
 ## Start or restart the boards
@@ -16,9 +16,12 @@ bare `py`, `python` or `python3`.
    running, the line names that one and the command ends at once; that is normal.
 3. Open the board inside the hub in the Browser pane with `preview_start`:
    `{url}editor/hub/?reel=<reel>&board=<board id>&view=full`, e.g. `http://127.0.0.1:8747/editor/hub/?reel=<reel>&board=cut-board&view=full`.
-   `<reel>` is the reel's folder name under the workspace's videos folder.
+   `<reel>` is the reel's folder name under the workspace's videos folder; URL-encode it.
+   Opening the hub for a reel it has no rows for builds those rows itself. If it still cannot find the reel,
+   it shows one plain line naming that reel. It never switches reels and never shows a raw 404.
+   Do not run `hub_rows.py` first just to open a board.
    When the hub is already open in the Browser pane, the same address switches it to that board.
-   The hub is the client's one window: never open a second tab or a bare board or video address for them.
+   The hub is the user's one window: never open a second tab or a bare board or video address for them.
    A board's own page (`{url}editor/<board>/?reel=<reel>`) still loads; it is for tests and direct links only.
 
 It copies the boards into the workspace first (the same work as `board_sync.py`, below), takes the port from
@@ -29,22 +32,21 @@ never runs forever. Starting it again is always safe.
 To copy or refresh the boards without starting the server:
 `<editor python> -X utf8 -I "${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/scripts/board_sync.py"`.
 It prints one plain line per board ("copied", "refreshed", "up to date", or "not built yet, nothing to copy").
-A refresh overwrites only the board's own template files; saved work and the client's files are never touched.
+A refresh overwrites only the board's own template files; saved work and the user's files are never touched.
 
 ## Open my board for a reel
 
-H-HUB-1 deliberately opens boards inside the hub so the client keeps reel context and the other boards together.
+H-HUB-1 deliberately opens boards inside the hub so the user keeps reel context and the other boards together.
 
 For "Open my <board> for <reel>", use the asked board's id: Cut Board `cut-board`, Tweak Board `tweak-board`,
-Beat Map `beat-map`, Sketches `sketches`, Sound Board `sound-board`, Grade Board `grade-board`.
-Refresh the hub data using `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/references/hub.md`, then start or reuse
-the server with steps 1 and 2 above. Open `{url}editor/hub/?reel=<reel>&board=<board id>&view=full` in the Browser pane with
-`preview_start`, URL-encoding the reel name. Tell the client: "Your <board> is open. Back to hub, at the top left, shows everything else."
+Beat Map `beat-map`, Sketches `sketches`, Sound Board `sound-board`, Grade Board `grade-board`, Motion review `motion-review`, Master review `review`.
+Start or reuse the server with steps 1 and 2 above; step 3 builds missing reel rows automatically. Open `{url}editor/hub/?reel=<reel>&board=<board id>&view=full` in the Browser pane with
+`preview_start`, URL-encoding the reel name. Tell the user: "Your <board> is open. Back to hub, at the top left, shows everything else."
 
 ## A pasted "Restart my editor boards" line
 
 When the server stops while a board is open, the board shows a red banner with a line and a Copy button. The line
-reads `Restart my editor boards and save this <board> state for reel <reel>: <JSON>`. When the client pastes it:
+reads `Restart my editor boards and save this <board> state for reel <reel>: <JSON>`. When the user pastes it:
 
 1. Start the boards (steps 1 and 2 above).
 2. With the Write tool, put the JSON after the colon, exactly as pasted, in `editor/restore.tmp`.
@@ -52,7 +54,7 @@ reads `Restart my editor boards and save this <board> state for reel <reel>: <JS
    trailing slash):
    `curl -s -X POST -H "Origin: <url>" -H "Content-Type: application/json" --data-binary "@editor/restore.tmp" "<url>/videos/<reel>/__state?name=<board>"`
    It answers `{"ok": true, ...}`.
-4. Reopen the board (step 3 above) and tell the client their work is back.
+4. Reopen the board (step 3 above) and tell the user their work is back.
 
 A line without JSON (`Restart my editor boards (the <board> for reel <reel> lost its connection).`) means
 nothing was unsaved: start the boards and reopen that board.

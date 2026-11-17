@@ -26,7 +26,23 @@ def run(ctx):
         scene = beat.get("scene")
         if not scene:
             continue
-        spec = json.loads((compose.scene_check.SCENES / scene["id"] / "scene.json").read_text(encoding="utf-8"))
+        spec = json.loads((compose.scene_check.scene_dir(scene["id"], reel) / "scene.json").read_text(encoding="utf-8"))
+        if spec["kind"] == "world":
+            if beat.get("cover_face") is True:
+                rows.append(dict(check="world-face-exempt", level="pass",
+                    msg=f"The {compose.scene_title(scene['id'], reel)} scene on beat {beat['id']} is exempt from the face check: you chose to hide yourself.",
+                    where=f"beat {number}"))
+                continue
+            x, y, w, h = compose.world_area(spec["area"])
+            face_layout = compose.layout(beat["layout"], 1)
+            fx, fy, fw, fh = face_layout["box"]
+            # PiP deliberately paints the face above the world, so overlapping geometry is visible.
+            if (face_layout["z"] < compose.Z_SCENE and x < fx + fw and x + w > fx
+                    and y < fy + fh and y + h > fy):
+                rows.append(dict(check="world-on-face", level="block",
+                    msg=compose.world_area_problem(beat, spec, reel), where=f"beat {number}",
+                    at=float(beat["start_f"] / (ctx.get("fps") or 25))))
+            continue
         if spec["kind"] != "overlay":
             continue
         # 3d-head-band owns every 3D card, even with a measured box: one block per card.
@@ -51,7 +67,7 @@ def run(ctx):
                 advice += (f', or set "{reset_param}" back to 0 on that beat '
                            'so the card can be moved for you')
             rows.append(dict(check="card-on-face", level="block",
-                msg=f"The {compose.scene_title(scene['id'])} card covers your eyes or mouth on beat {number}.",
+                msg=f"The {compose.scene_title(scene['id'], reel)} card covers your eyes or mouth on beat {number}.",
                 advice=advice + ".",
                 where=f"beat {number}", at=float(beat["start_f"] / (ctx.get("fps") or face["fps"]))))
     if unjudged:

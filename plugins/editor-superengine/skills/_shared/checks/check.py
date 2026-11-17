@@ -97,7 +97,9 @@ def run_checks(ctx, phase, *, only=None):
                 for row in rows:
                     if not {"check", "level", "msg"} <= row.keys():
                         raise ValueError("The check returned an invalid row")
-                    if row["level"] not in ("block", "warn"):
+                    world_exempt = (path.stem == "overlay_face_check" and row["check"] == "world-face-exempt"
+                                    and row["level"] == "pass")
+                    if row["level"] not in ("block", "warn") and not world_exempt:
                         row["level"] = "warn"
                     at = row.pop("at", None)
                     if isinstance(at, (int, float)) and not isinstance(at, bool) and math.isfinite(at):

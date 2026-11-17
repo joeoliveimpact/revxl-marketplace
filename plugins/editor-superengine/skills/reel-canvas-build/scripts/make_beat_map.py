@@ -311,7 +311,7 @@ def carry_picks(old, doc, words, fps, *, plan_has_marks=False):
     lost += _carry_marks(old, doc, words, pairs, plan_has_marks)
     choices = {"edit_style": "editing style", "caption_style": "caption look", "loops": "open loops",
                "transitions": "transition settings", "cta_reminder": "keyword reminder",
-               "holds": "holds", "needs": "note to Claude"}
+               "holds": "holds", "needs": "note to Claude", "broll_masks": "hidden areas"}
     for key, name in choices.items():
         if key not in old or old[key] is None:
             continue
@@ -324,7 +324,7 @@ def carry_picks(old, doc, words, fps, *, plan_has_marks=False):
             continue
         had_key, before = key in doc, doc.get(key)
         try:
-            doc[key] = _remap_choice(old[key], old_ids, matches)
+            doc[key] = copy.deepcopy(old[key]) if key == "broll_masks" else _remap_choice(old[key], old_ids, matches)
         except ValueError as e:
             lost.append(f"Couldn't keep your {name}: {e}.")
             continue

@@ -84,7 +84,7 @@ test('stages: 0.2.0-named reels walk every stage; the current one is the first n
     const r = reelView(walk(WALK.findIndex(w => w[0] === name)), name)
     expect([name, r.cur]).toEqual([name, cur])
     expect(r.done.slice(0, cur).filter((d, i) => !d && !STAGES[i]!.optional)).toEqual([])
-    expect(r.done[6]).toBe(false)   // no Grade Send in the walk
+    expect(r.done[7]).toBe(false)   // no Grade Send in the walk
   }
   // an empty reel folder is a reel at Record, with no activity
   const empty = reelView({ 'videos/new/': dir }, 'new')
@@ -93,10 +93,10 @@ test('stages: 0.2.0-named reels walk every stage; the current one is the first n
 
 test('Grade is optional: never current, never blocks Master; its Send marks it done', () => {
   const files = WALK[6]![1]
-  expect(reelView(reel('g', files), 'g').cur).toBe(7)
+  expect(reelView(reel('g', files), 'g').cur).toBe(8)
   const graded = reelView(reel('g', { ...files, 'grade-selection.json': f(1) }), 'g')
-  expect([graded.done[6], graded.cur]).toEqual([true, 7])
-  expect(reelView(reel('g', { ...WALK[7]![1] }), 'g').cur).toBe(8)
+  expect([graded.done[7], graded.cur]).toEqual([true, 8])
+  expect(reelView(reel('g', { ...WALK[7]![1] }), 'g').cur).toBe(9)
 })
 
 test('Motion: a recording alone leaves every later stage unticked', () => {
@@ -105,24 +105,25 @@ test('Motion: a recording alone leaves every later stage unticked', () => {
   expect(names(r.done)).toEqual(['Record'])
 })
 
-test('Motion: a sent beat map with no scenes advances to Sound and a re-Send with a scene reopens Motion', () => {
+test('Motion: a sent beat map with no scenes stays at Motion and a re-Send with a scene reopens Look', () => {
   const tree = walk(4), path = 'videos/r4/sketches.state.json'
   delete tree[path]
   for (const beats of [[], [{ scene: null }, {}]]) {
     tree['videos/r4/beat-map.state.json'] = json(1, { sent_at: 0, beats })
     const r = reelView(tree, 'r4')
     expect(r.done[4]).toBe(true)
-    expect(STAGES[r.cur]!.name).toBe('Sound')
+    expect(r.done[5]).toBe(false)
+    expect(STAGES[r.cur]!.name).toBe('Motion')
   }
   tree[path] = json(1, {})
   expect(reelView(tree, 'r4').done[4]).toBe(true)
   delete tree[path]
   tree['videos/r4/beat-map.state.json'] = json(0, { sent_at: 'later', beats: [{ scene: null }, { scene: 'title' }] })
   expect(reelView(tree, 'r4').done[4]).toBe(false)
-  expect(STAGES[reelView(tree, 'r4').cur]!.name).toBe('Motion')
+  expect(STAGES[reelView(tree, 'r4').cur]!.name).toBe('Look')
 })
 
-test('Motion: missing or malformed beat plans do not replace locked sketches', () => {
+test('Look: missing or malformed beat plans do not replace locked sketches', () => {
   const tree = walk(4)
   delete tree['videos/r4/sketches.state.json']
   delete tree['videos/r4/beat-map.state.json']
@@ -137,7 +138,23 @@ test('Motion: missing or malformed beat plans do not replace locked sketches', (
   expect(reelView(tree, 'r4').done[4]).toBe(true)
 })
 
-test('Motion: unreadable sketches still block a sent beat map with no scenes', () => {
+test('Motion: all Leave it sections and a selection at least as new as the review; Look alone does not approve motion', () => {
+  const tree = walk(5), selection = 'videos/r5/motion-review-selection.json'
+  expect(names(reelView(tree, 'r5').done)).toContain('Look')
+  expect(reelView(tree, 'r5').done[5]).toBe(true)
+  tree[selection] = json(3, { sections: [{ leave: true }] })
+  expect(reelView(tree, 'r5').done[5]).toBe(false)
+  tree[selection] = json(2, { sections: [{ leave: true }] })
+  expect(reelView(tree, 'r5').done[5]).toBe(true)
+  for (const sections of [[{ leave: true }, { leave: false }], [{ leave: 1 }], [null], 'bad']) {
+    tree[selection] = json(1, { sections })
+    expect(reelView(tree, 'r5').done[5]).toBe(false)
+  }
+  delete tree[selection]
+  expect(STAGES[reelView(tree, 'r5').cur]!.name).toBe('Motion')
+})
+
+test('Look: unreadable sketches still block a sent beat map with no scenes', () => {
   const tree = walk(4), path = 'videos/r4/sketches.state.json'
   tree['videos/r4/beat-map.state.json'] = json(1, { sent_at: 'now', beats: [{ scene: null }] })
   tree[path] = f(1, { busy: true })
@@ -151,8 +168,8 @@ test('Motion: unreadable sketches still block a sent beat map with no scenes', (
 })
 
 test('Sound: a voice-only final mix alone completes Sound; temporary mixes do not', () => {
-  expect(reelView(reel('voice', { 'sound/final.mp4': f(1) }), 'voice').done[5]).toBe(true)
-  expect(reelView(reel('voice', { 'sound/final.mp4.tmp': f(1), 'sound/final.mp4.prev': f(1) }), 'voice').done[5]).toBe(false)
+  expect(reelView(reel('voice', { 'sound/final.mp4': f(1) }), 'voice').done[6]).toBe(true)
+  expect(reelView(reel('voice', { 'sound/final.mp4.tmp': f(1), 'sound/final.mp4.prev': f(1) }), 'voice').done[6]).toBe(false)
 })
 
 test('Ear pass: a selection counts only after an equal or newer EDL or cuts file', () => {
@@ -169,7 +186,7 @@ test('Ear pass: a selection counts only after an equal or newer EDL or cuts file
 
 test('Master: the ruled name directly in renders/, .mp4, more than 0 bytes, not "no video"; nothing else lights it', () => {
   const base = WALK[6]![1]
-  const master = (files: Record<string, any>, probe: any = {}) => reelView(reel('m', { ...base, ...files }), 'm', { probe }).done[7]
+  const master = (files: Record<string, any>, probe: any = {}) => reelView(reel('m', { ...base, ...files }), 'm', { probe }).done[8]
   expect(master({ 'renders/m Master - 11.03.26.mp4': f(1) })).toBe(true)
   expect(master({ 'renders/M MASTER - 11.03.26.MP4': f(1) })).toBe(true)
   expect(master({ 'renders/Any Name Master - 01.02.26.mp4': f(1) }, { 'Any Name Master - 01.02.26.mp4': 'video' })).toBe(true)
@@ -202,7 +219,7 @@ test('beat map and motion: the state JSON must parse to an object and carry sent
 test('*.tmp and *.prev are never artifacts and never activity', () => {
   const r = reelView(reel('t', { 'raw/take.mp4': f(20), 'sound-selection.json.tmp': f(0), 'beat-map.state.json.prev': f(0), 'work/edl.json.tmp': f(0) }), 't')
   expect(r.cur).toBe(1)
-  expect(r.done[5]).toBe(false)
+  expect(r.done[6]).toBe(false)
   expect(r.activity).toBe(NOW - 20 * DAY)
   expect(r.idle).toBe(true)
 })
@@ -278,7 +295,7 @@ test("three states, their hero, main move and baton", () => {
     expect(v.eyebrow).toBe(`${WALK[i]![0]} · YOUR MOVE`)
   }
   const sent = view({ ...walk(5), ...reel('r5', { 'sound-selection.json': f(0.5) }) }, { baseline: NOW - 3 * DAY })
-  expect([sent.state, sent.main, sent.baton, sent.head, sent.cur]).toEqual(['claude', 'send', "Claude's move: Sound Board Send (r5)", 'Sound Board sent', 7])
+  expect([sent.state, sent.main, sent.baton, sent.head, sent.cur]).toEqual(['claude', 'send', "Claude's move: Sound Board Send (r5)", 'Sound Board sent', 8])
   expect(act('send', sent)).toEqual({ label: 'Use my Send', phrase: 'Go ahead with my Sound Board Send for r5' })
   expect(view(walk(3)).board).toBe('beatmap')
   expect(view(walk(0)).board).toBeUndefined()
@@ -330,6 +347,7 @@ test('LABELS frozen snapshot: all action ids, labels and phrases', () => {
     tweak: { label: 'Open Tweak Board', phrase: 'Open my Tweak Board for <reel>' },
     beatmap: { label: 'Open Beat Map', phrase: 'Open my Beat Map for <reel>' },
     sketches: { label: 'Open Sketches', phrase: 'Open my Sketches for <reel>' },
+    motionreview: { label: 'Open Motion review', phrase: 'Open my Motion review for <reel>' },
     sound: { label: 'Open Sound Board', phrase: 'Open my Sound Board for <reel>' },
     grade: { label: 'Open Grade Board', phrase: 'Open my Grade Board for <reel>' },
     master: { label: 'Render the master', phrase: 'Render the master for <reel>' },
@@ -342,9 +360,9 @@ test('LABELS frozen snapshot: all action ids, labels and phrases', () => {
 test('H-UI-11: merged skill outputs light each stage in turn, then a fresh Send opens until acked', () => {
   for (let i = 0; i <= MERGED_STEPS.length; i++) {
     const r = reelView(mergedReel(i), MERGED_REEL)
-    // The sent empty beat list completes Motion as soon as the Beat Map is sent.
-    expect(names(r.done)).toEqual(MERGED_STEPS.slice(0, i === 4 ? 5 : i).map(([stage]) => stage))
-    expect(r.cur).toBe(i === 4 ? 5 : i === 6 ? 7 : i === 7 ? 7 : i === 8 ? 8 : i)
+    // The sent empty beat list completes Look; the fixture's explicit, fresh Leave it Send completes Motion.
+    expect(names(r.done)).toEqual(MERGED_STEPS.slice(0, i >= 4 && i <= 6 ? 6 : i).map(([stage]) => stage))
+    expect(r.cur).toBe(i >= 4 && i <= 6 ? 6 : i === 7 || i === 8 ? 8 : i)
   }
   const tree = { ...mergedReel(), ...reel(MERGED_REEL, { 'sound-selection.json': { at: NOW + 1, size: 10 } }) }
   expect(reelView(tree, MERGED_REEL, { baseline: NOW }).sends).toEqual([{ file: 'sound-selection.json', board: 'sound', mtimeMs: NOW + 1 }])

@@ -772,7 +772,10 @@ def c_broll_blocks(root):
     wj(ledger_path, ledger)
     write_send(reel, beats, 25)
     dummy_preview(reel)
-    c.cmd_ok(reel, False)
+    _, stopped, text = in_process(c.cmd_ok, reel, False)
+    ck("OK refuses empty footage licence", stopped is not None and "licence" in text, text)
+    # Supply the OK fixture so Master's own licence refusal is reached independently.
+    wj(reel / "work/render-ok.json", {"ok_at": datetime.now().astimezone().isoformat(), "preview": names()[0]})
     _, stopped, text = in_process(c.render, reel, "master", None)
     ck("Master without music refuses empty footage licence before output", stopped is not None and "licence" in text
        and not (reel / "renders" / names()[1]).exists() and not (reel / "work/render-tmp/proj").exists(), text)
@@ -1109,8 +1112,10 @@ def c_cut_span_block(root):
     ck("the planted move across the cut at 50: stopped (exit 1) with a BLOCK aroll_transform ... runs across the cut line",
        stop is not None and stop.code == 1 and any(re.match(r"BLOCK aroll_transform .*runs across the cut", l)
                                                   for l in stop.lines), text[-400:])
-    ck("nothing rendered", not videos_under(reel / "renders", reel / "work" / "render-tmp"))
-    ck("work/render-tmp is gone, the leftover of an earlier crash too", not (reel / "work" / "render-tmp").exists())
+    ck("nothing rendered", videos_under(reel / "renders", reel / "work" / "render-tmp") == [stale / "half.mp4"])
+    # MB6 (305016b): render-tmp is cleared only under the heavy lock, so a refused render never touches another
+    # render's folder; the crash leftover stays for the next real render to clear (H-HUB12-02).
+    ck("a refusal leaves the crash leftover untouched", (stale / "half.mp4").read_bytes() == b"x")
     return ws
 
 

@@ -206,7 +206,7 @@ def picture_covers(reel, track, cuts):
     """Reuse the compositor's gate, underlay and layout geometry; do not render."""
     compose = compose_module()
     beats = fcpx.read(reel / compose.SEND, {}).get("beats", [])
-    covers = compose.picture_covers(beats, cuts.get("fps"))
+    covers = compose.picture_covers(beats, cuts.get("fps"), reel=reel)
     total = cuts["segments"][-1]["out_out_f"]
     full = compose.layout("full", 1)["box"]
 

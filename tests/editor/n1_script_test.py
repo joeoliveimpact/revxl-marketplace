@@ -3,13 +3,13 @@
 from the client's script, a wrong script warns and changes nothing, a word on the client's never list stays.
 H-N1-5: a brand heard as 2-3 words for 1 script word is merged into one word by fix_words.py --merge (port 1).
 
-usage: python tests/editor/n1_script_test.py <scratch-dir> [--case NAME]
+usage: python tests/editor/n1_script_test.py [scratch-dir] [--case NAME]
 Prints PASS/FAIL per check; exit 0 = every check passed. Cases: fix, merge, wrong, never (all by default, a few
 seconds). Run it with the editor's venv Python (EDITOR_SE_HOME's state): it imports build_edit_map (numpy) to build
 and check edit maps, like ports_test.py. script_diff.py and fix_words.py run as `python -X utf8 -I` under the same
 venv Python. Fixtures are synthetic JSON built here; no media.
 """
-import argparse, json, shutil, subprocess, sys
+import argparse, json, shutil, subprocess, sys, tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -23,27 +23,28 @@ ENV = rt.python_env()
 PY = rt.tool("python") if Path(rt.tool("python")).exists() else sys.executable
 fails = []
 
-# The take as heard: "Higgsfield" misheard once as one word and once as two (merged, H-N1-5), "Kling" as "Cling",
-# "runway" (a word word-fixes.json knows) as "runaway", and a plain wording change (clip / video) that must go to
-# REVIEW. Then one line per gate: than/then (sounds close, not brand-like), Sora/Runway (brand-like, doesn't sound
+# The take as heard: "Alderstone" misheard once as one word and once as two (merged, H-N1-5), "Brindle" as "Brindel",
+# "trailway" (a word word-fixes.json knows) as "trailaway", and a plain wording change (clip / video) that must go to
+# REVIEW. Then one line per gate: than/then (sounds close, not brand-like), Nema/Trailway (brand-like, doesn't sound
 # close), a 4:4 run of close brands (over the 3:3 limit), now/Know (capital only because it starts a sentence),
-# ChatGPT at a sentence start (CamelCase), veo3 in lower case (digit), Elevenlabs heard as one word (join), and a
+# MapGlow at a sentence start (CamelCase), vexa3 in lower case (digit), Meadowlabs heard as one word (join), and a
 # 3:3 run of close brands (fixed word by word).
-HEARD = ("so today I tried Higsfield and Cling to make a clip. then I used runaway to make a clip. "
-         "next we open Higs Field again. it was better than ever. we also tried Sora today. "
-         "the four we tested were Sorra Klling Pikka Lumma in May. now we wrap up. chatgbt wrote the captions. "
-         "the shots came from veo for free. music came out of Elevenlabs as usual. "
-         "we compared Sorra Klling Pikka last week.")
-SCRIPT = ("So today I tried Higgsfield and Kling to make a clip.\nThen I used runway to make a video.\n"
-          "Next we open Higgsfield again.\nIt was better then ever.\nWe also tried Runway today.\n"
-          "The four we tested were Sora Kling Pika Luma in May.\nKnow we wrap up.\nChatGPT wrote the captions.\n"
-          "The shots came from veo3 for free.\nMusic came out of Eleven Labs as usual.\n"
-          "We compared Sora Kling Pika last week.\n")
-# Under 25 % match, but "I tried Higgsfield and" lines up with the take: without the guard, Higsfield would be fixed.
+HEARD = ("so today I tried Alderston and Brindel to make a clip. then I used trailaway to make a clip. "
+         "next we open Alder Stone again. it was better than ever. we also tried Nema today. "
+         "the four we tested were Nemma Brindlle Tovvi Rillo in May. now we wrap up. mapglo wrote the captions. "
+         "the shots came from vexa for free. music came out of Meadowlabs as usual. "
+         "we compared Nemma Brindlle Tovvi last week.")
+SCRIPT = ("So today I tried Alderstone and Brindle to make a clip.\nThen I used trailway to make a video.\n"
+          "Next we open Alderstone again.\nIt was better then ever.\nWe also tried Trailway today.\n"
+          "The four we tested were Nema Brindle Tovi Rilo in May.\nKnow we wrap up.\nMapGlow wrote the captions.\n"
+          "The shots came from vexa3 for free.\nMusic came out of Meadow Labs as usual.\n"
+          "We compared Nema Brindle Tovi last week.\n")
+# Under 25 % match, but "I tried Alderstone and" lines up with the take: without the guard, Alderston would be fixed.
 WRONG = ("Bake the bread at two hundred degrees for an hour.\nLet it cool on a Rack, then slice it thin.\n"
-         "I tried Higgsfield and butter on top.\nServe it warm with soup and salt.\n")
-FIXES = {"fixes": {"runweigh": "runway"}, "phrases": {}, "cta": []}
-FIXED = [4, 6, 14, 22, 50, 58, 65, 70, 71, 72]   # fix records' `at`, by index in the edit map as read
+         "I tried Alderstone and butter on top.\nServe it warm with soup and salt.\n")
+FIXES = {"fixes": {"trailweigh": "trailway"}, "phrases": {}, "cta": []}
+# F29: a fix applies to every occurrence of the heard word, and one run fixes what a second run would (Rillo)
+FIXED = [4, 6, 14, 22, 40, 41, 42, 43, 50, 58, 65, 70, 71, 72]   # fix records' `at`, by index in the edit map as read
 
 
 def ck(name, ok, detail=""):
@@ -125,38 +126,39 @@ def case_fix(S, a):
     ck("fix: exits 0", p.returncode == 0, p.stdout + p.stderr)
     ck("fix: script_diff.json written with the match share", out.get("match", 0) >= 0.25 and out.get("warn") is None,
        out)
-    ck("fix: 'Higsfield' -> 'Higgsfield' from the script (mid-sentence capital)", t(4) == "Higgsfield", t(4))
-    ck("fix: 'Cling' -> 'Kling'", t(6) == "Kling", t(6))
-    ck("fix: 'runaway' -> 'runway' (lower case, but word-fixes.json knows it)", t(14) == "runway", t(14))
-    ck("fix: 'chatgbt' -> 'ChatGPT' (CamelCase, at a sentence start)", t(50) == "ChatGPT", t(50))
-    ck("fix: 'veo' -> 'veo3' (a digit, lower case)", t(58) == "veo3", t(58))
-    ck("fix: 'Elevenlabs' -> 'Eleven Labs' (fewer heard words: joined onto the heard word)",
-       t(65) == "Eleven Labs", t(65))
-    ck("fix: a 3:3 run of close brands is fixed word by word ('Sorra Klling Pikka' -> 'Sora Kling Pika')",
-       [t(70), t(71), t(72)] == ["Sora", "Kling", "Pika"]
+    ck("fix: 'Alderston' -> 'Alderstone' from the script (mid-sentence capital)", t(4) == "Alderstone", t(4))
+    ck("fix: 'Brindel' -> 'Brindle'", t(6) == "Brindle", t(6))
+    ck("fix: 'trailaway' -> 'trailway' (lower case, but word-fixes.json knows it)", t(14) == "trailway", t(14))
+    ck("fix: 'mapglo' -> 'MapGlow' (CamelCase, at a sentence start)", t(50) == "MapGlow", t(50))
+    ck("fix: 'vexa' -> 'vexa3' (a digit, lower case)", t(58) == "vexa3", t(58))
+    ck("fix: 'Meadowlabs' -> 'Meadow Labs' (fewer heard words: joined onto the heard word)",
+       t(65) == "Meadow Labs", t(65))
+    ck("fix: a 3:3 run of close brands is fixed word by word ('Nemma Brindlle Tovvi' -> 'Nema Brindle Tovi')",
+       [t(70), t(71), t(72)] == ["Nema", "Brindle", "Tovi"]
        and [f.get("merge") for f in out.get("fixes", []) if f["at"] in (70, 71, 72)] == [None] * 3, out.get("fixes"))
     # H-N1-5: 2 heard words for 1 script word become one word through fix_words.py --merge
     m = load(em)
     mw = (m.get("words") or [{}] * 23)[22]
-    ck("fix: 'Higs Field' -> one 'Higgsfield' word at the original index 22 (id kept, the 2nd word gone)",
-       after[22:23] == ["Higgsfield"] and mw.get("id") == "w_0022" and t(23) is None
+    ck("fix: 'Alder Stone' -> one 'Alderstone' word at the original index 22 (id kept, the 2nd word gone)",
+       after[22:23] == ["Alderstone"] and mw.get("id") == "w_0022" and t(23) is None
        and len(after) == len(before) - 1, (after[21:24], mw.get("id"), len(after), len(before)))
     ck("fix: the merged word starts at the first word's start and ends at the second word's end",
        mw.get("start") == w0[22]["start"] and mw.get("parakeet_start") == w0[22]["parakeet_start"]
        and mw.get("end") == w0[23]["end"], (mw, w0[22], w0[23]))
     ck("fix: the merge is listed as one fix with the indexes it joined",
-       any(f["at"] == 22 and f.get("merge") == [22, 23] and f["new"] == "Higgsfield" and f["heard"] == "Higs Field"
+       any(f["at"] == 22 and f.get("merge") == [22, 23] and f["new"] == "Alderstone" and f["heard"] == "Alder Stone"
            for f in out.get("fixes", [])), out.get("fixes"))
     ck("fix: the fixes are listed by word index", [f["at"] for f in out.get("fixes", [])] == FIXED, out.get("fixes"))
     changed = [k for k in range(len(before)) if before[k] != t(k)]
-    ck("fix: no other word changed", changed == [4, 6, 14, 22, 23, 50, 58, 65, 70, 71, 72], changed)
+    ck("fix: no other word changed", changed == [4, 6, 14, 22, 23, 40, 41, 42, 43, 50, 58, 65, 70, 71, 72], changed)
     ck("fix: 'than' / 'then' (sounds close, not brand-like) goes to REVIEW, unchanged",
        t(28) == "than" and rev(out, [28], "then"), out.get("review"))
-    ck("fix: 'Sora' / 'Runway' (brand-like, doesn't sound close) goes to REVIEW, unchanged",
-       t(33) == "Sora" and rev(out, [33], "Runway"), out.get("review"))
-    ck("fix: a 4:4 run of close brands is over the 3:3 limit: REVIEW, unchanged",
-       [t(k) for k in range(40, 44)] == ["Sorra", "Klling", "Pikka", "Lumma"]
-       and rev(out, [40, 41, 42, 43], "Sora Kling Pika Luma", "a longer rewrite"), out.get("review"))
+    ck("fix: 'Nema' / 'Trailway' (brand-like, doesn't sound close) goes to REVIEW, unchanged",
+       t(33) == "Nema" and rev(out, [33], "Trailway"), out.get("review"))
+    ck("fix: a 4:4 run is over the 3:3 limit, but its repeated heard words take their confirmed fixes and the "
+       "last brand then lines up 1:1 in the same run (F29)",
+       [t(k) for k in range(40, 44)] == ["Nema", "Brindle", "Tovi", "Rilo"]
+       and not any(40 in r["at"] for r in out.get("review", [])), out.get("review"))
     ck("fix: 'now' / 'Know' (capital only at a sentence start) goes to REVIEW, unchanged",
        t(46) == "now" and rev(out, [46], "Know"), out.get("review"))
     ck("fix: 'clip' / 'video' (not brand-like) goes to REVIEW, not fixed",
@@ -183,14 +185,14 @@ def case_merge(S, a):
     empty = d / "empty.json"
     empty.write_bytes(b"{}")
     em = d / "edit_map.json"
-    em.write_bytes(json.dumps(edit_map("we use Data Dog, and New Relic Pro daily"), indent=1).encode("utf-8"))
+    em.write_bytes(json.dumps(edit_map("we use Cedar Fox, and North Ember Set daily"), indent=1).encode("utf-8"))
     w0 = load(em)["words"]
-    p = run(d, em, "--map", empty, "--merge", '{"2-3": "Datadog", "5-7": "NewRelicPro"}', "--at", '{"8": "nightly"}',
+    p = run(d, em, "--map", empty, "--merge", '{"2-3": "Cedarfox", "5-7": "NorthEmberSet"}', "--at", '{"8": "nightly"}',
             name="fix_words.py")
     m = load(em)
     ws = m.get("words", [])
-    ck("merge: 2:1 and 3:1 merges plus an --at fix in one run, punctuation kept ('Dog,' -> 'Datadog,')",
-       p.returncode == 0 and [w["word"].strip() for w in ws] == ["we", "use", "Datadog,", "and", "NewRelicPro",
+    ck("merge: 2:1 and 3:1 merges plus an --at fix in one run, punctuation kept ('Fox,' -> 'Cedarfox,')",
+       p.returncode == 0 and [w["word"].strip() for w in ws] == ["we", "use", "Cedarfox,", "and", "NorthEmberSet",
                                                                  "nightly"], (p.returncode, ws, p.stderr[-300:]))
     ck("merge: ids of the first words kept, times = first start / last end",
        [w["id"] for w in ws] == ["w_0000", "w_0001", "w_0002", "w_0004", "w_0005", "w_0008"]
@@ -214,13 +216,13 @@ def case_merge(S, a):
        not bem().validate(json.loads(sorig)) and p.returncode == 2 and sm.read_bytes() == sorig
        and not sm.with_name(sm.name + ".prev").exists(), (p.returncode, p.stderr[-300:]))
     tx = d / "tx.json"
-    tx.write_bytes(json.dumps({"words": [{"i": 0, "text": "Data", "start": 0.1, "end": 0.4},
-                                         {"i": 1, "text": "Dog.", "start": 0.5, "end": 0.8},
+    tx.write_bytes(json.dumps({"words": [{"i": 0, "text": "Cedar", "start": 0.1, "end": 0.4},
+                                         {"i": 1, "text": "Fox.", "start": 0.5, "end": 0.8},
                                          {"i": 2, "text": "Done", "start": 0.9, "end": 1.2}]}).encode("utf-8"))
-    p = run(d, tx, "--map", empty, "--merge", '{"0-1": "Datadog"}', name="fix_words.py")
+    p = run(d, tx, "--map", empty, "--merge", '{"0-1": "Cedarfox"}', name="fix_words.py")
     tw = load(tx).get("words", [])
     ck("merge: a tx.json (`text` key) merges too and its `i` is renumbered",
-       p.returncode == 0 and tw == [{"i": 0, "text": "Datadog.", "start": 0.1, "end": 0.8},
+       p.returncode == 0 and tw == [{"i": 0, "text": "Cedarfox.", "start": 0.1, "end": 0.8},
                                     {"i": 1, "text": "Done", "start": 0.9, "end": 1.2}], (tw, p.stderr[-200:]))
 
 
@@ -239,17 +241,17 @@ def case_wrong(S, a):
 
 def case_never(S, a):
     d, em = fresh(S, "never")
-    p = run(d, d / "script.txt", em, "--map", d / "editor" / "word-fixes.json", "--never", "Cling,Field")
+    p = run(d, d / "script.txt", em, "--map", d / "editor" / "word-fixes.json", "--never", "Brindel,Stone")
     out = load(d / "work" / "script_diff.json")
     t = by_id(em)
     ck("never: exits 0", p.returncode == 0, p.stdout + p.stderr)
-    ck("never: 'Cling' (on the never list) stays", t(6) == "Cling", t(6))
-    ck("never: a merge holding a never-list word ('Higs Field') stays as two words",
-       [t(22), t(23)] == ["Higs", "Field"], [t(22), t(23)])
+    ck("never: 'Brindel' (on the never list) stays", t(6) == "Brindel", t(6))
+    ck("never: a merge holding a never-list word ('Alder Stone') stays as two words",
+       [t(22), t(23)] == ["Alder", "Stone"], [t(22), t(23)])
     ck("never: both are reported as kept, not as fixes",
        [f["at"] for f in out.get("never_kept", [])] == [6, 22]
        and not {6, 22} & {f["at"] for f in out.get("fixes", [])}, out)
-    ck("never: other brand fixes still apply", t(4) == "Higgsfield" and t(14) == "runway", [t(4), t(14)])
+    ck("never: other brand fixes still apply", t(4) == "Alderstone" and t(14) == "trailway", [t(4), t(14)])
     p2 = run(d, d / "script.txt", em, "--map", d / "nope.json")
     ck("never: a --map that doesn't exist exits 2", p2.returncode == 2, p2.stdout + p2.stderr)
 
@@ -260,16 +262,17 @@ CASES = {"fix": case_fix, "merge": case_merge, "wrong": case_wrong, "never": cas
 def main():
     ensure_utf8_output()
     ap = argparse.ArgumentParser()
-    ap.add_argument("scratch")
+    ap.add_argument("scratch", nargs="?")
     ap.add_argument("--case", choices=CASES)
     a = ap.parse_args()
-    S = Path(a.scratch).resolve()
-    S.mkdir(parents=True, exist_ok=True)
-    for name, fn in CASES.items():
-        if not a.case or a.case == name:
-            fn(S, a)
-    print("%d check(s) failed: %s" % (len(fails), ", ".join(fails)) if fails else "all checks passed")
-    return 1 if fails else 0
+    with tempfile.TemporaryDirectory(prefix="n1-") as scratch:
+        S = Path(a.scratch or scratch).resolve()
+        S.mkdir(parents=True, exist_ok=True)
+        for name, fn in CASES.items():
+            if not a.case or a.case == name:
+                fn(S, a)
+        print("%d check(s) failed: %s" % (len(fails), ", ".join(fails)) if fails else "all checks passed")
+        return 1 if fails else 0
 
 
 if __name__ == "__main__":

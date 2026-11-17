@@ -35,6 +35,16 @@ def first_cuts(name):
 render = first_cuts("render")
 probe = first_cuts("probe")
 VIDEOS = {".mp4", ".mov", ".m4v", ".mkv", ".avi", ".webm", ".mts", ".m2ts", ".mpg", ".mpeg"}
+STILLS = {".png", ".jpg", ".jpeg", ".webp"}
+
+
+def hold_frames(reel, rate):
+    state = reel / "beat-map.state.json"
+    if state.is_file():
+        beats = json.loads(state.read_text(encoding="utf-8")).get("beats", [])
+        if beats:
+            return max(b["end_f"] - b["start_f"] for b in beats)
+    return round(10 * rate)
 
 
 def reuse(reel, request_sha256):
@@ -101,8 +111,9 @@ def ingest(reel, ai=None, job_id=None, request_sha256=None):
     sources = [ai] if ai else sorted(folder.iterdir())
     failed = False
     for src in sources:
-        if not src.is_file() or (not ai and src.suffix.lower() not in VIDEOS):
+        if not src.is_file() or (not ai and src.suffix.lower() not in VIDEOS | STILLS):
             continue
+        still = not ai and src.suffix.lower() in STILLS
         if src.stem.casefold() in stems:
             print(f"skipped {src.name}: another clip has this name; give it a different name")
             continue
@@ -127,22 +138,30 @@ def ingest(reel, ai=None, job_id=None, request_sha256=None):
                 facts = probe.video_facts(src)
                 if not facts.get("width"):
                     raise ValueError("the video could not be read")
-                info = json.loads(fps._ffprobe(src, ffprobe, ["-select_streams", "v:0", "-show_entries",
-                                                            "stream=duration:format=duration", "-of", "json"], "duration"))
-                stream_duration = (info.get("streams") or [{}])[0].get("duration")
-                duration = float(stream_duration if stream_duration not in (None, "N/A") else
-                                 (info.get("format") or {}).get("duration", 0))
+                if still:
+                    frames = hold_frames(reel, rate)
+                    duration = frames / float(rate)
+                else:
+                    info = json.loads(fps._ffprobe(src, ffprobe, ["-select_streams", "v:0", "-show_entries",
+                                                                "stream=duration:format=duration", "-of", "json"], "duration"))
+                    stream_duration = (info.get("streams") or [{}])[0].get("duration")
+                    duration = float(stream_duration if stream_duration not in (None, "N/A") else
+                                     (info.get("format") or {}).get("duration", 0))
                 if not math.isfinite(duration) or duration <= 0:
                     raise ValueError("the video duration could not be read")
-                filters = [f"fps={rate}",
-                           "scale=1080:1920:force_original_aspect_ratio=increase:force_divisible_by=2:flags=lanczos",
-                           "setsar=1", *render.tonemap(facts), cutout.BT709_VF]
+                framing = (["scale=1080:1920:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos",
+                            "pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=black"] if still else
+                           ["scale=1080:1920:force_original_aspect_ratio=increase:force_divisible_by=2:flags=lanczos"])
+                filters = [f"fps={rate}", *framing, "setsar=1", *render.tonemap(facts), cutout.BT709_VF]
                 fd, temp_name = tempfile.mkstemp(prefix=".broll-", suffix=".mp4", dir=dest)
                 os.close(fd)
                 partial = Path(temp_name)
-                result = subprocess.run([str(ffmpeg), "-v", "error", "-y", "-i", str(src), "-map", "0:v:0", "-an",
+                result = subprocess.run([str(ffmpeg), "-v", "error", "-y",
+                                         *(["-loop", "1", "-framerate", str(rate)] if still else []),
+                                         "-i", str(src), "-map", "0:v:0", "-an",
                                          "-sn", "-dn", "-vf", ",".join(filters), "-fps_mode", "cfr", "-c:v", "libx264",
                                          "-preset", "fast", "-crf", "8", "-pix_fmt", "yuv420p", *cutout.TAGS,
+                                         *(["-frames:v", str(frames)] if still else []),
                                          str(partial)], capture_output=True, env=rt.python_env())
                 if result.returncode:
                     raise ValueError("the video could not be prepared")
@@ -167,6 +186,8 @@ def ingest(reel, ai=None, job_id=None, request_sha256=None):
             width, height = cutout.frame_size(logged)
             clip = dict(ledger_id=ident, src=rel, name=src.name, origin="ai" if ai else "own",
                         frames=fps.frame_count(logged), width=width, height=height)
+            if still:
+                clip["still"] = True
             if ai:
                 clip.update(job_id=job_id, request_sha256=request_sha256)
             existing = next((i for i, c in enumerate(clips) if c["ledger_id"] == ident), None)

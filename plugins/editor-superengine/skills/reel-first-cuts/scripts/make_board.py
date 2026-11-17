@@ -40,6 +40,7 @@ import repeat_check  # noqa: E402
 
 LET = re.compile(r"[^a-z0-9]+")
 BEAT_MS = 300
+ALIGN_MIN_SCORE = 0.6
 
 
 def letters(s):
@@ -117,6 +118,117 @@ def find_anchors(anchor, words, ratio=0.85):
         else:
             keep.append((st, sc))
     return [(owner[st], round(sc, 3)) for st, sc in keep]
+
+
+def _aligned_words(lines, words):
+    """Transcript word indexes matched to each script line by the full token alignment."""
+    idx = [i for i, w in enumerate(words) if not _is_event(w) and letters(w["word"])]
+    tx = [letters(words[i]["word"]) for i in idx]
+    sc, owner = [], []
+    for k, ln in enumerate(lines):
+        for word in ln["text"].split():
+            if letters(word):
+                sc.append(letters(word)); owner.append(k)
+    matched = [[] for _ in lines]
+    for block in difflib.SequenceMatcher(None, tx, sc, autojunk=False).get_matching_blocks():
+        for offset in range(block.size):
+            matched[owner[block.b + offset]].append(idx[block.a + offset])
+    return matched
+
+
+def aligned_starts(lines, words):
+    """Place matched lines between sentence starts; a wholly unmatched line has no region."""
+    matched = _aligned_words(lines, words)
+    active = [k for k, indexes in enumerate(matched) if indexes]
+    sentences, previous = [], ""
+    for i, word in enumerate(words):
+        if _is_event(word):
+            continue
+        if previous.rstrip().endswith((".", "?", "!")):
+            sentences.append(i)
+        previous = word["word"]
+    bounds = [0]
+    for left, right in zip(active, active[1:]):
+        last, first = matched[left][-1], matched[right][0]
+        # the LAST sentence start before the line's first matched word: a whole ad-lib sentence between two lines is
+        # left out of this line's start, so spoken_only() can list it on its own
+        bounds.append(max((i for i in sentences if last < i <= first), default=first))
+    bounds.append(len(words))
+    placed = {}
+    for pos, k in enumerate(active):
+        ln = lines[k]
+        region = [i for i in range(bounds[pos], bounds[pos + 1]) if not _is_event(words[i])]
+        text = " ".join(words[i]["word"] for i in region)
+        score = round(difflib.SequenceMatcher(None, letters(ln["text"]), letters(text)).ratio(), 3)
+        if region and score >= ALIGN_MIN_SCORE:
+            placed[ln["id"]] = (region[0], score)
+    return placed
+
+
+def take_anchors(lines, words):
+    """Keep fuzzy anchors, then fill only lines missing from this take by alignment."""
+    anc = sorted((wi, ln["id"], sc) for ln in lines for wi, sc in find_anchors(ln["anchor"], words))
+    dedup = {}
+    for wi, lid, sc in anc:
+        if wi not in dedup or sc > dedup[wi][1]:
+            dedup[wi] = (lid, sc)
+    found = {lid for lid, _ in dedup.values()}
+    placed = aligned_starts(lines, words)
+    for ln in lines:
+        if ln["id"] not in found and ln["id"] in placed:
+            wi, sc = placed[ln["id"]]
+            if wi not in dedup:
+                dedup[wi] = (ln["id"], sc)
+    return [(wi, lid, sc) for wi, (lid, sc) in sorted(dedup.items())]
+
+
+def spoken_only(lines, words, anchors):
+    """Unmatched sentences of at least three words with no anchor, inside the script's spoken span (after the first
+    script anchor, before the last one: a script that covers only part of a long take lists nothing outside it):
+    [(word_index, text)]."""
+    script = [ln for ln in lines if not ln.get("spoken_only")]
+    matched = {i for group in _aligned_words(script, words) for i in group}
+    starts = {wi for wi, _, _ in anchors}
+    if len(starts) < 2:
+        return []
+    lo, hi = min(starts), max(starts)
+    # a sentence that says an earlier one again in other words is a reworded retake: the board flags it inside that
+    # line's attempt (review_hits), so it is not a new line
+    W = [dict(w=w["word"], n=repeat_check.norm(w["word"]), s=w["start"], e=w["end"], id=k)
+         for k, w in enumerate(words) if not _is_event(w)]
+    W = [w for w in W if w["n"]]
+    retake = {W[h["second"] + j]["id"] for h in repeat_check.loose(W, repeat_check.find(W)) for j in range(h["m"])}
+    sentences, run = [], []
+    for i, word in enumerate(words):
+        if _is_event(word):
+            continue
+        run.append(i)
+        if word["word"].rstrip().endswith((".", "?", "!")):
+            sentences.append(run); run = []
+    if run:
+        sentences.append(run)
+    return [(sentence[0], " ".join(words[i]["word"].strip() for i in sentence))
+            for sentence in sentences if lo < sentence[0] < hi and len(sentence) >= 3
+            and not matched.intersection(sentence) and not retake.intersection(sentence)
+            and not starts.intersection(sentence)]
+
+
+def add_spoken_lines(lines, takes):
+    """Insert spoken-only lines and anchors before the existing attempt-building loop. Only from the take holding the
+    most script lines (a tie goes to the higher take, as the main take): one sentence never shows up once per take."""
+    if not takes:
+        return
+    n = max(takes, key=lambda t: (len({lid for _, lid, _ in takes[t]["anchors"]}), int(t)))
+    count = 0
+    for _, tk in [(n, takes[n])]:
+        for wi, text in spoken_only(lines, tk["words"], tk["anchors"]):
+            count += 1
+            lid = f"S{count:02d}"
+            earlier = [other for start, other, _ in tk["anchors"] if start < wi]
+            at = next(i + 1 for i, ln in enumerate(lines) if ln["id"] == earlier[-1]) if earlier else 0
+            lines.insert(at, dict(id=lid, text=text, label=text.rstrip("."), anchor=text, spoken_only=True))
+            tk["anchors"].append((wi, lid, 0.0))
+            tk["anchors"].sort()
 
 
 def sub_retakes(words, lo, hi, n=4, within=12.0):
@@ -297,16 +409,8 @@ def main():
 
     # anchors per take: (word_idx, line_id, score), sorted by position
     for tk in takes.values():
-        anc = []
-        for ln in lines:
-            for wi, sc in find_anchors(ln["anchor"], tk["words"]):
-                anc.append((wi, ln["id"], sc))
-        anc.sort()
-        dedup = {}
-        for wi, lid, sc in anc:
-            if wi not in dedup or sc > dedup[wi][1]:
-                dedup[wi] = (lid, sc)
-        tk["anchors"] = [(wi, lid, sc) for wi, (lid, sc) in sorted(dedup.items())]
+        tk["anchors"] = take_anchors(lines, tk["words"])
+    add_spoken_lines(lines, takes)
 
     for ln in lines:
         ln["attempts"] = []

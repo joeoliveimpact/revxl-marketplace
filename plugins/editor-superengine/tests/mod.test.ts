@@ -234,7 +234,7 @@ test('pane layout: hero, main button, quick buttons, stepper and boards in subtl
   expect((await ui.find({ key: 'main' }))?.props).toMatchObject({ label: 'Open Sound Board  →', variant: 'primary' })
   expect((await ui.find({ key: 'quick' }))?.children.map((c: any) => c.key ?? c.props?.key)).toEqual(['hub', 'next', 'switch'])
   for (const key of ['progress', 'boards']) expect((await ui.find({ key }))?.props).toMatchObject({ borderStyle: 'round', borderColor: 'subtle' })
-  expect((await ui.find({ key: 'progress' }))?.text).toContain('■■■■■◐□□□ Sound')
+  expect((await ui.find({ key: 'progress' }))?.text).toContain('■■■■■■◐□□□ Sound')
   const boards = await Promise.all(['cut', 'tweak', 'beatmap', 'sketches', 'sound', 'grade'].map(async b => (await ui.find({ key: `board-${b}` }))?.props.label))
   expect(boards).toEqual(['Cut Board ✓', 'Tweak Board ✓', 'Beat Map ✓', 'Sketches ✓', 'Sound Board ●', 'Grade Board'])
   expect((await ui.find({ key: 'hero' }))?.text).toContain('r5 · YOUR MOVE')
@@ -246,7 +246,7 @@ test('desktop: the hero card and the stepper are Svg; the stepper dashes Grade, 
   const [heroSvg, step] = await ui.findAll({ type: 'Svg' })
   expect(heroSvg!.props.source).toContain('Render the <tspan font-weight="600" fill="#FF5A3C">master</tspan>')
   expect(heroSvg!.props.source).toContain('url(#lamp)')
-  expect(step!.props.alt).toBe('Editing progress: Record, Cut, Ear pass, Beat map, Motion, Sound done; now Master')
+  expect(step!.props.alt).toBe('Editing progress: Record, Cut, Ear pass, Beat map, Look, Motion, Sound done; now Master')
   expect(step!.props.source).toContain('stroke-dasharray="3 3"')
   expect(step!.props.isInteractive).toBe(true)
   expect(heroSvg!.props.source).toContain('r6 · YOUR MOVE')
@@ -322,8 +322,8 @@ for (const surface of SURFACES) {
     expect((await ui.find({ key: 'other-band' }))?.text).toBe('other plugin band')
     expect(await labelsOf(ui)).toEqual(["What's next?", 'Open Sound Board', 'Cockpit'])
     expect(await ui.find({ text: 'Editing progress' })).toBeDefined()
-    if (surface === 'desktop') expect((await ui.find({ type: 'Svg' }))?.props).toMatchObject({ width: 230, alt: 'Editing progress: Record, Cut, Ear pass, Beat map, Motion done; now Sound' })
-    else expect((await ui.find({ key: 'ed-progress' }))?.text).toContain('■■■■■◐□□□ r5 · Sound · your move')
+    if (surface === 'desktop') expect((await ui.find({ type: 'Svg' }))?.props).toMatchObject({ width: 230, alt: 'Editing progress: Record, Cut, Ear pass, Beat map, Look, Motion done; now Sound' })
+    else expect((await ui.find({ key: 'ed-progress' }))?.text).toContain('■■■■■■◐□□□ r5 · Sound · your move')
     await ui.press({ key: 'band-next' })
     await ui.press({ key: 'band-board' })
     await ui.press({ key: 'band-cockpit' })
@@ -756,8 +756,11 @@ test('REEL-018 shape: its ruled-name master is probed; mastered and .mov files a
 test('voice-only reel: no sketches advances to Sound, and the final mix advances to Master', async ($, on) => {
   const tree = walk(4)
   delete tree['videos/r4/sketches.state.json']
-  // Voice only: the sent Beat Map asks for no scene on any beat, so there is no motion step to wait for.
-  Object.assign(tree, reel('r4', { 'beat-map.state.json': json(2, { sent_at: '2026-11-02T10:00:00Z', beats: [{ id: 'b_001', scene: null }] }) }))
+  // Voice only: the sent Beat Map completes Look; motion_review.py none explicitly completes Motion (F1).
+  Object.assign(tree, reel('r4', {
+    'beat-map.state.json': json(2, { sent_at: '2026-11-02T10:00:00Z', beats: [{ id: 'b_001', scene: null }] }),
+    'motion-review-selection.json': json(1.5, { none: true, sections: [], sent_at: '2026-11-03T00:00:00Z' }),
+  }))
   const seen = world(on, tree)
   await $.session.start(START)
   const ui = await mount($, 'terminal')
@@ -768,7 +771,7 @@ test('voice-only reel: no sketches advances to Sound, and the final mix advances
   expect((await ui.find({ key: 'main' }))?.props.label).toBe('Render the master  →')
 })
 
-test('an unreadable sketches file keeps Motion open', async ($, on) => {
+test('an unreadable sketches file keeps Look open', async ($, on) => {
   const tree = { ...walk(4), ...reel('r4', { 'sketches.state.json': f(1, { busy: true }) }) }
   world(on, tree)
   await $.session.start(START)
