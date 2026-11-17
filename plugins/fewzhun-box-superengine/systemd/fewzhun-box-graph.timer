@@ -1,0 +1,12 @@
+# Installed by bin/install.sh, which replaces @GRAPH_TIME@ (graph.time, HH:MM) and @TZ@ (timezone).
+[Unit]
+Description=fewzhun-box nightly graph
+
+[Timer]
+OnCalendar=*-*-* @GRAPH_TIME@:00 @TZ@
+AccuracySec=1min
+# A missed night is not caught up at boot; the next night rebuilds from the cache.
+Persistent=false
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,21 @@
+# Installed by bin/install.sh, which replaces @CODE_ROOT@, @ROOT@ and @CONF@. %i is the failed job (graph, harvest).
+[Unit]
+Description=fewzhun-box %i failure alert (status file + harvest.notify)
+
+[Service]
+Type=oneshot
+User=root
+Environment=FEWZHUN_BOX_CONFIG=@CONF@
+ExecStart=/usr/bin/python3 -E -s @CODE_ROOT@/app/py/boxlib.py alert %i
+TimeoutStartSec=3min
+MemoryMax=256M
+UMask=0027
+PrivateTmp=yes
+PrivateDevices=yes
+NoNewPrivileges=yes
+RestrictSUIDSGID=yes
+ProtectSystem=strict
+ReadWritePaths=@ROOT@/status
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes

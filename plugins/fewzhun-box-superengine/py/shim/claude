@@ -1,0 +1,8 @@
+#!/usr/bin/python3 -EsB
+"""Installed root-owned; graph jobs never generate executable files."""
+import os, sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import claude_guard
+
+sys.exit(claude_guard.shim(sys.argv[1:]))

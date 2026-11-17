@@ -1,0 +1,82 @@
+{
+  "code_root": "/opt/fewzhun-box-app",
+  "tokens_dir": "/etc/fewzhun-box/tokens",
+  "root": "/opt/fewzhun-box",
+  "bind": "auto-docker",
+  "docker_network": null,
+  "port": 8791,
+  "tailnet_bind": null,
+  "timezone": "UTC",
+  "spokes": {
+    "guidance": { "folders": ["Guidance"], "decay": "never" },
+    "log": { "folders": ["Calls", "Meetings"], "decay": true }
+  },
+  "readers": {
+    "bot": { "spokes": ["guidance", "log"], "view": true },
+    "workers": { "spokes": ["guidance"], "view": true }
+  },
+  "max_procs": 2,
+  "warm": "all",
+  "memory_max": "3500M",
+  "sync": {
+    "enabled": false,
+    "repo": "git@github.com:<owner>/<notes-repo>.git",
+    "deploy_key": "/etc/fewzhun-box/deploy_key",
+    "interval_min": 15
+  },
+  "graph": {
+    "enabled": true,
+    "graphify_version": "0.9.112",
+    "backend": "claude-cli",
+    "time": "03:30",
+    "min_nodes": 1
+  },
+  "harvest": {
+    "enabled": false,
+    "time": "02:30",
+    "cutoff": null,
+    "max_drafts": 12,
+    "budget_chars": 60000,
+    "item_chars": 6000,
+    "sources": [
+      { "name": "daily", "type": "markdown-dir", "path": "<folder of dated daily notes>", "glob": "*.md", "date_from_filename": true },
+      { "name": "runs", "type": "jsonl", "path": "<agent run log>.jsonl", "text_field": ["label", "summary"], "ts_field": "ended", "id_field": "id" },
+      { "name": "chat", "type": "sqlite", "path": "<chat history>.db", "query": "SELECT id, ts, text FROM messages WHERE role = 'user'" }
+    ],
+    "notify": null,
+    "approvers": [],
+    "known_hosts": ["github.com"],
+    "secret_patterns": [],
+    "taps_file": null,
+    "schema": {
+      "types": ["rule", "fact", "process"],
+      "folders": { "rule": "Guidance", "fact": "Guidance", "process": "Guidance" },
+      "applies_to": ["all-agents"]
+    },
+    "promote": {
+      "repo": null,
+      "on_promote": { "status": "active", "last_verified": "{today}" }
+    }
+  },
+  "claude": {
+    "bin": "/usr/local/bin/claude",
+    "run_as": "<linux user that is signed in to Claude>",
+    "credentials": "<that user's home>/.claude/.credentials.json",
+    "token_file": null,
+    "idle_cmd": null,
+    "busy_url": null,
+    "min_token_minutes": 60,
+    "max_run_minutes": 15,
+    "model": "haiku",
+    "retries": 12,
+    "retry_minutes": 5
+  },
+  "done_test": {
+    "reader": "bot",
+    "query": "<a word that appears in at least one active note>",
+    "semantic": { "q": "<a question that shares no words with the note below>", "expect_path": "guidance/Guidance/<note>.md" },
+    "superseded": { "q": "<a query that would match the superseded note>", "path": "guidance/Guidance/<superseded note>.md" },
+    "decay": { "q": "<a query matching both notes below>", "decays": "log/Calls/<an old dated note>.md", "keeps": "guidance/Guidance/<an old dated note>.md" },
+    "container": null
+  }
+}

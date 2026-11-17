@@ -1,0 +1,12 @@
+# Installed by bin/install.sh, which replaces @HARVEST_TIME@ (harvest.time, HH:MM) and @TZ@ (timezone).
+[Unit]
+Description=fewzhun-box nightly harvest
+
+[Timer]
+OnCalendar=*-*-* @HARVEST_TIME@:00 @TZ@
+AccuracySec=1min
+# A missed night is not caught up at boot; the next night picks up everything new.
+Persistent=false
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Brain viewer (read-only)</title>
+<style>
+  body { font: 16px/1.5 system-ui, sans-serif; margin: 0; color: #1d1d1f; background: #fafafa; }
+  main { max-width: 60rem; margin: 0 auto; padding: 1rem; }
+  label { font-weight: 600; margin-right: .5rem; }
+  input, select, button { font: inherit; padding: .4rem .6rem; }
+  input[type=search], input[type=password] { width: min(28rem, 100%); }
+  #results { padding-left: 1.2rem; }
+  #results li { margin: .6rem 0; }
+  #results button { all: unset; cursor: pointer; color: #0b57d0; text-decoration: underline; }
+  #results button:focus-visible { outline: 2px solid #0b57d0; }
+  .meta { color: #555; font-size: .9rem; }
+  pre { white-space: pre-wrap; word-wrap: break-word; background: #fff; border: 1px solid #ddd; padding: 1rem; }
+  iframe { width: 100%; height: 75vh; border: 1px solid #ddd; background: #fff; }
+  #graphs button { margin: 0 .4rem .4rem 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Brain viewer</h1>
+  <p class="meta">Read-only. Nothing here can change the server.</p>
+
+  <section id="signin">
+    <form id="signin-form">
+      <label for="token">Reader token</label>
+      <input id="token" type="password" autocomplete="off" spellcheck="false" required>
+      <button type="submit">Use token</button>
+    </form>
+    <p class="meta">The token stays in this browser tab only and is gone when you close it.</p>
+  </section>
+
+  <section id="app" hidden>
+    <form id="search-form">
+      <label for="q">Search</label>
+      <input id="q" type="search" maxlength="500" required>
+      <label for="spoke">in</label>
+      <select id="spoke"><option value="">all my spokes</option></select>
+      <button type="submit">Search</button>
+    </form>
+    <p id="status" role="status" aria-live="polite"></p>
+    <ol id="results"></ol>
+    <article id="note" hidden>
+      <h2 id="note-title"></h2>
+      <p id="note-meta" class="meta"></p>
+      <pre id="note-text"></pre>
+    </article>
+    <section id="graph-section" hidden>
+      <h2>Graphs</h2>
+      <div id="graphs"></div>
+      <iframe id="graph" title="Note graph" sandbox="allow-scripts" referrerpolicy="no-referrer" hidden></iframe>
+    </section>
+    <p><button id="signout" type="button">Forget token</button></p>
+  </section>
+</main>
+<script src="/view/view.js"></script>
+</body>
+</html>

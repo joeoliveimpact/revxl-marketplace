@@ -21,7 +21,7 @@ Each superengine is opinionated about audience, tone, and workflow, so it works 
 
 ## The catalog
 
-21 plugins. Versions are current as of catalog `0.1.98`.
+22 plugins. Versions are current as of catalog `0.1.99`.
 
 ### 📣 Marketing & Content
 
@@ -58,6 +58,7 @@ Each superengine is opinionated about audience, tone, and workflow, so it works 
 | [notebooklm-superengine](plugins/notebooklm-superengine/) | 0.5.0 | Drive NotebookLM from Claude: build notebooks, curate sources, ask, studio outputs. 8 skills. |
 | [course-crawler](plugins/course-crawler/) | 0.7.1 | Capture online course content into structured, searchable local knowledge. 5 skills. |
 | [duet-setup](plugins/duet-setup/) | 0.3.1 | Sets up Claude Duet from its main chat: a coordinator you name, channels that each do one kind of work with their own instructions and Rules, one routing map, a task tracker, and an optional link to Claude Code. 1 skill. |
+| [fewzhun-box-superengine](plugins/fewzhun-box-superengine/) | 0.1.0 | A private notes brain for a client's own Linux server, installed by Claude with nobody at the screen: search by meaning over active notes only, a nightly link graph, a read-only web page, per-reader tokens for a bot and Claude workers, and nightly draft notes a person approves. Headless Linux only. 3 skills. |
 
 ---
 

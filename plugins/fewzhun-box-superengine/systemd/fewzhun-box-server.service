@@ -1,0 +1,33 @@
+# Installed by bin/install.sh, which replaces @CODE_ROOT@, @ROOT@, @CONF@, @NODE@, @LOG_DIR@ and @MEMORY_MAX@ (brain.json).
+[Unit]
+Description=fewzhun-box brain search service (obsidian-hybrid-search over @ROOT@/spokes)
+After=network-online.target docker.service
+Wants=network-online.target
+OnFailure=fewzhun-box-alert@server.service
+
+[Service]
+Type=simple
+User=fbx
+Group=fbx
+UMask=0007
+# The engine caches its embedding model under HOME; install.sh fetches it there.
+Environment=HOME=/var/lib/fewzhun-box
+Environment=FEWZHUN_BOX_CONFIG=@CONF@
+ExecStart=@NODE@ @CODE_ROOT@/app/server/brain-server.mjs
+# bind "auto-docker" only exists once Docker's network is up; a failed start retries.
+Restart=on-failure
+RestartSec=5
+# Sizing: each warm spoke holds its own copy of the embedding model (about 400 MB). With warm "all",
+# memory_max should be at least spokes x 400 MB plus headroom; install.sh switches to warm "lazy"
+# when free memory is short. At most max_procs engine requests run at once, inside these limits.
+MemoryMax=@MEMORY_MAX@
+CPUQuota=150%
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+# Each search writes the spoke's .db (+ WAL files) at the spoke root, so the spoke dirs need write.
+ReadWritePaths=@ROOT@/spokes @LOG_DIR@ /var/lib/fewzhun-box
+
+[Install]
+WantedBy=multi-user.target

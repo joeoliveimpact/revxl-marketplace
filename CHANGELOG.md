@@ -4,6 +4,18 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.99] ... 2026-11-17
+
+### Added
+- **fewzhun-box-superengine v0.1.0** ... new plugin: a private notes brain for a client's own headless Linux server.
+Claude installs it with nobody at the screen (dry run first, then the owner's yes) and turns the
+owner-only steps (deploy key, firewall, kernel setting, Tailscale, a reader's token) into plain tasks.
+Search by meaning over active notes only, one warm engine per spoke, per-reader tokens stored as
+fingerprints, a nightly graphify link graph, a read-only web page kept off the public internet, and
+optional nightly draft notes that wait for a person to approve them, then promote into the client's
+own clone without a push. Every model run passes a login guard. Skills: fewzhun-box-setup,
+fewzhun-box-check, fewzhun-box-use.
+
 ## [0.1.98] ... 2026-11-17
 
 ### Changed

@@ -1,0 +1,11 @@
+# Installed by bin/install.sh (only when sync.enabled), which replaces @SYNC_INTERVAL@ (sync.interval_min).
+[Unit]
+Description=fewzhun-box sync every @SYNC_INTERVAL@ minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=@SYNC_INTERVAL@min
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

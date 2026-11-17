@@ -8,3 +8,5 @@ plugins/shortform-superengine/skills/*/references/legit-*.md text eol=lf
 plugins/editor-superengine/** text=auto eol=lf
 # socialcrawl-superengine's mod tests and guard fixtures expect LF; keep it LF on every checkout.
 plugins/socialcrawl-superengine/** text=auto eol=lf
+# fewzhun-box-superengine ships shell scripts and systemd units that break on CRLF; keep it LF on every checkout.
+plugins/fewzhun-box-superengine/** text eol=lf

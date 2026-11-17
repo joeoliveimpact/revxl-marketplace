@@ -1,0 +1,33 @@
+# Installed by bin/install.sh, which replaces @CODE_ROOT@, @ROOT@, @CONF@ and @CLAUDE_HOME@ (the claude.run_as home).
+[Unit]
+Description=fewzhun-box nightly harvest: draft notes into staging for approval
+After=network-online.target
+Wants=network-online.target
+OnFailure=fewzhun-box-alert@harvest.service
+
+[Service]
+Type=oneshot
+# Root reads the sources; the model runs as claude.run_as (claude_guard.py drops to it for that one call).
+User=root
+Environment=FEWZHUN_BOX_CONFIG=@CONF@
+WorkingDirectory=@ROOT@
+ExecStart=/usr/bin/python3 -E -s @CODE_ROOT@/app/py/harvest.py run
+# Up to 1 h waiting for the guard + claude.max_run_minutes of model time.
+TimeoutStartSec=2h
+Nice=10
+IOSchedulingClass=idle
+MemoryMax=2G
+UMask=0077
+PrivateTmp=yes
+PrivateDevices=yes
+NoNewPrivileges=yes
+RestrictSUIDSGID=yes
+ProtectSystem=strict
+# A sqlite source in WAL mode, or a notify command that writes files, needs its directory added here with
+# a drop-in (systemctl edit fewzhun-box-harvest). See config/CONFIG.md.
+ReadWritePaths=@ROOT@/staging -@ROOT@/approved @ROOT@/status @CLAUDE_HOME@
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+LockPersonality=yes
+RestrictRealtime=yes

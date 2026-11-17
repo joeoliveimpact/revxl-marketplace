@@ -1,0 +1,34 @@
+# Installed by bin/install.sh, which replaces @CODE_ROOT@, @ROOT@, @CONF@ and @CLAUDE_HOME@ (the claude.run_as home).
+[Unit]
+Description=fewzhun-box nightly graph: graphify per spoke under the login guard
+After=network-online.target
+Wants=network-online.target
+OnFailure=fewzhun-box-alert@graph.service
+
+[Service]
+Type=oneshot
+# Root reads the spokes and writes graphs/; every model call drops to claude.run_as (claude_guard.py).
+User=root
+Environment=FEWZHUN_BOX_CONFIG=@CONF@
+WorkingDirectory=@ROOT@
+# -E -s: ignore PYTHON* env and user site-packages.
+ExecStart=/usr/bin/python3 -E -s @CODE_ROOT@/app/py/graph_job.py
+# Up to 1 h waiting for the guard + claude.max_run_minutes per spoke.
+TimeoutStartSec=2h
+Nice=10
+IOSchedulingClass=idle
+MemoryMax=2G
+UMask=0027
+PrivateTmp=yes
+PrivateDevices=yes
+NoNewPrivileges=yes
+RestrictSUIDSGID=yes
+ProtectSystem=strict
+# graphs/ (published graphs), root-only work/cache, status/, and the Claude login's home (the CLI writes its
+# own state there; the guard makes sure this run never refreshes the login).
+ReadWritePaths=@ROOT@/graphs /var/lib/fewzhun-box-graph @ROOT@/status @CLAUDE_HOME@
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+LockPersonality=yes
+RestrictRealtime=yes

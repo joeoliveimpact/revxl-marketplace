@@ -1,0 +1,16 @@
+{
+  "name": "fewzhun-box-engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The one pinned search engine fewzhun-box installs into its root. The server, CLI and tests need no packages.",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "obsidian-hybrid-search": "0.12.7"
+  },
+  "overrides": {
+    "better-sqlite3": "12.11.1"
+  }
+}

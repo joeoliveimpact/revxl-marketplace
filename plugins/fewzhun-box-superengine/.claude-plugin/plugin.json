@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "fewzhun-box-superengine",
+  "version": "0.1.0",
+  "description": "A private notes brain for a client's own Linux server, installed by Claude with nobody at the screen. Search by meaning over the active notes only, a nightly link graph, a read-only web page, per-reader tokens for a bot and Claude workers, and nightly draft notes that wait for a person to approve them. Replaced notes stay hidden, guidance never loses rank with age, and the brain stays off the public internet. Headless Linux only.",
+  "author": {
+    "name": "Joe Olive",
+    "email": "joe@engineforimpact.com"
+  },
+  "homepage": "https://github.com/joeoliveimpact/revxl-marketplace/tree/main/plugins/fewzhun-box-superengine",
+  "license": "MIT",
+  "keywords": [
+    "brain",
+    "notes",
+    "search",
+    "semantic-search",
+    "knowledge-graph",
+    "graphify",
+    "linux",
+    "vps",
+    "headless",
+    "bot",
+    "superengine"
+  ]
+}
