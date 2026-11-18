@@ -16,6 +16,7 @@ ${CLAUDE_PLUGIN_ROOT}/references/business-config.md (the shipped template/schema
 Ask conversationally, per `{{EXPLANATION_LEVEL}}`. Push for CONCRETE phrasing in the coach's words, not categories ("my clients say they've tried everything and their body just doesn't respond anymore," not "weight loss struggles"). Specific avatar language is what makes a broadcast carousel feel personal.
 
 **A. Tone + brand**
+0. **Brand name → `{{BRAND_SLUG}}`** — ask first, before anything that touches a `<brand>` path: "What's the name of your brand or business?" Turn it into the slug (lowercase, letters and numbers only: "Maria G Fit" → `mariagfit`). List `~/.claude/revxl/` before settling: one folder there, or one that looks like the same brand → confirm and reuse its name rather than making a second. Write it to `{{BRAND_SLUG}}` straight away. Already set (reconfigure) → show it and move on.
 1. **Explanation level** — beginner / intermediate / advanced (default beginner). How much jargon I translate.
 2. **Teach mode** — on (default) / off. Plain: "As I build, I explain WHY each move works... why this hook, why this slide order... so you learn the craft, not just get the slides. Want it on?"
 3. **Program + positioning + audience** — who they serve, one-line positioning.
@@ -52,7 +53,7 @@ fine: every skill runs on the bundled library and says so once.
 **E. Output + rendering**
 17. **Output destination** — chat draft (default) / workspace file / both.
 18. **Render preference** — `{{RENDER_PREF}}`: when a build finishes, images via image-gen (A) / Claude Design prompt (C) / ask each time (default). Plain-English the two: "A = I generate the finished slides, optionally with YOUR face on them. C = I hand you one prompt; Claude's Design tool builds the cards on your existing plan."
-19. **Environment detect (silent):** Bash + Python available → `{{WORKSPACE_RENDER}}: available` (unlocks local PNG/PDF rendering — see the `carousel-render` skill); Cowork/Desktop → `unavailable`. Higgsfield: probe the **MCP first** (ToolSearch for `generate_image` / `models_explore` / `balance` — server prefix varies; a ToolSearch hit alone isn't proof — confirm with one free read like `balance`, and an auth error means NOT connected), then the `higgsfield-generate` skill/CLI. Either confirmed reachable → `{{HIGGSFIELD_STATUS}}: detected` (note which route: `mcp` / `cli`), else `absent`. **When the MCP is up, also check for an existing trained Soul** (`show_characters`, status ready) — one found → record its name + soul_id in the config so renders use it automatically instead of re-asking. Never make the coach answer what the machine can tell us.
+19. **Environment detect (silent):** Bash + Python available → `{{WORKSPACE_RENDER}}: available` (unlocks local PNG/PDF rendering — see the `carousel-render` skill); no Bash (Cowork, the plain Claude chat app) → `unavailable`. The Code tab of the Claude desktop app counts as Claude Code: test for Bash + Python, never go by the app's name. Higgsfield: probe the **MCP first** (ToolSearch for `generate_image` / `models_explore` / `balance` — server prefix varies; a ToolSearch hit alone isn't proof — confirm with one free read like `balance`, and an auth error means NOT connected), then the `higgsfield-generate` skill/CLI. Either confirmed reachable → `{{HIGGSFIELD_STATUS}}: detected` (note which route: `mcp` / `cli`), else `absent`. **When the MCP is up, also check for an existing trained Soul** (`show_characters`, status ready) — one found → record its name + soul_id in the config so renders use it automatically instead of re-asking. Never make the coach answer what the machine can tell us.
 20. **Existing design system?** — brand templates / Canva kit / a past carousel look they love → offer to capture it now via `carousel-templates` (import variant): "Save your look once and every build after this skips the design questions." Nothing to import → pick a **starter palette direction** (wellness-warm / dark-tech spec-sheet / editorial / bold-color — see design-rules.md) so builds never default to someone else's niche aesthetic; record hex values when the coach has them.
 21. **Soul (optional, only when `{{HIGGSFIELD_STATUS}}: detected` AND no ready Soul was found in Q19)** — plain-English offer, never a gate:
     "One optional extra: I can train the AI on your face — a few photos, one time, about 5 minutes. After that, every image we generate is actually YOU... your real face, in any style we build. Without it we can still match your look from reference photos; it's just less consistent slide to slide. You can skip now and add it any time. Heads up: needs a paid Higgsfield plan." Yes → route to the `higgsfield-soul-id` skill. No/skip → note it, move on, re-offer exactly once at the first Path A render.
@@ -74,3 +75,28 @@ Write section F into the config as `{{SCHEDULE_STATUS}}: unset` (plus empty cade
 - Hand-held tour instead → `carousel-guide` — "walk me through it"
 - (When they named an existing design system in Q20 and skipped capture) "Import your look now?" → `carousel-templates` — "save my design system"
 - (When voice came out thin/interim) "Capture your real voice from your calls + content?" → `brand-brain` — "build my brand brain"
+
+## Failure report (offer after any failure you can't fix in two tries)
+
+Tell the client what went wrong in plain words, and whether anything was charged or changed. Then offer:
+"Want me to send Joe a short report so he can fix it? You'll see exactly what's in it first."
+
+1. With the Write tool, put the details in `carousel-superengine/reports/report-body.md` under the workspace folder: what the client asked for, the step
+   that failed, the command shape, and the error output. Never a key, and never the client's own content
+   (their notes, contacts, messages, file text, slide copy).
+2. Draft it. Keep the summary short. Put the summary, step and error line in single quotes, drop any
+   apostrophe from them, and use no script names:
+
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin carousel-superengine --plugin-version 0.6.0 --skill carousel-setup --step '<saving the config, the key, or the environment check>' --error-line '<the error line>' --summary '<headline>' --body-file carousel-superengine/reports/report-body.md`
+
+3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
+4. Send, using the path after `DRAFT:`:
+
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" send "<draft path>"`
+
+`SENT` means Joe has it. `SAVED LOCALLY: <path>` means it couldn't be sent; tell the client where the file is
+so they can email it to Joe. Skip instead:
+
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" skip "<draft path>"`
+
+The client never types any of these; you run them.

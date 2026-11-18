@@ -1,5 +1,30 @@
 # Changelog — carousel-superengine
 
+## 0.6.0 ... 2026-11-18
+
+**Layout kits.** `carousel-templates` gains a third mode, build a kit: it turns the coach's own
+finished carousels, or one reference carousel, into a kit of open-slot slide layouts, the fixed
+look and a pick-by-content table, saved in the template home so "use my template" works on it.
+Reference mode takes structure only and offers the Content Goldmine dashboard's carousels first
+when the coach has one. The kit publishes as a Design System page where the account offers that
+type and is a local page everywhere else. New: `references/design-system.md`,
+`references/design-system-build-notes.md`, `scripts/slide_check.py` (palette and contrast checks).
+Workspace render now builds from an attached template or kit instead of redesigning every build.
+
+**One brand name, set once.** New `{{BRAND_SLUG}}` config token. `carousel-setup` asks the brand
+name first, `brand-brain` writes it when it confirms a brand folder, and `carousel-templates` asks
+once if it is still unset; every `<brand>` path reads that token. Before, nothing gave `<brand>` a value.
+
+**Failure reports.** `scripts/report_to_joe.py` ships, and the nine skills that can fail carry the
+standard failure-report block (preview first, the client chooses Send or Skip).
+
+**`carousel-review` is findable.** It shipped in 0.4.0 but the router, its routing lines and the
+README never listed it. All three do now.
+
+**Claude Code Desktop keeps local rendering.** Three lines said "Cowork/Desktop: skip", which read
+as switching workspace render off in the desktop app's Code tab. They now test for Bash and name
+Cowork and the plain chat app instead.
+
 ## 0.5.0 ... 2026-09-05
 
 **Brain calls go through `revxl-vault-search`.** The wiring reference keeps its name and the

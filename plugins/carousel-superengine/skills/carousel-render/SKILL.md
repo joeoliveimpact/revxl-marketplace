@@ -28,6 +28,9 @@ lane: "You have a saved look ('<name>'). Use it and skip the design questions?" 
 - **Custom-visual-system** (designer-tier craft: photoreal scenes, illustrated style, the coach's
   face composited, "match this viral look") → **Path A** (image gen).
 - Teardown slides attached as reference? → Path A, steal-style (borrow layout/color/type, never copy).
+- **Kit template attached** (the template folder has `kit/`)? → workspace render for every slide
+  (step 2a), built from the kit; Path C with the kit's design-prompt.md where workspace render is
+  not available. A kit has no anchor image, so never Path A unless the coach asks for it.
 - create's render-handoff block carries a per-slide verdict; confirm the route with the coach in one
   line before generating. Coach's explicit pick always wins.
 
@@ -36,7 +39,7 @@ lane: "You have a saved look ('<name>'). Use it and skip the design questions?" 
   no other tool needed. Want that?" Method: workspace-render.md.
 - Suggest once, never block: "Slide design is the one place a smarter model visibly pays off — want
   to switch to the top model for this build?" Accept whatever they run.
-On Cowork/Desktop: skip this step entirely (no local render; A and C only).
+In Cowork or the plain Claude chat app (no Bash): skip this step entirely (no local render; A and C only). The Code tab of the Claude desktop app is Claude Code and keeps this step.
 
 **2a. Render.**
 - **Path A** per render-briefing.md: ANCHOR first (slide 1 ×3 versions, coach picks) → then
@@ -97,3 +100,28 @@ Quality check against design-rules.md before handing over (text ≤20%, contrast
 - Guardrails are not style preferences; a slide that breaks design-rules.md gets fixed, not shipped.
 - No em dashes in any on-slide or client-facing copy ("..." for pauses). House rule, absolute.
 - Soul is optional forever. Never a prerequisite, never nagged.
+
+## Failure report (offer after any failure you can't fix in two tries)
+
+Tell the client what went wrong in plain words, and whether anything was charged or changed. Then offer:
+"Want me to send Joe a short report so he can fix it? You'll see exactly what's in it first."
+
+1. With the Write tool, put the details in `carousel-superengine/reports/report-body.md` under the workspace folder: what the client asked for, the step
+   that failed, the command shape, and the error output. Never a key, and never the client's own content
+   (their notes, contacts, messages, file text, slide copy).
+2. Draft it. Keep the summary short. Put the summary, step and error line in single quotes, drop any
+   apostrophe from them, and use no script names:
+
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin carousel-superengine --plugin-version 0.6.0 --skill carousel-render --step '<image generation, the design prompt, or the workspace render>' --error-line '<the error line>' --summary '<headline>' --body-file carousel-superengine/reports/report-body.md`
+
+3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
+4. Send, using the path after `DRAFT:`:
+
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" send "<draft path>"`
+
+`SENT` means Joe has it. `SAVED LOCALLY: <path>` means it couldn't be sent; tell the client where the file is
+so they can email it to Joe. Skip instead:
+
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" skip "<draft path>"`
+
+The client never types any of these; you run them.
