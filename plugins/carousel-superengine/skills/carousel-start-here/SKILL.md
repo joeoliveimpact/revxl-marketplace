@@ -14,6 +14,8 @@ Turn a coach's brand/voice config into complete, posted-ready carousels: hook sl
 - You want to know what's winning carousel-wise across your whole niche ("what's working in my niche")
 - You want a reel script or a call repurposed ("carousel from my last call")
 - You want to reuse a saved look ("use my template") or save one ("save this look")
+- You want your finished carousels turned into a kit of reusable layouts, or one carousel's layout rebuilt in your brand ("make a design system from my carousels")
+- You want to look at the finished slides and mark them up before posting ("show me the slides")
 - You want a fresh draft on a schedule ("weekly carousel on autopilot" — drafts only, you approve every post)
 - First time setting up: run `carousel-setup` (or `carousel-guide` for the hand-held tour)
 
@@ -47,17 +49,20 @@ Carousel content strategist for B2C coaches (fitness, health, wellness). Every c
 | `carousel-guide` | Plain-English first-run tour — orients new users, runs setup, builds the first carousel with hand-holding | the `carousel-guide` skill |
 | `carousel-create` | Core generator: topic / reel script / call transcript / teardown output → complete carousel package | the `carousel-create` skill |
 | `carousel-render` | Package → finished slide images: image-gen in the coach's look (optional trained face), Claude Design prompt, or local PNG/LinkedIn-PDF on Claude Code | the `carousel-render` skill |
-| `carousel-templates` | Save a finished look as a reusable design system ("save this look") / build from a saved look ("use my template") | the `carousel-templates` skill |
+| `carousel-review` | Put the rendered slides in a browser so the coach marks them up directly, then turn the notes into fixes and re-render | the `carousel-review` skill |
+| `carousel-templates` | Save a finished look as a reusable design system ("save this look") / build from a saved look ("use my template") / turn finished decks or one reference carousel into a kit of reusable layouts ("make a design system from my carousels") | the `carousel-templates` skill |
 | `carousel-teardown` | Paste a public carousel link → structure + hook + caption analysis → optional "build my version" (also reviews YOUR OWN posts) | the `carousel-teardown` skill |
 | `carousel-inspire` | Niche-wide competitor synthesis: what's winning across many accounts → patterns + ranked build candidates (uses SocialCrawl credits, always gated) | the `carousel-inspire` skill |
 | `brand-brain` | Capture or refresh the coach's voice + VoC from real sources (shared across all REVXL engines) | the `brand-brain` skill |
 </commands>
 
-> **First run / new users:** if the business config still holds placeholder values, OR the user says "first time / help / walk me through / I'm new", route to the `carousel-guide` skill. A returning user who names a topic or pastes a link goes straight to `carousel-create` / `carousel-teardown`.
+> **First run / new users:** if the business config still holds placeholder values, OR the user says "first time / help / walk me through / I'm new", route to the `carousel-guide` skill. **Exception:** a first-timer who asks for a layout kit or to save a look ("make a design system from my carousels", "copy this carousel's layout", "save this look") goes straight to the `carousel-templates` skill, which sets the brand name itself. A returning user who names a topic or pastes a link goes straight to `carousel-create` / `carousel-teardown`.
 >
 > **Intent routing (returning users):**
 > - "make the images / render it / generate the slides / render the LinkedIn PDF" → the `carousel-render` skill
+> - "show me the slides / let me mark it up / preview the deck" → the `carousel-review` skill
 > - "use my template / same look as last time" → the `carousel-templates` skill (use-template mode)
+> - "make a design system from my carousels / build a layout kit / copy this carousel's layout" → the `carousel-templates` skill (build-a-kit mode)
 > - "save this look / save my design system / templatize" → the `carousel-templates` skill (templatize mode)
 > - "what's working in my niche / competitor analysis / who should I study" → the `carousel-inspire` skill
 > - "carousel from my last call / from my call with <name>" → the `carousel-create` skill (call build)
@@ -80,7 +85,8 @@ ${CLAUDE_PLUGIN_DATA}/business-config.md if present (the persisted filled config
 - the `carousel-guide` skill (first-time tour / "help")
 - the `carousel-create` skill (the generator)
 - the `carousel-render` skill (package → finished images)
-- the `carousel-templates` skill (save a look / build from a saved look)
+- the `carousel-review` skill (browser markup on rendered slides → fixes → re-render)
+- the `carousel-templates` skill (save a look / build from a saved look / build a layout kit)
 - the `carousel-teardown` skill (paste-a-link analysis + own-post review)
 - the `carousel-inspire` skill (niche-wide competitor synthesis)
 - the `brand-brain` skill (voice + VoC producer, shared contract)
@@ -112,6 +118,7 @@ Ways in:
 - **Teardown:** paste a link to any public carousel that's working and I'll break down WHY, then rebuild the structure as yours.
 - **Inspire:** "what's working in my niche" and I'll study the accounts that are winning and hand you patterns + ready-to-build ideas.
 - **Fast lane:** already saved a look? "Use my template" and new content drops straight into it.
+- **Layout kit:** shipped a few carousels? "Make a design system from my carousels" and I turn them into reusable layouts for every next one.
 
 - **First time here?** Say "walk me through it" and I'll run the guided tour (`carousel-guide`)... setup plus your first carousel.
 - **Already set up?** Name the topic, paste the link, or say "make the images" on any finished package.

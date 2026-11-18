@@ -4,6 +4,15 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.99] ... 2026-11-18
+
+### Changed
+- **carousel-superengine v0.6.0** ... `carousel-templates` can turn a coach's finished carousels, or one
+reference carousel, into a kit of reusable slide layouts in their own brand (reference picks come from the
+Content Goldmine dashboard when there is one), and workspace render builds from a saved template or kit
+instead of redesigning. The brand name is set once (`{{BRAND_SLUG}}`, by setup or brand-brain). The nine
+skills that can fail carry the failure report, and `carousel-review` is listed in the router and README.
+
 ## [0.1.98] ... 2026-11-17
 
 ### Changed

@@ -4,13 +4,19 @@ Claude Code + Python only. Builds finished slide files locally: one HTML file pe
 to 1080×1350 PNGs (Instagram) or assembled into a single PDF (LinkedIn document post). The coach
 never touches code — this all happens in their workspace; they get files.
 
-Not available on Cowork/Desktop — never offer it there.
+Needs Bash and Python, so it is not available in Cowork or the plain Claude chat app — never offer
+it there. The Code tab of the Claude desktop app IS Claude Code: it has both, and this applies.
 
 ## Method
 
 1. **Design the system first, then fill slides.** Decide once: palette (from template/brand kit —
    2-3 colors), the two fonts, margin frame (~60px), watermark corner, headline/body scale. Every
    slide reuses the system; only the focal content changes. Slides designed one-off read as a mess.
+   **A template is attached → the system is already decided. Do not redesign it.** Read its
+   `style.md`. If it has a `kit/` folder, also read `kit/DESIGN-SYSTEM.md`, inline
+   `kit/slides.css` and the fonts in `kit/fonts/` (base64, as below), and build each slide from the
+   blueprint in `kit/layouts/` that the pick table names for its content, inside that layout's
+   slot limits. The kit's slide size wins over the default canvas below.
 2. **Write one self-contained HTML file per slide** (`slide_01.html` …) in a scratch dir:
    - Fixed canvas: `<div id="slide" style="width:1080px;height:1350px">` (LinkedIn: 1080×1080 or
      keep 1080×1350 — pick per platform-nuance.md and stay consistent).

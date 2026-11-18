@@ -18,7 +18,8 @@ MUST run safely from any of them: no plugin-specific paths, no engine assumption
       signature-bits.md       # the client's REAL humor, evidence-scored (canonization parked until a consumer reads bits)
       weekly-content-bank.md  # fast shelf: this week's themes/objections/jokes/seeds, 7-day TTL
 
-`<brand>` resolves from config and is a NORMALIZED slug — lowercase, alphanumeric only, no
+`<brand>` resolves from the engine's config (here: `{{BRAND_SLUG}}` in
+`${CLAUDE_PLUGIN_DATA}/business-config.md`) and is a NORMALIZED slug — lowercase, alphanumeric only, no
 separators ("Maria G Fit" → `mariagfit`) — so every engine resolves the same brand to the same
 folder. Before minting a new brand folder, check `~/.claude/revxl/` for a similar existing one and
 confirm with the user (two half-brains for one coach is the failure to avoid). One user can hold
@@ -52,6 +53,12 @@ Offer refreshes at most ONCE per session — never nag on back-to-back builds.
 
 ## Carousel tie-in
 
+**This skill sets the brand name for the whole carousel engine.** The moment a brand folder is confirmed or
+created (any router branch), write its slug to `{{BRAND_SLUG}}` in
+`${CLAUDE_PLUGIN_DATA}/business-config.md` (create that file from the plugin's references copy if it is not
+there yet). `{{BRAND_SLUG}}` already set → use it as `<brand>` and never ask again. Every other carousel skill
+reads `<brand>` from that one token.
+
 `carousel-create` and `carousel-setup` consume the brain read-only: voice-guide sets register +
 edge, voc-profile supplies avatar pains in the avatar's words (hooks + captions), business-config
 supplies positioning + proof. The carousel engine's own filled config persists at
@@ -68,3 +75,28 @@ THIS skill before any interim voice capture.
 - ${CLAUDE_PLUGIN_ROOT}/references/brand-brain/signature-bits.md — objective humor scoring + human canonization
 - ${CLAUDE_PLUGIN_ROOT}/references/brand-brain/freshness.md — stamps, age-on-access, 7-day heartbeat, delta refresh
 - ${CLAUDE_PLUGIN_ROOT}/references/brand-brain/artifacts.md — exact output schemas (what consumers parse)
+
+## Failure report (offer after any failure you can't fix in two tries)
+
+Tell the client what went wrong in plain words, and whether anything was charged or changed. Then offer:
+"Want me to send Joe a short report so he can fix it? You'll see exactly what's in it first."
+
+1. With the Write tool, put the details in `carousel-superengine/reports/report-body.md` under the workspace folder: what the client asked for, the step
+   that failed, the command shape, and the error output. Never a key, and never the client's own content
+   (their notes, contacts, messages, file text, slide copy).
+2. Draft it. Keep the summary short. Put the summary, step and error line in single quotes, drop any
+   apostrophe from them, and use no script names:
+
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin carousel-superengine --plugin-version 0.6.0 --skill brand-brain --step '<mining, refresh or interview>' --error-line '<the error line>' --summary '<headline>' --body-file carousel-superengine/reports/report-body.md`
+
+3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
+4. Send, using the path after `DRAFT:`:
+
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" send "<draft path>"`
+
+`SENT` means Joe has it. `SAVED LOCALLY: <path>` means it couldn't be sent; tell the client where the file is
+so they can email it to Joe. Skip instead:
+
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" skip "<draft path>"`
+
+The client never types any of these; you run them.

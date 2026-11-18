@@ -8,7 +8,7 @@ description: Core generator. Turn a topic, avatar pain, story, reel script, tran
 Input in → complete carousel package out. Never a thin draft.
 
 ## Load
-${CLAUDE_PLUGIN_DATA}/business-config.md if present (the persisted filled config — read FIRST) → else ${CLAUDE_PLUGIN_ROOT}/references/business-config.md (shipped template only; placeholders → stop, route to `carousel-setup`)
+${CLAUDE_PLUGIN_DATA}/business-config.md if present (the persisted filled config — read FIRST) → else ${CLAUDE_PLUGIN_ROOT}/references/business-config.md (shipped template only; placeholders → stop, route to `carousel-setup`). The persisted file can hold only `{{BRAND_SLUG}}` (a kit was built before setup): avatar, voice or CTA still placeholders there → same stop, route to `carousel-setup`
 ${CLAUDE_PLUGIN_ROOT}/references/exemplar-carousel.md — **study FIRST, match its density**
 ${CLAUDE_PLUGIN_ROOT}/references/slide-architecture.md · hook-patterns.md · swipe-retention.md · retention-loops.md · cta-slide-patterns.md · design-rules.md · caption-strategy.md
 ${CLAUDE_PLUGIN_ROOT}/references/platform-nuance.md (when platform is linkedin/both)
@@ -33,7 +33,9 @@ words lands only with the coach's approval) · **call build** ("carousel from my
 the transcript per transcript-intake.md: pasted text wins, else fetch from `{{TRANSCRIPT_SOURCE}}`,
 else build from the coach's memory with the gap flagged) · teardown output (borrow STRUCTURE only;
 every atom of content becomes the coach's) · **template preset** (arriving via `carousel-templates`
-use-template — the look is already decided; skip design questions, copy + strategy only).
+use-template — the look is already decided; skip design questions, copy + strategy only). **Preset
+carries a kit** (pick table + slot limits) → name one kit layout per slide in the slide map, and
+that layout's slot limits win over the engine's default word ranges.
 
 **1.5. Consult the data + winning check.** Locate the freshest inspire synthesis, beat dataset
 (`beats-*.json`), and any relevant teardown for this niche/topic — `${CLAUDE_PLUGIN_DATA}/analysis/`
@@ -146,3 +148,28 @@ a flagged fix ends the argument — ship their version with the flag NOTED in th
 - No em dashes in any client-facing copy ("..." for pauses). House rule, absolute.
 - Suggest-then-approve on hooks and any offer-specific claim.
 - A package below exemplar density does not ship.
+
+## Failure report (offer after any failure you can't fix in two tries)
+
+Tell the client what went wrong in plain words, and whether anything was charged or changed. Then offer:
+"Want me to send Joe a short report so he can fix it? You'll see exactly what's in it first."
+
+1. With the Write tool, put the details in `carousel-superengine/reports/report-body.md` under the workspace folder: what the client asked for, the step
+   that failed, the command shape, and the error output. Never a key, and never the client's own content
+   (their notes, contacts, messages, file text, slide copy).
+2. Draft it. Keep the summary short. Put the summary, step and error line in single quotes, drop any
+   apostrophe from them, and use no script names:
+
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin carousel-superengine --plugin-version 0.6.0 --skill carousel-create --step '<building the package or pulling from the Brain>' --error-line '<the error line>' --summary '<headline>' --body-file carousel-superengine/reports/report-body.md`
+
+3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
+4. Send, using the path after `DRAFT:`:
+
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" send "<draft path>"`
+
+`SENT` means Joe has it. `SAVED LOCALLY: <path>` means it couldn't be sent; tell the client where the file is
+so they can email it to Joe. Skip instead:
+
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" skip "<draft path>"`
+
+The client never types any of these; you run them.

@@ -9,9 +9,12 @@ so plugin updates never wipe them. Placeholder values below mean setup has not r
 truth. Engine-specific tokens (platform, pillars, CTA destination, data sources, rendering, schedule)
 live only here.
 
+**`<brand>` in every path the engine uses is `{{BRAND_SLUG}}` below.** It is set once, by `carousel-setup` or the `brand-brain` skill (or `carousel-templates`, when a kit is asked for before setup), and every carousel skill reads it from this file.
+
 ## A. Tone + brand
 | Token | Value | Notes |
 |---|---|---|
+| `{{BRAND_SLUG}}` | (placeholder — run setup) | the brand's folder name under `~/.claude/revxl/`: lowercase, letters and numbers only ("Maria G Fit" → `mariagfit`). Set by setup or `brand-brain` |
 | `{{EXPLANATION_LEVEL}}` | beginner | beginner / intermediate / advanced |
 | `{{TEACH_MODE}}` | on | teach the WHY as we build |
 | `{{PROGRAM_POSITIONING}}` | (placeholder — run setup) | who they serve + one-line positioning |

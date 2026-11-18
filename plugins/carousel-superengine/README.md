@@ -5,7 +5,7 @@ images. Run setup once, then generate complete carousels... hook slide, value sl
 per-slide copy and design, a caption built for 2026 search, hashtags, AND the actual images:
 AI-generated in your look (optionally with your trained face), a paste-ready Claude Design prompt,
 or local PNG / LinkedIn-PDF rendering on Claude Code. Save any finished look as a template and the
-next build takes minutes. Plus a paste-a-link teardown, a niche-wide competitor synthesis, and
+next build takes minutes, or turn your finished carousels into a kit of reusable layouts. Plus a paste-a-link teardown, a niche-wide competitor synthesis, and
 carousels straight from your client calls.
 
 Drafts only. Nothing posts automatically. Your config, voice, and templates persist across plugin
@@ -20,7 +20,8 @@ updates.
 | `/carousel-guide` | Hand-held tour for first-timers: setup + your first carousel |
 | `/carousel-create` | The generator: topic / reel script / your calls / teardown → full package |
 | `/carousel-render` | Package → finished slide images (image-gen in your look, Claude Design prompt, or local PNG/PDF) |
-| `/carousel-templates` | "Save this look" after a build → "use my template" forever after |
+| `/carousel-review` | Finished slides open in a browser → you mark them up → fixes and a re-render |
+| `/carousel-templates` | "Save this look" after a build → "use my template" forever after. Or "make a design system from my carousels" → a kit of reusable layouts |
 | `/carousel-teardown` | Paste a public carousel link → why-it-works breakdown → your version (reviews your own posts too) |
 | `/carousel-inspire` | "What's working in my niche" → evidence-cited patterns + ready-to-build ideas |
 | `/brand-brain` | Capture or refresh your voice + customer language (shared across REVXL engines) |
@@ -48,6 +49,22 @@ Three ways to finished slides, picked per build:
 If a path isn't available on your setup, the engine says so and hands you the next one — you always
 walk away with something postable.
 
+## The layout kit
+
+Shipped a few carousels? Say "make a design system from my carousels". The engine reads your
+finished decks and saves a kit: slide layouts with open slots (a statement slide, a numbered list,
+a comparison...), your fixed look (colors, fonts, spacing), and a table that says which layout
+fits which kind of content. Your next carousels are built from the kit, so they look like yours
+without looking like the same deck every time.
+
+Saw a carousel whose layout you want? Point at it (a pick from your Content Goldmine dashboard
+if you run the shortform engine, or a pasted link). The engine takes the STRUCTURE only and
+rebuilds it in your brand. Their words, colors, fonts and images are never copied.
+
+The kit is saved with your templates. Where your account offers it, it is also published as a
+private Design System page you can open and share; where it does not, you get the same kit as
+one local page.
+
 ## The teardown feature
 
 See a carousel that's clearly working? Paste the link.
@@ -69,6 +86,12 @@ hashtags and hands you patterns + ranked ideas, every claim cited.
 "Schedule my carousels" sets up recurring DRAFT builds — weekly or daily, from your topics or your
 newest calls, in your saved look. The engine only ever suggests it; you approve the schedule, you
 approve every draft, and "stop the weekly carousel" kills it anytime. Posting is never automated.
+
+## If something breaks
+
+When a step fails and the engine cannot fix it in two tries, it offers to send Joe a short report.
+You see exactly what is in it first and choose Send or Skip. It never contains your keys or your
+content.
 
 ## What it never does
 
@@ -97,5 +120,7 @@ With a Brain key from Joe, carousel-create pulls the newest content-strategy pat
 - Image generation (optional): the Higgsfield MCP connector + your own account is the preferred
   route (no plugin install, no CLI — auth rides your account session; paid plan for the
   trained-face option). The Higgsfield plugin/CLI works as a fallback. Claude Design path needs
-  nothing extra. Workspace render needs Claude Code + Python (Playwright installs itself on first
+  nothing extra. Workspace render needs Claude Code + Python (the engine installs Playwright on first
   use, with your ok).
+- Layout kit checks (optional): Claude Code + Python. The engine installs Pillow and Playwright the
+  first time, with your ok, to read colors and measure text contrast.
