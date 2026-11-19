@@ -1,6 +1,6 @@
 # Case profile
 
-> Your case facts live in this file and in your matter folder. Nothing here is published or sent anywhere.
+> Your case facts live in this file and in your matter folder. This file is saved on your computer and is not uploaded to any website. Claude reads it to work on your case, and what Claude reads is sent to Anthropic, the company that makes Claude.
 > Clawyer fills this in with you during intake. Anything not yet confirmed is marked `[CONFIRM]`.
 
 ## Where this case is
