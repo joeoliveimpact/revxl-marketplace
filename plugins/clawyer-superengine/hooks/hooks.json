@@ -1,0 +1,39 @@
+{
+  "description": "Clawyer: in a folder that holds a firm.config.json, loads the matter at session start, reminds Claude to classify and route each message, and prompts the fact fan-out when case-profile.md is edited. In every other folder all three hooks print nothing. Each one exits 0 on any error, and a machine with no working Python 3 skips them silently.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/run-py.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/session_start.py\"",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/run-py.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/dispatch.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/run-py.sh\" \"${CLAUDE_PLUGIN_ROOT}/hooks/locked_fact_fanout.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

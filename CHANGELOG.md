@@ -4,6 +4,16 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.100] ... 2026-11-19
+
+### Added
+- **clawyer-superengine v0.1.0** ... new plugin: runs a self-represented legal matter in the person's own folder.
+Setup asks five plain questions (state, county, court, a matter name, the kind of case), writes the case
+files and installs the free document tools. A 15-reviewer council checks every document from the other
+side or the court, a verification gate blocks unchecked facts, and a premortem runs before anything goes
+out. Built on pro-se-firm v1.7.0 by Mic H. (MIT). Mississippi doctrine is labelled as an example for
+other states. Not a lawyer and not legal advice.
+
 ## [0.1.99] ... 2026-11-18
 
 ### Changed

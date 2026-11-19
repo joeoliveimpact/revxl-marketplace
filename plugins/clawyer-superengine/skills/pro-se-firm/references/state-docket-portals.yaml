@@ -1,0 +1,95 @@
+# State / County electronic court-records portals
+#
+# Extensible lookup table consumed by firm-setup Tier 4 walkthrough.
+# Add a state by appending a block. Add a county by appending under that state's `counties`.
+# All values are best-effort starters. Always confirm the URL and price with the user
+# on the live portal before walking them through subscription.
+#
+# Schema (per state):
+#   state: "<full name>"               required
+#   state_code: "<2-letter>"           required
+#   system_name: "<system shown to user>"   required (e.g., "MEC Public Access")
+#   system_url: "<state-level URL>"   optional
+#   notes: "<plain-English 1-liner>"   optional
+#   counties:                          optional, list
+#     - name: "<county>"
+#       portal_url: "<county/circuit URL>"
+#       cost_usd_year: <number or null>
+#       cost_note: "<free text, e.g. '$10/yr + identity verification'>"
+#       signup_steps:
+#         - "step 1 in plain English"
+#         - "step 2"
+#
+# If a state is not in this file, the firm prompts the user to paste their county portal URL
+# and offers to append the entry. Never fabricate a portal URL.
+
+states:
+
+  - state: "Mississippi"
+    state_code: "MS"
+    system_name: "MEC Public Access (Mississippi Electronic Courts)"
+    system_url: "https://courts.ms.gov/aoc/mec.php"
+    notes: "Chancery + circuit dockets, county-by-county subscription."
+    counties:
+      - name: "Harrison"
+        portal_url: "https://courts.ms.gov/aoc/mec.php"
+        cost_usd_year: 10
+        cost_note: "$10/yr per county + identity verification + payment"
+        signup_steps:
+          - "open the MEC Public Access page and click Register"
+          - "create an account with your email and a password (write the password down)"
+          - "complete identity verification (driver license or ID)"
+          - "select Harrison County and pay the $10 annual fee"
+          - "confirm by opening any chancery case and seeing the docket entries"
+
+  - state: "Texas"
+    state_code: "TX"
+    system_name: "re:SearchTX (Tyler Technologies)"
+    system_url: "https://research.txcourts.gov/"
+    notes: "Statewide research portal; some counties also use eFileTexas for filings."
+    counties: []
+
+  - state: "California"
+    state_code: "CA"
+    system_name: "County-by-county (no statewide portal)"
+    system_url: null
+    notes: "California has no single statewide docket portal. Each Superior Court runs its own. Search for '[county] superior court case access' and use the official .ca.gov result."
+    counties:
+      - name: "Los Angeles"
+        portal_url: "https://www.lacourt.org/casesummary/ui/"
+        cost_usd_year: 0
+        cost_note: "Free name/case-number lookup"
+        signup_steps:
+          - "open the LA Court Case Summary page"
+          - "search by case number or name; no account required for the free view"
+
+  - state: "Florida"
+    state_code: "FL"
+    system_name: "County clerk e-Courts portals (statewide hub at MyFLCourtAccess)"
+    system_url: "https://www.myflcourtaccess.com/"
+    notes: "Florida is county-by-county; most clerks expose their docket online for free name search."
+    counties: []
+
+  - state: "New York"
+    state_code: "NY"
+    system_name: "NYSCEF (NY State Courts Electronic Filing) + WebCriminal/WebCivil/WebFamily"
+    system_url: "https://iapps.courts.state.ny.us/nyscef/HomePage"
+    notes: "Family Court matters often confidential; many records require party login."
+    counties: []
+
+  - state: "Georgia"
+    state_code: "GA"
+    system_name: "PeachCourt (county Superior Courts) / Georgia Courts efile"
+    system_url: "https://www.peachcourt.com/"
+    notes: "Several Superior Courts use PeachCourt; family law is in Superior Court."
+    counties: []
+
+  - state: "Illinois"
+    state_code: "IL"
+    system_name: "re:SearchIL / county Clerk of the Circuit Court portals"
+    system_url: "https://research.illinoiscourts.gov/"
+    notes: "Cook County has its own portal at cookcountyclerkofcourt.org."
+    counties: []
+
+# TODO add more states as users supply portal URLs. The walkthrough auto-prompts the
+# user to paste a URL when their state is missing, and offers to append the entry.
