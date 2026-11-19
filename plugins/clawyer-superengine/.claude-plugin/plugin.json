@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "clawyer-superengine",
+  "description": "Runs a self-represented legal matter like a small law firm, in your own folder: guided setup that asks five plain questions, matter and evidence intake, a 15-reviewer council that checks every document from the other side or the court, a verification gate, and a premortem before anything goes out. Works for family, tax, and business or money disputes in any US state; its built-in doctrine was written for Mississippi family court and is labelled as an example everywhere else. Built on pro-se-firm v1.7.0 by Mic H. (MIT). Not a lawyer and not legal advice. Needs Claude Code Desktop; setup installs Python and the free document tools for you. 9 skills, 19 agents.",
+  "version": "0.1.0",
+  "author": {
+    "name": "REVXL"
+  },
+  "license": "MIT",
+  "keywords": [
+    "legal",
+    "pro-se",
+    "self-represented",
+    "court",
+    "evidence",
+    "contracts",
+    "family-law",
+    "tax-dispute",
+    "premortem",
+    "revxl"
+  ]
+}
