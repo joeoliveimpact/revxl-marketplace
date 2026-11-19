@@ -1,5 +1,10 @@
 # State-Law Resolver — establish the forum's controlling law on case load
 
+> **Read this first (Clawyer):** this file lists what to resolve for a **family** case, and its Mississippi
+> shortcut applies only to a Mississippi family case. For a tax, business or other matter, in Mississippi or
+> anywhere else, use the list in the pro-se-firm skill under "The state rule" and ignore the family items and
+> the shortcut below.
+
 The firm is **50-state**. No state is the default. On every case load, after the firm has the
 **state and county**, it resolves that forum's controlling law and writes a **state-law profile**
 into the case. That profile is what governs (see the controlling-law gate in `operating-doctrine.md`).

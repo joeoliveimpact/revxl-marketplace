@@ -16,7 +16,7 @@ or a tag: `[CONFIRMED]`, `[CLIENT-STATED]`, `[UNVERIFIED]`, `CONFIRM-BEFORE-CITI
 ## The state rule
 
 The law that applies is the law of the state in `firm.config.json`. Much of Clawyer's built-in reference
-material was written for Mississippi family court. Outside that state and that kind of case, a rule number,
+material was written for Mississippi family court. Outside that state, or in any case that is not a family case (a Mississippi business or tax matter included), a rule number,
 case name, deadline, fee or form from the reference files is an example of what to look up. It is never cited
 until the person's own state's version has been found in an official source.
 

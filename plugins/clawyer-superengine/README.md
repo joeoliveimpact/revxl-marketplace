@@ -14,12 +14,17 @@ _Demo placeholder. A walkthrough of a first setup lands here in a future release
 You open an empty folder, say "set me up", and answer five plain questions: your state, your county, your
 court if you know it, a name for the matter, and what kind of case it is. Clawyer writes your case files into
 that folder, installs the free tools it needs, and from then on works your matter the way a firm would. It
-reads every paper you receive, keeps a dated timeline, sends anything from the other side or the court
-through 15 reviewers who each check one thing (the math, the deadlines, the citations, what was slipped in,
-what was left out), verifies before anything is relied on, and red-teams anything before it leaves.
+reads every paper you receive, keeps a dated timeline, and checks every court case it cites against a free
+public database to catch made-up cases before they reach your papers. Court orders, filed papers, anything you are asked
+to sign and your own filings go through 15 reviewers who each check one thing (the math, the deadlines, the
+citations, what was slipped in, what was left out). In a family case every paper from the other side gets
+that review too. It verifies before anything is relied on, and red-teams anything before it leaves.
 
-Your facts stay in your folder. Nothing is filed, sent or signed without your yes. You never type a command:
-Claude runs every step and tells you in plain words what it is doing.
+Your case files are saved in your own folder, on your own computer. Clawyer does not upload them to a website
+or a REVXL server. To work on them, Claude reads them, and Claude is an online service: the text it reads is
+sent to Anthropic, the company that makes Claude, under your Claude account's own privacy terms. Looking up
+the law also means searching the web. Nothing is filed, sent or signed without your yes. You never type a
+command: Claude runs every step and tells you in plain words what it is doing.
 
 Clawyer is built on **pro-se-firm v1.7.0** by Mic H. (MIT license, see
 [skills/pro-se-firm/upstream/LICENSE](skills/pro-se-firm/upstream/LICENSE) and [NOTICE.md](NOTICE.md)), with
@@ -117,8 +122,10 @@ your case folder, and say "set me up".
 ## Dependencies
 
 - Claude Code Desktop (the Code tab of the Claude desktop app). Not for Cowork or plain Chat.
-- Python 3.10 or newer, Git, and a free reader for scanned documents (Tesseract). **Setup installs all three
-  for you** after you say yes once.
+- Python 3.9 or newer, a handful of free document libraries, Git, and a free reader for scanned pages
+  (Tesseract). **Setup checks for each one and installs what is missing for you**, with no admin password.
+  Your computer may show one or two of its own "allow this?" boxes along the way; setup tells you when to
+  expect one. If something cannot be installed, setup says exactly what will not work and carries on.
 - Optional: a NotebookLM research notebook of your own. Clawyer works without it.
 
 No keys to paste and no accounts to create.
@@ -136,8 +143,9 @@ No keys to paste and no accounts to create.
 
 - **The built-in doctrine was written for Mississippi family court.** The method (intake, timeline, council,
   verification, premortem) is general. Many reference files still cite Mississippi rules, and each one says so
-  at the top. Outside Mississippi, Clawyer treats those rules as examples of what to look up and cites nothing
-  until it has found your own state's version in an official source.
+  at the top. In any other state, and in a Mississippi case that is not a family case, Clawyer treats those
+  rules as examples of what to look up and cites nothing until it has found the rule for your state and your
+  kind of case in an official source.
 - **Fewer built-in references outside family law.** Tax and business matters run on the general method plus
   the breach, contract and premortem tools.
 - **Some original tooling is left out of this version**: about 80 scripts and all the multi-agent workflow
@@ -148,10 +156,17 @@ No keys to paste and no accounts to create.
 
 ## Privacy and failure reports
 
-Your case files never leave your computer through this plugin. If a step fails and Claude cannot fix it,
-Claude offers to send Joe at REVXL a short report. You see the exact text first and choose Send or Skip. A
-report holds the skill, the step and the error line. It never holds a name, a case number, a date, an amount
-or any text from your documents.
+Clawyer keeps your case files in your folder and does not upload them anywhere. What does leave your
+computer: the text Claude reads while it works (to Anthropic, as with any use of Claude), web searches for
+the law, citation lookups (only a citation such as "384 U.S. 436" goes to a public case-law site), and
+anything you choose to connect, such as a calendar or a cloud documents folder, which goes to that service.
+
+If a step fails and Claude cannot fix it, Claude offers to write a short report for Joe at REVXL. You see the
+exact text first and choose Send or Skip. Claude is told to put only the skill, the step and the error
+message in it, and never a name, a case number, a date, an amount or text from your documents. An error
+message can include the name of your case folder, so read the preview before you say Send. Sending needs a
+REVXL key on your computer, which most people will not have, and goes through a REVXL relay server. Without a key, the report is saved as a file in your case folder and Claude tells
+you where it is, so you can pass it on yourself.
 
 ## Changelog
 

@@ -25,6 +25,11 @@ Every piece of case work ends with all of these, or it is not done:
    invent a fact, and never carry one case's facts into another.
 2. **Every legal claim tagged.** `[VERIFIED - source]`, `CONFIRM-BEFORE-CITING` or `[UNVERIFIED - DO NOT FILE]`.
    An untagged rule, case, deadline or fee does not ship.
+   **Every court case in a draft passes the citation check** before the draft is called ready. Run
+   `python "${CLAUDE_PLUGIN_ROOT}/skills/pro-se-firm/scripts/cite_lookup.py" "<draft file>"` and fix or remove
+   anything that is not `FOUND`. `NO_NAME` (no case name beside the citation), `CANNOT_CHECK` (a Westlaw or
+   Lexis citation) and `UNCHECKED` (the lookup did not finish) are fails, not passes. A pass means the case
+   exists and is the one named. Reading the opinion to confirm it says what we claim is still on you.
 3. **The state rule applied** (below). Nothing from a Mississippi reference file is cited for another state.
 4. **The gate run before anything goes out.** The `custody-premortem` skill when the family-law pack is on,
    the `legal-premortem` skill otherwise. An open P0 or P1 blocks the send.
@@ -37,7 +42,9 @@ this skill again before continuing. Do not work from memory of it.
 ## Step 0 - load the case
 
 1. Read `firm.config.json` in the workspace root. If it is missing, stop and run the `clawyer-setup` skill.
-2. Note `case_type`, `packs`, `jurisdiction` (state, county, court, secondary) and `paths.matter_home`.
+2. Note `case_type`, `packs`, `jurisdiction` (state, county, court, secondary) and `paths.matter_home`. If
+   `court` is empty, working out the right court is an early task; when it is known, write it into
+   `firm.config.json` and `case-profile.md` yourself.
 3. Read `case-profile.md`. If it still says intake has not been run, run intake and write what you learn
    into it, a few questions at a time:
    - `family-law`: `references/intake.md`, and `references/cold-start.md` for someone new or overwhelmed.
@@ -57,10 +64,19 @@ this skill again before continuing. Do not work from memory of it.
 - Run every script yourself, with the workspace root as the working directory and the script's full path:
   for example `python "${CLAUDE_PLUGIN_ROOT}/skills/pro-se-firm/scripts/to_markdown.py" "<file>" "<output folder>"`.
   The person never types a command.
+- **A bare `python` is not reliable.** Setup saved the working interpreter in `.clawyer/.python`. Wherever a
+  Clawyer command starts with `python`, start it with that instead: Bash tool `"$(cat .clawyer/.python)"`,
+  PowerShell tool `& (Get-Content -Raw -Encoding UTF8 .clawyer\.python)`. If that file is missing, or a
+  script reports a missing library, run the `clawyer-setup` skill's Python and tools steps, then retry.
 - Scripts shipped in this version: `to_markdown.py` (any document to Markdown), `ocr_pdf.py` (scanned PDFs),
   `fetch_law.py` (read a statute or rule page verbatim), `scrub_check.py` and `scrub_fix.py` (punctuation gate
-  for filings), `spell_check.py`, `check_no_pii.py`, `build_filing_pdf.py`, and the case index
-  (`build_case_index.py`, `refresh_brain.py`, `ask_case.py`).
+  for filings), `spell_check.py`, `check_no_pii.py`, `build_filing_pdf.py` (its built-in caption is a Mississippi chancery court: always give it this matter's own court line), `cite_lookup.py` (confirms each
+  cited court case is real), and the case index (`build_case_index.py`, `refresh_brain.py`, `ask_case.py`).
+- **Outside sources** (case law, the court's own site, calendar, documents, email): what the person connected
+  or declined is in `firm.config.json` under `sources`. How to use each one, and the rules for it, are in
+  `${CLAUDE_PLUGIN_ROOT}/skills/clawyer-setup/references/connect-a-source.md`. When a deadline is confirmed
+  and the calendar is `connected`, offer to add it. When the court is first known and `court_site` is
+  `not-asked`, find the court's official self-help page.
 - A reference file may name a script that is not in the folder. Those were left out on purpose
   (`scripts/NOT-SHIPPED.md`). Do that step by hand and tell the person it was done by hand.
 - **Family-law pack files** (for example `albright-factors.md`, `custody-team.md`, `divorce-roadmap.md`,
@@ -79,10 +95,17 @@ The method here is general. Much of the **doctrine text is not**: it was written
 (chancery court, Albright, Armstrong, Ferguson, Rule 81, UCCR 8.05). The original firm is 50-state by design
 and treats Mississippi as a worked example. Apply that strictly:
 
-- If the state in `firm.config.json` is not Mississippi, a rule number, case name, deadline, fee or form in a
-  reference file is **an example of the kind of thing to look up**. Run `references/state-law-resolver.md`
-  for the person's state, write the result into `case-profile.md`, and cite only what you found in an official
-  source this session.
+- **This skill outranks every reference file, firm-layer file and agent text.** Where one of them says
+  something different about which law applies, which rows fire, or when the council runs, follow this skill.
+- If the state in `firm.config.json` is not Mississippi, **or the case is not a family case** (a Mississippi
+  tax or business matter counts), a rule number, case name, deadline, fee or form in a reference file is
+  **an example of the kind of thing to look up**. Resolve the law for this state and this kind of case (the
+  list below), write the result into `case-profile.md`, and cite only what you found in an official source
+  this session.
+- When you send work to a reviewer or helper agent, give it the state, the court and the kind of case from
+  `firm.config.json` in the request, along with the file to review.
+- One folder can hold more than one matter under `matters/`. `paths.matter_home` names the main one. When
+  the person is working on another, say which matter you are in and use that matter's folder.
 - Files that carry Mississippi material open with a "Jurisdiction note (Clawyer)" line. Take it seriously.
 - A `secondary` jurisdiction (for example `federal` for an IRS matter) is resolved the same way.
 - `references/state-law-resolver.md` lists what to resolve for a **family** case. For the other kinds, resolve
@@ -160,7 +183,7 @@ Tell the client what went wrong in plain words, and whether anything was charged
 2. Draft it. Keep the summary short. Put the summary, step and error line in single quotes, drop any
    apostrophe from them, and use no script names:
 
-`python "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin clawyer-superengine --plugin-version 0.1.0 --skill pro-se-firm --step '<step>' --error-line '<the error line>' --summary '<headline>' --body-file .clawyer/reports/report-body.md`
+`python "${CLAUDE_PLUGIN_ROOT}/scripts/report_to_joe.py" draft --plugin clawyer-superengine --plugin-version 0.1.1 --skill pro-se-firm --step '<step>' --error-line '<the error line>' --summary '<headline>' --body-file .clawyer/reports/report-body.md`
 
 3. Show the client the exact preview it prints (between the PREVIEW lines) and ask: "Send this to Joe, or skip?"
 4. Send, using the path after `DRAFT:`:

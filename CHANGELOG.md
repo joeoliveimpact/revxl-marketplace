@@ -4,6 +4,15 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.101] ... 2026-11-19
+
+### Changed
+- **clawyer-superengine v0.1.1** ... every court case Clawyer cites is now checked against a free public
+case-law database, so a made-up citation fails before it reaches a draft. Setup finds Python, installs it
+if missing, and installs the other free tools after one yes. A new step offers the court's own self-help
+page, calendar, documents and email, one at a time. Reviewer helpers now read the case's own state and
+kind of case first, and the README says plainly what stays on the computer and what is sent out.
+
 ## [0.1.100] ... 2026-11-19
 
 ### Added

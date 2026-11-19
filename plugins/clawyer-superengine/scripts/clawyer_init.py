@@ -83,7 +83,7 @@ def cmd_init(a) -> int:
     home = f"matters/{slug}"
     cfg = {
         "_comment": "Written by Clawyer setup. Names, places and case numbers live here and in case-profile.md, nowhere else.",
-        "clawyer_version": "0.1.0",
+        "clawyer_version": "0.1.1",
         "case_type": a.case_type,
         "packs": CASE_TYPES[a.case_type],
         "matter": {"name": a.matter, "cause_no": a.cause_no or "", "final_trial": a.trial_date or "", "issues_reserved": []},
@@ -131,6 +131,35 @@ def cmd_add_matter(a) -> int:
     dest = copy_matter(ws, slugify(a.name), a.name, log)
     log["matter_home"] = dest.relative_to(ws).as_posix()
     print(json.dumps(log, indent=2))
+    return 0
+
+
+SOURCES = ("case_law", "calendar", "documents", "email", "court_site")
+SOURCE_STATES = ("connected", "declined", "not-asked")
+
+
+def cmd_sources(a) -> int:
+    """Record which outside sources the person connected or declined, so nobody is asked twice."""
+    ws = workspace(a.workspace)
+    f = ws / "firm.config.json"
+    if not f.exists():
+        print("NOT SET UP: firm.config.json is missing here. Run the clawyer-setup skill first.")
+        return 2
+    cfg = json.loads(f.read_text(encoding="utf-8"))
+    cur = {s: "not-asked" for s in SOURCES}
+    cur.update(cfg.get("sources", {}))
+    for pair in a.set or []:
+        name, _, state = pair.partition("=")
+        if name not in SOURCES or state not in SOURCE_STATES:
+            print(f"BAD VALUE: {pair}. Use one of {', '.join(SOURCES)} = {', '.join(SOURCE_STATES)}.")
+            return 2
+        cur[name] = state
+    if a.court_site_url:
+        cur["court_site_url"] = a.court_site_url
+    if a.set or a.court_site_url:
+        cfg["sources"] = cur
+        f.write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps({"sources": cur}, indent=2))
     return 0
 
 
@@ -182,6 +211,13 @@ def selftest() -> int:
             assert cmd_add_matter(argparse.Namespace(workspace=str(ws), name="Maple Street lease")) == 0
             assert (ws / "matters/maple-street-lease/matter.md").exists()
             assert cmd_add_matter(argparse.Namespace(workspace=str(Path(td) / "empty"), name="x")) == 2
+            # sources: recorded once, unknown names refused, the rest of the config untouched
+            src = argparse.Namespace(workspace=str(ws), set=["calendar=declined"], court_site_url="")
+            assert cmd_sources(src) == 0
+            cfg = json.loads((ws / "firm.config.json").read_text(encoding="utf-8"))
+            assert cfg["sources"]["calendar"] == "declined" and cfg["sources"]["case_law"] == "not-asked"
+            assert cfg["jurisdiction"]["state"] == "Ohio"
+            assert cmd_sources(argparse.Namespace(workspace=str(ws), set=["fax=connected"], court_site_url="")) == 2
         finally:
             sys.stdout = old
             devnull.close()
@@ -209,6 +245,11 @@ def main() -> int:
     m.add_argument("--name", required=True)
     m.add_argument("--workspace", default="")
     m.set_defaults(fn=cmd_add_matter)
+    so = sub.add_parser("sources")
+    so.add_argument("--set", action="append", help="name=state, e.g. calendar=connected (repeatable)")
+    so.add_argument("--court-site-url", default="", help="the court's official self-help page, once found")
+    so.add_argument("--workspace", default="")
+    so.set_defaults(fn=cmd_sources)
     s = sub.add_parser("status")
     s.add_argument("--workspace", default="")
     s.set_defaults(fn=cmd_status)

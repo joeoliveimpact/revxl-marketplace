@@ -1,5 +1,38 @@
 # Changelog - clawyer-superengine
 
+## [0.1.1] - 2026-11-19
+
+### Added
+- A citation check. Every court case in a draft is looked up in a free public case-law database
+  (CourtListener's public citation pages, no account). A made-up citation, or a real citation attached to the
+  wrong case name, fails the check. So does a citation with no case name beside it, and a Westlaw or Lexis citation, until a person confirms it. It is a required step in the main skill, the citation reviewer and the
+  verification helper. It confirms a case exists and is the one named; it does not cover statutes or whether
+  the case says what the draft claims.
+- Setup finds Python and installs it if missing (per-user, no admin password), saves which interpreter works,
+  then checks for the document libraries, the scanned-page reader and Git and installs what is missing after
+  one yes. Each item reports done, needs one click from the person, or failed with what it costs them.
+- A connect-a-source step: the court's own self-help page, calendar for deadlines, a cloud documents folder
+  and email, offered one at a time and recorded so nobody is asked twice.
+- Setup can repair a damaged setup and correct a wrong state or kind of case.
+
+### Fixed
+- Reviewer and helper agents now read the matter's own state and kind of case first. Mississippi and
+  family-court rules in their text are examples, and three of them can now look rules up.
+- The state warning now also covers a Mississippi case that is not a family case.
+- The README no longer says case facts stay in the folder. It says what stays on the computer and what is
+  sent to Anthropic, to the web and to the citation site.
+- The README says a failure report is sent only with a REVXL key and is otherwise saved as a file.
+- The 15-reviewer promise is stated per kind of case.
+- State can no longer be left blank in setup, and an unsure kind of case becomes "other".
+
+### Removed
+- The original environment detector, replaced by `scripts/deps.py`.
+
+### Known limits
+- The Mac setup path and the Windows installs of the scanned-page reader and Git have not been run on a
+  real machine.
+- The connect-a-source step has not been tested with a real connector.
+
 ## [0.1.0] - 2026-11-19
 
 ### Added

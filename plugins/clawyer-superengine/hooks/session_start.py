@@ -52,6 +52,19 @@ def main():
             "written for Mississippi family court. Treat every rule number, case name, deadline, fee and form in the "
             "reference files as an example of what to look up. Cite nothing until that state's own version is found "
             "in an official source; tag the rest CONFIRM-BEFORE-CITING.")
+    elif cfg.get("case_type") != "family-law":
+        # Mississippi, but not a family case: the built-in doctrine is Mississippi FAMILY-court law, so it is
+        # still the wrong rulebook for this matter.
+        out.append(
+            "STATE RULE: this matter is in Mississippi but is not a family case. Clawyer's built-in doctrine is "
+            "Mississippi family-court law (chancery practice, Rule 81, UCCR 8.05, Albright, Armstrong, Ferguson). "
+            "None of it is this matter's law. Treat every rule, case, deadline, fee and form in the reference files "
+            "as an example of what to look up, and cite only what is found in an official source for this kind of "
+            "case and this court.")
+    else:
+        out.append(
+            "STATE RULE: Mississippi family case. The built-in doctrine fits this matter, but it is a starting "
+            "point: confirm each rule, deadline and fee against the current official source before relying on it.")
     if "family-law" in packs:
         out.append(f"PACK ON: family-law. Its references are in {PLUGIN / 'packs' / 'family-law' / 'references'}; "
                    "the custody-premortem skill is the gate before anything goes out.")
@@ -85,6 +98,12 @@ def main():
     out.append("")
     out.append("Facts come only from case-profile.md and the matter folder. Use the clawyer-superengine:pro-se-firm skill for case "
                "work. The person never types a command: run every script yourself.")
+    if (WS / ".clawyer" / ".python").exists():
+        out.append("PYTHON: wherever a Clawyer command starts with `python`, start it with the saved interpreter instead. "
+                   "Bash tool: \"$(cat .clawyer/.python)\"  PowerShell tool: & (Get-Content -Raw -Encoding UTF8 .clawyer\\.python)")
+    else:
+        out.append("PYTHON: no saved interpreter in .clawyer/.python. Run the clawyer-setup skill's find-Python step "
+                   "before running any Clawyer script.")
     print("\n".join(out))
 
 
