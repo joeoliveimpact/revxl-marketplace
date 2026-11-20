@@ -4,6 +4,13 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.102] ... 2026-11-20
+
+### Fixed
+- **clawyer-superengine v0.1.2** ... setup now installs its document libraries on a Mac with Homebrew's Python,
+and no longer reports freshly installed libraries as missing on Windows or Mac. Both were found by a new test
+that runs Clawyer's setup on a real Mac and a real Windows machine whenever Clawyer changes.
+
 ## [0.1.101] ... 2026-11-19
 
 ### Changed

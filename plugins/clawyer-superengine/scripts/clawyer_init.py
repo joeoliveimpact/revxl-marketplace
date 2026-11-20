@@ -83,7 +83,7 @@ def cmd_init(a) -> int:
     home = f"matters/{slug}"
     cfg = {
         "_comment": "Written by Clawyer setup. Names, places and case numbers live here and in case-profile.md, nowhere else.",
-        "clawyer_version": "0.1.1",
+        "clawyer_version": "0.1.2",
         "case_type": a.case_type,
         "packs": CASE_TYPES[a.case_type],
         "matter": {"name": a.matter, "cause_no": a.cause_no or "", "final_trial": a.trial_date or "", "issues_reserved": []},

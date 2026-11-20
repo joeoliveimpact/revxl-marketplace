@@ -1,5 +1,15 @@
 # Changelog - clawyer-superengine
 
+## [0.1.2] - 2026-11-20
+
+### Fixed
+- Setup now installs the document libraries on a Mac whose Python comes from Homebrew. Before, that Python
+  refused the install and setup never tried the second way, so nothing was installed.
+- On Windows and Mac, setup no longer reports freshly installed libraries as missing. They were installed
+  into the person's own folder, which the running check could not see until it looked there.
+
+Found by running setup on a real Mac and a real Windows machine for the first time.
+
 ## [0.1.1] - 2026-11-19
 
 ### Added
