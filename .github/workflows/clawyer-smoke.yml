@@ -1,0 +1,42 @@
+name: Clawyer smoke test (Mac + Windows)
+
+# Runs clawyer-superengine's setup path on a real macOS machine and a real Windows machine:
+# find Python, install the document tools, write a case folder, run the three hooks, check a citation.
+# The logic lives in .github/scripts/clawyer_smoke.py so it can also be run by hand
+# (`python .github/scripts/clawyer_smoke.py --no-install` on your own PC).
+#
+# Runs only when Clawyer or this test changes, or when started by hand from the Actions tab.
+# What it cannot prove is listed at the top of the script: read that before citing a green run.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "plugins/clawyer-superengine/**"
+      - ".github/workflows/clawyer-smoke.yml"
+      - ".github/scripts/clawyer_smoke.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Clawyer setup path on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      # No setup-python step on purpose: the test is whether Clawyer's own find-python
+      # copes with the Python the machine already has.
+      - name: Run the smoke test (macOS)
+        if: runner.os == 'macOS'
+        run: python3 .github/scripts/clawyer_smoke.py
+      - name: Run the smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: python .github/scripts/clawyer_smoke.py
