@@ -58,7 +58,10 @@ def run(cmd, timeout=900):
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout,
                            env={**os.environ, "PYTHONIOENCODING": "utf-8", "PIP_DISABLE_PIP_VERSION_CHECK": "1"})
-        tail = ((r.stderr or r.stdout or "").strip().splitlines() or [""])[-1][:300]
+        out = (r.stderr or r.stdout or "").strip()
+        tail = (out.splitlines() or [""])[-1][:300]
+        if "externally-managed-environment" in out:  # pip names this on its first line and ends on a hint
+            tail = "externally-managed-environment: " + tail
         return r.returncode == 0, tail
     except Exception as e:
         return False, f"{type(e).__name__}: {e}"[:300]
@@ -136,6 +139,11 @@ def install():
     for i in before:
         if i["kind"] == "tool" and i["status"] == "missing":
             notes[i["name"]] = install_tool(i["name"])
+    try:  # a per-user install creates its folder after this Python started, so it is not on the path yet
+        import site
+        site.addsitedir(site.getusersitepackages())
+    except Exception:
+        pass
     importlib.invalidate_caches()
     after = check()
     was_missing = {i["name"] for i in before if i["status"] == "missing"}
@@ -173,6 +181,8 @@ def selftest():
     ok, tail = run([sys.executable, "-c", "import sys; sys.exit(3)"])
     assert ok is False                                   # a failed command is reported, never raised
     assert run(["no-such-binary-clawyer"])[0] is False
+    ok, tail = run([sys.executable, "-c", "import sys; sys.stderr.write('error: externally-managed-environment\nhint: See PEP 668'); sys.exit(1)"])
+    assert ok is False and "externally-managed-environment" in tail, tail   # the retry reads this marker
     print("SELFTEST OK")
     return 0
 

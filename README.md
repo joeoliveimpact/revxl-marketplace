@@ -21,7 +21,7 @@ Each superengine is opinionated about audience, tone, and workflow, so it works 
 
 ## The catalog
 
-22 plugins. Versions are current as of catalog `0.1.101`.
+22 plugins. Versions are current as of catalog `0.1.102`.
 
 ### 📣 Marketing & Content
 
@@ -58,7 +58,7 @@ Each superengine is opinionated about audience, tone, and workflow, so it works 
 | [notebooklm-superengine](plugins/notebooklm-superengine/) | 0.5.0 | Drive NotebookLM from Claude: build notebooks, curate sources, ask, studio outputs. 8 skills. |
 | [course-crawler](plugins/course-crawler/) | 0.7.1 | Capture online course content into structured, searchable local knowledge. 5 skills. |
 | [duet-setup](plugins/duet-setup/) | 0.3.1 | Sets up Claude Duet from its main chat: a coordinator you name, channels that each do one kind of work with their own instructions and Rules, one routing map, a task tracker, and an optional link to Claude Code. 1 skill. |
-| [clawyer-superengine](plugins/clawyer-superengine/) | 0.1.1 | Runs a self-represented legal matter like a small law firm, in your own folder: setup that asks five plain questions and installs what your computer is missing, matter and evidence intake, a check of every cited court case against a free public database, a 15-reviewer council for court orders, filings and anything you are asked to sign, a verification gate, and a premortem before anything goes out. Family, tax, and business or money disputes in any US state; built-in doctrine is Mississippi family law, labelled as an example for any other state or kind of case. Built on pro-se-firm v1.7.0 by Mic H. (MIT). Not a lawyer and not legal advice. 9 skills, 19 agents. |
+| [clawyer-superengine](plugins/clawyer-superengine/) | 0.1.2 | Runs a self-represented legal matter like a small law firm, in your own folder: setup that asks five plain questions and installs what your computer is missing, matter and evidence intake, a check of every cited court case against a free public database, a 15-reviewer council for court orders, filings and anything you are asked to sign, a verification gate, and a premortem before anything goes out. Family, tax, and business or money disputes in any US state; built-in doctrine is Mississippi family law, labelled as an example for any other state or kind of case. Built on pro-se-firm v1.7.0 by Mic H. (MIT). Not a lawyer and not legal advice. 9 skills, 19 agents. |
 
 ---
 

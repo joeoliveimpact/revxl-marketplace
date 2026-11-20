@@ -7,7 +7,7 @@
     "email": "joe@engineforimpact.com"
   },
   "metadata": {
-    "version": "0.1.101"
+    "version": "0.1.102"
   },
   "plugins": [
     {
@@ -515,10 +515,10 @@
     },
     {
       "name": "clawyer-superengine",
-      "description": "v0.1.1 · Runs a self-represented legal matter like a small law firm, in your own folder: guided setup that asks five plain questions and installs what your computer is missing, matter and evidence intake, a check of every cited court case against a free public database, a 15-reviewer council for court orders, filings and anything you are asked to sign, a verification gate, and a premortem before anything goes out. Works for family, tax, and business or money disputes in any US state; its built-in doctrine was written for Mississippi family court and is labelled as an example for any other state or kind of case. Built on pro-se-firm v1.7.0 by Mic H. (MIT). Not a lawyer and not legal advice. Needs Claude Code Desktop. 9 skills, 19 agents.",
+      "description": "v0.1.2 · Runs a self-represented legal matter like a small law firm, in your own folder: guided setup that asks five plain questions and installs what your computer is missing, matter and evidence intake, a check of every cited court case against a free public database, a 15-reviewer council for court orders, filings and anything you are asked to sign, a verification gate, and a premortem before anything goes out. Works for family, tax, and business or money disputes in any US state; its built-in doctrine was written for Mississippi family court and is labelled as an example for any other state or kind of case. Built on pro-se-firm v1.7.0 by Mic H. (MIT). Not a lawyer and not legal advice. Needs Claude Code Desktop. 9 skills, 19 agents.",
       "source": "./plugins/clawyer-superengine",
       "category": "productivity",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "author": {
         "name": "Joe Olive",
         "email": "joe@engineforimpact.com"
