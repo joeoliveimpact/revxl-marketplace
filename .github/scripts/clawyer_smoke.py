@@ -43,6 +43,9 @@ def run(cmd, cwd=None, stdin="", env=None, timeout=900):
 def record(name, ok, detail="", required=True):
     RESULTS.append((required, bool(ok), name, detail.strip()[-600:]))
     print(f"{'PASS' if ok else ('FAIL' if required else 'INFO-FAIL')}  {name}\n      {detail.strip()[-600:]}", flush=True)
+    if not ok and os.environ.get("GITHUB_ACTIONS"):  # shows the failure on the PR page and in the checks API
+        flat = detail.strip()[-600:].replace("%", "%25").replace("\r", " ").replace("\n", " / ")
+        print(f"::{'error' if required else 'warning'} title={name.replace(',', ';').replace('::', ':')}::{flat}", flush=True)
 
 
 def tail(out, err):
