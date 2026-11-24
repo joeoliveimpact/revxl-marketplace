@@ -14,7 +14,7 @@
   if (typeof module === "object" && module.exports) module.exports = api;
   else {
     root.BoardClient = api;
-    var start = function () { api.controls = api.initControls(root); };
+    var start = function () { api.controls = api.initControls(root); api.layout = api.initLayout(root); };
     if (root.document.readyState === "loading") root.document.addEventListener("DOMContentLoaded", start);
     else start();
   }
@@ -64,6 +64,138 @@
       return apply();
     });
     return {ready: ready, apply: apply, mode: function () { return mode; }};
+  }
+
+  /* Resizable layout, the same on every board. A board marks its two-column grid with data-split (its CSS sizes
+     the right column with var(--split-right, <default>), so its own media queries still stack it on a narrow
+     window) and its main picture with data-board-video. The user drags the divider between the columns and the
+     bar under the picture; double-click either one to go back to the default. Sizes are kept per board in this
+     browser, as fractions of the window, so they still fit when the window changes size. */
+  var LAYOUT_CSS = "[data-split]{position:relative}" +
+    ".board-split-handle{position:absolute;top:0;bottom:0;width:14px;cursor:col-resize;touch-action:none;z-index:30;" +
+    "margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:none!important;" +
+    "box-shadow:none!important;min-height:0!important}" +   // boards style every main>div as a panel; the handle is not one
+    ".board-split-handle::before{display:none!important}" +
+    ".board-split-handle::after{content:'';position:absolute;top:0;bottom:0;left:6px;width:2px;border-radius:2px;" +
+    "background:rgba(255,255,255,.10);transition:background-color .2s}" +
+    ".board-split-handle:hover::after,.board-split-handle.drag::after,.board-split-handle:focus-visible::after{background:#FF5A3C}" +
+    "[data-board-video]{max-height:var(--board-video-h,56vh)!important;margin-left:auto!important;margin-right:auto!important}" +
+    "video[data-board-video]{width:auto!important;max-width:100%!important}" +
+    "video[data-board-video]:not([hidden]){display:block}" +   // inline by default, so margin:auto would not centre it
+    ".board-video-handle{height:14px;margin:2px auto 0;max-width:120px;cursor:row-resize;touch-action:none;position:relative}" +
+    ".board-video-handle::after{content:'';position:absolute;left:0;right:0;top:5px;height:4px;border-radius:4px;" +
+    "background:rgba(255,255,255,.22);transition:background-color .2s}" +
+    ".board-video-handle:hover::after,.board-video-handle.drag::after,.board-video-handle:focus-visible::after{background:#FF5A3C}";
+
+  function initLayout(env) {
+    var doc = env.document;
+    var board = env.location.pathname.split("/").filter(Boolean)[1] || "board";
+    var storeKey = "editor-layout:" + board, saved = {};
+    try { saved = JSON.parse(env.localStorage.getItem(storeKey) || "{}") || {}; } catch (_) { saved = {}; }
+    function keep() { try { env.localStorage.setItem(storeKey, JSON.stringify(saved)); } catch (_) { /* blocked */ } }
+    function redraw() { env.dispatchEvent(new env.Event("resize")); }   // boards redraw canvases and waves on resize
+    var split = doc.querySelector("[data-split]"), media = doc.querySelectorAll("[data-board-video]");
+    if (!split && !media.length) return null;
+    var style = doc.createElement("style");
+    style.id = "board-layout-css"; style.textContent = LAYOUT_CSS;
+    doc.head.appendChild(style);
+
+    /* drag(handle, onMove(event, start), onReset): shared pointer + keyboard plumbing for both handles */
+    function drag(handle, onMove, onReset, onKey) {
+      handle.tabIndex = 0;
+      handle.addEventListener("pointerdown", function (e) {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        handle.setPointerCapture(e.pointerId);
+        handle.classList.add("drag");
+        var start = {x: e.clientX, y: e.clientY, h: handle.previousElementSibling ?
+          handle.previousElementSibling.getBoundingClientRect().height : 0};
+        var move = function (ev) { onMove(ev, start); redraw(); };
+        var up = function () {
+          handle.classList.remove("drag");
+          handle.removeEventListener("pointermove", move); handle.removeEventListener("pointerup", up);
+          handle.removeEventListener("pointercancel", up);
+          keep();
+        };
+        handle.addEventListener("pointermove", move); handle.addEventListener("pointerup", up);
+        handle.addEventListener("pointercancel", up);
+      });
+      handle.addEventListener("dblclick", function () { onReset(); keep(); redraw(); });
+      handle.addEventListener("keydown", function (e) {
+        var step = {ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1}[e.key];
+        if (!step) return;
+        e.preventDefault(); e.stopPropagation();   // boards use the arrow keys for frames and cues
+        onKey(step * (e.shiftKey ? 80 : 24)); keep(); redraw();
+      });
+    }
+
+    var placeSplit = function () {};
+    if (split && split.children.length >= 2) {
+      var right = split.children[1];
+      var handle = doc.createElement("div");
+      handle.className = "board-split-handle";
+      handle.setAttribute("role", "separator"); handle.setAttribute("aria-orientation", "vertical");
+      handle.setAttribute("aria-label", "Drag to resize the picture and the list");
+      handle.title = "Drag to resize the two sides. Double-click for the default size.";
+      split.appendChild(handle);   // absolutely placed, so it never takes a grid cell
+      var box = function () {
+        var cs = env.getComputedStyle(split);
+        return {cols: cs.gridTemplateColumns.split(" ").length, gap: parseFloat(cs.columnGap) || 0,
+                width: split.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)};
+      };
+      var setRight = function (px) {
+        var b = box(), most = Math.max(280, b.width - b.gap - 320);   // 280 px is the least either side keeps
+        px = Math.round(Math.min(most, Math.max(280, px)));
+        split.style.setProperty("--split-right", px + "px");
+        saved.right = px / b.width;
+      };
+      placeSplit = function () {
+        var b = box();
+        handle.hidden = b.cols < 2;   // the board's own narrow layout stacks the columns: no divider then
+        if (handle.hidden) return;
+        if (saved.right) {
+          var keepFrac = saved.right;
+          setRight(saved.right * b.width);
+          saved.right = keepFrac;   // a clamp on a small window never overwrites the chosen size
+        }
+        handle.style.left = (right.offsetLeft - b.gap / 2 - 7) + "px";
+      };
+      drag(handle, function (ev) {
+        setRight(right.getBoundingClientRect().right - ev.clientX - box().gap / 2);
+        placeSplit();
+      }, function () {
+        delete saved.right; split.style.removeProperty("--split-right"); placeSplit();
+      }, function (d) {
+        setRight(right.getBoundingClientRect().width - d); placeSplit();
+      });
+    }
+
+    Array.prototype.forEach.call(media, function (el) {
+      var bar = doc.createElement("div");
+      bar.className = "board-video-handle";
+      bar.setAttribute("role", "separator"); bar.setAttribute("aria-orientation", "horizontal");
+      bar.setAttribute("aria-label", "Drag to resize the picture");
+      bar.title = "Drag to make the picture bigger or smaller. Double-click for the default size.";
+      el.insertAdjacentElement("afterend", bar);
+      var setH = function (px) {
+        var vh = Math.min(92, Math.max(20, px / env.innerHeight * 100));
+        el.style.setProperty("--board-video-h", vh.toFixed(1) + "vh");
+        saved.video = +vh.toFixed(1);
+      };
+      if (saved.video) el.style.setProperty("--board-video-h", saved.video + "vh");
+      drag(bar, function (ev, start) {
+        setH(start.h + ev.clientY - start.y); placeSplit();
+      }, function () {
+        delete saved.video; el.style.removeProperty("--board-video-h"); placeSplit();
+      }, function (d) {
+        setH(el.getBoundingClientRect().height + d); placeSplit();
+      });
+    });
+
+    env.addEventListener("resize", placeSplit);
+    if (env.ResizeObserver && split) new env.ResizeObserver(placeSplit).observe(split);
+    placeSplit();
+    return {place: placeSplit};
   }
 
   /* The paste-into-Claude line. Matches the editor-doctor router line ("start / restart my editor boards"). */
@@ -180,5 +312,5 @@
     bar.querySelector("textarea").value = text;   // always the latest unsaved state
   }
 
-  return {create: create, bannerText: bannerText, mergeCues: mergeCues, initControls: initControls};
+  return {create: create, bannerText: bannerText, mergeCues: mergeCues, initControls: initControls, initLayout: initLayout};
 });

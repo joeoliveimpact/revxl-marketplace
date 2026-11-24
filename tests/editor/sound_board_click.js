@@ -14,6 +14,7 @@
 //   {do: "fetchState"}            push /videos/<reel>/sound-board.state.json (null on 404) onto reads
 //   {do: "eval", js}              evaluate the expression js in the current frame, push its value onto reads
 //   {do: "waitTrue", js}          wait until the expression js is truthy in the current frame
+//   {do: "drag", sel, dx, dy}     press the mouse near the top of sel (page frame only), move by dx/dy, release
 // Prints {reads, errors, dialogs} as JSON. On a timeout or error: also {error, last} and exit code 1.
 "use strict";
 const fs = require("fs");
@@ -116,6 +117,11 @@ function readBoard() {
         }));
       } else if (a.do === "eval") {
         out.reads.push(await ctx.evaluate(a.js));
+      } else if (a.do === "drag") {
+        const box = await (await ctx.$(a.sel)).boundingBox();
+        const x = box.x + box.width / 2, y = box.y + Math.min(box.height, 100) / 2;   // the divider runs the page's height
+        await page.mouse.move(x, y); await page.mouse.down();
+        await page.mouse.move(x + (a.dx || 0), y + (a.dy || 0), {steps: 6}); await page.mouse.up();
       } else if (a.do === "waitTrue") {
         await ctx.waitForFunction(a.js, {polling: 100});
       } else {

@@ -3,7 +3,7 @@
   EDITOR_SE_HOME=<state> python -X utf8 -I tests/editor/sound_board_test.py [--case <name>]
 
 <state> is an installed editor state folder (node, chrome-headless-shell, puppeteer-core, ffmpeg); it is only read.
-Cases: send, reload, reject_all, reset, writes_guard, tips, hub_tab, music, beat_sync, voice_only (default: all). Each case builds its own reel
+Cases: send, reload, reject_all, reset, writes_guard, tips, hub_tab, music, beat_sync, voice_only, layout (default: all). Each case builds its own reel
 by hand (config.json, waveforms.json, a tiny mp4) and opens its own browser, so any one can run alone.
 Prints one "✓ <case>" / "✗ <case>: <why>" line per case, then "N passed, M failed". Exit 0 only when all pass.
 """
@@ -199,7 +199,7 @@ def picture_case():
 
 def main():
     ensure_utf8_output()
-    names = ["send", "reload", "reject_all", "reset", "writes_guard", "tips", "hub_tab", "music", "beat_sync", "carve", "voice_only", "capped", "preview"]
+    names = ["send", "reload", "reject_all", "reset", "writes_guard", "tips", "hub_tab", "music", "beat_sync", "carve", "voice_only", "capped", "preview", "layout"]
     ap = argparse.ArgumentParser(description="Sound Board done-test")
     ap.add_argument("--case", choices=names + ["all", "picture"], default="all")
     pick = ap.parse_args().case
@@ -667,7 +667,27 @@ def main():
                         {"skipped": True, "gain": 1, "capped": False}], [False, False, False]],
              f"silent library row must remain in the live plan with its raw gain and no cap: {quiet}")
 
-    fns = {"preview": ("preview: stale config yields to previews newer than cut and completed Motion lock; config stays unchanged", c_preview),
+    def c_layout():
+        reel("layout-reel")
+        # the picture's size cap (max-height): the test mp4 has no picture headless Chrome can draw
+        size = {"do": "eval", "js": "[Math.round(document.querySelector('.wrap').children[1].getBoundingClientRect().width),"
+                                    " Math.round(parseFloat(getComputedStyle(document.getElementById('v')).maxHeight))]"}
+        r = browse("layout-reel", [{"do": "goto"}, size,
+            {"do": "drag", "sel": ".board-split-handle", "dx": -100, "dy": 0},
+            {"do": "drag", "sel": ".board-video-handle", "dx": 0, "dy": -60}, size, {"do": "goto"}, size,
+            {"do": "eval", "js": "!!(document.getElementById('keepall').compareDocumentPosition(document.getElementById('cues'))"
+                                 " & Node.DOCUMENT_POSITION_FOLLOWING)"},
+            {"do": "eval", "js": "[...document.querySelectorAll('#cuebody tr.cuerow')].map(tr =>"
+                                 " tr.querySelectorAll('details.advanced-controls').length)"}])["reads"]
+        (w0, h0), (w1, h1), (w2, h2), top, folds = r
+        need(abs(w1 - w0 - 100) <= 3, f"dragging the divider 100 px left must widen the cue list by 100 px: {w0} -> {w1}")
+        need(h1 < h0, f"dragging the picture bar up must lower the picture's size cap: {h0} -> {h1}")
+        need(abs(w2 - w1) <= 3 and abs(h2 - h1) <= 3, f"sizes must survive a reload: {(w1, h1)} -> {(w2, h2)}")
+        need(top, "keep all / reject all / reset must sit above the cue list")
+        need(folds == [1] * len(CUES), f"every cue must have exactly one Advanced fold: {folds}")
+
+    fns = {"layout": ("layout: divider and picture bar resize, sizes survive reload, list buttons on top, one fold per cue", c_layout),
+           "preview": ("preview: stale config yields to previews newer than cut and completed Motion lock; config stays unchanged", c_preview),
            "capped": ("capped: clean ceiling, hand slider and toggle survive Send and reload", c_capped),
            "send": ("send: decide one cue, Send writes sound-selection.json with every undecided cue", c_send),
            "voice_only": ("voice_only: no config opens a plain empty state without raw errors", c_voice_only),

@@ -15,7 +15,7 @@ button.send{background:var(--acc);border-color:var(--acc);color:#fff;font-weight
 button.on{background:var(--ink);color:#111;border-color:var(--ink)}
 button.b.on{background:var(--b);border-color:var(--b);color:#08131c}
 button:disabled{opacity:.4;cursor:default}
-main{display:grid;grid-template-columns:1fr 360px;gap:14px;padding:14px 16px;align-items:start}
+main{display:grid;grid-template-columns:minmax(0,1fr) var(--split-right,360px);gap:14px;padding:14px 16px;align-items:start}
 canvas#gl{width:100%;display:block;background:#000;border-radius:6px}
 .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0}
 .bar .k{font-size:12px;color:var(--mute)}
@@ -125,9 +125,9 @@ pre{color:var(--et-ink2)!important;border-top:1px solid var(--et-hair)!important
  <div class="send-status"><button type="button" id="send" class="send" disabled>send to Claude <small data-loading>Loading...</small></button>
  <span id="saved" role="status" aria-live="polite" style="color:var(--ok)"></span></div> <span id="dirty" class="pend" hidden>changes not sent</span>
 </header>
-<main>
+<main data-split>
  <div>
-  <canvas id="gl"></canvas>
+  <canvas id="gl" data-board-video></canvas>
   <div class="bar" id="playbar" hidden>
    <button id="play">play</button>
    <input id="seek" type="range" min="0" max="1" step="0.001" value="0" style="flex:1">
@@ -246,8 +246,10 @@ function initGL(){
 }
 function srcEl(){ return S.frame==='video' ? $('#v') : faceSrcEl; }
 function resize(el){
-  const cv=$('#gl'), w=Math.max(320,Math.round(cv.clientWidth));
-  const iw=el.videoWidth||el.naturalWidth||16, ih=el.videoHeight||el.naturalHeight||9, h=Math.round(w*ih/iw);
+  const cv=$('#gl'), iw=el.videoWidth||el.naturalWidth||16, ih=el.videoHeight||el.naturalHeight||9;
+  const maxH=parseFloat(getComputedStyle(cv).maxHeight);   // the picture height the user dragged (board-client.js)
+  if(maxH>0) cv.style.maxWidth=Math.floor(maxH*iw/ih)+'px';
+  const w=Math.round(cv.clientWidth)||320, h=Math.round(w*ih/iw);
   if(cv.width!==w||cv.height!==h){ cv.width=w; cv.height=h; cv.style.height=h+'px'; }
 }
 function draw(){

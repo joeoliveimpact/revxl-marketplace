@@ -218,7 +218,7 @@ input[type=range]{accent-color:var(--et-ink)}
 .wavebox canvas{border:1px solid var(--et-hair)!important;border-radius:12px!important;background:rgba(255,255,255,.03)!important}
 #wvoice{filter:grayscale(1) brightness(1.5)}   /* voice wave is drawn warm-grey in JS; neutral here so the bed stays the one colour */
 /* the cue table needs ~620px; the old 520px column overflowed the page (it did before this pass too) */
-@media (min-width:1001px){.wrap{grid-template-columns:minmax(0,1fr) min(720px,62vw)}}
+@media (min-width:1001px){.wrap{grid-template-columns:minmax(0,1fr) var(--split-right,min(720px,62vw))}}
 .panel:has(#cues){overflow-x:auto}
 /* proposed cues: rows as tiles */
 #cues{border-collapse:separate;border-spacing:0 8px;margin-top:-8px;font-size:13px}
@@ -283,6 +283,33 @@ textarea{border-radius:12px!important;font-family:var(--et-mono)!important}
 #savest.pending::before{background:var(--et-mute);box-shadow:none}
 .advanced-controls{border:1px solid var(--et-hair);border-radius:8px;padding:8px;margin:8px 0;color:var(--et-ink)}
 .advanced-controls>summary{cursor:pointer;font-weight:600}
+/* 11.24.26 cue cards: each cue is one grid card (beat | sound | volume | actions) and its single Advanced fold
+   opens as a full-width strip under that row, so opening it never squeezes the beat text into a narrow column */
+.cuetools{margin:0 0 10px!important}
+#cues,#cues thead,#cues tbody{display:block}
+#cues{margin-top:0}
+#cues tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) 168px 132px;column-gap:10px;align-items:start}
+#cues thead tr{padding:0 12px 0 14px}
+#cues thead th{width:auto!important;padding:0 0 6px!important}
+#cues thead th:nth-child(2){display:none}
+#cuebody tr.cuerow{margin:0 0 8px;padding:12px 12px 10px 14px;border:1px solid var(--et-hair);border-radius:14px;background:rgba(255,255,255,.025)!important}
+#cuebody tr.cuerow > td{padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;min-width:0}
+#cuebody tr.cuerow > td:nth-child(2){grid-column:1/-1;grid-row:2}
+#cuebody tr.cuerow:hover{background:rgba(255,255,255,.04)!important}
+#cuebody tr.cuerow.keep{box-shadow:inset 3px 0 0 var(--green)}
+#cuebody tr.cuerow.playing{background:rgba(255,90,60,.08)!important}
+#cuebody tr.cuerow.focus{background:#1B1B1F!important;border-color:rgba(255,90,60,.55)}
+#cuebody .advanced-controls{margin:10px 0 0;padding:6px 10px 8px}
+#cuebody .advanced-controls > *{margin:6px 8px 0 0!important;vertical-align:middle}
+#cuebody .advanced-controls > summary{margin:0!important}
+#cuebody .advanced-controls > div:not(.ext),#cuebody tr.cuerow.focus .advanced-controls > div{display:inline-block}
+/* a narrow list (dragged small): two columns, beat + sound over volume + actions */
+.panel:has(#cues){container-type:inline-size}
+@container (max-width:560px){
+  #cues thead{display:none}
+  #cues tr{grid-template-columns:minmax(0,1fr) minmax(0,1fr);row-gap:10px}
+  #cuebody tr.cuerow > td:nth-child(2){grid-row:3}
+}
 </style>
 <script id="editor-theme-js">document.addEventListener("pointermove",function(e){var t=e.target.closest&&e.target.closest(".panel,.tile");if(!t)return;var b=t.getBoundingClientRect();t.style.setProperty("--mx",(e.clientX-b.left)+"px");t.style.setProperty("--my",(e.clientY-b.top)+"px");},{passive:true});</script>
 </head>
@@ -299,12 +326,12 @@ textarea{border-radius:12px!important;font-family:var(--et-mono)!important}
   <span id="sendmsg"></span>
 </div>
 
-<div class="wrap">
+<div class="wrap" data-split>
 
   <!-- ============ LEFT: picture + transport ============ -->
   <div class="leftcol">
     <div class="panel">
-      <div class="stage"><video id="v" preload="auto" playsinline></video></div>
+      <div class="stage"><video id="v" preload="auto" playsinline data-board-video></video></div>
 
       <div class="wavelab" style="margin-top:10px"><span>sound effects</span></div>
       <div class="tl" id="tl" style="margin-top:0"><div class="ph" id="ph"></div></div>
@@ -436,7 +463,12 @@ textarea{border-radius:12px!important;font-family:var(--et-mono)!important}
   <div>
     <div class="panel">
       <h2>proposed cues</h2>
-      <label class="flexlbl"><input type="checkbox" id="autolevel" checked> Match effect levels</label>
+      <div class="row cuetools">
+        <label class="flexlbl"><input type="checkbox" id="autolevel" checked> Match effect levels</label>
+        <button id="keepall" class="mini">keep all</button>
+        <button id="rejall" class="mini">reject all</button>
+        <button id="reset" class="mini" title="back to the proposed cues and bed: clears every decision">reset</button>
+      </div>
       <table id="cues">
         <thead><tr>
           <th style="width:132px">beat</th>
@@ -447,11 +479,6 @@ textarea{border-radius:12px!important;font-family:var(--et-mono)!important}
         </tr></thead>
         <tbody id="cuebody"></tbody>
       </table>
-      <div class="row">
-        <button id="keepall" class="mini">keep all</button>
-        <button id="rejall" class="mini">reject all</button>
-        <button id="reset" class="mini" title="back to the proposed cues and bed: clears every decision">reset</button>
-      </div>
     </div>
 
     <div class="panel">
@@ -901,14 +928,12 @@ function renderCues(){
     };
     td3.appendChild(sel);
     var row = libRow(c.pick);
-    if(row){
-      var peakDetails = document.createElement("details"); peakDetails.className = "advanced-controls";
-      peakDetails.innerHTML = "<summary>Advanced controls</summary>";
+    if(row){   /* the peak readout lives in the cue's one Advanced fold */
       var pk = document.createElement("div");
       pk.className = "pk" + (row.peak_dbfs != null && row.peak_dbfs < -6 ? " bad" : "");
       pk.textContent = "peak " + row.peak_dbfs + " dBFS"
         + (row.peak_dbfs != null && row.peak_dbfs < -6 ? "  too quiet" : "");
-      peakDetails.appendChild(pk); td3.appendChild(peakDetails);
+      advanced.appendChild(pk);
     }
     tipsFor(c).forEach(function(t){
       var d = document.createElement("div"); d.className = "tip"; d.textContent = t; td3.appendChild(d);
@@ -937,11 +962,9 @@ function renderCues(){
     gl.textContent = (lev.gain > 0 ? "+" : "") + lev.gain + " dB";
     var cap = document.createElement("span"); cap.className = "pk capped"; cap.textContent = "capped";
     cap.title = "at its loudest clean level; louder would clip"; cap.hidden = !lev.capped;
-    var gainDetails = document.createElement("details"); gainDetails.className = "advanced-controls";
-    gainDetails.innerHTML = "<summary>Advanced controls</summary>";
-    gainDetails.appendChild(gl);
     td4.appendChild(gr);
-    td4.appendChild(c.state === "keep" && libRow(c.pick) && Object.prototype.hasOwnProperty.call(libRow(c.pick), "max_m_lufs") ? gl : gainDetails);
+    if(c.state === "keep" && libRow(c.pick) && Object.prototype.hasOwnProperty.call(libRow(c.pick), "max_m_lufs")) td4.appendChild(gl);
+    else { var gw = document.createElement("div"); gw.className = "pk"; gw.append("volume ", gl); advanced.appendChild(gw); }
     td4.appendChild(cap);
 
     /* end behavior: hard cut at a length, or fade the tail */

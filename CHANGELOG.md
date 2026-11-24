@@ -4,6 +4,14 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.103] ... 2026-11-24
+
+### Changed
+- **editor-superengine v0.2.4** ... the Sound, Tweak and Grade Boards get a draggable divider between the picture
+and the list, and the picture loads at a size that fits the window with a bar to drag it bigger or smaller; each
+board remembers its sizes. On the Sound Board, keep all / reject all / reset move to the top of the cue list, and
+opening a cue's Advanced controls adds one tidy strip under it instead of squeezing the row.
+
 ## [0.1.102] ... 2026-11-20
 
 ### Fixed

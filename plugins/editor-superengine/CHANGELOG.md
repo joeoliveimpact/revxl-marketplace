@@ -4,6 +4,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.4] — 2026-11-24
+
+### Changed
+- **Board layout**: the Sound Board, Tweak Board and Grade Board have a divider between the
+  picture and the list. Drag it to give either side more room; double-click it to go back to
+  the default. The picture loads at a size that fits the window, and a bar under it (on these
+  boards and the Sketches rough cut) drags it bigger or smaller. Each board remembers its sizes
+  in this browser.
+- **Sound Board**: "keep all", "reject all" and "reset" sit at the top of the cue list, next to
+  "Match effect levels". Each cue is one card with a single "Advanced controls" strip under it
+  (time, nudges, length, peak and level), so opening it no longer squeezes the beat text into a
+  narrow column. A narrow list stacks each card in two columns.
+
 ## [0.2.3] — 2026-11-17
 
 ### Added
