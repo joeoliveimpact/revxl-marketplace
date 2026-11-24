@@ -13,6 +13,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[1] / "reel-sound-pass/scripts"))
 sys.path.insert(0, str(HERE.parents[1] / "_shared"))
 from win_encoding import ensure_utf8_output
+import gpu
 
 
 def main():
@@ -44,7 +45,7 @@ def main():
         return 2
     if length <= 0:
         raise ValueError("the recordings have no shared time after matching")
-    enc = ["-c:v", "libx264", "-preset", "fast", "-crf", "16", "-pix_fmt", "yuv420p"]
+    enc = [*gpu.h264(16, "fast"), "-pix_fmt", "yuv420p"]
     subprocess.run([_media.ffmpeg(), "-v", "error", "-y", "-ss", "%.3f" % t_cam0, "-i", a.video,
                     "-ss", "%.3f" % t_mic0, "-i", a.audio, "-t", "%.3f" % length,
                     "-map", "0:v:0", "-map", "1:a:0", *enc, "-c:a", "aac", "-b:a", "256k", "-ar", "48000",

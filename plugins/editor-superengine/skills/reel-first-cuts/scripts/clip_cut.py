@@ -20,6 +20,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[1] / "_shared"))
 from win_encoding import ensure_utf8_output
 import runtime as rt
+import gpu
 
 
 def load(path):
@@ -108,11 +109,11 @@ def main(argv=None):
         for name, folder, t0, t1, ws in plans:
             folder.mkdir(parents=True, exist_ok=False)
             subprocess.run([rt.tool("ffmpeg"), "-nostdin", "-v", "error", "-n", "-ss", f"{t0:.3f}", "-i", a.video,
-                            "-t", f"{t1 - t0:.3f}", "-c:v", "libx264", "-preset", "fast", "-crf", "16",
+                            "-t", f"{t1 - t0:.3f}", *gpu.h264(16, "fast"),
                             "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", str(folder / "source.mp4")], check=True)
             if a.also:
                 subprocess.run([rt.tool("ffmpeg"), "-nostdin", "-v", "error", "-n", "-ss", f"{t0:.3f}", "-i", a.also,
-                                "-t", f"{t1 - t0:.3f}", "-an", "-c:v", "libx264", "-preset", "fast", "-crf", "18",
+                                "-t", f"{t1 - t0:.3f}", "-an", *gpu.h264(18, "fast"),
                                 "-pix_fmt", "yuv420p", str(folder / "screen.mp4")], check=True)
             re_t = [dict(i=k, text=w["text"], start=round(w["start"] - t0, 3), end=round(w["end"] - t0, 3))
                     for k, w in enumerate(ws)]

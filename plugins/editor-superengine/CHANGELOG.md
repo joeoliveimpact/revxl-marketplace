@@ -4,6 +4,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.4] — 2026-11-24
+
+### Added
+- **NVIDIA graphics card speed-up** (Windows): when the setup finds an NVIDIA card, it uses it for three
+  things, and every other computer runs exactly as before.
+  - **Cutouts**: the cutout engine gets its graphics card build (CUDA 13.0, pinned by hash). A 120-frame cutout
+    went from 93 s to 28 s on an RTX 4060 laptop. It needs driver 580 or newer, a GeForce 16/20 series or newer
+    card and 6 GB free. If the build won't install or run, the processor build is put back and setup carries on.
+  - **Video encodes**: masters, scrubs, grades, previews and in-between files use the card's encoder (NVENC)
+    after a one-frame test. Quality was matched by measurement: every setting equals or beats the old one on
+    SSIM and PSNR (master: 0.99344 vs 0.99324), about 3.5x faster. If the test fails, the old encoder runs
+    with exactly the old settings.
+  - **Motion renders**: Windows' graphics setting for the render browser is set to the faster card. A setting
+    someone already made is never changed.
+- The doctor shows one line saying what the card speeds up. `--gpu off` turns all three off and puts the
+  processor build back; `--gpu on` turns them on again. How to undo each part: `editor-doctor`
+  `references/doctor-details.md`, "GPU variant".
+
 ## [0.2.3] — 2026-11-17
 
 ### Added

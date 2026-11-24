@@ -21,6 +21,7 @@ import scene_fill
 
 compose, scene_check, rt = sr.compose, sr.compose.scene_check, sr.rt
 from heavy_job import heavy_job, HeavyJobError
+import gpu
 # Per render pass; the build lane replaces this rate after measuring a full run.
 SECONDS_PER_SCENE_SECOND = 5  # measured 11.16.26: 188 s for one 4.2 s scene, 11 passes (~4.1); rounded up
 
@@ -283,7 +284,7 @@ def build_media(reel, entry, work):
         filters += "scale=720:1280:flags=lanczos,setsar=1[out]"
         run_media(["-ss", str(entry["start_s"]), "-i", master, "-i", mov, "-filter_complex", filters,
                    "-map", "[out]", "-t", duration, "-r", compose.fpsmod.parse_fps(str(rate)),
-                   "-frames:v", str(beat["end_f"] - beat["start_f"]), "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                   "-frames:v", str(beat["end_f"] - beat["start_f"]), "-an", *gpu.h264(23, "medium"), "-pix_fmt", "yuv420p",
                    "-movflags", "+faststart", review / (sid + "-loop.mp4")])
     finally:
         sr.kill_warm()

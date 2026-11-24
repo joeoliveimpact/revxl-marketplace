@@ -30,6 +30,7 @@ HERE = Path(__file__).resolve().parent
 sys.path[:0] = [str(HERE), str(HERE.parents[1] / "_shared")]   # -I leaves the script folder off the path
 from win_encoding import ensure_utf8_output  # noqa: E402
 import runtime as rt  # noqa: E402
+import gpu  # noqa: E402
 
 IMAGES = {".png", ".jpg", ".jpeg"}
 
@@ -85,7 +86,7 @@ def apply(src, cube, out, ss=None, seconds=None):
     if out.suffix.lower() in IMAGES:
         cmd += ["-frames:v", "1", "-update", "1"]
     else:
-        cmd += ["-c:v", "libx264", "-crf", "14", "-preset", "slow", "-pix_fmt", "yuv420p", "-c:a", "copy"]
+        cmd += [*gpu.h264(14, "slow"), "-pix_fmt", "yuv420p", "-c:a", "copy"]
     t0 = time.time()
     run(cmd + [str(out)], 7200)
     return time.time() - t0

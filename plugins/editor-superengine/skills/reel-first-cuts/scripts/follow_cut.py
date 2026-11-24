@@ -12,6 +12,7 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parents[1] / "_shared"))
 from win_encoding import ensure_utf8_output
 import runtime as rt
+import gpu
 from render import count_frames, joined_tail, video_cut
 
 
@@ -37,8 +38,7 @@ def main():
     graph.parent.mkdir(parents=True, exist_ok=True)
     graph.write_bytes("\n".join(parts).encode("utf-8"))
     subprocess.run([rt.tool("ffmpeg"), "-v", "error", "-y", "-i", a.video, "-/filter_complex", str(graph),
-                    "-map", "[v]", "-an", "-r", str(fps), "-c:v", "libx264", "-preset", "fast",
-                    "-crf", "18", "-pix_fmt", "yuv420p", a.out], check=True, capture_output=True)
+                    "-map", "[v]", "-an", "-r", str(fps), *gpu.h264(18, "fast"), "-pix_fmt", "yuv420p", a.out], check=True, capture_output=True)
     frames = count_frames(a.out)
     if frames != segs[-1]["out_out_f"]:
         raise ValueError("the screen cut has %d frames but cuts.json says %d" % (frames, segs[-1]["out_out_f"]))

@@ -18,6 +18,7 @@ sys.path.insert(0, str(SKILLS / "_shared"))
 sys.path.insert(0, str(SKILLS / "_shared" / "checks"))
 sys.path.insert(0, str(SKILLS / "reel-canvas-build" / "scripts"))
 import runtime as rt
+import gpu
 import footage_check
 import cutout
 import fps
@@ -159,8 +160,8 @@ def ingest(reel, ai=None, job_id=None, request_sha256=None):
                 result = subprocess.run([str(ffmpeg), "-v", "error", "-y",
                                          *(["-loop", "1", "-framerate", str(rate)] if still else []),
                                          "-i", str(src), "-map", "0:v:0", "-an",
-                                         "-sn", "-dn", "-vf", ",".join(filters), "-fps_mode", "cfr", "-c:v", "libx264",
-                                         "-preset", "fast", "-crf", "8", "-pix_fmt", "yuv420p", *cutout.TAGS,
+                                         "-sn", "-dn", "-vf", ",".join(filters), "-fps_mode", "cfr", *gpu.h264(8, "fast"),
+                                         "-pix_fmt", "yuv420p", *cutout.TAGS,
                                          *(["-frames:v", str(frames)] if still else []),
                                          str(partial)], capture_output=True, env=rt.python_env())
                 if result.returncode:

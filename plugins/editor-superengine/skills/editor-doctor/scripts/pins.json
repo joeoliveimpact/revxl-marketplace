@@ -195,5 +195,24 @@
    "sha256": "01eb6a29a5c4d8edb30b56adad9bb3a2a0535338e480724a213e0acfd2d1c73c",
    "dest": "hyperframes-home/.cache/hyperframes/background-removal/models/u2net_human_seg.onnx"
   }
+ },
+ "torch_cuda": {
+  "_note": "GPU variant (0.2.4): on Windows with an NVIDIA card (driver >= 580, Turing or newer, >= 6 GB free) torch + torchvision are swapped for these CUDA 13.0 wheels after the lock installs. sha256 from https://download.pytorch.org/whl/cu130/ (read 11.23.26). Same Requires-Dist as the CPU wheels on Windows, so they install with --no-deps. Any failure puts the lock's own CPU wheels back.",
+  "cuda": "13.0",
+  "min_driver": 580,
+  "min_compute": 7.5,
+  "min_free_gb": 6,
+  "win-x64": {
+   "torch": {
+    "version": "2.12.0+cu130",
+    "url": "https://download-r2.pytorch.org/whl/cu130/torch-2.12.0%2Bcu130-cp312-cp312-win_amd64.whl",
+    "sha256": "24e75a0c3ea4243067d7560955f2eef6466e9365de7dd4a3a4b8693c9ac4bccf"
+   },
+   "torchvision": {
+    "version": "0.27.0+cu130",
+    "url": "https://download-r2.pytorch.org/whl/cu130/torchvision-0.27.0%2Bcu130-cp312-cp312-win_amd64.whl",
+    "sha256": "a79f78d23557b5299c1a1eceeef846d6799ea0a3afe30c600c80ebd26a80bbf8"
+   }
+  }
  }
 }

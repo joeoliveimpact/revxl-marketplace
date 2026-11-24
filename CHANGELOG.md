@@ -4,6 +4,13 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.103] ... 2026-11-24
+
+### Added
+- **editor-superengine v0.2.4** ... on Windows with an NVIDIA graphics card the editor now uses the card: cutouts
+run on it (about 3x faster), video encodes use the card's encoder at matched quality, and motion renders are set
+to the faster graphics card. Every other computer runs exactly as before, and each part falls back on its own.
+
 ## [0.1.102] ... 2026-11-20
 
 ### Fixed

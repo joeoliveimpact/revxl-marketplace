@@ -30,6 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "_shared"))
 import review_page
 from win_encoding import ensure_utf8_output  # noqa: E402
 import runtime as rt  # noqa: E402
+import gpu  # noqa: E402
 
 FADE_IN, FADE_OUT = 0.012, 0.018   # click guards; they sit inside the pads
 CANVAS = (1080, 1920)              # every master is a 9:16 short
@@ -259,7 +260,7 @@ def encode(raw, graph_path, out, fps, fps_flag, crf, preset, gop, abitrate, expe
         cmd += ["-i", str(source)]
     cmd += [
            "-/filter_complex", str(graph_path), "-map", "[v]", "-map", "[a]",
-           "-c:v", "libx264", "-crf", str(crf), "-preset", preset,
+           *gpu.h264(crf, preset),
            "-g", str(gop), "-keyint_min", str(gop), "-sc_threshold", "0",
            "-pix_fmt", "yuv420p", "-color_primaries", "bt709", "-color_trc", "bt709",
            "-colorspace", "bt709", "-color_range", "tv", fps_flag, "cfr", "-r", str(fps),

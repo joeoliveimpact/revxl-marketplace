@@ -2,7 +2,8 @@
 
 Claude runs it with the editor's own Python from the client's workspace folder (the cwd), never the client:
   <state>/venv/Scripts/python.exe (macOS: <state>/venv/bin/python) -X utf8 -I check_deps.py [--no-install] [--repick]
-  [--set-nle mcp|resolve|none|auto] [--selftest]
+  [--gpu on|off] [--set-nle mcp|resolve|none|auto] [--selftest]
+--gpu on|off is handed to the installer: the NVIDIA speed-up (skills/_shared/gpu.py) on or off for this computer.
 1. Machine test: OS, arch, macOS version, NVIDIA GPU, RAM total and free. decide_engine() (runtime.py) keeps the
    recorded engine unless the facts cached beside it in state.json changed (a failed GPU read is never a change:
    STATUS gpu warn) or --repick is given; else pick_engine() picks, reading `language` from editor.config.json.
@@ -29,6 +30,7 @@ sys.path.insert(0, str(HERE.parents[1] / "_shared"))
 sys.path.insert(0, str(HERE))
 from win_encoding import ensure_utf8_output  # noqa: E402
 import runtime as rt  # noqa: E402
+import gpu  # noqa: E402
 import bundled_fonts  # noqa: E402
 import install  # noqa: E402  (IMPORTS, ENGINE_MODEL, Setup.sha256: one copy of each)
 
@@ -156,13 +158,14 @@ def describe(f):
 
 
 # ---- 2. the installer ensures the engine --------------------------------------------------------------
-def run_installer(engine, repick=False):
+def run_installer(engine, repick=False, gpu_switch=None):
     sh = shutil.which("sh") or shutil.which("bash")
     if not sh:
         print("✗ Editor setup: no shell was found to run the setup.")
         return 127
     sys.stdout.flush()
-    return subprocess.run([sh, INSTALL_SH.as_posix(), "--engine", engine] + (["--repick"] if repick else []),
+    return subprocess.run([sh, INSTALL_SH.as_posix(), "--engine", engine] + (["--repick"] if repick else [])
+                          + (["--gpu", gpu_switch] if gpu_switch else []),
                           env=dict(os.environ, EDITOR_SE_HOME=str(rt.state_dir()))).returncode  # follows the pointer
 
 
@@ -543,6 +546,9 @@ def doctor(cwd, st, do_install=True, run_install=run_installer, repick=False):
     rc = run_install("auto", repick) if do_install else None  # the installer makes the same decision, then ensures it
     fell_back = str(rt.load_state(st).get("engine_reason", "")).startswith("backup")
     inst = run_checks(rep, st, picked, reason)
+    speedup = gpu.status(rt.load_state(st))
+    if speedup:
+        rep.add("gpu-speedup", speedup[0], speedup[1], required=False)
     res = detect_resolve()
     nle, nle_source = choose_nle(cfg, resolve_lines(rep, res))
     engine = "none" if picked == "none" else inst
@@ -574,6 +580,7 @@ def doctor(cwd, st, do_install=True, run_install=run_installer, repick=False):
 
 # ---- selftest (offline, temp dirs only) ----------------------------------------------------------------
 def selftest():
+    gpu.selftest()  # the GPU variant's decision, CQ map and libx264 fallback (0.2.4)
     saved_env = {k: os.environ.get(k) for k in ("EDITOR_SE_MASK", "EDITOR_SE_HOME")}
     saved_rt = (rt.platform_key, rt.mac_major, rt.sys)
     saved_gpu = (rt.gpu_read, rt.shutil, rt.subprocess)
@@ -869,6 +876,8 @@ def main(argv=None):
                     help="record the client's hand-off choice in editor.config.json (auto = back to detection); nothing else runs")
     ap.add_argument("--set-controls", choices=("simple", "advanced"),
                     help="record the workspace's controls default in editor.config.json; nothing else runs")
+    ap.add_argument("--gpu", choices=("on", "off"),
+                    help="turn the NVIDIA graphics card speed-up on or off for this computer (runs the installer)")
     ap.add_argument("--selftest", action="store_true", help="offline self-check in temp folders")
     a = ap.parse_args(argv)
     if a.selftest:
@@ -877,7 +886,8 @@ def main(argv=None):
         return set_nle(Path.cwd(), a.set_nle)
     if a.set_controls:
         return set_controls(Path.cwd(), a.set_controls)
-    return doctor(Path.cwd(), rt.state_dir(), do_install=not a.no_install, repick=a.repick)
+    return doctor(Path.cwd(), rt.state_dir(), do_install=not a.no_install, repick=a.repick,
+                  run_install=lambda engine, repick: run_installer(engine, repick, a.gpu))
 
 
 if __name__ == "__main__":

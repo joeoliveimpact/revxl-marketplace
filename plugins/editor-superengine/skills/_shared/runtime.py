@@ -117,15 +117,21 @@ def mac_major():
     return int(v.split(".")[0]) if v else 0
 
 
+def nvidia_smi():
+    """Path of nvidia-smi (PATH first, then System32 on Windows), or None."""
+    exe = shutil.which("nvidia-smi")
+    if not exe and sys.platform == "win32":
+        p = Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32" / "nvidia-smi.exe"
+        exe = str(p) if p.exists() else None
+    return exe
+
+
 def gpu_read():
     """One `nvidia-smi -L` read: ("yes", "<GPU names>"), ("no", None) under the gpu test mask, ("no-smi", None) when
     nvidia-smi isn't there, ("failed", None) on a non-zero exit, a timeout, or output with no GPU line."""
     if masked("gpu"):
         return "no", None
-    exe = shutil.which("nvidia-smi")
-    if not exe and sys.platform == "win32":
-        p = Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32" / "nvidia-smi.exe"
-        exe = str(p) if p.exists() else None
+    exe = nvidia_smi()
     if not exe:
         return "no-smi", None
     try:

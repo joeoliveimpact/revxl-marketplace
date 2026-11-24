@@ -8,6 +8,7 @@ The reference for `${CLAUDE_PLUGIN_ROOT}/skills/editor-doctor/SKILL.md`. The cod
 ## Contents
 - STATUS lines
 - The engine
+- GPU variant (NVIDIA speed-up)
 - Where the files live
 - editor.config.json
 - DaVinci Resolve check
@@ -71,6 +72,25 @@ A GPU read that fails is never a change: `nvidia-smi` times out, exits non-zero,
 **Known limit: one shared venv.** All languages share one set of transcriber packages. Moving to a workspace whose language needs the other engine (English uses Parakeet, other languages faster-whisper) reinstalls the packages, and moving back reinstalls them again. The doctor says so before the setup starts, and STATUS shows it:
 
 `STATUS engine-switch warn This workspace uses Spanish (es), so the transcription engine is switching to faster-whisper; this reinstalls about 1-3 GB once.`
+
+## GPU variant (NVIDIA speed-up, 0.2.4)
+
+Code: `${CLAUDE_PLUGIN_ROOT}/skills/_shared/gpu.py` (the decision, the encoder arguments, the graphics setting) and `install.py` `gpu_variant()`. The choice is per computer (`state.json` `gpu`), not per workspace. `STATUS gpu-speedup ok <what the card speeds up>` reports it; it is never required.
+
+Turns on only on Windows with an NVIDIA card that `nvidia-smi` lists (the same read as the engine pick). Every other computer keeps the processor path, unchanged.
+
+| Part | When | What changes | Fallback |
+| --- | --- | --- | --- |
+| Cutouts | driver 580 or newer, a GeForce 16/20 series or newer card, 6 GB free | torch 2.12.0 + torchvision 0.27.0 swapped for the CUDA 13.0 builds pinned in `pins.json` `torch_cuda` (about 1.9 GB download, 2.9 GB installed). Proven with a real CUDA operation. | Any install or check failure puts the engine lock's CPU wheels back and the setup carries on; it is not retried until `--gpu on`. A failed card read keeps what is installed. |
+| Video encodes | the card passes a one-frame test with the exact settings | `h264_nvenc` instead of `libx264` for masters, scrubs, grades, previews and intermediates. Quality is matched from measurement (CQ = CRF + 4, CRF + 2 at CRF 10 or lower). | Every script tests NVENC once per run; if it fails it uses libx264 with exactly the old settings. The bit-exact B-roll mask, the face-crop proxy and the clock selftest always use libx264. |
+| Motion renders | the card is there | Windows' per-app graphics setting for `chrome-headless-shell.exe`: `HKCU\Software\Microsoft\DirectX\UserGpuPreferences`, value = its full path, data `GpuPreference=2;`. HyperFrames renders in `auto` browser-GPU mode, which uses the adapter Windows picks. | A value someone already set is never changed. Nothing under `C:\Program Files` is touched. |
+
+**Turn it off or on (Claude runs it, the client never types it):** the doctor command from SKILL.md step 2 plus `--gpu off` puts the CPU wheels back, removes the graphics setting the setup added (only that one), and turns NVENC off; later runs keep it off. `--gpu on` turns all three back on and retries the CUDA wheels.
+
+**Undo by hand (support only):**
+- Cutouts: run the doctor with `--gpu off`. By hand: `uv pip install --python <editor python> --require-hashes --no-deps --reinstall-package torch --reinstall-package torchvision -r <state>/cache/torch-swap.txt` once a `--gpu off` run has written the CPU lines there.
+- Encodes: set `"nvenc": false` under `gpu` in `<state>/state.json`, or `--gpu off`.
+- Motion renders: Settings > System > Display > Graphics, remove `chrome-headless-shell.exe` (or delete that value under the registry key above).
 
 ## Where the files live
 

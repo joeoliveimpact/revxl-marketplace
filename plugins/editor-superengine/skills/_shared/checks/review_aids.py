@@ -23,6 +23,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 import runtime as rt  # noqa: E402
+import gpu  # noqa: E402
 from win_encoding import ensure_utf8_output  # noqa: E402
 
 PHASE = "post"
@@ -148,7 +149,7 @@ def _build(ctx, index):
                  f"fps=1,scale=180:-2,tile=8x{max(1, math.ceil(duration / 8))}:padding=8:margin=8:color=white",
                  "-frames:v", "1", "-q:v", "4"]),
                 ("phone", "phone-720p.mp4", ["-i", render, "-map", "0:v:0", "-map", "0:a?",
-                 "-vf", "scale=720:1280", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
+                 "-vf", "scale=720:1280", *gpu.h264(23, "ultrafast"),
                  "-pix_fmt", "yuv420p", "-c:a", "copy", "-movflags", "+faststart"])):
             target = qa / name
             try:

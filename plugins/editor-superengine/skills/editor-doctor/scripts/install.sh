@@ -8,6 +8,7 @@
 # editor-superengine, Linux ${XDG_DATA_HOME:-~/.local/share}/revxl/editor-superengine; EDITOR_SE_HOME overrides.
 # Usage: sh install.sh [--engine auto|parakeet-gpu|parakeet-cpu|faster-whisper] [--repick]    Re-running skips what
 # is in place. auto keeps the recorded engine unless the machine facts changed; --repick picks again (install.py).
+# [--gpu on|off] turns the NVIDIA graphics card speed-up on or off for this computer (skills/_shared/gpu.py).
 set -u
 UV_VERSION=0.13.6
 PY_VERSION=3.12.16

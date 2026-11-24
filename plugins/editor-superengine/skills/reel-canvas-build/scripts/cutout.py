@@ -35,6 +35,7 @@ sys.path.insert(0, str(HERE.parents[1] / "_shared"))
 sys.path.insert(0, str(HERE))
 from win_encoding import ensure_utf8_output  # noqa: E402
 import runtime  # noqa: E402
+import gpu  # noqa: E402
 import fps  # noqa: E402
 
 HUB_REPO = "PeterL1n/RobustVideoMatting:53d74c6826735f01f4406b5ca9075eee27bec094"  # master head 2023-03-13
@@ -97,7 +98,7 @@ def frame_size(video):
 
 def to_cfr(src, rate, dst, log):
     ffmpeg(["-i", str(src), "-map", "0:v:0", "-an", "-sn", "-dn", "-vf", f"fps={rate},{BT709_VF}", "-fps_mode", "cfr",
-            "-c:v", "libx264", "-preset", "fast", "-crf", "8", "-pix_fmt", "yuv420p", *TAGS, str(dst)],
+            *gpu.h264(8, "fast"), "-pix_fmt", "yuv420p", *TAGS, str(dst)],
            "convert the clip to a constant frame rate", log)
 
 

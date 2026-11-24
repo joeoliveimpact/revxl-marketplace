@@ -2,7 +2,8 @@
 
 Installs the union of what the skills' deps.json manifests need, every download pinned by sha256 in
 pins.json: Node, ffmpeg (zscale checked), HyperFrames (npm ci from runtime/hyperframes), chrome-headless-shell,
-the u2net cutout model, the transcription engine's Python packages (--require-hashes) and its models.
+the u2net cutout model, the transcription engine's Python packages (--require-hashes) and its models; then, with an
+NVIDIA card on Windows, the GPU variant (CUDA torch, NVENC, the render browser's graphics setting; --gpu on|off).
 Records versions, URLs, hashes and the engine (with the facts its pick used) in <state>/state.json. Re-running skips
 what is in place; --engine auto keeps the recorded engine unless those facts changed or --repick is given (S1b-fix).
 Every failure prints one plain line and exits 1; details go to <state>/logs/install.log.
@@ -15,6 +16,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parents[1] / "_shared"))
 from win_encoding import ensure_utf8_output  # noqa: E402
 import runtime as rt  # noqa: E402
+import gpu  # noqa: E402
 
 ALIGN_SKIPPED = "skipped (Intel Mac, torch 2.2.2 not tested)"
 IMPORTS = {"parakeet-gpu": "import onnx_asr, onnxruntime", "parakeet-cpu": "import onnx_asr, onnxruntime",
@@ -27,8 +29,8 @@ class Fail(Exception):
 
 
 class Setup:
-    def __init__(self, st, engine, repick=False):
-        self.st, self.requested, self.repick = Path(st), engine, repick
+    def __init__(self, st, engine, repick=False, gpu_switch=None):
+        self.st, self.requested, self.repick, self.gpu_switch = Path(st), engine, repick, gpu_switch
         self.pins = json.loads((HERE / "pins.json").read_text(encoding="utf-8"))
         self.key = rt.platform_key()
         (self.st / "logs").mkdir(parents=True, exist_ok=True)
@@ -276,6 +278,12 @@ class Setup:
         self.save()
         print(f"✓ {name} model")
 
+    def uv_env(self):
+        env = rt.python_env(self.st)
+        env.update(UV_CACHE_DIR=str(self.st / "cache" / "uv"), UV_NO_CONFIG="1", UV_PYTHON_INSTALL_DIR=str(self.st / "python"),
+                   UV_HTTP_TIMEOUT="120")
+        return env
+
     def python_packages(self, engine):
         """True when the engine's hash-locked packages are installed and import."""
         if engine.startswith("parakeet") and rt.masked("parakeet"):  # test-only mask (runtime.py docstring)
@@ -290,11 +298,8 @@ class Setup:
             print(f"✓ Python packages for {engine} already in place")
             return True
         print(f"Installing the Python packages for {engine} (this is the big one, about 1-3 GB) ...", flush=True)
-        env = rt.python_env(self.st)
-        env.update(UV_CACHE_DIR=str(self.st / "cache" / "uv"), UV_NO_CONFIG="1", UV_PYTHON_INSTALL_DIR=str(self.st / "python"),
-                   UV_HTTP_TIMEOUT="120")
         r = self.run([os.environ["EDITOR_SE_UV"], "pip", "sync", "--require-hashes", "--only-binary", ":all:",
-                      "--python", vpy, lock], env=env)
+                      "--python", vpy, lock], env=self.uv_env())
         if r.returncode != 0 or self.run([vpy, "-c", code], env=rt.python_env(self.st)).returncode != 0:
             return False
         self.state["python_packages"] = {"engine": engine, "lock": f"skills/editor-doctor/scripts/python/{lock.name}",
@@ -344,6 +349,102 @@ class Setup:
         if engine == "faster-whisper":
             print("⚠ " + rt.BACKUP_WARNING)
 
+    # ---- GPU variant (0.2.4; the decision and the encoder live in skills/_shared/gpu.py) ----------------
+    TORCH_CPU_CHECK = "import torch, torchvision; assert not torch.version.cuda"
+    TORCH_CUDA_CHECK = ("import torch, torchvision; from torchvision.ops import nms; assert torch.cuda.is_available(); "
+                        "x = torch.ones(256, 256, device='cuda'); assert float((x @ x).sum()) == 256 ** 3; "
+                        "b = torch.tensor([[0., 0, 10, 10], [1, 1, 11, 11]], device='cuda'); "
+                        "assert nms(b, torch.tensor([.9, .8], device='cuda'), .5).tolist() == [0]")
+
+    def torch_variant(self):
+        """'cuda' or 'cpu': what the venv's torch is built for, read from its version without importing it."""
+        r = self.run([rt.tool("python", self.st), "-c", "import importlib.metadata as m; print(m.version('torch'))"],
+                     env=rt.python_env(self.st))
+        return "cuda" if "+cu" in r.stdout else "cpu"
+
+    def torch_swap(self, cuda):
+        """Installs the CUDA wheels pinned in pins.json (cuda=True) or the engine lock's own CPU wheels, hash-checked
+        and without touching any other package. True when torch then passes its check (a real CUDA op for cuda)."""
+        if cuda:
+            w = self.pins["torch_cuda"][self.key]
+            lines = [f"{n} @ {w[n]['url']} --hash=sha256:{w[n]['sha256']}" for n in ("torch", "torchvision")]
+        else:
+            lock = (HERE / "python" / f"{self.state['python_packages']['engine']}.lock.txt").read_text(encoding="utf-8")
+            lines = re.findall(r"^(?:torch|torchvision)==(?:[^\n]*\\\n)*[^\n]*", lock, re.M)
+            if len(lines) != 2:
+                return False
+        req = self.st / "cache" / "torch-swap.txt"
+        req.parent.mkdir(parents=True, exist_ok=True)
+        req.write_bytes(("\n".join(lines) + "\n").encode("utf-8"))
+        vpy = rt.tool("python", self.st)
+        r = self.run([os.environ["EDITOR_SE_UV"], "pip", "install", "--require-hashes", "--no-deps", "--only-binary", ":all:",
+                      "--reinstall-package", "torch", "--reinstall-package", "torchvision", "--python", vpy, "-r", req],
+                     env=self.uv_env())
+        check = self.TORCH_CUDA_CHECK if cuda else self.TORCH_CPU_CHECK
+        return r.returncode == 0 and self.run([vpy, "-c", check], env=rt.python_env(self.st)).returncode == 0
+
+    def gpu_variant(self, needs):
+        """Uses an NVIDIA card when there is one: CUDA torch for cutouts, NVENC for encodes, and Windows' graphics
+        setting for the render browser. Every other computer keeps the CPU path; nothing here fails the setup except
+        a torch that can't be put back to the CPU wheels."""
+        g = self.state.setdefault("gpu", {})
+        if self.gpu_switch:
+            g["wanted"] = "auto" if self.gpu_switch == "on" else "off"
+            g.pop("torch_failed", None)  # an explicit switch tries the CUDA wheels again
+        wanted = g.setdefault("wanted", "auto")
+        seen = "no" if wanted == "off" else rt.gpu_read()[0]
+        if rt.align_supported() and self.state.get("python_packages"):
+            have = self.torch_variant()
+            driver, compute = gpu.smi_facts() if seen == "yes" else (None, None)
+            card = "failed" if seen == "yes" and driver is None else seen  # a driver read that fails is no answer, never "too old"
+            free = float("inf") if have == "cuda" else shutil.disk_usage(self.st).free / 1e9
+            pin = self.pins["torch_cuda"]
+            use, reason = gpu.torch_plan(self.key, card, driver, compute, free, wanted, pin)
+            failed = g.get("torch_failed") == pin[self.key]["torch"]["version"] if self.key in pin else False
+            if use and have != "cuda" and failed:
+                use, reason = False, "the graphics card version didn't run here last time (--gpu on tries again)"
+            if use and have != "cuda":
+                print("Installing the graphics card version of the cutout engine (about 2 GB, once) ...", flush=True)
+                if self.torch_swap(True):
+                    have = "cuda"
+                else:
+                    have, use = "cuda-failed", False
+                    reason = "the graphics card version didn't install or run here, so the processor version stays"
+                    g["torch_failed"] = pin[self.key]["torch"]["version"]
+                    print("⚠ The graphics card version of the cutout engine didn't work on this computer, "
+                          "so cutouts keep using the processor.")
+            if have != "cpu" and not use and (wanted == "off" or card != "failed" or have == "cuda-failed"):
+                if not self.torch_swap(False):
+                    raise Fail(self.command_failure("putting the processor version of the cutout engine back"))
+                have = "cpu"
+            g.update(torch=have, torch_reason=reason)
+            self.save()
+        if "ffmpeg" in needs:
+            g["nvenc"] = bool(wanted != "off" and seen == "yes" and gpu.nvenc_probe(rt.tool("ffmpeg", self.st)))
+            self.save()
+        if "chrome" in needs and sys.platform == "win32":
+            try:
+                exe = os.path.normpath(rt.tool("chrome", self.st))
+                old = g.get("pref_path")
+                if old and old != exe and g.get("pref_ours"):
+                    gpu.pref_clear(old)  # a new Chrome version lives at a new path
+                    g["pref_ours"] = False
+                if wanted != "off" and seen == "yes":
+                    g["pref"] = gpu.pref_set(exe)
+                    g["pref_ours"] = g["pref"] == "set" or (g["pref"] == "same" and old == exe and g.get("pref_ours", False))
+                elif wanted == "off" or seen != "failed":
+                    if g.get("pref_ours"):
+                        gpu.pref_clear(exe)
+                    g.update(pref="off", pref_ours=False)
+                g["pref_path"] = exe
+            except (OSError, KeyError) as e:
+                self.log.write(f"gpu preference: {e!r}\n")
+                g["pref"] = "error"
+            self.save()
+        line = gpu.status(self.state)
+        if line:
+            print(f"✓ Graphics card: {line[1]}")
+
     # ---- entry ---------------------------------------------------------------------------------------
     def go(self):
         if self.key is None:
@@ -376,6 +477,7 @@ class Setup:
             self.cutout_model()
         if needs & {"transcribe", "align"}:
             self.transcription(needs)
+        self.gpu_variant(needs)
         self.state["finished"] = time.strftime("%Y-%m-%dT%H:%M:%S")
         self.save()
         print(f"✓ Editor setup is ready (transcription: {self.state.get('engine', 'none')}).")
@@ -386,11 +488,13 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--engine", default="auto", choices=("auto",) + rt.ENGINES)
     ap.add_argument("--repick", action="store_true", help="with --engine auto: pick the engine again even if nothing changed")
+    ap.add_argument("--gpu", choices=("on", "off"),
+                    help="turn the NVIDIA graphics card speed-up on or off for this computer (kept for later runs)")
     a = ap.parse_args()
     st = rt.state_dir()
     s = None
     try:
-        s = Setup(st, a.engine, a.repick)
+        s = Setup(st, a.engine, a.repick, a.gpu)
         s.go()
         rt.write_home_pointer(st)  # H-S1a-path-2: later runs with no EDITOR_SE_HOME find this folder
         return 0
