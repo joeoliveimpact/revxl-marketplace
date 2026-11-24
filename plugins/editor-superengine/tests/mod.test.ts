@@ -318,7 +318,11 @@ for (const surface of SURFACES) {
     const ui = await band($, surface)
     const column = await ui.find({ type: 'Box' })
     expect(column?.props.flexDirection).toBe('column')
-    expect(column?.children.map((c: any) => c.props?.key)).toEqual(['ed-band', 'other-band'])
+    // Drawn order, at any depth: the runtime now stacks each plugin's band itself, so ours may sit one Box deeper.
+    // next(e) comes back as an 'engine' placeholder where `below` is placed: our row must come before it.
+    const keys = (n: any): string[] => !n || typeof n !== 'object' ? [] :
+      [n.type === 'engine' ? 'below' : n.key ?? n.props?.key, ...(n.children ?? []).flatMap(keys)]
+    expect(keys(column).filter(k => k === 'ed-band' || k === 'below' || k === 'other-band')).toEqual(['ed-band', 'below', 'other-band'])
     expect((await ui.find({ key: 'other-band' }))?.text).toBe('other plugin band')
     expect(await labelsOf(ui)).toEqual(["What's next?", 'Open Sound Board', 'Cockpit'])
     expect(await ui.find({ text: 'Editing progress' })).toBeDefined()
