@@ -842,10 +842,18 @@ def dummy_preview(reel):
     return p
 
 
+def real_preview(ws):
+    """ok and master run pre QA, whose placement check needs a rendered preview (0.2.0), so no placeholder here."""
+    rc, out = compose(ws, "preview", "--reel-dir", f"videos/{REEL}")
+    p = ws / "videos" / REEL / "renders" / names()[0]
+    ck("a real preview renders first", rc == 0 and p.is_file(), out[-300:])
+    return p
+
+
 def c_master_refused(root):
     ws, reel = make_reel(root)
     mast = reel / "renders" / names()[1]
-    p = dummy_preview(reel)
+    p = real_preview(ws)
     rc, out = compose(ws, "master", "--reel-dir", f"videos/{REEL}")
     no_traceback("master before OK", out)
     ck("master before any OK: exit 1, plain line, no Master",
@@ -866,7 +874,7 @@ def c_master_refused(root):
 
 def c_master(root):
     ws, reel = make_reel(root)
-    dummy_preview(reel)
+    real_preview(ws)
     rc, out = compose(ws, "ok", "--reel-dir", f"videos/{REEL}")
     ck("ok: exit 0", rc == 0, out[-300:])
     rc, out = compose(ws, "master", "--reel-dir", f"videos/{REEL}")
@@ -1021,7 +1029,16 @@ def c_frame0(root):
     cut = reel / "work" / "renders" / "master-100x.mp4"
     keep = Path(OPT["out"]) / "frame0"
     keep.mkdir(parents=True, exist_ok=True)
-    last = 50 - 1  # the hook shows over [0, min(first beat end 50, 5 s)) at 25 fps
+    # A spoken hook ends with its last word (at least 1.5 s), not at the beat's end (0.2.0 plain_hook): ask the plan.
+    c = compose_mod()
+    inp = c.load_inputs(reel)
+    c.probe_inputs(inp)
+    _, stop, _ = in_process(c.plan, inp, None)
+    end = inp.get("hook_f", 0)
+    ck(f"the plan shows the spoken hook over [0, {end}): at least 1.5 s, inside the first beat",
+       stop is None and round(Fraction(3, 2) * 25) <= end <= 50,
+       stop and stop.lines)
+    last = max(end - 1, 0)
     for tier, f, (w, h) in (("preview", prev, (720, 1280)), ("Master", mast, (1080, 1920))):
         if not f.is_file():
             continue
@@ -1035,6 +1052,9 @@ def c_frame0(root):
         want = TEXT_PIXELS * (w / 720) ** 2
         ck(f"{tier}: text in the hook box at frame 0 ({bright} pixels > 230 luma, >= {want:.0f}; the cut master "
            f"has {sum(v > 230 for v in bins)})", bright >= want and not any(v > 230 for v in bins))
+        gone, _ = split_box(grab(f, [end])[end], w, h, hook_rect(w, h))
+        ck(f"{tier}: the hook is gone at frame {end}, where the plan ends it ({sum(v > 230 for v in gone)} bright "
+           f"pixels in the box)", not any(v > 230 for v in gone))
         ck(f"{tier}: the brightest text pixel reaches {max(ins)} >= 245 (fully opaque white)", max(ins) >= 245)
         _, out = split_box(fr[0], w, h, hook_rect(w, h, margin=round(16 * w / 1080)))
         _, bout = split_box(base, w, h, hook_rect(w, h, margin=round(16 * w / 1080)))
@@ -1298,11 +1318,21 @@ def c_licence(root):
     wj(reel / "sound-selection.json", {"bed": {"file": "planted-bed.wav"}})
     rc, out = compose(ws, "preview", "--reel-dir", f"videos/{REEL}")
     no_traceback("licence preview", out)
-    ck("preview: renders with the mix and a plain licence warning line",
-       rc == 0 and summary(out).get("audio") == "mix"
-       and re.search(r"^warning: the music planted-bed\.wav has no licence row yet", out, re.M) is not None, out[-400:])
+    # licence_rows is a pre QA check (0.2.0): the preview is still made to look at, but exits 1 and can't be OK'd.
+    prev = reel / "renders" / names()[0]
+    try:
+        facts = json.loads(prev.with_suffix(".audio.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        facts = {}
+    ck("preview: renders with the mix, a plain licence warning line, and says the final can't be made yet",
+       rc == 1 and prev.is_file() and facts.get("audio") == "mix"
+       and re.search(r"^warning: the music planted-bed\.wav has no licence row yet", out, re.M) is not None
+       and "the final can't be made from it yet" in out and "planted-bed.wav has no licence row yet" in out.split(
+           "the final can't be made")[-1], out[-400:])
     rc, out = compose(ws, "ok", "--reel-dir", f"videos/{REEL}")
-    ck("ok: exit 0", rc == 0, out[-200:])
+    ck("ok: refused (exit 1) with the licence line, no OK written",
+       rc == 1 and "planted-bed.wav has no licence row yet" in out
+       and not (reel / "work" / "render-ok.json").exists(), out[-200:])
     rc, out = compose(ws, "master", "--reel-dir", f"videos/{REEL}")
     no_traceback("licence master", out)
     mast = reel / "renders" / names()[1]
@@ -1347,7 +1377,8 @@ def c_hook_limits(root):
     _, stop, _ = in_process(c.plan, inp, own)
     page = c.main_html(inp, 720, 1280, []) if stop is None else ""
     ck("--hook-text overrides the anchor: the composed HTML carries it, not the first beat's words",
-       f'<div id="hook">{own}</div>' in page and HOOK not in page, stop and stop.lines)
+       re.search(r'<div id="hook"[^>]*>' + re.escape(own) + "</div>", page) is not None and HOOK not in page,
+       stop and stop.lines)
     inp = c.load_inputs(reel)
     c.probe_inputs(inp)
     _, stop, _ = in_process(c.plan, inp, long[:70])
@@ -1714,7 +1745,9 @@ def main():
     ap.add_argument("--out", help="folder for the outputs a case keeps, e.g. frame0's PNGs (default: render-out "
                                   "next to the fixtures)")
     a = ap.parse_args()
-    root = Path(a.tmp or FIXTURE_PARENT)
+    # Resolved once: under an MSIX app (Claude Desktop) %LOCALAPPDATA% is redirected to the package LocalCache, and
+    # ledger paths compare resolved against unresolved names otherwise (broll-blocks, broll-ai, broll-recording-paths).
+    root = Path(a.tmp or FIXTURE_PARENT).resolve()
     OPT["take"] = a.take or os.environ.get("EDITOR_SE_TEST_TAKE") or None
     OPT["out"] = Path(a.out or root / "render-out")
     free = shutil.disk_usage(root).free / 2 ** 30
