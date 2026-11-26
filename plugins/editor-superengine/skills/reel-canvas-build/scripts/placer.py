@@ -260,7 +260,7 @@ def load_ctx(reel_dir, hook=None):
     for move in track["tweens"]:
         if move["prop"] == "layout":
             names.update((move["from"], move["to"]))
-    layouts = {name: compose.layout(name, 1) for name in sorted(names)}
+    layouts = {name: compose.layout(name, 1, src=compose.card_src(reel)) for name in sorted(names)}
     stills, hooks = [], []
     beats = send["beats"]
     first = next((b for b in beats if b["start_f"] == 0), None)
@@ -272,13 +272,15 @@ def load_ctx(reel_dir, hook=None):
         if text:
             stills.append(hook_still(text, 0, hook_f))
             hooks.append(dict(text=text, start_f=0, end_f=hook_f))
-    if track["style"].get("style") == "layout-switch":
+    if track["style"].get("style") == "layout-switch":  # the face card's plate is only its backdrop
         stills.extend((b["start_f"], b["end_f"], _plate(layouts[b["layout"]]["plate"]),
-                       f"{b['layout']} card plate") for b in beats if b["layout"] != "full")
+                       f"{b['layout']} card plate") for b in beats if b["layout"] not in ("full", "facecard"))
     return {"reel_dir": reel, "track": track, "segments": segments, "beats": beats, "fps": rate,
             "world_slots": compose.world_face_slots(beats, reel),
             "master_size": (WIDTH, HEIGHT), "boxes": boxes, "median_box": median,
-            "layouts": {name: tuple(lay["box"]) for name, lay in layouts.items()},
+            # The face card's picture is never fitted into its box: map the head through where the full-size
+            # picture really sits (its head pops above the card, so the box would also clip it wrongly).
+            "layouts": {name: tuple(lay.get("video", lay["box"])) for name, lay in layouts.items()},
             "stills": stills, "hooks": hooks, "notes": [], "broll_bands": broll_bands.read_cache(reel)}
 
 
@@ -389,12 +391,12 @@ def speaker_spans(ctx, start_f, end_f):
     edges.update(k["f"] for k in track["keys"] if start_f < k["f"] <= end_f)
     edges.update(t[k] for t in track["tweens"] if t["prop"] == "layout"
                  for k in ("start_f", "end_f") if start_f < t[k] <= end_f)
-    pip = ctx["layouts"].get("pip")
+    front = [ctx["layouts"][n] for n in compose.FOREGROUND if n in ctx["layouts"]]
     spans = []
     ordered = sorted(edges)
     for start, end in zip(ordered, ordered[1:]):
         covered = any(a <= start < e for a, e, _ in covers)
-        if not covered or (pip is not None and pip in _options(ctx, "layout", start)):
+        if not covered or any(lay in _options(ctx, "layout", start) for lay in front):
             spans.append((start, end - 1))
     return spans
 

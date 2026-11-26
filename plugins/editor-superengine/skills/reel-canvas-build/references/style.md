@@ -36,13 +36,15 @@ which owns the question, recording command and board-state sync. Have it recorde
 
 ## The arrangements
 
-Full screen keeps the speaker across the picture. The four alternatives are:
+Full screen keeps the speaker across the picture. The five alternatives are:
 
 - **Split:** a card fills the top half, with the speaker below it.
 - **Stack:** the speaker sits above a larger card area.
 - **Picture-in-picture:** the speaker appears in a small rounded box near the top
   right, above a card that fills the picture.
 - **Overlay:** the speaker stays full screen with a panel over the lower area.
+- **Face card + head pop:** the speaker's face sits in a white-edged card low on the
+  screen, the head rising out over the card's top edge, with graphics around it.
 
 The Beat Map chooses the arrangement per beat. Layout switches does not invent
 graphics or pick a different layout for the user.

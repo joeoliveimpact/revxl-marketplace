@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import transitions
 
 SCHEMA = 1  # bump only when a saved file's shape changes; old files then fail loudly, not silently
-LAYOUTS = ("full", "split", "stack", "pip", "overlay")  # H-R1's fixed set; overlay alone may overlap
+LAYOUTS = ("full", "split", "stack", "pip", "overlay", "facecard")  # H-R1's set + the face card; overlay alone may overlap
 MARKS = ("num", "key", "emph", "cta")  # H-M20's fixed set, meanings below
 # num  = a number said aloud (a counter or value can show it)
 # key  = a key word of the line
@@ -686,7 +686,7 @@ def selftest():
          "edit_style 'punch-in' is not an object"),
         ("beat with no id", beat_map_problems(m(drop_id), words), "missing id"),
         ("unknown layout", beat_map_problems(m(lambda d: both(d, "layout", "grid")), words),
-         "beats[0].layout 'grid' is not a layout; use one of full, split, stack, pip, overlay"),
+         "beats[0].layout 'grid' is not a layout; use one of full, split, stack, pip, overlay, facecard"),
         ("start_f > end_f", beat_map_problems(m(lambda d: both(d, "start_f", 40)), words), "is after end_f"),
         ("unknown key", beat_map_problems(m(lambda d: both(d, "color", "red")), words), "unknown keys color"),
         ("overlapping non-overlay", beat_map_problems(m(lambda d: both(d, "end_f", 31)), words), "before beats[0] ends"),

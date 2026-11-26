@@ -269,10 +269,14 @@ def build_media(reel, entry, work):
         # Native 1080 geometry first, then downsample the whole composite. Never squeeze an area scene.
         filters = f"[0:v]trim=duration={duration},setpts=PTS-STARTPTS,scale=1080:1920"
         face_name = compose.face_layout(beat, edit_style, reel)
-        fx, fy, fw, fh = compose.layout(face_name, 1)["box"]
-        if face_name == "pip":
-            filters += (f",split[base][picture];[picture]scale={fw}:{fh}:force_original_aspect_ratio=increase,"
-                        f"crop={fw}:{fh}[face];[1:v]setpts=PTS-STARTPTS[scene];"
+        face_lay = compose.layout(face_name, 1, src=compose.card_src(reel))
+        fx, fy, fw, fh = face_lay["box"]
+        face = f"scale={fw}:{fh}:force_original_aspect_ratio=increase,crop={fw}:{fh}"
+        if "inner" in face_lay:  # the face card is a window on the full-size picture (no head cut-out here)
+            ix, iy, iw, ih = face_lay["inner"]
+            face = f"scale={iw:g}:{ih:g},crop={fw:g}:{fh:g}:{-ix:g}:{-iy:g}"
+        if face_name in compose.FOREGROUND:
+            filters += (f",split[base][picture];[picture]{face}[face];[1:v]setpts=PTS-STARTPTS[scene];"
                         f"[base][scene]overlay={x}:{y}:shortest=1[graphic];"
                         f"[graphic][face]overlay={fx}:{fy}:shortest=1,")
         else:

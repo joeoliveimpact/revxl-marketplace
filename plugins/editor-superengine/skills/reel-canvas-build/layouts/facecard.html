@@ -1,0 +1,22 @@
+<!--
+  Layout: facecard (9:16), "Face card + head pop". A partial for the editor-superengine compositor: compose.py reads
+  it, it is not a page. REVXL's own layout (not from HyperFrames), from Joe Olive's hand-built reels, ruling R2
+  of 11.11.26.
+  How compose.py reads it: every length is on the 1080x1920 grid and is scaled by (render width / 1080).
+  data-box = the card (x y w h), drawn with data-box-radius corners and the data-box-shadow (its first ring is the
+    4 px white border). The card is a window: it shows the cut's full-size picture at data-face-scale, placed so
+    that the picture's point data-src (x y) sits at the card's top-left corner. Nothing is squeezed or cover-fitted.
+    compose.py measures each reel's own window point from its cut-out (work/facecard.json): the head's top
+    data-head-rise px above the card, the head centred on it. data-src (R2's numbers) is the fallback.
+  The head: the speaker's cut-out (work/matte/cutout.mov, the cutout step) is drawn at exactly the same place as
+    that picture, above the card, solid down to data-head-solid px below the card's top edge and fading out over
+    the next data-head-fade px. Below the card top it sits on identical card pixels, so there is no seam, and the
+    head rises out of the card (about 150-200 px for a usual framing).
+  The plate is the backdrop the graphics sit on; it fills the frame, under the card.
+-->
+<div class="layout-card" data-layout="facecard" data-box="238 1012 604 672" data-box-radius="38"
+     data-box-shadow="0 0 0 4px #ffffff, 0 2px 4px rgba(0, 0, 0, 0.35), 0 18px 40px rgba(0, 0, 0, 0.5), 0 50px 100px rgba(0, 0, 0, 0.45)"
+     data-src="168 455" data-face-scale="1" data-head-rise="175" data-head-solid="6" data-head-fade="40"
+     style="position: absolute; left: 0px; top: 0px; width: 1080px; height: 1920px; background: transparent;">
+  <div class="layout-plate" style="position: absolute; left: 0px; top: 0px; width: 1080px; height: 1920px; background: radial-gradient(circle, rgba(255, 255, 255, 0.07) 2px, transparent 3px) 0px 0px / 36px 36px, radial-gradient(ellipse at 50% 40%, #1a1d26, #0a0c12 75%);"></div>
+</div>

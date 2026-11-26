@@ -59,7 +59,8 @@ def baked_note(spans, rate):
         minutes, remainder = divmod(tenths, 600)
         return f"{minutes}:{remainder // 10:02d}.{remainder % 10}"
 
-    labels = {"pip": "picture-in-picture", "overlay": "blurred card", "transition": "transition"}
+    labels = {"pip": "picture-in-picture", "overlay": "blurred card", "facecard": "face card",
+              "transition": "transition"}
     parts = [f'{clock(s["start_f"])}-{clock(s["end_f"])} (' +
              " and ".join(labels[name] for name in s["layout"].split("+")) + ")" for s in spans]
     # Counts timeline parts (back-to-back transitions merge into one part); the labels name what each holds.

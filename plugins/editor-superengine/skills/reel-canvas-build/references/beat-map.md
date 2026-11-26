@@ -45,7 +45,8 @@ A plan beat may also carry `check` (see `shows` below); leave it out unless the 
   top half, the face on the bottom half; `stack`: the face on top, graphic below;
   `pip` (picture-in-picture): graphic fills the screen, the face in a small box at the top right;
   `overlay`: the face fills the screen with a card over the lower part, on top of the other beats for just
-  its own words. Propose layouts; the user changes any they don't like. Without a world scene, alternative layouts show only with **Layout switches** (style.md).
+  its own words; `facecard` (Face card + head pop): graphics around the user, the face in a white-edged card low
+  on the screen with the head popping over its top edge (it needs the cutout, [build.md section 7](build.md#7-the-cutout)). Propose layouts; the user changes any they don't like. Without a world scene, alternative layouts show only with **Layout switches** (style.md).
   For world scenes, follow [Build motion: Scene areas and the face](motion-build.md#scene-areas-and-the-face).
 - `value` is a number the beat's scene would show, and only one the user says in those words.
   Otherwise `null`.

@@ -96,7 +96,7 @@ Every skill here is invoked as `editor-superengine:<skill folder>`.
 ### Not built yet
 
 Goldmine, Motion easing on the glass card,
-graphics placed around the face, and matching the colour
+graphics placed around the face (beyond the Beat Map's Face card + head pop layout), and matching the colour
 of takes inside one recording: say "That part of the editor isn't built yet; it's coming in a later update."
 One follow-up is allowed: "If the reel has a Beat Map, I can leave a note on that moment for later."
 Never improvise it here or in another skill.

@@ -12,7 +12,8 @@ NUMBER (F-12), never seek by time. Placer supplies the protected head envelope
 on its 1080x1920 grid, including its unsafe margin. Settled layout, cover-fit,
 zoom and origin are inverted to compare the same a-roll pixels. Active moves
 have conservative envelopes rather than an exact mapping: skip those samples.
-Scenes/b-roll hiding the a-roll are skipped too (pip remains above them).
+Scenes/b-roll hiding the a-roll are skipped too (pip and the face card remain
+above them). On the face card only the card's part of the head is compared.
 
 Face differences must exceed 36 RGB levels in at least 12% of the protected
 box, allowing normal compression/resampling noise. Contrast is the WCAG-style
@@ -140,11 +141,11 @@ def mapping(placer, pc, number):
                              for p in ("scale", "origin", "layout")]
     if scale <= 0:
         return None
-    # B-roll and scenes cover the a-roll except when it is the foreground pip.
-    pip = pc["layouts"].get("pip")
+    # B-roll and scenes cover the a-roll except when it is a foreground box (pip, face card).
+    front = [pc["layouts"][n] for n in placer.compose.FOREGROUND if n in pc["layouts"]]
     for beat in pc["beats"]:
         if beat["start_f"] <= number < beat["end_f"] and (beat.get("broll") or beat.get("scene")):
-            if layout != pip:
+            if layout not in front:
                 return None
     return scale, origin, layout
 
@@ -285,6 +286,11 @@ def run(ctx):
             if transform is None:
                 continue
             head = placer.head_box_at(pc, number, number)
+            if head is not None and transform[2] == pc["layouts"].get("facecard"):
+                # Only the card shows the original picture; above it the head cut-out stands on the backdrop.
+                cx, cy, cw, ch = placer.compose.layout("facecard", 1)["box"]
+                head = (max(head[0], cx), max(head[1], cy), min(head[2], cx + cw), min(head[3], cy + ch))
+                head = head if head[0] < head[2] and head[1] < head[3] else None
             if head is None:
                 continue
             try:

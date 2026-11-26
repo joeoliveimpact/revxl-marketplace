@@ -67,6 +67,7 @@ GATE_TESTS = {
     "sync": {"status": "ported"},
 }
 SYNC_EARLY_FRAMES, SYNC_LATE_FRAMES = 3, 2
+FOREGROUND = ("pip", "facecard")  # compose.FOREGROUND: these a-roll boxes paint above scenes and B-roll
 SILENCE_MIN_S, SILENCE_DB_BELOW_SPEECH = 0.2, 22
 SAMPLE_RATE, HOP = 16000, 800
 ERRORS = (OSError, ValueError, KeyError, TypeError, IndexError, AttributeError,
@@ -185,7 +186,7 @@ def _visible_holds(start, end, beats, track, rate):
     # still applies when an unrelated whole-state key occurred inside it.
     events = [(k["f"], 0, i, k["layout"]) for i, k in enumerate(track.get("keys", []))]
     for i, move in enumerate(moves):
-        above = "pip" if "pip" in (move["from"], move["to"]) else move["from"]
+        above = next((n for n in FOREGROUND if n in (move["from"], move["to"])), move["from"])
         events.extend(((move["start_f"], 1, i * 2, above),
                        (move["end_f"], 1, i * 2 + 1, move["to"])))
     events.sort(key=lambda event: event[:3])
@@ -204,9 +205,9 @@ def _visible_holds(start, end, beats, track, rate):
                 break
             layout = event[3]
         covered = any(beat.get("scene") or beat.get("broll") for beat in active)
-        if layout not in ("full", "split", "stack", "pip", "overlay"):
+        if layout not in ("full", "split", "stack", "pip", "overlay", "facecard"):
             raise ValueError("unknown layout")
-        if covered and layout != "pip":
+        if covered and layout not in FOREGROUND:
             continue
         if holds and abs(holds[-1][1] - a) < 1e-9:
             holds[-1][1] = b

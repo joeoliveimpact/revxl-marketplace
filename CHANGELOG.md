@@ -4,6 +4,13 @@ Marketplace-level changelog. For plugin-specific changes, see each plugin's own 
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.103] ... 2026-11-25
+
+### Added
+- **editor-superengine v0.2.4** ... a new Beat Map layout, **Face card + head pop**: your face in a white-edged
+card low on the screen, with your head popping up over its top edge and graphics around you. Before, this look
+had to be built by hand. A new check makes sure the head cut-out it needs is there and belongs to this cut.
+
 ## [0.1.102] ... 2026-11-20
 
 ### Fixed

@@ -34,6 +34,7 @@ import os
 import queue
 import re
 import shutil
+import statistics
 import subprocess
 import sys
 import textwrap
@@ -61,6 +62,7 @@ import broll_mask  # noqa: E402
 import effect_gate  # noqa: E402
 import fps as fpsmod  # noqa: E402
 import styles  # noqa: E402  (S6c: the editing style's plan)
+import cutout  # noqa: E402  (the face card's head: the cutout step's ProRes 4444 settings)
 import scene_check  # noqa: E402  (P/scripts: the G2-a scene contract)
 import licence_rows  # noqa: E402  (G4's licence check, as mix.py imports it)
 import footage_check  # noqa: E402
@@ -93,8 +95,12 @@ QA_OVERLAY_ADVICE = 'On the Look Picker, open Advanced controls and untick "Capt
 QA_NO_CAPTIONS_ADVICE = 'On the Look Picker, choose "No captions", then Send.'
 QA_SHORT_HOOK_ADVICE = "Shorten the hook to one line, or use your opening words as the hook."
 TEMPLATE = SKILL / "templates" / "render" / "index.html"
-LAYOUTS = SKILL / "layouts"  # split, stack, pip, overlay; "full" is the whole frame with no card
+LAYOUTS = SKILL / "layouts"  # split, stack, pip, overlay, facecard; "full" is the whole frame with no card
 PLATE_Z = Z_SCENE - 1        # a layout's card plate sits on the scene band's floor, under the beat's own scene
+FOREGROUND = ("pip", "facecard")  # their face box paints above the plates and scenes (Z_PIP)
+BAKED = ("pip", "overlay", "facecard")  # layer handoffs take these spans from the finished Master
+Z_HEAD = Z_PIP + 1           # the face card's head cut-out, over its card, under the captions (600)
+HEAD_MATTE = "work/matte/cutout.mov"  # the cutout step's output (references/build.md section 7)
 
 
 class Stop(Exception):
@@ -183,8 +189,9 @@ def at(f, rate):
     return secs(us(f, rate))
 
 
-def layout(name, s):
-    """A layout at scale s (render width / 1080): {box [x, y, w, h], radius, shadow, z, plate (markup)}."""
+def layout(name, s, src=None):
+    """A layout at scale s (render width / 1080): {box [x, y, w, h], radius, shadow, z, plate (markup)}.
+    src: the face card's window point measured for this reel (card_src); None keeps the layout file's."""
     if name == "full":
         return {"box": [0, 0, round(1080 * s, 2), round(1920 * s, 2)], "radius": 0, "shadow": "none", "z": Z_AROLL,
                 "plate": ""}
@@ -194,9 +201,172 @@ def layout(name, s):
     def attr(k, default):
         m = re.search(r'\bdata-%s="([^"]*)"' % k, text)
         return m.group(1) if m else default
-    return {"box": [round(float(v) * s, 2) for v in attr("box", "").split()],
-            "radius": round(float(attr("box-radius", "0")) * s, 2), "shadow": attr("box-shadow", "none"),
-            "z": Z_PIP if name == "pip" else Z_AROLL, "plate": text}  # the pip box paints above its card plate
+    lay = {"box": [round(float(v) * s, 2) for v in attr("box", "").split()],
+           "radius": round(float(attr("box-radius", "0")) * s, 2), "shadow": attr("box-shadow", "none"),
+           "z": Z_PIP if name in FOREGROUND else Z_AROLL, "plate": text}  # these boxes paint above their card plate
+    if attr("src", ""):  # the face card: a window on the full-size picture, with the head cut-out above it
+        k = float(attr("face-scale", "1"))
+        sx, sy = src if src is not None else (float(v) for v in attr("src", "").split())
+        bx, by = (float(v) for v in attr("box", "").split()[:2])  # unscaled, so nothing rounds twice
+        lay["inner"] = [round(-sx * k * s, 2), round(-sy * k * s, 2), round(1080 * k * s, 2), round(1920 * k * s, 2)]
+        lay["video"] = [round((bx - sx * k) * s, 2), round((by - sy * k) * s, 2), *lay["inner"][2:]]
+        solid, fade = float(attr("head-solid", "0")), float(attr("head-fade", "0"))
+        lay["head"] = {"h": round((by + solid + fade) * s, 2), "fade": round(fade * s, 2)}
+        # The only part of the cut-out that can show: around the window, from well above the head's top down to
+        # the end of the fade (cut's own pixels, even). The renderer holds every see-through frame in memory.
+        bw, rise, pad = float(attr("box", "").split()[2]), float(attr("head-rise", "0")), 120
+        x0, y0 = max(0, sx - pad), max(0, sy - (rise + pad) / k)
+        x1, y1 = min(1080, sx + bw / k + pad), min(1920, sy + (solid + fade) / k)
+        x0, y0 = int(x0) // 2 * 2, int(y0) // 2 * 2
+        lay["crop"] = [x0, y0, min(1080 - x0, math.ceil((x1 - x0) / 2) * 2), min(1920 - y0, math.ceil((y1 - y0) / 2) * 2)]
+    return lay
+
+
+def inner(lay, s):
+    """The picture's rectangle inside the box (x y w h): the face card's window, else the cover fit the video's
+    object-fit gives on its own (so setting it changes nothing on screen)."""
+    if "inner" in lay:
+        return lay["inner"]
+    _, _, bw, bh = lay["box"]
+    cover = max(bw / (1080 * s), bh / (1920 * s))
+    w, h = round(1080 * s * cover, 2), round(1920 * s * cover, 2)
+    return [round((bw - w) / 2, 2), round((bh - h) / 2, 2), w, h]
+
+
+def card_layouts(track):
+    """The face card layouts (a layout with a head cut-out) this style track draws, by name."""
+    used = {k["layout"] for k in track.get("keys", [])} | {
+        n for m in track.get("tweens", []) if m["prop"] == "layout" for n in (m["from"], m["to"])}
+    return sorted(n for n in used if "head" in layout(n, 1))
+
+
+def head_spans(track, total):
+    """[start_f, end_f) runs where a face card's head can show: from each face card key to the next key, and
+    across every move to or from one; touching runs merge. Only these frames of the cut-out reach the renderer."""
+    names = set(card_layouts(track))
+    keys = sorted(track.get("keys", []), key=lambda k: k["f"])
+    runs = [[k["f"], keys[i + 1]["f"] if i + 1 < len(keys) else total]
+            for i, k in enumerate(keys) if k["layout"] in names]
+    for m in track.get("tweens", []):  # a move into a card holds it until the next key, not just the move
+        if m["prop"] == "layout" and names & {m["from"], m["to"]}:
+            hold = next((k["f"] for k in keys if k["f"] > m["start_f"]), total) if m["to"] in names else m["end_f"]
+            runs.append([m["start_f"], max(m["end_f"], hold)])
+    merged = []
+    for a, e in sorted(runs):
+        if merged and a <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], e)
+        elif a < e:
+            merged.append([a, e])
+    return merged
+
+
+def cut_head(src, dst, span, crop, s, log):
+    """One run of the cutout step's matte, cropped to the strip that can show and scaled to the render (ProRes 4444
+    keeps the alpha). The renderer holds every see-through frame in memory; the whole full-size matte crashed it.
+    Frame exact, or it stops."""
+    (a, e), (cx, cy, cw, ch) = span, crop
+    w, h = max(2, round(cw * s / 2) * 2), max(2, round(ch * s / 2) * 2)
+    with open(log, "w", encoding="utf-8") as err:
+        rc = subprocess.run([rt.tool("ffmpeg"), "-v", "error", "-y", "-i", str(src), "-map", "0:v:0", "-an",
+                             "-vf", f"trim=start_frame={a}:end_frame={e},setpts=PTS-STARTPTS,"
+                                    f"crop={cw}:{ch}:{cx}:{cy},scale={w}:{h}:flags=lanczos",
+                             *cutout.PRORES, str(dst)], stderr=err, env=rt.python_env()).returncode
+    if rc or fpsmod.frame_count(dst) != e - a:
+        raise Stop(1, "✗ The face card's cut-out couldn't be prepared for this render; run it again, and if it "
+                      "fails twice offer the failure report.")
+
+
+CARD_WINDOW = "work/facecard.json"  # the face card's window point measured from this reel's cut-out
+
+
+def head_top(gray, w, h, cut=128):
+    """(top row, centre x) of the cut-out in one alpha frame (8-bit rows of width w), or None when it's empty.
+    The centre is read a little below the top (w / 14 rows), across the head rather than at its crown."""
+    rows = [gray[y * w:(y + 1) * w] for y in range(h)]
+    top = next((y for y, row in enumerate(rows) if sum(v >= cut for v in row) >= 3), None)
+    if top is None:
+        return None
+    row = rows[min(h - 1, top + max(1, w // 14))]
+    xs = [x for x, v in enumerate(row) if v >= cut]
+    return top, (min(xs) + max(xs)) / 2
+
+
+def card_window(tops, name="facecard"):
+    """The window point (x, y) on the cut's 1080x1920 picture that puts the head's measured top data-head-rise px
+    above the card and its centre on the card's centre; clamped inside the picture. -> ((x, y), clamped)."""
+    text = (LAYOUTS / f"{name}.html").read_text(encoding="utf-8")
+    num = lambda k: [float(v) for v in re.search(r'\bdata-%s="([^"]*)"' % k, text).group(1).split()]  # noqa: E731
+    (_, _, bw, bh), (k,), (rise,) = num("box"), num("face-scale"), num("head-rise")
+    top = statistics.median(t for t, _ in tops)
+    cx = statistics.median(c for _, c in tops)
+    want = (cx - bw / 2 / k, top + rise / k)
+    got = (min(max(want[0], 0), 1080 - bw / k), min(max(want[1], 0), 1920 - bh / k))
+    return (round(got[0], 1), round(got[1], 1)), max(abs(a - b) for a, b in zip(want, got)) > 1
+
+
+def measure_card_window(reel, spans, rate):
+    """Sample the cut-out in the face card's runs, save the window point to work/facecard.json, return it."""
+    matte = Path(reel) / HEAD_MATTE
+    w, h = 270, 480  # a quarter of the 1080x1920 grid is plenty to find a head
+    tops = []
+    for a, e in spans:
+        for i in range(6):
+            f = a + (e - a) * (2 * i + 1) // 12
+            p = subprocess.run([rt.tool("ffmpeg"), "-v", "error", "-ss", ts(f, rate), "-i", str(matte), "-frames:v", "1",
+                                "-vf", f"alphaextract,scale={w}:{h}", "-f", "rawvideo", "-pix_fmt", "gray", "-"],
+                               capture_output=True, env=rt.python_env())
+            found = head_top(p.stdout, w, h) if p.returncode == 0 and len(p.stdout) == w * h else None
+            if found:
+                tops.append((found[0] * 1920 / h, found[1] * 1080 / w))
+    if not tops:
+        return None
+    point, clamped = card_window(tops)
+    st = matte.stat()
+    write_json(Path(reel) / CARD_WINDOW, {"src": list(point), "clamped": clamped, "samples": len(tops),
+                                          "matte": [st.st_size, st.st_mtime_ns]})
+    return point
+
+
+def card_src(reel):
+    """The saved window point when it was measured on the current cut-out, else None (the layout file's)."""
+    if reel is None:
+        return None
+    try:
+        saved = json.loads((Path(reel) / CARD_WINDOW).read_text(encoding="utf-8"))
+        st = (Path(reel) / HEAD_MATTE).stat()
+    except (OSError, ValueError):
+        return None
+    return tuple(saved["src"]) if saved.get("matte") == [st.st_size, st.st_mtime_ns] else None
+
+
+def head_matte_problem(reel, master, total):
+    """None when the cutout step's matte belongs to this cut, else the plain reason it doesn't."""
+    matte = Path(reel) / HEAD_MATTE
+    fix = ("Claude makes it with the cutout step (it can take a while), then makes the preview again.")
+    if not matte.is_file():
+        return f"The face card needs you cut out of this cut first, and that hasn't been made yet. {fix}"
+    if matte.stat().st_mtime < Path(master).stat().st_mtime:
+        return f"The cut-out for the face card was made from an older cut. {fix}"
+    try:
+        frames = fpsmod.frame_count(matte)
+    except (OSError, ValueError, fpsmod.FpsError):
+        return f"The cut-out for the face card can't be read. {fix}"
+    if frames != total:
+        return f"The cut-out for the face card is {frames} frames long, but the cut is {total}. {fix}"
+    return None
+
+
+def head_geom(lay, s, crop):
+    """The head cut-out's clip height and where its cropped strip (crop: x y w h of the cut's own pixels) sits on
+    screen inside this layout's picture, as GSAP vars (clip, move)."""
+    x, y, w, h = lay["box"]
+    ix, iy, iw, ih = inner(lay, s)
+    vx, vy, vw, vh = lay.get("video", [round(x + ix, 2), round(y + iy, 2), iw, ih])
+    cx, cy, cw, ch = crop
+    fx, fy = vw / 1080, vh / 1920
+    return (f'height: {lay["head"]["h"] if "head" in lay else 0:g}',
+            f"x: {round(vx + cx * fx, 2):g}, y: {round(vy + cy * fy, 2):g}, "
+            f"width: {round(cw * fx, 2):g}, height: {round(ch * fy, 2):g}")
 
 
 def geom(lay):
@@ -1553,7 +1723,7 @@ def main_html(inp, w, h, scene_files, layers="all"):
 
     def lay(name):
         if name not in lays:
-            lays[name] = layout(name, s)
+            lays[name] = layout(name, s, src=inp.get("card_src"))
         return lays[name]
     # the box takes the layout, the wrapper takes the style's scale and zoom centre; the video is never animated
     layers = [f'      <div id="aroll-box" class="band" style="z-index: {Z_AROLL}; overflow: hidden">'
@@ -1575,12 +1745,36 @@ def main_html(inp, w, h, scene_files, layers="all"):
                           f'data-media-start="{ts(clip["in"], rate)}" data-track-index="{len(scene_files) + 1 + i * 2 + j}" '
                           f'muted playsinline preload="auto"></video>')
         layers.append('<div class="band" style="z-index: 200">' + "".join(videos) + '</div>')
+    # The face card (any layout with a head): the picture is placed inside every box, and the head cut-out, drawn at
+    # the same place, shows above the card through a clip that is 0 tall on every other layout. Reels that never
+    # use it get exactly the page they always did. Its moves only ever run with scale 1 (layout switches).
+    card = which in ("all", "aroll") and bool(card_layouts(track))
+    if card:
+        fade, crop = lay(card_layouts(track)[0])["head"]["fade"], lay(card_layouts(track)[0])["crop"]
+        mask = f"linear-gradient(to bottom, #000 calc(100% - {fade:g}px), transparent 100%)"
+        track_index = len(scene_files) + 1 + 2 * sum(1 for b in inp.get("beats", []) if b.get("broll"))
+        heads = "".join(f'<video id="head-{i}" class="clip" src="media/head-{i}.mov" data-start="{ts(a, rate)}" '
+                        f'data-duration="{ts(e - a, rate)}" data-track-index="{track_index + i}" muted playsinline '
+                        f'preload="auto" style="width: 100%; height: 100%"></video>'
+                        for i, (a, e) in enumerate(head_spans(track, inp["total"])))
+        layers.append(f'      <div id="head-clip" class="band" style="z-index: {Z_HEAD}; height: 0px; overflow: hidden; '
+                      f'-webkit-mask-image: {mask}; mask-image: {mask}"><div id="head-move" style="position: absolute; '
+                      f'left: 0; top: 0; width: 100%; height: 100%">{heads}</div></div>')
+
+    def card_vars(name):
+        x, y, w2, h2 = inner(lay(name), s)
+        return f"x: {x:g}, y: {y:g}, width: {w2:g}, height: {h2:g}"
     for k in track["keys"]:  # a key = the whole a-roll state, set hard on its frame
         t, imm = at(k["f"], rate), "true" if k["f"] == 0 else "false"
         tl.append(f'        tl.set("#aroll-move", {{ scale: {k["scale"]}, transformOrigin: "{origin(k["ox"], k["oy"])}", '
                   f'immediateRender: {imm} }}, {t});')
         tl.append(f'        tl.set("#aroll-box", {{ {geom(lay(k["layout"]))}, {chrome(lay(k["layout"]))}, '
                   f'immediateRender: {imm} }}, {t});')
+        if card:
+            clip, move = head_geom(lay(k["layout"]), s, crop)
+            tl.append(f'        tl.set("#aroll-move", {{ {card_vars(k["layout"])}, immediateRender: {imm} }}, {t});')
+            tl.append(f'        tl.set("#head-clip", {{ {clip}, immediateRender: {imm} }}, {t});')
+            tl.append(f'        tl.set("#head-move", {{ {move}, immediateRender: {imm} }}, {t});')
     for m in track["tweens"]:  # a move = one fromTo, starting AND ending on whole frames (F-13)
         t0 = at(m["start_f"], rate)
         end = (f'duration: {secs(us(m["end_f"], rate) - us(m["start_f"], rate))}, ease: "{m["ease"]}", '
@@ -1596,6 +1790,11 @@ def main_html(inp, w, h, scene_files, layers="all"):
                       f'{t0});')
             tl.append(f'        tl.fromTo("#aroll-box", {{ {geom(a)} }}, {{ {geom(b)}, {end}')
             tl.append(f'        tl.set("#aroll-box", {{ {chrome(b)}, immediateRender: false }}, {at(m["end_f"], rate)});')
+            if card:  # the picture and the head travel with the box, on the same ease, so they never part
+                (clip_a, move_a), (clip_b, move_b) = head_geom(a, s, crop), head_geom(b, s, crop)
+                tl.append(f'        tl.fromTo("#aroll-move", {{ {card_vars(m["from"])} }}, {{ {card_vars(m["to"])}, {end}')
+                tl.append(f'        tl.fromTo("#head-clip", {{ {clip_a} }}, {{ {clip_b}, {end}')
+                tl.append(f'        tl.fromTo("#head-move", {{ {move_a} }}, {{ {move_b}, {end}')
     # A world beat owns the outer face slot, even while a style tween crosses it.
     # CSS overrides drop scale only inside the beat; the original timeline resumes
     # at its exact current state on end_f, without rewriting or splitting its moves.
@@ -1607,8 +1806,13 @@ def main_html(inp, w, h, scene_files, layers="all"):
         slot_css += (f'{selector} {{ transform: translate({x:g}px, {y:g}px) !important; '
                      f'width: {fw:g}px !important; height: {fh:g}px !important; '
                      f'border-radius: {face["radius"]:g}px !important; '
-                     f'box-shadow: {face["shadow"]} !important; z-index: {face["z"]} !important; }}\n'
-                     f'{selector} #aroll-move {{ transform: none !important; }}\n')
+                     f'box-shadow: {face["shadow"]} !important; z-index: {face["z"]} !important; }}\n')
+        if card:  # the picture keeps its own place inside the box, which a plain "none" would drop
+            ix, iy, iw, ih = inner(face, s)
+            slot_css += (f'{selector} #aroll-move {{ transform: translate({ix:g}px, {iy:g}px) !important; '
+                         f'width: {iw:g}px !important; height: {ih:g}px !important; }}\n')
+        else:
+            slot_css += f'{selector} #aroll-move {{ transform: none !important; }}\n'
     for frame in sorted({f for a, e, _ in slots for f in (a, e)}):
         name = next((name for a, e, name in slots if a <= frame < e), "")
         tl.append(f'        tl.set("#aroll-box", {{ attr: {{ "data-world-face": "{name}" }}, '
@@ -1715,16 +1919,16 @@ def baked_spans(track, beats, total):
 
     keys = sorted(track.get("keys", []), key=lambda k: k["f"])
     for i, key in enumerate(keys):
-        if key["layout"] in ("pip", "overlay"):
+        if key["layout"] in BAKED:
             add(key["f"], keys[i + 1]["f"] if i + 1 < len(keys) else total, key["layout"])
     for move in track.get("tweens", []):
         if move["prop"] == "layout":
-            for name in ("pip", "overlay"):
+            for name in BAKED:
                 if name in (move["from"], move["to"]):
                     add(move["start_f"], move["end_f"], name)
     if track.get("style", {}).get("style") == "layout-switch":
         for beat in beats:
-            if beat["layout"] in ("pip", "overlay"):
+            if beat["layout"] in BAKED:
                 add(beat["start_f"], beat["end_f"], beat["layout"])
     # --- G5 transitions (VES-1) ---
     # Flash and overlay types (fade, push, wipe, shader) stay in the overlay layer;
@@ -1745,7 +1949,8 @@ def baked_spans(track, beats, total):
 
 
 # --- G5 transitions (VES-1) ---
-NEED_BAKED_MASTER = "Render the Master first: the picture-in-picture or blurred-card parts or transitions are taken from it."
+NEED_BAKED_MASTER = ("Render the Master first: the picture-in-picture, blurred-card or face card parts or transitions "
+                     "are taken from it.")
 # --- end G5 ---
 
 
@@ -1801,6 +2006,16 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
         print(f"note: {line}")
     inp["track"] = track
     styles.write_json(reel / styles.TRACK, track)  # S7 reads it
+    head = layers in ("all", "aroll") and bool(card_layouts(track))
+    if head:  # the face card draws the cutout step's matte over its card; refuse before any work
+        problem = head_matte_problem(reel, inp["master"], inp["total"])
+        if problem:
+            raise Stop(1, f"✗ {problem}")
+        # Before captions are placed: they, the checks and Motion review read the same saved window.
+        inp["card_src"] = card_src(reel) or measure_card_window(reel, head_spans(track, inp["total"]), inp["rate"])
+        if inp["card_src"] is None:
+            print("note: The face card couldn't find your head in the cut-out, so it uses its default framing; "
+                  "check those beats in the preview.")
     check_reel_scenes(inp["beats"], reel, ctx=world_face_context(inp)
                       if world_face_slots(inp["beats"], reel) else None)
     if tier == "preview" and layers == "all":
@@ -1966,6 +2181,11 @@ def render(reel, tier, hook_text, extra_spans=None, keep_project=False, layers="
                 write_json(reel / "work/hook.json", hook_record(inp))
             if layers in ("all", "aroll"):
                 link_or_copy(inp["master"], proj / "media" / "aroll.mp4")
+            if head:
+                crop = layout(card_layouts(track)[0], 1, src=inp.get("card_src"))["crop"]
+                for i, span in enumerate(head_spans(track, inp["total"])):
+                    cut_head(reel / HEAD_MATTE, proj / "media" / f"head-{i}.mov", span, crop, w / 1080,
+                             tmp / f"head-{i}.log")
             for i, b in enumerate(b for b in inp["beats"] if b.get("broll") and layers in ("all", "overlay")):
                 names = [broll_name(b, i)] + ([broll_name(b, i) + "-back"] if b["broll"]["fit"] == "blur-fill" else [])
                 for n in names:
@@ -2547,12 +2767,36 @@ def selftest():
         expect(f"style times at {rate}: never after the frame, on the frame",
                all(Fraction(at(f, rate)) <= f / rate and round(float(at(f, rate)) * rate) == f for f in range(0, 5000, 7)))
     want = {"split": [0, 960, 1080, 960], "stack": [0, 0, 1080, 844], "pip": [738, 28, 312, 555],
-            "overlay": [0, 0, 1080, 1920], "full": [0, 0, 1080, 1920]}
+            "overlay": [0, 0, 1080, 1920], "full": [0, 0, 1080, 1920], "facecard": [238, 1012, 604, 672]}
     expect("layout boxes on the 1080x1920 grid", all(layout(n, 1)["box"] == b for n, b in want.items()))
     expect("split's plate is the top half, at 720 wide too",
            "top: 0px; width: 720px; height: 640px; background: #0a0c12" in layout("split", 720 / 1080)["plate"]
            and layout("split", 720 / 1080)["box"] == [0, 640, 720, 640])
-    expect("only pip's box paints above the plates", [n for n in want if layout(n, 1)["z"] > PLATE_Z] == ["pip"])
+    expect("only pip's and the face card's boxes paint above the plates",
+           [n for n in want if layout(n, 1)["z"] > PLATE_Z] == ["pip", "facecard"])
+    card = layout("facecard", 1)
+    expect("face card (R2): the picture at 1:1 from (168, 455), the head clip 6 px past the card top + a 40 px fade",
+           card["inner"] == [-168, -455, 1080, 1920] and card["video"] == [70, 557, 1080, 1920]
+           and card["head"] == {"h": 1058, "fade": 40} and card["radius"] == 38
+           and card["shadow"].startswith("0 0 0 4px #ffffff"))
+    card = layout("facecard", 720 / 1080)
+    expect("face card at 720 wide: every length scaled, the 4 px border too",
+           card["inner"] == [-112, -303.33, 720, 1280] and card["head"] == {"h": 705.33, "fade": 26.67}
+           and card["shadow"].startswith("0 0 0 2.67px #ffffff"))
+    expect("inner: other layouts get the cover fit the video's object-fit gives anyway",
+           inner(layout("split", 1), 1) == [0, -480, 1080, 1920] and inner(layout("full", 1), 1) == [0, 0, 1080, 1920]
+           and inner(layout("pip", 1), 1) == [-0.09, 0, 312.19, 555])
+    alpha = bytes([0] * 30 + [0, 0, 0, 255, 255, 255, 255, 0, 0, 0] + [0, 255, 255, 255, 255, 255, 255, 255, 0, 0] * 4)
+    expect("head top: the first row with 3+ solid pixels, the centre across the row below it",
+           head_top(alpha, 10, 8) == (3, 4.0) and head_top(bytes(80), 10, 8) is None)
+    expect("card window: the head's top 175 px above the card, centred on it; held inside the picture",
+           card_window([(420, 540), (430, 560), (410, 520)]) == ((238.0, 595.0), False)
+           and card_window([(1900, 540)]) == ((238.0, 1248.0), True)
+           and layout("facecard", 1, src=(238, 595))["video"] == [0, 417, 1080, 1920])
+    expect("only the face card has a head", [n for n in want if "head" in layout(n, 1)] == ["facecard"]
+           and card_layouts({"keys": [{"f": 0, "layout": "pip"}], "tweens": [
+               {"prop": "layout", "from": "pip", "to": "facecard"}]}) == ["facecard"]
+           and card_layouts({"keys": [{"f": 0, "layout": "split"}], "tweens": []}) == [])
     prev, mast = out_names("Reel 7", "11.05.26")
     expect("names", (prev, mast) == ("Reel 7 Preview 720p - 11.05.26.mp4", "Reel 7 Master - 11.05.26.mp4"))
     expect("Master rule: preview fails, Master passes, a partial fails",
@@ -3076,6 +3320,70 @@ def selftest():
                not any(("left:" in l or "top:" in l) for l in page.splitlines() if "tl.fromTo(" in l or "tl.to(" in l))
         expect("page: the video element is never animated; one plate per non-full beat",
                '"#aroll"' not in page and page.count('class="layout-card"') == 2 and 'id="plate-1"' in page)
+        expect("page: a reel without the face card gets no head and no picture placement",
+               "head-clip" not in page and 'tl.set("#aroll-move", { x:' not in page)
+        trk = {"style": {"style": "layout-switch"},
+               "keys": [{"f": 0, "scale": 1.0, "ox": 0.5, "oy": 0.38, "layout": "full"},
+                        {"f": 50, "scale": 1.0, "ox": 0.5, "oy": 0.38, "layout": "facecard"}],
+               "tweens": [{"start_f": 60, "end_f": 75, "prop": "layout", "from": "facecard", "to": "split",
+                           "ease": "power2.inOut", "id": "layout b3"}]}
+        cb = [beat("b1", 0, 50), beat("b2", 50, 60, "facecard"), beat("b3", 60, 100, "split")]
+        page = main_html(dict(inp, track=trk, beats=cb), 720, 1280, [])
+        lines = page.splitlines()
+
+        def on(target, t):
+            return [l.strip() for l in lines if l.strip().startswith(f'tl.set("{target}"') and l.endswith(f", {t});")]
+        expect("page: the face card's head layer is the cut-out over the card, under the captions",
+               '<div id="head-clip" class="band" style="z-index: 501; height: 0px; overflow: hidden; '
+               '-webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 26.67px), transparent 100%)' in page
+               and '<video id="head-0" class="clip" src="media/head-0.mov" data-start="2" data-duration="2"' in page
+               and page.count("<video") == 2)
+        expect("head spans: card keys to the next key plus every move touching a card, merged; nothing else",
+               head_spans(trk, 100) == [[50, 100]]
+               and head_spans({"keys": [{"f": 0, "layout": "facecard"}, {"f": 30, "layout": "full"},
+                                        {"f": 60, "layout": "facecard"}, {"f": 80, "layout": "split"}],
+                               "tweens": [{"prop": "layout", "from": "full", "to": "facecard",
+                                           "start_f": 40, "end_f": 60}]}, 100) == [[0, 30], [40, 80]]
+               and head_spans({"keys": [{"f": 0, "layout": "split"}], "tweens": []}, 100) == []
+               and head_spans({"keys": [{"f": 0, "layout": "split"}, {"f": 70, "layout": "facecard"},
+                                        {"f": 90, "layout": "split"}],
+                               "tweens": [{"prop": "layout", "from": "split", "to": "facecard",
+                                           "start_f": 20, "end_f": 38}]}, 100) == [[20, 90]])
+        expect("page: full frame keeps the head shut and the picture whole",
+               'tl.set("#head-clip", { height: 0, immediateRender: true }, 0);' in on("#head-clip", 0)
+               and 'tl.set("#aroll-move", { x: 0, y: 0, width: 720, height: 1280, immediateRender: true }, 0);'
+               in on("#aroll-move", 0))
+        expect("page: on the card, the picture is the window and the head sits at the same place",
+               'tl.set("#aroll-box", { x: 158.67, y: 674.67, width: 402.67, height: 448, borderRadius: 25.33, '
+               'zIndex: 500,' in page
+               and 'tl.set("#aroll-move", { x: -112, y: -303.33, width: 720, height: 1280, immediateRender: false }, 2);'
+               in on("#aroll-move", 2)
+               and 'tl.set("#head-clip", { height: 705.33, immediateRender: false }, 2);' in on("#head-clip", 2)
+               # the strip (cut's pixels 48,160 844x342) at the picture's place: head top 175 x 2/3 px over the card
+               and 'tl.set("#head-move", { x: 78.67, y: 478, width: 562.67, height: 228, immediateRender: false }, 2);'
+               in on("#head-move", 2))
+        expect("page: a move off the card carries the picture and the head on the box's own ease",
+               'tl.fromTo("#head-move", { x: 78.67, y: 478, width: 562.67, height: 228 }, { x: 32, y: 426.67, '
+               'width: 562.67, height: 228, duration: 0.6, ease: "power2.inOut", immediateRender: false }, 2.4);' in page
+               and 'tl.fromTo("#head-clip", { height: 705.33 }, { height: 0, duration: 0.6' in page
+               and 'tl.fromTo("#aroll-move", { x: -112, y: -303.33, width: 720, height: 1280 }, { x: 0, y: -320, '
+                   'width: 720, height: 1280, duration: 0.6' in page)
+        expect("page: the face card moves no left/top either",
+               not any(("left:" in l or "top:" in l) for l in lines if "tl.fromTo(" in l or "tl.to(" in l))
+        expect("page: the A-roll layer keeps the head; the overlay layer leaves it to the finished Master",
+               "head-clip" in main_html(dict(inp, track=trk, beats=cb), 720, 1280, [], layers="aroll")
+               and "head-clip" not in main_html(dict(inp, track=trk, beats=cb), 720, 1280, [], layers="overlay")
+               and baked_spans(trk, cb, 100) == [{"start_f": 50, "end_f": 100, "layout": "facecard"}])
+    with tempfile.TemporaryDirectory() as t:
+        reel, master = Path(t), Path(t) / "master.mp4"
+        master.write_bytes(b"cut")
+        expect("head matte: missing is refused with the next step",
+               "hasn't been made yet" in (head_matte_problem(reel, master, 10) or ""))
+        (reel / "work/matte").mkdir(parents=True)
+        (reel / HEAD_MATTE).write_bytes(b"old")
+        os.utime(reel / HEAD_MATTE, (1, 1))
+        expect("head matte: one made before the cut is refused",
+               "older cut" in (head_matte_problem(reel, master, 10) or ""))
     with tempfile.TemporaryDirectory() as t:
         root = Path(t)
         scenes = root / "scenes"

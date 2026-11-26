@@ -29,6 +29,8 @@
   .face-area, .face-swatch { background: var(--face); }
   .graphic-area, .graphic-swatch { background: var(--graphic); }
   .head-mark { display: block; width: 28%; aspect-ratio: 1; border-radius: 50%; background: #14213b; }
+  .sketch-area.pop { overflow: visible; align-items: flex-start; box-shadow: 0 0 0 1px #fff; border-radius: 3px; }
+  .sketch-area.pop .head-mark { width: 44%; margin-top: -24%; }
   .graphic-lines { width: 65%; }
   .graphic-lines span { display: block; height: 2px; background: #382407; margin: 3px 0; }
   .graphic-lines span:last-child { width: 65%; }
@@ -245,14 +247,15 @@
 <script src="./board-client.js"></script>
 <script>
 "use strict";
-const LAYOUTS = [["full", "Full screen"], ["split", "Split"], ["stack", "Stack"], ["pip", "Picture-in-picture"], ["overlay", "Overlay"]];
+const LAYOUTS = [["full", "Full screen"], ["split", "Split"], ["stack", "Stack"], ["pip", "Picture-in-picture"], ["overlay", "Overlay"], ["facecard", "Face card + head pop"]];
 const LAYOUT_NAME = Object.fromEntries(LAYOUTS);
 const LAYOUT_DESC = {
   full: "Full screen: your face fills the screen",
   split: "Split: graphic on the top half, your face on the bottom half",
   stack: "Stack: your face on top, graphic below",
   pip: "Picture-in-picture: graphic fills the screen, your face in a small box at the top right",
-  overlay: "Overlay: your face fills the screen, with a card over the lower part"
+  overlay: "Overlay: your face fills the screen, with a card over the lower part",
+  facecard: "Face card + head pop: graphics around you, your face in a white-edged card low on the screen, with your head popping up over its top edge"
 };
 // [x, y, w, h] on 1080x1920. Must match layouts/*.html.
 const LAYOUT_BOXES = {
@@ -261,6 +264,7 @@ const LAYOUT_BOXES = {
   stack:   {face: [0, 0, 1080, 844], graphic: [0, 858, 1080, 1062]},
   pip:     {face: [738, 28, 312, 555], graphic: [0, 0, 1080, 1920]},
   overlay: {face: [0, 0, 1080, 1920], graphic: [24, 1280, 1032, 564]},
+  facecard: {face: [238, 1012, 604, 672], graphic: [0, 0, 1080, 1920]},
 };
 const MARKS = ["num", "key", "emph", "cta"];
 const MARK_NAME = {num: "number", key: "key word", emph: "stress", cta: "call to action"};
@@ -296,7 +300,11 @@ function sketch(layout) {
       kind === "face" ? el("span", {class: "head-mark"}) :
         el("span", {class: "graphic-lines"}, el("span"), el("span"), el("span")));
   };
-  if (layout === "pip") frame.append(area("graphic", boxes.graphic), area("face", boxes.face));
+  if (layout === "pip" || layout === "facecard") {
+    const face = area("face", boxes.face);
+    if (layout === "facecard") face.classList.add("pop");
+    frame.append(area("graphic", boxes.graphic), face);
+  }
   else {
     frame.append(area("face", boxes.face));
     if (boxes.graphic) frame.append(area("graphic", boxes.graphic));

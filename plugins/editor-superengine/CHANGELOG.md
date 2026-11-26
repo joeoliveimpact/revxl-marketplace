@@ -4,6 +4,29 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.4] — 2026-11-25
+
+### Added
+- **Face card + head pop** layout on the Beat Map (`facecard`): the face shows in a card with a 4 px white
+  border and 38 px corners, low on the screen, as a window on the full-size picture (never shrunk); the
+  speaker's cut-out is drawn at the same place above it, so the head rises over the card's top edge with no
+  seam. Graphics sit around it on a dark dotted backdrop. It draws with the Layout switches editing style, like
+  the other layouts, and moves into and out of other layouts with the picture and the head together. The
+  geometry is in `layouts/facecard.html`. Each reel's window is measured from its own cut-out
+  (`work/facecard.json`): the head's top sits 175 px above the card and the head is centred on it, whatever the
+  framing. Only the face card's stretches of the cut-out, at the render's size, go to the renderer (the whole
+  full-size matte ran it out of memory). Before, this look had to be built by hand outside the editor.
+- **Face card check** (`face_card_check.py`, QA pre check): blocks when the head cut-out
+  (`work/matte/cutout.mov`, the cutout step) is missing, older than the cut or not frame for frame with it
+  (the preview refuses the same way before rendering); warns when the editing style hides the card, and when
+  the head sits too near the picture's edge for the usual framing.
+
+### Changed
+- Captions are placed clear of the real head on face card beats (the placer maps the head through the
+  full-size picture, popped part included), and the face check after rendering compares only the card's part.
+- The silent-hold check, the caption placer and Motion review treat the face card like picture-in-picture:
+  its box paints above scenes and B-roll. Layer hand-offs take face card spans from the finished Master.
+
 ## [0.2.3] — 2026-11-17
 
 ### Added

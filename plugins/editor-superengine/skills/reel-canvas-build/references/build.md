@@ -129,6 +129,7 @@ When it refuses, nothing is made. In plain words, with the one next step:
 | `ask: which caption look` | no caption look or "no captions" choice yet | invoke `editor-superengine:reel-captions`, then make the preview again |
 | `BLOCK` lines | two things clash on screen, e.g. two full-screen scenes at once, or an effect running across a cut | move the beat's edges on the Beat Map, Send, then a new preview |
 | a layout check error (`✗` ending in a code in brackets) | a fault in the editor's own page, not the user's | run it once more; if it stays, the failure report, with the step 'the render' |
+| a line about the face card's cut-out | a Face card + head pop beat has no cut-out of this cut | make it with section 7, then the preview again |
 
 The preview stops on `BLOCK` and layout check lines the same way. Any other `✗` line names what to fix; exit 2
 means a missing input, e.g. no Beat Map Send or no cut yet: go to that step.
@@ -156,9 +157,10 @@ on previews and refuse the Master, even without music. B-roll is muted at layer 
 
 ## 7. The cutout
 
-Cuts the speaker out of the background, for later looks that put graphics behind them. Run it only when a look
-the user picked puts graphics behind the speaker (none of the built looks does yet), with `run_in_background`
-(it can take many minutes). `master-<tag>.mp4` is the cut's own full-size render from reel-first-cuts
+Cuts the speaker out of the background. The **Face card + head pop** layout (`facecard` on the Beat Map) needs
+it: its head pop is this cut-out. Run it when a beat uses that layout and the preview (or the QA check) says the
+cut-out is missing or older than the cut, before the preview, with `run_in_background` (it can take many
+minutes; RVM on a graphics card is fastest). Remake it after any change to the cut. `master-<tag>.mp4` is the cut's own full-size render from reel-first-cuts
 (not the final video), in `<reel folder>/work/renders/`;
 `<tag>` is the cut's speed with the dot dropped, e.g. `master-100x.mp4` at normal speed, `master-115x.mp4` at 1.15x:
 

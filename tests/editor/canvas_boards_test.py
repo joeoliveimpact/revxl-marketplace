@@ -493,9 +493,9 @@ def check_sketch_geometry(html):
     match = re.search(r"const LAYOUT_BOXES = (\{.*?\n\});", html, re.S)
     need(match, "beat-map: missing LAYOUT_BOXES")
     boxes = json.loads(re.sub(r"\b([a-z]+):", r'"\1":', match[1]).replace(",\n}", "\n}"))
-    need(set(boxes) == {"full", "split", "stack", "pip", "overlay"}, "sketch layout set differs")
+    need(set(boxes) == {"full", "split", "stack", "pip", "overlay", "facecard"}, "sketch layout set differs")
     need(boxes["full"] == {"face": [0, 0, 1080, 1920], "graphic": None}, "full sketch differs")
-    for name in ("split", "stack", "pip", "overlay"):
+    for name in ("split", "stack", "pip", "overlay", "facecard"):
         template = (PLUGIN / "skills/reel-canvas-build/layouts" / (name + ".html")).read_text(encoding="utf-8")
         face = list(map(int, re.search(r'data-box="([\d ]+)"', template)[1].split()))
         plate = re.search(r'class="layout-plate" style="([^"]+)"', template)[1]
